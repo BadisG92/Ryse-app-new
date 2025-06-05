@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'ui/custom_button.dart';
-import 'ui/custom_badge.dart';
 import 'dart:async';
-import 'package:lottie/lottie.dart';
 
 class OnboardingGamified extends StatefulWidget {
   final VoidCallback onComplete;
@@ -715,69 +713,6 @@ class _OnboardingGamifiedState extends State<OnboardingGamified>
     );
   }
 
-  Widget _buildSummaryStep() {
-    final calories = calculateDailyGoal();
-    final macros = calculateMacros();
-    
-    return Column(
-      children: [
-        // Plan preview
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                const Color(0xFF0B132B).withOpacity(0.05),
-                const Color(0xFF1C2951).withOpacity(0.05),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            children: [
-              const Text(
-                'Votre plan personnalisé',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF0B132B),
-                ),
-              ),
-              const SizedBox(height: 16),
-              
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildMacroInfo('$calories', 'kcal/jour'),
-                  _buildMacroInfo('${macros['protein']}g', 'Protéines'),
-                  _buildMacroInfo('${macros['carbs']}g', 'Glucides'),
-                  _buildMacroInfo('${macros['fat']}g', 'Lipides'),
-                ],
-              ),
-            ],
-          ),
-        ),
-        
-        const SizedBox(height: 24),
-        
-        const Row(
-          children: [
-            Icon(LucideIcons.crown, color: Color(0xFF0B132B), size: 20),
-            SizedBox(width: 8),
-            Text(
-              'Plan personnalisé créé ! +100 XP bonus',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF0B132B),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
   Widget _buildMobileNumberInput(String label, String unit, String value, Function(String) onChanged, IconData icon) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -829,28 +764,6 @@ class _OnboardingGamifiedState extends State<OnboardingGamified>
                 ),
               ),
             ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMacroInfo(String value, String label) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF0B132B),
-          ),
-        ),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12,
-            color: Color(0xFF64748B),
           ),
         ),
       ],
@@ -1343,13 +1256,6 @@ class _OnboardingGamifiedState extends State<OnboardingGamified>
         ),
       ),
     );
-  }
-
-  String _getDietLabel() {
-    final restrictions = userData['restrictions'] as List<String>;
-    if (restrictions.isEmpty) return 'Standard';
-    if (restrictions.length == 1) return restrictions.first;
-    return '${restrictions.length} restrictions';
   }
 
   double _calculateBMR() {

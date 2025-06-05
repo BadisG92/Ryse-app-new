@@ -16,7 +16,6 @@ class _SportMusculationState extends State<SportMusculation> {
   String _sessionType = 'Full body';
   DateTime? _sessionStartTime;
   List<Map<String, dynamic>> _currentExercises = [];
-  List<Map<String, dynamic>> _weekHistory = [];
   Map<int, bool> _exerciseExpansionState = {}; // Track expansion state for each exercise
 
   final List<String> _sessionTypes = ['Haut du corps', 'Bas du corps', 'Full body'];
@@ -58,32 +57,6 @@ class _SportMusculationState extends State<SportMusculation> {
     {'name': 'Soulevé de terre', 'current': '140kg', 'progress': '+15%', 'sessions': 20},
     {'name': 'Tractions', 'current': '+15kg', 'progress': '+25%', 'sessions': 22},
   ];
-
-  Color _getLevelColor(String level) {
-    switch (level) {
-      case 'Débutant':
-        return const Color(0xFFDCFCE7); // green-100
-      case 'Intermédiaire':
-        return const Color(0xFF0B132B).withOpacity(0.1);
-      case 'Avancé':
-        return const Color(0xFFFECDCA); // red-100
-      default:
-        return const Color(0xFFF1F5F9); // gray-100
-    }
-  }
-
-  Color _getLevelTextColor(String level) {
-    switch (level) {
-      case 'Débutant':
-        return const Color(0xFF166534); // green-800
-      case 'Intermédiaire':
-        return const Color(0xFF0B132B);
-      case 'Avancé':
-        return const Color(0xFFDC2626); // red-800
-      default:
-        return const Color(0xFF64748B); // gray-600
-    }
-  }
 
   @override
   Widget build(BuildContext context) {

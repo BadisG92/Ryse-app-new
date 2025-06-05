@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'ui/custom_card.dart';
 
 class NutritionRecipes extends StatefulWidget {
   const NutritionRecipes({super.key});

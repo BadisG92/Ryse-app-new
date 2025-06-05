@@ -3,7 +3,6 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'dart:async';
 import 'dart:math';
 import 'ui/custom_card.dart';
-import 'ui/custom_button.dart';
 
 class NutritionDashboard extends StatefulWidget {
   const NutritionDashboard({super.key});
