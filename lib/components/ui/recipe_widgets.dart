@@ -346,6 +346,7 @@ class FilterModalContent extends StatelessWidget {
                               return ChoiceChip(
                                 label: Text(option),
                                 selected: isSelected,
+                                showCheckmark: false,
                                 onSelected: (bool selected) => onFilterChanged(filterKey, option, selected),
                                 backgroundColor: const Color(0xFFF8F8F8),
                                 selectedColor: const Color(0xFF0B132B),

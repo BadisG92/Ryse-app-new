@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'ui/custom_card.dart';
 import 'ui/workout_widgets.dart';
+import 'ui/exercise_sets_widget.dart';
+import '../models/sport_models.dart';
+import '../bottom_sheets/exercise_selection_bottom_sheet.dart';
+import '../bottom_sheets/program_selection_bottom_sheet.dart';
 
 class SportMusculationHybrid extends StatefulWidget {
   const SportMusculationHybrid({super.key});
@@ -13,13 +17,104 @@ class SportMusculationHybrid extends StatefulWidget {
 class _SportMusculationHybridState extends State<SportMusculationHybrid> {
   bool _isSessionActive = false;
   bool _isSessionCompleted = false;
-  String _sessionName = '';
-  String _sessionType = 'Full body';
-  DateTime? _sessionStartTime;
-  List<Map<String, dynamic>> _currentExercises = [];
-  Map<int, bool> _exerciseExpansionState = {};
+  WorkoutSession? _currentSession;
+  List<WorkoutExercise> _currentExercises = [];
+  bool _isFromProgram = false;
+  List<WorkoutProgram> _customPrograms = [];
 
   final List<String> _sessionTypes = ['Haut du corps', 'Bas du corps', 'Full body'];
+
+  Widget _buildSessionTypeButtons() {
+    return CustomCard(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Type de séance',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF1A1A1A),
+              ),
+            ),
+            
+            const SizedBox(height: 16),
+            
+            // Grille 1x2 avec les 2 boutons
+            Row(
+              children: [
+                // Bouton séance manuelle
+                Expanded(
+                  child: _buildSessionTypeButton(
+                    icon: LucideIcons.edit3,
+                    title: 'Séance manuelle',
+                    subtitle: '',
+                    onTap: _showManualSessionFlow,
+                  ),
+                ),
+                
+                const SizedBox(width: 12),
+                
+                // Bouton séance guidée
+                Expanded(
+                  child: _buildSessionTypeButton(
+                    icon: LucideIcons.bookOpen,
+                    title: 'Séance guidée',
+                    subtitle: '',
+                    onTap: _showProgramsModal,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSessionTypeButton({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: const Color(0xFF0B132B),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: Colors.white, size: 24),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF1A1A1A),
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,18 +135,18 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
             
             const SizedBox(height: 16),
             
-            // 2. Bloc principal "Commencer une séance" (FACTORISÉ)
+            // 2. Bloc principal "Types de séance" (2 boutons côte à côte)
             if (!_isSessionActive && !_isSessionCompleted) ...[
-              StartSessionButton(onPressed: _showSessionChoiceModal),
+              _buildSessionTypeButtons(),
               const SizedBox(height: 16),
             ],
             
             // 3. Bloc "Suivi de séance en cours" (HYBRIDE - Card factorisée, logique intégrée)
-            if (_isSessionActive) ...[
+            if (_isSessionActive && _currentSession != null) ...[
               SessionTrackingCard(
-                sessionName: _sessionName,
-                sessionStartTime: _sessionStartTime!,
-                currentExercises: _currentExercises,
+                sessionName: _currentSession!.name,
+                sessionStartTime: _currentSession!.startTime,
+                currentExercises: _convertExercisesToMap(),
                 onComplete: _completeSession,
               ),
               const SizedBox(height: 16),
@@ -320,22 +415,62 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
   }
 
   void _showProgramsModal() {
-    // TODO: Implémenter modal des programmes
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Programmes à venir')),
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => ProgramSelectionBottomSheet(
+        onProgramSelected: (program) => _startSessionFromProgram(program),
+        customPrograms: _customPrograms,
+      ),
     );
   }
 
   void _startSession(String name) {
     setState(() {
       _isSessionActive = true;
-      _sessionName = name;
-      _sessionStartTime = DateTime.now();
+      _isFromProgram = false;
+      _currentSession = WorkoutSession(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        name: name,
+        startTime: DateTime.now(),
+        exercises: [],
+      );
       _currentExercises = [];
     });
   }
 
+  void _startSessionFromProgram(WorkoutProgram program) {
+    // Convertir les exercices du programme en WorkoutExercise avec séries vides
+    final programExercises = program.exercises.map((programExercise) {
+      return WorkoutExercise(
+        exercise: programExercise.exercise,
+        sets: List.generate(
+          programExercise.sets,
+          (index) => const ExerciseSet(reps: 0, weight: 0),
+        ),
+      );
+    }).toList();
+
+    setState(() {
+      _isSessionActive = true;
+      _isFromProgram = true;
+      _currentSession = WorkoutSession(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        name: program.name,
+        startTime: DateTime.now(),
+        exercises: [],
+      );
+      _currentExercises = programExercises;
+    });
+  }
+
   void _completeSession() {
+    // Si c'est une séance manuelle, proposer de la sauvegarder
+    if (!_isFromProgram && _currentExercises.isNotEmpty) {
+      _showSaveAsCustomProgramDialog();
+    }
+    
     setState(() {
       _isSessionActive = false;
       _isSessionCompleted = true;
@@ -372,16 +507,25 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
                 ),
               )
             else
-              ..._currentExercises.asMap().entries.map((entry) {
-                final index = entry.key;
-                final exercise = entry.value;
-                return _buildExerciseCard(exercise, index);
-              }).toList(),
+              Column(
+                children: _currentExercises.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final workoutExercise = entry.value;
+                  return ExerciseSetsWidget(
+                    workoutExercise: workoutExercise,
+                    onSetUpdated: (setIndex, updatedSet) => _updateSet(index, setIndex, updatedSet),
+                    onAddSet: () => _addSet(index),
+                    onRemoveSet: (setIndex) => _removeSet(index, setIndex),
+                    onRemoveExercise: () => _removeExercise(index),
+                    initiallyExpanded: !_isFromProgram,
+                  );
+                }).toList(),
+              ),
             
             const SizedBox(height: 16),
             Center(
               child: TextButton.icon(
-                onPressed: _addExercise,
+                onPressed: _showExerciseSelection,
                 icon: const Icon(LucideIcons.plus, size: 16),
                 label: const Text('Ajouter un exercice'),
                 style: TextButton.styleFrom(
@@ -395,95 +539,203 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
     );
   }
 
-  Widget _buildExerciseCard(Map<String, dynamic> exercise, int exerciseIndex) {
-    final isExpanded = _exerciseExpansionState[exerciseIndex] ?? false;
-    
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: ExpansionTile(
-        leading: Icon(
-          isExpanded ? LucideIcons.chevronUp : LucideIcons.chevronDown,
-          size: 16,
-          color: const Color(0xFF64748B),
-        ),
-        title: Text(
-          exercise['name'] ?? 'Exercice',
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF1A1A1A),
-          ),
-        ),
-        trailing: IconButton(
-          onPressed: () => _removeExercise(exerciseIndex),
-          icon: const Icon(Icons.close, size: 18),
-          color: const Color(0xFF64748B),
-        ),
-        onExpansionChanged: (expanded) {
-          setState(() {
-            _exerciseExpansionState[exerciseIndex] = expanded;
-          });
-        },
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                const Text('Détails de l\'exercice'),
-                const SizedBox(height: 8),
-                ElevatedButton(
-                  onPressed: () => _addSet(exerciseIndex),
-                  child: const Text('Ajouter une série'),
-                ),
-              ],
-            ),
-          ),
-        ],
+  void _showExerciseSelection() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => ExerciseSelectionBottomSheet(
+        onExerciseSelected: (exercise, sets) => _addExerciseFromDatabase(exercise, sets),
+        onCustomExerciseCreated: (name, sets) => _addCustomExercise(name, sets),
       ),
     );
   }
 
-  void _addExercise() {
+  void _addExerciseFromDatabase(Exercise exercise, int setsCount) {
+    final workoutExercise = WorkoutExercise(
+      exercise: exercise,
+      sets: List.generate(setsCount, (index) => const ExerciseSet(reps: 0, weight: 0)),
+    );
+    
     setState(() {
-      _currentExercises.add({
-        'name': 'Nouvel exercice',
-        'sets': [],
-      });
+      _currentExercises.add(workoutExercise);
     });
   }
 
-  void _removeExercise(int index) {
+  void _addCustomExercise(String name, int setsCount) {
+    final customExercise = Exercise(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      name: name,
+      muscleGroup: 'Personnalisé',
+      isCustom: true,
+    );
+    
+    final workoutExercise = WorkoutExercise(
+      exercise: customExercise,
+      sets: List.generate(setsCount, (index) => const ExerciseSet(reps: 0, weight: 0)),
+    );
+    
     setState(() {
-      _currentExercises.removeAt(index);
-      _exerciseExpansionState.remove(index);
+      _currentExercises.add(workoutExercise);
+    });
+  }
+
+  void _updateSet(int exerciseIndex, int setIndex, ExerciseSet updatedSet) {
+    setState(() {
+      final currentSets = List<ExerciseSet>.from(_currentExercises[exerciseIndex].sets);
+      currentSets[setIndex] = updatedSet;
+      _currentExercises[exerciseIndex] = _currentExercises[exerciseIndex].copyWith(sets: currentSets);
     });
   }
 
   void _addSet(int exerciseIndex) {
     setState(() {
-      (_currentExercises[exerciseIndex]['sets'] as List).add({
-        'reps': 0,
-        'weight': 0,
-        'completed': false,
-      });
+      final currentSets = List<ExerciseSet>.from(_currentExercises[exerciseIndex].sets);
+      currentSets.add(const ExerciseSet(reps: 0, weight: 0));
+      _currentExercises[exerciseIndex] = _currentExercises[exerciseIndex].copyWith(sets: currentSets);
     });
+  }
+
+  void _removeSet(int exerciseIndex, int setIndex) {
+    setState(() {
+      final currentSets = List<ExerciseSet>.from(_currentExercises[exerciseIndex].sets);
+      if (currentSets.length > 1) {
+        currentSets.removeAt(setIndex);
+        _currentExercises[exerciseIndex] = _currentExercises[exerciseIndex].copyWith(sets: currentSets);
+      }
+    });
+  }
+
+  void _removeExercise(int exerciseIndex) {
+    setState(() {
+      _currentExercises.removeAt(exerciseIndex);
+    });
+  }
+
+  void _showSaveAsCustomProgramDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text(
+            'Sauvegarder cette séance',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF1A1A1A),
+            ),
+          ),
+          content: const Text(
+            'Souhaitez-vous ajouter cette séance aux séances guidées ?',
+            style: TextStyle(
+              fontSize: 14,
+              color: Color(0xFF64748B),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFF64748B),
+              ),
+              child: const Text('Non'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _saveCurrentSessionAsProgram();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0B132B),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text('Oui'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _saveCurrentSessionAsProgram() {
+    // Convertir la séance actuelle en programme
+    final duration = DateTime.now().difference(_currentSession!.startTime);
+    
+    final newProgram = WorkoutProgram(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      name: _currentSession!.name,
+      description: 'Programme créé à partir de votre séance',
+      type: 'Personnalisé',
+      estimatedDuration: duration.inMinutes,
+      exercises: _currentExercises.map((workoutExercise) {
+        return ProgramExercise(
+          exercise: workoutExercise.exercise,
+          sets: workoutExercise.sets.length,
+        );
+      }).toList(),
+    );
+
+    setState(() {
+      _customPrograms.add(newProgram);
+    });
+
+    // Afficher un message de confirmation
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Séance ajoutée aux programmes guidés !'),
+        backgroundColor: Color(0xFF059669),
+      ),
+    );
+  }
+
+  // Fonction de conversion pour la compatibilité avec SessionTrackingCard
+  List<Map<String, dynamic>> _convertExercisesToMap() {
+    return _currentExercises.map((workoutExercise) {
+      return {
+        'name': workoutExercise.exercise.name,
+        'sets': workoutExercise.sets.map((set) {
+          return {
+            'reps': set.reps,
+            'weight': set.weight,
+            'completed': set.isCompleted,
+          };
+        }).toList(),
+      };
+    }).toList();
   }
 
   // SECTION INTÉGRÉE : Récapitulatif de session (logique spécifique)
   Widget _buildSessionSummary() {
-    final duration = DateTime.now().difference(_sessionStartTime!);
+    final duration = DateTime.now().difference(_currentSession!.startTime);
     final totalSets = _currentExercises.fold<int>(
       0,
-      (sum, exercise) => sum + (exercise['sets'] as List).length,
+      (sum, exercise) => sum + exercise.sets.length,
     );
     final completedSets = _currentExercises.fold<int>(
       0,
-      (sum, exercise) => sum + (exercise['sets'] as List).where((set) => set['completed'] == true).length,
+      (sum, exercise) => sum + exercise.sets.where((set) => set.isCompleted).length,
     );
+    
+    // Calcul des kilos soulevés (poids × répétitions pour les séries terminées)
+    final totalWeight = _currentExercises.fold<double>(
+      0.0,
+      (sum, exercise) => sum + exercise.sets
+          .where((set) => set.isCompleted)
+          .fold<double>(0.0, (setSum, set) => setSum + (set.weight * set.reps)),
+    );
+    
+    // Calcul approximatif des calories (0.35 kcal par kg soulevé + métabolisme de base selon durée)
+    final calories = (totalWeight * 0.35) + (duration.inMinutes * 5.0);
+    final caloriesInt = calories.round();
 
     return CustomCard(
       child: Padding(
@@ -525,6 +777,26 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
               ],
             ),
             
+            const SizedBox(height: 16),
+            
+            // Nouvelle ligne avec kilos soulevés et calories
+            Row(
+              children: [
+                Expanded(
+                  child: _buildSummaryItem(
+                    'Kilos soulevés',
+                    '${totalWeight.toInt()} kg',
+                  ),
+                ),
+                Expanded(
+                  child: _buildSummaryItem(
+                    'Calories dépensées',
+                    '$caloriesInt kcal',
+                  ),
+                ),
+              ],
+            ),
+            
             const SizedBox(height: 24),
             
             Row(
@@ -535,8 +807,8 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
                       setState(() {
                         _isSessionCompleted = false;
                         _currentExercises.clear();
-                        _sessionName = '';
-                        _sessionStartTime = null;
+                        _currentSession = null;
+                        _isFromProgram = false;
                       });
                     },
                     style: OutlinedButton.styleFrom(
@@ -557,8 +829,8 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
                       setState(() {
                         _isSessionCompleted = false;
                         _currentExercises.clear();
-                        _sessionName = '';
-                        _sessionStartTime = null;
+                        _currentSession = null;
+                        _isFromProgram = false;
                       });
                     },
                     style: ElevatedButton.styleFrom(
