@@ -1,11 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'select_recipe_screen.dart';
+import '../bottom_sheets/editable_food_details_bottom_sheet.dart';
+import '../bottom_sheets/meal_selection_bottom_sheet.dart';
+import '../bottom_sheets/new_meal_type_bottom_sheet.dart';
+import '../models/nutrition_models.dart' as nutrition_models;
 
 class RecipeDetailsScreen extends StatefulWidget {
   final Recipe recipe;
+  final bool isFromDashboard;
 
-  const RecipeDetailsScreen({super.key, required this.recipe});
+  const RecipeDetailsScreen({
+    super.key, 
+    required this.recipe,
+    this.isFromDashboard = false,
+  });
 
   @override
   State<RecipeDetailsScreen> createState() => _RecipeDetailsScreenState();
@@ -445,16 +454,7 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                   Container(
                     width: double.infinity,
                     child: ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.pop(context); // Retour à la liste des recettes
-                        Navigator.pop(context); // Retour au journal
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Recette "${widget.recipe.name}" ajoutée au repas'),
-                            backgroundColor: const Color(0xFF0B132B),
-                          ),
-                        );
-                      },
+                      onPressed: _handleAddRecipeToMeal,
                       icon: const Icon(
                         LucideIcons.plus,
                         size: 16,
@@ -589,6 +589,85 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
           },
         ),
       ),
+    );
+  }
+
+  void _handleAddRecipeToMeal() {
+    if (widget.isFromDashboard) {
+      // Créer un FoodItem basé sur la recette
+      final totalCalories = (widget.recipe.calories * currentPortions / widget.recipe.portions).round();
+      final foodItem = nutrition_models.FoodItem(
+        name: widget.recipe.name,
+        calories: totalCalories,
+        portion: '${currentPortions.toStringAsFixed(currentPortions.truncateToDouble() == currentPortions ? 0 : 1)} portion(s)',
+      );
+      
+      _handleDashboardRecipeSelection(foodItem);
+    } else {
+      // Comportement original pour le journal
+      Navigator.pop(context); // Retour à la liste des recettes
+      Navigator.pop(context); // Retour au journal
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Recette "${widget.recipe.name}" ajoutée au repas'),
+          backgroundColor: const Color(0xFF0B132B),
+        ),
+      );
+    }
+  }
+
+  void _handleDashboardRecipeSelection(nutrition_models.FoodItem foodItem) {
+    // Simuler des repas existants
+    final existingMeals = <nutrition_models.Meal>[
+      nutrition_models.Meal(
+        name: 'Petit-déjeuner',
+        time: '08:30',
+        items: [
+          nutrition_models.FoodItem(
+            name: 'Café',
+            calories: 5,
+            portion: '1 tasse',
+          ),
+        ],
+      ),
+      nutrition_models.Meal(
+        name: 'Déjeuner',
+        time: '12:45',
+        items: [
+          nutrition_models.FoodItem(
+            name: 'Salade',
+            calories: 150,
+            portion: '200g',
+          ),
+        ],
+      ),
+    ];
+
+    // Récupérer le contexte avant de fermer les écrans
+    final navigatorContext = Navigator.of(context);
+    Navigator.pop(context); // Retour à la liste des recettes
+    Navigator.pop(context); // Retour au dashboard
+    
+    MealSelectionBottomSheet.show(
+      navigatorContext.context,
+      foodName: foodItem.name,
+      existingMeals: existingMeals,
+      onExistingMealSelected: (meal) {
+        // TODO: Ajouter la recette au repas sélectionné
+        print('Ajouter ${foodItem.name} au repas ${meal.name}');
+        // Note: SnackBar supprimé pour éviter les problèmes de contexte
+      },
+      onCreateNewMeal: () {
+        // Utiliser le contexte du Navigator parent
+        NewMealTypeBottomSheet.show(
+          navigatorContext.context,
+          onMealTypeSelected: (mealType, time) {
+            // TODO: Créer un nouveau repas avec la recette
+            print('Créer un nouveau repas $mealType à $time avec ${foodItem.name}');
+            // Note: SnackBar supprimé pour éviter les problèmes de contexte
+          },
+        );
+      },
     );
   }
 
@@ -754,6 +833,42 @@ class _EditIngredientsScreenState extends State<EditIngredientsScreen> {
   }
 
   void _editIngredient(String ingredient, String name, int baseCalories, String originalQuantity, double currentQuantity) {
+    final originalQty = double.tryParse(originalQuantity.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 100.0;
+    final calories = (baseCalories * currentQuantity / originalQty).round();
+    
+    // Calcul des macronutriments (valeurs approximatives basées sur les calories)
+    final protein = (calories * 0.15 / 4); // 15% des calories en protéines
+    final carbs = (calories * 0.55 / 4); // 55% des calories en glucides  
+    final fat = (calories * 0.30 / 9); // 30% des calories en lipides
+
+    EditableFoodDetailsBottomSheet.show(
+      context,
+      name: name,
+      calories: calories,
+      proteins: protein,
+      glucides: carbs,
+      lipides: fat,
+      quantity: currentQuantity,
+      isModified: false,
+      // Utiliser onFoodSaved pour juste enregistrer les modifications sans ajouter au repas
+      onFoodSaved: (foodItem) {
+        setState(() {
+          tempCustomizedIngredients[ingredient] = double.parse(foodItem.portion.replaceAll('g', ''));
+        });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$name enregistré'),
+            backgroundColor: const Color(0xFF0B132B),
+          ),
+        );
+      },
+    );
+  }
+
+  void _editIngredient_OLD_REMOVED(String ingredient, String name, int baseCalories, String originalQuantity, double currentQuantity) {
+    // Cette méthode a été remplacée par l'utilisation de EditableFoodDetailsBottomSheet.show()
+    // Conservée temporairement pour référence, à supprimer après validation
     final quantityController = TextEditingController(
       text: currentQuantity.toStringAsFixed(currentQuantity.truncateToDouble() == currentQuantity ? 0 : 1),
     );

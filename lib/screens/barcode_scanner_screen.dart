@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import '../bottom_sheets/meal_selection_bottom_sheet.dart';
+import '../bottom_sheets/new_meal_type_bottom_sheet.dart';
+import '../models/nutrition_models.dart' as nutrition_models;
 
 class BarcodeScannerScreen extends StatefulWidget {
-  const BarcodeScannerScreen({super.key});
+  final bool isFromDashboard;
+  
+  const BarcodeScannerScreen({super.key, this.isFromDashboard = false});
 
   @override
   State<BarcodeScannerScreen> createState() => _BarcodeScannerScreenState();
@@ -561,15 +566,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                 Container(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Produit ajouté au repas'),
-                          backgroundColor: Color(0xFF0B132B),
-                        ),
-                      );
-                    },
+                    onPressed: _handleAddToMeal,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF0B132B),
                       padding: const EdgeInsets.symmetric(vertical: 16),
@@ -657,5 +654,82 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
       isScanning = false;
       hasResult = true;
     });
+  }
+
+  void _handleAddToMeal() {
+    if (widget.isFromDashboard) {
+      // Créer un FoodItem basé sur les données scannées
+      final quantity = double.tryParse(_quantityController.text) ?? 170;
+      final foodItem = nutrition_models.FoodItem(
+        name: 'Yaourt grec nature 0%',
+        calories: _getCalculatedCalories().round(),
+        portion: '${quantity.round()}g',
+      );
+      
+      _handleDashboardFoodSelection(foodItem);
+    } else {
+      // Comportement original pour le journal
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Produit ajouté au repas'),
+          backgroundColor: Color(0xFF0B132B),
+        ),
+      );
+    }
+  }
+
+  void _handleDashboardFoodSelection(nutrition_models.FoodItem foodItem) {
+    // Simuler des repas existants
+    final existingMeals = <nutrition_models.Meal>[
+      nutrition_models.Meal(
+        name: 'Petit-déjeuner',
+        time: '08:30',
+        items: [
+          nutrition_models.FoodItem(
+            name: 'Café',
+            calories: 5,
+            portion: '1 tasse',
+          ),
+        ],
+      ),
+      nutrition_models.Meal(
+        name: 'Déjeuner',
+        time: '12:45',
+        items: [
+          nutrition_models.FoodItem(
+            name: 'Salade',
+            calories: 150,
+            portion: '200g',
+          ),
+        ],
+      ),
+    ];
+
+    // Récupérer le contexte avant de fermer l'écran
+    final navigatorContext = Navigator.of(context);
+    Navigator.pop(context);
+    
+    MealSelectionBottomSheet.show(
+      navigatorContext.context,
+      foodName: foodItem.name,
+      existingMeals: existingMeals,
+      onExistingMealSelected: (meal) {
+        // TODO: Ajouter l'aliment au repas sélectionné
+        print('Ajouter ${foodItem.name} au repas ${meal.name}');
+        // Note: SnackBar supprimé pour éviter les problèmes de contexte
+      },
+      onCreateNewMeal: () {
+        // Utiliser le contexte du Navigator parent
+        NewMealTypeBottomSheet.show(
+          navigatorContext.context,
+          onMealTypeSelected: (mealType, time) {
+            // TODO: Créer un nouveau repas avec l'aliment
+            print('Créer un nouveau repas $mealType à $time avec ${foodItem.name}');
+            // Note: SnackBar supprimé pour éviter les problèmes de contexte
+          },
+        );
+      },
+    );
   }
 } 

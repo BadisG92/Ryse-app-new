@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../components/onboarding_gamified.dart';
+import '../components/onboarding_gamified_hybrid.dart';
 import '../components/main_app.dart';
 
 class RyzeApp extends StatefulWidget {
@@ -56,7 +56,7 @@ class _RyzeAppState extends State<RyzeApp> {
     }
 
     if (!_isOnboarded) {
-      return OnboardingGamified(onComplete: _completeOnboarding);
+      return OnboardingGamifiedHybrid(onComplete: _completeOnboarding);
     }
 
     return const MainApp();

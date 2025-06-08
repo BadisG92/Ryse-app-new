@@ -8,6 +8,10 @@ class Meal {
     required this.name,
     required this.items,
   });
+  
+  void addItem(FoodItem item) {
+    items.add(item);
+  }
 }
 
 class FoodItem {

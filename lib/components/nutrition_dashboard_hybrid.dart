@@ -1,9 +1,17 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'dart:math';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'ui/nutrition_models.dart';
 import 'ui/nutrition_cards.dart';
 import 'ui/nutrition_widgets.dart';
+import '../widgets/nutrition/option_widgets.dart';
+import '../screens/ai_scanner_screen.dart';
+import '../screens/barcode_scanner_screen.dart';
+import '../screens/select_recipe_screen.dart';
+import '../bottom_sheets/manual_food_search_bottom_sheet.dart';
+import '../bottom_sheets/editable_food_details_bottom_sheet.dart';
+import '../models/nutrition_models.dart';
 
 class NutritionDashboardHybrid extends StatefulWidget {
   const NutritionDashboardHybrid({super.key});
@@ -105,17 +113,15 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
           padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 120),
           child: Column(
             children: [
-              const SizedBox(height: 40), // Safe area
-              
-              // Header avec statut et calories principales
-              NutritionHeaderSection(
+              // Suppression du header avec "C'est parti" - on passe directement aux calories
+              MainCaloriesCard(
                 profile: nutritionProfile,
                 animatedCalories: animatedCalories,
               ),
               
               const SizedBox(height: 16),
               
-              // Macronutriments avec animations
+              // Macronutriments avec animations - sans pourcentages et sans icônes
               MacronutrientsCard(
                 macros: NutritionData.getMacros(nutritionProfile),
                 animatedValues: {
@@ -137,14 +143,14 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
               
               const SizedBox(height: 16),
               
-              // Conseil IA
+              // Conseil IA - avec icône IA
               AITipCard(
                 tip: NutritionData.tips.first, // TODO: Rotation intelligente
               ),
               
               const SizedBox(height: 16),
               
-              // Quick Actions
+              // Quick Actions - avec recette et swipe
               NutritionQuickActionsSection(
                 actions: NutritionData.quickActions,
               ),
@@ -161,7 +167,8 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
   }
 
   void _onAddMeal() {
-    NutritionBottomSheetHelper.showMealSheet(context, _addMeal);
+    // Reproduire exactement le même comportement que le bouton "Ajouter un aliment" du journal
+    _showAddFoodBottomSheet();
   }
 
   void _addWaterAmount(int milliliters) {
@@ -219,5 +226,161 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
       }
     });
     _timers.add(caloriesTimer);
+  }
+
+  void _showAddFoodBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle bar
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE5E5E5),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              
+              const SizedBox(height: 20),
+              
+              // Titre
+              const Text(
+                'Ajouter un aliment',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1A1A1A),
+                ),
+              ),
+              
+              const SizedBox(height: 16),
+              
+              const Text(
+                'Choisissez comment vous souhaitez ajouter votre aliment',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF64748B),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              
+              const SizedBox(height: 24),
+              
+              // Options d'ajout d'aliment
+              FoodOptionWidget(
+                icon: LucideIcons.edit3,
+                title: 'Saisie manuelle',
+                subtitle: 'Rechercher et ajouter manuellement',
+                onTap: () {
+                  Navigator.pop(context);
+                  _showManualEntryBottomSheet();
+                },
+              ),
+              
+              const SizedBox(height: 12),
+              
+              FoodOptionWidget(
+                icon: LucideIcons.camera,
+                title: 'Scanner avec l\'IA',
+                subtitle: 'Prenez une photo de votre plat',
+                onTap: () {
+                  Navigator.pop(context);
+                  // Navigation directe comme dans les boutons rapides - simple et efficace
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AIScannerScreen(isFromDashboard: true),
+                    ),
+                  );
+                },
+              ),
+              
+              const SizedBox(height: 12),
+              
+              FoodOptionWidget(
+                icon: LucideIcons.scan,
+                title: 'Code-barres',
+                subtitle: 'Scanner le code-barres du produit',
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const BarcodeScannerScreen(isFromDashboard: true),
+                    ),
+                  );
+                },
+              ),
+              
+              const SizedBox(height: 12),
+              
+              FoodOptionWidget(
+                icon: LucideIcons.chefHat,
+                title: 'Mes recettes',
+                subtitle: 'Choisir parmi vos recettes sauvegardées',
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const SelectRecipeScreen(isFromDashboard: true),
+                    ),
+                  );
+                },
+              ),
+              
+              const SizedBox(height: 24),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showManualEntryBottomSheet() {
+    ManualFoodSearchBottomSheet.show(
+      context,
+      isFromDashboard: true,
+      onFoodSelected: (name, calories, baseWeight) {
+        _showFoodDetailsBottomSheet(name, calories, baseWeight);
+      },
+      onFoodCreated: (foodItem) {
+        // Quand on crée un aliment depuis le dashboard → afficher sélection de repas
+        NutritionQuickActionsSection.handleDashboardFoodCreation(context, foodItem);
+      },
+    );
+  }
+
+  void _showFoodDetailsBottomSheet(String name, int calories, int baseWeight) {
+    EditableFoodDetailsBottomSheet.show(
+      context,
+      name: name,
+      calories: calories,
+      proteins: 0,
+      glucides: 0,
+      lipides: 0,
+      quantity: baseWeight.toDouble(),
+      isModified: false,
+      onFoodAdded: (foodItem) {
+        // Quand on ajoute un aliment depuis le dashboard → afficher sélection de repas
+        Navigator.pop(context);
+        NutritionQuickActionsSection.handleDashboardFoodCreation(context, foodItem);
+      },
+    );
   }
 } 

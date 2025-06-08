@@ -3,87 +3,220 @@ import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'onboarding_models.dart';
 
-// Card de sélection réutilisable améliorée
-class SelectableCard extends StatelessWidget {
+// Carte sélectionnable moderne avec animations fluides
+class SelectableCard extends StatefulWidget {
   final String title;
-  final IconData? icon;
   final String? description;
+  final IconData? icon;
   final bool isSelected;
   final VoidCallback onTap;
+  final Color? backgroundColor;
+  final Color? selectedColor;
 
   const SelectableCard({
     super.key,
     required this.title,
-    this.icon,
     this.description,
+    this.icon,
     required this.isSelected,
     required this.onTap,
+    this.backgroundColor,
+    this.selectedColor,
   });
 
   @override
+  State<SelectableCard> createState() => _SelectableCardState();
+}
+
+class _SelectableCardState extends State<SelectableCard> 
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animationController;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _glowAnimation;
+  bool _isPressed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.98,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeOut,
+    ));
+    
+    _glowAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeInOut,
+    ));
+    
+    if (widget.isSelected) {
+      _animationController.forward();
+    }
+  }
+
+  @override
+  void didUpdateWidget(SelectableCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isSelected != oldWidget.isSelected) {
+      if (widget.isSelected) {
+        _animationController.forward();
+      } else {
+        _animationController.reverse();
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF0B132B).withOpacity(0.1) : Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected ? const Color(0xFF0B132B) : Colors.grey.shade300,
-            width: isSelected ? 2 : 1,
-          ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: const Color(0xFF0B132B).withOpacity(0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  )
-                ]
-              : [],
-        ),
-        child: Row(
-          children: [
-            if (icon != null)
-              Icon(icon, size: 28, color: isSelected ? const Color(0xFF0B132B) : const Color(0xFF64748B)),
-            if (icon != null)
-              const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: isSelected ? const Color(0xFF0B132B) : const Color(0xFF1A1A1A),
-                    ),
-                  ),
-                  if (description != null && description!.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4.0),
-                      child: Text(
-                        description!,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: isSelected ? const Color(0xFF0B132B).withOpacity(0.8) : const Color(0xFF64748B),
-                          height: 1.3,
-                        ),
-                      ),
+    final selectedColor = widget.selectedColor ?? const Color(0xFF0B132B);
+    
+    return AnimatedBuilder(
+      animation: _animationController,
+      builder: (context, child) {
+        return Transform.scale(
+          scale: _isPressed ? 0.96 : 1.0,
+          child: GestureDetector(
+            onTapDown: (_) => setState(() => _isPressed = true),
+            onTapUp: (_) => setState(() => _isPressed = false),
+            onTapCancel: () => setState(() => _isPressed = false),
+            onTap: widget.onTap,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: widget.isSelected 
+                    ? selectedColor.withOpacity(0.08)
+                    : widget.backgroundColor ?? Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: widget.isSelected 
+                      ? selectedColor
+                      : const Color(0xFFE2E8F0),
+                  width: widget.isSelected ? 2 : 1,
+                ),
+                boxShadow: [
+                  if (widget.isSelected)
+                    BoxShadow(
+                      color: selectedColor.withOpacity(0.15 * _glowAnimation.value),
+                      blurRadius: 16 * _glowAnimation.value,
+                      spreadRadius: 2 * _glowAnimation.value,
+                      offset: const Offset(0, 4),
+                    )
+                  else
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
                     ),
                 ],
               ),
+              child: Row(
+                children: [
+                  // Icône avec animation
+                  if (widget.icon != null)
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: widget.isSelected 
+                            ? selectedColor
+                            : const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        widget.icon!,
+                        size: 24,
+                        color: widget.isSelected 
+                            ? Colors.white
+                            : const Color(0xFF64748B),
+                      ),
+                    ),
+                  
+                  if (widget.icon != null) const SizedBox(width: 16),
+                  
+                  // Contenu texte
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.title,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: widget.isSelected 
+                                ? selectedColor
+                                : const Color(0xFF1A1A1A),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (widget.description != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            widget.description!,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: widget.isSelected 
+                                  ? selectedColor.withOpacity(0.7)
+                                  : const Color(0xFF64748B),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  
+                  // Indicateur de sélection avec animation
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: widget.isSelected 
+                          ? selectedColor
+                          : Colors.transparent,
+                      border: Border.all(
+                        color: widget.isSelected 
+                            ? selectedColor
+                            : const Color(0xFFE2E8F0),
+                        width: 2,
+                      ),
+                    ),
+                    child: widget.isSelected
+                        ? const Icon(
+                            LucideIcons.check,
+                            size: 14,
+                            color: Colors.white,
+                          )
+                        : null,
+                  ),
+                ],
+              ),
             ),
-            if (isSelected)
-              const SizedBox(width: 12),
-            if (isSelected)
-              const Icon(LucideIcons.checkCircle, color: Color(0xFF0B132B), size: 20),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }
@@ -131,14 +264,17 @@ class OnboardingStatCard extends StatelessWidget {
   }
 }
 
-// Input numérique optimisé mobile avec validation
-class MobileNumberInput extends StatelessWidget {
+// Input numérique mobile moderne avec validation
+class MobileNumberInput extends StatefulWidget {
   final String label;
   final String unit;
   final String value;
-  final ValueChanged<String> onChanged;
+  final Function(String) onChanged;
   final IconData icon;
   final String? hint;
+  final String? validationMessage;
+  final int? minValue;
+  final int? maxValue;
 
   const MobileNumberInput({
     super.key,
@@ -148,62 +284,270 @@ class MobileNumberInput extends StatelessWidget {
     required this.onChanged,
     required this.icon,
     this.hint,
+    this.validationMessage,
+    this.minValue,
+    this.maxValue,
   });
 
   @override
+  State<MobileNumberInput> createState() => _MobileNumberInputState();
+}
+
+class _MobileNumberInputState extends State<MobileNumberInput> 
+    with SingleTickerProviderStateMixin {
+  bool _isFocused = false;
+  bool _hasValue = false;
+  bool _isValid = true;
+  late AnimationController _animationController;
+  late Animation<double> _scaleAnimation;
+  late Animation<Color?> _colorAnimation;
+  late TextEditingController _controller;
+  late FocusNode _focusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.value);
+    _focusNode = FocusNode();
+    _hasValue = widget.value.isNotEmpty;
+    
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 200),
+      vsync: this,
+    );
+    
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 1.02,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeOut,
+    ));
+    
+    _colorAnimation = ColorTween(
+      begin: const Color(0xFF64748B),
+      end: const Color(0xFF0B132B),
+    ).animate(_animationController);
+    
+    _focusNode.addListener(() {
+      setState(() {
+        _isFocused = _focusNode.hasFocus;
+        if (_isFocused) {
+          _animationController.forward();
+        } else {
+          _animationController.reverse();
+        }
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    _controller.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  void _validateInput(String value) {
+    setState(() {
+      _hasValue = value.isNotEmpty;
+      _isValid = true;
+      
+      if (value.isNotEmpty) {
+        final numValue = int.tryParse(value);
+        if (numValue != null) {
+          if (widget.minValue != null && numValue < widget.minValue!) {
+            _isValid = false;
+          }
+          if (widget.maxValue != null && numValue > widget.maxValue!) {
+            _isValid = false;
+          }
+        }
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF1A1A1A),
-          ),
-        ),
-        const SizedBox(height: 12),
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey.shade300),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
+    return AnimatedBuilder(
+      animation: _animationController,
+      builder: (context, child) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Label avec animation
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Row(
+                children: [
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: _isFocused 
+                          ? const Color(0xFF0B132B).withOpacity(0.1)
+                          : const Color(0xFF64748B).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      widget.icon, 
+                      size: 16,
+                      color: _colorAnimation.value,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    widget.label,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: _colorAnimation.value,
+                    ),
+                  ),
+                  if (_hasValue && _isValid)
+                    Container(
+                      margin: const EdgeInsets.only(left: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF10B981),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        LucideIcons.check,
+                        size: 12,
+                        color: Colors.white,
+                      ),
+                    ),
+                ],
               ),
-            ],
-          ),
-          child: TextField(
-            controller: TextEditingController(text: value)..selection = TextSelection.fromPosition(TextPosition(offset: value.length)),
-            keyboardType: TextInputType.number,
-            inputFormatters: [
-              FilteringTextInputFormatter.digitsOnly, // CHIFFRES UNIQUEMENT
-            ],
-            onChanged: onChanged,
-            decoration: InputDecoration(
-              hintText: hint ?? 'Entrez votre $label',
-              prefixIcon: Icon(icon, color: const Color(0xFF64748B)),
-              suffixText: unit,
-              suffixStyle: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF64748B),
+            ),
+            
+            const SizedBox(height: 12),
+            
+            // Input field avec animations
+            Transform.scale(
+              scale: _scaleAnimation.value,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: !_isValid 
+                        ? const Color(0xFFEF4444)
+                        : _isFocused 
+                            ? const Color(0xFF0B132B)
+                            : _hasValue 
+                                ? const Color(0xFF10B981)
+                                : const Color(0xFFE2E8F0),
+                    width: !_isValid || _isFocused ? 2 : 1,
+                  ),
+                  boxShadow: [
+                    if (_isFocused)
+                      BoxShadow(
+                        color: const Color(0xFF0B132B).withOpacity(0.1),
+                        blurRadius: 12,
+                        spreadRadius: 0,
+                        offset: const Offset(0, 4),
+                      )
+                    else
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                  ],
+                ),
+                child: TextField(
+                  controller: _controller,
+                  focusNode: _focusNode,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                  ],
+                  onChanged: (value) {
+                    _validateInput(value);
+                    widget.onChanged(value);
+                  },
+                  decoration: InputDecoration(
+                    hintText: widget.hint ?? 'Entrez votre ${widget.label.toLowerCase()}',
+                    hintStyle: TextStyle(
+                      fontSize: 18,
+                      color: Colors.grey.shade400,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    suffixIcon: Container(
+                      margin: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: _isFocused 
+                            ? const Color(0xFF0B132B).withOpacity(0.1)
+                            : const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        widget.unit,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: _isFocused 
+                              ? const Color(0xFF0B132B)
+                              : const Color(0xFF64748B),
+                        ),
+                      ),
+                    ),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 20, 
+                      vertical: 20,
+                    ),
+                  ),
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1A1A1A),
+                  ),
+                ),
               ),
-              border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             ),
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF1A1A1A),
-            ),
-          ),
-        ),
-      ],
+            
+            // Message de validation avec animation
+            if (!_isValid || widget.validationMessage != null)
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                margin: const EdgeInsets.only(top: 8, left: 4),
+                child: Row(
+                  children: [
+                    Icon(
+                      !_isValid ? LucideIcons.alertCircle : LucideIcons.info,
+                      size: 14,
+                      color: !_isValid 
+                          ? const Color(0xFFEF4444)
+                          : const Color(0xFF64748B),
+                    ),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        !_isValid 
+                            ? 'Valeur non valide'
+                            : widget.validationMessage ?? '',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: !_isValid 
+                              ? const Color(0xFFEF4444)
+                              : const Color(0xFF64748B),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }

@@ -1,4 +1,5 @@
 // Modèles de données et logique de calcul pour l'onboarding
+import 'package:flutter/material.dart';
 
 class UserProfile {
   final String gender;
@@ -75,11 +76,9 @@ class MetabolicCalculations {
 
     // Facteur d'activité
     final activityFactors = {
-      'sedentary': 1.2,
-      'light': 1.375,
-      'moderate': 1.55,
-      'very': 1.725,
-      'extra': 1.9,
+      'low': 1.2,      // 0-2 jours
+      'moderate': 1.55, // 3-5 jours
+      'high': 1.8,     // 6+ jours
     };
 
     return bmr * (activityFactors[profile.activity] ?? 1.2);

@@ -406,10 +406,9 @@ class ModulePreviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: Colors.white,
@@ -459,8 +458,7 @@ class ModulePreviewCard extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildStatRow(String label, String value) {

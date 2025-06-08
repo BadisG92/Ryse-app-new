@@ -130,7 +130,7 @@ class MainCaloriesCard extends StatelessWidget {
                   child: LinearProgressIndicator(
                     value: min(profile.caloriesProgress, 1.0),
                     backgroundColor: Colors.transparent,
-                    valueColor: AlwaysStoppedAnimation<Color>(profile.progressColor),
+                    valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF0B132B)),
                   ),
                 ),
               ),
@@ -254,6 +254,33 @@ class MacroNutrientItem extends StatelessWidget {
     required this.macro,
   });
 
+  // Couleurs d'origine selon l'ancien fichier
+  LinearGradient _getGradientColor(String macroName) {
+    switch (macroName.toLowerCase()) {
+      case 'protéines':
+        return const LinearGradient(colors: [Color(0xFF0B132B), Color(0xFF1C2951)]);
+      case 'glucides':
+        return LinearGradient(colors: [Color(0xFF0B132B).withOpacity(0.7), Color(0xFF1C2951).withOpacity(0.7)]);
+      case 'lipides':
+        return const LinearGradient(colors: [Color(0xFF888888), Color(0xFFAAAAAA)]);
+      default:
+        return const LinearGradient(colors: [Color(0xFF888888), Color(0xFFAAAAAA)]);
+    }
+  }
+
+  Color _getProgressColor(String macroName) {
+    switch (macroName.toLowerCase()) {
+      case 'protéines':
+        return const Color(0xFF0B132B);
+      case 'glucides':
+        return Color(0xFF0B132B).withOpacity(0.7);
+      case 'lipides':
+        return const Color(0xFF888888);
+      default:
+        return const Color(0xFF888888);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -263,7 +290,15 @@ class MacroNutrientItem extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(macro.icon, size: 14, color: macro.color),
+                // Cercle coloré sans icône
+                Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    gradient: _getGradientColor(macro.name),
+                    shape: BoxShape.circle,
+                  ),
+                ),
                 const SizedBox(width: 8),
                 Text(
                   macro.name,
@@ -275,26 +310,19 @@ class MacroNutrientItem extends StatelessWidget {
                 ),
               ],
             ),
+            // Suppression des pourcentages - seulement les valeurs
             Row(
               children: [
                 Text(
-                  macro.currentText,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: macro.progressColor,
-                  ),
-                ),
-                Text(
-                  ' / ${macro.targetText}',
+                  '${macro.current}g',
                   style: const TextStyle(
                     fontSize: 14,
-                    color: Color(0xFF888888),
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0B132B),
                   ),
                 ),
-                const SizedBox(width: 8),
                 Text(
-                  macro.progressText,
+                  ' / ${macro.target}g',
                   style: const TextStyle(
                     fontSize: 12,
                     color: Color(0xFF888888),
@@ -307,7 +335,7 @@ class MacroNutrientItem extends StatelessWidget {
         
         const SizedBox(height: 8),
         
-        // Barre de progression
+        // Barre de progression avec couleurs d'origine
         Container(
           width: double.infinity,
           height: 8,
@@ -320,7 +348,7 @@ class MacroNutrientItem extends StatelessWidget {
             child: LinearProgressIndicator(
               value: min(macro.progress, 1.0),
               backgroundColor: Colors.transparent,
-              valueColor: AlwaysStoppedAnimation<Color>(macro.progressColor),
+              valueColor: AlwaysStoppedAnimation<Color>(_getProgressColor(macro.name)),
             ),
           ),
         ),
@@ -345,30 +373,35 @@ class HydrationCard extends StatelessWidget {
     return CustomCard(
       child: Container(
         height: 160,
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.fromLTRB(12, 12, 8, 12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Row(
-                  children: [
-                    Icon(
-                      LucideIcons.droplets,
-                      size: 16,
-                      color: Color(0xFF0B132B),
-                    ),
-                    SizedBox(width: 8),
-                    Text(
-                      'Hydratation',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF1A1A1A),
+                Flexible(
+                  child: Row(
+                    children: [
+                      const Icon(
+                        LucideIcons.droplets,
+                        size: 16,
+                        color: Color(0xFF0B132B),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          'Hydratation',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF1A1A1A),
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 GestureDetector(
                   onTap: onAddWater,
@@ -393,30 +426,28 @@ class HydrationCard extends StatelessWidget {
             
             const SizedBox(height: 16),
             
-            // Affichage de l'eau avec animation
             Expanded(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    profile.waterText,
+                    '${(profile.waterLevel * 2.5).toStringAsFixed(1)}L',
                     style: const TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF0B132B),
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Objectif : 2.0L',
-                    style: const TextStyle(
-                      fontSize: 12,
+                  const Text(
+                    '/ 2.5L',
+                    style: TextStyle(
+                      fontSize: 14,
                       color: Color(0xFF888888),
                     ),
                   ),
-                  const SizedBox(height: 12),
                   
-                  // Barre de progression eau
+                  const SizedBox(height: 16),
+                  
                   Container(
                     width: double.infinity,
                     height: 8,

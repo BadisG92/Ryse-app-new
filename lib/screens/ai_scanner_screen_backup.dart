@@ -1,18 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../bottom_sheets/editable_food_details_bottom_sheet.dart';
-import '../bottom_sheets/meal_selection_bottom_sheet.dart';
-import '../bottom_sheets/new_meal_type_bottom_sheet.dart';
 import '../models/nutrition_models.dart';
-import '../components/ui/nutrition_widgets.dart';
 
 class AIScannerScreen extends StatefulWidget {
-  final bool isFromDashboard;
-  
-  const AIScannerScreen({
-    super.key,
-    this.isFromDashboard = false,
-  });
+  const AIScannerScreen({super.key});
 
   @override
   State<AIScannerScreen> createState() => _AIScannerScreenState();
@@ -312,28 +304,13 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: () {
-                      // Si on vient du dashboard, déclencher la sélection de repas
-                      if (widget.isFromDashboard) {
-                        // Créer un FoodItem représentant tous les aliments détectés
-                        final allFoods = FoodItem(
-                          name: 'Aliments détectés', // Nom générique pour tous les aliments
-                          calories: 361, // Total des calories des aliments détectés (206+130+25)
-                          portion: 'Plat complet',
-                        );
-                        
-                        // Fermer l'écran actuel et ouvrir la sélection de repas
-                        Navigator.pop(context);
-                        _handleDashboardFoodValidation(allFoods);
-                      } else {
-                        // Flux normal du journal
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Aliments ajoutés au repas'),
-                            backgroundColor: Color(0xFF0B132B),
-                          ),
-                        );
-                      }
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Aliments ajoutés au repas'),
+                          backgroundColor: Color(0xFF0B132B),
+                        ),
+                      );
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF0B132B),
@@ -493,19 +470,46 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
       lipides: fat,
       quantity: quantity,
       isModified: false,
-      // Utiliser onFoodSaved au lieu de onFoodAdded pour juste enregistrer les modifications
-      onFoodSaved: (foodItem) {
-        // Ne rien faire - l'aliment est juste enregistré, pas ajouté au repas
-        // L'ajout se fera via le bouton "Ajouter tous les aliments"
-        print('Aliment ${foodItem.name} enregistré avec modifications');
+      onFoodAdded: (foodItem) {
+        // TODO: Ajouter l'aliment au repas sélectionné (nécessite la sélection du repas)
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${foodItem.name} ajouté au repas'),
+            backgroundColor: const Color(0xFF0B132B),
+          ),
+        );
       },
     );
   }
 
-  void _handleDashboardFoodValidation(FoodItem foodItem) {
-    // Utiliser la même logique que le journal - afficher directement la sélection de repas
-    // Ne PAS faire Navigator.pop car ça casse le contexte
-    NutritionQuickActionsSection.handleDashboardFoodCreation(context, foodItem);
+  void _editDetectedFood_OLD(String name, int baseCalories, String currentQuantity) {
+    final quantity = double.tryParse(currentQuantity.replaceAll('g', '')) ?? 100;
+    final calories = (baseCalories * quantity / 100).round();
+    
+    // Calcul des macronutriments (valeurs approximatives basées sur les calories)
+    final protein = (calories * 0.15 / 4); // 15% des calories en protéines
+    final carbs = (calories * 0.55 / 4); // 55% des calories en glucides  
+    final fat = (calories * 0.30 / 9); // 30% des calories en lipides
+
+    EditableFoodDetailsBottomSheet.show(
+      context,
+      name: name,
+      calories: calories,
+      proteins: protein,
+      glucides: carbs,
+      lipides: fat,
+      quantity: quantity,
+      isModified: false,
+      onFoodAdded: (foodItem) {
+        // TODO: Ajouter l'aliment au repas sélectionné (nécessite la sélection du repas)
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${foodItem.name} ajouté au repas'),
+            backgroundColor: const Color(0xFF0B132B),
+          ),
+        );
+      },
+    );
   }
 
   void _takePicture() async {

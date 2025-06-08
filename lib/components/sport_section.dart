@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'sport_dashboard.dart';
-import 'sport_cardio.dart';
-import 'sport_musculation.dart';
+import 'sport_cardio_hybrid.dart';
+import 'sport_musculation_hybrid.dart';
 
 class SportSection extends StatefulWidget {
   const SportSection({super.key});
@@ -70,8 +70,8 @@ class _SportSectionState extends State<SportSection>
                 onPageChanged: _onPageChanged,
                 children: const [
                   SportDashboard(),
-                  SportCardio(),
-                  SportMusculation(),
+                  SportCardioHybrid(),
+                  SportMusculationHybrid(),
                 ],
               ),
             ),

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import 'ui/custom_button.dart';
 import 'ui/onboarding_widgets.dart';
 import 'ui/onboarding_models.dart';
+import 'caloric_breakdown_bottom_sheet.dart';
 
 class OnboardingGamifiedHybrid extends StatefulWidget {
   final VoidCallback onComplete;
@@ -30,6 +32,10 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
     'age': '',
     'weight': '',
     'height': '',
+    'birthMonth': '',
+    'birthDay': '',
+    'birthYear': '',
+    'isMetric': true,
     'activity': '',
     'goal': '',
     'obstacles': <String>[],
@@ -38,6 +44,8 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
 
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
+  late AnimationController _caloriesAnimationController;
+  late Animation<int> _caloriesAnimation;
 
   // INTÉGRÉ - Logique de chargement spécifique
   Timer? _loadingTextTimer;
@@ -63,13 +71,35 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
+    _caloriesAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    );
+    
+    // Pré-remplir les valeurs par défaut
+    _initializeDefaultValues();
+    
     _animationController.forward();
     _currentLoadingMessage = _loadingMessages[0];
+  }
+
+  void _initializeDefaultValues() {
+    // Valeurs par défaut pour la date de naissance (24 ans - né en 2000)
+    userData['birthMonth'] = '1'; // Janvier
+    userData['birthDay'] = '1'; // 1er
+    userData['birthYear'] = '2000'; // 24 ans
+    userData['age'] = '24';
+    
+    // Valeurs par défaut pour taille et poids (métrique par défaut)
+    userData['height'] = '170'; // 170 cm
+    userData['weight'] = '70'; // 70 kg
+    userData['isMetric'] = true;
   }
 
   @override
   void dispose() {
     _animationController.dispose();
+    _caloriesAnimationController.dispose();
     _loadingTextTimer?.cancel();
     super.dispose();
   }
@@ -102,9 +132,19 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
       'content': const WelcomeStep(), // FACTORISÉ
     },
     {
-      'title': 'Parlez-nous de vous',
-      'subtitle': 'Pour calculer vos besoins précis',
-      'content': _buildPersonalInfoStep(), // HYBRIDE
+      'title': 'Choisissez votre genre',
+      'subtitle': 'Cela sera utilisé pour calibrer votre plan personnalisé',
+      'content': _buildGenderStep(), // NOUVEAU
+    },
+    {
+      'title': 'Quand êtes-vous né',
+      'subtitle': 'Cela sera utilisé pour calibrer votre plan personnalisé',
+      'content': _buildBirthDateStep(), // NOUVEAU
+    },
+    {
+      'title': 'Taille & poids',
+      'subtitle': 'Cela sera utilisé pour calibrer votre plan personnalisé',
+      'content': _buildHeightWeightStep(), // NOUVEAU
     },
     {
       'title': 'Votre niveau d\'activité',
@@ -128,74 +168,344 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
     },
   ];
 
-  // HYBRIDE - Utilise widgets factorisés avec logique intégrée
-  Widget _buildPersonalInfoStep() {
+  // Page Genre - Style moderne comme dans les images
+  Widget _buildGenderStep() {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Gender selection - Utilise SelectableCard factorisé
-        const Text(
-          'Genre',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF1A1A1A),
+        const SizedBox(height: 80),
+        
+        // Option Homme
+        _buildGenderOption(
+          title: 'Homme',
+          isSelected: userData['gender'] == 'Homme',
+          onTap: () => setState(() => userData['gender'] = 'Homme'),
+        ),
+        
+        const SizedBox(height: 16),
+        
+        // Option Femme
+        _buildGenderOption(
+          title: 'Femme',
+          isSelected: userData['gender'] == 'Femme',
+          onTap: () => setState(() => userData['gender'] = 'Femme'),
+        ),
+        
+        const SizedBox(height: 16),
+        
+        // Option Autre
+        _buildGenderOption(
+          title: 'Autre',
+          isSelected: userData['gender'] == 'Autre',
+          onTap: () => setState(() => userData['gender'] = 'Autre'),
+        ),
+        
+        const SizedBox(height: 80),
+      ],
+    );
+  }
+
+  // Widget pour options de genre
+  Widget _buildGenderOption({
+    required String title,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 20),
+            decoration: BoxDecoration(
+              color: isSelected ? Colors.black : Colors.transparent,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isSelected ? Colors.black : Colors.grey.shade300,
+                width: 1,
+              ),
+            ),
+            child: Center(
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: isSelected ? Colors.white : Colors.black,
+                ),
+              ),
+            ),
           ),
         ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: SelectableCard(
-                title: 'Homme',
-                icon: LucideIcons.user,
-                isSelected: userData['gender'] == 'Homme',
-                onTap: () => setState(() => userData['gender'] = 'Homme'),
+      ),
+    );
+  }
+
+  // Page Date de naissance avec roues de sélection
+  Widget _buildBirthDateStep() {
+    return Column(
+      children: [
+        const SizedBox(height: 60),
+        
+        Container(
+          height: 250,
+          child: Row(
+            children: [
+              // Sélecteur de mois
+              Expanded(
+                child: _buildWheelPicker(
+                  items: [
+                    'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+                    'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+                  ],
+                  selectedIndex: userData['birthMonth'].isNotEmpty 
+                      ? int.parse(userData['birthMonth']) - 1 
+                      : 0,
+                  onSelectedItemChanged: (index) {
+                    setState(() => userData['birthMonth'] = (index + 1).toString());
+                  },
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: SelectableCard(
-                title: 'Femme',
-                icon: LucideIcons.user,
-                isSelected: userData['gender'] == 'Femme',
-                onTap: () => setState(() => userData['gender'] = 'Femme'),
+              
+              // Sélecteur de jour
+              Expanded(
+                child: _buildWheelPicker(
+                  items: List.generate(31, (index) => (index + 1).toString()),
+                  selectedIndex: userData['birthDay'].isNotEmpty 
+                      ? int.parse(userData['birthDay']) - 1 
+                      : 0,
+                  onSelectedItemChanged: (index) {
+                    setState(() => userData['birthDay'] = (index + 1).toString());
+                  },
+                ),
               ),
-            ),
-          ],
+              
+              // Sélecteur d'année
+              Expanded(
+                child: _buildWheelPicker(
+                  items: List.generate(100, (index) => (2024 - index).toString()),
+                  selectedIndex: userData['birthYear'].isNotEmpty 
+                      ? 2024 - int.parse(userData['birthYear']) 
+                      : 24,
+                  onSelectedItemChanged: (index) {
+                    setState(() => userData['birthYear'] = (2024 - index).toString());
+                    // Calculer l'âge
+                    final age = 2024 - (2024 - index);
+                    userData['age'] = age.toString();
+                  },
+                ),
+              ),
+            ],
+          ),
         ),
         
-        const SizedBox(height: 32),
-        
-        // Inputs numériques - Utilise MobileNumberInput factorisé
-        MobileNumberInput(
-          label: 'Âge',
-          unit: 'années',
-          value: userData['age'],
-          onChanged: (value) => setState(() => userData['age'] = value),
-          icon: LucideIcons.cake,
-        ),
-        
-        const SizedBox(height: 20),
-        
-        MobileNumberInput(
-          label: 'Poids',
-          unit: 'kg',
-          value: userData['weight'],
-          onChanged: (value) => setState(() => userData['weight'] = value),
-          icon: LucideIcons.scale,
-        ),
-        
-        const SizedBox(height: 20),
-        
-        MobileNumberInput(
-          label: 'Taille',
-          unit: 'cm',
-          value: userData['height'],
-          onChanged: (value) => setState(() => userData['height'] = value),
-          icon: LucideIcons.ruler,
-        ),
+        const SizedBox(height: 60),
       ],
+    );
+  }
+
+  // Page Taille & Poids avec toggle et roues
+  Widget _buildHeightWeightStep() {
+    return Column(
+      children: [
+        const SizedBox(height: 40),
+        
+        // Toggle Impérial/Métrique
+        Container(
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade100,
+            borderRadius: BorderRadius.circular(25),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() => userData['isMetric'] = false),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      color: userData['isMetric'] == false ? Colors.white : Colors.transparent,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: userData['isMetric'] == false ? [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ] : null,
+                    ),
+                    child: Center(
+                      child: Text(
+                        'Impérial',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: userData['isMetric'] == false ? Colors.black : Colors.grey,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() => userData['isMetric'] = true),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      color: userData['isMetric'] == true ? Colors.white : Colors.transparent,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: userData['isMetric'] == true ? [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ] : null,
+                    ),
+                    child: Center(
+                      child: Text(
+                        'Métrique',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: userData['isMetric'] == true ? Colors.black : Colors.grey,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        
+        const SizedBox(height: 40),
+        
+        // Sélecteurs de taille et poids
+        Container(
+          height: 200,
+          child: Row(
+            children: [
+              // Sélecteur de taille
+              Expanded(
+                child: Column(
+                  children: [
+                    Text(
+                      'Hauteur',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Expanded(
+                      child: _buildHeightPicker(),
+                    ),
+                  ],
+                ),
+              ),
+              
+              const SizedBox(width: 40),
+              
+              // Sélecteur de poids
+              Expanded(
+                child: Column(
+                  children: [
+                    Text(
+                      'Poids',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Expanded(
+                      child: _buildWeightPicker(),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        
+        const SizedBox(height: 60),
+      ],
+    );
+  }
+
+  // Méthodes utilitaires pour les wheel pickers
+  Widget _buildWheelPicker({
+    required List<String> items,
+    required int selectedIndex,
+    required ValueChanged<int> onSelectedItemChanged,
+  }) {
+    return CupertinoPicker(
+      itemExtent: 40,
+      scrollController: FixedExtentScrollController(initialItem: selectedIndex),
+      onSelectedItemChanged: onSelectedItemChanged,
+      children: items.map((item) => 
+        Center(
+          child: Text(
+            item,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ).toList(),
+    );
+  }
+
+  Widget _buildHeightPicker() {
+    final isMetric = userData['isMetric'] ?? true;
+    final items = isMetric 
+        ? List.generate(151, (index) => '${index + 100} cm')  // 100-250 cm
+        : List.generate(48, (index) => '${(index + 48) ~/ 12}\'${(index + 48) % 12}"'); // 4'0" - 7'11"
+    
+    final currentHeight = userData['height'].isEmpty ? (isMetric ? '170' : '68') : userData['height'];
+    final selectedIndex = isMetric 
+        ? int.parse(currentHeight) - 100
+        : int.parse(currentHeight) - 48;
+
+    return _buildWheelPicker(
+      items: items,
+      selectedIndex: selectedIndex.clamp(0, items.length - 1),
+      onSelectedItemChanged: (index) {
+        final newHeight = isMetric 
+            ? (index + 100).toString()
+            : (index + 48).toString();
+        setState(() => userData['height'] = newHeight);
+      },
+    );
+  }
+
+  Widget _buildWeightPicker() {
+    final isMetric = userData['isMetric'] ?? true;
+    final items = isMetric 
+        ? List.generate(271, (index) => '${index + 30} kg')  // 30-300 kg
+        : List.generate(440, (index) => '${index + 66} lbs'); // 66-505 lbs
+    
+    final currentWeight = userData['weight'].isEmpty ? (isMetric ? '70' : '154') : userData['weight'];
+    final selectedIndex = isMetric 
+        ? int.parse(currentWeight) - 30
+        : int.parse(currentWeight) - 66;
+
+    return _buildWheelPicker(
+      items: items,
+      selectedIndex: selectedIndex.clamp(0, items.length - 1),
+      onSelectedItemChanged: (index) {
+        final newWeight = isMetric 
+            ? (index + 30).toString()
+            : (index + 66).toString();
+        setState(() => userData['weight'] = newWeight);
+      },
     );
   }
 
@@ -203,16 +513,10 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
   Widget _buildActivityStep() {
     final activities = [
       {
-        'key': 'sedentary',
-        'title': 'Sédentaire',
-        'description': 'Peu ou pas d\'exercice',
+        'key': 'low',
+        'title': 'Peu actif',
+        'description': '0-2 jours par semaine',
         'icon': LucideIcons.home,
-      },
-      {
-        'key': 'light',
-        'title': 'Activité légère',
-        'description': '1-3 jours par semaine',
-        'icon': LucideIcons.walk,
       },
       {
         'key': 'moderate',
@@ -221,32 +525,30 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
         'icon': LucideIcons.bike,
       },
       {
-        'key': 'very',
+        'key': 'high',
         'title': 'Très actif',
-        'description': '6-7 jours par semaine',
+        'description': '6+ jours par semaine',
         'icon': LucideIcons.dumbbell,
-      },
-      {
-        'key': 'extra',
-        'title': 'Extrêmement actif',
-        'description': 'Sport intense quotidien',
-        'icon': LucideIcons.flame,
       },
     ];
 
     return Column(
-      children: activities.map((activity) => 
-        Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: SelectableCard(
-            title: activity['title'] as String,
-            description: activity['description'] as String,
-            icon: activity['icon'] as IconData,
-            isSelected: userData['activity'] == activity['key'],
-            onTap: () => setState(() => userData['activity'] = activity['key']),
+      children: [
+        const SizedBox(height: 80),
+        ...activities.map((activity) => 
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: SelectableCard(
+              title: activity['title'] as String,
+              description: activity['description'] as String,
+              icon: activity['icon'] as IconData,
+              isSelected: userData['activity'] == activity['key'],
+              onTap: () => setState(() => userData['activity'] = activity['key']),
+            ),
           ),
-        ),
-      ).toList(),
+        ).toList(),
+        const SizedBox(height: 80),
+      ],
     );
   }
 
@@ -274,18 +576,22 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
     ];
 
     return Column(
-      children: goals.map((goal) => 
-        Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: SelectableCard(
-            title: goal['title'] as String,
-            description: goal['description'] as String,
-            icon: goal['icon'] as IconData,
-            isSelected: userData['goal'] == goal['key'],
-            onTap: () => setState(() => userData['goal'] = goal['key']),
+      children: [
+        const SizedBox(height: 80),
+        ...goals.map((goal) => 
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: SelectableCard(
+              title: goal['title'] as String,
+              description: goal['description'] as String,
+              icon: goal['icon'] as IconData,
+              isSelected: userData['goal'] == goal['key'],
+              onTap: () => setState(() => userData['goal'] = goal['key']),
+            ),
           ),
-        ),
-      ).toList(),
+        ).toList(),
+        const SizedBox(height: 80),
+      ],
     );
   }
 
@@ -294,70 +600,71 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
     final obstacles = [
       'Manque de temps',
       'Manque de motivation',
-      'Environnement social',
-      'Stress',
       'Fatigue',
-      'Coût',
       'Manque de connaissances',
       'Autres priorités',
     ];
 
     return Column(
-      children: obstacles.map((obstacle) => 
-        Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: SelectableCard(
-            title: obstacle,
-            isSelected: (userData['obstacles'] as List<String>).contains(obstacle),
-            onTap: () {
-              setState(() {
-                final currentObstacles = userData['obstacles'] as List<String>;
-                if (currentObstacles.contains(obstacle)) {
-                  currentObstacles.remove(obstacle);
-                } else {
-                  currentObstacles.add(obstacle);
-                }
-              });
-            },
+      children: [
+        const SizedBox(height: 60),
+        ...obstacles.map((obstacle) => 
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: SelectableCard(
+              title: obstacle,
+              isSelected: (userData['obstacles'] as List<String>).contains(obstacle),
+              onTap: () {
+                setState(() {
+                  final currentObstacles = userData['obstacles'] as List<String>;
+                  if (currentObstacles.contains(obstacle)) {
+                    currentObstacles.remove(obstacle);
+                  } else {
+                    currentObstacles.add(obstacle);
+                  }
+                });
+              },
+            ),
           ),
-        ),
-      ).toList(),
+        ).toList(),
+        const SizedBox(height: 60),
+      ],
     );
   }
 
   // INTÉGRÉ - Logique multi-sélection pour restrictions
   Widget _buildRestrictionsStep() {
     final restrictions = [
+      'Classique',
       'Végétarien',
       'Végétalien',
-      'Sans gluten',
-      'Sans lactose',
-      'Halal',
-      'Casher',
-      'Allergies alimentaires',
-      'Autres restrictions',
+      'Pescetarien',
     ];
 
     return Column(
-      children: restrictions.map((restriction) => 
-        Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: SelectableCard(
-            title: restriction,
-            isSelected: (userData['restrictions'] as List<String>).contains(restriction),
-            onTap: () {
-              setState(() {
-                final currentRestrictions = userData['restrictions'] as List<String>;
-                if (currentRestrictions.contains(restriction)) {
-                  currentRestrictions.remove(restriction);
-                } else {
-                  currentRestrictions.add(restriction);
-                }
-              });
-            },
+      children: [
+        const SizedBox(height: 100),
+        ...restrictions.map((restriction) => 
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: SelectableCard(
+              title: restriction,
+              isSelected: (userData['restrictions'] as List<String>).contains(restriction),
+              onTap: () {
+                setState(() {
+                  final currentRestrictions = userData['restrictions'] as List<String>;
+                  if (currentRestrictions.contains(restriction)) {
+                    currentRestrictions.remove(restriction);
+                  } else {
+                    currentRestrictions.add(restriction);
+                  }
+                });
+              },
+            ),
           ),
-        ),
-      ).toList(),
+        ).toList(),
+        const SizedBox(height: 100),
+      ],
     );
   }
 
@@ -367,17 +674,18 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
       case 0:
         return true; // Welcome step
       case 1:
-        return userData['gender'].isNotEmpty &&
-               userData['age'].isNotEmpty &&
-               userData['weight'].isNotEmpty &&
-               userData['height'].isNotEmpty;
+        return userData['gender'].isNotEmpty; // Genre
       case 2:
-        return userData['activity'].isNotEmpty;
+        return true; // Date de naissance - activé par défaut
       case 3:
-        return userData['goal'].isNotEmpty;
+        return true; // Taille & Poids - activé par défaut  
       case 4:
-        return true; // Obstacles are optional
+        return userData['activity'].isNotEmpty; // Activité
       case 5:
+        return userData['goal'].isNotEmpty; // Objectif
+      case 6:
+        return true; // Obstacles are optional
+      case 7:
         return true; // Restrictions are optional
       default:
         return false;
@@ -406,9 +714,22 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
             isLoading = false;
             showResults = true;
           });
+          // Démarrer l'animation des calories
+          _startCaloriesAnimation();
         }
       });
     }
+  }
+
+  void _startCaloriesAnimation() {
+    final profile = UserProfile.fromMap(userData);
+    final finalCalories = MetabolicCalculations.calculateDailyGoal(profile);
+    
+    _caloriesAnimation = IntTween(begin: 0, end: finalCalories).animate(
+      CurvedAnimation(parent: _caloriesAnimationController, curve: Curves.easeOutCubic),
+    );
+    
+    _caloriesAnimationController.forward();
   }
 
   Future<void> _saveUserData() async {
@@ -517,13 +838,17 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
     );
   }
 
-  // HYBRIDE - Utilise widgets factorisés + calculs modélisés
+  // HYBRIDE - Écran de résultats avec composants de l'app principale
   Widget _buildResultsScreen() {
     final profile = UserProfile.fromMap(userData);
-    final calories = MetabolicCalculations.calculateDailyGoal(profile);
-    final macros = MetabolicCalculations.calculateMacros(profile);
     final bmr = MetabolicCalculations.calculateBMR(profile);
     final totalNeeds = MetabolicCalculations.calculateTotalNeeds(profile);
+    final calories = MetabolicCalculations.calculateDailyGoal(profile);
+    final macros = MetabolicCalculations.calculateMacros(profile);
+    
+    // Calcul des ajustements pour l'explication
+    final activityMultiplier = _getActivityMultiplier(profile.activity);
+    final goalAdjustment = _getGoalAdjustment(profile.goal);
 
     return Scaffold(
       body: Container(
@@ -542,147 +867,73 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
             padding: const EdgeInsets.all(24),
             child: Column(
               children: [
-                // Header engageant
+                // En-tête de félicitations - Réduit
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(24),
                     gradient: const LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                       colors: [
                         Color(0xFF0B132B),
                         Color(0xFF1C2951),
-                        Color(0xFF0B132B),
                       ],
                     ),
+                    borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF0B132B).withOpacity(0.3),
-                        blurRadius: 20,
-                        offset: const Offset(0, 8),
+                        color: const Color(0xFF0B132B).withOpacity(0.2),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
                       ),
                     ],
                   ),
-                  child: Column(
+                  child: Row(
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(LucideIcons.target, color: Colors.white, size: 28),
-                          const SizedBox(width: 12),
-                          Text(
-                            '$calories',
-                            style: const TextStyle(
-                              fontSize: 48,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                      const Icon(
+                        LucideIcons.sparkles,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Félicitations !',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          const Text(
-                            'kcal/jour',
-                            style: TextStyle(
-                              fontSize: 18,
-                              color: Colors.white70,
+                            Text(
+                              'Votre plan est prêt',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.white70,
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'Votre objectif calorique quotidien',
-                        style: TextStyle(
-                          fontSize: 18,
-                          color: Colors.white,
-                          fontWeight: FontWeight.w500,
+                          ],
                         ),
-                        textAlign: TextAlign.center,
                       ),
                     ],
                   ),
                 ),
 
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
 
-                // Macros - Utilise composants factorisés
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.9),
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 15,
-                        offset: const Offset(0, 5),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Répartition des macronutriments',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF1A1A1A),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      
-                      MacroRow(label: 'Protéines', value: '${macros['protein']}g', color: const Color(0xFF0B132B)),
-                      const SizedBox(height: 16),
-                      MacroRow(label: 'Glucides', value: '${macros['carbs']}g', color: const Color(0xFF1C2951)),
-                      const SizedBox(height: 16),
-                      MacroRow(label: 'Lipides', value: '${macros['fat']}g', color: const Color(0xFF64748B)),
-                    ],
-                  ),
-                ),
+                // Carte principale calories - Style de l'app
+                _buildMainCaloriesCard(calories, bmr, totalNeeds, activityMultiplier, goalAdjustment),
 
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
 
-                // Détails métaboliques - Utilise composants factorisés
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.9),
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 15,
-                        offset: const Offset(0, 5),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Détails de vos besoins',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF1A1A1A),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      
-                      DetailRow(label: 'Métabolisme de base', value: '${bmr.round()} kcal'),
-                      const SizedBox(height: 12),
-                      DetailRow(label: 'Besoins totaux', value: '${totalNeeds.round()} kcal'),
-                      const SizedBox(height: 12),
-                      DetailRow(label: 'Objectif quotidien', value: '$calories kcal', isHighlight: true),
-                    ],
-                  ),
-                ),
+                // Macronutriments - Style de l'app
+                _buildMacronutrientsCard(macros),
 
-                const SizedBox(height: 32),
+                const SizedBox(height: 20),
 
                 // Bouton final
                 Container(
@@ -713,7 +964,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
-                            LucideIcons.trophy,
+                            LucideIcons.rocket,
                             size: 24,
                             color: Colors.white,
                           ),
@@ -739,5 +990,328 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
         ),
       ),
     );
+  }
+
+  // Carte principale des calories - Style identique à l'app
+  Widget _buildMainCaloriesCard(int calories, double bmr, double totalNeeds, double activityMultiplier, int goalAdjustment) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            const Color(0xFF0B132B).withOpacity(0.05),
+            Colors.transparent,
+          ],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Cercle principal avec animation (style app)
+          Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // Effet de flou en arrière-plan
+                Container(
+                  width: 100,
+                  height: 100,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+                    ),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF0B132B).withOpacity(0.2),
+                        blurRadius: 15,
+                        spreadRadius: 3,
+                      ),
+                    ],
+                  ),
+                ),
+                // Cercle principal
+                Container(
+                  width: 85,
+                  height: 85,
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+                    ),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      AnimatedBuilder(
+                        animation: _caloriesAnimation,
+                        builder: (context, child) {
+                          return Text(
+                            _caloriesAnimation.value.toString(),
+                            style: const TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.w300,
+                              color: Colors.white,
+                            ),
+                          );
+                        },
+                      ),
+                      Text(
+                        'kcal',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.white.withOpacity(0.8),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          const Text(
+            'Votre objectif quotidien',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF1A1A1A),
+            ),
+          ),
+          
+          const SizedBox(height: 8),
+          
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text(
+                'Calculé spécialement pour vous',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF64748B),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    showCaloricBreakdownBottomSheet(
+                      context: context,
+                      bmr: bmr,
+                      activityFactor: activityMultiplier,
+                      objectiveDelta: goalAdjustment.toDouble(),
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0B132B).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      LucideIcons.helpCircle,
+                      color: Color(0xFF0B132B),
+                      size: 16,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+
+
+
+  // Macronutriments - Style de l'app (Compact)
+  Widget _buildMacronutrientsCard(Map<String, int> macros) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0B132B).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  LucideIcons.pieChart,
+                  size: 16,
+                  color: Color(0xFF0B132B),
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'Macronutriments',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1A1A1A),
+                ),
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 12),
+          
+          // Protéines
+          _buildAnimatedMacroRow(
+            name: 'Protéines',
+            value: macros['protein']!,
+            unit: 'g',
+            color: const Color(0xFF0B132B),
+            icon: LucideIcons.zap,
+          ),
+          
+          const SizedBox(height: 10),
+          
+          // Glucides
+          _buildAnimatedMacroRow(
+            name: 'Glucides',
+            value: macros['carbs']!,
+            unit: 'g',
+            color: const Color(0xFF1C2951),
+            icon: LucideIcons.wheat,
+          ),
+          
+          const SizedBox(height: 10),
+          
+          // Lipides
+          _buildAnimatedMacroRow(
+            name: 'Lipides',
+            value: macros['fat']!,
+            unit: 'g',
+            color: const Color(0xFF64748B),
+            icon: LucideIcons.droplets,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Ligne de macro animée - Style app (Compact)
+  Widget _buildAnimatedMacroRow({
+    required String name,
+    required int value,
+    required String unit,
+    required Color color,
+    required IconData icon,
+  }) {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Icon(icon, size: 14, color: color),
+                const SizedBox(width: 6),
+                Text(
+                  name,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1A1A1A),
+                  ),
+                ),
+              ],
+            ),
+            Text(
+              '$value$unit',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+        
+        const SizedBox(height: 6),
+        
+        // Barre de progression complète (100% pour l'onboarding)
+        Container(
+          width: double.infinity,
+          height: 6,
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8F8F8),
+            borderRadius: BorderRadius.circular(3),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: LinearProgressIndicator(
+              value: 1.0, // Toujours pleine à l'onboarding
+              backgroundColor: Colors.transparent,
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Helpers pour les calculs
+  double _getActivityMultiplier(String activity) {
+    final multipliers = {
+      'low': 1.2,      // 0-2 jours
+      'moderate': 1.55, // 3-5 jours
+      'high': 1.8,     // 6+ jours
+    };
+    return multipliers[activity] ?? 1.2;
+  }
+
+  int _getGoalAdjustment(String goal) {
+    switch (goal) {
+      case 'lose':
+        return -500;
+      case 'gain':
+        return 300;
+      case 'maintain':
+      default:
+        return 0;
+    }
+  }
+
+  IconData _getGoalIcon(String goal) {
+    switch (goal) {
+      case 'lose':
+        return LucideIcons.trendingDown;
+      case 'gain':
+        return LucideIcons.trendingUp;
+      case 'maintain':
+      default:
+        return LucideIcons.target;
+    }
   }
 } 

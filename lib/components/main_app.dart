@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'bottom_navigation.dart';
-import 'main_dashboard.dart';
+import 'main_dashboard_hybrid.dart';
 import 'nutrition_section.dart';
 import 'sport_section.dart';
-import 'global_progress.dart';
+import 'global_progress_hybrid.dart';
 
 class MainApp extends StatefulWidget {
   const MainApp({super.key});
@@ -24,7 +24,7 @@ class _MainAppState extends State<MainApp> {
   Widget _renderContent() {
     switch (_activeTab) {
       case 'home':
-        return const MainDashboard();
+        return const MainDashboardHybrid();
       case 'nutrition':
         return const NutritionSection();
       case 'sport':
@@ -32,7 +32,7 @@ class _MainAppState extends State<MainApp> {
       case 'progress':
         return const GlobalProgress();
       default:
-        return const MainDashboard();
+        return const MainDashboardHybrid();
     }
   }
 

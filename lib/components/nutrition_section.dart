@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'nutrition_dashboard.dart';
-import 'nutrition_journal.dart';
-import 'nutrition_recipes.dart';
+import 'nutrition_dashboard_hybrid.dart';
+import 'nutrition_journal_hybrid.dart';
+import 'nutrition_recipes_hybrid.dart';
 
 class NutritionSection extends StatefulWidget {
   const NutritionSection({super.key});
@@ -69,9 +69,9 @@ class _NutritionSectionState extends State<NutritionSection>
                 controller: _pageController,
                 onPageChanged: _onPageChanged,
                 children: const [
-                  NutritionDashboard(),
-                  NutritionJournal(),
-                  NutritionRecipes(),
+                  NutritionDashboardHybrid(),
+                  NutritionJournalHybrid(),
+                  NutritionRecipesHybrid(),
                 ],
               ),
             ),

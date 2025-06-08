@@ -197,11 +197,11 @@ class NutritionTip {
   // Icône selon la catégorie
   IconData get icon {
     switch (category) {
-      case 'hydration': return LucideIcons.droplets;
+      case 'hydration': return LucideIcons.brain;
       case 'timing': return LucideIcons.clock;
       case 'balance': return LucideIcons.scale;
       case 'energy': return LucideIcons.zap;
-      default: return LucideIcons.lightbulb;
+      default: return LucideIcons.brain;
     }
   }
 }
@@ -303,6 +303,11 @@ class NutritionData {
       id: 'search',
       label: 'Rechercher',
       icon: LucideIcons.search,
+    ),
+    NutritionQuickAction(
+      id: 'recipe',
+      label: 'Recette',
+      icon: LucideIcons.chefHat,
     ),
   ];
 

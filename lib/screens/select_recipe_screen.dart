@@ -3,7 +3,9 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'recipe_details_screen.dart';
 
 class SelectRecipeScreen extends StatefulWidget {
-  const SelectRecipeScreen({super.key});
+  final bool isFromDashboard;
+  
+  const SelectRecipeScreen({super.key, this.isFromDashboard = false});
 
   @override
   State<SelectRecipeScreen> createState() => _SelectRecipeScreenState();
@@ -370,7 +372,10 @@ class _SelectRecipeScreenState extends State<SelectRecipeScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => RecipeDetailsScreen(recipe: recipe),
+        builder: (context) => RecipeDetailsScreen(
+          recipe: recipe,
+          isFromDashboard: widget.isFromDashboard,
+        ),
       ),
     );
   }
