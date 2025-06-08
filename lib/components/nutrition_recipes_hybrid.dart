@@ -3,6 +3,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'ui/recipe_models.dart';
 import 'ui/recipe_cards.dart';
 import 'ui/recipe_widgets.dart';
+import '../screens/recipe_details_screen.dart';
 
 class NutritionRecipesHybrid extends StatefulWidget {
   const NutritionRecipesHybrid({super.key});
@@ -103,8 +104,16 @@ class _NutritionRecipesHybridState extends State<NutritionRecipesHybrid> {
   }
 
   void _onRecipeTap(Recipe recipe) {
-    // TODO: Navigation vers les détails de la recette
-    print('Recipe tapped: ${recipe.name}');
+    // Navigation vers les détails de la recette depuis l'onglet recettes
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => RecipeDetailsScreen(
+          recipe: recipe,
+          isFromDashboard: true, // L'onglet recettes est considéré comme dashboard
+        ),
+      ),
+    );
   }
 
   void _showFiltersModal() {

@@ -88,15 +88,20 @@ class ActiveFiltersSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: activeFilters.map((filterData) {
-            return ActiveFilterChip(
-              label: filterData['label']!,
-              onRemove: () => onRemoveFilter(filterData),
-            );
-          }).toList(),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            alignment: WrapAlignment.start,
+            crossAxisAlignment: WrapCrossAlignment.start,
+            children: activeFilters.map((filterData) {
+              return ActiveFilterChip(
+                label: filterData['label']!,
+                onRemove: () => onRemoveFilter(filterData),
+              );
+            }).toList(),
+          ),
         ),
       ],
     );
@@ -220,6 +225,7 @@ class RecipeListSection extends StatelessWidget {
               RecipeListCard(
                 recipe: recipe,
                 onTap: onRecipeTap != null ? () => onRecipeTap!(recipe) : null,
+                useSimpleMacros: true, // Format simple pour la page des recettes
               ),
               if (index < recipes.length - 1)
                 const Divider(

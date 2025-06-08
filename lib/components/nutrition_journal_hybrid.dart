@@ -425,7 +425,7 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const SelectRecipeScreen(),
+                      builder: (context) => const SelectRecipeScreen(isFromDashboard: false),
                     ),
                   );
                 },

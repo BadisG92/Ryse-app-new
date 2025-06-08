@@ -6,11 +6,13 @@ import 'recipe_models.dart';
 class RecipeListCard extends StatelessWidget {
   final Recipe recipe;
   final VoidCallback? onTap;
+  final bool useSimpleMacros;
 
   const RecipeListCard({
     super.key,
     required this.recipe,
     this.onTap,
+    this.useSimpleMacros = false, // Par défaut, utilise l'ancien format avec cartes colorées
   });
 
   @override
@@ -18,29 +20,41 @@ class RecipeListCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
         child: Row(
           children: [
-            // Image carrée 64x64
+            // Image placeholder
             Container(
-              width: 64,
-              height: 64,
+              width: 80,
+              height: 80,
               decoration: BoxDecoration(
-                color: const Color(0xFFF8F8F8),
+                color: const Color(0xFFF8F9FA),
                 borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE5E7EB)),
               ),
               child: const Center(
                 child: Icon(
-                  LucideIcons.image,
+                  LucideIcons.chefHat,
                   size: 24,
-                  color: Color(0xFFCCCCCC),
+                  color: Color(0xFF64748B),
                 ),
               ),
             ),
             
-            const SizedBox(width: 12),
+            const SizedBox(width: 16),
             
-            // Contenu texte
+            // Contenu
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -90,28 +104,39 @@ class RecipeListCard extends StatelessWidget {
                   
                   const SizedBox(height: 8),
                   
-                  // Macros en ligne
-                  Row(
-                    children: [
-                      _MacroChip(
-                        label: 'P',
-                        value: '${recipe.proteins}g',
-                        color: const Color(0xFF10B981),
+                  // Macros - conditionnels selon le paramètre
+                  if (useSimpleMacros) 
+                    // Macros en ligne simple
+                    Text(
+                      'P : ${recipe.proteins}g • G : ${recipe.carbs}g • L : ${recipe.fats}g',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF94A3B8),
                       ),
-                      const SizedBox(width: 8),
-                      _MacroChip(
-                        label: 'G',
-                        value: '${recipe.carbs}g',
-                        color: const Color(0xFF3B82F6),
-                      ),
-                      const SizedBox(width: 8),
-                      _MacroChip(
-                        label: 'L',
-                        value: '${recipe.fats}g',
-                        color: const Color(0xFFF59E0B),
-                      ),
-                    ],
-                  ),
+                    )
+                  else
+                    // Macros en cartes colorées (ancien format)
+                    Row(
+                      children: [
+                        _MacroChip(
+                          label: 'P',
+                          value: '${recipe.proteins}g',
+                          color: const Color(0xFF10B981),
+                        ),
+                        const SizedBox(width: 8),
+                        _MacroChip(
+                          label: 'G',
+                          value: '${recipe.carbs}g',
+                          color: const Color(0xFF3B82F6),
+                        ),
+                        const SizedBox(width: 8),
+                        _MacroChip(
+                          label: 'L',
+                          value: '${recipe.fats}g',
+                          color: const Color(0xFFF59E0B),
+                        ),
+                      ],
+                    ),
                 ],
               ),
             ),
