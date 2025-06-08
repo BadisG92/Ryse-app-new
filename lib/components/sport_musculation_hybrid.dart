@@ -6,6 +6,8 @@ import 'ui/exercise_sets_widget.dart';
 import '../models/sport_models.dart';
 import '../bottom_sheets/exercise_selection_bottom_sheet.dart';
 import '../bottom_sheets/program_selection_bottom_sheet.dart';
+import '../screens/workout_session_screen.dart';
+import '../services/workout_service.dart';
 
 class SportMusculationHybrid extends StatefulWidget {
   const SportMusculationHybrid({super.key});
@@ -20,7 +22,8 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
   WorkoutSession? _currentSession;
   List<WorkoutExercise> _currentExercises = [];
   bool _isFromProgram = false;
-  List<WorkoutProgram> _customPrograms = [];
+  
+  final WorkoutService _workoutService = WorkoutService();
 
   final List<String> _sessionTypes = ['Haut du corps', 'Bas du corps', 'Full body'];
 
@@ -421,23 +424,31 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
       backgroundColor: Colors.transparent,
       builder: (context) => ProgramSelectionBottomSheet(
         onProgramSelected: (program) => _startSessionFromProgram(program),
-        customPrograms: _customPrograms,
+        customPrograms: _workoutService.customPrograms,
       ),
     );
   }
 
   void _startSession(String name) {
-    setState(() {
-      _isSessionActive = true;
-      _isFromProgram = false;
-      _currentSession = WorkoutSession(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        name: name,
-        startTime: DateTime.now(),
-        exercises: [],
-      );
-      _currentExercises = [];
-    });
+    // Naviguer vers l'écran de session en plein écran avec une liste vide
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => WorkoutSessionScreen(
+          sessionName: name,
+          exercises: [], // Liste vide pour session manuelle
+          isFromProgram: false,
+          onProgramSaved: (WorkoutProgram program) {
+            _workoutService.addProgram(program);
+            setState(() {}); // Rafraîchir l'UI
+          },
+          onSessionCompleted: (WorkoutSession session) {
+            print('Session reçue: ${session.name} - ${session.duration.inMinutes}min - Complétée: ${session.isCompleted}');
+            // Ici on pourrait ajouter la session à un historique
+          },
+        ),
+      ),
+    );
   }
 
   void _startSessionFromProgram(WorkoutProgram program) {
@@ -452,17 +463,17 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
       );
     }).toList();
 
-    setState(() {
-      _isSessionActive = true;
-      _isFromProgram = true;
-      _currentSession = WorkoutSession(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        name: program.name,
-        startTime: DateTime.now(),
-        exercises: [],
-      );
-      _currentExercises = programExercises;
-    });
+    // Naviguer vers l'écran de session en plein écran
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => WorkoutSessionScreen(
+          sessionName: program.name,
+          exercises: programExercises,
+          isFromProgram: true,
+        ),
+      ),
+    );
   }
 
   void _completeSession() {
@@ -684,9 +695,8 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
       }).toList(),
     );
 
-    setState(() {
-      _customPrograms.add(newProgram);
-    });
+    _workoutService.addProgram(newProgram);
+    setState(() {});
 
     // Afficher un message de confirmation
     ScaffoldMessenger.of(context).showSnackBar(

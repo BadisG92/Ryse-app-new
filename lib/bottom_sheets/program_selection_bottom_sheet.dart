@@ -367,11 +367,14 @@ class _ProgramSelectionBottomSheetState extends State<ProgramSelectionBottomShee
             // Informations du programme
             Row(
               children: [
-                _buildProgramInfo(
-                  LucideIcons.clock,
-                  '${program.estimatedDuration} min',
-                ),
-                const SizedBox(width: 16),
+                // Pour les programmes personnalisés, on ne montre pas la durée
+                if (!isCustom) ...[
+                  _buildProgramInfo(
+                    LucideIcons.clock,
+                    '${program.estimatedDuration} min',
+                  ),
+                  const SizedBox(width: 16),
+                ],
                 _buildProgramInfo(
                   LucideIcons.target,
                   program.type,

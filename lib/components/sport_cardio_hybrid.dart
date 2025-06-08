@@ -3,6 +3,12 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'ui/cardio_models.dart';
 import 'ui/cardio_cards.dart';
 import 'ui/cardio_widgets.dart';
+import '../models/hiit_models.dart';
+import '../models/cardio_session_models.dart';
+import '../screens/hiit_session_screen.dart';
+import '../screens/hiit_config_screen.dart';
+import '../screens/cardio_tracking_screen.dart';
+import '../screens/manual_cardio_entry_screen.dart';
 
 class SportCardioHybrid extends StatelessWidget {
   const SportCardioHybrid({super.key});
@@ -76,7 +82,11 @@ class SportCardioHybrid extends StatelessWidget {
         formats: formats,
         onFormatSelected: (format) {
           Navigator.pop(context);
-          if (format.configurable) {
+          
+          // Gestion spéciale pour HIIT
+          if (activityType == 'hiit') {
+            _handleHiitSelection(context, format);
+          } else if (format.configurable) {
             _showConfigurationModal(context, format, activityTitle);
           } else {
             _showRecordingChoiceModal(context, format.title, format.trackable);
@@ -84,6 +94,42 @@ class SportCardioHybrid extends StatelessWidget {
         },
       ),
     );
+  }
+
+  void _handleHiitSelection(BuildContext context, ActivityFormat format) {
+    if (format.configurable && format.configType == 'hiit') {
+      // HIIT personnalisé
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const HiitConfigScreen(),
+        ),
+      );
+    } else {
+      // HIIT prédéfini
+      HiitWorkout? workout;
+      
+      switch (format.title) {
+        case 'HIIT débutant':
+          workout = HiitWorkouts.getWorkoutById('hiit_beginner');
+          break;
+        case 'HIIT intense':
+          workout = HiitWorkouts.getWorkoutById('hiit_intense');
+          break;
+        case 'Tabata':
+          workout = HiitWorkouts.getWorkoutById('tabata');
+          break;
+      }
+      
+      if (workout != null) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => HiitSessionScreen(workout: workout!),
+          ),
+        );
+      }
+    }
   }
 
   void _showConfigurationModal(BuildContext context, ActivityFormat format, String activityTitle) {
@@ -98,17 +144,37 @@ class SportCardioHybrid extends StatelessWidget {
         config: config,
         onConfigSubmitted: (value) {
           Navigator.pop(context);
+          
+          // Créer l'objectif selon le type
+          CardioObjective? objective;
+          if (config.type == 'distance') {
+            objective = CardioObjective(
+              type: 'distance',
+              targetDistance: double.tryParse(value) ?? 0.0,
+              activityType: format.title.toLowerCase(),
+              formatTitle: '${format.title} ($value ${config.unit})',
+            );
+          } else if (config.type == 'duration') {
+            objective = CardioObjective(
+              type: 'duration',
+              targetDuration: Duration(minutes: int.tryParse(value) ?? 0),
+              activityType: format.title.toLowerCase(),
+              formatTitle: '${format.title} ($value ${config.unit})',
+            );
+          }
+          
           _showRecordingChoiceModal(
             context, 
             '${format.title} ($value ${config.unit})', 
             format.trackable,
+            objective: objective,
           );
         },
       ),
     );
   }
 
-  void _showRecordingChoiceModal(BuildContext context, String formatTitle, bool trackable) {
+  void _showRecordingChoiceModal(BuildContext context, String formatTitle, bool trackable, {CardioObjective? objective}) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -118,7 +184,7 @@ class SportCardioHybrid extends StatelessWidget {
         trackable: trackable,
         onTrackPressed: () {
           Navigator.pop(context);
-          _startTracking(context, formatTitle);
+          _startTracking(context, formatTitle, objective);
         },
         onDeclarePressed: () {
           Navigator.pop(context);
@@ -128,17 +194,60 @@ class SportCardioHybrid extends StatelessWidget {
     );
   }
 
-  void _startTracking(BuildContext context, String formatTitle) {
-    // TODO: Démarrer le suivi GPS/chrono
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Démarrage du suivi pour $formatTitle')),
+  void _startTracking(BuildContext context, String formatTitle, CardioObjective? objective) {
+    // Extraire le type d'activité depuis le formatTitle
+    String activityType = 'running'; // défaut
+    String activityTitle = 'Course à pied'; // défaut
+    
+    if (formatTitle.toLowerCase().contains('vélo') || formatTitle.toLowerCase().contains('bike')) {
+      activityType = 'bike';
+      activityTitle = 'Vélo';
+    } else if (formatTitle.toLowerCase().contains('marche') || formatTitle.toLowerCase().contains('walk')) {
+      activityType = 'walking';
+      activityTitle = 'Marche';
+    } else if (formatTitle.toLowerCase().contains('course') || formatTitle.toLowerCase().contains('running')) {
+      activityType = 'running';
+      activityTitle = 'Course à pied';
+    }
+    
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CardioTrackingScreen(
+          activityType: activityType,
+          activityTitle: activityTitle,
+          formatTitle: formatTitle,
+          objective: objective,
+        ),
+      ),
     );
   }
 
   void _openManualEntry(BuildContext context, String formatTitle) {
-    // TODO: Ouvrir le formulaire de saisie manuelle
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Ouverture du formulaire pour $formatTitle')),
+    // Extraire le type d'activité depuis le formatTitle
+    String activityType = 'running'; // défaut
+    String activityTitle = 'Course à pied'; // défaut
+    
+    if (formatTitle.toLowerCase().contains('vélo') || formatTitle.toLowerCase().contains('bike')) {
+      activityType = 'bike';
+      activityTitle = 'Vélo';
+    } else if (formatTitle.toLowerCase().contains('marche') || formatTitle.toLowerCase().contains('walk')) {
+      activityType = 'walking';
+      activityTitle = 'Marche';
+    } else if (formatTitle.toLowerCase().contains('course') || formatTitle.toLowerCase().contains('running')) {
+      activityType = 'running';
+      activityTitle = 'Course à pied';
+    }
+    
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ManualCardioEntryScreen(
+          activityType: activityType,
+          activityTitle: activityTitle,
+          formatTitle: formatTitle,
+        ),
+      ),
     );
   }
 

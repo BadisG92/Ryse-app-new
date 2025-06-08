@@ -468,13 +468,14 @@ class RecordingChoiceModal extends StatelessWidget {
                   child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(LucideIcons.play, size: 20),
+                      Icon(LucideIcons.play, size: 20, color: Colors.white),
                       SizedBox(width: 8),
                       Text(
                         'Démarrer la séance',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
+                          color: Colors.white,
                         ),
                       ),
                     ],
