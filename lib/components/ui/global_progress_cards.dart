@@ -7,12 +7,14 @@ import 'global_progress_models.dart';
 // Carte d'évolution du poids avec graphique
 class WeightEvolutionCard extends StatelessWidget {
   final WeightProgress progress;
-  final VoidCallback? onEditTap;
+  final VoidCallback? onAddWeightTap;
+  final VoidCallback? onGraphTap;
 
   const WeightEvolutionCard({
     super.key,
     required this.progress,
-    this.onEditTap,
+    this.onAddWeightTap,
+    this.onGraphTap,
   });
 
   @override
@@ -23,7 +25,7 @@ class WeightEvolutionCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // En-tête avec bouton modifier
+            // En-tête avec bouton enregistrer
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -35,22 +37,23 @@ class WeightEvolutionCard extends StatelessWidget {
                     color: Color(0xFF1A1A1A),
                   ),
                 ),
-                TextButton.icon(
-                  icon: const Icon(LucideIcons.edit3, size: 16, color: Color(0xFF0B132B)),
+                ElevatedButton.icon(
+                  icon: const Icon(LucideIcons.plus, size: 16, color: Colors.white),
                   label: const Text(
-                    'Modifier',
+                    'Enregistrer',
                     style: TextStyle(
                       fontSize: 14,
-                      color: Color(0xFF0B132B),
+                      color: Colors.white,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  onPressed: onEditTap,
-                  style: TextButton.styleFrom(
+                  onPressed: onAddWeightTap,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0B132B),
+                    foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
-                      side: BorderSide(color: Colors.grey.shade300),
                     ),
                   ),
                 ),
@@ -79,89 +82,125 @@ class WeightEvolutionCard extends StatelessWidget {
             
             const SizedBox(height: 24),
             
-            // Graphique linéaire
-            SizedBox(
-              height: 150,
-              child: LineChart(
-                LineChartData(
-                  minY: progress.minY,
-                  maxY: progress.maxY,
-                  gridData: FlGridData(
-                    show: true,
-                    drawVerticalLine: false,
-                    getDrawingHorizontalLine: (value) {
-                      return FlLine(
-                        color: Colors.grey.shade300.withOpacity(0.5),
-                        strokeWidth: 1,
-                      );
-                    },
+            // Graphique linéaire cliquable
+            GestureDetector(
+              onTap: onGraphTap,
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Colors.grey.shade200,
+                    width: 1,
                   ),
-                  titlesData: FlTitlesData(
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 35,
-                        interval: 1,
-                        getTitlesWidget: (value, meta) {
-                          return Text(
-                            '${value.toInt()} kg',
-                            style: const TextStyle(color: Color(0xFF64748B), fontSize: 10),
-                          );
-                        },
-                      ),
-                    ),
-                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 22,
-                        interval: 1,
-                        getTitlesWidget: (value, meta) {
-                          int index = value.toInt();
-                          if (index >= 0 && index < progress.chartDates.length) {
-                            return Text(
-                              progress.chartDates[index],
-                              style: const TextStyle(color: Color(0xFF64748B), fontSize: 10),
-                            );
-                          }
-                          return const Text('');
-                        },
-                      ),
-                    ),
-                  ),
-                  borderData: FlBorderData(show: false),
-                  lineBarsData: [
-                    LineChartBarData(
-                      spots: progress.chartSpots,
-                      isCurved: true,
-                      color: const Color(0xFF0B132B),
-                      barWidth: 3,
-                      isStrokeCapRound: true,
-                      dotData: FlDotData(
-                        show: true,
-                        getDotPainter: (spot, percent, barData, index) {
-                          return FlDotCirclePainter(
-                            radius: 4,
-                            color: const Color(0xFF0B132B),
-                            strokeWidth: 2,
-                            strokeColor: Colors.white,
-                          );
-                        },
-                      ),
-                      belowBarData: BarAreaData(
-                        show: true,
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            const Color(0xFF0B132B).withOpacity(0.1),
-                            const Color(0xFF0B132B).withOpacity(0.0),
-                          ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Stack(
+                    children: [
+                      SizedBox(
+                        height: 150,
+                        child: LineChart(
+                          LineChartData(
+                            minY: progress.minY,
+                            maxY: progress.maxY,
+                            gridData: FlGridData(
+                              show: true,
+                              drawVerticalLine: false,
+                              getDrawingHorizontalLine: (value) {
+                                return FlLine(
+                                  color: Colors.grey.shade300.withOpacity(0.5),
+                                  strokeWidth: 1,
+                                );
+                              },
+                            ),
+                            titlesData: FlTitlesData(
+                              leftTitles: AxisTitles(
+                                sideTitles: SideTitles(
+                                  showTitles: true,
+                                  reservedSize: 35,
+                                  interval: 1,
+                                  getTitlesWidget: (value, meta) {
+                                    return Text(
+                                      '${value.toInt()} kg',
+                                      style: const TextStyle(color: Color(0xFF64748B), fontSize: 10),
+                                    );
+                                  },
+                                ),
+                              ),
+                              rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                              topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                              bottomTitles: AxisTitles(
+                                sideTitles: SideTitles(
+                                  showTitles: true,
+                                  reservedSize: 22,
+                                  interval: 1,
+                                  getTitlesWidget: (value, meta) {
+                                    int index = value.toInt();
+                                    if (index >= 0 && index < progress.chartDates.length) {
+                                      return Text(
+                                        progress.chartDates[index],
+                                        style: const TextStyle(color: Color(0xFF64748B), fontSize: 10),
+                                      );
+                                    }
+                                    return const Text('');
+                                  },
+                                ),
+                              ),
+                            ),
+                            borderData: FlBorderData(show: false),
+                            lineBarsData: [
+                              LineChartBarData(
+                                spots: progress.chartSpots,
+                                isCurved: true,
+                                color: const Color(0xFF0B132B),
+                                barWidth: 3,
+                                isStrokeCapRound: true,
+                                dotData: FlDotData(
+                                  show: true,
+                                  getDotPainter: (spot, percent, barData, index) {
+                                    return FlDotCirclePainter(
+                                      radius: 4,
+                                      color: const Color(0xFF0B132B),
+                                      strokeWidth: 2,
+                                      strokeColor: Colors.white,
+                                    );
+                                  },
+                                ),
+                                belowBarData: BarAreaData(
+                                  show: true,
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                    colors: [
+                                      const Color(0xFF0B132B).withOpacity(0.1),
+                                      const Color(0xFF0B132B).withOpacity(0.0),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                      // Overlay pour indiquer que c'est cliquable
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.6),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Icon(
+                            LucideIcons.expand,
+                            size: 12,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

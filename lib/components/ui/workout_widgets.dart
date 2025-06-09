@@ -3,6 +3,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'custom_card.dart';
 import 'sport_models.dart';
 import 'sport_cards.dart';
+import '../../widgets/exercise/exercise_list_bottom_sheet.dart';
 
 // Section principale des statistiques de la semaine
 class WeeklyStatsSection extends StatelessWidget {
@@ -120,7 +121,7 @@ class ExerciseProgressSection extends StatelessWidget {
                 ),
                 TextButton(
                   onPressed: () {
-                    // TODO: Voir tout
+                    ExerciseListBottomSheet.show(context);
                   },
                   style: TextButton.styleFrom(
                     foregroundColor: const Color(0xFF0B132B),

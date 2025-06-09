@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'global_progress_models.dart';
 import 'global_progress_cards.dart';
+import '../../screens/weight_evolution_screen.dart';
 
 // En-tête global avec statistiques (réutilise le pattern des dashboards)
 class GlobalProgressHeader extends StatelessWidget {
@@ -106,7 +107,15 @@ class WeightProgressSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return WeightEvolutionCard(
       progress: progress,
-      onEditTap: onEditWeight,
+      onAddWeightTap: onEditWeight,
+      onGraphTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => WeightEvolutionScreen(progress: progress),
+          ),
+        );
+      },
     );
   }
 }

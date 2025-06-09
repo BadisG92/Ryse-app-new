@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'custom_card.dart';
 import 'sport_models.dart';
+import '../../widgets/exercise/exercise_detail_page.dart';
 
 // Card pour les statistiques hebdomadaires individuelles
 class WeeklyStatCard extends StatelessWidget {
@@ -230,6 +231,143 @@ class WorkoutHistoryCard extends StatelessWidget {
   }
 }
 
+// Helper function to get full exercise data from name
+Map<String, dynamic>? _getExerciseDataByName(String exerciseName) {
+  // Les mêmes données que dans ExerciseListBottomSheet
+  final exercisesList = [
+    {
+      'id': 1,
+      'name': 'Développé couché',
+      'muscleGroup': 'Pectoraux',
+      'icon': null,
+      'sessions': 24,
+      'lastWeight': '85kg',
+      'progress': '+12%',
+      'isPositive': true,
+      'data': [68, 70, 72, 75, 78, 80, 82, 85],
+      'sessionHistory': [
+        {
+          'date': '2024-01-15',
+          'weight': '85kg',
+          'reps': '3x8',
+          'rpe': 7,
+        },
+        {
+          'date': '2024-01-12',
+          'weight': '82kg',
+          'reps': '3x8',
+          'rpe': 6,
+        },
+        {
+          'date': '2024-01-10',
+          'weight': '80kg',
+          'reps': '3x8',
+          'rpe': 7,
+        },
+      ],
+    },
+    {
+      'id': 2,
+      'name': 'Squat',
+      'muscleGroup': 'Jambes',
+      'icon': null,
+      'sessions': 18,
+      'lastWeight': '120kg',
+      'progress': '+18%',
+      'isPositive': true,
+      'data': [85, 90, 95, 100, 105, 110, 115, 120],
+      'sessionHistory': [
+        {
+          'date': '2024-01-14',
+          'weight': '120kg',
+          'reps': '4x6',
+          'rpe': 8,
+        },
+        {
+          'date': '2024-01-11',
+          'weight': '115kg',
+          'reps': '4x6',
+          'rpe': 7,
+        },
+        {
+          'date': '2024-01-09',
+          'weight': '110kg',
+          'reps': '4x6',
+          'rpe': 6,
+        },
+      ],
+    },
+    {
+      'id': 3,
+      'name': 'Soulevé de terre',
+      'muscleGroup': 'Dos',
+      'icon': null,
+      'sessions': 20,
+      'lastWeight': '140kg',
+      'progress': '+15%',
+      'isPositive': true,
+      'data': [100, 110, 115, 120, 125, 130, 135, 140],
+      'sessionHistory': [
+        {
+          'date': '2024-01-13',
+          'weight': '140kg',
+          'reps': '3x5',
+          'rpe': 9,
+        },
+        {
+          'date': '2024-01-10',
+          'weight': '135kg',
+          'reps': '3x5',
+          'rpe': 8,
+        },
+        {
+          'date': '2024-01-08',
+          'weight': '130kg',
+          'reps': '3x5',
+          'rpe': 8,
+        },
+      ],
+    },
+    {
+      'id': 4,
+      'name': 'Tractions',
+      'muscleGroup': 'Dos',
+      'icon': null,
+      'sessions': 22,
+      'lastWeight': '+15kg',
+      'progress': '+25%',
+      'isPositive': true,
+      'data': [0, 2, 5, 7, 8, 10, 12, 15],
+      'sessionHistory': [
+        {
+          'date': '2024-01-14',
+          'weight': '+15kg',
+          'reps': '4x6',
+          'rpe': 8,
+        },
+        {
+          'date': '2024-01-11',
+          'weight': '+12kg',
+          'reps': '4x6',
+          'rpe': 7,
+        },
+        {
+          'date': '2024-01-09',
+          'weight': '+10kg',
+          'reps': '4x6',
+          'rpe': 7,
+        },
+      ],
+    },
+  ];
+
+  try {
+    return exercisesList.firstWhere((exercise) => exercise['name'] == exerciseName);
+  } catch (e) {
+    return null;
+  }
+}
+
 // Card pour la progression des exercices
 class ExerciseProgressCard extends StatelessWidget {
   final ExerciseProgress progress;
@@ -240,57 +378,76 @@ class ExerciseProgressCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            final exerciseData = _getExerciseDataByName(progress.name);
+            if (exerciseData != null) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ExerciseDetailPage(exercise: exerciseData),
+                ),
+              );
+            }
+          },
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
               children: [
-                Text(
-                  progress.name,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1A1A),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        progress.name,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1A1A1A),
+                        ),
+                      ),
+                      Text(
+                        '${progress.sessions} séances',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF64748B),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                Text(
-                  '${progress.sessions} séances',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF64748B),
-                  ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      progress.current,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF0B132B),
+                      ),
+                    ),
+                    Text(
+                      progress.progress,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.green,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                progress.current,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF0B132B),
-                ),
-              ),
-              Text(
-                progress.progress,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.green,
-                ),
-              ),
-            ],
-          ),
-        ],
+        ),
       ),
     );
   }
