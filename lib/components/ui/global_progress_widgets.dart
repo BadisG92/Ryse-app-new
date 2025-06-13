@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'global_progress_models.dart';
 import 'global_progress_cards.dart';
 import '../../screens/weight_evolution_screen.dart';
@@ -16,20 +17,16 @@ class GlobalProgressHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+      width: double.infinity,
+      height: 40,
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
         ),
       ),
-      child: SafeArea(
-        bottom: false,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: _buildHeaderItems(stats.items),
-        ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: _buildHeaderItems(stats.items),
       ),
     );
   }
@@ -60,8 +57,19 @@ class _GlobalHeaderStatItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(item.icon, size: 16, color: Colors.white),
-        const SizedBox(width: 8),
+        // Utiliser le logo SVG en blanc pour "Progression", icône normale pour les autres
+        item.text == 'Progression' 
+          ? SvgPicture.asset(
+              'assets/images/logo Seul.svg',
+              width: 16,
+              height: 16,
+              colorFilter: const ColorFilter.mode(
+                Colors.white, 
+                BlendMode.srcIn,
+              ),
+            )
+          : Icon(item.icon, size: 16, color: Colors.white),
+        const SizedBox(width: 6),
         Text(
           item.text,
           style: TextStyle(
@@ -81,12 +89,15 @@ class _HeaderSeparator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Text(
-      '•',
-      style: TextStyle(
-        fontSize: 14,
-        color: Colors.white,
-        fontWeight: FontWeight.w500,
+    return const Padding(
+      padding: EdgeInsets.symmetric(horizontal: 8),
+      child: Text(
+        '•',
+        style: TextStyle(
+          fontSize: 14,
+          color: Colors.white60,
+          fontWeight: FontWeight.w500,
+        ),
       ),
     );
   }

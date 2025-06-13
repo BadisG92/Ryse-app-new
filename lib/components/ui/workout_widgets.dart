@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'custom_card.dart';
 import 'sport_models.dart';
 import 'sport_cards.dart';
@@ -66,25 +66,37 @@ class WeekHistorySection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 0),
-          child: Text(
-            'Historique de la semaine',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF1A1A1A),
+    return CustomCard(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(
+                  LucideIcons.calendar,
+                  size: 20,
+                  color: Color(0xFF0B132B),
+                ),
+                const SizedBox(width: 12),
+                const Text(
+                  'Historique de la semaine',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1A1A1A),
+                  ),
+                ),
+              ],
             ),
-          ),
+            
+            const SizedBox(height: 16),
+            
+            ..._weekSessions.map((session) => WorkoutHistoryCard(session: session)).toList(),
+          ],
         ),
-        
-        const SizedBox(height: 16),
-        
-        ..._weekSessions.map((session) => WorkoutHistoryCard(session: session)).toList(),
-      ],
+      ),
     );
   }
 }
@@ -111,13 +123,23 @@ class ExerciseProgressSection extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Progression par exercice',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1A1A),
-                  ),
+                Row(
+                  children: [
+                    const Icon(
+                      LucideIcons.trendingUp,
+                      size: 20,
+                      color: Color(0xFF0B132B),
+                    ),
+                    const SizedBox(width: 12),
+                    const Text(
+                      'Progression par exercice',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF1A1A1A),
+                      ),
+                    ),
+                  ],
                 ),
                 TextButton(
                   onPressed: () {
@@ -245,7 +267,7 @@ class SessionTrackingCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 16),
                     SessionStat(
-                      icon: LucideIcons.checkCircle,
+                      icon: LucideIcons.check,
                       value: '$completedSets/$totalSets séries',
                     ),
                   ],

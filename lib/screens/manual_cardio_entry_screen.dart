@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../models/cardio_session_models.dart';
 
 class ManualCardioEntryScreen extends StatefulWidget {
@@ -96,7 +96,7 @@ class _ManualCardioEntryScreenState extends State<ManualCardioEntryScreen> {
       builder: (context) => AlertDialog(
         title: const Row(
           children: [
-            Icon(LucideIcons.checkCircle, color: Color(0xFF10B981)),
+            Icon(LucideIcons.check, color: Color(0xFF10B981)),
             SizedBox(width: 8),
             Text('Séance enregistrée'),
           ],

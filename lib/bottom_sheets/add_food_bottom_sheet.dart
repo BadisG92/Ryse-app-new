@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../widgets/nutrition/option_widgets.dart';
 import '../screens/ai_scanner_screen.dart';
 import '../screens/barcode_scanner_screen.dart';
@@ -61,7 +61,7 @@ class AddFoodBottomSheet {
               
               // Options
               FoodOptionWidget(
-                icon: LucideIcons.edit3,
+                icon: LucideIcons.pencil,
                 title: 'Saisie manuelle',
                 subtitle: 'Rechercher et ajouter manuellement',
                 onTap: () {

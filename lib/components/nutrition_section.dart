@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'nutrition_dashboard_hybrid.dart';
 import 'nutrition_journal_hybrid.dart';
 import 'nutrition_recipes_hybrid.dart';
@@ -19,7 +20,7 @@ class _NutritionSectionState extends State<NutritionSection>
 
   final List<String> _pageNames = ['Tableau de bord', 'Journal', 'Recettes'];
   final List<IconData> _pageIcons = [
-    LucideIcons.pieChart,
+    LucideIcons.activity,
     LucideIcons.bookOpen,
     LucideIcons.chefHat,
   ];
@@ -111,7 +112,7 @@ class _NutritionSectionState extends State<NutritionSection>
                 _buildBannerSeparator(),
                 _buildBannerItem(LucideIcons.target, '3/4 objectifs'),
                 _buildBannerSeparator(),
-                _buildBannerItem(LucideIcons.sparkles, 'Nutrition'),
+                _buildBannerItemWithLogo('Nutrition'),
               ],
             ),
           ),
@@ -209,6 +210,28 @@ class _NutritionSectionState extends State<NutritionSection>
     return const Padding(
       padding: EdgeInsets.symmetric(horizontal: 8),
       child: Text('•', style: TextStyle(color: Colors.white60, fontSize: 14)),
+    );
+  }
+
+  Widget _buildBannerItemWithLogo(String text) {
+    return Row(
+      children: [
+        SvgPicture.asset(
+          'assets/images/logo_seul.svg',
+          width: 16,
+          height: 16,
+          fit: BoxFit.contain,
+          colorFilter: const ColorFilter.mode(
+            Colors.white,
+            BlendMode.srcIn,
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          text,
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14),
+        ),
+      ],
     );
   }
 } 

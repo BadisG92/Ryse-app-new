@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'dart:math';
 import 'custom_card.dart';
 import 'nutrition_models.dart';
@@ -648,30 +648,34 @@ class AITipCard extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: tip.accentColor,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  tip.icon,
-                  size: 16,
-                  color: Colors.white,
-                ),
+              Icon(
+                LucideIcons.brain,
+                size: 20,
+                color: const Color(0xFF0B132B),
               ),
-              
               const SizedBox(width: 12),
-              
               Expanded(
-                child: Text(
-                  tip.content,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF1A1A1A),
-                    height: 1.4,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Astuce IA',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF1A1A1A),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      tip.content,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF64748B),
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],

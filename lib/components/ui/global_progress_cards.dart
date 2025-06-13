@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'custom_card.dart';
 import 'global_progress_models.dart';
@@ -291,7 +291,7 @@ class WeeklyBalanceCard extends StatelessWidget {
               children: [
                 const Row(
                   children: [
-                    Icon(LucideIcons.checkCircle2, size: 20, color: Color(0xFF0B132B)),
+                    Icon(LucideIcons.check, size: 20, color: Color(0xFF0B132B)),
                     SizedBox(width: 8),
                     Text(
                       'Bilan Global de la Semaine',
@@ -673,13 +673,24 @@ class _TrackingLegendItem extends StatelessWidget {
     return Row(
       children: [
         if (legend.icon != null)
-          CircleAvatar(
-            radius: 8,
-            backgroundColor: legend.color,
+          Container(
+            width: 16,
+            height: 16,
+            decoration: BoxDecoration(
+              color: legend.color,
+              borderRadius: BorderRadius.circular(4),
+            ),
             child: Icon(legend.icon, color: Colors.white, size: 8),
           )
         else
-          CircleAvatar(radius: 6, backgroundColor: legend.color),
+          Container(
+            width: 12,
+            height: 12,
+            decoration: BoxDecoration(
+              color: legend.color,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
         const SizedBox(width: 6),
         Text(
           legend.label,
@@ -706,19 +717,11 @@ class AIRecommendationCard extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         child: Row(
           children: [
-            // Icône avec couleur selon le type
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: recommendation.color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                recommendation.icon,
-                size: 20,
-                color: recommendation.color,
-              ),
+            // Icône sans fond pour les recommandations
+            Icon(
+              recommendation.icon,
+              size: 20,
+              color: const Color(0xFF0B132B),
             ),
             
             const SizedBox(width: 12),
@@ -748,23 +751,7 @@ class AIRecommendationCard extends StatelessWidget {
               ),
             ),
             
-            // Badge de priorité (si élevée)
-            if (recommendation.priority >= 4)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: recommendation.color,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Text(
-                  '!',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
+
           ],
         ),
       ),

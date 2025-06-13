@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'cardio_models.dart';
+import 'custom_card.dart';
 
 // Card de statistique hebdomadaire
 class WeeklyStatCard extends StatelessWidget {
@@ -143,96 +144,57 @@ class SessionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF0B132B).withOpacity(0.04),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
+    return CustomCard(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Dernière séance',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF1A1A1A),
-              ),
+            Row(
+              children: [
+                const Icon(
+                  LucideIcons.clock,
+                  size: 20,
+                  color: Color(0xFF0B132B),
+                ),
+                const SizedBox(width: 12),
+                const Text(
+                  'Dernière séance',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1A1A1A),
+                  ),
+                ),
+              ],
             ),
             
             const SizedBox(height: 16),
             
             Row(
               children: [
-                // Icône activité
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    session.activityIcon,
-                    color: Colors.white,
-                    size: 22,
-                  ),
-                ),
-                
-                const SizedBox(width: 12),
-                
                 // Informations principales
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        session.activityTitle,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF1A1A1A),
-                        ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      session.activityTitle,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF1A1A1A),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        session.timeAgo,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF64748B),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                // Bouton détails
-                if (onDetailsTap != null)
-                  TextButton(
-                    onPressed: onDetailsTap,
-                    style: TextButton.styleFrom(
-                      foregroundColor: const Color(0xFF0B132B),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     ),
-                    child: const Text(
-                      'Voir les détails',
-                      style: TextStyle(
+                    const SizedBox(height: 4),
+                    Text(
+                      session.timeAgo,
+                      style: const TextStyle(
                         fontSize: 14,
-                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF64748B),
                       ),
                     ),
-                  ),
+                  ],
+                ),
               ],
             ),
             

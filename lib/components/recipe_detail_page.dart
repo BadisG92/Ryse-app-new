@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'ui/recipe_models.dart';
 
 class RecipeDetailPage extends StatefulWidget {
@@ -319,7 +319,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                   onPressed: () {
                     // TODO: Implémenter modifier les aliments
                   },
-                  icon: const Icon(LucideIcons.edit, size: 16),
+                  icon: const Icon(LucideIcons.pencil, size: 16),
                   label: const Text('Modifier aliments'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: const Color(0xFF0B132B),

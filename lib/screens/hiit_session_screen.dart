@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../models/hiit_models.dart';
 
 class HiitSessionScreen extends StatefulWidget {
@@ -138,7 +138,7 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
-                    completionPercentage >= 50 ? LucideIcons.checkCircle : LucideIcons.clock,
+                    completionPercentage >= 50 ? LucideIcons.check : LucideIcons.clock,
                     size: 32,
                     color: completionPercentage >= 50 
                         ? const Color(0xFF10B981)
@@ -346,9 +346,9 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
   Color _getPhaseColor() {
     switch (_session.currentPhase) {
       case HiitPhase.work:
-        return const Color(0xFFDC2626); // Rouge pour l'effort
+        return const Color(0xFF0B132B); // Bleu foncé pour l'effort
       case HiitPhase.rest:
-        return const Color(0xFF059669); // Vert pour le repos
+        return const Color(0xFF1C2951); // Bleu moyen pour le repos
       case HiitPhase.finished:
         return const Color(0xFF0B132B); // Bleu pour terminé
       default:
@@ -531,7 +531,7 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
                 Column(
                   children: [
                     const Icon(
-                      LucideIcons.checkCircle,
+                      LucideIcons.check,
                       color: Colors.white,
                       size: 48,
                     ),

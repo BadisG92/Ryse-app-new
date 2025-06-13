@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'custom_card.dart';
 import 'sport_models.dart';
 import '../../widgets/exercise/exercise_detail_page.dart';
@@ -69,13 +69,23 @@ class WeeklyStatsCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Cette semaine',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF1A1A1A),
-              ),
+            Row(
+              children: [
+                const Icon(
+                  LucideIcons.calendar,
+                  size: 20,
+                  color: Color(0xFF0B132B),
+                ),
+                const SizedBox(width: 12),
+                const Text(
+                  'Cette semaine',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1A1A1A),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 16),
             Row(

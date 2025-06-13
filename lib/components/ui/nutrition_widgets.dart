@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'custom_card.dart';
 import 'custom_button.dart';
 import 'nutrition_models.dart';
@@ -28,7 +28,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
   Widget build(BuildContext context) {
     // Ordre exact du bottomsheet : saisie manuelle, IA, code-barres, recettes
     final quickActions = [
-      {'id': 'manual', 'icon': LucideIcons.edit3},
+      {'id': 'manual', 'icon': LucideIcons.pencil},
       {'id': 'camera', 'icon': LucideIcons.camera},
       {'id': 'barcode', 'icon': LucideIcons.scan},
       {'id': 'recipe', 'icon': LucideIcons.chefHat},
@@ -824,7 +824,7 @@ class _AddFoodBottomSheetForQuickActionsState extends State<AddFoodBottomSheetFo
         const SizedBox(height: 24),
         
         _buildFoodOption(
-          icon: LucideIcons.edit3,
+          icon: LucideIcons.pencil,
           title: 'Saisie manuelle',
           subtitle: 'Rechercher et ajouter manuellement',
           onTap: () => _goToFoodSearchScreen(),

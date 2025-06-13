@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../models/sport_models.dart';
 import '../../screens/workout_session_screen.dart';
 import '../../bottom_sheets/program_selection_bottom_sheet.dart';
@@ -65,7 +65,7 @@ class WorkoutActions {
                   // Bouton séance manuelle
                   Expanded(
                     child: WorkoutOptionButton(
-                      icon: LucideIcons.edit3,
+                      icon: LucideIcons.pencil,
                       title: 'Séance manuelle',
                       onTap: () => startManualSession(context),
                     ),

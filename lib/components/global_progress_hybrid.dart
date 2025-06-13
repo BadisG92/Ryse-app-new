@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'ui/global_progress_models.dart';
 import 'ui/global_progress_widgets.dart';
 
@@ -21,54 +23,133 @@ class _GlobalProgressState extends State<GlobalProgress> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFFF8FAFC), Color(0xFFF1F5F9)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: Column(
-        children: [
-          // En-tête avec statistiques globales
-          GlobalProgressSectionBuilder.buildHeaderSection(_headerStats),
-          
-          // Corps principal avec scroll
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  // Section d'évolution du poids avec graphique
-                  GlobalProgressSectionBuilder.buildWeightSection(
-                    _weightProgress,
-                    _onEditWeight,
-                  ),
-                  
-                  const SizedBox(height: 16),
-                  
-                  // Section du bilan global hebdomadaire
-                  GlobalProgressSectionBuilder.buildBalanceSection(_weeklyBalance),
-                  
-                  const SizedBox(height: 16),
-                  
-                  // Section de tracking hebdomadaire (nutrition + sport)
-                  GlobalProgressSectionBuilder.buildTrackingSection(_trackingDays),
-                  
-                  const SizedBox(height: 16),
-                  
-                  // Section des recommandations IA
-                  GlobalProgressSectionBuilder.buildAISection(_aiRecommendations),
-                  
-                  // Espace en bas pour éviter que le contenu soit coupé
-                  const SizedBox(height: 100),
-                ],
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Header avec bandeau identique aux pages sport/nutrition
+            _buildHeader(),
+            
+            // Corps principal avec scroll
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    // Section d'évolution du poids avec graphique
+                    GlobalProgressSectionBuilder.buildWeightSection(
+                      _weightProgress,
+                      _onEditWeight,
+                    ),
+                    
+                    const SizedBox(height: 16),
+                    
+                    // Section du bilan global hebdomadaire
+                    GlobalProgressSectionBuilder.buildBalanceSection(_weeklyBalance),
+                    
+                    const SizedBox(height: 16),
+                    
+                    // Section de tracking hebdomadaire (nutrition + sport)
+                    GlobalProgressSectionBuilder.buildTrackingSection(_trackingDays),
+                    
+                    const SizedBox(height: 16),
+                    
+                    // Section des recommandations IA
+                    GlobalProgressSectionBuilder.buildAISection(_aiRecommendations),
+                    
+                    // Espace en bas pour éviter que le contenu soit coupé
+                    const SizedBox(height: 100),
+                  ],
+                ),
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 8,
+            offset: Offset(0, 2),
           ),
         ],
       ),
+      child: Column(
+        children: [
+          // Bandeau streak/XP remplace le titre
+          Container(
+            width: double.infinity,
+            height: 40,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _buildBannerItem(LucideIcons.flame, '7 jours'),
+                _buildBannerSeparator(),
+                _buildBannerItem(LucideIcons.target, '3/4 objectifs'),
+                _buildBannerSeparator(),
+                _buildBannerItemWithLogo('Progression'),
+              ],
+            ),
+          ),
+          
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBannerItem(IconData icon, String text) {
+    return Row(
+      children: [
+        Icon(icon, color: Colors.white, size: 16),
+        const SizedBox(width: 6),
+        Text(
+          text,
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500, fontSize: 14),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBannerSeparator() {
+    return const Padding(
+      padding: EdgeInsets.symmetric(horizontal: 8),
+      child: Text('•', style: TextStyle(color: Colors.white60, fontSize: 14)),
+    );
+  }
+
+  Widget _buildBannerItemWithLogo(String text) {
+    return Row(
+      children: [
+        SvgPicture.asset(
+          'assets/images/logo_seul.svg',
+          width: 16,
+          height: 16,
+          fit: BoxFit.contain,
+          colorFilter: const ColorFilter.mode(
+            Colors.white,
+            BlendMode.srcIn,
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          text,
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14),
+        ),
+      ],
     );
   }
 
@@ -223,13 +304,7 @@ class _GlobalProgressState extends State<GlobalProgress> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: const Text(
-                        'Enregistrer',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                      child: const Text('Enregistrer'),
                     ),
                   ),
                   
@@ -243,8 +318,10 @@ class _GlobalProgressState extends State<GlobalProgress> {
     );
   }
 
-  // Mise à jour du poids (logique intégrée)
+  // Mise à jour du poids (garde l'intégration)
   void _updateWeight(double newWeight) {
+    HapticFeedback.lightImpact();
+    
     setState(() {
       // Créer une nouvelle entrée de poids
       final newEntry = WeightEntry(
@@ -265,19 +342,10 @@ class _GlobalProgressState extends State<GlobalProgress> {
       );
     });
 
-    // Feedback haptique
-    HapticFeedback.lightImpact();
-
-    // Snackbar de confirmation
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Poids mis à jour : ${newWeight.toStringAsFixed(1)} kg'),
-        backgroundColor: const Color(0xFF0B132B),
         duration: const Duration(seconds: 2),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
-        behavior: SnackBarBehavior.floating,
       ),
     );
   }

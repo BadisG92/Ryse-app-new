@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'ui/custom_card.dart';
 import '../screens/cardio_tracking_screen.dart';
 import '../screens/hiit_session_screen.dart';
@@ -287,28 +287,35 @@ class _SportDashboardState extends State<SportDashboard>
                 const Row(
                   children: [
                     Icon(
-                      LucideIcons.calendar,
-                      size: 16,
+                      LucideIcons.activity,
+                      size: 20,
                       color: Color(0xFF0B132B),
                     ),
-                    SizedBox(width: 8),
+                    SizedBox(width: 12),
                     Text(
                       'Séances récentes',
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 16,
                         fontWeight: FontWeight.w600,
                         color: Color(0xFF1A1A1A),
                       ),
                     ),
                   ],
                 ),
-                IconButton(
-                  onPressed: _openSportCalendar,
-                  icon: const Icon(LucideIcons.calendar),
-                  iconSize: 18,
-                  padding: const EdgeInsets.all(8),
-                  color: const Color(0xFF64748B),
-                  tooltip: 'Voir le calendrier',
+                GestureDetector(
+                  onTap: _openSportCalendar,
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0B132B),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      LucideIcons.expand,
+                      size: 20,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -463,7 +470,7 @@ class _SportDashboardState extends State<SportDashboard>
             const Text(
               'Progression',
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 16,
                 fontWeight: FontWeight.w600,
                 color: Color(0xFF1A1A1A),
               ),
@@ -602,7 +609,7 @@ class _SportDashboardState extends State<SportDashboard>
             const Text(
               'Démarrer une activité',
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 16,
                 fontWeight: FontWeight.w600,
                 color: Color(0xFF1A1A1A),
               ),
@@ -685,7 +692,7 @@ class _SportDashboardState extends State<SportDashboard>
                 Text(
                   'Activités du jour',
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 16,
                     fontWeight: FontWeight.w600,
                     color: Color(0xFF1A1A1A),
                   ),

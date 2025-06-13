@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import 'ui/custom_button.dart';
@@ -60,6 +60,13 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
     'Votre plan est presque prêt !'
   ];
   String _currentLoadingMessage = 'Préparation de votre coaching personnalisé...';
+
+  // Ajout des variables pour les macronutriments modifiables
+  double proteinPercentage = 0.30; // 30% par défaut
+  double carbsPercentage = 0.40;   // 40% par défaut
+  double fatPercentage = 0.30;     // 30% par défaut
+  int customCalories = 0;
+  bool hasCustomMacros = false;
 
   @override
   void initState() {
@@ -127,7 +134,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
 
   List<Map<String, dynamic>> get steps => [
     {
-      'title': 'Bienvenue dans Ryze IA',
+      'title': 'Bienvenue dans Ryze',
       'subtitle': 'Votre coach nutrition personnalisé',
       'content': const WelcomeStep(), // FACTORISÉ
     },
@@ -168,78 +175,49 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
     },
   ];
 
-  // Page Genre - Style moderne comme dans les images
+  // Page Genre - Style moderne unifié avec SelectableCard
   Widget _buildGenderStep() {
-    return Column(
-      children: [
-        const SizedBox(height: 80),
-        
-        // Option Homme
-        _buildGenderOption(
-          title: 'Homme',
-          isSelected: userData['gender'] == 'Homme',
-          onTap: () => setState(() => userData['gender'] = 'Homme'),
-        ),
-        
-        const SizedBox(height: 16),
-        
-        // Option Femme
-        _buildGenderOption(
-          title: 'Femme',
-          isSelected: userData['gender'] == 'Femme',
-          onTap: () => setState(() => userData['gender'] = 'Femme'),
-        ),
-        
-        const SizedBox(height: 16),
-        
-        // Option Autre
-        _buildGenderOption(
-          title: 'Autre',
-          isSelected: userData['gender'] == 'Autre',
-          onTap: () => setState(() => userData['gender'] = 'Autre'),
-        ),
-        
-        const SizedBox(height: 80),
-      ],
-    );
-  }
-
-  // Widget pour options de genre
-  Widget _buildGenderOption({
-    required String title,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.symmetric(horizontal: 20),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 20),
-            decoration: BoxDecoration(
-              color: isSelected ? Colors.black : Colors.transparent,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: isSelected ? Colors.black : Colors.grey.shade300,
-                width: 1,
-              ),
-            ),
-            child: Center(
-              child: Text(
-                title,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: isSelected ? Colors.white : Colors.black,
-                ),
-              ),
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const SizedBox(height: 80),
+          
+          // Option Homme
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: SelectableCard(
+              title: 'Homme',
+              icon: LucideIcons.mars,
+              isSelected: userData['gender'] == 'Homme',
+              onTap: () => setState(() => userData['gender'] = 'Homme'),
             ),
           ),
-        ),
+          
+          // Option Femme
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: SelectableCard(
+              title: 'Femme',
+              icon: LucideIcons.venus,
+              isSelected: userData['gender'] == 'Femme',
+              onTap: () => setState(() => userData['gender'] = 'Femme'),
+            ),
+          ),
+          
+          // Option Autre
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: SelectableCard(
+              title: 'Autre',
+              icon: LucideIcons.users,
+              isSelected: userData['gender'] == 'Autre',
+              onTap: () => setState(() => userData['gender'] = 'Autre'),
+            ),
+          ),
+        
+        const SizedBox(height: 80),
+        ],
       ),
     );
   }
@@ -516,7 +494,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
         'key': 'low',
         'title': 'Peu actif',
         'description': '0-2 jours par semaine',
-        'icon': LucideIcons.home,
+        'icon': LucideIcons.house,
       },
       {
         'key': 'moderate',
@@ -532,23 +510,26 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
       },
     ];
 
-    return Column(
-      children: [
-        const SizedBox(height: 80),
-        ...activities.map((activity) => 
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: SelectableCard(
-              title: activity['title'] as String,
-              description: activity['description'] as String,
-              icon: activity['icon'] as IconData,
-              isSelected: userData['activity'] == activity['key'],
-              onTap: () => setState(() => userData['activity'] = activity['key']),
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const SizedBox(height: 80),
+          ...activities.map((activity) => 
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: SelectableCard(
+                title: activity['title'] as String,
+                description: activity['description'] as String,
+                icon: activity['icon'] as IconData,
+                isSelected: userData['activity'] == activity['key'],
+                onTap: () => setState(() => userData['activity'] = activity['key']),
+              ),
             ),
-          ),
-        ).toList(),
-        const SizedBox(height: 80),
-      ],
+          ).toList(),
+          const SizedBox(height: 80),
+        ],
+      ),
     );
   }
 
@@ -575,96 +556,109 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
       },
     ];
 
-    return Column(
-      children: [
-        const SizedBox(height: 80),
-        ...goals.map((goal) => 
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: SelectableCard(
-              title: goal['title'] as String,
-              description: goal['description'] as String,
-              icon: goal['icon'] as IconData,
-              isSelected: userData['goal'] == goal['key'],
-              onTap: () => setState(() => userData['goal'] = goal['key']),
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const SizedBox(height: 80),
+          ...goals.map((goal) => 
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: SelectableCard(
+                title: goal['title'] as String,
+                description: goal['description'] as String,
+                icon: goal['icon'] as IconData,
+                isSelected: userData['goal'] == goal['key'],
+                onTap: () => setState(() => userData['goal'] = goal['key']),
+              ),
             ),
-          ),
-        ).toList(),
-        const SizedBox(height: 80),
-      ],
+          ).toList(),
+          const SizedBox(height: 80),
+        ],
+      ),
     );
   }
 
   // INTÉGRÉ - Logique multi-sélection pour obstacles
   Widget _buildObstaclesStep() {
     final obstacles = [
-      'Manque de temps',
-      'Manque de motivation',
-      'Fatigue',
-      'Manque de connaissances',
-      'Autres priorités',
+      {'title': 'Manque de temps', 'icon': LucideIcons.clock},
+      {'title': 'Manque de motivation', 'icon': LucideIcons.battery},
+      {'title': 'Fatigue', 'icon': LucideIcons.moon},
+      {'title': 'Manque de connaissances', 'icon': LucideIcons.bookOpen},
+      {'title': 'Autres priorités', 'icon': LucideIcons.calendar},
     ];
 
-    return Column(
-      children: [
-        const SizedBox(height: 60),
-        ...obstacles.map((obstacle) => 
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: SelectableCard(
-              title: obstacle,
-              isSelected: (userData['obstacles'] as List<String>).contains(obstacle),
-              onTap: () {
-                setState(() {
-                  final currentObstacles = userData['obstacles'] as List<String>;
-                  if (currentObstacles.contains(obstacle)) {
-                    currentObstacles.remove(obstacle);
-                  } else {
-                    currentObstacles.add(obstacle);
-                  }
-                });
-              },
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const SizedBox(height: 60),
+          ...obstacles.map((obstacle) => 
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: SelectableCard(
+                title: obstacle['title'] as String,
+                icon: obstacle['icon'] as IconData,
+                isSelected: (userData['obstacles'] as List<String>).contains(obstacle['title'] as String),
+                onTap: () {
+                  setState(() {
+                    final currentObstacles = userData['obstacles'] as List<String>;
+                    final obstacleTitle = obstacle['title'] as String;
+                    if (currentObstacles.contains(obstacleTitle)) {
+                      currentObstacles.remove(obstacleTitle);
+                    } else {
+                      currentObstacles.add(obstacleTitle);
+                    }
+                  });
+                },
+              ),
             ),
-          ),
-        ).toList(),
-        const SizedBox(height: 60),
-      ],
+          ).toList(),
+          const SizedBox(height: 60),
+        ],
+      ),
     );
   }
 
   // INTÉGRÉ - Logique multi-sélection pour restrictions
   Widget _buildRestrictionsStep() {
     final restrictions = [
-      'Classique',
-      'Végétarien',
-      'Végétalien',
-      'Pescetarien',
+      {'title': 'Classique', 'icon': LucideIcons.utensils},
+      {'title': 'Végétarien', 'icon': LucideIcons.leaf},
+      {'title': 'Végétalien', 'icon': LucideIcons.sprout},
+      {'title': 'Pescetarien', 'icon': LucideIcons.fish},
     ];
 
-    return Column(
-      children: [
-        const SizedBox(height: 100),
-        ...restrictions.map((restriction) => 
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: SelectableCard(
-              title: restriction,
-              isSelected: (userData['restrictions'] as List<String>).contains(restriction),
-              onTap: () {
-                setState(() {
-                  final currentRestrictions = userData['restrictions'] as List<String>;
-                  if (currentRestrictions.contains(restriction)) {
-                    currentRestrictions.remove(restriction);
-                  } else {
-                    currentRestrictions.add(restriction);
-                  }
-                });
-              },
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const SizedBox(height: 100),
+          ...restrictions.map((restriction) => 
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: SelectableCard(
+                title: restriction['title'] as String,
+                icon: restriction['icon'] as IconData,
+                isSelected: (userData['restrictions'] as List<String>).contains(restriction['title'] as String),
+                onTap: () {
+                  setState(() {
+                    final currentRestrictions = userData['restrictions'] as List<String>;
+                    final restrictionTitle = restriction['title'] as String;
+                    if (currentRestrictions.contains(restrictionTitle)) {
+                      currentRestrictions.remove(restrictionTitle);
+                    } else {
+                      currentRestrictions.add(restrictionTitle);
+                    }
+                  });
+                },
+              ),
             ),
-          ),
-        ).toList(),
-        const SizedBox(height: 100),
-      ],
+          ).toList(),
+          const SizedBox(height: 100),
+        ],
+      ),
     );
   }
 
@@ -684,9 +678,9 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
       case 5:
         return userData['goal'].isNotEmpty; // Objectif
       case 6:
-        return true; // Obstacles are optional
+        return (userData['obstacles'] as List<String>).isNotEmpty; // Obstacles obligatoires
       case 7:
-        return true; // Restrictions are optional
+        return (userData['restrictions'] as List<String>).isNotEmpty; // Restrictions obligatoires
       default:
         return false;
     }
@@ -829,7 +823,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
           text: currentStep == steps.length - 1 ? 'Créer mon plan personnalisé' : 'Continuer',
           onPressed: canProceed() ? nextStep : null,
           icon: currentStep == steps.length - 1 
-            ? const Icon(LucideIcons.checkCircle, color: Colors.white) 
+            ? const Icon(LucideIcons.check, color: Colors.white) 
             : const Icon(LucideIcons.arrowRight, color: Colors.white),
           isPrimary: canProceed(),
           isDisabled: !canProceed(),
@@ -843,8 +837,18 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
     final profile = UserProfile.fromMap(userData);
     final bmr = MetabolicCalculations.calculateBMR(profile);
     final totalNeeds = MetabolicCalculations.calculateTotalNeeds(profile);
-    final calories = MetabolicCalculations.calculateDailyGoal(profile);
-    final macros = MetabolicCalculations.calculateMacros(profile);
+    final baseCalories = MetabolicCalculations.calculateDailyGoal(profile);
+    
+    // Initialiser les pourcentages si ce n'est pas encore fait
+    if (!hasCustomMacros) {
+      _initializeMacroPercentages(profile.goal);
+      customCalories = baseCalories;
+      hasCustomMacros = true;
+    }
+    
+    // Utiliser les calories personnalisées ou les calories de base
+    final calories = customCalories > 0 ? customCalories : baseCalories;
+    final macros = _calculateCustomMacros(calories);
     
     // Calcul des ajustements pour l'explication
     final activityMultiplier = _getActivityMultiplier(profile.activity);
@@ -931,7 +935,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                 const SizedBox(height: 16),
 
                 // Macronutriments - Style de l'app
-                _buildMacronutrientsCard(macros),
+                _buildMacronutrientsCard(macros, calories),
 
                 const SizedBox(height: 20),
 
@@ -1122,7 +1126,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Icon(
-                      LucideIcons.helpCircle,
+                      LucideIcons.circleHelp,
                       color: Color(0xFF0B132B),
                       size: 16,
                     ),
@@ -1136,11 +1140,8 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
     );
   }
 
-
-
-
   // Macronutriments - Style de l'app (Compact)
-  Widget _buildMacronutrientsCard(Map<String, int> macros) {
+  Widget _buildMacronutrientsCard(Map<String, int> macros, int calories) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1158,26 +1159,64 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0B132B).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  LucideIcons.pieChart,
-                  size: 16,
-                  color: Color(0xFF0B132B),
-                ),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0B132B).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      LucideIcons.activity,
+                      size: 16,
+                      color: Color(0xFF0B132B),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Macronutriments',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF1A1A1A),
+                        ),
+                      ),
+                      if (hasCustomMacros && (proteinPercentage != 0.30 || carbsPercentage != 0.40 || fatPercentage != 0.30))
+                        Text(
+                          'Personnalisé',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: const Color(0xFF0B132B).withOpacity(0.7),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
-              const Text(
-                'Macronutriments',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF1A1A1A),
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => _showMacroEditModal(context, calories),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0B132B).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      LucideIcons.pencil,
+                      size: 16,
+                      color: Color(0xFF0B132B),
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -1303,6 +1342,81 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
     }
   }
 
+  // Nouvelle méthode pour initialiser les pourcentages par défaut selon l'objectif
+  void _initializeMacroPercentages(String goal) {
+    switch (goal) {
+      case 'lose':
+        proteinPercentage = 0.35;
+        carbsPercentage = 0.30;
+        fatPercentage = 0.35;
+        break;
+      case 'gain':
+        proteinPercentage = 0.25;
+        carbsPercentage = 0.50;
+        fatPercentage = 0.25;
+        break;
+      case 'maintain':
+      default:
+        proteinPercentage = 0.30;
+        carbsPercentage = 0.40;
+        fatPercentage = 0.30;
+        break;
+    }
+  }
+
+  // Calcule les macros personnalisés en fonction des pourcentages et calories
+  Map<String, int> _calculateCustomMacros(int calories) {
+    return {
+      'protein': ((calories * proteinPercentage) / 4).round(),
+      'carbs': ((calories * carbsPercentage) / 4).round(),
+      'fat': ((calories * fatPercentage) / 9).round(),
+    };
+  }
+
+  // Vérifie que la somme des pourcentages = 100%
+  bool _isValidMacroDistribution() {
+    final sum = proteinPercentage + carbsPercentage + fatPercentage;
+    return (sum - 1.0).abs() < 0.01; // Tolérance de 1%
+  }
+
+  // Normalise les pourcentages pour qu'ils totalisent 100%
+  void _normalizeMacroPercentages() {
+    final sum = proteinPercentage + carbsPercentage + fatPercentage;
+    if (sum > 0) {
+      proteinPercentage = proteinPercentage / sum;
+      carbsPercentage = carbsPercentage / sum;
+      fatPercentage = fatPercentage / sum;
+    }
+  }
+
+  // Détermine quel preset correspond aux valeurs actuelles
+  String _getCurrentPreset() {
+    const tolerance = 0.02; // Tolérance de 2%
+    
+    // Équilibré (30-40-30)
+    if ((proteinPercentage - 0.30).abs() < tolerance &&
+        (carbsPercentage - 0.40).abs() < tolerance &&
+        (fatPercentage - 0.30).abs() < tolerance) {
+      return 'equilibre';
+    }
+    
+    // Perte (35-30-35)
+    if ((proteinPercentage - 0.35).abs() < tolerance &&
+        (carbsPercentage - 0.30).abs() < tolerance &&
+        (fatPercentage - 0.35).abs() < tolerance) {
+      return 'perte';
+    }
+    
+    // Prise (25-50-25)
+    if ((proteinPercentage - 0.25).abs() < tolerance &&
+        (carbsPercentage - 0.50).abs() < tolerance &&
+        (fatPercentage - 0.25).abs() < tolerance) {
+      return 'prise';
+    }
+    
+    return ''; // Aucun preset correspondant
+  }
+
   IconData _getGoalIcon(String goal) {
     switch (goal) {
       case 'lose':
@@ -1313,5 +1427,538 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
       default:
         return LucideIcons.target;
     }
+  }
+
+  // Modal d'édition des macronutriments
+  void _showMacroEditModal(BuildContext context, int baseCalories) {
+    // Variables temporaires pour les modifications
+    double tempProtein = proteinPercentage;
+    double tempCarbs = carbsPercentage;
+    double tempFat = fatPercentage;
+    int tempCalories = customCalories;
+    String selectedPreset = _getCurrentPreset(); // Déterminer le preset actuel
+    
+    final TextEditingController caloriesController = TextEditingController(
+      text: tempCalories.toString(),
+    );
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) {
+          // Calculer les grammes en temps réel
+          Map<String, int> tempMacros = {
+            'protein': ((tempCalories * tempProtein) / 4).round(),
+            'carbs': ((tempCalories * tempCarbs) / 4).round(),
+            'fat': ((tempCalories * tempFat) / 9).round(),
+          };
+
+          return Container(
+            height: MediaQuery.of(context).size.height * 0.85,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(20),
+                topRight: Radius.circular(20),
+              ),
+            ),
+            child: Column(
+              children: [
+                // Poignée
+                Container(
+                  margin: const EdgeInsets.only(top: 12),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                
+                // En-tête
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Modifier les macronutriments',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1A1A1A),
+                        ),
+                      ),
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () => Navigator.pop(context),
+                          borderRadius: BorderRadius.circular(20),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            child: const Icon(
+                              LucideIcons.x,
+                              size: 20,
+                              color: Color(0xFF64748B),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Section Calories
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF8FAFC),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: const Color(0xFFE2E8F0),
+                              width: 1,
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                                                             Row(
+                                 children: [
+                                   const Icon(
+                                     LucideIcons.target,
+                                     size: 16,
+                                     color: Color(0xFF0B132B),
+                                   ),
+                                  const SizedBox(width: 8),
+                                  const Text(
+                                    'Objectif calorique quotidien',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF1A1A1A),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              TextFormField(
+                                controller: caloriesController,
+                                keyboardType: TextInputType.number,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF0B132B),
+                                ),
+                                decoration: InputDecoration(
+                                  suffixText: 'kcal',
+                                  suffixStyle: const TextStyle(
+                                    color: Color(0xFF64748B),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: const BorderSide(
+                                      color: Color(0xFFE2E8F0),
+                                    ),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: const BorderSide(
+                                      color: Color(0xFF0B132B),
+                                      width: 2,
+                                    ),
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 16,
+                                  ),
+                                ),
+                                onChanged: (value) {
+                                  final newCalories = int.tryParse(value) ?? tempCalories;
+                                  if (newCalories > 0) {
+                                    setModalState(() {
+                                      tempCalories = newCalories;
+                                      // Ne pas réinitialiser le preset pour les calories
+                                      // car cela n'affecte pas la répartition des macros
+                                    });
+                                  }
+                                },
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Recommandé: $baseCalories kcal',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF64748B),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        // Section Répartition
+                        const Text(
+                          'Répartition des macronutriments',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF1A1A1A),
+                          ),
+                        ),
+                        
+                        const SizedBox(height: 16),
+
+                                                 // Protéines
+                         _buildMacroSlider(
+                           name: 'Protéines',
+                           icon: LucideIcons.zap,
+                           color: const Color(0xFF0B132B),
+                           percentage: tempProtein,
+                           grams: tempMacros['protein']!,
+                           onChanged: (value) {
+                             setModalState(() {
+                               tempProtein = value;
+                               selectedPreset = ''; // Réinitialiser le preset
+                               // Auto-ajuster les autres pour garder 100%
+                               final remaining = 1.0 - value;
+                               final ratio = remaining / (tempCarbs + tempFat);
+                               if (ratio > 0) {
+                                 tempCarbs = tempCarbs * ratio;
+                                 tempFat = tempFat * ratio;
+                               }
+                             });
+                           },
+                         ),
+
+                        const SizedBox(height: 16),
+
+                        // Glucides
+                        _buildMacroSlider(
+                          name: 'Glucides',
+                          icon: LucideIcons.wheat,
+                          color: const Color(0xFF1C2951),
+                          percentage: tempCarbs,
+                          grams: tempMacros['carbs']!,
+                          onChanged: (value) {
+                            setModalState(() {
+                              tempCarbs = value;
+                              selectedPreset = ''; // Réinitialiser le preset
+                              // Auto-ajuster les autres pour garder 100%
+                              final remaining = 1.0 - value;
+                              final ratio = remaining / (tempProtein + tempFat);
+                              if (ratio > 0) {
+                                tempProtein = tempProtein * ratio;
+                                tempFat = tempFat * ratio;
+                              }
+                            });
+                          },
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        // Lipides
+                        _buildMacroSlider(
+                          name: 'Lipides',
+                          icon: LucideIcons.droplets,
+                          color: const Color(0xFF64748B),
+                          percentage: tempFat,
+                          grams: tempMacros['fat']!,
+                          onChanged: (value) {
+                            setModalState(() {
+                              tempFat = value;
+                              selectedPreset = ''; // Réinitialiser le preset
+                              // Auto-ajuster les autres pour garder 100%
+                              final remaining = 1.0 - value;
+                              final ratio = remaining / (tempProtein + tempCarbs);
+                              if (ratio > 0) {
+                                tempProtein = tempProtein * ratio;
+                                tempCarbs = tempCarbs * ratio;
+                              }
+                            });
+                          },
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        // Presets rapides
+                        const Text(
+                          'Répartitions prédéfinies',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF1A1A1A),
+                          ),
+                        ),
+                        
+                        const SizedBox(height: 12),
+
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildPresetButton(
+                                'Équilibré',
+                                '30-40-30',
+                                () {
+                                  setModalState(() {
+                                    tempProtein = 0.30;
+                                    tempCarbs = 0.40;
+                                    tempFat = 0.30;
+                                    selectedPreset = 'equilibre';
+                                  });
+                                },
+                                isSelected: selectedPreset == 'equilibre',
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _buildPresetButton(
+                                'Perte',
+                                '35-30-35',
+                                () {
+                                  setModalState(() {
+                                    tempProtein = 0.35;
+                                    tempCarbs = 0.30;
+                                    tempFat = 0.35;
+                                    selectedPreset = 'perte';
+                                  });
+                                },
+                                isSelected: selectedPreset == 'perte',
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _buildPresetButton(
+                                'Prise',
+                                '25-50-25',
+                                () {
+                                  setModalState(() {
+                                    tempProtein = 0.25;
+                                    tempCarbs = 0.50;
+                                    tempFat = 0.25;
+                                    selectedPreset = 'prise';
+                                  });
+                                },
+                                isSelected: selectedPreset == 'prise',
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 32),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Boutons d'action
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border(
+                      top: BorderSide(
+                        color: Colors.grey[200]!,
+                        width: 1,
+                      ),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            side: const BorderSide(
+                              color: Color(0xFFE2E8F0),
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            'Annuler',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF64748B),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            setState(() {
+                              proteinPercentage = tempProtein;
+                              carbsPercentage = tempCarbs;
+                              fatPercentage = tempFat;
+                              customCalories = tempCalories;
+                              hasCustomMacros = true;
+                            });
+                            Navigator.pop(context);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF0B132B),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: const Text(
+                            'Appliquer',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // Widget pour les sliders de macronutriments
+  Widget _buildMacroSlider({
+    required String name,
+    required IconData icon,
+    required Color color,
+    required double percentage,
+    required int grams,
+    required Function(double) onChanged,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: const Color(0xFFE2E8F0),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(icon, size: 16, color: color),
+                  const SizedBox(width: 8),
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1A1A1A),
+                    ),
+                  ),
+                ],
+              ),
+              Text(
+                '${(percentage * 100).round()}% • ${grams}g',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: color,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              activeTrackColor: color,
+              inactiveTrackColor: color.withOpacity(0.2),
+              thumbColor: color,
+              overlayColor: color.withOpacity(0.2),
+              trackHeight: 6,
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10),
+            ),
+            child: Slider(
+              value: percentage,
+              min: 0.05,
+              max: 0.70,
+              divisions: 65,
+              onChanged: onChanged,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Widget pour les boutons de presets
+  Widget _buildPresetButton(String title, String ratio, VoidCallback onTap, {bool isSelected = false}) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+          decoration: BoxDecoration(
+            color: isSelected 
+                ? const Color(0xFF0B132B).withOpacity(0.1)
+                : Colors.transparent,
+            border: Border.all(
+              color: isSelected 
+                  ? const Color(0xFF0B132B)
+                  : const Color(0xFFE2E8F0),
+              width: isSelected ? 2 : 1,
+            ),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                  color: isSelected 
+                      ? const Color(0xFF0B132B)
+                      : const Color(0xFF1A1A1A),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                ratio,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                  color: isSelected 
+                      ? const Color(0xFF0B132B).withOpacity(0.8)
+                      : const Color(0xFF64748B),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 } 

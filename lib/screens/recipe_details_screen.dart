@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../components/ui/recipe_models.dart';
 import '../bottom_sheets/editable_food_details_bottom_sheet.dart';
 import '../bottom_sheets/meal_selection_bottom_sheet.dart';
@@ -532,7 +532,7 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
           child: OutlinedButton.icon(
             onPressed: _showPortionDialog,
             icon: const Icon(
-              LucideIcons.sliders,
+              LucideIcons.settings,
               size: 16,
               color: Color(0xFF0B132B),
             ),
@@ -563,7 +563,7 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
           child: OutlinedButton.icon(
             onPressed: _editIngredients,
             icon: const Icon(
-              LucideIcons.edit,
+              LucideIcons.pencil,
               size: 16,
               color: Color(0xFF0B132B),
             ),
@@ -1034,7 +1034,7 @@ class _EditIngredientsScreenState extends State<EditIngredientsScreen> {
                 color: Colors.transparent,
               ),
               child: const Icon(
-                LucideIcons.edit,
+                LucideIcons.pencil,
                 size: 16,
                 color: Color(0xFF64748B),
               ),

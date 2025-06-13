@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:fl_chart/fl_chart.dart';
 
 // Modèle de progression de poids
@@ -367,7 +367,7 @@ class HeaderStats {
         isBold: false,
       ),
       HeaderStatItem(
-        icon: LucideIcons.sparkles,
+        icon: LucideIcons.target, // Temporaire, sera remplacé par le logo SVG
         text: currentStatus,
         isBold: true,
       ),
@@ -488,8 +488,8 @@ class GlobalProgressData {
   // Statistiques d'en-tête
   static const HeaderStats headerStats = HeaderStats(
     dailyStreak: '7 jours',
-    weeklyObjectives: '5/7 Objectifs',
-    currentStatus: 'Progrès',
+    weeklyObjectives: '3/4 objectifs',
+    currentStatus: 'Progression',
   );
 
   // Recommandations IA

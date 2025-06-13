@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'onboarding_models.dart';
 
 // Carte sélectionnable moderne avec animations fluides
@@ -521,7 +522,7 @@ class _MobileNumberInputState extends State<MobileNumberInput>
                 child: Row(
                   children: [
                     Icon(
-                      !_isValid ? LucideIcons.alertCircle : LucideIcons.info,
+                      !_isValid ? LucideIcons.info : LucideIcons.info,
                       size: 14,
                       color: !_isValid 
                           ? const Color(0xFFEF4444)
@@ -566,54 +567,45 @@ class WelcomeStep extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Logo stylisé
-        Stack(
-          alignment: Alignment.center,
-          children: [
-            Container(
-              width: 140,
-              height: 140,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [
-                    const Color(0xFF0B132B).withOpacity(0.1),
-                    const Color(0xFF1C2951).withOpacity(0.05),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+        // Logo Ryze propre et centré
+        Container(
+          width: 150, // Augmentation de 10% (136 → 150px)
+          height: 150,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: const Color(0xFF0B132B), // Bleu principal de l'app
+            boxShadow: [
+              // Ombre principale plus douce
+              BoxShadow(
+                color: const Color(0xFF0B132B).withOpacity(0.15),
+                blurRadius: 24,
+                spreadRadius: 0,
+                offset: const Offset(0, 8),
+              ),
+              // Ombre secondaire pour plus de profondeur
+              BoxShadow(
+                color: const Color(0xFF0B132B).withOpacity(0.08),
+                blurRadius: 12,
+                spreadRadius: -2,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(26), // Légèrement ajusté pour la nouvelle taille
+              child: SvgPicture.asset(
+                'assets/images/logo_solo.svg',
+                colorFilter: const ColorFilter.mode(
+                  Colors.white,
+                  BlendMode.srcIn,
                 ),
               ),
             ),
-            Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF0B132B).withOpacity(0.3),
-                    blurRadius: 20,
-                    spreadRadius: 2,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
-              ),
-              child: const Icon(
-                LucideIcons.brain,
-                size: 48,
-                color: Colors.white,
-              ),
-            ),
-          ],
+          ),
         ),
         
-        const SizedBox(height: 32),
+        const SizedBox(height: 40), // Légèrement plus d'espace pour équilibrer le logo plus grand
         
         // Stats grid
         Row(
@@ -679,7 +671,7 @@ class _LoadingStepState extends State<LoadingStep> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Icône stylisée
+              // Logo Ryze stylisé
               Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
@@ -698,15 +690,20 @@ class _LoadingStepState extends State<LoadingStep> {
                     ),
                   ],
                 ),
-                child: const Icon(
-                  LucideIcons.cpu,
-                  size: 56,
-                  color: Colors.white,
+                child: SvgPicture.asset(
+                  'assets/images/logo_seul.svg',
+                  width: 56,
+                  height: 56,
+                  fit: BoxFit.contain,
+                  colorFilter: const ColorFilter.mode(
+                    Colors.white,
+                    BlendMode.srcIn,
+                  ),
                 ),
               ),
               const SizedBox(height: 40),
               const Text(
-                '🧠 Ryze IA prépare votre plan...',
+                '🧠 Ryze prépare votre plan...',
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,

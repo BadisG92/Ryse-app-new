@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'ui/custom_card.dart';
 import 'ui/workout_widgets.dart';
 import 'ui/exercise_sets_widget.dart';
@@ -51,7 +51,7 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
                 // Bouton séance manuelle
                 Expanded(
                   child: _buildSessionTypeButton(
-                    icon: LucideIcons.edit3,
+                    icon: LucideIcons.pencil,
                     title: 'Séance manuelle',
                     subtitle: '',
                     onTap: _showManualSessionFlow,
@@ -225,7 +225,7 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
               
               // Options
               _buildSessionChoiceButton(
-                icon: LucideIcons.edit3,
+                icon: LucideIcons.pencil,
                 title: 'Créer une séance manuellement',
                 subtitle: 'Construire sa séance étape par étape',
                 onTap: () {

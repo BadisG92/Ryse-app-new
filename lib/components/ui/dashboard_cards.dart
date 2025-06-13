@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'dart:math';
 import 'custom_badge.dart';
 import 'dashboard_models.dart';
@@ -230,78 +230,52 @@ class QuickActionButton extends StatelessWidget {
     return GestureDetector(
       onTap: action.onTap,
       child: Container(
-        width: 110,
-        height: 130,
-        margin: const EdgeInsets.only(right: 12),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(colors: action.colors),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: action.colors.first.withOpacity(0.3),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Stack(
+        margin: const EdgeInsets.only(right: 16),
+        child: Column(
           children: [
-            // Contenu principal
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    action.icon,
-                    size: 20,
-                    color: action.textColor,
-                  ),
-                ),
-                
-                const SizedBox(height: 12),
-                
-                Text(
-                  action.label,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: action.textColor,
-                    height: 1.2,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+            // Bouton carré avec gradient bleu
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                gradient: action.isDisabled 
+                    ? LinearGradient(
+                        colors: [
+                          const Color(0xFFE2E8F0),
+                          const Color(0xFFE2E8F0),
+                        ],
+                      )
+                    : const LinearGradient(
+                        colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+                      ),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                action.icon,
+                size: 28,
+                color: action.isDisabled ? const Color(0xFF64748B) : Colors.white,
+              ),
             ),
             
-            // Badge reward
-            if (action.reward != null)
-              Positioned(
-                top: 0,
-                right: 0,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    action.reward!,
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: action.textColor,
-                    ),
-                  ),
+            const SizedBox(height: 8),
+            
+            // Texte en dessous
+            SizedBox(
+              width: 72,
+              child: Text(
+                action.label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: action.isDisabled 
+                      ? const Color(0xFF64748B) 
+                      : const Color(0xFF1A1A1A),
                 ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
+            ),
           ],
         ),
       ),
@@ -355,7 +329,7 @@ class DailyGoalItem extends StatelessWidget {
                     ),
                   const SizedBox(width: 8),
                   Text(
-                    '${goal.progress}%',
+                    goal.progressText,
                     style: const TextStyle(
                       fontSize: 12,
                       color: Color(0xFF64748B),
@@ -426,14 +400,10 @@ class ModulePreviewCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(colors: module.gradientColors),
-                      borderRadius: const BorderRadius.all(Radius.circular(8)),
-                    ),
-                    child: Icon(module.icon, size: 16, color: Colors.white),
+                  Icon(
+                    module.icon, 
+                    size: 20, 
+                    color: const Color(0xFF0B132B),
                   ),
                   const SizedBox(width: 12),
                   Text(

@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../models/cardio_session_models.dart';
 
 class CardioTrackingScreen extends StatefulWidget {
@@ -188,7 +188,7 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
-                    LucideIcons.checkCircle,
+                    LucideIcons.check,
                     size: 32,
                     color: Color(0xFF10B981),
                   ),

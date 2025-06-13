@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../models/nutrition_models.dart';
 import '../../components/ui/custom_card.dart';
 
@@ -171,7 +171,7 @@ class FoodItemWidget extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.all(12),
                 child: const Icon(
-                  LucideIcons.moreHorizontal,
+                  LucideIcons.ellipsis,
                   size: 16,
                   color: Color(0xFF888888),
                 ),

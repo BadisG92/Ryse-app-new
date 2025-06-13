@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'dart:math';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'ui/nutrition_models.dart';
 import 'ui/nutrition_cards.dart';
 import 'ui/nutrition_widgets.dart';
@@ -283,7 +283,7 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
               
               // Options d'ajout d'aliment
               FoodOptionWidget(
-                icon: LucideIcons.edit3,
+                icon: LucideIcons.pencil,
                 title: 'Saisie manuelle',
                 subtitle: 'Rechercher et ajouter manuellement',
                 onTap: () {

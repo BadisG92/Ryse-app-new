@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'dart:math';
 
 // Modèle d'utilisateur gamifié
@@ -48,6 +48,9 @@ class DailyGoal {
   final int xp;
   final bool completed;
   final bool isPremium;
+  final double? currentValue;
+  final double? targetValue;
+  final String? unit;
 
   const DailyGoal({
     required this.id,
@@ -56,6 +59,9 @@ class DailyGoal {
     required this.xp,
     required this.completed,
     this.isPremium = false,
+    this.currentValue,
+    this.targetValue,
+    this.unit,
   });
 
   // Progress en pourcentage (0.0 à 1.0)
@@ -77,6 +83,22 @@ class DailyGoal {
 
   // Badge XP texte
   String get xpBadgeText => '+$xp XP';
+
+  // Texte de progression formaté (X/Y ou X%)
+  String get progressText {
+    if (currentValue != null && targetValue != null) {
+      if (unit != null && unit!.isNotEmpty) {
+        if (unit == 'L') {
+          return '${currentValue!.toStringAsFixed(1)}${unit!}/${targetValue!.toStringAsFixed(0)}${unit!}';
+        } else {
+          return '${currentValue!.toInt()}/${targetValue!.toInt()} ${unit!}';
+        }
+      } else {
+        return '${currentValue!.toInt()}/${targetValue!.toInt()}';
+      }
+    }
+    return '$progress%';
+  }
 }
 
 // Modèle d'action rapide
@@ -221,79 +243,83 @@ class DashboardData {
   // Objectifs journaliers exemple
   static const List<DailyGoal> dailyGoals = [
     DailyGoal(
-      id: 'calories',
-      label: 'Atteindre mes calories',
-      progress: 75,
+      id: 'meals',
+      label: 'Suivre mes repas aujourd\'hui',
+      progress: 67, // 2/3 repas
       xp: 25,
       completed: false,
+      currentValue: 2,
+      targetValue: 3,
+      unit: '',
     ),
     DailyGoal(
       id: 'water',
       label: 'Boire 2L d\'eau',
-      progress: 60,
+      progress: 75, // 1.5L/2L
       xp: 15,
       completed: false,
+      currentValue: 1.5,
+      targetValue: 2.0,
+      unit: 'L',
     ),
     DailyGoal(
-      id: 'steps',
-      label: '10 000 pas',
-      progress: 100,
-      xp: 20,
-      completed: true,
+      id: 'calories',
+      label: 'Atteindre mes calories',
+      progress: 80, // 1600/2000 cal
+      xp: 25,
+      completed: false,
+      currentValue: 1600,
+      targetValue: 2000,
+      unit: 'cal',
     ),
     DailyGoal(
       id: 'workout',
-      label: 'Séance de sport',
-      progress: 100,
+      label: 'Faire une séance aujourd\'hui',
+      progress: 100, // 1/1 séance
       xp: 30,
       completed: true,
-    ),
-    DailyGoal(
-      id: 'meditation',
-      label: '10 min de méditation',
-      progress: 40,
-      xp: 20,
-      completed: false,
-      isPremium: true,
+      currentValue: 1,
+      targetValue: 1,
+      unit: '',
     ),
   ];
 
   // Actions rapides selon le profil utilisateur
   static List<QuickAction> getQuickActions(UserProfile profile) {
     return [
-      QuickAction(
-        id: 'scan_meal',
-        label: 'Scanner un repas',
-        icon: (!profile.isPremium && profile.photosUsed >= 3) 
-            ? LucideIcons.lock 
-            : LucideIcons.camera,
-        reward: (!profile.isPremium && profile.photosUsed >= 3) ? null : '+5',
-        isDisabled: !profile.isPremium && profile.photosUsed >= 3,
-        isPremiumRequired: !profile.isPremium && profile.photosUsed >= 3,
+      const QuickAction(
+        id: 'add_meal',
+        label: 'Ajouter un plat',
+        icon: LucideIcons.utensils,
       ),
       const QuickAction(
         id: 'add_water',
         label: 'Ajouter de l\'eau',
         icon: LucideIcons.droplets,
-        reward: '+2',
+      ),
+      QuickAction(
+        id: 'take_photo',
+        label: 'Prendre une photo',
+        icon: (!profile.isPremium && profile.photosUsed >= 3) 
+            ? LucideIcons.lock 
+            : LucideIcons.camera,
+        isDisabled: !profile.isPremium && profile.photosUsed >= 3,
+        isPremiumRequired: !profile.isPremium && profile.photosUsed >= 3,
       ),
       const QuickAction(
-        id: 'log_workout',
-        label: 'Séance de sport',
+        id: 'cardio',
+        label: 'Cardio',
+        icon: LucideIcons.activity,
+      ),
+      const QuickAction(
+        id: 'musculation',
+        label: 'Musculation',
         icon: LucideIcons.dumbbell,
-        reward: '+10',
       ),
       const QuickAction(
-        id: 'daily_checkin',
-        label: 'Check-in quotidien',
-        icon: LucideIcons.checkCircle,
-        reward: '+5',
-      ),
-      const QuickAction(
-        id: 'body_metrics',
-        label: 'Poids & mesures',
+        id: 'weight_tracking',
+        label: 'Poids',
         icon: LucideIcons.scale,
-        reward: '+3',
       ),
     ];
   }

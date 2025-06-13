@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../models/nutrition_models.dart';
 
 class EditableFoodDetailsBottomSheet {
@@ -207,7 +207,7 @@ class _EditableFoodDetailsContentState extends State<_EditableFoodDetailsContent
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: const Icon(
-                            LucideIcons.edit3,
+                            LucideIcons.pencil,
                             size: 12,
                             color: Color(0xFF0B132B),
                           ),
@@ -255,7 +255,7 @@ class _EditableFoodDetailsContentState extends State<_EditableFoodDetailsContent
                                 margin: const EdgeInsets.only(left: 8),
                                 padding: const EdgeInsets.all(4),
                                 child: const Icon(
-                                  LucideIcons.edit3,
+                                  LucideIcons.pencil,
                                   size: 14,
                                   color: Color(0xFF64748B),
                                 ),

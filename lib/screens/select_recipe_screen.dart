@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'recipe_details_screen.dart';
 import '../components/ui/recipe_models.dart';
 import '../components/ui/recipe_widgets.dart';

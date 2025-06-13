@@ -371,31 +371,40 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     
     final key = _getSetKey(setIndex);
     
-    // Première tentative immédiate
+    // Animation fluide immédiate
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _performScroll(key);
     });
     
-    // Deuxième tentative après un délai pour s'assurer que le clavier est apparu
-    Timer(const Duration(milliseconds: 300), () {
+    // Scroll de précision après que le clavier soit stabilisé
+    Timer(const Duration(milliseconds: 100), () {
+      _performScroll(key);
+    });
+    
+    // Scroll final pour s'assurer de la bonne position
+    Timer(const Duration(milliseconds: 250), () {
       _performScroll(key);
     });
   }
   
   void _onFieldFocusChanged(int setIndex, bool hasFocus) {
     if (hasFocus) {
-      setState(() {
-        _activeSetIndex = setIndex;
-      });
+      if (_activeSetIndex != setIndex) {
+        setState(() {
+          _activeSetIndex = setIndex;
+        });
+      }
     } else {
-      // Ne pas réinitialiser immédiatement car l'autre champ de la même série peut prendre le focus
-      Timer(const Duration(milliseconds: 100), () {
-        final weightFocus = _getWeightFocusNode(setIndex);
-        final repsFocus = _getRepsFocusNode(setIndex);
-        if (!weightFocus.hasFocus && !repsFocus.hasFocus && _activeSetIndex == setIndex) {
-          setState(() {
-            _activeSetIndex = null;
-          });
+      // Délai plus court pour une réaction plus fluide
+      Timer(const Duration(milliseconds: 50), () {
+        if (mounted) {
+          final weightFocus = _getWeightFocusNode(setIndex);
+          final repsFocus = _getRepsFocusNode(setIndex);
+          if (!weightFocus.hasFocus && !repsFocus.hasFocus && _activeSetIndex == setIndex) {
+            setState(() {
+              _activeSetIndex = null;
+            });
+          }
         }
       });
     }
@@ -406,25 +415,25 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
       try {
         Scrollable.ensureVisible(
           key.currentContext!,
-          duration: const Duration(milliseconds: 400),
-          curve: Curves.easeInOut,
-          alignment: 0.3, // Positionner le champ vers le haut de l'écran visible
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOutCubic,
+          alignment: 0.25, // Positionner le champ vers le haut de l'écran visible
         );
       } catch (e) {
-        // En cas d'erreur, essayer avec le scroll controller directement
+        // En cas d'erreur, scroll avec animation fluide
         final RenderBox? box = key.currentContext?.findRenderObject() as RenderBox?;
         if (box != null) {
           final position = box.localToGlobal(Offset.zero);
           final screenHeight = MediaQuery.of(context).size.height;
           final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
-          final availableHeight = screenHeight - keyboardHeight - 200; // Marge de sécurité
+          final availableHeight = screenHeight - keyboardHeight - 180; // Marge optimisée
           
           if (position.dy > availableHeight) {
-            final scrollOffset = position.dy - availableHeight + 100; // Scroll un peu plus pour avoir de la marge
+            final scrollOffset = position.dy - availableHeight + 80; // Scroll précis
             _scrollController.animateTo(
               _scrollController.offset + scrollOffset,
-              duration: const Duration(milliseconds: 400),
-              curve: Curves.easeInOut,
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeOutCubic,
             );
           }
         }
@@ -1092,162 +1101,162 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
           ),
           child: CustomScrollbar(
             child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Icône de succès
-                Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                        color: const Color(0xFF10B981).withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    LucideIcons.check,
-                    size: 32,
-                    color: Color(0xFF10B981),
-                  ),
-                ),
-                
-                const SizedBox(height: 16),
-                
-                    const Text(
-                  'Séance terminée !',
-                      style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1A1A1A),
-                  ),
-                ),
-                
-                const SizedBox(height: 8),
-                
-                    const Text(
-                  'Excellent travail ! Voici le résumé de votre séance.',
-                      style: TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF64748B),
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                
-                const SizedBox(height: 24),
-                
-                // Métriques
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                  ),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildSummaryMetric(
-                              'Durée',
-                              _formatDuration(_sessionDuration),
-                              LucideIcons.clock,
-                            ),
-                          ),
-                          Container(
-                            width: 1,
-                            height: 40,
-                            color: const Color(0xFFE2E8F0),
-                          ),
-                          Expanded(
-                            child: _buildSummaryMetric(
-                              'Exercices',
-                              '${_exercises.length}',
-                              LucideIcons.dumbbell,
-                            ),
-                          ),
-                        ],
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Icône de succès
+                    Container(
+                      width: 64,
+                      height: 64,
+                      decoration: BoxDecoration(
+                            color: const Color(0xFF10B981).withOpacity(0.1),
+                        shape: BoxShape.circle,
                       ),
-                      
-                      const SizedBox(height: 16),
-                      const Divider(height: 1, color: Color(0xFFE2E8F0)),
-                      const SizedBox(height: 16),
-                      
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildSummaryMetric(
-                              'Séries',
-                              '$_completedSets/$_totalSets',
-                              LucideIcons.repeat,
-                            ),
-                          ),
-                          Container(
-                            width: 1,
-                            height: 40,
-                            color: const Color(0xFFE2E8F0),
-                          ),
-                          Expanded(
-                            child: _buildSummaryMetric(
-                              'Volume',
-                              '${_totalWeight.toStringAsFixed(0)} kg',
-                              LucideIcons.activity,
-                            ),
-                          ),
-                        ],
+                      child: const Icon(
+                        LucideIcons.check,
+                        size: 32,
+                        color: Color(0xFF10B981),
                       ),
-                      
-                      const SizedBox(height: 16),
-                      const Divider(height: 1, color: Color(0xFFE2E8F0)),
-                      const SizedBox(height: 16),
-                      
-                      _buildSummaryMetric(
-                        'Calories',
-                        '$_estimatedCalories kcal',
-                        LucideIcons.flame,
-                      ),
-                    ],
-                  ),
-                ),
-                
-                const SizedBox(height: 24),
-                
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context); // Fermer dialog
-                      
-                      // Toujours valider la session d'abord
-                      _validateSession();
-                      
-                      // Afficher le popup de sauvegarde avant de retourner (séances manuelles uniquement)
-                      if (!widget.isFromProgram && _exercises.isNotEmpty) {
-                        _showSaveSessionDialog();
-                      } else {
-                        Navigator.pop(context); // Retourner à la musculation
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0B132B),
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 0,
                     ),
-                    child: const Text(
-                      'Terminer la séance',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
+                    
+                    const SizedBox(height: 16),
+                    
+                        const Text(
+                      'Séance terminée !',
+                          style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1A1A1A),
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 8),
+                    
+                        const Text(
+                      'Excellent travail ! Voici le résumé de votre séance.',
+                          style: TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF64748B),
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    
+                    const SizedBox(height: 24),
+                    
+                    // Métriques
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
                         color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildSummaryMetric(
+                                  'Durée',
+                                  _formatDuration(_sessionDuration),
+                                  LucideIcons.clock,
+                                ),
+                              ),
+                              Container(
+                                width: 1,
+                                height: 40,
+                                color: const Color(0xFFE2E8F0),
+                              ),
+                              Expanded(
+                                child: _buildSummaryMetric(
+                                  'Exercices',
+                                  '${_exercises.length}',
+                                  LucideIcons.dumbbell,
+                                ),
+                              ),
+                            ],
+                          ),
+                          
+                          const SizedBox(height: 16),
+                          const Divider(height: 1, color: Color(0xFFE2E8F0)),
+                          const SizedBox(height: 16),
+                          
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildSummaryMetric(
+                                  'Séries',
+                                  '$_completedSets/$_totalSets',
+                                  LucideIcons.repeat,
+                                ),
+                              ),
+                              Container(
+                                width: 1,
+                                height: 40,
+                                color: const Color(0xFFE2E8F0),
+                              ),
+                              Expanded(
+                                child: _buildSummaryMetric(
+                                  'Volume',
+                                  '${_totalWeight.toStringAsFixed(0)} kg',
+                                  LucideIcons.activity4,
+                                ),
+                              ),
+                            ],
+                          ),
+                          
+                          const SizedBox(height: 16),
+                          const Divider(height: 1, color: Color(0xFFE2E8F0)),
+                          const SizedBox(height: 16),
+                          
+                          _buildSummaryMetric(
+                            'Calories',
+                            '$_estimatedCalories kcal',
+                            LucideIcons.flame,
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-                ),
-              ],
+                    
+                    const SizedBox(height: 24),
+                    
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context); // Fermer dialog
+                          
+                          // Toujours valider la session d'abord
+                          _validateSession();
+                          
+                          // Afficher le popup de sauvegarde avant de retourner (séances manuelles uniquement)
+                          if (!widget.isFromProgram && _exercises.isNotEmpty) {
+                            _showSaveSessionDialog();
+                          } else {
+                            Navigator.pop(context); // Retourner à la musculation
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF0B132B),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: const Text(
+                          'Terminer la séance',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -1358,7 +1367,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                       ),
                     ),
                   ),
-                ],
+
                 ),
               ),
 
@@ -1475,7 +1484,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                       ),
                     ),
                   ),
-                ],
+
               ),
 
               const SizedBox(height: 12),
@@ -1613,53 +1622,56 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                       Expanded(
           child: NotificationListener<ScrollNotification>(
             onNotification: (notification) => true,
-            child: SingleChildScrollView(
-              controller: _scrollController,
-              physics: const BouncingScrollPhysics(),
+            child: AnimatedPadding(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeOutCubic,
               padding: EdgeInsets.only(
                 left: 24,
                 right: 24,
                 bottom: MediaQuery.of(context).viewInsets.bottom + 120,
               ),
-              child: Column(
-                children: [
-                  // Séries
-                  ...List.generate(
-                    _getDisplayedSetsCount(),
-                    (index) => Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: _buildSetBubbleWithFocus(index),
+              child: SingleChildScrollView(
+                controller: _scrollController,
+                physics: const BouncingScrollPhysics(),
+                child: Column(
+                  children: [
+                    // Séries
+                    ...List.generate(
+                      _getDisplayedSetsCount(),
+                      (index) => Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: _buildSetBubbleWithFocus(index),
+                      ),
                     ),
-                  ),
-                  
-                  const SizedBox(height: 24),
-                  
-                  // Boutons en bas dans la partie scrollable
-                  Column(
-                    children: [
-                      // Ligne des boutons série et exercice
-                      Row(
-                        children: [
-                          // Bouton ajouter série
-                          Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: _addNewSet,
-                              icon: Icon(
-                            LucideIcons.plus,
-                                size: 16,
-                                color: _addSeriePressed 
-                                    ? Colors.white
-                                    : Colors.white,
-                              ),
-                              label: Text(
-                                'Série',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
+                    
+                    const SizedBox(height: 24),
+                    
+                    // Boutons en bas dans la partie scrollable
+                    Column(
+                      children: [
+                        // Ligne des boutons série et exercice
+                        Row(
+                          children: [
+                            // Bouton ajouter série
+                            Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: _addNewSet,
+                                icon: Icon(
+                              LucideIcons.plus,
+                                  size: 16,
                                   color: _addSeriePressed 
                                       ? Colors.white
                                       : Colors.white,
                             ),
+                                label: Text(
+                              'Série',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                                color: _addSeriePressed 
+                                    ? Colors.white
+                                    : Colors.white,
+                          ),
                           ),
                           style: OutlinedButton.styleFrom(
                                 backgroundColor: _addSeriePressed 
@@ -1676,29 +1688,29 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
+                          ),
                         ),
-                      ),
 
-                          const SizedBox(width: 12),
+                            const SizedBox(width: 12),
 
               // Bouton ajouter exercice
                           Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _showAddExerciseDialog,
+                        child: OutlinedButton.icon(
+                          onPressed: _showAddExerciseDialog,
                               icon: Icon(
-                    LucideIcons.plus,
+                            LucideIcons.plus,
                                 size: 16,
                                 color: _addExercisePressed ? Colors.white : Colors.white,
-                  ),
+                          ),
                               label: Text(
                                 'Exercice',
-                    style: TextStyle(
+                            style: TextStyle(
                                   fontSize: 14,
-                      fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w500,
                                   color: _addExercisePressed ? Colors.white : Colors.white,
-                    ),
-                  ),
-                  style: OutlinedButton.styleFrom(
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
                                 backgroundColor: _addExercisePressed 
                                     ? const Color(0xFF0B132B) 
                                     : Colors.white.withOpacity(0.2),
@@ -1709,43 +1721,43 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                                   width: 2
                                 ),
                                 padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
                           ),
                         ],
+                  ),
+
+                          const SizedBox(height: 12),
+
+                          // Bouton terminer séance
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                              onPressed: _showConfirmEndSessionDialog,
+                      style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF0B132B),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                                elevation: 0,
+                      ),
+                      child: const Text(
+                        'Terminer la séance',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+
               ),
 
-                      const SizedBox(height: 12),
-
-                      // Bouton terminer séance
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                          onPressed: _showConfirmEndSessionDialog,
-                  style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF0B132B),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                            elevation: 0,
-                  ),
-                  child: const Text(
-                    'Terminer la séance',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-                ],
               ),
             ),
           ),

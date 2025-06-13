@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'ui/custom_card.dart';
 import '../models/nutrition_models.dart';
 import '../widgets/nutrition/meal_card.dart';
@@ -124,17 +124,13 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
                       child: Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: const Color(0xFF0B132B),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: const Color(0xFFE5E7EB),
-                            width: 1,
-                          ),
                         ),
                         child: const Icon(
-                          LucideIcons.calendar,
+                          LucideIcons.expand,
                           size: 20,
-                          color: Color(0xFF0B132B),
+                          color: Colors.white,
                         ),
                       ),
                     ),
@@ -231,22 +227,12 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
             // Ligne de titre avec icône
             Row(
               children: [
-                Container(
-                  width: 24,
-                  height: 24,
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
-                    ),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    LucideIcons.flame,
-                    size: 12,
-                    color: Colors.white,
-                  ),
+                const Icon(
+                  LucideIcons.flame,
+                  size: 20,
+                  color: Color(0xFF0B132B),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 12),
                 const Text(
                   'Bilan calorique',
                   style: TextStyle(
@@ -370,7 +356,7 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
               
               // ✅ Utilise les widgets factorés
               FoodOptionWidget(
-                icon: LucideIcons.edit3,
+                icon: LucideIcons.pencil,
                 title: 'Saisie manuelle',
                 subtitle: 'Rechercher et ajouter manuellement',
                 onTap: () {

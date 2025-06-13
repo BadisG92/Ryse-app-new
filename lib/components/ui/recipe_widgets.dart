@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'recipe_models.dart';
 import 'recipe_cards.dart';
 
@@ -52,7 +52,7 @@ class RecipeSearchSection extends StatelessWidget {
         IconButton(
           onPressed: onFilterPressed,
           icon: const Icon(
-            LucideIcons.filter,
+            LucideIcons.settings,
             size: 20,
             color: Color(0xFF0B132B),
           ),
