@@ -1,6 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'ui/custom_card.dart';
+import '../screens/cardio_tracking_screen.dart';
+import '../screens/hiit_session_screen.dart';
+import '../models/cardio_session_models.dart';
+import '../models/hiit_models.dart';
+import '../services/workout_service.dart';
+import '../widgets/sport/sport_calendar_view.dart';
+import 'shared/workout_actions.dart';
 
 class SportDashboard extends StatefulWidget {
   const SportDashboard({super.key});
@@ -11,6 +18,7 @@ class SportDashboard extends StatefulWidget {
 
 class _SportDashboardState extends State<SportDashboard>
     with TickerProviderStateMixin {
+  bool showCalendar = false;
   int weeklyCalories = 0;
   int dailyStreak = 7; // Streak en jours pour le bandeau du haut
   int weeklyStreak = 3; // Streak en semaines pour le résumé
@@ -57,17 +65,23 @@ class _SportDashboardState extends State<SportDashboard>
 
   // Données pour le calendrier compact (7 derniers jours)
   final List<Map<String, dynamic>> recentWorkouts = [
-    {"date": "L", "hasWorkout": true, "type": "musculation"},
-    {"date": "M", "hasWorkout": false, "type": null},
-    {"date": "M", "hasWorkout": true, "type": "cardio"},
-    {"date": "J", "hasWorkout": true, "type": "musculation"},
-    {"date": "V", "hasWorkout": false, "type": null},
-    {"date": "S", "hasWorkout": true, "type": "cardio"},
-    {"date": "D", "hasWorkout": false, "type": null},
+    {"date": "L", "hasWorkout": true, "activities": ["musculation"]},
+    {"date": "M", "hasWorkout": false, "activities": []},
+    {"date": "M", "hasWorkout": true, "activities": ["cardio"]},
+    {"date": "J", "hasWorkout": true, "activities": ["musculation", "cardio"]}, // Jour combiné
+    {"date": "V", "hasWorkout": false, "activities": []},
+    {"date": "S", "hasWorkout": true, "activities": ["cardio"]},
+    {"date": "D", "hasWorkout": false, "activities": []},
   ];
 
   @override
   Widget build(BuildContext context) {
+    if (showCalendar) {
+      return SportCalendarView(
+        onBack: () => setState(() => showCalendar = false),
+      );
+    }
+
     const int targetWeeklyCalories = 2000;
     final int avgDailyCalories = (weeklyCalories / 7).round();
 
@@ -105,11 +119,6 @@ class _SportDashboardState extends State<SportDashboard>
             
             // 5. Bloc "Démarrer une activité"
             _buildQuickStart(),
-            
-            const SizedBox(height: 16),
-            
-            // 6. Bloc "Historique complet"
-            _buildCalendarAccess(),
             
             // Padding bottom pour éviter la coupure
             const SizedBox(height: 100),
@@ -278,30 +287,35 @@ class _SportDashboardState extends State<SportDashboard>
                 const Row(
                   children: [
                     Icon(
-                      LucideIcons.calendar,
-                      size: 16,
+                      LucideIcons.activity,
+                      size: 20,
                       color: Color(0xFF0B132B),
                     ),
-                    SizedBox(width: 8),
+                    SizedBox(width: 12),
                     Text(
                       'Séances récentes',
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 16,
                         fontWeight: FontWeight.w600,
                         color: Color(0xFF1A1A1A),
                       ),
                     ),
                   ],
                 ),
-                IconButton(
-                  onPressed: () {
-                    // TODO: Ouvrir la page de calendrier des entraînements
-                  },
-                  icon: const Icon(LucideIcons.calendar),
-                  iconSize: 18,
-                  padding: const EdgeInsets.all(8),
-                  color: const Color(0xFF64748B),
-                  tooltip: 'Voir le calendrier',
+                GestureDetector(
+                  onTap: _openSportCalendar,
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0B132B),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      LucideIcons.expand,
+                      size: 20,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -323,41 +337,10 @@ class _SportDashboardState extends State<SportDashboard>
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8),
-                        gradient: day['hasWorkout']
-                            ? LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: day['type'] == 'musculation'
-                                    ? [const Color(0xFF0B132B), const Color(0xFF1C2951)]
-                                    : [const Color(0xFF0B132B).withOpacity(0.7), const Color(0xFF1C2951).withOpacity(0.7)],
-                              )
-                            : null,
-                        color: day['hasWorkout'] ? null : const Color(0xFFF1F5F9),
-                        border: day['hasWorkout'] ? null : Border.all(color: const Color(0xFFE2E8F0)),
-                        boxShadow: day['hasWorkout']
-                            ? [
-                                BoxShadow(
-                                  color: const Color(0xFF0B132B).withOpacity(0.2),
-                                  blurRadius: 4,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ]
-                            : null,
-                      ),
-                      child: day['hasWorkout']
-                          ? Center(
-                              child: Icon(
-                                day['type'] == 'musculation' ? LucideIcons.dumbbell : LucideIcons.activity,
-                                size: 14,
-                                color: Colors.white,
-                              ),
-                            )
-                          : null,
+                    _buildDashboardSportIcon(
+                      day['activities'] != null 
+                        ? List<String>.from(day['activities']) 
+                        : <String>[]
                     ),
                   ],
                 );
@@ -366,44 +349,108 @@ class _SportDashboardState extends State<SportDashboard>
             
             const SizedBox(height: 16),
             
-            // Légende
+            // Légende format carré comme nutrition
             Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 8,
-                      backgroundColor: const Color(0xFF0B132B),
-                      child: const Icon(LucideIcons.dumbbell, size: 8, color: Colors.white),
-                    ),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'Musculation',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Color(0xFF64748B),
+                // Musculation - Format carré comme nutrition
+                Flexible(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 16,
+                        height: 16,
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+                          ),
+                          borderRadius: BorderRadius.all(Radius.circular(4)),
+                        ),
+                        child: const Icon(
+                          LucideIcons.dumbbell,
+                          size: 8,
+                          color: Colors.white,
+                        ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 6),
+                      const Flexible(
+                        child: Text(
+                          'Musculation',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Color(0xFF888888),
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(width: 24),
-                Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 8,
-                      backgroundColor: const Color(0xFF1C2951),
-                      child: const Icon(LucideIcons.activity, size: 8, color: Colors.white),
-                    ),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'Cardio',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Color(0xFF64748B),
+                // Cardio - Format carré comme nutrition
+                Flexible(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 16,
+                        height: 16,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              const Color(0xFF0B132B).withOpacity(0.7), 
+                              const Color(0xFF1C2951).withOpacity(0.7)
+                            ],
+                          ),
+                          borderRadius: const BorderRadius.all(Radius.circular(4)),
+                        ),
+                        child: const Icon(
+                          LucideIcons.activity,
+                          size: 8,
+                          color: Colors.white,
+                        ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 6),
+                      const Flexible(
+                        child: Text(
+                          'Cardio',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Color(0xFF888888),
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Repos - Format carré comme nutrition
+                Flexible(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 16,
+                        height: 16,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF1F5F9),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                          borderRadius: const BorderRadius.all(Radius.circular(4)),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      const Flexible(
+                        child: Text(
+                          'Repos',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Color(0xFF888888),
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -423,7 +470,7 @@ class _SportDashboardState extends State<SportDashboard>
             const Text(
               'Progression',
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 16,
                 fontWeight: FontWeight.w600,
                 color: Color(0xFF1A1A1A),
               ),
@@ -562,7 +609,7 @@ class _SportDashboardState extends State<SportDashboard>
             const Text(
               'Démarrer une activité',
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 16,
                 fontWeight: FontWeight.w600,
                 color: Color(0xFF1A1A1A),
               ),
@@ -578,7 +625,7 @@ class _SportDashboardState extends State<SportDashboard>
                       right: action == actions.last ? 0 : 16,
                     ),
                     child: GestureDetector(
-                      onTap: () {},
+                      onTap: () => _showActivityBottomSheet(action['label']),
                       child: Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
@@ -645,7 +692,7 @@ class _SportDashboardState extends State<SportDashboard>
                 Text(
                   'Activités du jour',
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 16,
                     fontWeight: FontWeight.w600,
                     color: Color(0xFF1A1A1A),
                   ),
@@ -792,50 +839,370 @@ class _SportDashboardState extends State<SportDashboard>
     );
   }
 
-  Widget _buildCalendarAccess() {
-    return CustomCard(
-      child: Padding(
+
+
+  // Méthodes pour les bottom sheets des activités
+  void _showActivityBottomSheet(String activityType) {
+    if (activityType == 'Musculation') {
+      WorkoutActions.showMusculationBottomSheet(context);
+    } else if (activityType == 'Cardio') {
+      _showCardioBottomSheet();
+    }
+  }
+
+  void _openSportCalendar() {
+    setState(() => showCalendar = true);
+  }
+
+
+
+  void _showCardioBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(24),
+            topRight: Radius.circular(24),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Handle
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE2E8F0),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 24),
+              
+              const Text(
+                'Cardio',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1A1A1A),
+                ),
+              ),
+              
+              const SizedBox(height: 8),
+              
+              const Text(
+                'Choisissez votre activité cardio',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF64748B),
+                ),
+              ),
+              
+              const SizedBox(height: 24),
+              
+              // Grille 2x2 avec les 4 options cardio
+              Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildCardioOption(
+                          icon: LucideIcons.bike,
+                          title: 'Vélo',
+                          onTap: () => _handleCardioSelection('Vélo'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildCardioOption(
+                          icon: LucideIcons.footprints,
+                          title: 'Marche',
+                          onTap: () => _handleCardioSelection('Marche'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildCardioOption(
+                          icon: LucideIcons.zap,
+                          title: 'Course',
+                          onTap: () => _handleCardioSelection('Course'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildCardioOption(
+                          icon: LucideIcons.timer,
+                          title: 'HIIT',
+                          onTap: () => _handleCardioSelection('HIIT'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              
+              const SizedBox(height: 24),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCardioOption({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
         padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: const Color(0xFF0B132B),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: Colors.white, size: 24),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF1A1A1A),
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+
+
+  // Méthodes de navigation pour cardio
+  void _handleCardioSelection(String cardioType) {
+    Navigator.pop(context); // Fermer le bottom sheet
+    
+    if (cardioType == 'HIIT') {
+      _showHIITOptions();
+    } else {
+      // Pour les autres types de cardio, aller directement à l'écran de tracking
+      _startCardioSession(cardioType);
+    }
+  }
+
+  void _showHIITOptions() {
+    // Ici on peut implémenter les options HIIT ou aller directement au HIIT
+    _startHIITSession();
+  }
+
+  void _startCardioSession(String cardioType) {
+    // Déterminer le type d'activité et les paramètres
+    String activityType;
+    String activityTitle;
+    
+    switch (cardioType) {
+      case 'Vélo':
+        activityType = 'bike';
+        activityTitle = 'Vélo';
+        break;
+      case 'Marche':
+        activityType = 'walking';
+        activityTitle = 'Marche';
+        break;
+      case 'Course':
+        activityType = 'running';
+        activityTitle = 'Course';
+        break;
+      default:
+        activityType = 'running';
+        activityTitle = cardioType;
+    }
+    
+    // Afficher les options d'objectif pour l'activité sélectionnée
+    _showCardioObjectiveOptions(activityType, activityTitle);
+  }
+
+  void _startHIITSession() {
+    // Afficher les options HIIT prédéfinies
+    _showHIITWorkoutOptions();
+  }
+
+  void _showCardioObjectiveOptions(String activityType, String activityTitle) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(24),
+            topRight: Radius.circular(24),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Handle
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE2E8F0),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 24),
+              
+              Text(
+                activityTitle,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1A1A1A),
+                ),
+              ),
+              
+              const SizedBox(height: 8),
+              
+              const Text(
+                'Choisissez votre objectif',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF64748B),
+                ),
+              ),
+              
+              const SizedBox(height: 24),
+              
+              // Options d'objectif
+              Column(
+                children: [
+                  _buildObjectiveOption(
+                    icon: LucideIcons.timer,
+                    title: 'Séance libre',
+                    subtitle: 'Pas d\'objectif spécifique',
+                    onTap: () => _startCardioTracking(activityType, activityTitle, 'Séance libre', null),
+                  ),
+                  const SizedBox(height: 12),
+                                     _buildObjectiveOption(
+                     icon: LucideIcons.clock,
+                     title: 'Objectif temps',
+                     subtitle: '30 minutes',
+                     onTap: () => _startCardioTracking(
+                       activityType, 
+                       activityTitle, 
+                       'Objectif temps', 
+                       CardioObjective(
+                         type: 'duration',
+                         activityType: activityType,
+                         formatTitle: 'Objectif temps',
+                         targetDuration: const Duration(minutes: 30),
+                       ),
+                     ),
+                   ),
+                   const SizedBox(height: 12),
+                   _buildObjectiveOption(
+                     icon: LucideIcons.mapPin,
+                     title: 'Objectif distance',
+                     subtitle: '5 km',
+                     onTap: () => _startCardioTracking(
+                       activityType, 
+                       activityTitle, 
+                       'Objectif distance', 
+                       CardioObjective(
+                         type: 'distance',
+                         activityType: activityType,
+                         formatTitle: 'Objectif distance',
+                         targetDistance: 5.0,
+                       ),
+                     ),
+                   ),
+                ],
+              ),
+              
+              const SizedBox(height: 24),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildObjectiveOption({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
         child: Row(
           children: [
             Container(
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    const Color(0xFF0B132B).withOpacity(0.1),
-                    const Color(0xFF1C2951).withOpacity(0.1),
-                  ],
-                ),
+                color: const Color(0xFF0B132B),
+                borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(
-                LucideIcons.calendar,
-                size: 20,
-                color: Color(0xFF0B132B),
-              ),
+              child: Icon(icon, color: Colors.white, size: 20),
             ),
-            
-            const SizedBox(width: 12),
-            
-            const Expanded(
+            const SizedBox(width: 16),
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Historique complet',
-                    style: TextStyle(
+                    title,
+                    style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: Color(0xFF1A1A1A),
                     ),
                   ),
                   Text(
-                    'Voir tous vos entraînements',
-                    style: TextStyle(
+                    subtitle,
+                    style: const TextStyle(
                       fontSize: 12,
                       color: Color(0xFF64748B),
                     ),
@@ -843,40 +1210,336 @@ class _SportDashboardState extends State<SportDashboard>
                 ],
               ),
             ),
-            
-            GestureDetector(
-              onTap: () {},
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: const Color(0xFF0B132B).withOpacity(0.2),
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      LucideIcons.calendar,
-                      size: 16,
-                      color: Color(0xFF0B132B),
-                    ),
-                    SizedBox(width: 8),
-                    Text(
-                      'Voir calendrier',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF0B132B),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+            const Icon(
+              LucideIcons.chevronRight,
+              size: 16,
+              color: Color(0xFF64748B),
             ),
           ],
         ),
       ),
     );
   }
+
+  void _startCardioTracking(String activityType, String activityTitle, String formatTitle, CardioObjective? objective) {
+    Navigator.pop(context); // Fermer le bottom sheet
+    
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CardioTrackingScreen(
+          activityType: activityType,
+          activityTitle: activityTitle,
+          formatTitle: formatTitle,
+          objective: objective,
+        ),
+      ),
+    );
+  }
+
+  void _showHIITWorkoutOptions() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(24),
+            topRight: Radius.circular(24),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Handle
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE2E8F0),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 24),
+              
+              const Text(
+                'HIIT',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1A1A1A),
+                ),
+              ),
+              
+              const SizedBox(height: 8),
+              
+              const Text(
+                'Choisissez votre workout HIIT',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF64748B),
+                ),
+              ),
+              
+              const SizedBox(height: 24),
+              
+              // Liste des workouts HIIT prédéfinis
+              Column(
+                children: HiitWorkouts.predefinedWorkouts.map((workout) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _buildHIITWorkoutOption(workout),
+                  );
+                }).toList(),
+              ),
+              
+              const SizedBox(height: 24),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHIITWorkoutOption(HiitWorkout workout) {
+    return GestureDetector(
+      onTap: () => _startHIITWorkout(workout),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: const Color(0xFF0B132B),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(LucideIcons.zap, color: Colors.white, size: 20),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    workout.title,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1A1A1A),
+                    ),
+                  ),
+                  Text(
+                    workout.description,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF64748B),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              LucideIcons.chevronRight,
+              size: 16,
+              color: Color(0xFF64748B),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _startHIITWorkout(HiitWorkout workout) {
+    Navigator.pop(context); // Fermer le bottom sheet
+    
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => HiitSessionScreen(
+          workout: workout,
+          isFromCustomConfig: false,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDashboardSportIcon(List<String> activities) {
+    const size = 32.0;
+    
+    if (activities.isEmpty) {
+      // Jour de repos
+      return Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          color: const Color(0xFFF1F5F9),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+      );
+    } else if (activities.contains('musculation') && activities.contains('cardio')) {
+      // Les deux activités - Icône combinée
+      return SizedBox(
+        width: size,
+        height: size,
+        child: Stack(
+          children: [
+            // Partie musculation (haut-gauche)
+            ClipPath(
+              clipper: _UpperLeftClipper(),
+              child: Container(
+                width: size,
+                height: size,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  color: const Color(0xFF0B132B),
+                ),
+                child: const Align(
+                  alignment: Alignment(-0.3, -0.3),
+                  child: Icon(
+                    LucideIcons.dumbbell,
+                    size: 12,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+            // Partie cardio (bas-droite)
+            ClipPath(
+              clipper: _LowerRightClipper(),
+              child: Container(
+                width: size,
+                height: size,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      const Color(0xFF0B132B).withOpacity(0.7), 
+                      const Color(0xFF1C2951).withOpacity(0.7)
+                    ],
+                  ),
+                ),
+                child: const Align(
+                  alignment: Alignment(0.3, 0.3),
+                  child: Icon(
+                    LucideIcons.activity,
+                    size: 12,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    } else if (activities.contains('musculation')) {
+      // Musculation seulement
+      return Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF0B132B).withOpacity(0.2),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: const Center(
+          child: Icon(
+            LucideIcons.dumbbell,
+            size: 14,
+            color: Colors.white,
+          ),
+        ),
+      );
+    } else if (activities.contains('cardio')) {
+      // Cardio seulement
+      return Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              const Color(0xFF0B132B).withOpacity(0.7), 
+              const Color(0xFF1C2951).withOpacity(0.7)
+            ],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF0B132B).withOpacity(0.2),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: const Center(
+          child: Icon(
+            LucideIcons.activity,
+            size: 14,
+            color: Colors.white,
+          ),
+        ),
+      );
+    }
+
+    return Container(); // Fallback
+  }
+}
+
+// Clippers pour les icônes combinées dans le dashboard
+class _UpperLeftClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    final path = Path();
+    path.moveTo(0, 0);
+    path.lineTo(size.width, 0);
+    path.lineTo(0, size.height);
+    path.close();
+    return path;
+  }
+
+  @override
+  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
+}
+
+class _LowerRightClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    final path = Path();
+    path.moveTo(size.width, 0);
+    path.lineTo(size.width, size.height);
+    path.lineTo(0, size.height);
+    path.close();
+    return path;
+  }
+
+  @override
+  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
 } 

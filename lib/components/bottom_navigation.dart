@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'dart:ui';
 
 class BottomNavigation extends StatelessWidget {
@@ -15,7 +15,7 @@ class BottomNavigation extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tabs = [
-      {'id': 'home', 'label': 'Accueil', 'icon': LucideIcons.home},
+      {'id': 'home', 'label': 'Accueil', 'icon': LucideIcons.house},
       {'id': 'nutrition', 'label': 'Nutrition', 'icon': LucideIcons.apple},
       {'id': 'sport', 'label': 'Sport', 'icon': LucideIcons.dumbbell},
       {'id': 'progress', 'label': 'Progrès', 'icon': LucideIcons.trendingUp},

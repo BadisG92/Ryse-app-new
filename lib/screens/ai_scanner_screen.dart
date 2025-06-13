@@ -1,8 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+import '../bottom_sheets/editable_food_details_bottom_sheet.dart';
+import '../bottom_sheets/meal_selection_bottom_sheet.dart';
+import '../bottom_sheets/new_meal_type_bottom_sheet.dart';
+import '../models/nutrition_models.dart';
+import '../components/ui/nutrition_widgets.dart';
 
 class AIScannerScreen extends StatefulWidget {
-  const AIScannerScreen({super.key});
+  final bool isFromDashboard;
+  
+  const AIScannerScreen({
+    super.key,
+    this.isFromDashboard = false,
+  });
 
   @override
   State<AIScannerScreen> createState() => _AIScannerScreenState();
@@ -302,13 +312,28 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: () {
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Aliments ajoutés au repas'),
-                          backgroundColor: Color(0xFF0B132B),
-                        ),
-                      );
+                      // Si on vient du dashboard, déclencher la sélection de repas
+                      if (widget.isFromDashboard) {
+                        // Créer un FoodItem représentant tous les aliments détectés
+                        final allFoods = FoodItem(
+                          name: 'Aliments détectés', // Nom générique pour tous les aliments
+                          calories: 361, // Total des calories des aliments détectés (206+130+25)
+                          portion: 'Plat complet',
+                        );
+                        
+                        // Fermer l'écran actuel et ouvrir la sélection de repas
+                        Navigator.pop(context);
+                        _handleDashboardFoodValidation(allFoods);
+                      } else {
+                        // Flux normal du journal
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Aliments ajoutés au repas'),
+                            backgroundColor: Color(0xFF0B132B),
+                          ),
+                        );
+                      }
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF0B132B),
@@ -439,7 +464,7 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
                 color: Colors.transparent,
               ),
               child: const Icon(
-                LucideIcons.edit,
+                LucideIcons.pencil,
                 size: 16,
                 color: Color(0xFF64748B),
               ),
@@ -451,313 +476,36 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
   }
 
   void _editDetectedFood(String name, int baseCalories, String currentQuantity) {
-    final quantityController = TextEditingController(
-      text: currentQuantity.replaceAll('g', ''),
-    );
+    final quantity = double.tryParse(currentQuantity.replaceAll('g', '')) ?? 100;
+    final calories = (baseCalories * quantity / 100).round();
+    
+    // Calcul des macronutriments (valeurs approximatives basées sur les calories)
+    final protein = (calories * 0.15 / 4); // 15% des calories en protéines
+    final carbs = (calories * 0.55 / 4); // 55% des calories en glucides  
+    final fat = (calories * 0.30 / 9); // 30% des calories en lipides
 
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
-          ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: StatefulBuilder(
-            builder: (context, setModalState) {
-              final quantity = double.tryParse(quantityController.text) ?? 100;
-              final calories = (baseCalories * quantity / 100).round();
-              
-              // Calcul des macronutriments (valeurs approximatives basées sur les calories)
-              final protein = (calories * 0.15 / 4); // 15% des calories en protéines
-              final carbs = (calories * 0.55 / 4); // 55% des calories en glucides  
-              final fat = (calories * 0.30 / 9); // 30% des calories en lipides
-
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Handle bar
-                  Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE5E5E5),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 20),
-                  
-                  // Header
-                  Row(
-                    children: [
-                      GestureDetector(
-                        onTap: () => Navigator.pop(context),
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
-                            color: Colors.transparent,
-                          ),
-                          child: const Icon(
-                            LucideIcons.chevronLeft,
-                            size: 20,
-                            color: Color(0xFF0B132B),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Text(
-                          name,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF1A1A1A),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  
-                  const SizedBox(height: 24),
-                  
-                  // Informations nutritionnelles (UNE SEULE boîte comme dans le manuel)
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF8F9FA),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: const Color(0xFFE5E7EB),
-                        width: 1,
-                      ),
-                    ),
-                    child: Column(
-                      children: [
-                        // Calories en premier (style mis en valeur)
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'Calories',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
-                                color: Color(0xFF1A1A1A),
-                              ),
-                            ),
-                            Text(
-                              '$calories kcal',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF0B132B),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        // Protéines
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'Protéines',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Color(0xFF64748B),
-                              ),
-                            ),
-                            Text(
-                              '${protein.toStringAsFixed(1)}g',
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: Color(0xFF1A1A1A),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        // Glucides
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'Glucides',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Color(0xFF64748B),
-                              ),
-                            ),
-                            Text(
-                              '${carbs.toStringAsFixed(1)}g',
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: Color(0xFF1A1A1A),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        // Lipides
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'Lipides',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Color(0xFF64748B),
-                              ),
-                            ),
-                            Text(
-                              '${fat.toStringAsFixed(1)}g',
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: Color(0xFF1A1A1A),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 20),
-                  
-                  // Quantité (boîte séparée)
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF8F9FA),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: const Color(0xFFE5E7EB),
-                        width: 1,
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Quantité',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF1A1A1A),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: quantityController,
-                                decoration: const InputDecoration(
-                                  border: OutlineInputBorder(),
-                                  contentPadding: EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 8,
-                                  ),
-                                ),
-                                keyboardType: TextInputType.number,
-                                onChanged: (value) {
-                                  setModalState(() {});
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            const Text(
-                              'grammes',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Color(0xFF64748B),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 24),
-                  
-                  // Boutons d'action
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => Navigator.pop(context),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            side: const BorderSide(
-                              color: Color(0xFF0B132B),
-                              width: 1,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: const Text(
-                            'Annuler',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                              color: Color(0xFF0B132B),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () {
-                            Navigator.pop(context); // Fermer l'édition
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('$name modifié (${quantity.toStringAsFixed(0)}g)'),
-                                backgroundColor: const Color(0xFF0B132B),
-                              ),
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF0B132B),
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: const Text(
-                            'Confirmer',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              );
-            },
-          ),
-        ),
-      ),
+    EditableFoodDetailsBottomSheet.show(
+      context,
+      name: name,
+      calories: calories,
+      proteins: protein,
+      glucides: carbs,
+      lipides: fat,
+      quantity: quantity,
+      isModified: false,
+      // Utiliser onFoodSaved au lieu de onFoodAdded pour juste enregistrer les modifications
+      onFoodSaved: (foodItem) {
+        // Ne rien faire - l'aliment est juste enregistré, pas ajouté au repas
+        // L'ajout se fera via le bouton "Ajouter tous les aliments"
+        print('Aliment ${foodItem.name} enregistré avec modifications');
+      },
     );
+  }
+
+  void _handleDashboardFoodValidation(FoodItem foodItem) {
+    // Utiliser la même logique que le journal - afficher directement la sélection de repas
+    // Ne PAS faire Navigator.pop car ça casse le contexte
+    NutritionQuickActionsSection.handleDashboardFoodCreation(context, foodItem);
   }
 
   void _takePicture() async {

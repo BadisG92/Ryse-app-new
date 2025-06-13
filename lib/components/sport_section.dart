@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'sport_dashboard.dart';
-import 'sport_cardio.dart';
-import 'sport_musculation.dart';
+import 'sport_cardio_hybrid.dart';
+import 'sport_musculation_hybrid.dart';
 
 class SportSection extends StatefulWidget {
   const SportSection({super.key});
@@ -19,7 +20,7 @@ class _SportSectionState extends State<SportSection>
 
   final List<String> _pageNames = ['Tableau de bord', 'Cardio', 'Musculation'];
   final List<IconData> _pageIcons = [
-    LucideIcons.pieChart,
+    LucideIcons.activity,
     LucideIcons.activity,
     LucideIcons.dumbbell,
   ];
@@ -70,8 +71,8 @@ class _SportSectionState extends State<SportSection>
                 onPageChanged: _onPageChanged,
                 children: const [
                   SportDashboard(),
-                  SportCardio(),
-                  SportMusculation(),
+                  SportCardioHybrid(),
+                  SportMusculationHybrid(),
                 ],
               ),
             ),
@@ -111,7 +112,7 @@ class _SportSectionState extends State<SportSection>
                 _buildBannerSeparator(),
                 _buildBannerItem(LucideIcons.target, '4/5 objectifs'),
                 _buildBannerSeparator(),
-                _buildBannerItem(LucideIcons.dumbbell, 'Sport'),
+                _buildBannerItemWithLogo('Sport'),
               ],
             ),
           ),
@@ -209,6 +210,28 @@ class _SportSectionState extends State<SportSection>
     return const Padding(
       padding: EdgeInsets.symmetric(horizontal: 8),
       child: Text('•', style: TextStyle(color: Colors.white60, fontSize: 14)),
+    );
+  }
+
+  Widget _buildBannerItemWithLogo(String text) {
+    return Row(
+      children: [
+        SvgPicture.asset(
+          'assets/images/logo_seul.svg',
+          width: 16,
+          height: 16,
+          fit: BoxFit.contain,
+          colorFilter: const ColorFilter.mode(
+            Colors.white,
+            BlendMode.srcIn,
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          text,
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14),
+        ),
+      ],
     );
   }
 } 
