@@ -74,11 +74,11 @@ class MetabolicCalculations {
     final bmr = calculateBMR(profile);
     if (bmr == 0 || profile.activity.isEmpty) return 0;
 
-    // Facteur d'activité
+    // Facteur d'activité - synchronisé avec dashboard_models.dart
     final activityFactors = {
-      'low': 1.2,      // 0-2 jours
-      'moderate': 1.55, // 3-5 jours
-      'high': 1.8,     // 6+ jours
+      'low': 1.2,      // Peu actif (0-2 jours par semaine)
+      'moderate': 1.55, // Modérément actif (3-5 jours par semaine)
+      'high': 1.8,     // Très actif (6+ jours par semaine)
     };
 
     return bmr * (activityFactors[profile.activity] ?? 1.2);

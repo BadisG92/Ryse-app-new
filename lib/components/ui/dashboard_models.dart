@@ -185,18 +185,16 @@ class MetabolicCalculator {
     }
   }
 
-  // Facteurs d'activité
+  // Facteurs d'activité - synchronisé avec le frontend
   static const Map<String, double> activityFactors = {
-    'sedentary': 1.2,
-    'light': 1.375,
-    'moderate': 1.55,
-    'very': 1.725,
-    'extra': 1.9,
+    'low': 1.2,        // Peu actif (0-2 jours par semaine)
+    'moderate': 1.55,   // Modérément actif (3-5 jours par semaine)
+    'high': 1.8,       // Très actif (6+ jours par semaine)
   };
 
   // Calcul TDEE
   static double calculateTDEE(double bmr, String activityLevel) {
-    return bmr * (activityFactors[activityLevel] ?? 1.2);
+    return bmr * (activityFactors[activityLevel] ?? activityFactors['low']!);
   }
 
   // Calcul objectif journalier selon le but
@@ -214,8 +212,6 @@ class MetabolicCalculator {
     switch (goal) {
       case 'lose':
         return (tdee - 500).round();
-      case 'lose_fast':
-        return (tdee - 750).round();
       case 'maintain':
         return tdee.round();
       case 'gain':
