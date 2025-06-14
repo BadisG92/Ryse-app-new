@@ -1,0 +1,11 @@
+# Task ID: 1
+# Title: Setup Supabase Database
+# Status: pending
+# Dependencies: None
+# Priority: high
+# Description: Configure Supabase with all necessary tables for users, foods, recipes, exercises, and HIIT sessions.
+# Details:
+Create PostgreSQL tables in Supabase for users, foods, recipes, exercises, and HIIT sessions. Ensure tables are optimized for growth and include necessary fields for authentication, nutrition, and exercise data.
+
+# Test Strategy:
+Verify table creation and data integrity by inserting test data and checking retrieval operations.
