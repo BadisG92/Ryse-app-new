@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  postgres-perf:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: ryze_performance_test
+      POSTGRES_USER: ryze_user
+      POSTGRES_PASSWORD: ryze_password
+    ports:
+      - "5433:5432"
+    command: postgres -c max_connections=200 -c shared_buffers=256MB
+
+  redis-perf:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+    command: redis-server --maxmemory 512mb --maxmemory-policy allkeys-lru

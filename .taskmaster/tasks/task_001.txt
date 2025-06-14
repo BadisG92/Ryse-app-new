@@ -1,6 +1,6 @@
 # Task ID: 1
 # Title: Setup Supabase Database
-# Status: pending
+# Status: done
 # Dependencies: None
 # Priority: high
 # Description: Configure Supabase with all necessary tables for users, foods, recipes, exercises, and HIIT sessions.

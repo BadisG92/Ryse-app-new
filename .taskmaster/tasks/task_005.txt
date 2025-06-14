@@ -1,6 +1,6 @@
 # Task ID: 5
 # Title: Develop Nutrition Module APIs
-# Status: pending
+# Status: done
 # Dependencies: 2, 4
 # Priority: medium
 # Description: Create APIs for managing the nutrition module, including food journals, searches, and barcode scanning.

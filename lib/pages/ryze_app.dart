@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
 import '../components/onboarding_gamified_hybrid.dart';
 import '../components/main_app.dart';
+import '../services/auth_service.dart';
+import '../screens/auth/login_screen.dart';
 
 class RyzeApp extends StatefulWidget {
   const RyzeApp({super.key});
@@ -55,10 +58,21 @@ class _RyzeAppState extends State<RyzeApp> {
       );
     }
 
-    if (!_isOnboarded) {
-      return OnboardingGamifiedHybrid(onComplete: _completeOnboarding);
-    }
+    return Consumer<AuthService>(
+      builder: (context, authService, child) {
+        // If user is not authenticated, show login screen
+        if (!authService.isAuthenticated) {
+          return const LoginScreen();
+        }
 
-    return const MainApp();
+        // If user is authenticated but hasn't completed onboarding
+        if (!_isOnboarded) {
+          return OnboardingGamifiedHybrid(onComplete: _completeOnboarding);
+        }
+
+        // User is authenticated and onboarded, show main app
+        return const MainApp();
+      },
+    );
   }
 } 

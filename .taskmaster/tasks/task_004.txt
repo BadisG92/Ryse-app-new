@@ -1,6 +1,6 @@
 # Task ID: 4
 # Title: Import Initial Data Sets
-# Status: pending
+# Status: done
 # Dependencies: 1
 # Priority: medium
 # Description: Import initial data sets for foods, recipes, and exercises into the Supabase database.

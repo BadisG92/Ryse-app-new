@@ -1,0 +1,29 @@
+# Requirements for Ryze App Data Import Scripts
+# Install with: pip install -r requirements-import.txt
+
+# Supabase Python client
+supabase==2.3.4
+
+# HTTP client (dependency of supabase)
+httpx>=0.24.0
+
+# PostgreSQL adapter (optional, for direct DB access)
+psycopg2-binary>=2.9.0
+
+# Data manipulation (optional, for advanced data processing)
+pandas>=2.0.0
+
+# Progress bars (optional, for better UX)
+tqdm>=4.65.0
+
+# JSON handling (built-in, but explicit for clarity)
+# json - built-in module
+
+# Date/time handling (built-in)
+# datetime - built-in module
+
+# Async support (built-in in Python 3.7+)
+# asyncio - built-in module
+
+# Type hints (built-in in Python 3.5+)
+# typing - built-in module 

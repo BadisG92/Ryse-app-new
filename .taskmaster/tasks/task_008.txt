@@ -1,6 +1,6 @@
 # Task ID: 8
 # Title: Develop Custom Content Features
-# Status: pending
+# Status: done
 # Dependencies: 5, 6
 # Priority: medium
 # Description: Allow users to create and manage custom foods and exercises with community sharing options.

@@ -1,6 +1,6 @@
 # Task ID: 2
 # Title: Develop FastAPI Base APIs
-# Status: pending
+# Status: done
 # Dependencies: 1
 # Priority: high
 # Description: Implement base APIs using FastAPI for user authentication, nutrition, and exercise management.
