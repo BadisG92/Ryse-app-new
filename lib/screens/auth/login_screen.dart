@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
@@ -97,17 +98,41 @@ class _LoginScreenState extends State<LoginScreen> {
                   // Logo and Welcome Text
                   Column(
                     children: [
+                      // Logo Ryze propre et centré (même style que l'onboarding)
                       Container(
-                        width: 80,
-                        height: 80,
+                        width: 120,
+                        height: 120,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF0B132B),
-                          borderRadius: BorderRadius.circular(20),
+                          shape: BoxShape.circle,
+                          color: const Color(0xFF0B132B), // Bleu principal de l'app
+                          boxShadow: [
+                            // Ombre principale plus douce
+                            BoxShadow(
+                              color: const Color(0xFF0B132B).withOpacity(0.15),
+                              blurRadius: 24,
+                              spreadRadius: 0,
+                              offset: const Offset(0, 8),
+                            ),
+                            // Ombre secondaire pour plus de profondeur
+                            BoxShadow(
+                              color: const Color(0xFF0B132B).withOpacity(0.08),
+                              blurRadius: 12,
+                              spreadRadius: -2,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
                         ),
-                        child: const Icon(
-                          Icons.fitness_center,
-                          color: Colors.white,
-                          size: 40,
+                        child: Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(20),
+                            child: SvgPicture.asset(
+                              'assets/images/logo_seul.svg',
+                              colorFilter: const ColorFilter.mode(
+                                Colors.white,
+                                BlendMode.srcIn,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 24),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:async';
 import 'ui/custom_button.dart';
 import 'ui/onboarding_widgets.dart';
@@ -728,17 +729,56 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
 
   Future<void> _saveUserData() async {
     final prefs = await SharedPreferences.getInstance();
+    final supabase = Supabase.instance.client;
     final profile = UserProfile.fromMap(userData);
     
     // Utilise les calculs factorisés
     final calories = MetabolicCalculations.calculateDailyGoal(profile);
     final macros = MetabolicCalculations.calculateMacros(profile);
+    final bmr = MetabolicCalculations.calculateBMR(profile);
     
-    await prefs.setInt('daily_calories', calories);
-    await prefs.setInt('daily_protein', macros['protein']!);
-    await prefs.setInt('daily_carbs', macros['carbs']!);
-    await prefs.setInt('daily_fat', macros['fat']!);
-    await prefs.setBool('onboarding_completed', true);
+    try {
+      // Construire la date de naissance
+      final birthDate = '${userData['birthYear']}-${userData['birthMonth'].toString().padLeft(2, '0')}-${userData['birthDay'].toString().padLeft(2, '0')}';
+      
+      // Sauvegarder en base de données Supabase
+      await supabase.from('users').update({
+        'gender': userData['gender'],
+        'birth_date': birthDate,
+        'age': int.tryParse(userData['age'] ?? '0'),
+        'height': double.tryParse(userData['height'] ?? '0'),
+        'weight': double.tryParse(userData['weight'] ?? '0'),
+        'is_metric': userData['isMetric'] ?? true,
+        'activity_level': userData['activity'],
+        'fitness_goal': userData['goal'],
+        'obstacles': userData['obstacles'],
+        'dietary_restrictions': userData['restrictions'],
+        'daily_calories': calories,
+        'daily_protein': macros['protein'],
+        'daily_carbs': macros['carbs'],
+        'daily_fat': macros['fat'],
+        'bmr': bmr,
+        'is_onboarded': true,
+        'updated_at': DateTime.now().toIso8601String(),
+      }).eq('id', supabase.auth.currentUser!.id);
+      
+      // Aussi sauvegarder en local pour la compatibilité
+      await prefs.setInt('daily_calories', calories);
+      await prefs.setInt('daily_protein', macros['protein']!);
+      await prefs.setInt('daily_carbs', macros['carbs']!);
+      await prefs.setInt('daily_fat', macros['fat']!);
+      await prefs.setBool('onboarding_completed', true);
+      
+      print('✅ Données d\'onboarding sauvegardées avec succès');
+    } catch (e) {
+      print('❌ Erreur lors de la sauvegarde: $e');
+      // En cas d'erreur, sauvegarder au moins en local
+      await prefs.setInt('daily_calories', calories);
+      await prefs.setInt('daily_protein', macros['protein']!);
+      await prefs.setInt('daily_carbs', macros['carbs']!);
+      await prefs.setInt('daily_fat', macros['fat']!);
+      await prefs.setBool('onboarding_completed', true);
+    }
   }
 
   @override

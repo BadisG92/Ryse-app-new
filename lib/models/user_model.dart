@@ -67,9 +67,9 @@ class UserModel {
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
       id: json['user_id'] ?? json['id'],
-      email: json['email'],
-      firstName: json['first_name'],
-      lastName: json['last_name'],
+      email: json['email'] ?? '',
+      firstName: json['first_name'] ?? '',
+      lastName: json['last_name'] ?? '',
       phoneNumber: json['phone_number'],
       dateOfBirth: json['date_of_birth'] != null 
           ? DateTime.parse(json['date_of_birth']) 

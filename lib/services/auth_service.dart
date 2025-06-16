@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -21,6 +22,7 @@ class AuthService extends ChangeNotifier {
   UserModel? _currentUser;
   bool _isLoading = false;
   String? _errorMessage;
+  bool _disposed = false;
 
   // Getters
   UserModel? get currentUser => _currentUser;
@@ -65,14 +67,6 @@ class AuthService extends ChangeNotifier {
       );
 
       if (response.user != null) {
-        // Create user profile
-        await _createUserProfile(
-          userId: response.user!.id,
-          email: email,
-          firstName: firstName,
-          lastName: lastName,
-        );
-        
         return true;
       }
       return false;
@@ -194,7 +188,7 @@ class AuthService extends ChangeNotifier {
       await _googleSignIn.signOut();
       await _secureStorage.delete(key: 'access_token');
       _currentUser = null;
-      notifyListeners();
+      _safeNotifyListeners();
     } catch (e) {
       _setError('Sign out failed: $e');
     } finally {
@@ -251,9 +245,9 @@ class AuthService extends ChangeNotifier {
       if (fitnessGoal != null) updates['fitness_goal'] = fitnessGoal;
 
       await _supabase
-          .from('user_profiles')
+          .from('users')
           .update(updates)
-          .eq('user_id', _currentUser!.id);
+          .eq('id', _currentUser!.id);
 
       // Update local user model
       _currentUser = _currentUser!.copyWith(
@@ -268,7 +262,7 @@ class AuthService extends ChangeNotifier {
         fitnessGoal: fitnessGoal ?? _currentUser!.fitnessGoal,
       );
 
-      notifyListeners();
+      _safeNotifyListeners();
       return true;
     } catch (e) {
       _setError('Profile update failed: $e');
@@ -286,44 +280,43 @@ class AuthService extends ChangeNotifier {
   /// Private methods
   void _setLoading(bool loading) {
     _isLoading = loading;
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   void _setError(String error) {
     _errorMessage = error;
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   void _clearError() {
     _errorMessage = null;
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
-  Future<void> _createUserProfile({
-    required String userId,
-    required String email,
-    required String firstName,
-    required String lastName,
-  }) async {
-    await _supabase.from('user_profiles').insert({
-      'user_id': userId,
-      'email': email,
-      'first_name': firstName,
-      'last_name': lastName,
-      'created_at': DateTime.now().toIso8601String(),
-      'updated_at': DateTime.now().toIso8601String(),
+  void _safeNotifyListeners() {
+    // Ensure notification happens after the current build cycle
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_disposed) {
+        notifyListeners();
+      }
     });
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
   }
 
   Future<void> _loadUserProfile(String userId) async {
     final response = await _supabase
-        .from('user_profiles')
+        .from('users')
         .select()
-        .eq('user_id', userId)
+        .eq('id', userId)
         .single();
 
     _currentUser = UserModel.fromJson(response);
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   Future<void> _storeTokenSecurely(String? token) async {
