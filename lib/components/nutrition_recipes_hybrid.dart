@@ -25,6 +25,13 @@ class _NutritionRecipesHybridState extends State<NutritionRecipesHybrid> {
   };
 
   @override
+  void initState() {
+    super.initState();
+    // Initialiser les données des recettes
+    RecipeData.initialize();
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
@@ -50,6 +57,7 @@ class _NutritionRecipesHybridState extends State<NutritionRecipesHybrid> {
           // Contenu principal avec carrousel conditionnel
           Expanded(
             child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -104,6 +112,7 @@ class _NutritionRecipesHybridState extends State<NutritionRecipesHybrid> {
   }
 
   void _onRecipeTap(Recipe recipe) {
+    print('🔥 Clic sur recette: ${recipe.name}');
     // Navigation vers les détails de la recette depuis l'onglet recettes
     Navigator.push(
       context,

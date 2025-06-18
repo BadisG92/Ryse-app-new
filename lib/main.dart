@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'config/supabase_config.dart';
 import 'services/auth_service.dart';
+import 'components/ui/recipe_models.dart';
 import 'pages/ryze_app.dart';
 
 void main() async {
@@ -10,6 +11,9 @@ void main() async {
   
   // Initialize Supabase
   await SupabaseConfig.initialize();
+  
+  // Initialize Recipe Data from Supabase (en arrière-plan)
+  RecipeData.initialize();
   
   runApp(const MyApp());
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import '../components/ui/snackbar_utils.dart';
 
 class FoodDetailsBottomSheet {
   static void show(BuildContext context, String name, int calories, int baseWeight) {
@@ -233,11 +234,9 @@ class FoodDetailsBottomSheet {
                     Navigator.pop(context); // Fermer les détails
                     Navigator.pop(context); // Fermer la recherche
                     // TODO: Ajouter l'aliment au repas
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('$name ajouté au repas'),
-                        backgroundColor: const Color(0xFF0B132B),
-                      ),
+                    SnackBarUtils.showSuccessSnackBar(
+                      context,
+                      message: '$name ajouté au repas',
                     );
                   },
                   style: ElevatedButton.styleFrom(

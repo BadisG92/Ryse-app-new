@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../models/nutrition_models.dart';
+import '../components/ui/snackbar_utils.dart';
 
 class EditableFoodDetailsBottomSheet {
   static Future<void> show(
@@ -12,6 +13,8 @@ class EditableFoodDetailsBottomSheet {
     required double lipides,
     required double quantity,
     bool isModified = false,
+    bool isCustomFood = false,
+    String? referenceUnit,
     Function(FoodItem)? onFoodAdded,
     Function(FoodItem)? onFoodSaved,
   }) async {
@@ -27,6 +30,8 @@ class EditableFoodDetailsBottomSheet {
         lipides: lipides,
         quantity: quantity,
         isModified: isModified,
+        isCustomFood: isCustomFood,
+        referenceUnit: referenceUnit,
         onFoodAdded: onFoodAdded,
         onFoodSaved: onFoodSaved,
       ),
@@ -56,6 +61,8 @@ class _EditableFoodDetailsContent extends StatefulWidget {
   final double lipides;
   final double quantity;
   final bool isModified;
+  final bool isCustomFood;
+  final String? referenceUnit;
   final Function(FoodItem)? onFoodAdded;
   final Function(FoodItem)? onFoodSaved; // Nouveau callback pour enregistrer seulement
 
@@ -67,6 +74,8 @@ class _EditableFoodDetailsContent extends StatefulWidget {
     required this.lipides,
     required this.quantity,
     required this.isModified,
+    required this.isCustomFood,
+    this.referenceUnit,
     this.onFoodAdded,
     this.onFoodSaved,
   });
@@ -76,36 +85,63 @@ class _EditableFoodDetailsContent extends StatefulWidget {
 }
 
 class _EditableFoodDetailsContentState extends State<_EditableFoodDetailsContent> {
-  bool _isEditing = false;
+  late TextEditingController _quantityController;
   late TextEditingController _proteinsController;
   late TextEditingController _glucidesController;
   late TextEditingController _lipidesController;
-  late TextEditingController _quantityController;
+  
+  late double _baseQuantity;
+  late double _baseProteins;
+  late double _baseGlucides;
+  late double _baseLipides;
+  
   late int _calculatedCalories;
+  
   bool _isModified = false;
+  bool _hasModifiedMacros = false; // Nouvelle variable pour suivre les modifications de macronutriments
+  bool _isEditing = false;
+  bool _macrosManuallyEdited = false;
+  
+  String _initialProteinsText = '';
+  String _initialGlucidesText = '';
+  String _initialLipidesText = '';
+  String _initialQuantityText = '';
 
   @override
   void initState() {
     super.initState();
-    // Calcul initial des macros à partir des calories (approximation)
-    final proteins = (widget.calories * 0.1 / 4);
-    final glucides = (widget.calories * 0.6 / 4);
-    final lipides = (widget.calories * 0.3 / 9);
+    // Sauvegarder les valeurs de base
+    _baseProteins = widget.proteins;
+    _baseGlucides = widget.glucides;
+    _baseLipides = widget.lipides;
+    _baseQuantity = widget.quantity;
     
-    _proteinsController = TextEditingController(text: proteins.toStringAsFixed(1));
-    _glucidesController = TextEditingController(text: glucides.toStringAsFixed(1));
-    _lipidesController = TextEditingController(text: lipides.toStringAsFixed(1));
-    _quantityController = TextEditingController(text: '100');
+    // Initialiser les contrôleurs avec les valeurs
+    _initialProteinsText = widget.proteins.toStringAsFixed(1);
+    _initialGlucidesText = widget.glucides.toStringAsFixed(1);
+    _initialLipidesText = widget.lipides.toStringAsFixed(1);
+    _initialQuantityText = widget.quantity.toStringAsFixed(widget.quantity.truncateToDouble() == widget.quantity ? 0 : 1);
+    
+    _proteinsController = TextEditingController(text: _initialProteinsText);
+    _glucidesController = TextEditingController(text: _initialGlucidesText);
+    _lipidesController = TextEditingController(text: _initialLipidesText);
+    _quantityController = TextEditingController(text: _initialQuantityText);
     _calculatedCalories = widget.calories;
+    _isModified = widget.isModified;
     
-    // Écouter les changements pour recalculer automatiquement
-    _proteinsController.addListener(_calculateCalories);
-    _glucidesController.addListener(_calculateCalories);
-    _lipidesController.addListener(_calculateCalories);
+    // Ajouter les listeners qui détectent les vrais changements
+    _proteinsController.addListener(_onProteinsChanged);
+    _glucidesController.addListener(_onGlucidesChanged);
+    _lipidesController.addListener(_onLipidesChanged);
+    _quantityController.addListener(_onQuantityChanged);
   }
 
   @override
   void dispose() {
+    _proteinsController.removeListener(_onProteinsChanged);
+    _glucidesController.removeListener(_onGlucidesChanged);
+    _lipidesController.removeListener(_onLipidesChanged);
+    _quantityController.removeListener(_onQuantityChanged);
     _proteinsController.dispose();
     _glucidesController.dispose();
     _lipidesController.dispose();
@@ -113,22 +149,93 @@ class _EditableFoodDetailsContentState extends State<_EditableFoodDetailsContent
     super.dispose();
   }
 
-  void _calculateCalories() {
-    if (!_isEditing) return;
-    
-    final proteins = double.tryParse(_proteinsController.text) ?? 0;
-    final glucides = double.tryParse(_glucidesController.text) ?? 0;
-    final lipides = double.tryParse(_lipidesController.text) ?? 0;
+  void _onProteinsChanged() {
+    if (_proteinsController.text != _initialProteinsText) {
+      _macrosManuallyEdited = true;
+      _calculateCaloriesFromMacros();
+    }
+  }
+
+  void _onGlucidesChanged() {
+    if (_glucidesController.text != _initialGlucidesText) {
+      _macrosManuallyEdited = true;
+      _calculateCaloriesFromMacros();
+    }
+  }
+
+  void _onLipidesChanged() {
+    if (_lipidesController.text != _initialLipidesText) {
+      _macrosManuallyEdited = true;
+      _calculateCaloriesFromMacros();
+    }
+  }
+
+  void _onQuantityChanged() {
+    if (_quantityController.text != _initialQuantityText) {
+      _calculateMacrosFromQuantity();
+    }
+  }
+
+  void _calculateCaloriesFromMacros() {
+    final proteins = double.tryParse(_proteinsController.text.isEmpty ? '0' : _proteinsController.text) ?? 0;
+    final glucides = double.tryParse(_glucidesController.text.isEmpty ? '0' : _glucidesController.text) ?? 0;
+    final lipides = double.tryParse(_lipidesController.text.isEmpty ? '0' : _lipidesController.text) ?? 0;
     
     setState(() {
       _calculatedCalories = ((proteins * 4) + (glucides * 4) + (lipides * 9)).round();
       _isModified = true;
+      _hasModifiedMacros = true; // Marquer que les macronutriments ont été modifiés
+    });
+  }
+
+  void _calculateMacrosFromQuantity() {
+    // Ne pas recalculer si les macros ont été modifiées manuellement
+    if (_macrosManuallyEdited) return;
+    
+    final newQuantity = double.tryParse(_quantityController.text.isEmpty ? '0' : _quantityController.text) ?? _baseQuantity;
+    final ratio = newQuantity / _baseQuantity;
+    
+    setState(() {
+      // Recalculer toutes les valeurs proportionnellement à partir des valeurs de base
+      final newProteins = _baseProteins * ratio;
+      final newGlucides = _baseGlucides * ratio;
+      final newLipides = _baseLipides * ratio;
+      final newCalories = (widget.calories * ratio).round();
+      
+      // Mettre à jour les contrôleurs sans déclencher les listeners
+      _proteinsController.removeListener(_onProteinsChanged);
+      _glucidesController.removeListener(_onGlucidesChanged);
+      _lipidesController.removeListener(_onLipidesChanged);
+      
+      _proteinsController.text = newProteins.toStringAsFixed(1);
+      _glucidesController.text = newGlucides.toStringAsFixed(1);
+      _lipidesController.text = newLipides.toStringAsFixed(1);
+      _calculatedCalories = newCalories;
+      
+      // Remettre les listeners
+      _proteinsController.addListener(_onProteinsChanged);
+      _glucidesController.addListener(_onGlucidesChanged);
+      _lipidesController.addListener(_onLipidesChanged);
+      
+      _isModified = true;
+      // Ne pas marquer _hasModifiedMacros = true ici car c'est juste un changement de quantité
     });
   }
 
   void _toggleEditMode() {
     setState(() {
       _isEditing = !_isEditing;
+      if (_isEditing) {
+        // Sauvegarder les valeurs actuelles comme référence
+        _initialProteinsText = _proteinsController.text;
+        _initialGlucidesText = _glucidesController.text;
+        _initialLipidesText = _lipidesController.text;
+        _initialQuantityText = _quantityController.text;
+        
+        // Réinitialiser le flag de modification manuelle des macros
+        // pour permettre le recalcul proportionnel quand on change la quantité
+        _macrosManuallyEdited = false;
+      }
     });
   }
 
@@ -248,7 +355,7 @@ class _EditableFoodDetailsContentState extends State<_EditableFoodDetailsContent
                               color: Color(0xFF1A1A1A),
                             ),
                           ),
-                          if (!_isEditing)
+                          if (!_isEditing && !widget.isCustomFood)
                             GestureDetector(
                               onTap: _toggleEditMode,
                               child: Container(
@@ -277,7 +384,7 @@ class _EditableFoodDetailsContentState extends State<_EditableFoodDetailsContent
                         ],
                       ),
                       Text(
-                        '${_isEditing ? _calculatedCalories : widget.calories} kcal',
+                        '${_calculatedCalories} kcal',
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
@@ -321,7 +428,7 @@ class _EditableFoodDetailsContentState extends State<_EditableFoodDetailsContent
                               ),
                             )
                           : Text(
-                              '${_isModified ? _proteinsController.text : (widget.calories * 0.1 / 4).toStringAsFixed(1)}g',
+                              '${_proteinsController.text}g',
                               style: const TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w500,
@@ -365,7 +472,7 @@ class _EditableFoodDetailsContentState extends State<_EditableFoodDetailsContent
                               ),
                             )
                           : Text(
-                              '${_isModified ? _glucidesController.text : (widget.calories * 0.6 / 4).toStringAsFixed(1)}g',
+                              '${_glucidesController.text}g',
                               style: const TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w500,
@@ -409,7 +516,7 @@ class _EditableFoodDetailsContentState extends State<_EditableFoodDetailsContent
                               ),
                             )
                           : Text(
-                              '${_isModified ? _lipidesController.text : (widget.calories * 0.3 / 9).toStringAsFixed(1)}g',
+                              '${_lipidesController.text}g',
                               style: const TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w500,
@@ -451,10 +558,10 @@ class _EditableFoodDetailsContentState extends State<_EditableFoodDetailsContent
                   Row(
                     children: [
                       Expanded(
-                        child: TextField(
+                        child:                         TextField(
                           controller: _quantityController,
                           decoration: const InputDecoration(
-                            hintText: '100',
+                            hintText: '0',
                             border: OutlineInputBorder(),
                             contentPadding: EdgeInsets.symmetric(
                               horizontal: 12,
@@ -465,9 +572,9 @@ class _EditableFoodDetailsContentState extends State<_EditableFoodDetailsContent
                         ),
                       ),
                       const SizedBox(width: 12),
-                      const Text(
-                        'grammes',
-                        style: TextStyle(
+                      Text(
+                        widget.referenceUnit ?? 'grammes',
+                        style: const TextStyle(
                           fontSize: 14,
                           color: Color(0xFF64748B),
                         ),
@@ -513,11 +620,18 @@ class _EditableFoodDetailsContentState extends State<_EditableFoodDetailsContent
                 Expanded(
                   child: GestureDetector(
                     onTap: () {
+                      // Traiter la quantité vide comme 0
+                      final quantity = _quantityController.text.isEmpty ? '0' : _quantityController.text;
+                      
                       // Créer l'aliment avec les valeurs actuelles
                       final foodItem = FoodItem(
                         name: widget.name,
                         calories: _calculatedCalories,
-                        portion: '${_quantityController.text}g',
+                        portion: '$quantity ${widget.referenceUnit ?? 'g'}',
+                        isModified: _isModified,
+                        hasModifiedMacros: _hasModifiedMacros, // Nouvelle propriété
+                        isCustom: widget.isCustomFood, // Marquer si c'est un aliment personnalisé
+                        isRecipe: false, // Ce n'est pas une recette
                       );
                       
                       // Si c'est depuis le scanner IA (modification), utiliser onFoodSaved pour juste enregistrer
@@ -525,11 +639,9 @@ class _EditableFoodDetailsContentState extends State<_EditableFoodDetailsContent
                       if (widget.onFoodSaved != null) {
                         widget.onFoodSaved?.call(foodItem);
                         Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('${widget.name} enregistré${_isModified ? ' (modifié)' : ''}'),
-                            backgroundColor: const Color(0xFF0B132B),
-                          ),
+                        SnackBarUtils.showSuccessSnackBar(
+                          context,
+                          message: '${widget.name} enregistré${_isModified ? ' (modifié)' : ''}',
                         );
                       } else {
                         // Flux classique - ajouter directement au repas
@@ -908,11 +1020,9 @@ class _CreateFoodContentState extends State<_CreateFoodContent> {
                   child: GestureDetector(
                     onTap: () async {
                       if (_nameController.text.trim().isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Veuillez saisir un nom d\'aliment'),
-                            backgroundColor: Colors.red,
-                          ),
+                        SnackBarUtils.showErrorSnackBar(
+                          context,
+                          message: 'Veuillez saisir un nom d\'aliment',
                         );
                         return;
                       }
@@ -921,7 +1031,11 @@ class _CreateFoodContentState extends State<_CreateFoodContent> {
                       final foodItem = FoodItem(
                         name: _nameController.text,
                         calories: _calculatedCalories,
-                        portion: '${_quantityController.text}g',
+                        portion: '${_quantityController.text} g',
+                        isModified: false, // Nouvel aliment = pas de modification
+                        hasModifiedMacros: false, // Nouvel aliment = pas de modification de macros
+                        isCustom: true, // Aliment créé manuellement
+                        isRecipe: false, // Ce n'est pas une recette
                       );
                       
                       final itemName = _nameController.text;
@@ -933,11 +1047,9 @@ class _CreateFoodContentState extends State<_CreateFoodContent> {
                       Navigator.pop(context);
                       
                       // Afficher le message de confirmation
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('$itemName créé et ajouté au repas'),
-                          backgroundColor: const Color(0xFF0B132B),
-                        ),
+                      SnackBarUtils.showSuccessSnackBar(
+                        context,
+                        message: '$itemName créé et ajouté au repas',
                       );
                     },
                     child: Container(

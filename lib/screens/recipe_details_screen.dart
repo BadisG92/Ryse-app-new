@@ -5,15 +5,48 @@ import '../bottom_sheets/editable_food_details_bottom_sheet.dart';
 import '../bottom_sheets/meal_selection_bottom_sheet.dart';
 import '../bottom_sheets/new_meal_type_bottom_sheet.dart';
 import '../models/nutrition_models.dart' as nutrition_models;
+import '../config/supabase_config.dart';
+
+// Modèle pour un ingrédient détaillé avec ses valeurs nutritionnelles
+class DetailedIngredient {
+  final String id;
+  final String name;
+  final double baseQuantity; // Quantité pour 1 portion
+  final String unit;
+  final double caloriesPer100g;
+  final double proteinsPer100g;
+  final double carbsPer100g;
+  final double fatsPer100g;
+
+  DetailedIngredient({
+    required this.id,
+    required this.name,
+    required this.baseQuantity,
+    required this.unit,
+    required this.caloriesPer100g,
+    required this.proteinsPer100g,
+    required this.carbsPer100g,
+    required this.fatsPer100g,
+  });
+
+  // Calculer les valeurs pour 1 portion (normalisé)
+  double get quantity => baseQuantity;
+  double get calories => (caloriesPer100g * quantity) / 100;
+  double get proteins => (proteinsPer100g * quantity) / 100;
+  double get carbs => (carbsPer100g * quantity) / 100;
+  double get fats => (fatsPer100g * quantity) / 100;
+}
 
 class RecipeDetailsScreen extends StatefulWidget {
   final Recipe recipe;
   final bool isFromDashboard;
+  final Function(nutrition_models.FoodItem)? onRecipeSelected; // Callback pour ajouter au journal
 
   const RecipeDetailsScreen({
     super.key, 
     required this.recipe,
     this.isFromDashboard = false,
+    this.onRecipeSelected,
   });
 
   @override
@@ -21,27 +54,111 @@ class RecipeDetailsScreen extends StatefulWidget {
 }
 
 class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
-  double currentPortions = 1.0;
   bool isCustomized = false;
   bool showMacrosUpdatedMessage = false;
   Map<String, double> customizedIngredients = {};
   
   bool isIngredientsExpanded = false;
   bool isRecipeExpanded = false;
+  
+  // Liste des ingrédients détaillés
+  List<DetailedIngredient> detailedIngredients = [];
+  bool isLoadingIngredients = true;
 
   @override
   void initState() {
     super.initState();
-    currentPortions = widget.recipe.portions.toDouble();
+    _loadDetailedIngredients();
   }
 
-  // Calcul des calories par portion
-  int get caloriesPerPortion => (widget.recipe.calories / widget.recipe.portions).round();
-  
-  // Calcul des macros par portion (approximatifs)
-  double get proteinPerPortion => (caloriesPerPortion * 0.15 / 4); // 15% des calories
-  double get carbsPerPortion => (caloriesPerPortion * 0.55 / 4); // 55% des calories
-  double get fatPerPortion => (caloriesPerPortion * 0.30 / 9); // 30% des calories
+  // Charger les ingrédients détaillés depuis la base de données
+  Future<void> _loadDetailedIngredients() async {
+    try {
+      setState(() => isLoadingIngredients = true);
+      
+      // Récupérer l'ID de la recette depuis le hash (on va chercher avec le nom)
+      final recipesResponse = await SupabaseConfig.client
+          .from('recipes')
+          .select('id')
+          .eq('name_fr', widget.recipe.name)
+          .limit(1);
+      
+      if (recipesResponse.isEmpty) {
+        print('Recette non trouvée: ${widget.recipe.name}');
+        setState(() => isLoadingIngredients = false);
+        return;
+      }
+      
+      final recipeId = recipesResponse.first['id'];
+      
+      // Récupérer les ingrédients avec les données nutritionnelles
+      final ingredientsResponse = await SupabaseConfig.client
+          .from('recipe_ingredients')
+          .select('*, foods!inner(*)')
+          .eq('recipe_id', recipeId)
+          .order('display_order');
+
+      List<DetailedIngredient> ingredients = [];
+      for (var ing in ingredientsResponse) {
+        final food = ing['foods'];
+        ingredients.add(DetailedIngredient(
+          id: ing['id'].toString(),
+          name: food['name_fr'] ?? food['name_en'] ?? 'Aliment inconnu',
+          baseQuantity: double.parse(ing['quantity'].toString()),
+          unit: ing['unit'] ?? '',
+          caloriesPer100g: double.parse((food['calories'] ?? 0).toString()),
+          proteinsPer100g: double.parse((food['proteins'] ?? 0).toString()),
+          carbsPer100g: double.parse((food['carbs'] ?? 0).toString()),
+          fatsPer100g: double.parse((food['fats'] ?? 0).toString()),
+        ));
+      }
+
+      setState(() {
+        detailedIngredients = ingredients;
+        isLoadingIngredients = false;
+      });
+    } catch (e) {
+      print('Erreur lors du chargement des ingrédients: $e');
+      setState(() => isLoadingIngredients = false);
+    }
+  }
+
+  // Les valeurs nutritionnelles sont déjà normalisées pour 1 portion dans la base de données
+
+  // Calculer les totaux nutritionnels actuels
+  Map<String, dynamic> _calculateCurrentNutrition() {
+    double totalCalories = 0;
+    double totalProteins = 0;
+    double totalCarbs = 0;
+    double totalFats = 0;
+    bool hasModifications = false;
+    
+    for (final ingredient in detailedIngredients) {
+      final ingredientKey = '${ingredient.baseQuantity}${ingredient.unit} - ${ingredient.name}';
+      
+      final displayQuantity = customizedIngredients.containsKey(ingredientKey)
+          ? customizedIngredients[ingredientKey]!
+          : ingredient.quantity;
+      
+      if (customizedIngredients.containsKey(ingredientKey)) {
+        hasModifications = true;
+      }
+      
+      final ratio = displayQuantity / ingredient.baseQuantity;
+      totalCalories += ingredient.calories * ratio;
+      totalProteins += ingredient.proteins * ratio;
+      totalCarbs += ingredient.carbs * ratio;
+      totalFats += ingredient.fats * ratio;
+    }
+    
+    return {
+      'calories': totalCalories,
+      'proteins': totalProteins,
+      'carbs': totalCarbs,
+      'fats': totalFats,
+      'hasModifications': hasModifications,
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -201,9 +318,7 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
           SizedBox(
             width: double.infinity,
             child: Text(
-              isCustomized 
-                ? 'Portion personnalisée • ${widget.recipe.time}'
-                : '${currentPortions.toStringAsFixed(currentPortions.truncateToDouble() == currentPortions ? 0 : 1)} portion${currentPortions > 1 ? 's' : ''} • ${widget.recipe.time}',
+              '1 portion • ${widget.recipe.time}',
               style: const TextStyle(
                 fontSize: 14,
                 color: Color(0xFF64748B),
@@ -217,6 +332,13 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
   }
 
   Widget _buildNutritionSummary() {
+    final nutrition = _calculateCurrentNutrition();
+    final totalCalories = nutrition['calories'] as double;
+    final totalProteins = nutrition['proteins'] as double;
+    final totalCarbs = nutrition['carbs'] as double;
+    final totalFats = nutrition['fats'] as double;
+    final hasModifications = nutrition['hasModifications'] as bool;
+    
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Container(
@@ -233,6 +355,8 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Row(
+          children: [
             const Text(
               'Bilan nutritionnel (par portion)',
               style: TextStyle(
@@ -241,6 +365,27 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                 color: Color(0xFF1A1A1A),
               ),
             ),
+                if (hasModifications) ...[
+                  const SizedBox(width: 8),
+                  const Icon(
+                    LucideIcons.check,
+                    size: 14,
+                    color: Color(0xFF1C2951),
+                  ),
+                ],
+              ],
+            ),
+            if (hasModifications) ...[
+              const SizedBox(height: 4),
+              const Text(
+                'Adapté aux modifications',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF1C2951),
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
             const SizedBox(height: 12),
             // Calories en premier (style mis en valeur)
             Row(
@@ -255,7 +400,7 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                   ),
                 ),
                 Text(
-                  '${(caloriesPerPortion * currentPortions).round()} kcal',
+                  '${totalCalories.round()} kcal',
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
@@ -277,7 +422,7 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                   ),
                 ),
                 Text(
-                  '${(proteinPerPortion * currentPortions).toStringAsFixed(1)}g',
+                  '${totalProteins.toStringAsFixed(1)}g',
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
@@ -299,7 +444,7 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                   ),
                 ),
                 Text(
-                  '${(carbsPerPortion * currentPortions).toStringAsFixed(1)}g',
+                  '${totalCarbs.toStringAsFixed(1)}g',
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
@@ -321,7 +466,7 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                   ),
                 ),
                 Text(
-                  '${(fatPerPortion * currentPortions).toStringAsFixed(1)}g',
+                  '${totalFats.toStringAsFixed(1)}g',
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
@@ -460,59 +605,84 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
   }
 
   Widget _buildIngredientsContent() {
+    if (isLoadingIngredients) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(20),
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    if (detailedIngredients.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(20),
+          child: Text(
+            'Aucun ingrédient trouvé',
+            style: TextStyle(
+              fontSize: 14,
+              color: Color(0xFF64748B),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: widget.recipe.ingredients.asMap().entries.map((entry) {
+      children: detailedIngredients.asMap().entries.map((entry) {
         final ingredient = entry.value;
+        final ingredientKey = '${ingredient.baseQuantity}${ingredient.unit} - ${ingredient.name}';
         
-        // Correction du parsing des ingrédients : "quantité - nom" devient "nom - quantité"
-        final parts = ingredient.split(' - ');
-        final quantity = parts[0]; // La quantité est maintenant en premier
-        final name = parts.length > 1 ? parts[1] : ingredient; // Le nom en second
+        // Utiliser la quantité personnalisée si elle existe, sinon la quantité pour 1 portion
+        final displayQuantity = customizedIngredients.containsKey(ingredientKey)
+          ? customizedIngredients[ingredientKey]!
+          : ingredient.quantity;
         
-        final estimatedCalories = (caloriesPerPortion / widget.recipe.ingredients.length);
+        final displayCalories = customizedIngredients.containsKey(ingredientKey)
+          ? (ingredient.caloriesPer100g * customizedIngredients[ingredientKey]! / 100)
+          : ingredient.calories;
         
-        // Utiliser la quantité personnalisée si elle existe, sinon la quantité proportionnelle
-        final baseQuantity = double.tryParse(quantity.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 100.0;
-        final currentQuantity = customizedIngredients.containsKey(ingredient)
-          ? customizedIngredients[ingredient]!
-          : baseQuantity;
-        
-        final adjustedQuantity = isCustomized && customizedIngredients.containsKey(ingredient)
-          ? currentQuantity
-          : currentQuantity * currentPortions;
-        
-        final adjustedCalories = isCustomized && customizedIngredients.containsKey(ingredient)
-          ? (estimatedCalories * currentQuantity / baseQuantity)
-          : estimatedCalories * currentPortions;
+        final isModified = customizedIngredients.containsKey(ingredientKey);
         
         return Padding(
           padding: const EdgeInsets.only(bottom: 8),
           child: Row(
             children: [
-              Container(
-                width: 6,
-                height: 6,
+              SizedBox(
+                width: 12,
+                height: 12,
+                child: isModified 
+                  ? const Icon(
+                      LucideIcons.check,
+                      size: 10,
+                      color: Color(0xFF3B82F6),
+                    )
+                  : Container(
+                      width: 4,
+                      height: 4,
                 decoration: const BoxDecoration(
                   color: Color(0xFF64748B),
                   shape: BoxShape.circle,
                 ),
               ),
-              const SizedBox(width: 12),
+              ),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  name,
-                  style: const TextStyle(
+                  ingredient.name,
+                  style: TextStyle(
                     fontSize: 14,
-                    color: Color(0xFF1A1A1A),
+                    color: isModified ? const Color(0xFF3B82F6) : const Color(0xFF1A1A1A),
                   ),
                 ),
               ),
               Text(
-                '${adjustedQuantity.toStringAsFixed(adjustedQuantity.truncateToDouble() == adjustedQuantity ? 0 : 1)}${_getQuantityUnit(quantity)} • ${adjustedCalories.round()} kcal',
-                style: const TextStyle(
+                '${displayQuantity.toStringAsFixed(displayQuantity.truncateToDouble() == displayQuantity ? 0 : 1)}${ingredient.unit} • ${displayCalories.round()} kcal',
+                style: TextStyle(
                   fontSize: 12,
-                  color: Color(0xFF64748B),
+                  color: isModified ? const Color(0xFF3B82F6) : const Color(0xFF64748B),
                 ),
               ),
             ],
@@ -525,38 +695,6 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
   Widget _buildIngredientActions() {
     return Column(
       children: [
-        // Modifier la portion
-        Container(
-          width: double.infinity,
-          margin: const EdgeInsets.only(bottom: 12),
-          child: OutlinedButton.icon(
-            onPressed: _showPortionDialog,
-            icon: const Icon(
-              LucideIcons.settings,
-              size: 16,
-              color: Color(0xFF0B132B),
-            ),
-            label: const Text(
-              'Modifier la portion',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF0B132B),
-              ),
-            ),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              side: const BorderSide(
-                color: Color(0xFF0B132B),
-                width: 1,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-          ),
-        ),
-        
         // Modifier les aliments
         Container(
           width: double.infinity,
@@ -678,83 +816,7 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
     );
   }
 
-  void _showPortionDialog() {
-    final portionController = TextEditingController(
-      text: currentPortions.toStringAsFixed(currentPortions.truncateToDouble() == currentPortions ? 0 : 1),
-    );
 
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text(
-          'Modifier la portion',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF1A1A1A),
-          ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Nombre de portions',
-              style: TextStyle(
-                fontSize: 14,
-                color: Color(0xFF64748B),
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: portionController,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                suffix: Text('portion(s)'),
-              ),
-              keyboardType: TextInputType.number,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'Annuler',
-              style: TextStyle(color: Color(0xFF64748B)),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final newPortions = double.tryParse(portionController.text);
-              if (newPortions != null && newPortions > 0) {
-                setState(() {
-                  currentPortions = newPortions;
-                  // Reset les ingrédients personnalisés si on change les portions
-                  if (isCustomized) {
-                    isCustomized = false;
-                    customizedIngredients.clear();
-                  }
-                });
-              }
-              Navigator.pop(context);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0B132B),
-            ),
-            child: const Text(
-              'Confirmer',
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   void _editIngredients() {
     Navigator.push(
@@ -762,7 +824,7 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
       MaterialPageRoute(
         builder: (context) => EditIngredientsScreen(
           recipe: widget.recipe,
-          currentPortions: currentPortions,
+          detailedIngredients: detailedIngredients,
           customizedIngredients: customizedIngredients,
           onIngredientsUpdated: (updatedIngredients) {
             setState(() {
@@ -785,20 +847,37 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
   }
 
   void _handleAddRecipeToMeal() {
-    // Créer un FoodItem basé sur la recette
-    final totalCalories = (widget.recipe.calories * currentPortions / widget.recipe.portions).round();
+    // Utiliser les valeurs actuelles (avec modifications si applicable)
+    final nutrition = _calculateCurrentNutrition();
+    final totalCalories = nutrition['calories'] as double;
+    final totalProteins = nutrition['proteins'] as double;
+    final totalCarbs = nutrition['carbs'] as double;
+    final totalFats = nutrition['fats'] as double;
+    
+    // Créer un FoodItem basé sur la recette (avec modifications si applicable)
     final foodItem = nutrition_models.FoodItem(
       name: widget.recipe.name,
-      calories: totalCalories,
-      portion: '${currentPortions.toStringAsFixed(currentPortions.truncateToDouble() == currentPortions ? 0 : 1)} portion(s)',
+      calories: totalCalories.round(),
+      proteins: totalProteins,
+      carbs: totalCarbs,
+      fats: totalFats,
+      portion: '1 portion',
+      isRecipe: true, // Marquer comme recette
+      hasModifiedMacros: isCustomized, // Si la recette a été modifiée
     );
     
     if (widget.isFromDashboard) {
       // Si on vient du dashboard, utiliser le système de sélection de repas
       _showMealSelectionBottomSheet(foodItem);
+    } else if (widget.onRecipeSelected != null) {
+      // Si on vient du journal et qu'on a un callback, l'utiliser
+      Navigator.pop(context); // Ferme RecipeDetailsScreen
+      Navigator.pop(context); // Ferme SelectRecipeScreen
+      
+      // Ajouter la recette au journal via le callback
+      widget.onRecipeSelected!(foodItem);
     } else {
-      // Si on vient du journal, ajouter directement au repas contextuel
-      // Fermer l'écran de détails ET l'écran de sélection de recettes
+      // Fallback : ancienne logique
       Navigator.pop(context); // Ferme RecipeDetailsScreen
       Navigator.pop(context); // Ferme SelectRecipeScreen
       
@@ -895,14 +974,14 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
 // Écran pour modifier les ingrédients individuellement
 class EditIngredientsScreen extends StatefulWidget {
   final Recipe recipe;
-  final double currentPortions;
+  final List<DetailedIngredient> detailedIngredients;
   final Map<String, double> customizedIngredients;
   final Function(Map<String, double>) onIngredientsUpdated;
 
   const EditIngredientsScreen({
     super.key,
     required this.recipe,
-    required this.currentPortions,
+    required this.detailedIngredients,
     required this.customizedIngredients,
     required this.onIngredientsUpdated,
   });
@@ -970,22 +1049,28 @@ class _EditIngredientsScreenState extends State<EditIngredientsScreen> {
       ),
       body: ListView.builder(
         padding: const EdgeInsets.all(16),
-        itemCount: widget.recipe.ingredients.length,
+        itemCount: widget.detailedIngredients.length,
         itemBuilder: (context, index) {
-          final ingredient = widget.recipe.ingredients[index];
-          final parts = ingredient.split(' - ');
-          final quantity = parts[0]; // Quantité en premier
-          final name = parts.length > 1 ? parts[1] : ingredient; // Nom en second
-          final estimatedCalories = (widget.recipe.calories / widget.recipe.portions / widget.recipe.ingredients.length).round();
+          final ingredient = widget.detailedIngredients[index];
+          final ingredientKey = '${ingredient.baseQuantity}${ingredient.unit} - ${ingredient.name}';
           
-          final baseQuantity = double.tryParse(quantity.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 100.0;
-          final currentQuantity = tempCustomizedIngredients.containsKey(ingredient)
-            ? tempCustomizedIngredients[ingredient]!
-            : baseQuantity * widget.currentPortions;
+          final currentQuantity = tempCustomizedIngredients.containsKey(ingredientKey)
+            ? tempCustomizedIngredients[ingredientKey]!
+            : ingredient.baseQuantity;
+            
+          // Calculer les nouvelles valeurs nutritionnelles si modifiées
+          final ratio = currentQuantity / ingredient.baseQuantity;
+          final currentCalories = (ingredient.calories * ratio).round();
           
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
-            child: _buildIngredientCard(ingredient, name, estimatedCalories, quantity, currentQuantity),
+            child: _buildIngredientCard(
+              ingredientKey, 
+              ingredient.name, 
+              currentCalories, 
+              '${ingredient.baseQuantity}${ingredient.unit}', 
+              currentQuantity
+            ),
           );
         },
       ),
@@ -993,12 +1078,17 @@ class _EditIngredientsScreenState extends State<EditIngredientsScreen> {
   }
 
   Widget _buildIngredientCard(String ingredient, String name, int baseCalories, String originalQuantity, double currentQuantity) {
+    final isModified = tempCustomizedIngredients.containsKey(ingredient);
+    
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isModified ? const Color(0xFF3B82F6).withOpacity(0.1) : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: Border.all(
+          color: isModified ? const Color(0xFF3B82F6) : const Color(0xFFE5E7EB),
+          width: 1,
+        ),
       ),
       child: Row(
         children: [
@@ -1008,15 +1098,15 @@ class _EditIngredientsScreenState extends State<EditIngredientsScreen> {
               children: [
                 Text(
                   name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1A1A),
+                    color: isModified ? const Color(0xFF3B82F6) : const Color(0xFF1A1A1A),
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '${baseCalories} kcal • ${currentQuantity.toStringAsFixed(currentQuantity.truncateToDouble() == currentQuantity ? 0 : 1)}${_getQuantityUnit(originalQuantity)}',
+                  '${currentQuantity.toStringAsFixed(currentQuantity.truncateToDouble() == currentQuantity ? 0 : 1)}${_getQuantityUnit(originalQuantity)} • ${baseCalories} kcal',
                   style: const TextStyle(
                     fontSize: 13,
                     color: Color(0xFF64748B),
@@ -1033,10 +1123,10 @@ class _EditIngredientsScreenState extends State<EditIngredientsScreen> {
                 borderRadius: BorderRadius.circular(8),
                 color: Colors.transparent,
               ),
-              child: const Icon(
+              child:               Icon(
                 LucideIcons.pencil,
                 size: 16,
-                color: Color(0xFF64748B),
+                color: isModified ? const Color(0xFF3B82F6) : const Color(0xFF64748B),
               ),
             ),
           ),
@@ -1045,28 +1135,33 @@ class _EditIngredientsScreenState extends State<EditIngredientsScreen> {
     );
   }
 
-  void _editIngredient(String ingredient, String name, int baseCalories, String originalQuantity, double currentQuantity) {
-    final originalQty = double.tryParse(originalQuantity.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 100.0;
-    final calories = (baseCalories * currentQuantity / originalQty).round();
+  void _editIngredient(String ingredientKey, String name, int baseCalories, String originalQuantity, double currentQuantity) {
+    // Trouver l'ingrédient détaillé correspondant pour avoir les vraies valeurs nutritionnelles
+    final detailedIngredient = widget.detailedIngredients.firstWhere(
+      (ing) => '${ing.baseQuantity}${ing.unit} - ${ing.name}' == ingredientKey,
+      orElse: () => widget.detailedIngredients.first,
+    );
     
-    // Calcul des macronutriments (valeurs approximatives basées sur les calories)
-    final protein = (calories * 0.15 / 4); // 15% des calories en protéines
-    final carbs = (calories * 0.55 / 4); // 55% des calories en glucides  
-    final fat = (calories * 0.30 / 9); // 30% des calories en lipides
+    // Calculer les valeurs nutritionnelles proportionnelles à la nouvelle quantité
+    final ratio = currentQuantity / detailedIngredient.baseQuantity;
+    final calories = (detailedIngredient.calories * ratio).round();
+    final proteins = detailedIngredient.proteins * ratio;
+    final carbs = detailedIngredient.carbs * ratio;
+    final fats = detailedIngredient.fats * ratio;
 
     EditableFoodDetailsBottomSheet.show(
       context,
       name: name,
       calories: calories,
-      proteins: protein,
+      proteins: proteins,
       glucides: carbs,
-      lipides: fat,
+      lipides: fats,
       quantity: currentQuantity,
-      isModified: false,
+      isModified: tempCustomizedIngredients.containsKey(ingredientKey),
       // Utiliser onFoodSaved pour juste enregistrer les modifications sans ajouter au repas
       onFoodSaved: (foodItem) {
         setState(() {
-          tempCustomizedIngredients[ingredient] = double.parse(foodItem.portion.replaceAll('g', ''));
+          tempCustomizedIngredients[ingredientKey] = double.parse(foodItem.portion.replaceAll('g', ''));
         });
         
         ScaffoldMessenger.of(context).showSnackBar(

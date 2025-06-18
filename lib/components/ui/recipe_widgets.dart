@@ -142,18 +142,25 @@ class RecipeCarouselSection extends StatelessWidget {
         // Carousel horizontal
         SizedBox(
           height: 180,
-          child: ListView.separated(
+          child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
+            physics: const ClampingScrollPhysics(),
             padding: const EdgeInsets.symmetric(horizontal: 4),
-            itemCount: featuredRecipes.length,
-            separatorBuilder: (context, index) => const SizedBox(width: 12),
-            itemBuilder: (context, index) {
-              final recipe = featuredRecipes[index];
-              return RecipeCarouselCard(
-                recipe: recipe,
-                onTap: onRecipeTap != null ? () => onRecipeTap!(recipe) : null,
-              );
-            },
+            child: Row(
+              children: featuredRecipes.asMap().entries.map((entry) {
+                final index = entry.key;
+                final recipe = entry.value;
+                return Row(
+                  children: [
+                    RecipeCarouselCard(
+                      recipe: recipe,
+                      onTap: onRecipeTap != null ? () => onRecipeTap!(recipe) : null,
+                    ),
+                    if (index < featuredRecipes.length - 1) const SizedBox(width: 12),
+                  ],
+                );
+              }).toList(),
+            ),
           ),
         ),
       ],

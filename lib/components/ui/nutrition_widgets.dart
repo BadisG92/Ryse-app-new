@@ -129,9 +129,6 @@ class NutritionQuickActionsSection extends StatelessWidget {
     ManualFoodSearchBottomSheet.show(
       context,
       isFromDashboard: true,
-      onFoodSelected: (name, calories, baseWeight) {
-        _showFoodDetailsBottomSheet(context, name, calories, baseWeight);
-      },
       onFoodCreated: (foodItem) {
         // Quand on crée un aliment depuis le dashboard → afficher sélection de repas
         _handleDashboardFoodSelectionFromDetails(context, foodItem);
@@ -198,89 +195,71 @@ class NutritionQuickActionsSection extends StatelessWidget {
     );
   }
 
-  void _showFoodDetailsBottomSheet(BuildContext context, String name, int calories, int baseWeight) {
-  EditableFoodDetailsBottomSheet.show(
-    context,
-    name: name,
-    calories: calories,
-    proteins: 0,
-    glucides: 0,
-    lipides: 0,
-    quantity: baseWeight.toDouble(),
-    isModified: false,
-    onFoodAdded: (foodItem) {
-      // Fermer le bottom sheet actuel et ouvrir directement le suivant (comme dans MealSelectionBottomSheet)
-      Navigator.pop(context);
-      _handleDashboardFoodSelectionFromDetails(context, foodItem);
-    },
-  );
-}
+  void _handleDashboardFoodSelectionFromDetails(BuildContext context, nutrition_models.FoodItem foodItem) {
+    print('DEBUG: _handleDashboardFoodSelectionFromDetails appelée avec ${foodItem.name}');
+    // Pour l'exemple, on simule des repas existants
+    // TODO: Récupérer les vrais repas du jour depuis la base de données
+    final existingMeals = <nutrition_models.Meal>[
+      nutrition_models.Meal(
+        name: 'Petit-déjeuner',
+        time: '08:30',
+        items: [
+          nutrition_models.FoodItem(
+            name: 'Café',
+            calories: 5,
+            portion: '1 tasse',
+          ),
+        ],
+      ),
+      nutrition_models.Meal(
+        name: 'Déjeuner',
+        time: '12:45',
+        items: [
+          nutrition_models.FoodItem(
+            name: 'Salade',
+            calories: 150,
+            portion: '200g',
+          ),
+        ],
+      ),
+    ];
 
-void _handleDashboardFoodSelectionFromDetails(BuildContext context, nutrition_models.FoodItem foodItem) {
-  print('DEBUG: _handleDashboardFoodSelectionFromDetails appelée avec ${foodItem.name}');
-  // Pour l'exemple, on simule des repas existants
-  // TODO: Récupérer les vrais repas du jour depuis la base de données
-  final existingMeals = <nutrition_models.Meal>[
-    nutrition_models.Meal(
-      name: 'Petit-déjeuner',
-      time: '08:30',
-      items: [
-        nutrition_models.FoodItem(
-          name: 'Café',
-          calories: 5,
-          portion: '1 tasse',
-        ),
-      ],
-    ),
-    nutrition_models.Meal(
-      name: 'Déjeuner',
-      time: '12:45',
-      items: [
-        nutrition_models.FoodItem(
-          name: 'Salade',
-          calories: 150,
-          portion: '200g',
-        ),
-      ],
-    ),
-  ];
-
-  // Vérifier que le contexte est monté avant d'afficher le bottom sheet
-  if (!context.mounted) {
-    print('DEBUG: Contexte non monté, impossible d\'afficher MealSelectionBottomSheet');
-    return;
-  }
-  
-  print('DEBUG: Affichage de MealSelectionBottomSheet pour ${foodItem.name}');
-  MealSelectionBottomSheet.show(
-    context,
-    foodName: foodItem.name,
-    existingMeals: existingMeals,
-    onExistingMealSelected: (meal) {
-      // TODO: Ajouter l'aliment au repas sélectionné
-      print('Ajouter ${foodItem.name} au repas ${meal.name}');
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${foodItem.name} ajouté au ${meal.name}')),
+    // Vérifier que le contexte est monté avant d'afficher le bottom sheet
+    if (!context.mounted) {
+      print('DEBUG: Contexte non monté, impossible d\'afficher MealSelectionBottomSheet');
+      return;
+    }
+    
+    print('DEBUG: Affichage de MealSelectionBottomSheet pour ${foodItem.name}');
+    MealSelectionBottomSheet.show(
+      context,
+      foodName: foodItem.name,
+      existingMeals: existingMeals,
+      onExistingMealSelected: (meal) {
+        // TODO: Ajouter l'aliment au repas sélectionné
+        print('Ajouter ${foodItem.name} au repas ${meal.name}');
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${foodItem.name} ajouté au ${meal.name}')),
+          );
+        }
+      },
+      onCreateNewMeal: () {
+        NewMealTypeBottomSheet.show(
+          context,
+          onMealTypeSelected: (mealType, time) {
+            // TODO: Créer un nouveau repas avec l'aliment
+            print('Créer un nouveau repas $mealType à $time avec ${foodItem.name}');
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('${foodItem.name} ajouté au nouveau $mealType')),
+              );
+            }
+          },
         );
-      }
-    },
-    onCreateNewMeal: () {
-      NewMealTypeBottomSheet.show(
-        context,
-        onMealTypeSelected: (mealType, time) {
-          // TODO: Créer un nouveau repas avec l'aliment
-          print('Créer un nouveau repas $mealType à $time avec ${foodItem.name}');
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('${foodItem.name} ajouté au nouveau $mealType')),
-            );
-          }
-        },
-      );
-    },
-  );
-}
+      },
+    );
+  }
 }
 
 // Bouton d'action rapide nutrition
@@ -1195,8 +1174,6 @@ class _AddFoodBottomSheetForQuickActionsState extends State<AddFoodBottomSheetFo
       _selectedCalories = 280;
     });
   }
-
-
 
   void _createMealAndAdd(String mealType) {
     Navigator.pop(context);

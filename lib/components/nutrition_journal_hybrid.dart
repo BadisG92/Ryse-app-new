@@ -54,12 +54,15 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
 
   void _addFoodToSelectedMeal(FoodItem foodItem) {
     if (_selectedMealIndex != null && _selectedMealIndex! < meals.length) {
+      // Cas normal : on a un repas sélectionné
       setState(() {
         meals[_selectedMealIndex!].items.add(foodItem);
       });
       
-      // Fermer le bottom sheet
-      Navigator.pop(context);
+      // Fermer le bottom sheet s'il y en a un
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
       
       // Afficher le message de confirmation
       ScaffoldMessenger.of(context).showSnackBar(
@@ -69,6 +72,117 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
           duration: const Duration(seconds: 2),
         ),
       );
+    } else {
+      // Cas où aucun repas n'est sélectionné (ex: ajout direct de recette)
+      // Afficher un sélecteur de repas
+      _showMealSelectionForFood(foodItem);
+    }
+  }
+  
+  void _showMealSelectionForFood(FoodItem foodItem) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle bar
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE5E5E5),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              
+              const SizedBox(height: 20),
+              
+              // Titre
+              Text(
+                'Ajouter "${foodItem.name}" à un repas',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1A1A1A),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              
+              const SizedBox(height: 16),
+              
+              const Text(
+                'Choisissez le repas auquel ajouter cet aliment',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF64748B),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              
+              const SizedBox(height: 24),
+              
+              // Liste des repas existants
+              ...meals.asMap().entries.map((entry) {
+                final index = entry.key;
+                final meal = entry.value;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: MealOptionWidget(
+                    icon: _getMealIcon(meal.name),
+                    title: meal.name,
+                    subtitle: '${meal.time} • ${meal.items.length} aliment${meal.items.length > 1 ? 's' : ''}',
+                    onTap: () {
+                      // Ajouter au repas sélectionné
+                      setState(() {
+                        meals[index].items.add(foodItem);
+                      });
+                      
+                      Navigator.pop(context);
+                      
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('${foodItem.name} ajouté au ${meal.name}'),
+                          backgroundColor: const Color(0xFF0B132B),
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                  ),
+                );
+              }),
+              
+              const SizedBox(height: 24),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+  
+  IconData _getMealIcon(String mealName) {
+    switch (mealName.toLowerCase()) {
+      case 'petit-déjeuner':
+        return LucideIcons.sunrise;
+      case 'déjeuner':
+        return LucideIcons.sun;
+      case 'collation':
+        return LucideIcons.milk;
+      case 'dîner':
+        return LucideIcons.sunset;
+      default:
+        return LucideIcons.utensils;
     }
   }
 
@@ -394,7 +508,10 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const BarcodeScannerScreen(),
+                      builder: (context) => BarcodeScannerScreen(
+                        isFromDashboard: false,
+                        onFoodScanned: _addFoodToSelectedMeal, // Passer le callback
+                      ),
                     ),
                   );
                 },
@@ -411,7 +528,10 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const SelectRecipeScreen(isFromDashboard: false),
+                      builder: (context) => SelectRecipeScreen(
+                        isFromDashboard: false,
+                        onRecipeSelected: _addFoodToSelectedMeal, // Passer le callback
+                      ),
                     ),
                   );
                 },
@@ -533,24 +653,7 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
   void _showManualEntryBottomSheet() {
     ManualFoodSearchBottomSheet.show(
       context,
-      onFoodSelected: (name, calories, baseWeight) {
-        _showFoodDetailsBottomSheet(name, calories, baseWeight);
-      },
       onFoodCreated: _addFoodToSelectedMeal,
-    );
-  }
-
-  void _showFoodDetailsBottomSheet(String name, int calories, int baseWeight) {
-    EditableFoodDetailsBottomSheet.show(
-      context,
-      name: name,
-      calories: calories,
-      proteins: 0,
-      glucides: 0,
-      lipides: 0,
-      quantity: baseWeight.toDouble(),
-      isModified: false,
-      onFoodAdded: _addFoodToSelectedMeal,
     );
   }
 }

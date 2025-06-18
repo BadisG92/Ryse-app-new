@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'ui/recipe_models.dart';
+import '../services/recipe_service.dart';
 
 class RecipeDetailPage extends StatefulWidget {
   final Recipe recipe;
@@ -17,9 +18,93 @@ class RecipeDetailPage extends StatefulWidget {
 class _RecipeDetailPageState extends State<RecipeDetailPage> {
   bool _isIngredientsExpanded = false;
   bool _isStepsExpanded = false;
+  RecipeDetailModel? _recipeModel;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRecipeDetail();
+  }
+
+  Future<void> _loadRecipeDetail() async {
+    try {
+      // Récupérer toutes les recettes et trouver celle qui correspond
+      final allRecipes = await RecipeService.getAllRecipes();
+      final matchingRecipe = allRecipes.firstWhere(
+        (r) => r.name == widget.recipe.name,
+        orElse: () => widget.recipe,
+      );
+      
+      // Pour l'instant, créer un modèle simple avec les données existantes
+      setState(() {
+        _recipeModel = RecipeDetailModel(
+          baseRecipe: matchingRecipe,
+          ingredients: [], // Sera rempli plus tard avec les vrais ingrédients
+          currentPortions: matchingRecipe.servings,
+        );
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('Erreur lors du chargement du détail: $e');
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(LucideIcons.arrowLeft, color: Color(0xFF0B132B)),
+            onPressed: () => Navigator.pop(context),
+          ),
+          title: Text(
+            widget.recipe.name,
+            style: const TextStyle(
+              color: Color(0xFF0B132B),
+              fontWeight: FontWeight.w600,
+              fontSize: 18,
+            ),
+          ),
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    if (_recipeModel == null) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(LucideIcons.arrowLeft, color: Color(0xFF0B132B)),
+            onPressed: () => Navigator.pop(context),
+          ),
+          title: Text(
+            widget.recipe.name,
+            style: const TextStyle(
+              color: Color(0xFF0B132B),
+              fontWeight: FontWeight.w600,
+              fontSize: 18,
+            ),
+          ),
+        ),
+        body: const Center(
+          child: Text('Erreur lors du chargement de la recette'),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -30,7 +115,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          widget.recipe.name,
+          _recipeModel!.baseRecipe.name,
           style: const TextStyle(
             color: Color(0xFF0B132B),
             fontWeight: FontWeight.w600,
@@ -60,12 +145,12 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                         
                         const SizedBox(height: 16),
                         
-                        // Résumé nutritionnel
+                        // Résumé nutritionnel (TOUJOURS pour 1 portion)
                         _buildNutritionalSummary(),
                         
                         const SizedBox(height: 24),
                         
-                        // Section Ingrédients
+                        // Section Ingrédients (avec quantités pour currentPortions)
                         _buildIngredientsSection(),
                         
                         const SizedBox(height: 16),
@@ -93,18 +178,18 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
   Widget _buildRecipeImage() {
     return Container(
       width: double.infinity,
-      height: 240, // Ratio environ 16:9 pour la largeur d'écran
+      height: 240,
       decoration: BoxDecoration(
         color: const Color(0xFFF1F5F9),
         image: DecorationImage(
-          image: NetworkImage(widget.recipe.image),
+          image: NetworkImage(_recipeModel!.baseRecipe.image),
           fit: BoxFit.cover,
           onError: (exception, stackTrace) {
             // Fallback si l'image ne charge pas
           },
         ),
       ),
-      child: widget.recipe.image.contains('placeholder')
+      child: _recipeModel!.baseRecipe.image.contains('placeholder')
           ? const Center(
               child: Icon(
                 LucideIcons.image,
@@ -121,7 +206,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          widget.recipe.name,
+          _recipeModel!.baseRecipe.name,
           style: const TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.w700,
@@ -138,7 +223,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
             ),
             const SizedBox(width: 4),
             Text(
-              widget.recipe.duration,
+              _recipeModel!.baseRecipe.duration,
               style: const TextStyle(
                 fontSize: 14,
                 color: Color(0xFF888888),
@@ -152,7 +237,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
             ),
             const SizedBox(width: 4),
             Text(
-              '${widget.recipe.servings} ${widget.recipe.servings > 1 ? 'portions' : 'portion'}',
+              '${_recipeModel!.currentPortions} ${_recipeModel!.currentPortions > 1 ? 'portions' : 'portion'}',
               style: const TextStyle(
                 fontSize: 14,
                 color: Color(0xFF888888),
@@ -165,23 +250,26 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
   }
 
   Widget _buildNutritionalSummary() {
+    // TOUJOURS afficher les valeurs pour 1 portion
+    final nutrition = _recipeModel!.nutritionPer1Portion;
+    
     return Row(
       children: [
         _buildNutritionChip(
-          '${widget.recipe.calories} kcal',
+          '${nutrition['calories']} kcal',
           const Color(0xFF10B981),
           LucideIcons.zap,
         ),
         const SizedBox(width: 8),
         _buildNutritionChip(
-          '${widget.recipe.proteins}g protéines',
+          '${nutrition['proteins']}g protéines',
           const Color(0xFF3B82F6),
           LucideIcons.dumbbell,
         ),
         const SizedBox(width: 8),
         Expanded(
           child: _buildNutritionChip(
-            '${widget.recipe.carbs}g glucides',
+            '${nutrition['carbs']}g glucides',
             const Color(0xFFF59E0B),
             LucideIcons.wheat,
           ),
@@ -286,8 +374,8 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          // Liste des ingrédients
-          ...widget.recipe.ingredients.map((ingredient) => 
+          // Liste des ingrédients (utiliser les données de base en attendant)
+          ..._recipeModel!.baseRecipe.ingredients.map((ingredient) => 
             _buildIngredientItem(ingredient)
           ).toList(),
           
@@ -298,11 +386,9 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () {
-                    // TODO: Implémenter modifier la portion
-                  },
+                  onPressed: () => _showPortionDialog(),
                   icon: const Icon(LucideIcons.users, size: 16),
-                  label: const Text('Modifier la portion'),
+                  label: Text('${_recipeModel!.currentPortions} portions'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: const Color(0xFF0B132B),
                     side: const BorderSide(color: Color(0xFFE5E7EB)),
@@ -347,7 +433,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
           Container(
             padding: const EdgeInsets.all(16),
             child: Column(
-              children: widget.recipe.ingredients
+              children: _recipeModel!.baseRecipe.ingredients
                   .take(3)
                   .map((ingredient) => _buildIngredientItem(ingredient))
                   .toList(),
@@ -382,35 +468,30 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
     );
   }
 
-  Widget _buildIngredientItem(RecipeIngredient ingredient) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+  Widget _buildIngredientItem(String ingredient) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
       child: Row(
         children: [
+          const Icon(
+            LucideIcons.circle,
+            size: 8,
+            color: Color(0xFF10B981),
+          ),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
-              ingredient.name,
+              ingredient,
               style: const TextStyle(
                 fontSize: 14,
                 color: Color(0xFF374151),
               ),
-            ),
-          ),
-          Text(
-            '${ingredient.quantity.toString().replaceAll(RegExp(r'\.0$'), '')} ${ingredient.unit}',
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: Color(0xFF6B7280),
-            ),
-          ),
-          const SizedBox(width: 16),
-          Text(
-            '${ingredient.calories} kcal',
-            style: const TextStyle(
-              fontSize: 12,
-              color: Color(0xFF10B981),
-              fontWeight: FontWeight.w500,
             ),
           ),
         ],
@@ -484,7 +565,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
     return Container(
       padding: const EdgeInsets.all(16),
       child: Column(
-        children: widget.recipe.steps
+        children: _recipeModel!.baseRecipe.steps
             .map((step) => _buildStepItem(step))
             .toList(),
       ),
@@ -500,7 +581,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
           Container(
             padding: const EdgeInsets.all(16),
             child: Column(
-              children: widget.recipe.steps
+              children: _recipeModel!.baseRecipe.steps
                   .take(2)
                   .map((step) => _buildStepItem(step))
                   .toList(),
@@ -535,7 +616,9 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
     );
   }
 
-  Widget _buildStepItem(RecipeStep step) {
+  Widget _buildStepItem(String step) {
+    final stepIndex = _recipeModel!.baseRecipe.steps.indexOf(step) + 1;
+    
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -550,7 +633,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
             ),
             child: Center(
               child: Text(
-                '${step.stepNumber}',
+                '$stepIndex',
                 style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -562,7 +645,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              step.description,
+              step,
               style: const TextStyle(
                 fontSize: 14,
                 color: Color(0xFF374151),
@@ -698,6 +781,50 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showPortionDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Modifier le nombre de portions'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Portions actuelles : ${_recipeModel!.currentPortions}'),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [1, 2, 3, 4, 6, 8].map((portions) => 
+                ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      _recipeModel!.updatePortions(portions);
+                    });
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _recipeModel!.currentPortions == portions 
+                        ? const Color(0xFF0B132B) 
+                        : Colors.grey[200],
+                    foregroundColor: _recipeModel!.currentPortions == portions 
+                        ? Colors.white 
+                        : Colors.black,
+                  ),
+                  child: Text('$portions'),
+                ),
+              ).toList(),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Fermer'),
+          ),
+        ],
       ),
     );
   }

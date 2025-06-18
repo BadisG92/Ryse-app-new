@@ -1201,7 +1201,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                                 child: _buildSummaryMetric(
                                   'Volume',
                                   '${_totalWeight.toStringAsFixed(0)} kg',
-                                  LucideIcons.activity4,
+                                  LucideIcons.activity,
                                 ),
                               ),
                             ],
@@ -1579,8 +1579,8 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                    style: TextStyle(
                      fontSize: 12,
                   color: Colors.white.withOpacity(0.5),
-                ),
-              ),
+                   ),
+                 ),
 
               const SizedBox(height: 16),
 

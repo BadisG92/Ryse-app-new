@@ -1,13 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../bottom_sheets/meal_selection_bottom_sheet.dart';
 import '../bottom_sheets/new_meal_type_bottom_sheet.dart';
 import '../models/nutrition_models.dart' as nutrition_models;
+import '../models/openfoodfacts_models.dart';
+import '../services/openfoodfacts_service.dart';
+import '../services/auth_service.dart';
+import '../services/database_service.dart';
+import '../config/supabase_config.dart';
 
 class BarcodeScannerScreen extends StatefulWidget {
   final bool isFromDashboard;
+  final Function(nutrition_models.FoodItem)? onFoodScanned; // Callback pour ajouter au journal
   
-  const BarcodeScannerScreen({super.key, this.isFromDashboard = false});
+  const BarcodeScannerScreen({
+    super.key, 
+    this.isFromDashboard = false,
+    this.onFoodScanned,
+  });
 
   @override
   State<BarcodeScannerScreen> createState() => _BarcodeScannerScreenState();
@@ -17,20 +28,22 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
     with TickerProviderStateMixin {
   bool isScanning = false;
   bool hasResult = false;
+  bool isLoadingProduct = false;
   late AnimationController _animationController;
   late Animation<double> _animation;
   final TextEditingController _quantityController = TextEditingController();
 
-  // Valeurs nutritionnelles de base pour 100g (yaourt grec exemple)
-  static const double _baseCalories = 59;
-  static const double _baseProtein = 10.3;
-  static const double _baseCarbs = 4.0;
-  static const double _baseFat = 0.39;
+  MobileScannerController? _scannerController;
+
+  OpenFoodFactsProduct? _scannedProduct;
+  String? _errorMessage;
+  nutrition_models.FoodItem? _pendingDashboardFoodItem;
 
   @override
   void initState() {
     super.initState();
-    _quantityController.text = '170'; // Quantité par défaut
+    _quantityController.text = '100'; // Quantité par défaut
+    _scannerController = MobileScannerController();
     _animationController = AnimationController(
       duration: const Duration(seconds: 2),
       vsync: this,
@@ -45,6 +58,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
   void dispose() {
     _animationController.dispose();
     _quantityController.dispose();
+    _scannerController?.dispose();
     super.dispose();
   }
 
@@ -61,7 +75,23 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
   Widget _buildScannerScreen() {
     return Stack(
       children: [
-        // Vue caméra simulée
+        // Vue caméra réelle
+        if (!isLoadingProduct)
+                      MobileScanner(
+              controller: _scannerController!,
+            onDetect: (BarcodeCapture capture) {
+              final List<Barcode> barcodes = capture.barcodes;
+              if (barcodes.isNotEmpty && !isLoadingProduct) {
+                final String code = barcodes.first.rawValue ?? '';
+                if (code.isNotEmpty) {
+                  _fetchProductData(code);
+                }
+              }
+            },
+          ),
+        
+        // Vue caméra simulée pendant le chargement
+        if (isLoadingProduct)
         Container(
           width: double.infinity,
           height: double.infinity,
@@ -91,23 +121,27 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                   ),
                 ),
               ),
-              Container(
+              // Bouton saisie manuelle dans le header
+              GestureDetector(
+                onTap: _showManualBarcodeInput,
+                child: Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: Colors.black54,
                   borderRadius: BorderRadius.circular(25),
                 ),
                 child: const Icon(
-                  LucideIcons.flashlight,
+                    LucideIcons.type,
                   color: Colors.white,
                   size: 24,
+                  ),
                 ),
               ),
             ],
           ),
         ),
         
-        // Zone de scan
+        // Zone de scan overlay
         Center(
           child: Container(
             width: 280,
@@ -177,6 +211,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                 ),
                 
                 // Ligne de scan animée
+                if (!isLoadingProduct)
                 AnimatedBuilder(
                   animation: _animation,
                   builder: (context, child) {
@@ -199,6 +234,15 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                     );
                   },
                 ),
+                
+                // Loading indicator during product fetch
+                if (isLoadingProduct)
+                  const Center(
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 3,
+                    ),
+                ),
               ],
             ),
           ),
@@ -215,27 +259,29 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
               color: Colors.black54,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Column(
+            child: Column(
               children: [
-                Icon(
+                const Icon(
                   LucideIcons.scan,
                   color: Colors.white,
                   size: 32,
                 ),
-                SizedBox(height: 8),
+                const SizedBox(height: 8),
                 Text(
-                  'Scannez le code-barres',
-                  style: TextStyle(
+                  isLoadingProduct ? 'Récupération du produit...' : 'Scannez le code-barres',
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
                   ),
                   textAlign: TextAlign.center,
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 Text(
-                  'Placez le code-barres dans la zone de scan',
-                  style: TextStyle(
+                  isLoadingProduct 
+                      ? 'Recherche dans la base de données...'
+                      : 'Placez le code-barres dans la zone de scan',
+                  style: const TextStyle(
                     color: Colors.white70,
                     fontSize: 14,
                   ),
@@ -246,15 +292,49 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
           ),
         ),
         
-        // Bouton scan manuel
+        // Boutons d'action
+        if (!isLoadingProduct)
         Positioned(
           bottom: 50,
           left: 24,
           right: 24,
+            child: Column(
+              children: [
+                // Bouton scan automatique
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _restartScanning,
+                    icon: const Icon(
+                      LucideIcons.scan,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                    label: const Text(
+                      'Scanner automatiquement',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF0B132B),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Bouton saisie manuelle
+                SizedBox(
+                  width: double.infinity,
           child: OutlinedButton.icon(
-            onPressed: _simulateScan,
+                    onPressed: _showManualBarcodeInput,
             icon: const Icon(
-              LucideIcons.search,
+                      LucideIcons.type,
               color: Colors.white,
               size: 20,
             ),
@@ -273,6 +353,9 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
+                  ),
+                ),
+              ],
           ),
         ),
       ],
@@ -311,10 +394,10 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                   ),
                 ),
                 const SizedBox(width: 16),
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'Produit trouvé',
-                    style: TextStyle(
+                    _errorMessage != null ? 'Erreur' : 'Produit trouvé',
+                    style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
                       color: Color(0xFF1A1A1A),
@@ -326,7 +409,84 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
           ),
           
           Expanded(
-            child: StatefulBuilder(
+            child: _errorMessage != null ? _buildErrorContent() : _buildProductContent(),
+          ),
+          
+          // Boutons d'action (seulement si pas d'erreur)
+          if (_errorMessage == null && _scannedProduct != null)
+            _buildActionButtons(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorContent() {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(
+            LucideIcons.x,
+            size: 64,
+            color: Color(0xFFEF4444),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            _errorMessage!,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF1A1A1A),
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Vérifiez que le code-barres est lisible et réessayez.',
+            style: TextStyle(
+              fontSize: 14,
+              color: Color(0xFF64748B),
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 32),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  hasResult = false;
+                  _errorMessage = null;
+                  _scannedProduct = null;
+                });
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0B132B),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text(
+                'Scanner un autre produit',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProductContent() {
+    if (_scannedProduct == null) return const SizedBox();
+
+    return StatefulBuilder(
               builder: (context, setModalState) {
                 return SingleChildScrollView(
                   padding: const EdgeInsets.all(16),
@@ -338,38 +498,41 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                         width: double.infinity,
                         height: 200,
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF8F9FA),
+                  color: const Color(0xFFF1F5F9), // Fond gris de l'app
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: const Color(0xFFE5E7EB)),
                         ),
-                        child: const Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                LucideIcons.package,
-                                size: 48,
-                                color: Color(0xFF64748B),
+                child: _scannedProduct!.imageUrl != null && _scannedProduct!.imageUrl!.isNotEmpty
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.network(
+                          _scannedProduct!.imageUrl!,
+                          fit: BoxFit.contain, // Utilise contain au lieu de cover
+                          width: double.infinity,
+                          height: 200,
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return const Center(
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF0B132B)),
                               ),
-                              SizedBox(height: 8),
-                              Text(
-                                'Image du produit',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Color(0xFF64748B),
-                                ),
-                              ),
-                            ],
-                          ),
+                            );
+                          },
+                          errorBuilder: (context, error, stackTrace) {
+                            return _buildImagePlaceholder();
+                          },
                         ),
+                      )
+                    : _buildImagePlaceholder(),
                       ),
                       
                       const SizedBox(height: 20),
                       
                       // Informations du produit
-                      const Text(
-                        'Yaourt grec nature 0%',
-                        style: TextStyle(
+              Text(
+                _scannedProduct!.productName ?? 'Produit sans nom',
+                style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w700,
                           color: Color(0xFF1A1A1A),
@@ -378,9 +541,9 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                       
                       const SizedBox(height: 8),
                       
-                      const Text(
-                        'Marque: Fage • 170g',
-                        style: TextStyle(
+              Text(
+                _buildProductSubtitle(),
+                style: const TextStyle(
                           fontSize: 14,
                           color: Color(0xFF64748B),
                         ),
@@ -388,7 +551,8 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                       
                       const SizedBox(height: 20),
                       
-                      // Informations nutritionnelles (format standardisé)
+              // Informations nutritionnelles
+              if (_scannedProduct!.nutriments != null)
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.all(16),
@@ -399,7 +563,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                         ),
                         child: Column(
                           children: [
-                            // Calories en premier (style mis en valeur)
+                      // Calories en premier
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
@@ -434,7 +598,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                                   ),
                                 ),
                                 Text(
-                                  '${_getCalculatedProtein().toStringAsFixed(1)}g',
+                            '${_getCalculatedProtein().toStringAsFixed(1)} g',
                                   style: const TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w500,
@@ -456,7 +620,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                                   ),
                                 ),
                                 Text(
-                                  '${_getCalculatedCarbs().toStringAsFixed(1)}g',
+                            '${_getCalculatedCarbs().toStringAsFixed(1)} g',
                                   style: const TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w500,
@@ -478,7 +642,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                                   ),
                                 ),
                                 Text(
-                                  '${_getCalculatedFat().toStringAsFixed(1)}g',
+                            '${_getCalculatedFat().toStringAsFixed(1)} g',
                                   style: const TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w500,
@@ -493,7 +657,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                       
                       const SizedBox(height: 20),
                       
-                      // Quantité (boîte séparée)
+              // Quantité
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.all(16),
@@ -533,9 +697,9 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                                   ),
                                 ),
                                 const SizedBox(width: 12),
-                                const Text(
-                                  'grammes',
-                                  style: TextStyle(
+                        Text(
+                          _scannedProduct?.unit ?? 'grammes',
+                          style: const TextStyle(
                                     fontSize: 14,
                                     color: Color(0xFF64748B),
                                   ),
@@ -549,11 +713,11 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                   ),
                 );
               },
-            ),
-          ),
+    );
+  }
           
-          // Boutons d'action
-          Container(
+  Widget _buildActionButtons() {
+    return Container(
             padding: const EdgeInsets.all(16),
             decoration: const BoxDecoration(
               color: Colors.white,
@@ -563,10 +727,11 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
             ),
             child: Column(
               children: [
-                Container(
+          // Bouton principal : Ajouter au repas
+          SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: _handleAddToMeal,
+              onPressed: _errorMessage == null ? _handleAddToMeal : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF0B132B),
                       padding: const EdgeInsets.symmetric(vertical: 16),
@@ -584,14 +749,18 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                     ),
                   ),
                 ),
+
                 const SizedBox(height: 12),
-                Container(
+          
+          // Bouton tertiaire : Scanner un autre produit
+          SizedBox(
                   width: double.infinity,
                   child: OutlinedButton(
                     onPressed: () {
                       setState(() {
                         hasResult = false;
-                        isScanning = false;
+                  _errorMessage = null;
+                  _scannedProduct = null;
                       });
                     },
                     style: OutlinedButton.styleFrom(
@@ -612,9 +781,6 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                         color: Color(0xFF0B132B),
                       ),
                     ),
-                  ),
-                ),
-              ],
             ),
           ),
         ],
@@ -622,60 +788,688 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
     );
   }
 
+  String _buildProductSubtitle() {
+    final parts = <String>[];
+    
+    if (_scannedProduct!.brands != null && _scannedProduct!.brands!.isNotEmpty) {
+      parts.add('Marque: ${_scannedProduct!.brands!}');
+    }
+    
+    if (_scannedProduct!.quantity != null && _scannedProduct!.quantity!.isNotEmpty) {
+      parts.add(_scannedProduct!.quantity!);
+    }
+    
+    return parts.isNotEmpty ? parts.join(' • ') : 'Aucune information supplémentaire';
+  }
+
   double _getCalculatedCalories() {
-    final quantity = double.tryParse(_quantityController.text) ?? 170;
-    return (_baseCalories * quantity / 100);
+    if (_scannedProduct?.nutriments == null) return 0.0;
+    final quantity = double.tryParse(_quantityController.text) ?? 100.0;
+    return (_scannedProduct!.nutriments!.caloriesPer100g * quantity / 100);
   }
 
   double _getCalculatedProtein() {
-    final quantity = double.tryParse(_quantityController.text) ?? 170;
-    return (_baseProtein * quantity / 100);
+    if (_scannedProduct?.nutriments == null) return 0.0;
+    final quantity = double.tryParse(_quantityController.text) ?? 100.0;
+    return (_scannedProduct!.nutriments!.proteinsPer100g * quantity / 100);
   }
 
   double _getCalculatedCarbs() {
-    final quantity = double.tryParse(_quantityController.text) ?? 170;
-    return (_baseCarbs * quantity / 100);
+    if (_scannedProduct?.nutriments == null) return 0.0;
+    final quantity = double.tryParse(_quantityController.text) ?? 100.0;
+    return (_scannedProduct!.nutriments!.carbohydratesPer100g * quantity / 100);
   }
 
   double _getCalculatedFat() {
-    final quantity = double.tryParse(_quantityController.text) ?? 170;
-    return (_baseFat * quantity / 100);
+    if (_scannedProduct?.nutriments == null) return 0.0;
+    final quantity = double.tryParse(_quantityController.text) ?? 100.0;
+    return (_scannedProduct!.nutriments!.fatPer100g * quantity / 100);
   }
 
-  void _simulateScan() async {
+  // Widget placeholder pour l'image du produit
+  Widget _buildImagePlaceholder() {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            LucideIcons.package,
+            size: 48,
+            color: Color(0xFF64748B),
+          ),
+          SizedBox(height: 8),
+          Text(
+            'Image du produit',
+            style: TextStyle(
+              fontSize: 16,
+              color: Color(0xFF64748B),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          SizedBox(height: 4),
+          Text(
+            'Aucune image disponible',
+            style: TextStyle(
+              fontSize: 12,
+              color: Color(0xFF94A3B8),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Redémarrer le scan
+  void _restartScanning() {
+    // Relancer l'animation de scan
+    if (!_animationController.isAnimating) {
+      _animationController.repeat();
+    }
+  }
+
+  // Afficher la saisie manuelle du code-barres
+  void _showManualBarcodeInput() {
+    final TextEditingController barcodeController = TextEditingController();
+    bool isLoading = false;
+    
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0B132B).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      LucideIcons.type,
+                      color: Color(0xFF0B132B),
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Saisie manuelle',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF0B132B),
+                    ),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Entrez le code-barres du produit que vous souhaitez ajouter :',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: barcodeController,
+                    keyboardType: TextInputType.number,
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(
+                          color: Color(0xFF0B132B),
+                          width: 2,
+                        ),
+                      ),
+                      hintText: 'Ex: 3229820129488',
+                      prefixIcon: const Icon(
+                        LucideIcons.scan,
+                        color: Colors.grey,
+                      ),
+                      suffixIcon: barcodeController.text.isNotEmpty
+                          ? IconButton(
+                              onPressed: () {
+                                barcodeController.clear();
+                                setState(() {});
+                              },
+                              icon: const Icon(LucideIcons.x),
+                            )
+                          : null,
+                    ),
+                    onChanged: (value) => setState(() {}),
+                  ),
+                  const SizedBox(height: 12),
+                  // Exemples de codes-barres pour les tests
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          '💡 Codes-barres de test :',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.blue,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        GestureDetector(
+                          onTap: () {
+                            barcodeController.text = '3229820129488';
+                            setState(() {});
+                          },
+                          child: const Text(
+                            '• 3229820129488 (Muesli Bjorg)',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.blue,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () {
+                            barcodeController.text = '3017620422003';
+                            setState(() {});
+                          },
+                          child: const Text(
+                            '• 3017620422003 (Nutella)',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.blue,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () {
+                            barcodeController.text = '7622210951557';
+                            setState(() {});
+                          },
+                          child: const Text(
+                            '• 7622210951557 (KitKat Chunky)',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.blue,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isLoading ? null : () => Navigator.pop(context),
+                  child: const Text(
+                    'Annuler',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: (barcodeController.text.isNotEmpty && !isLoading)
+                      ? () async {
+                          setState(() => isLoading = true);
+                          Navigator.pop(context);
+                          await _fetchProductData(barcodeController.text);
+                        }
+                      : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0B132B),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: isLoading
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : const Text(
+                          'Rechercher',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // Récupérer les données du produit depuis OpenFoodFacts
+  Future<void> _fetchProductData(String barcode) async {
     setState(() {
-      isScanning = true;
+      isLoadingProduct = true;
     });
 
-    // Simulation du scan
-    await Future.delayed(const Duration(seconds: 2));
+    try {
+      final product = await OpenFoodFactsService.getProduct(barcode);
 
+      if (OpenFoodFactsService.isProductFound(product)) {
     setState(() {
-      isScanning = false;
+          _scannedProduct = product;
+          _quantityController.text = product.defaultQuantity.round().toString();
+          isLoadingProduct = false;
       hasResult = true;
-    });
+          _errorMessage = null;
+        });
+      } else {
+        setState(() {
+          _errorMessage = OpenFoodFactsService.getErrorMessage(product);
+          isLoadingProduct = false;
+          hasResult = true;
+          _scannedProduct = null;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Erreur lors de la récupération du produit';
+        isLoadingProduct = false;
+        hasResult = true;
+        _scannedProduct = null;
+      });
+    }
   }
 
   void _handleAddToMeal() {
+    if (_scannedProduct == null) return;
+    
+    print('DEBUG: _handleAddToMeal appelée, isFromDashboard: ${widget.isFromDashboard}');
+    print('DEBUG: Barcode: ${_scannedProduct!.barcode}');
+
     if (widget.isFromDashboard) {
       // Créer un FoodItem basé sur les données scannées
-      final quantity = double.tryParse(_quantityController.text) ?? 170;
+      final quantity = double.tryParse(_quantityController.text) ?? 100.0;
+      final unit = _scannedProduct!.unit;
       final foodItem = nutrition_models.FoodItem(
-        name: 'Yaourt grec nature 0%',
+        name: _scannedProduct!.productName ?? 'Produit scanné', // Juste le nom, sans les calories
         calories: _getCalculatedCalories().round(),
-        portion: '${quantity.round()}g',
+        proteins: _getCalculatedProtein(),
+        carbs: _getCalculatedCarbs(),
+        fats: _getCalculatedFat(),
+        portion: '${quantity.round()} $unit',
+        isScanned: true, // Marquer comme "scanné" pour utiliser l'icône de code-barres
       );
       
+      // Afficher le popup AVANT de déclencher la sélection
+      if (_scannedProduct!.barcode != null && _scannedProduct!.barcode!.isNotEmpty) {
+        print('DEBUG: Dashboard - Affichage du popup');
+        _pendingDashboardFoodItem = foodItem; // Stocker pour après le popup
+        _showSaveToCustomFoodsDialog();
+      } else {
+        // Pas de code-barres, comportement normal
+        print('DEBUG: Dashboard - Pas de code-barres, sélection directe');
       _handleDashboardFoodSelection(foodItem);
+      }
     } else {
-      // Comportement original pour le journal
+      // Comportement pour le journal - Afficher le popup d'abord
+      if (_scannedProduct!.barcode != null && _scannedProduct!.barcode!.isNotEmpty) {
+        print('DEBUG: Mode Journal - Affichage immédiat du popup');
+        _showSaveToCustomFoodsDialog();
+        // La fermeture de l'écran sera gérée dans le popup lui-même
+      } else {
+        // Pas de code-barres, comportement normal
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Produit ajouté au repas'),
-          backgroundColor: Color(0xFF0B132B),
+          SnackBar(
+            content: const Text('Produit ajouté au repas'),
+            backgroundColor: const Color(0xFF0B132B),
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.only(
+              top: 50,
+              left: 20,
+              right: 20,
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  void _closeScreenWithSnackBar() {
+    Navigator.pop(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Produit ajouté au repas'),
+        backgroundColor: const Color(0xFF0B132B),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.only(
+          top: 50,
+          left: 20,
+          right: 20,
         ),
+      ),
+    );
+  }
+
+  void _handleJournalFoodAddition() {
+    if (_scannedProduct == null) return;
+    
+    // Créer le FoodItem avec les données scannées
+    final quantity = double.tryParse(_quantityController.text) ?? 100.0;
+    final unit = _scannedProduct!.unit;
+    final foodItem = nutrition_models.FoodItem(
+      name: _scannedProduct!.productName ?? 'Produit scanné', // Juste le nom, sans les calories
+      calories: _getCalculatedCalories().round(),
+      proteins: _getCalculatedProtein(),
+      carbs: _getCalculatedCarbs(),
+      fats: _getCalculatedFat(),
+      portion: '${quantity.round()} $unit',
+      isScanned: true, // Marquer comme "scanné" pour utiliser l'icône de code-barres
+    );
+    
+    // Utiliser le callback si disponible, sinon fermer avec message
+    if (widget.onFoodScanned != null) {
+      Navigator.pop(context); // Fermer l'écran scanner
+      widget.onFoodScanned!(foodItem); // Appeler le callback
+    } else {
+      _closeScreenWithSnackBar(); // Fallback : ancien comportement
+    }
+  }
+
+  void _showSaveToCustomFoodsDialog() async {
+    if (_scannedProduct == null) return;
+    
+    print('DEBUG: _showSaveToCustomFoodsDialog appelée');
+
+    // Vérifier d'abord si l'aliment existe déjà
+    final user = AuthService().currentUser;
+    if (user != null && _scannedProduct!.barcode != null) {
+      final existingFood = await DatabaseService.checkCustomFoodExistsByBarcode(
+        user.id, 
+        _scannedProduct!.barcode!
       );
+      
+      if (existingFood != null) {
+        // L'aliment existe déjà, ne pas afficher le popup de sauvegarde
+        // mais continuer avec l'ajout au repas
+        if (mounted) {
+          // Afficher message d'information (optionnel)
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${_scannedProduct!.productName ?? 'Ce produit'} est déjà dans vos aliments personnalisés'),
+              backgroundColor: const Color(0xFF059669),
+              duration: const Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+              margin: const EdgeInsets.only(
+                top: 50,
+                left: 20,
+                right: 20,
+              ),
+            ),
+          );
+          
+          // Continuer avec l'ajout au repas sans popup de sauvegarde
+          if (widget.isFromDashboard && _pendingDashboardFoodItem != null) {
+            _handleDashboardFoodSelection(_pendingDashboardFoodItem!);
+          } else {
+            // Mode journal : créer le FoodItem et utiliser le callback
+            _handleJournalFoodAddition();
+          }
+        }
+        return;
+      }
+    }
+
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Icône
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0B132B).withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    LucideIcons.scan,
+                    size: 32,
+                    color: Color(0xFF0B132B),
+                  ),
+                ),
+                
+                const SizedBox(height: 16),
+                
+                const Text(
+                  'Sauvegarder l\'aliment ?',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1A1A1A),
+                  ),
+                ),
+                
+                const SizedBox(height: 8),
+                
+                Text(
+                  'Souhaitez-vous ajouter "${_scannedProduct!.productName ?? 'ce produit'}" à vos aliments personnalisés ?',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF64748B),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                
+                const SizedBox(height: 24),
+                
+                // Boutons
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () {
+                          Navigator.pop(context); // Fermer le popup
+                          if (widget.isFromDashboard && _pendingDashboardFoodItem != null) {
+                            _handleDashboardFoodSelection(_pendingDashboardFoodItem!);
+                          } else {
+                            _handleJournalFoodAddition(); // Mode journal
+                          }
+                        },
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Color(0xFFE2E8F0)),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          'Non',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF64748B),
+                          ),
+                        ),
+                      ),
+                    ),
+                    
+                    const SizedBox(width: 16),
+                    
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          Navigator.pop(context); // Fermer popup
+                          await _saveToCustomFoods();
+                          if (widget.isFromDashboard && _pendingDashboardFoodItem != null) {
+                            _handleDashboardFoodSelection(_pendingDashboardFoodItem!);
+                          } else {
+                            _handleJournalFoodAddition(); // Mode journal
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF0B132B),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          'Oui',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _saveToCustomFoods() async {
+    if (_scannedProduct == null) return;
+
+    try {
+      // Vérifier que l'utilisateur est connecté
+      final user = AuthService().currentUser;
+      if (user == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Vous devez être connecté pour sauvegarder un aliment'),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+              margin: const EdgeInsets.only(
+                top: 50,
+                left: 20,
+                right: 20,
+              ),
+            ),
+          );
+        }
+        return;
+      }
+
+      // Calculer les macros pour 100g/ml (base de référence)
+      final currentQuantity = double.tryParse(_quantityController.text) ?? 100.0;
+      final originalCalories = _scannedProduct!.nutriments?.energyKcal100g ?? 0.0;
+      final originalProteins = _scannedProduct!.nutriments?.proteins100g ?? 0.0;
+      final originalCarbs = _scannedProduct!.nutriments?.carbohydrates100g ?? 0.0;
+      final originalFats = _scannedProduct!.nutriments?.fat100g ?? 0.0;
+
+      // Si l'unité est en grammes ou ml, on peut convertir à la base 100g/ml
+      // Sinon, on garde les valeurs actuelles
+      final isWeightBasedUnit = _scannedProduct!.unit == 'g' || _scannedProduct!.unit == 'ml';
+      
+      final finalCalories = isWeightBasedUnit ? originalCalories.round() : _getCalculatedCalories().round();
+      final finalProteins = isWeightBasedUnit ? originalProteins : _getCalculatedProtein();
+      final finalCarbs = isWeightBasedUnit ? originalCarbs : _getCalculatedCarbs();
+      final finalFats = isWeightBasedUnit ? originalFats : _getCalculatedFat();
+      final finalQuantity = isWeightBasedUnit ? 100.0 : currentQuantity;
+      final finalUnit = _scannedProduct!.unit;
+
+      final customFood = {
+        'user_id': user.id,
+        'name': _scannedProduct!.productName ?? 'Produit scanné',
+        'calories': finalCalories,
+        'proteins': finalProteins,
+        'carbs': finalCarbs,
+        'fats': finalFats,
+        'reference_quantity': finalQuantity,
+        'reference_unit_fr': finalUnit,
+        'reference_unit_en': finalUnit,
+        'origin': 'barcode', // Marquer comme provenant d'un scan
+        'barcode': _scannedProduct!.barcode, // Sauvegarder le code-barres
+      };
+
+      // Sauvegarder dans Supabase
+      final response = await SupabaseConfig.client
+          .from('custom_foods')
+          .insert(customFood)
+          .select()
+          .single();
+
+      // Afficher une confirmation
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${_scannedProduct!.productName ?? 'Produit'} ajouté à vos aliments personnalisés'),
+            backgroundColor: const Color(0xFF0B132B),
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.only(
+              top: 50,
+              left: 20,
+              right: 20,
+            ),
+            action: SnackBarAction(
+              label: 'Voir',
+              textColor: Colors.white,
+              onPressed: () {
+                // TODO: Naviguer vers la liste des aliments personnalisés
+              },
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      print('Erreur lors de la sauvegarde: $e'); // Pour le debug
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur lors de la sauvegarde: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.only(
+              top: 50,
+              left: 20,
+              right: 20,
+            ),
+          ),
+        );
+      }
     }
   }
 
@@ -706,30 +1500,35 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
       ),
     ];
 
-    // Récupérer le contexte avant de fermer l'écran
-    final navigatorContext = Navigator.of(context);
+    // Sauvegarder le contexte avant de fermer l'écran
+    final currentContext = context;
+    
+    // Fermer l'écran du scanner
     Navigator.pop(context);
     
+    // Attendre un délai pour permettre au popup de se fermer s'il était ouvert
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (currentContext.mounted) {
     MealSelectionBottomSheet.show(
-      navigatorContext.context,
+          currentContext,
       foodName: foodItem.name,
       existingMeals: existingMeals,
       onExistingMealSelected: (meal) {
         // TODO: Ajouter l'aliment au repas sélectionné
-        print('Ajouter ${foodItem.name} au repas ${meal.name}');
-        // Note: SnackBar supprimé pour éviter les problèmes de contexte
+            // Ajouter l'aliment au repas sélectionné
       },
       onCreateNewMeal: () {
-        // Utiliser le contexte du Navigator parent
+            // Utiliser le contexte sauvegardé
         NewMealTypeBottomSheet.show(
-          navigatorContext.context,
+              currentContext,
           onMealTypeSelected: (mealType, time) {
             // TODO: Créer un nouveau repas avec l'aliment
-            print('Créer un nouveau repas $mealType à $time avec ${foodItem.name}');
-            // Note: SnackBar supprimé pour éviter les problèmes de contexte
+                // Créer un nouveau repas avec l'aliment
           },
         );
       },
     );
+      }
+    });
   }
 } 

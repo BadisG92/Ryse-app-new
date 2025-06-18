@@ -441,7 +441,7 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
                 color: Colors.transparent,
               ),
               child: const Icon(
-                LucideIcons.edit,
+                LucideIcons.pencil,
                 size: 16,
                 color: Color(0xFF64748B),
               ),

@@ -1,4 +1,113 @@
 // Modèles de données et logique pour les recettes
+import '../../services/recipe_service.dart';
+
+// Modèle pour un ingrédient dans une recette
+class RecipeIngredient {
+  final String id;
+  final String name;
+  final double quantity; // Quantité pour la recette complète (base × servings)
+  final String unit;
+  final double caloriesPer100g;
+  final double proteinsPer100g;
+  final double carbsPer100g;
+  final double fatsPer100g;
+
+  RecipeIngredient({
+    required this.id,
+    required this.name,
+    required this.quantity,
+    required this.unit,
+    required this.caloriesPer100g,
+    required this.proteinsPer100g,
+    required this.carbsPer100g,
+    required this.fatsPer100g,
+  });
+
+  // Calculer les valeurs nutritionnelles pour cette quantité d'ingrédient
+  double get totalCalories => (caloriesPer100g * quantity) / 100;
+  double get totalProteins => (proteinsPer100g * quantity) / 100;
+  double get totalCarbs => (carbsPer100g * quantity) / 100;
+  double get totalFats => (fatsPer100g * quantity) / 100;
+
+  // Créer une copie avec une nouvelle quantité
+  RecipeIngredient copyWith({
+    double? quantity,
+  }) {
+    return RecipeIngredient(
+      id: id,
+      name: name,
+      quantity: quantity ?? this.quantity,
+      unit: unit,
+      caloriesPer100g: caloriesPer100g,
+      proteinsPer100g: proteinsPer100g,
+      carbsPer100g: carbsPer100g,
+      fatsPer100g: fatsPer100g,
+    );
+  }
+
+  // Formatter pour l'affichage (ex: "200g - Poulet")
+  String get displayText => "${quantity.toStringAsFixed(0)} $unit - $name";
+}
+
+// Modèle pour gérer l'état d'une recette avec portions modifiables
+class RecipeDetailModel {
+  final Recipe baseRecipe;
+  List<RecipeIngredient> ingredients;
+  int currentPortions;
+
+  RecipeDetailModel({
+    required this.baseRecipe,
+    required this.ingredients,
+    required this.currentPortions,
+  });
+
+  // Calcul des valeurs nutritionnelles pour 1 portion
+  Map<String, int> get nutritionPer1Portion {
+    double totalCalories = 0;
+    double totalProteins = 0;
+    double totalCarbs = 0;
+    double totalFats = 0;
+
+    for (var ingredient in ingredients) {
+      totalCalories += ingredient.totalCalories;
+      totalProteins += ingredient.totalProteins;
+      totalCarbs += ingredient.totalCarbs;
+      totalFats += ingredient.totalFats;
+    }
+
+    // Diviser par le nombre de portions actuelles pour obtenir la valeur par portion
+    return {
+      'calories': (totalCalories / currentPortions).round(),
+      'proteins': (totalProteins / currentPortions).round(),
+      'carbs': (totalCarbs / currentPortions).round(),
+      'fats': (totalFats / currentPortions).round(),
+    };
+  }
+
+  // Changer le nombre de portions et ajuster les quantités d'ingrédients
+  void updatePortions(int newPortions) {
+    if (newPortions <= 0) return;
+    
+    double ratio = newPortions / currentPortions;
+    
+    ingredients = ingredients.map((ingredient) {
+      return ingredient.copyWith(
+        quantity: ingredient.quantity * ratio,
+      );
+    }).toList();
+    
+    currentPortions = newPortions;
+  }
+
+  // Modifier la quantité d'un ingrédient spécifique
+  void updateIngredientQuantity(String ingredientId, double newQuantity) {
+    final index = ingredients.indexWhere((ing) => ing.id == ingredientId);
+    if (index != -1) {
+      ingredients[index] = ingredients[index].copyWith(quantity: newQuantity);
+    }
+  }
+}
+
 class Recipe {
   final int id;
   final String name;
@@ -209,9 +318,11 @@ class RecipeFilters {
   }
 }
 
-// Données exemple de recettes
+// Données de recettes - INTERFACE IDENTIQUE pour l'UI
 class RecipeData {
-  static const List<Recipe> featuredRecipes = [
+  // Variables privées pour stocker les données Supabase
+  static List<Recipe> _featuredRecipes = [
+    // Données par défaut au cas où Supabase ne répond pas
     Recipe(
       id: 1,
       name: "Bowl protéiné post-workout",
@@ -240,117 +351,30 @@ class RecipeData {
       ],
     ),
     Recipe(
-      id: 7,
-      name: "Saumon teriyaki aux légumes",
+      id: 2,
+      name: "Salade de quinoa aux légumes",
       image: "/placeholder.svg?height=200&width=200",
-      duration: "25 min",
-      calories: 420,
-      servings: 2,
-      tags: ["Riche en protéines", "Équilibré"],
-      proteins: 32,
-      carbs: 18,
-      fats: 22,
-      difficulty: "Moyen",
-      ingredients: [
-        "300g - Filet de saumon",
-        "3 cuillères - Sauce teriyaki",
-        "1 - Courgette",
-        "1 - Poivron rouge",
-        "100g - Brocolis",
-        "1 cuillère - Huile d'olive",
-      ],
-      steps: [
-        "Préchauffez le four à 200°C.",
-        "Coupez les légumes en morceaux uniformes.",
-        "Placez le saumon dans un plat allant au four.",
-        "Badigeonnez le saumon de sauce teriyaki.",
-        "Disposez les légumes autour du saumon.",
-        "Arrosez d'huile d'olive et enfournez 20 minutes.",
-      ],
-    ),
-    Recipe(
-      id: 8,
-      name: "Overnight oats aux fruits",
-      image: "/placeholder.svg?height=200&width=200",
-      duration: "5 min",
+      duration: "15 min",
       calories: 280,
       servings: 1,
-      tags: ["Petit-déjeuner", "Préparation"],
+      tags: ["Végétarien", "Sain"],
       proteins: 12,
-      carbs: 45,
+      carbs: 35,
       fats: 8,
       difficulty: "Facile",
       ingredients: [
-        "50g - Flocons d'avoine",
-        "200ml - Lait d'amande",
-        "1 cuillère - Graines de chia",
-        "1 cuillère - Miel",
-        "100g - Fruits rouges",
-      ],
-      steps: [
-        "Mélangez les flocons d'avoine et le lait d'amande dans un bocal.",
-        "Ajoutez les graines de chia et le miel.",
-        "Mélangez bien tous les ingrédients.",
-        "Placez au réfrigérateur toute la nuit.",
-        "Le matin, ajoutez les fruits rouges et dégustez.",
-      ],
-    ),
-  ];
-
-  static const List<Recipe> allRecipes = [
-    Recipe(
-      id: 1,
-      name: "Salade César rapide",
-      image: "/placeholder.svg?height=200&width=200",
-      duration: "15 min",
-      calories: 320,
-      servings: 2,
-      tags: ["Végétarien", "Sans gluten"],
-      proteins: 20,
-      carbs: 15,
-      fats: 18,
-      difficulty: "Facile",
-      ingredients: [
-        "2 - Cœurs de romaine",
-        "50g - Parmesan râpé",
-        "30g - Croûtons sans gluten",
-        "3 cuillères - Sauce César",
-        "1 - Citron",
-      ],
-      steps: [
-        "Lavez et essorez la salade romaine.",
-        "Coupez les feuilles en morceaux.",
-        "Ajoutez les croûtons et le parmesan.",
-        "Arrosez de sauce César et de jus de citron.",
-        "Mélangez bien et servez immédiatement.",
-      ],
-    ),
-    Recipe(
-      id: 2,
-      name: "Saumon grillé aux épinards",
-      image: "/placeholder.svg?height=200&width=200",
-      duration: "20 min",
-      calories: 380,
-      servings: 1,
-      tags: ["Riche en protéines"],
-      proteins: 35,
-      carbs: 8,
-      fats: 22,
-      difficulty: "Moyen",
-      ingredients: [
-        "150g - Filet de saumon",
-        "100g - Épinards frais",
+        "100g - Quinoa cuit",
+        "50g - Tomates cerises",
+        "50g - Concombre",
+        "30g - Feta",
         "1 cuillère - Huile d'olive",
-        "1 gousse - Ail",
-        "1/2 - Citron",
-        "Sel et poivre - Au goût",
       ],
       steps: [
-        "Chauffez une poêle avec l'huile d'olive.",
-        "Assaisonnez le saumon avec sel et poivre.",
-        "Faites griller le saumon 4 min de chaque côté.",
-        "Dans la même poêle, faites revenir l'ail et les épinards.",
-        "Servez le saumon sur les épinards avec du citron.",
+        "Coupez les tomates cerises en deux.",
+        "Découpez le concombre en dés.",
+        "Mélangez le quinoa avec les légumes.",
+        "Ajoutez la feta émiettée.",
+        "Assaisonnez avec l'huile d'olive.",
       ],
     ),
     Recipe(
@@ -358,224 +382,97 @@ class RecipeData {
       name: "Smoothie protéiné banane",
       image: "/placeholder.svg?height=200&width=200",
       duration: "5 min",
-      calories: 280,
+      calories: 320,
       servings: 1,
-      tags: ["Post-workout", "Végétarien"],
+      tags: ["Boisson", "Protéiné"],
       proteins: 25,
       carbs: 30,
-      fats: 8,
+      fats: 6,
       difficulty: "Facile",
       ingredients: [
-        "1 - Banane mûre",
-        "30g - Protéine en poudre vanille",
+        "1 - Banane",
         "200ml - Lait d'amande",
+        "30g - Protéine en poudre",
         "1 cuillère - Beurre d'amande",
-        "1 pincée - Cannelle",
+        "1/2 cuillère - Cannelle",
       ],
       steps: [
-        "Pelez et coupez la banane en morceaux.",
-        "Mettez tous les ingrédients dans un blender.",
-        "Mixez pendant 30 secondes jusqu'à consistance lisse.",
-        "Ajustez la texture avec plus de lait si nécessaire.",
-        "Versez dans un verre et dégustez immédiatement.",
+        "Pelez et coupez la banane.",
+        "Versez tous les ingrédients dans un blender.",
+        "Mixez pendant 1 minute.",
+        "Servez immédiatement.",
       ],
     ),
     Recipe(
       id: 4,
-      name: "Bowl de quinoa aux légumes",
+      name: "Wrap au poulet grillé",
       image: "/placeholder.svg?height=200&width=200",
-      duration: "25 min",
+      duration: "12 min",
       calories: 420,
-      servings: 2,
-      tags: ["Végan", "Riche en fibres"],
-      proteins: 15,
-      carbs: 65,
-      fats: 12,
-      difficulty: "Moyen",
-      ingredients: [
-        "150g - Quinoa",
-        "1 - Courgette",
-        "1 - Poivron rouge",
-        "100g - Tomates cerises",
-        "2 cuillères - Huile d'olive",
-        "1 cuillère - Vinaigre balsamique",
-      ],
-      steps: [
-        "Rincez et faites cuire le quinoa selon les instructions.",
-        "Coupez les légumes en dés.",
-        "Faites revenir les légumes à l'huile d'olive.",
-        "Mélangez le quinoa cuit avec les légumes.",
-        "Assaisonnez avec le vinaigre balsamique.",
-      ],
-    ),
-    Recipe(
-      id: 5,
-      name: "Omelette aux champignons",
-      image: "/placeholder.svg?height=200&width=200",
-      duration: "12 min",
-      calories: 260,
       servings: 1,
-      tags: ["Rapide", "Keto"],
-      proteins: 18,
-      carbs: 5,
-      fats: 20,
-      difficulty: "Facile",
-      ingredients: [
-        "3 - Œufs",
-        "100g - Champignons de Paris",
-        "1 cuillère - Beurre",
-        "30g - Gruyère râpé",
-        "1 cuillère - Crème fraîche",
-        "Sel et poivre - Au goût",
-      ],
-      steps: [
-        "Battez les œufs avec la crème, sel et poivre.",
-        "Émincez et faites revenir les champignons au beurre.",
-        "Versez les œufs battus dans la poêle.",
-        "Ajoutez les champignons et le fromage sur une moitié.",
-        "Pliez l'omelette en deux et servez immédiatement.",
-      ],
-    ),
-    Recipe(
-      id: 6,
-      name: "Pasta au pesto maison",
-      image: "/placeholder.svg?height=200&width=200",
-      duration: "18 min",
-      calories: 450,
-      servings: 2,
-      tags: ["Végétarien", "Italien"],
-      proteins: 12,
-      carbs: 60,
+      tags: ["Protéiné", "Rapide"],
+      proteins: 35,
+      carbs: 25,
       fats: 18,
-      difficulty: "Moyen",
-      ingredients: [
-        "200g - Penne",
-        "50g - Basilic frais",
-        "30g - Pignons de pin",
-        "50g - Parmesan",
-        "2 gousses - Ail",
-        "80ml - Huile d'olive",
-      ],
-      steps: [
-        "Faites cuire les pâtes selon les instructions.",
-        "Mixez basilic, pignons, ail et parmesan.",
-        "Ajoutez l'huile d'olive progressivement en mixant.",
-        "Égouttez les pâtes en gardant un peu d'eau de cuisson.",
-        "Mélangez les pâtes avec le pesto et l'eau de cuisson.",
-      ],
-    ),
-    Recipe(
-      id: 7,
-      name: "Wrap végan aux légumes",
-      image: "/placeholder.svg?height=200&width=200",
-      duration: "10 min",
-      calories: 280,
-      servings: 1,
-      tags: ["Végan", "Rapide"],
-      proteins: 8,
-      carbs: 45,
-      fats: 12,
       difficulty: "Facile",
       ingredients: [
-        "1 - Tortilla de blé",
-        "50g - Houmous",
-        "1/2 - Avocat",
-        "50g - Concombre",
-        "50g - Tomate",
-        "30g - Pousses d'épinards",
+        "1 - Tortilla complète",
+        "120g - Blanc de poulet",
+        "50g - Salade verte",
+        "30g - Avocat",
+        "2 cuillères - Sauce yaourt",
       ],
       steps: [
-        "Étalez le houmous sur toute la tortilla.",
-        "Émincez l'avocat, le concombre et la tomate.",
-        "Disposez tous les légumes sur la moitié de la tortilla.",
-        "Ajoutez les pousses d'épinards.",
-        "Roulez fermement le wrap et coupez en deux.",
-      ],
-    ),
-    Recipe(
-      id: 8,
-      name: "Curry de lentilles épicé",
-      image: "/placeholder.svg?height=200&width=200",
-      duration: "35 min",
-      calories: 380,
-      servings: 3,
-      tags: ["Végan", "Riche en fibres"],
-      proteins: 18,
-      carbs: 52,
-      fats: 10,
-      difficulty: "Moyen",
-      ingredients: [
-        "200g - Lentilles rouges",
-        "400ml - Lait de coco",
-        "1 - Oignon",
-        "2 gousses - Ail",
-        "1 cuillère - Curry en poudre",
-        "1 - Tomate",
-      ],
-      steps: [
-        "Émincez l'oignon et l'ail, faites-les revenir.",
-        "Ajoutez le curry et faites griller 1 minute.",
-        "Incorporez les lentilles et la tomate coupée.",
-        "Versez le lait de coco et laissez mijoter 25 min.",
-        "Assaisonnez et servez avec du riz basmati.",
-      ],
-    ),
-    Recipe(
-      id: 9,
-      name: "Steak grillé keto",
-      image: "/placeholder.svg?height=200&width=200",
-      duration: "15 min",
-      calories: 520,
-      servings: 1,
-      tags: ["Keto", "Riche en protéines"],
-      proteins: 45,
-      carbs: 2,
-      fats: 35,
-      difficulty: "Moyen",
-      ingredients: [
-        "200g - Steak de bœuf",
-        "1 cuillère - Beurre",
-        "1 gousse - Ail",
-        "1 branche - Thym",
-        "100g - Brocolis",
-        "Sel et poivre - Au goût",
-      ],
-      steps: [
-        "Sortez le steak 30 min avant cuisson.",
-        "Assaisonnez généreusement avec sel et poivre.",
-        "Chauffez une poêle à feu vif.",
-        "Saisissez le steak 3-4 min de chaque côté.",
-        "Ajoutez beurre, ail et thym, arrosez le steak.",
-        "Servez avec les brocolis vapeur.",
-      ],
-    ),
-    Recipe(
-      id: 10,
-      name: "Salade méditerranéenne",
-      image: "/placeholder.svg?height=200&width=200",
-      duration: "12 min",
-      calories: 320,
-      servings: 2,
-      tags: ["Méditerranéen", "Sans gluten"],
-      proteins: 12,
-      carbs: 20,
-      fats: 22,
-      difficulty: "Facile",
-      ingredients: [
-        "150g - Tomates cerises",
-        "1 - Concombre",
-        "100g - Feta",
-        "50g - Olives noires",
-        "1/2 - Oignon rouge",
-        "3 cuillères - Huile d'olive",
-      ],
-      steps: [
-        "Coupez les tomates cerises en deux.",
-        "Émincez le concombre et l'oignon rouge.",
-        "Émiettez la feta en gros morceaux.",
-        "Mélangez tous les ingrédients dans un saladier.",
-        "Arrosez d'huile d'olive et mélangez délicatement.",
+        "Faites griller le poulet et découpez-le.",
+        "Étalez la sauce sur la tortilla.",
+        "Ajoutez la salade et l'avocat.",
+        "Disposez le poulet au centre.",
+        "Roulez le wrap fermement.",
       ],
     ),
   ];
+  
+  static List<Recipe> _allRecipes = _featuredRecipes;
+  static bool _isLoaded = false;
+
+  // INTERFACE PUBLIQUE IDENTIQUE - getters synchrones
+  static List<Recipe> get featuredRecipes => _featuredRecipes;
+  static List<Recipe> get allRecipes => _allRecipes;
+
+  // Initialisation - charge les données Supabase en arrière-plan
+  static void initialize() {
+    _loadRecipesFromSupabase();
+  }
+
+  // Charge les données depuis Supabase et met à jour les listes
+  static Future<void> _loadRecipesFromSupabase() async {
+    try {
+      final supabaseAllRecipes = await RecipeService.getAllRecipes();
+      final supabaseFeaturedRecipes = await RecipeService.getFeaturedRecipes();
+      
+      // Mettre à jour les listes avec les données Supabase
+      _allRecipes = supabaseAllRecipes.isNotEmpty ? supabaseAllRecipes : _allRecipes;
+      
+      // S'assurer qu'il y a au moins 3 recettes featured pour le défilement
+      if (supabaseFeaturedRecipes.length >= 3) {
+        _featuredRecipes = supabaseFeaturedRecipes;
+      } else {
+        // Utiliser les données par défaut si pas assez de recettes Supabase
+        print('⚠️ Pas assez de recettes Supabase (${supabaseFeaturedRecipes.length}), utilisation des données par défaut');
+      }
+      
+      _isLoaded = true;
+      
+      print('✅ Recettes chargées: ${_allRecipes.length} recettes, ${_featuredRecipes.length} featured');
+    } catch (e) {
+      print('⚠️ Erreur Supabase, utilisation des données par défaut: $e');
+      // Garde les données par défaut en cas d'erreur
+    }
+  }
+
+  // Méthode pour forcer le rechargement (optionnel)
+  static Future<void> refresh() async {
+    await _loadRecipesFromSupabase();
+  }
+
 } 

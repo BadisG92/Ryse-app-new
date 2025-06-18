@@ -4,11 +4,17 @@ import 'recipe_details_screen.dart';
 import '../components/ui/recipe_models.dart';
 import '../components/ui/recipe_widgets.dart';
 import '../components/ui/recipe_cards.dart';
+import '../models/nutrition_models.dart';
 
 class SelectRecipeScreen extends StatefulWidget {
   final bool isFromDashboard;
+  final Function(FoodItem)? onRecipeSelected; // Callback pour ajouter la recette au journal
   
-  const SelectRecipeScreen({super.key, this.isFromDashboard = false});
+  const SelectRecipeScreen({
+    super.key, 
+    this.isFromDashboard = false,
+    this.onRecipeSelected,
+  });
 
   @override
   State<SelectRecipeScreen> createState() => _SelectRecipeScreenState();
@@ -320,6 +326,7 @@ class _SelectRecipeScreenState extends State<SelectRecipeScreen> {
         builder: (context) => RecipeDetailsScreen(
           recipe: recipe,
           isFromDashboard: widget.isFromDashboard,
+          onRecipeSelected: widget.onRecipeSelected, // Passer le callback
         ),
       ),
     );

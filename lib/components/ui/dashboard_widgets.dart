@@ -543,27 +543,7 @@ class _QuickActionsSectionState extends State<QuickActionsSection> {
     ManualFoodSearchBottomSheet.show(
       context,
       isFromDashboard: true,
-      onFoodSelected: (name, calories, baseWeight) {
-        _showFoodDetailsBottomSheet(context, name, calories, baseWeight);
-      },
       onFoodCreated: (foodItem) {
-        _handleDashboardFoodSelectionFromDetails(context, foodItem);
-      },
-    );
-  }
-
-  void _showFoodDetailsBottomSheet(BuildContext context, String name, int calories, int baseWeight) {
-    EditableFoodDetailsBottomSheet.show(
-      context,
-      name: name,
-      calories: calories,
-      proteins: 0,
-      glucides: 0,
-      lipides: 0,
-      quantity: baseWeight.toDouble(),
-      isModified: false,
-      onFoodAdded: (foodItem) {
-        Navigator.pop(context);
         _handleDashboardFoodSelectionFromDetails(context, foodItem);
       },
     );
@@ -622,8 +602,6 @@ class _QuickActionsSectionState extends State<QuickActionsSection> {
       },
     );
   }
-
-
 }
 
 // Section des objectifs journaliers

@@ -74,6 +74,11 @@ class Food {
   final bool isCustom;
   final String? userId;
   final DateTime? createdAt;
+  final String? referenceUnitFr;
+  final String? referenceUnitEn;
+  final double? referenceQuantity;
+  final String? origin; // 'manual', 'barcode', ou null pour les aliments de base
+  final String? barcode; // Code-barres du produit (nullable)
 
   Food({
     required this.id,
@@ -87,6 +92,11 @@ class Food {
     this.isCustom = false,
     this.userId,
     this.createdAt,
+    this.referenceUnitFr,
+    this.referenceUnitEn,
+    this.referenceQuantity,
+    this.origin,
+    this.barcode,
   });
 
   factory Food.fromJson(Map<String, dynamic> json) {
@@ -102,6 +112,11 @@ class Food {
       isCustom: json['is_custom'] ?? false,
       userId: json['user_id'],
       createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : null,
+      referenceUnitFr: json['reference_unit_fr'],
+      referenceUnitEn: json['reference_unit_en'],
+      referenceQuantity: json['reference_quantity']?.toDouble(),
+      origin: json['origin'],
+      barcode: json['barcode'],
     );
   }
 
@@ -118,12 +133,101 @@ class Food {
       'is_custom': isCustom,
       'user_id': userId,
       'created_at': createdAt?.toIso8601String(),
+      'reference_unit_fr': referenceUnitFr,
+      'reference_unit_en': referenceUnitEn,
+      'reference_quantity': referenceQuantity,
+      'origin': origin,
+      'barcode': barcode,
     };
   }
 
   String getLocalizedName(String language) {
     return language == 'fr' ? nameFr : nameEn;
   }
+
+  String? getLocalizedUnit(String language) {
+    return language == 'fr' ? referenceUnitFr : referenceUnitEn;
+  }
+}
+
+// Custom Food types
+class CustomFood {
+  final int id;
+  final String userId;
+  final String name;
+  final int calories;
+  final double proteins;
+  final double carbs;
+  final double fats;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final double referenceQuantity;
+  final String? referenceUnitFr;
+  final String? referenceUnitEn;
+  final String origin; // 'manual' or 'barcode'
+  final String? barcode; // Code-barres du produit (nullable)
+
+  CustomFood({
+    required this.id,
+    required this.userId,
+    required this.name,
+    required this.calories,
+    this.proteins = 0.0,
+    this.carbs = 0.0,
+    this.fats = 0.0,
+    required this.createdAt,
+    required this.updatedAt,
+    this.referenceQuantity = 100.0,
+    this.referenceUnitFr,
+    this.referenceUnitEn,
+    this.origin = 'manual',
+    this.barcode,
+  });
+
+  factory CustomFood.fromJson(Map<String, dynamic> json) {
+    return CustomFood(
+      id: json['id'],
+      userId: json['user_id'],
+      name: json['name'],
+      calories: json['calories'],
+      proteins: (json['proteins'] ?? 0).toDouble(),
+      carbs: (json['carbs'] ?? 0).toDouble(),
+      fats: (json['fats'] ?? 0).toDouble(),
+      createdAt: DateTime.parse(json['created_at']),
+      updatedAt: DateTime.parse(json['updated_at']),
+      referenceQuantity: (json['reference_quantity'] ?? 100).toDouble(),
+      referenceUnitFr: json['reference_unit_fr'],
+      referenceUnitEn: json['reference_unit_en'],
+      origin: json['origin'] ?? 'manual',
+      barcode: json['barcode'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'user_id': userId,
+      'name': name,
+      'calories': calories,
+      'proteins': proteins,
+      'carbs': carbs,
+      'fats': fats,
+      'created_at': createdAt.toIso8601String(),
+      'updated_at': updatedAt.toIso8601String(),
+      'reference_quantity': referenceQuantity,
+      'reference_unit_fr': referenceUnitFr,
+      'reference_unit_en': referenceUnitEn,
+      'origin': origin,
+      'barcode': barcode,
+    };
+  }
+
+  String? getLocalizedUnit(String language) {
+    return language == 'fr' ? referenceUnitFr : referenceUnitEn;
+  }
+
+  bool get isScanned => origin == 'barcode';
+  bool get isManual => origin == 'manual';
 }
 
 // HIIT Workout types

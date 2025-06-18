@@ -129,57 +129,90 @@ class FoodItemWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Row(
+              children: [
+                // Icône personnalisée ou espace réservé selon les nouvelles règles
+                item.shouldShowCustomIcon
+                  ? Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0B132B).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                      child: Icon(
+                        item.displayIcon, // Utiliser la nouvelle méthode displayIcon
+                        size: 12,
+                        color: const Color(0xFF0B132B),
+                      ),
+                    )
+                  : const SizedBox(width: 12),
+                
+                const SizedBox(width: 6),
+                
+                // Contenu texte (couleurs normales, plus de bleu)
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.name,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF1A1A1A),
+                        ),
+                      ),
+                      Text(
+                        item.portion,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w400,
+                          color: Color(0xFF64748B),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Row(
             children: [
               Text(
-                item.name,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF1A1A1A),
-                ),
-              ),
-              Text(
-                item.portion,
+                '${item.calories} kcal',
                 style: const TextStyle(
                   fontSize: 13,
-                  fontWeight: FontWeight.w400,
-                  color: Color(0xFF64748B),
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF0B132B),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Bouton points
+              GestureDetector(
+                onTap: () {},
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  child: const Icon(
+                    LucideIcons.ellipsis,
+                    size: 16,
+                    color: Color(0xFF888888),
+                  ),
                 ),
               ),
             ],
           ),
-        ),
-        Row(
-          children: [
-            Text(
-              '${item.calories} kcal',
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF0B132B),
-              ),
-            ),
-            const SizedBox(width: 8),
-            GestureDetector(
-              onTap: () {},
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                child: const Icon(
-                  LucideIcons.ellipsis,
-                  size: 16,
-                  color: Color(0xFF888888),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
+        ],
+      ),
     );
   }
 } 
