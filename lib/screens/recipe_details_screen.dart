@@ -6,6 +6,8 @@ import '../bottom_sheets/meal_selection_bottom_sheet.dart';
 import '../bottom_sheets/new_meal_type_bottom_sheet.dart';
 import '../models/nutrition_models.dart' as nutrition_models;
 import '../config/supabase_config.dart';
+import '../services/auth_service.dart';
+import '../services/food_entries_service.dart';
 
 // Modèle pour un ingrédient détaillé avec ses valeurs nutritionnelles
 class DetailedIngredient {
@@ -71,6 +73,9 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
     _loadDetailedIngredients();
   }
 
+  // Stockage de l'ID réel de la recette depuis Supabase
+  String? _realRecipeId;
+
   // Charger les ingrédients détaillés depuis la base de données
   Future<void> _loadDetailedIngredients() async {
     try {
@@ -90,6 +95,7 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
       }
       
       final recipeId = recipesResponse.first['id'];
+      _realRecipeId = recipeId; // Stocker l'ID réel
       
       // Récupérer les ingrédients avec les données nutritionnelles
       final ingredientsResponse = await SupabaseConfig.client
@@ -788,16 +794,11 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
         ),
         child: SizedBox(
           width: double.infinity,
-          child: ElevatedButton.icon(
-            onPressed: _handleAddRecipeToMeal,
-            icon: const Icon(
-              LucideIcons.plus,
-              size: 16,
-              color: Colors.white,
-            ),
-            label: const Text(
-              'Ajouter à un repas',
-              style: TextStyle(
+                      child: ElevatedButton(
+              onPressed: _handleAddRecipeToMeal,
+                            child: Text(
+                widget.isFromDashboard ? 'Ajouter au repas' : 'Ajouter à un repas',
+                style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
                 color: Colors.white,
@@ -846,16 +847,22 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
     );
   }
 
-  void _handleAddRecipeToMeal() {
+  Future<void> _handleAddRecipeToMeal() async {
+    print('🔵 _handleAddRecipeToMeal appelée');
+    print('🔵 onRecipeSelected: ${widget.onRecipeSelected != null}');
+    print('🔵 isFromDashboard: ${widget.isFromDashboard}');
+    
     // Utiliser les valeurs actuelles (avec modifications si applicable)
     final nutrition = _calculateCurrentNutrition();
     final totalCalories = nutrition['calories'] as double;
     final totalProteins = nutrition['proteins'] as double;
     final totalCarbs = nutrition['carbs'] as double;
     final totalFats = nutrition['fats'] as double;
+    final hasModifications = nutrition['hasModifications'] as bool;
     
     // Créer un FoodItem basé sur la recette (avec modifications si applicable)
     final foodItem = nutrition_models.FoodItem(
+      id: _realRecipeId, // Utiliser l'ID réel de la recette depuis Supabase
       name: widget.recipe.name,
       calories: totalCalories.round(),
       proteins: totalProteins,
@@ -863,103 +870,159 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
       fats: totalFats,
       portion: '1 portion',
       isRecipe: true, // Marquer comme recette
-      hasModifiedMacros: isCustomized, // Si la recette a été modifiée
+      hasModifiedMacros: hasModifications, // Utiliser la détection automatique des modifications
     );
     
-    if (widget.isFromDashboard) {
-      // Si on vient du dashboard, utiliser le système de sélection de repas
-      _showMealSelectionBottomSheet(foodItem);
-    } else if (widget.onRecipeSelected != null) {
-      // Si on vient du journal et qu'on a un callback, l'utiliser
+    print('🔵 FoodItem créé: ${foodItem.name}, calories: ${foodItem.calories}');
+    
+    if (widget.onRecipeSelected != null) {
+      print('🔵 Utilisation du callback onRecipeSelected');
+      // Si on a un callback (dashboard avec repas présélectionné ou journal), l'utiliser
       Navigator.pop(context); // Ferme RecipeDetailsScreen
       Navigator.pop(context); // Ferme SelectRecipeScreen
       
-      // Ajouter la recette au journal via le callback
+      // Ajouter la recette via le callback
       widget.onRecipeSelected!(foodItem);
+      print('🔵 Callback appelé avec succès');
     } else {
-      // Fallback : ancienne logique
-      Navigator.pop(context); // Ferme RecipeDetailsScreen
-      Navigator.pop(context); // Ferme SelectRecipeScreen
-      
-      // Afficher le message de confirmation après fermeture
-      Future.delayed(const Duration(milliseconds: 100), () {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('${foodItem.name} ajouté au repas'),
-              backgroundColor: const Color(0xFF0B132B),
-            ),
-          );
-        }
-      });
+      // Si on vient de l'onglet recettes ou dashboard sans callback, afficher la sélection de repas
+      await _showMealSelectionBottomSheet(foodItem);
     }
   }
 
-  void _showMealSelectionBottomSheet(nutrition_models.FoodItem foodItem) {
-    // Simuler des repas existants
-    final existingMeals = <nutrition_models.Meal>[
-      nutrition_models.Meal(
-        name: 'Petit-déjeuner',
-        time: '08:30',
-        items: [
-          nutrition_models.FoodItem(
-            name: 'Café',
-            calories: 5,
-            portion: '1 tasse',
-          ),
-        ],
-      ),
-      nutrition_models.Meal(
-        name: 'Déjeuner',
-        time: '12:45',
-        items: [
-          nutrition_models.FoodItem(
-            name: 'Salade',
-            calories: 150,
-            portion: '200g',
-          ),
-        ],
-      ),
-    ];
+  Future<void> _showMealSelectionBottomSheet(nutrition_models.FoodItem foodItem) async {
+    // Récupérer les vrais repas du jour depuis la base de données
+    final user = AuthService().currentUser;
+    List<nutrition_models.Meal> existingMeals = [];
+    
+    if (user != null) {
+      try {
+        final meals = await FoodEntriesService.getFoodEntriesForDate(user.id, DateTime.now());
+        existingMeals = meals.where((meal) => meal.items.isNotEmpty).toList();
+      } catch (e) {
+        print('Erreur lors de la récupération des repas existants: $e');
+      }
+    }
+
+    if (!mounted) return;
 
     MealSelectionBottomSheet.show(
       context,
       foodName: foodItem.name,
       existingMeals: existingMeals,
-      onExistingMealSelected: (meal) {
-        print('Ajouter ${foodItem.name} au repas ${meal.name}');
-        
-        // Fermer seulement RecipeDetailsScreen (retour à l'onglet d'origine)
-        Navigator.pop(context);
-        
-        Future.delayed(const Duration(milliseconds: 100), () {
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('${foodItem.name} ajouté au ${meal.name}')),
-            );
-          }
-        });
+      onExistingMealSelected: (meal) async {
+        print('🍽️ Ajouter ${foodItem.name} au repas ${meal.name}');
+        await _addRecipeToExistingMeal(foodItem, meal);
       },
       onCreateNewMeal: () {
         NewMealTypeBottomSheet.show(
           context,
-          onMealTypeSelected: (mealType, time) {
-            print('Créer un nouveau repas $mealType avec ${foodItem.name}');
-            
-            // Fermer seulement RecipeDetailsScreen (retour à l'onglet d'origine)
-            Navigator.pop(context);
-            
-            Future.delayed(const Duration(milliseconds: 100), () {
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('${foodItem.name} ajouté au nouveau $mealType')),
-                );
-              }
-            });
+          onMealTypeSelected: (mealType, time) async {
+            print('🆕 Créer un nouveau repas $mealType avec ${foodItem.name}');
+            await _addRecipeToNewMeal(foodItem, mealType);
           },
         );
       },
     );
+  }
+
+  Future<void> _addRecipeToExistingMeal(nutrition_models.FoodItem foodItem, nutrition_models.Meal meal) async {
+    try {
+      final user = AuthService().currentUser;
+      if (user == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Erreur: utilisateur non connecté'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      // Ajouter la recette au repas existant
+      await FoodEntriesService.addFoodEntry(
+        userId: user.id,
+        mealId: meal.id!, // Utiliser l'ID du repas existant
+        foodItem: foodItem,
+        mealName: meal.name,
+      );
+
+      // Fermer l'écran et afficher confirmation
+      if (mounted) {
+        Navigator.pop(context);
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${foodItem.name} ajouté au ${meal.name}'),
+            backgroundColor: const Color(0xFF0B132B),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+
+    } catch (e) {
+      print('❌ Erreur lors de l\'ajout au repas existant: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur lors de l\'ajout: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _addRecipeToNewMeal(nutrition_models.FoodItem foodItem, String mealType) async {
+    try {
+      final user = AuthService().currentUser;
+      if (user == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Erreur: utilisateur non connecté'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      // Créer un nouveau repas avec la recette
+      // FoodEntriesService.addFoodEntry créera automatiquement le repas s'il n'existe pas
+      await FoodEntriesService.addFoodEntry(
+        userId: user.id,
+        mealId: null, // Pas d'ID spécifique, laisse le service générer
+        foodItem: foodItem,
+        mealName: mealType,
+      );
+
+      // Fermer l'écran et afficher confirmation
+      if (mounted) {
+        Navigator.pop(context);
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${foodItem.name} ajouté au nouveau $mealType'),
+            backgroundColor: const Color(0xFF0B132B),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+
+    } catch (e) {
+      print('❌ Erreur lors de la création du nouveau repas: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur lors de l\'ajout: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   String _getQuantityUnit(String quantity) {

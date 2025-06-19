@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'custom_card.dart';
@@ -14,6 +14,8 @@ import '../../bottom_sheets/manual_food_search_bottom_sheet.dart';
 import '../../bottom_sheets/meal_selection_bottom_sheet.dart';
 import '../../bottom_sheets/new_meal_type_bottom_sheet.dart';
 import '../../models/nutrition_models.dart' as nutrition_models;
+import '../../services/food_entries_service.dart';
+import '../../services/auth_service.dart';
 
 // Section des actions rapides nutrition
 class NutritionQuickActionsSection extends StatelessWidget {
@@ -105,160 +107,1691 @@ class NutritionQuickActionsSection extends StatelessWidget {
         );
         break;
       case 'barcode':
-        // Navigation directe vers BarcodeScannerScreen avec flag dashboard
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const BarcodeScannerScreen(isFromDashboard: true),
-          ),
-        );
+        // Flux direct vers sélection de repas pour scanner (éviter double bottom sheet)
+        _showDirectMealSelectionForScanner(context);
         break;
       case 'recipe':
-        // Navigation directe vers SelectRecipeScreen avec flag dashboard
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const SelectRecipeScreen(isFromDashboard: true),
-          ),
-        );
+        // Flux direct vers sélection de repas pour recettes (même principe que scanner)
+        _showDirectMealSelectionForRecipe(context);
         break;
     }
   }
 
   void _showManualEntryBottomSheet(BuildContext context) {
+    // Depuis le dashboard, on doit d'abord demander de sélectionner le repas
+    showMealSelectionForDashboard(context);
+  }
+
+  // Méthode statique publique pour être appelée depuis le dashboard (recherche manuelle)
+  static void showMealSelectionForDashboard(BuildContext context) {
+    _showMealSelectionFirst(context);
+  }
+
+  // Méthode statique pour les aliments déjà détectés (scanner IA, code-barres)
+  static void showMealSelectionWithDetectedFood(BuildContext context, nutrition_models.FoodItem detectedFood) {
+    _showMealSelectionForDetectedFood(context, detectedFood);
+  }
+
+  // Méthodes publiques pour accéder aux flux de sélection depuis le dashboard
+  static Future<void> showMealSelectionForScanner(BuildContext context) async {
+    await _showDirectMealSelectionForScanner(context);
+  }
+
+  static Future<void> showMealSelectionForRecipe(BuildContext context) async {
+    await _showDirectMealSelectionForRecipe(context);
+  }
+
+  // Méthodes publiques pour ajouter des aliments depuis le dashboard
+  static Future<void> addFoodToSelectedMeal(BuildContext context, nutrition_models.FoodItem foodItem, nutrition_models.Meal selectedMeal) async {
+    await _addFoodToSelectedMeal(context, foodItem, selectedMeal);
+  }
+
+  static Future<void> addRecipeToNewMealJournalStyle(BuildContext context, nutrition_models.FoodItem foodItem, String mealType) async {
+    await _addRecipeToNewMealJournalStyle(context, foodItem, mealType);
+  }
+
+  static Future<void> addFoodToNewMealJournalStyle(BuildContext context, nutrition_models.FoodItem foodItem, String mealType) async {
+    await _addFoodToNewMealJournalStyle(context, foodItem, mealType);
+  }
+
+  // Nouvelle méthode statique pour d'abord sélectionner le repas depuis le dashboard
+  static Future<void> _showMealSelectionFirst(BuildContext context) async {
+    // Récupérer les vrais repas du jour depuis la base de données
+    final user = AuthService().currentUser;
+    List<nutrition_models.Meal> existingMeals = [];
+    
+    if (user != null) {
+      try {
+        final meals = await FoodEntriesService.getFoodEntriesForDate(user.id, DateTime.now());
+        existingMeals = meals.where((meal) => meal.items.isNotEmpty).toList();
+      } catch (e) {
+        print('Erreur lors de la récupération des repas existants: $e');
+      }
+    }
+
+    // Afficher le premier bottom sheet pour sélectionner repas nouveau/existant
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle bar
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE5E5E5),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              
+              const SizedBox(height: 20),
+              
+              // Titre
+              const Text(
+                'Ajouter un aliment',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1A1A1A),
+                ),
+              ),
+              
+              const SizedBox(height: 16),
+              
+              const Text(
+                'Voulez-vous ajouter à un repas existant ou créer un nouveau repas ?',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF64748B),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              
+              const SizedBox(height: 24),
+              
+              // Option 1: Repas existant (si des repas existent)
+              if (existingMeals.isNotEmpty) ...[
+                GestureDetector(
+                  onTap: () {
+                    Navigator.pop(context);
+                    // Montrer la liste des repas existants avec possibilité d'en sélectionner un
+                    _showExistingMealsSelection(context, existingMeals);
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8F9FA),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: const Color(0xFFE5E7EB),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0B132B),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            LucideIcons.utensils,
+                            size: 16,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Ajouter à un repas existant',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF0B132B),
+                                ),
+                              ),
+                              Text(
+                                'Choisir parmi vos repas d\'aujourd\'hui',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF64748B),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(
+                          LucideIcons.chevronRight,
+                          size: 16,
+                          color: Color(0xFF64748B),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                
+                const SizedBox(height: 12),
+              ],
+              
+              // Option 2: Nouveau repas
+              GestureDetector(
+                onTap: () {
+                  Navigator.pop(context);
+                  // Montrer la sélection de type de nouveau repas
+                  _showNewMealTypeSelection(context);
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0B132B).withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: const Color(0xFF0B132B).withOpacity(0.2),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0B132B),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          LucideIcons.plus,
+                          size: 16,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Créer un nouveau repas',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF0B132B),
+                              ),
+                            ),
+                            Text(
+                              'Petit-déjeuner, déjeuner, dîner ou collation',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF64748B),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(
+                        LucideIcons.chevronRight,
+                        size: 16,
+                        color: Color(0xFF64748B),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 24),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Méthode statique pour sélection de repas avec aliment déjà détecté
+  static Future<void> _showMealSelectionForDetectedFood(BuildContext context, nutrition_models.FoodItem detectedFood) async {
+    // Récupérer les vrais repas du jour depuis la base de données
+    final user = AuthService().currentUser;
+    List<nutrition_models.Meal> existingMeals = [];
+    
+    if (user != null) {
+      try {
+        final meals = await FoodEntriesService.getFoodEntriesForDate(user.id, DateTime.now());
+        existingMeals = meals.where((meal) => meal.items.isNotEmpty).toList();
+      } catch (e) {
+        print('Erreur lors de la récupération des repas existants: $e');
+      }
+    }
+
+    // Afficher le bottom sheet pour sélectionner repas nouveau/existant
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle bar
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE5E5E5),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              
+              const SizedBox(height: 20),
+              
+              // Titre avec nom de l'aliment détecté
+              Text(
+                'Ajouter "${detectedFood.name}"',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1A1A1A),
+                ),
+              ),
+              
+              const SizedBox(height: 16),
+              
+              const Text(
+                'À quel repas voulez-vous ajouter cet aliment ?',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF64748B),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              
+              const SizedBox(height: 24),
+              
+              // Option 1: Repas existant (si des repas existent)
+              if (existingMeals.isNotEmpty) ...[
+                GestureDetector(
+                  onTap: () {
+                    Navigator.pop(context);
+                    // Montrer la liste des repas existants
+                    _showExistingMealsSelectionForDetectedFood(context, existingMeals, detectedFood);
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8F9FA),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: const Color(0xFFE5E7EB),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0B132B),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            LucideIcons.utensils,
+                            size: 16,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Ajouter à un repas existant',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF0B132B),
+                                ),
+                              ),
+                              Text(
+                                'Choisir parmi vos repas d\'aujourd\'hui',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF64748B),
+                                ),
+          ),
+        ],
+      ),
+                        ),
+                        const Icon(
+                          LucideIcons.chevronRight,
+                          size: 16,
+                          color: Color(0xFF64748B),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                
+                const SizedBox(height: 12),
+              ],
+              
+              // Option 2: Nouveau repas
+              GestureDetector(
+                onTap: () {
+                  Navigator.pop(context);
+                  // Montrer la sélection de type de nouveau repas
+                  _showNewMealTypeSelectionForDetectedFood(context, detectedFood);
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0B132B).withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: const Color(0xFF0B132B).withOpacity(0.2),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0B132B),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          LucideIcons.plus,
+                          size: 16,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Créer un nouveau repas',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF0B132B),
+                              ),
+                            ),
+                            Text(
+                              'Petit-déjeuner, déjeuner, dîner ou collation',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF64748B),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(
+                        LucideIcons.chevronRight,
+                        size: 16,
+                        color: Color(0xFF64748B),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 24),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Méthodes auxiliaires pour aliments détectés
+  static void _showExistingMealsSelectionForDetectedFood(BuildContext context, List<nutrition_models.Meal> existingMeals, nutrition_models.FoodItem detectedFood) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle bar
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE5E5E5),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              
+              const SizedBox(height: 20),
+              
+              // Titre avec bouton retour
+              Row(
+                children: [
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.pop(context);
+                      // Retourner au premier écran
+                      _showMealSelectionForDetectedFood(context, detectedFood);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        color: Colors.transparent,
+                      ),
+                      child: const Icon(
+                        LucideIcons.chevronLeft,
+                        size: 20,
+                        color: Color(0xFF0B132B),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  const Expanded(
+                    child: Text(
+                      'Choisir un repas',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF1A1A1A),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              
+              const SizedBox(height: 24),
+              
+              // Liste des repas existants
+              ...existingMeals.map((meal) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.pop(context);
+                    // Ajouter directement l'aliment au repas sélectionné
+                    _addFoodToSelectedMeal(context, detectedFood, meal);
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8F9FA),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: const Color(0xFFE5E7EB),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0B132B),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            LucideIcons.utensils,
+                            size: 16,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                meal.name,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF0B132B),
+                                ),
+                              ),
+                              Text(
+                                '${meal.time} • ${meal.items.length} aliment(s)',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF64748B),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(
+                          LucideIcons.chevronRight,
+                          size: 16,
+                          color: Color(0xFF64748B),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              )),
+              
+              const SizedBox(height: 24),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  static void _showNewMealTypeSelectionForDetectedFood(BuildContext context, nutrition_models.FoodItem detectedFood) {
+        NewMealTypeBottomSheet.show(
+          context,
+          onMealTypeSelected: (mealType, time) {
+        // Créer un meal temporaire avec le type sélectionné
+        final newMeal = nutrition_models.Meal(
+          name: mealType,
+          time: time,
+          items: [],
+        );
+        // Ajouter directement l'aliment au nouveau repas
+        _addFoodToSelectedMeal(context, detectedFood, newMeal);
+      },
+    );
+  }
+
+  // Méthode statique pour afficher la sélection des repas existants puis la recherche d'aliments
+  static void _showExistingMealsSelection(BuildContext context, List<nutrition_models.Meal> existingMeals) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle bar
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE5E5E5),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              
+              const SizedBox(height: 20),
+              
+              // Titre avec bouton retour
+              Row(
+                children: [
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.pop(context);
+                      // Retourner au premier écran
+                      _showMealSelectionFirst(context);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        color: Colors.transparent,
+                      ),
+                      child: const Icon(
+                        LucideIcons.chevronLeft,
+                        size: 20,
+                        color: Color(0xFF0B132B),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  const Expanded(
+                    child: Text(
+                      'Choisir un repas',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF1A1A1A),
+                      ),
+                    ),
+          ),
+        ],
+      ),
+              
+              const SizedBox(height: 24),
+              
+              // Liste des repas existants
+              ...existingMeals.map((meal) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.pop(context);
+                    // Maintenant montrer la recherche d'aliments avec le repas sélectionné
+                    _showManualFoodSearchForMeal(context, meal);
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8F9FA),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: const Color(0xFFE5E7EB),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0B132B),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            LucideIcons.utensils,
+                            size: 16,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                meal.name,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF0B132B),
+                                ),
+                              ),
+                              Text(
+                                '${meal.time} • ${meal.items.length} aliment(s)',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF64748B),
+                                ),
+          ),
+        ],
+      ),
+                        ),
+                        const Icon(
+                          LucideIcons.chevronRight,
+                          size: 16,
+                          color: Color(0xFF64748B),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              )),
+              
+              const SizedBox(height: 24),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Méthode statique pour afficher la sélection de nouveau type de repas - FLUX SIMPLIFIÉ COMME LE JOURNAL
+  static void _showNewMealTypeSelection(BuildContext context) {
+    print('🔄 _showNewMealTypeSelection appelée');
+    
+    // Stocker une référence au Navigator pour éviter les problèmes de context
+    final navigator = Navigator.of(context);
+    
+    NewMealTypeBottomSheet.show(
+      context,
+      onMealTypeSelected: (mealType, time) {
+        print('🎯 Type de repas sélectionné: $mealType');
+        
+        // Le NewMealTypeBottomSheet fait déjà Navigator.pop() dans ses options
+        // Attendre que l'animation se termine puis ouvrir le nouvel écran
+        Future.delayed(const Duration(milliseconds: 300), () {
+          // Obtenir le context depuis le navigator stocké
+          final newContext = navigator.context;
+          if (newContext.mounted) {
+            print('🔍 Ouverture recherche aliments avec navigator context');
+            _showManualFoodSearchForNewMeal(newContext, mealType);
+          } else {
+            print('❌ Navigator context invalide');
+          }
+        });
+      },
+    );
+  }
+
+  // Méthode directe pour sélection de repas recettes (même pattern que le flux manuel)
+  static Future<void> _showDirectMealSelectionForRecipe(BuildContext context) async {
+    // Récupérer les vrais repas du jour depuis la base de données
+    final user = AuthService().currentUser;
+    List<nutrition_models.Meal> existingMeals = [];
+    
+    if (user != null) {
+      try {
+        final meals = await FoodEntriesService.getFoodEntriesForDate(user.id, DateTime.now());
+        existingMeals = meals.where((meal) => meal.items.isNotEmpty).toList();
+      } catch (e) {
+        print('Erreur lors de la récupération des repas existants: $e');
+      }
+    }
+
+    // Utiliser directement MealSelectionBottomSheet pour éviter double bottom sheet
+    MealSelectionBottomSheet.show(
+      context,
+      foodName: "recette",
+      existingMeals: existingMeals,
+      onExistingMealSelected: (meal) {
+        print('🎯 Repas existant sélectionné pour recette: ${meal.id}');
+        // Ouvrir directement la sélection de recettes avec le repas pré-sélectionné (comme le manuel)
+        _showRecipeSelectionForMeal(context, meal);
+      },
+      onCreateNewMeal: () {
+        print('🔄 Nouveau repas demandé pour recette');
+        // Afficher la sélection de type de nouveau repas
+        _showNewMealTypeSelectionForRecipe(context);
+      },
+    );
+  }
+
+  // Méthode directe pour sélection de repas scanner (même pattern que le flux manuel)
+  static Future<void> _showDirectMealSelectionForScanner(BuildContext context) async {
+    // Récupérer les vrais repas du jour depuis la base de données
+    final user = AuthService().currentUser;
+    List<nutrition_models.Meal> existingMeals = [];
+    
+    if (user != null) {
+      try {
+        final meals = await FoodEntriesService.getFoodEntriesForDate(user.id, DateTime.now());
+        existingMeals = meals.where((meal) => meal.items.isNotEmpty).toList();
+      } catch (e) {
+        print('Erreur lors de la récupération des repas existants: $e');
+      }
+    }
+
+    // Utiliser directement MealSelectionBottomSheet pour éviter double bottom sheet
+    MealSelectionBottomSheet.show(
+      context,
+      foodName: "produit scanné",
+      existingMeals: existingMeals,
+      onExistingMealSelected: (meal) {
+        print('🎯 Repas existant sélectionné pour scanner: ${meal.id}');
+        // Ouvrir directement le scanner avec le repas pré-sélectionné (comme le manuel)
+        _showScannerForMeal(context, meal);
+      },
+      onCreateNewMeal: () {
+        print('🔄 Nouveau repas demandé pour scanner');
+        // Afficher la sélection de type de nouveau repas
+        _showNewMealTypeSelectionForScanner(context);
+      },
+    );
+  }
+
+  // Méthode pour sélection de repas spécifique au scanner (copie de _showMealSelectionFirst) - SUPPRIMÉE
+  static Future<void> _showMealSelectionFirstForScanner_OLD(BuildContext context) async {
+    // Récupérer les vrais repas du jour depuis la base de données
+    final user = AuthService().currentUser;
+    List<nutrition_models.Meal> existingMeals = [];
+    
+    if (user != null) {
+      try {
+        final meals = await FoodEntriesService.getFoodEntriesForDate(user.id, DateTime.now());
+        existingMeals = meals.where((meal) => meal.items.isNotEmpty).toList();
+      } catch (e) {
+        print('Erreur lors de la récupération des repas existants: $e');
+      }
+    }
+
+    // Afficher le premier bottom sheet pour sélectionner repas nouveau/existant
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle bar
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE5E5E5),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              
+              const SizedBox(height: 20),
+              
+              // Titre
+              const Text(
+                'Scanner un code-barre',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1A1A1A),
+                ),
+              ),
+              
+              const SizedBox(height: 16),
+              
+              const Text(
+                'Voulez-vous ajouter à un repas existant ou créer un nouveau repas ?',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF64748B),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              
+              const SizedBox(height: 24),
+              
+              // Option 1: Repas existant (si des repas existent)
+              if (existingMeals.isNotEmpty) ...[
+                GestureDetector(
+                  onTap: () {
+                    Navigator.pop(context);
+                    // Montrer la liste des repas existants puis ouvrir le scanner
+                    _showExistingMealsSelectionForScanner(context, existingMeals);
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8F9FA),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: const Color(0xFFE5E7EB),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0B132B),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            LucideIcons.utensils,
+                            size: 16,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Ajouter à un repas existant',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF0B132B),
+                                ),
+                              ),
+                              Text(
+                                'Choisir parmi vos repas d\'aujourd\'hui',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF64748B),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(
+                          LucideIcons.chevronRight,
+                          size: 16,
+                          color: Color(0xFF64748B),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                
+                const SizedBox(height: 12),
+              ],
+              
+              // Option 2: Nouveau repas
+              GestureDetector(
+                onTap: () {
+                  Navigator.pop(context);
+                  // Montrer la sélection de type de nouveau repas puis ouvrir le scanner
+                  _showNewMealTypeSelectionForScanner(context);
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0B132B).withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: const Color(0xFF0B132B).withOpacity(0.2),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0B132B),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          LucideIcons.plus,
+                          size: 16,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Créer un nouveau repas',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF0B132B),
+                              ),
+                            ),
+                            Text(
+                              'Petit-déjeuner, déjeuner, dîner ou collation',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF64748B),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(
+                        LucideIcons.chevronRight,
+                        size: 16,
+                        color: Color(0xFF64748B),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 24),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Méthode pour afficher les repas existants et ouvrir le scanner après sélection
+  static void _showExistingMealsSelectionForScanner(BuildContext context, List<nutrition_models.Meal> existingMeals) {
+    MealSelectionBottomSheet.show(
+      context,
+      foodName: "produit scanné",
+      existingMeals: existingMeals,
+      onExistingMealSelected: (meal) {
+        print('🎯 Repas existant sélectionné pour scanner: ${meal.id}');
+        // Stocker l'ID du repas sélectionné
+        _dashboardSelectedMealId = meal.id;
+        _dashboardPendingMealType = null;
+        _dashboardPendingMealId = null;
+        
+        // Ouvrir le scanner avec callback pour ajouter au repas sélectionné
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => BarcodeScannerScreen(
+              onFoodScanned: (foodItem) {
+                // Ajouter à l'ID de repas stocké
+                _addFoodToSelectedMealDashboard(context, foodItem, _dashboardSelectedMealId!);
+              },
+            ),
+          ),
+        );
+      },
+      onCreateNewMeal: () {
+        print('🔄 Nouveau repas demandé depuis sélection existants');
+        // Afficher la sélection de type de nouveau repas
+        _showNewMealTypeSelectionForScanner(context);
+      },
+    );
+  }
+
+  // Méthode pour sélection de nouveau type de repas puis ouvrir les recettes
+  static void _showNewMealTypeSelectionForRecipe(BuildContext context) {
+    print('🔄 _showNewMealTypeSelectionForRecipe appelée');
+    
+    final navigator = Navigator.of(context);
+    
+    NewMealTypeBottomSheet.show(
+      context,
+      onMealTypeSelected: (mealType, time) {
+        print('🎯 Type de repas sélectionné pour recette: $mealType');
+        
+        // Attendre que l'animation se termine puis ouvrir la sélection de recettes
+        Future.delayed(const Duration(milliseconds: 300), () {
+          final newContext = navigator.context;
+          if (newContext.mounted) {
+            print('🔍 Ouverture sélection recettes avec nouveau type de repas');
+            // Ouvrir la sélection de recettes avec callback pour créer nouveau repas
+            Navigator.push(
+              newContext,
+              MaterialPageRoute(
+                builder: (context) => SelectRecipeScreen(
+                  isFromDashboard: true,
+                  onRecipeSelected: (recipe) {
+                    // Utiliser la même logique que le journal pour nouveau repas
+                    _addRecipeToNewMealJournalStyle(context, recipe, mealType);
+                  },
+                ),
+              ),
+            );
+          } else {
+            print('❌ Navigator context invalide pour recettes');
+          }
+        });
+      },
+    );
+  }
+
+  // Méthode pour sélection de nouveau type de repas puis ouvrir le scanner
+  static void _showNewMealTypeSelectionForScanner(BuildContext context) {
+    print('🔄 _showNewMealTypeSelectionForScanner appelée');
+    
+    final navigator = Navigator.of(context);
+    
+    NewMealTypeBottomSheet.show(
+      context,
+      onMealTypeSelected: (mealType, time) {
+        print('🎯 Type de repas sélectionné pour scanner: $mealType');
+        
+        // Attendre que l'animation se termine puis ouvrir le scanner
+        Future.delayed(const Duration(milliseconds: 300), () {
+          final newContext = navigator.context;
+          if (newContext.mounted) {
+            print('🔍 Ouverture scanner avec nouveau type de repas');
+            // Ouvrir le scanner avec callback pour créer nouveau repas
+            Navigator.push(
+              newContext,
+              MaterialPageRoute(
+                builder: (context) => BarcodeScannerScreen(
+                  onFoodScanned: (foodItem) {
+                    // Utiliser la même logique que le journal pour nouveau repas
+                    _addFoodToNewMealJournalStyle(context, foodItem, mealType);
+                  },
+                ),
+              ),
+            );
+          } else {
+            print('❌ Navigator context invalide pour scanner');
+          }
+        });
+      },
+    );
+  }
+
+  // Méthode statique pour afficher la recherche d'aliments avec un repas existant pré-sélectionné
+  static void _showManualFoodSearchForMeal(BuildContext context, nutrition_models.Meal selectedMeal) {
     ManualFoodSearchBottomSheet.show(
       context,
       isFromDashboard: true,
       onFoodCreated: (foodItem) {
-        // Quand on crée un aliment depuis le dashboard → afficher sélection de repas
-        _handleDashboardFoodSelectionFromDetails(context, foodItem);
+        // Maintenant qu'on a l'aliment et le repas, on peut les ajouter
+        _addFoodToSelectedMeal(context, foodItem, selectedMeal);
       },
     );
   }
 
-  // Fonction statique pour être appelée depuis manual_food_search_bottom_sheet.dart
-  static void handleDashboardFoodCreation(BuildContext context, nutrition_models.FoodItem foodItem) {
-    // Pour l'exemple, on simule des repas existants
-    // TODO: Récupérer les vrais repas du jour depuis la base de données
-    final existingMeals = <nutrition_models.Meal>[
-      nutrition_models.Meal(
-        name: 'Petit-déjeuner',
-        time: '08:30',
-        items: [
-          nutrition_models.FoodItem(
-            name: 'Café',
-            calories: 5,
-            portion: '1 tasse',
-          ),
-        ],
-      ),
-      nutrition_models.Meal(
-        name: 'Déjeuner',
-        time: '12:45',
-        items: [
-          nutrition_models.FoodItem(
-            name: 'Salade',
-            calories: 150,
-            portion: '200g',
-          ),
-        ],
-      ),
-    ];
-
-    MealSelectionBottomSheet.show(
+  // Méthode statique pour afficher le scanner avec un repas existant pré-sélectionné
+  static void _showScannerForMeal(BuildContext context, nutrition_models.Meal selectedMeal) {
+    Navigator.push(
       context,
-      foodName: foodItem.name,
-      existingMeals: existingMeals,
-      onExistingMealSelected: (meal) {
-        // TODO: Ajouter l'aliment créé au repas sélectionné
-        print('Ajouter ${foodItem.name} au repas ${meal.name}');
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('${foodItem.name} ajouté au ${meal.name}')),
-          );
-        }
-      },
-      onCreateNewMeal: () {
-        NewMealTypeBottomSheet.show(
-          context,
-          onMealTypeSelected: (mealType, time) {
-            // TODO: Créer un nouveau repas avec l'aliment créé
-            print('Créer un nouveau repas $mealType à $time avec ${foodItem.name}');
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('${foodItem.name} ajouté au nouveau $mealType')),
-              );
-            }
+      MaterialPageRoute(
+        builder: (context) => BarcodeScannerScreen(
+          isFromDashboard: true,
+          onFoodScanned: (foodItem) {
+            // Maintenant qu'on a l'aliment et le repas, on peut les ajouter
+            _addFoodToSelectedMeal(context, foodItem, selectedMeal);
           },
-        );
+        ),
+      ),
+    );
+  }
+
+  // Méthode statique pour afficher la sélection de recettes avec un repas existant pré-sélectionné
+  static void _showRecipeSelectionForMeal(BuildContext context, nutrition_models.Meal selectedMeal) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SelectRecipeScreen(
+          isFromDashboard: true,
+          onRecipeSelected: (foodItem) {
+            // Le callback reçoit déjà un FoodItem depuis RecipeDetailsScreen
+            _addFoodToSelectedMeal(context, foodItem, selectedMeal);
+          },
+        ),
+      ),
+    );
+  }
+
+  // Méthode statique pour afficher la recherche d'aliments pour un nouveau repas - MÊME FLUX QUE LE JOURNAL
+  static void _showManualFoodSearchForNewMeal(BuildContext context, String mealType) {
+    print('🔍 _showManualFoodSearchForNewMeal appelée pour: $mealType');
+    ManualFoodSearchBottomSheet.show(
+      context,
+      isFromDashboard: true,
+      onFoodCreated: (foodItem) {
+        print('🍽️ Aliment créé: ${foodItem.name}');
+        // MÊME FLUX QUE LE JOURNAL - Créer directement le nouveau repas avec l'aliment
+        _addFoodToNewMealJournalStyle(context, foodItem, mealType);
       },
     );
   }
 
-  void _handleDashboardFoodSelectionFromDetails(BuildContext context, nutrition_models.FoodItem foodItem) {
-    print('DEBUG: _handleDashboardFoodSelectionFromDetails appelée avec ${foodItem.name}');
-    // Pour l'exemple, on simule des repas existants
-    // TODO: Récupérer les vrais repas du jour depuis la base de données
-    final existingMeals = <nutrition_models.Meal>[
-      nutrition_models.Meal(
-        name: 'Petit-déjeuner',
-        time: '08:30',
-        items: [
-          nutrition_models.FoodItem(
-            name: 'Café',
-            calories: 5,
-            portion: '1 tasse',
-          ),
-        ],
-      ),
-      nutrition_models.Meal(
-        name: 'Déjeuner',
-        time: '12:45',
-        items: [
-          nutrition_models.FoodItem(
-            name: 'Salade',
-            calories: 150,
-            portion: '200g',
-          ),
-        ],
-      ),
-    ];
+  // Variables statiques pour gérer les sélections de repas du dashboard
+  static String? _dashboardSelectedMealId;
+  static String? _dashboardPendingMealType;
+  static String? _dashboardPendingMealId;
 
-    // Vérifier que le contexte est monté avant d'afficher le bottom sheet
-    if (!context.mounted) {
-      print('DEBUG: Contexte non monté, impossible d\'afficher MealSelectionBottomSheet');
-      return;
-    }
+  // Méthode pour ajouter une recette à un repas existant depuis le dashboard
+  static Future<void> _addRecipeToSelectedMealDashboard(BuildContext context, dynamic recipe, String mealId) async {
+    print('🟢 _addRecipeToSelectedMealDashboard appelée');
+    print('🟢 recipe: ${recipe.name}');
+    print('🟢 mealId: $mealId');
     
-    print('DEBUG: Affichage de MealSelectionBottomSheet pour ${foodItem.name}');
-    MealSelectionBottomSheet.show(
-      context,
-      foodName: foodItem.name,
-      existingMeals: existingMeals,
-      onExistingMealSelected: (meal) {
-        // TODO: Ajouter l'aliment au repas sélectionné
-        print('Ajouter ${foodItem.name} au repas ${meal.name}');
+    try {
+      final user = AuthService().currentUser;
+      if (user == null) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('${foodItem.name} ajouté au ${meal.name}')),
+            const SnackBar(
+              content: Text('Erreur: utilisateur non connecté'),
+              backgroundColor: Colors.red,
+            ),
           );
         }
-      },
-      onCreateNewMeal: () {
-        NewMealTypeBottomSheet.show(
-          context,
-          onMealTypeSelected: (mealType, time) {
-            // TODO: Créer un nouveau repas avec l'aliment
-            print('Créer un nouveau repas $mealType à $time avec ${foodItem.name}');
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('${foodItem.name} ajouté au nouveau $mealType')),
-              );
-            }
-          },
+        return;
+      }
+
+      print('🔄 Ajout de la recette ${recipe.name} au repas ID: $mealId');
+
+      // Extraire le nom du repas depuis l'ID (ex: "Collation 2" -> "Collation")
+      final regex = RegExp(r'^(.+?)(?:\s+\d+)?$');
+      final match = regex.firstMatch(mealId);
+      final mealName = match?.group(1) ?? mealId;
+      
+      print('🔄 mealId: $mealId → mealName: $mealName');
+
+      // Convertir la recette en FoodItem
+      final foodItem = nutrition_models.FoodItem(
+        id: recipe.id.toString(),
+        name: recipe.name,
+        calories: recipe.calories,
+        proteins: recipe.proteins.toDouble(),
+        carbs: recipe.carbs.toDouble(),
+        fats: recipe.fats.toDouble(),
+        portion: '1 portion',
+        isRecipe: true,
+      );
+
+      // Ajouter la recette comme aliment au repas
+      await FoodEntriesService.addFoodEntry(
+        userId: user.id,
+        mealId: mealId,
+        foodItem: foodItem,
+        mealName: mealName, // Utiliser le nom extrait
+      );
+
+      // Réinitialiser la sélection après ajout
+      resetDashboardMealSelection();
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Recette "${recipe.name}" ajoutée avec succès !'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
         );
-      },
-    );
+      }
+
+      print('✅ Recette ajoutée avec succès au repas');
+
+    } catch (e) {
+      print('❌ Erreur lors de l\'ajout de la recette: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Erreur lors de l\'ajout de la recette'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // Méthode pour ajouter une recette à un nouveau repas (style journal)
+  static Future<void> _addRecipeToNewMealJournalStyle(BuildContext context, dynamic recipe, String mealType) async {
+    print('🟠 _addRecipeToNewMealJournalStyle appelée');
+    print('🟠 recipe: ${recipe.name}');
+    print('🟠 mealType: $mealType');
+    
+    try {
+      final user = AuthService().currentUser;
+      if (user == null) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Erreur: utilisateur non connecté'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      print('🔄 Création nouveau repas $mealType avec recette ${recipe.name}');
+
+      // Convertir la recette en FoodItem
+      final foodItem = nutrition_models.FoodItem(
+        id: recipe.id.toString(),
+        name: recipe.name,
+        calories: recipe.calories,
+        proteins: recipe.proteins.toDouble(),
+        carbs: recipe.carbs.toDouble(),
+        fats: recipe.fats.toDouble(),
+        portion: '1 portion',
+        isRecipe: true,
+      );
+
+      // Utiliser addFoodEntry qui s'occupe de la création automatique du repas
+      await FoodEntriesService.addFoodEntry(
+        userId: user.id,
+        mealId: null, // null = création automatique d'un nouveau repas
+        foodItem: foodItem,
+        mealName: mealType,
+      );
+
+      // Les notifications se font automatiquement via FoodEntriesService
+      
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Recette "${recipe.name}" ajoutée au nouveau $mealType !'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+
+      print('✅ Recette ajoutée avec succès au nouveau repas');
+
+    } catch (e) {
+      print('❌ Erreur lors de l\'ajout de la recette au nouveau repas: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Erreur lors de l\'ajout de la recette'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // Méthode statique pour ajouter l'aliment au repas sélectionné (existant)
+  static Future<void> _addFoodToSelectedMeal(BuildContext context, nutrition_models.FoodItem foodItem, nutrition_models.Meal selectedMeal) async {
+    try {
+      final user = AuthService().currentUser;
+      if (user == null) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Erreur: utilisateur non connecté'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      // Extraire le type de repas de base depuis le nom (ex: "Dîner 2" -> "Dîner")
+      String baseMealName = selectedMeal.name;
+      
+      // Retirer le numéro d'incrémentation s'il existe
+      final regex = RegExp(r'^(.+?)\s+\d+$');
+      final match = regex.firstMatch(selectedMeal.name);
+      if (match != null && match.group(1) != null) {
+        baseMealName = match.group(1)!;
+      }
+      
+      print('🔄 Ajout de ${foodItem.name} au repas existant ${selectedMeal.name} (type: $baseMealName, ID: ${selectedMeal.id})');
+
+      // Stocker l'ID du repas sélectionné pour les ajouts suivants
+      _dashboardSelectedMealId = selectedMeal.id;
+      _dashboardPendingMealType = null;
+      _dashboardPendingMealId = null;
+
+      // Ajouter l'aliment au repas existant en utilisant le meal_id
+      final success = await FoodEntriesService.addFoodEntry(
+        userId: user.id,
+        mealName: baseMealName, // Nom de base du repas (ex: "Dîner")
+        foodItem: foodItem,
+        consumedAt: DateTime.now(),
+        mealId: selectedMeal.id, // ID du repas existant pour l'ajouter au bon bloc
+      );
+      
+      if (success) {
+        print('✅ Aliment ${foodItem.name} ajouté au repas ${selectedMeal.name} avec succès');
+        
+        // Réinitialiser la sélection de repas après l'ajout
+        resetDashboardMealSelection();
+        
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${foodItem.name} ajouté au ${selectedMeal.name}'),
+              backgroundColor: const Color(0xFF0B132B),
+            ),
+          );
+        }
+      } else {
+        throw Exception('Échec de l\'ajout à la base de données');
+      }
+    } catch (e) {
+      print('❌ Erreur lors de l\'ajout: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur lors de l\'ajout: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // Méthode pour ajouter un aliment à un repas existant par ID (dashboard)
+  static Future<void> _addFoodToSelectedMealDashboard(BuildContext context, nutrition_models.FoodItem foodItem, String mealId) async {
+    print('🔄 _addFoodToSelectedMealDashboard appelée avec mealId: $mealId');
+    
+    try {
+      final user = AuthService().currentUser;
+      if (user == null) {
+        print('❌ Utilisateur non authentifié');
+        return;
+      }
+
+      // Extraire le nom du repas depuis l'ID (ex: "Dîner 2" -> "Dîner")
+      final regex = RegExp(r'^(.+?)(?:\s+\d+)?$');
+      final match = regex.firstMatch(mealId);
+      final mealName = match?.group(1) ?? mealId;
+
+      // Ajouter l'aliment directement avec l'ID du repas
+      await FoodEntriesService.addFoodEntry(
+        userId: user.id,
+        mealName: mealName,
+        mealId: mealId,
+        foodItem: foodItem,
+      );
+
+      print('✅ Aliment ajouté avec succès au repas $mealId');
+      
+      // Réinitialiser la sélection dashboard après ajout
+      resetDashboardMealSelection();
+      
+      // Afficher une notification de succès
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${foodItem.name} ajouté au repas avec succès !'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+      
+    } catch (e) {
+      print('❌ Erreur lors de l\'ajout de l\'aliment: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur lors de l\'ajout de l\'aliment: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  // Méthode statique qui utilise EXACTEMENT LE MÊME FLUX QUE LE JOURNAL
+  static Future<void> _addFoodToNewMealJournalStyle(BuildContext context, nutrition_models.FoodItem foodItem, String mealType) async {
+    // COPIE EXACTE DU CODE DU JOURNAL nutrition_journal_hybrid.dart
+    final user = AuthService().currentUser;
+    if (user != null) {
+      final mealId = await FoodEntriesService.generateMealId(
+        userId: user.id,
+        mealName: mealType,
+        forDate: DateTime.now(),
+      );
+
+      if (mealId != null) {
+        // Ajouter l'aliment au nouveau repas avec l'ID pré-généré
+        final success = await FoodEntriesService.addFoodEntry(
+          userId: user.id,
+          mealName: mealType,
+          foodItem: foodItem,
+          consumedAt: DateTime.now(),
+          mealId: mealId,
+        );
+
+        if (success) {
+          // La notification de mise à jour se fait automatiquement dans addFoodEntry()
+          
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('${foodItem.name} ajouté à un nouveau $mealType'),
+                backgroundColor: const Color(0xFF0B132B),
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          }
+        } else {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Erreur lors de la création du repas'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Erreur lors de la génération de l\'ID du repas'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  // Méthode statique pour ajouter un aliment suivant (en utilisant l'ID stocké)
+  static Future<void> _addFoodToCurrentMeal(BuildContext context, nutrition_models.FoodItem foodItem) async {
+    try {
+      final user = AuthService().currentUser;
+      if (user == null) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Erreur: utilisateur non connecté'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      String? targetMealId;
+      String? targetMealType;
+      String? targetMealName;
+
+      if (_dashboardSelectedMealId != null) {
+        // Cas repas existant : utiliser l'ID stocké
+        targetMealId = _dashboardSelectedMealId;
+        targetMealName = 'repas sélectionné';
+        
+        // Récupérer le type de repas depuis le nom de l'ID (ex: "Dîner 2" -> "Dîner")
+        final regex = RegExp(r'^(.+?)(?:\s+\d+)?$');
+        final match = regex.firstMatch(_dashboardSelectedMealId!);
+        targetMealType = match?.group(1) ?? _dashboardSelectedMealId!;
+        
+        print('🔄 Ajout de ${foodItem.name} au repas existant (ID: $targetMealId)');
+      } else if (_dashboardPendingMealId != null && _dashboardPendingMealType != null) {
+        // Cas nouveau repas : utiliser l'ID pré-généré
+        targetMealId = _dashboardPendingMealId;
+        targetMealType = _dashboardPendingMealType;
+        targetMealName = _dashboardPendingMealId;
+        
+        print('🔄 Ajout de ${foodItem.name} au nouveau repas (ID: $targetMealId, type: $targetMealType)');
+      } else {
+        // Aucun repas sélectionné : demander la sélection
+        print('⚠️ Aucun repas sélectionné, demande de sélection');
+        showMealSelectionForDashboard(context);
+        return;
+      }
+
+      // Ajouter l'aliment au repas
+      final success = await FoodEntriesService.addFoodEntry(
+        userId: user.id,
+        mealName: targetMealType!,
+        foodItem: foodItem,
+        consumedAt: DateTime.now(),
+        mealId: targetMealId!,
+      );
+      
+      if (success) {
+        print('✅ Aliment ${foodItem.name} ajouté avec succès');
+        
+        // Réinitialiser la sélection de repas après l'ajout
+        resetDashboardMealSelection();
+        
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${foodItem.name} ajouté au $targetMealName'),
+              backgroundColor: const Color(0xFF0B132B),
+            ),
+          );
+        }
+      } else {
+        throw Exception('Échec de l\'ajout à la base de données');
+      }
+    } catch (e) {
+      print('❌ Erreur lors de l\'ajout: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur lors de l\'ajout: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // Méthode pour réinitialiser la sélection de repas
+  static void resetDashboardMealSelection() {
+    _dashboardSelectedMealId = null;
+    _dashboardPendingMealType = null;
+    _dashboardPendingMealId = null;
+    print('🔄 Sélection de repas réinitialisée');
+  }
+
+  // Méthode publique pour ajouter un aliment au repas actuellement sélectionné depuis le dashboard
+  static Future<void> addFoodToCurrentDashboardMeal(BuildContext context, nutrition_models.FoodItem foodItem) async {
+    await _addFoodToCurrentMeal(context, foodItem);
+  }
+  
+  // Méthode publique pour vérifier si un repas est actuellement sélectionné
+  static bool hasDashboardMealSelected() {
+    return _dashboardSelectedMealId != null || _dashboardPendingMealId != null;
+  }
+  
+  // Méthode publique pour obtenir le nom du repas actuellement sélectionné  
+  static String? getDashboardSelectedMealName() {
+    if (_dashboardSelectedMealId != null) {
+      return _dashboardSelectedMealId; // Nom du repas existant
+    } else if (_dashboardPendingMealId != null) {
+      return _dashboardPendingMealId; // Nom du nouveau repas
+    }
+    return null;
   }
 }
 
@@ -1181,6 +2714,8 @@ class _AddFoodBottomSheetForQuickActionsState extends State<AddFoodBottomSheetFo
       SnackBar(content: Text('Nouveau repas "$mealType" créé avec ${_selectedFood}')),
     );
   }
+
+
 }
 
  

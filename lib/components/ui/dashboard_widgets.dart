@@ -322,21 +322,13 @@ class _QuickActionsSectionState extends State<QuickActionsSection> {
   }
 
   void _navigateToBarcode(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const BarcodeScannerScreen(isFromDashboard: true),
-      ),
-    );
+    // Utiliser le nouveau flux unifié avec sélection de repas
+    NutritionQuickActionsSection.showMealSelectionForScanner(context);
   }
 
   void _navigateToRecipes(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const SelectRecipeScreen(isFromDashboard: true),
-      ),
-    );
+    // Utiliser le nouveau flux unifié avec sélection de repas
+    NutritionQuickActionsSection.showMealSelectionForRecipe(context);
   }
 
   void _showCardioOptions(BuildContext context) {
@@ -550,57 +542,8 @@ class _QuickActionsSectionState extends State<QuickActionsSection> {
   }
 
   void _handleDashboardFoodSelectionFromDetails(BuildContext context, nutrition_models.FoodItem foodItem) {
-    final existingMeals = <nutrition_models.Meal>[
-      nutrition_models.Meal(
-        name: 'Petit-déjeuner',
-        time: '08:30',
-        items: [
-          nutrition_models.FoodItem(
-            name: 'Café',
-            calories: 5,
-            portion: '1 tasse',
-          ),
-        ],
-      ),
-      nutrition_models.Meal(
-        name: 'Déjeuner',
-        time: '12:45',
-        items: [
-          nutrition_models.FoodItem(
-            name: 'Salade',
-            calories: 150,
-            portion: '200g',
-          ),
-        ],
-      ),
-    ];
-
-    if (!context.mounted) return;
-
-    MealSelectionBottomSheet.show(
-      context,
-      foodName: foodItem.name,
-      existingMeals: existingMeals,
-      onExistingMealSelected: (meal) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('${foodItem.name} ajouté au ${meal.name}')),
-          );
-        }
-      },
-      onCreateNewMeal: () {
-        NewMealTypeBottomSheet.show(
-          context,
-          onMealTypeSelected: (mealType, time) {
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('${foodItem.name} ajouté au nouveau $mealType')),
-              );
-            }
-          },
-        );
-      },
-    );
+    // Utiliser le nouveau flux unifié pour les aliments détectés
+    NutritionQuickActionsSection.showMealSelectionWithDetectedFood(context, foodItem);
   }
 }
 

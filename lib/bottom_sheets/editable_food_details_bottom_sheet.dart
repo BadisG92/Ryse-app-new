@@ -6,6 +6,7 @@ import '../components/ui/snackbar_utils.dart';
 class EditableFoodDetailsBottomSheet {
   static Future<void> show(
     BuildContext context, {
+    String? id, // Ajouter l'ID de l'aliment
     required String name,
     required int calories,
     required double proteins,
@@ -23,6 +24,7 @@ class EditableFoodDetailsBottomSheet {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => _EditableFoodDetailsContent(
+        id: id,
         name: name,
         calories: calories,
         proteins: proteins,
@@ -54,6 +56,7 @@ class EditableFoodDetailsBottomSheet {
 }
 
 class _EditableFoodDetailsContent extends StatefulWidget {
+  final String? id; // Ajouter l'ID
   final String name;
   final int calories;
   final double proteins;
@@ -67,6 +70,7 @@ class _EditableFoodDetailsContent extends StatefulWidget {
   final Function(FoodItem)? onFoodSaved; // Nouveau callback pour enregistrer seulement
 
   const _EditableFoodDetailsContent({
+    this.id, // Ajouter l'ID
     required this.name,
     required this.calories,
     required this.proteins,
@@ -623,10 +627,19 @@ class _EditableFoodDetailsContentState extends State<_EditableFoodDetailsContent
                       // Traiter la quantité vide comme 0
                       final quantity = _quantityController.text.isEmpty ? '0' : _quantityController.text;
                       
-                      // Créer l'aliment avec les valeurs actuelles
+                      // Récupérer les valeurs actuelles des macronutriments depuis les contrôleurs
+                      final proteins = double.tryParse(_proteinsController.text.isEmpty ? '0' : _proteinsController.text) ?? 0.0;
+                      final carbs = double.tryParse(_glucidesController.text.isEmpty ? '0' : _glucidesController.text) ?? 0.0;
+                      final fats = double.tryParse(_lipidesController.text.isEmpty ? '0' : _lipidesController.text) ?? 0.0;
+                      
+                      // Créer l'aliment avec les valeurs actuelles (vues par l'utilisateur)
                       final foodItem = FoodItem(
+                        id: widget.id, // Ajouter l'ID
                         name: widget.name,
                         calories: _calculatedCalories,
+                        proteins: proteins,
+                        carbs: carbs,
+                        fats: fats,
                         portion: '$quantity ${widget.referenceUnit ?? 'g'}',
                         isModified: _isModified,
                         hasModifiedMacros: _hasModifiedMacros, // Nouvelle propriété
@@ -645,8 +658,8 @@ class _EditableFoodDetailsContentState extends State<_EditableFoodDetailsContent
                         );
                       } else {
                         // Flux classique - ajouter directement au repas
+                        Navigator.pop(context); // Fermer le bottom sheet AVANT d'appeler le callback
                         widget.onFoodAdded?.call(foodItem);
-                        // Note: Navigator.pop et SnackBar sont maintenant gérés dans le callback onFoodAdded
                       }
                     },
                     child: Container(
@@ -1027,10 +1040,18 @@ class _CreateFoodContentState extends State<_CreateFoodContent> {
                         return;
                       }
                       
+                      // Récupérer les valeurs actuelles des macronutriments depuis les contrôleurs
+                      final proteins = double.tryParse(_proteinsController.text.isEmpty ? '0' : _proteinsController.text) ?? 0.0;
+                      final carbs = double.tryParse(_glucidesController.text.isEmpty ? '0' : _glucidesController.text) ?? 0.0;
+                      final fats = double.tryParse(_lipidesController.text.isEmpty ? '0' : _lipidesController.text) ?? 0.0;
+                      
                       // Créer l'aliment personnalisé
                       final foodItem = FoodItem(
                         name: _nameController.text,
                         calories: _calculatedCalories,
+                        proteins: proteins,
+                        carbs: carbs,
+                        fats: fats,
                         portion: '${_quantityController.text} g',
                         isModified: false, // Nouvel aliment = pas de modification
                         hasModifiedMacros: false, // Nouvel aliment = pas de modification de macros

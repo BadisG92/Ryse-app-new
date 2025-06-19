@@ -12,7 +12,8 @@ class NutritionProfile {
   final int currentCarbs;
   final int targetFat;
   final int currentFat;
-  final double waterLevel; // 0.0 à 1.0
+  final int currentWaterMl;
+  final int targetWaterMl;
 
   const NutritionProfile({
     required this.targetCalories,
@@ -23,7 +24,8 @@ class NutritionProfile {
     required this.currentCarbs,
     required this.targetFat,
     required this.currentFat,
-    required this.waterLevel,
+    required this.currentWaterMl,
+    required this.targetWaterMl,
   });
 
   // Calories restantes
@@ -37,6 +39,11 @@ class NutritionProfile {
   double get proteinProgress => currentProtein / targetProtein;
   double get carbsProgress => currentCarbs / targetCarbs;
   double get fatProgress => currentFat / targetFat;
+
+  // Hydratation - calculé dynamiquement
+  double get waterLevel => targetWaterMl > 0 ? currentWaterMl / targetWaterMl : 0.0;
+  double get waterProgressCapped => waterLevel > 1.0 ? 1.0 : waterLevel; // Pour la barre de progression
+  int get waterProgressPercent => (waterLevel * 100).round();
 
   // Messages dynamiques
   String get progressMessage => '${caloriesProgressPercent}% de l\'objectif atteint';
@@ -56,9 +63,32 @@ class NutritionProfile {
     return const Color(0xFF64748B);
   }
 
-  // Water en millilitres
-  int get waterMl => (waterLevel * 2000).round(); // 2L = 100%
-  String get waterText => '${(waterMl / 1000).toStringAsFixed(1)}L';
+  // Méthode copyWith mise à jour
+  NutritionProfile copyWith({
+    int? targetCalories,
+    int? currentCalories,
+    int? targetProtein,
+    int? currentProtein,
+    int? targetCarbs,
+    int? currentCarbs,
+    int? targetFat,
+    int? currentFat,
+    int? currentWaterMl,
+    int? targetWaterMl,
+  }) {
+    return NutritionProfile(
+      targetCalories: targetCalories ?? this.targetCalories,
+      currentCalories: currentCalories ?? this.currentCalories,
+      targetProtein: targetProtein ?? this.targetProtein,
+      currentProtein: currentProtein ?? this.currentProtein,
+      targetCarbs: targetCarbs ?? this.targetCarbs,
+      currentCarbs: currentCarbs ?? this.currentCarbs,
+      targetFat: targetFat ?? this.targetFat,
+      currentFat: currentFat ?? this.currentFat,
+      currentWaterMl: currentWaterMl ?? this.currentWaterMl,
+      targetWaterMl: targetWaterMl ?? this.targetWaterMl,
+    );
+  }
 }
 
 // Modèle de macronutriment
@@ -117,6 +147,25 @@ class Meal {
     required this.isCompleted,
     this.time,
   });
+
+  // Méthode copyWith pour créer une copie modifiée
+  Meal copyWith({
+    String? id,
+    String? name,
+    String? shortName,
+    int? calories,
+    bool? isCompleted,
+    TimeOfDay? time,
+  }) {
+    return Meal(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      shortName: shortName ?? this.shortName,
+      calories: calories ?? this.calories,
+      isCompleted: isCompleted ?? this.isCompleted,
+      time: time ?? this.time,
+    );
+  }
 
   // Couleur selon l'état
   Color get statusColor {
@@ -218,7 +267,8 @@ class NutritionData {
     currentCarbs: 120,
     targetFat: 80,
     currentFat: 45,
-    waterLevel: 0.48,
+    currentWaterMl: 480,
+    targetWaterMl: 2000,
   );
 
   // Macronutriments
@@ -369,7 +419,8 @@ extension NutritionProfileCopyWith on NutritionProfile {
     int? currentCarbs,
     int? targetFat,
     int? currentFat,
-    double? waterLevel,
+    int? currentWaterMl,
+    int? targetWaterMl,
   }) {
     return NutritionProfile(
       targetCalories: targetCalories ?? this.targetCalories,
@@ -380,7 +431,8 @@ extension NutritionProfileCopyWith on NutritionProfile {
       currentCarbs: currentCarbs ?? this.currentCarbs,
       targetFat: targetFat ?? this.targetFat,
       currentFat: currentFat ?? this.currentFat,
-      waterLevel: waterLevel ?? this.waterLevel,
+      currentWaterMl: currentWaterMl ?? this.currentWaterMl,
+      targetWaterMl: targetWaterMl ?? this.targetWaterMl,
     );
   }
 } 

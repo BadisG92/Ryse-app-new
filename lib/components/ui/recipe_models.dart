@@ -157,10 +157,19 @@ class Recipe {
 
     // Filtres avancés
     if (filters != null) {
-      // Filtre régime alimentaire
+      // Filtre régime alimentaire avec mapping vers les tags de la base de données
       final regimeFilters = filters['regime'] ?? <String>{};
       if (regimeFilters.isNotEmpty) {
-        if (!regimeFilters.any((filter) => tags.contains(filter))) {
+        bool hasMatchingTag = false;
+        for (String regimeFilter in regimeFilters) {
+          // Utiliser le mapping pour convertir le filtre français vers les tags anglais
+          final mappedTags = RecipeFilters.regimeFilterMapping[regimeFilter] ?? [regimeFilter];
+          if (mappedTags.any((mappedTag) => tags.contains(mappedTag))) {
+            hasMatchingTag = true;
+            break;
+          }
+        }
+        if (!hasMatchingTag) {
           return false;
         }
       }
@@ -279,6 +288,16 @@ class RecipeFilters {
     },
   };
 
+  // Mapping des filtres de l'interface vers les tags français de la base de données
+  static const Map<String, List<String>> regimeFilterMapping = {
+    'Végétarien': ['Végétarien', 'À base de plantes'],
+    'Végan': ['Végan', 'À base de plantes'],
+    'Sans gluten': ['Sans gluten'],
+    'Keto': ['Keto', 'Faible en glucides'],
+    'Paléo': ['Paléo', 'Faible en glucides'],
+    'Méditerranéen': ['Méditerranéen', 'Sain', 'Riche en oméga-3'],
+  };
+
   // Logique de filtrage pure
   static List<Recipe> filterRecipes(
     List<Recipe> recipes, {
@@ -330,7 +349,7 @@ class RecipeData {
       duration: "10 min",
       calories: 350,
       servings: 1,
-      tags: ["Post-workout", "Rapide"],
+      tags: ["Riche en protéines", "Rapide"],
       proteins: 28,
       carbs: 35,
       fats: 8,
@@ -357,7 +376,7 @@ class RecipeData {
       duration: "15 min",
       calories: 280,
       servings: 1,
-      tags: ["Végétarien", "Sain"],
+      tags: ["Végétarien", "Sain", "À base de plantes"],
       proteins: 12,
       carbs: 35,
       fats: 8,
@@ -384,7 +403,7 @@ class RecipeData {
       duration: "5 min",
       calories: 320,
       servings: 1,
-      tags: ["Boisson", "Protéiné"],
+      tags: ["Riche en protéines", "Rapide", "Boisson"],
       proteins: 25,
       carbs: 30,
       fats: 6,
@@ -410,7 +429,7 @@ class RecipeData {
       duration: "12 min",
       calories: 420,
       servings: 1,
-      tags: ["Protéiné", "Rapide"],
+      tags: ["Riche en protéines", "Rapide"],
       proteins: 35,
       carbs: 25,
       fats: 18,

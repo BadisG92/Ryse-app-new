@@ -670,13 +670,12 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
       child: SafeArea(
         child: SizedBox(
           width: double.infinity,
-          child: ElevatedButton.icon(
+          child: ElevatedButton(
             onPressed: () {
               _showAddToMealBottomSheet();
             },
-            icon: const Icon(LucideIcons.plus, size: 20),
-            label: const Text(
-              'Ajouter à un repas',
+            child: const Text(
+              'Ajouter au repas',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -731,7 +730,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                 children: [
                   const Expanded(
                     child: Text(
-                      'Ajouter à un repas',
+                      'Ajouter au repas',
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w700,

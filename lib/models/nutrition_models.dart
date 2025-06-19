@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class Meal {
+  final String? id; // UUID unique pour chaque bloc de repas
   final String time;
   final String name;
   final List<FoodItem> items;
 
   Meal({
+    this.id,
     required this.time,
     required this.name,
     required this.items,
@@ -101,10 +103,13 @@ class FoodItem {
     if (isCustom && !isScanned) return true;
     
     // Règle 3: Aliment de base avec macros modifiés → icône user
-    if (!isCustom && hasModifiedMacros) return true;
+    if (!isCustom && !isRecipe && hasModifiedMacros) return true;
     
     // Règle 4: Recette avec ingrédient modifié → icône user
     if (isRecipe && hasModifiedMacros) return true;
+    
+    // Règle 5: Recette sans modifications → icône recette
+    if (isRecipe) return true;
     
     return false;
   }
@@ -113,6 +118,12 @@ class FoodItem {
   IconData get displayIcon {
     // Règle 1: Aliment scanné → icône scan (peu importe s'il est custom ou non)
     if (isScanned) return LucideIcons.scan;
+    
+    // Règle 2: Recette modifiée → icône user (priorité sur l'icône recette)
+    if (isRecipe && hasModifiedMacros) return LucideIcons.user;
+    
+    // Règle 3: Recette normale → icône livre de recettes
+    if (isRecipe) return LucideIcons.cookingPot;
     
     // Toutes les autres règles → icône user
     return LucideIcons.user;

@@ -431,16 +431,16 @@ class HydrationCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    '${(profile.waterLevel * 2.5).toStringAsFixed(1)}L',
+                    '${_formatWaterAmount(profile.currentWaterMl)}',
                     style: const TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF0B132B),
                     ),
                   ),
-                  const Text(
-                    '/ 2.5L',
-                    style: TextStyle(
+                  Text(
+                    '/ ${_formatWaterAmount(profile.targetWaterMl)}',
+                    style: const TextStyle(
                       fontSize: 14,
                       color: Color(0xFF888888),
                     ),
@@ -458,7 +458,7 @@ class HydrationCard extends StatelessWidget {
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(4),
                       child: LinearProgressIndicator(
-                        value: profile.waterLevel,
+                        value: profile.waterProgressCapped, // Utilise la valeur plafonnée à 100%
                         backgroundColor: Colors.transparent,
                         valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF0B132B)),
                       ),
@@ -471,6 +471,14 @@ class HydrationCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _formatWaterAmount(int amount) {
+    if (amount >= 1000) {
+      return '${(amount / 1000).toStringAsFixed(1)}L';
+    } else {
+      return '$amount ml';
+    }
   }
 }
 

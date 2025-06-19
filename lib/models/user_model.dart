@@ -14,6 +14,7 @@ class UserModel {
   final bool isEmailVerified;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final int? dailyCalories; // Objectif calorique quotidien
 
   UserModel({
     required this.id,
@@ -31,6 +32,7 @@ class UserModel {
     this.isEmailVerified = false,
     required this.createdAt,
     required this.updatedAt,
+    this.dailyCalories,
   });
 
   // Computed properties
@@ -83,6 +85,7 @@ class UserModel {
       isEmailVerified: json['is_email_verified'] ?? false,
       createdAt: DateTime.parse(json['created_at']),
       updatedAt: DateTime.parse(json['updated_at']),
+      dailyCalories: json['daily_calories'],
     );
   }
 
@@ -104,6 +107,7 @@ class UserModel {
       'is_email_verified': isEmailVerified,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
+      'daily_calories': dailyCalories,
     };
   }
 
@@ -124,6 +128,7 @@ class UserModel {
     bool? isEmailVerified,
     DateTime? createdAt,
     DateTime? updatedAt,
+    int? dailyCalories,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -141,6 +146,7 @@ class UserModel {
       isEmailVerified: isEmailVerified ?? this.isEmailVerified,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      dailyCalories: dailyCalories ?? this.dailyCalories,
     );
   }
 

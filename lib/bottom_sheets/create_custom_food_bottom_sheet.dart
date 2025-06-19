@@ -143,6 +143,7 @@ class _CreateCustomFoodBottomSheetState extends State<CreateCustomFoodBottomShee
 
       // Créer le FoodItem pour la sélection de quantité
       final customFood = FoodItem(
+        id: createdFood.id, // Ajouter l'ID de l'aliment créé
         name: _nameController.text.trim(),
         calories: calories,
         proteins: proteins,
@@ -161,6 +162,7 @@ class _CreateCustomFoodBottomSheetState extends State<CreateCustomFoodBottomShee
         // Ouvrir le bottom sheet de sélection de quantité
         EditableFoodDetailsBottomSheet.show(
           context,
+          id: createdFood.id, // Transmettre l'ID de l'aliment créé
           name: customFood.name,
           calories: customFood.calories,
           proteins: customFood.proteins,

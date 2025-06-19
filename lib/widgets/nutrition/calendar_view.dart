@@ -1,40 +1,165 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../components/ui/custom_card.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-class CalendarView extends StatelessWidget {
+class CalendarView extends StatefulWidget {
   final VoidCallback onBack;
+  final Function(DateTime)? onDateSelected;
+  final DateTime selectedDate;
 
   const CalendarView({
     super.key,
     required this.onBack,
+    this.onDateSelected,
+    required this.selectedDate,
   });
 
   @override
-  Widget build(BuildContext context) {
-    final DateTime currentDate = DateTime.now();
-    
-    // Données fictives pour l'exemple (comme dans le TSX)
-    final Map<String, Map<String, dynamic>> nutritionData = {
-      "2024-01-01": {"calories": 2100, "target": 2500, "achieved": false},
-      "2024-01-02": {"calories": 2450, "target": 2500, "achieved": true},
-      "2024-01-03": {"calories": 2600, "target": 2500, "achieved": true},
-      "2024-01-04": {"calories": 1800, "target": 2500, "achieved": false},
-      "2024-01-05": {"calories": 2520, "target": 2500, "achieved": true},
-      "2024-01-06": {"calories": 2300, "target": 2500, "achieved": false},
-      "2024-01-07": {"calories": 2480, "target": 2500, "achieved": true},
-      "2024-01-08": {"calories": 2550, "target": 2500, "achieved": true},
-      "2024-01-09": {"calories": 2200, "target": 2500, "achieved": false},
-      "2024-01-10": {"calories": 2650, "target": 2500, "achieved": true},
-      "2024-01-11": {"calories": 2400, "target": 2500, "achieved": false},
-      "2024-01-12": {"calories": 2580, "target": 2500, "achieved": true},
-      "2024-01-13": {"calories": 2490, "target": 2500, "achieved": true},
-      "2024-01-14": {"calories": 2350, "target": 2500, "achieved": false},
-      "2024-01-15": {"calories": 1295, "target": 2500, "achieved": false}, // Jour actuel
-    };
+  State<CalendarView> createState() => _CalendarViewState();
+}
 
-    // Calcul des stats du mois
-    final monthStats = _calculateMonthStats(nutritionData, currentDate);
+class _CalendarViewState extends State<CalendarView> {
+  DateTime currentMonth = DateTime.now();
+  Map<String, Map<String, dynamic>> _cachedNutritionData = {};
+  Map<String, int> _cachedMonthStats = {'successRate': 0, 'achieved': 0, 'avgCalories': 0};
+  bool _isLoading = true;
+  int? _userTargetCalories;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadInitialData();
+  }
+
+  Future<void> _loadInitialData() async {
+    await _loadNutritionDataForMonth(currentMonth);
+  }
+
+  Future<void> _loadNutritionDataForMonth(DateTime month) async {
+    if (!mounted) return;
+    
+    try {
+      // Obtenir l'utilisateur actuel
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) {
+        print('❌ Aucun utilisateur connecté');
+        return;
+      }
+
+      // Récupérer l'objectif calorique de l'utilisateur une seule fois
+      if (_userTargetCalories == null) {
+        final userResponse = await Supabase.instance.client
+            .from('users')
+            .select('daily_calories')
+            .eq('id', user.id)
+            .single();
+        _userTargetCalories = userResponse['daily_calories'] as int? ?? 2000;
+        print('🎯 Objectif calorique utilisateur: $_userTargetCalories');
+      }
+
+      // Calculer les dates de début et fin du mois
+      final startOfMonth = DateTime(month.year, month.month, 1);
+      final endOfMonth = DateTime(month.year, month.month + 1, 0, 23, 59, 59);
+      
+      print('📅 Recherche des données pour: ${startOfMonth.toString()} - ${endOfMonth.toString()}');
+
+      // Récupérer les entrées alimentaires du mois
+      final response = await Supabase.instance.client
+          .from('food_entries')
+          .select('consumed_at, calories')
+          .eq('user_id', user.id)
+          .gte('consumed_at', startOfMonth.toIso8601String())
+          .lte('consumed_at', endOfMonth.toIso8601String());
+
+      print('📊 Nombre d\'entrées trouvées: ${response.length}');
+
+      // Grouper les calories par jour
+      final Map<String, int> dailyCalories = {};
+      for (final entry in response) {
+        final date = DateTime.parse(entry['consumed_at']).toLocal();
+        final dateStr = "${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+        final calories = entry['calories'] as int? ?? 0;
+        dailyCalories[dateStr] = (dailyCalories[dateStr] ?? 0) + calories;
+        print('🍽️ $dateStr: ${dailyCalories[dateStr]} calories');
+      }
+
+      // Construire les données nutritionnelles
+      final Map<String, Map<String, dynamic>> nutritionData = {};
+      dailyCalories.forEach((dateStr, calories) {
+        nutritionData[dateStr] = {
+          'calories': calories,
+          'target': _userTargetCalories!,
+          'achieved': calories >= (_userTargetCalories! * 0.9), // 90% de l'objectif = réussi
+        };
+      });
+
+      // Calculer les statistiques du mois
+      int achievedDays = 0;
+      int totalCalories = 0;
+      int daysWithData = dailyCalories.length;
+
+      nutritionData.forEach((date, data) {
+        if (data['achieved'] == true) achievedDays++;
+        totalCalories += data['calories'] as int;
+      });
+
+      final successRate = daysWithData > 0 ? ((achievedDays / daysWithData) * 100).round() : 0;
+      final avgCalories = daysWithData > 0 ? (totalCalories / daysWithData).round() : 0;
+
+      print('📈 Stats calculées - Taux: $successRate%, Jours réussis: $achievedDays, Moyenne: $avgCalories kcal');
+
+      if (mounted) {
+        setState(() {
+          _cachedNutritionData = nutritionData;
+          _cachedMonthStats = {
+            'successRate': successRate,
+            'achieved': achievedDays,
+            'avgCalories': avgCalories,
+          };
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('❌ Erreur lors du chargement des données nutritionnelles: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  void _changeMonth(bool next) async {
+    setState(() {
+      currentMonth = DateTime(
+        currentMonth.year, 
+        currentMonth.month + (next ? 1 : -1)
+      );
+    });
+    
+    // Charger les données du nouveau mois sans afficher le loader
+    await _loadNutritionDataForMonth(currentMonth);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFFF8FAFC), Color(0xFFF1F5F9)],
+          ),
+        ),
+        child: const Center(
+          child: CircularProgressIndicator(
+            color: Color(0xFF0B132B),
+          ),
+        ),
+      );
+    }
     
     return Container(
       decoration: const BoxDecoration(
@@ -44,102 +169,156 @@ class CalendarView extends StatelessWidget {
           colors: [Color(0xFFF8FAFC), Color(0xFFF1F5F9)],
         ),
       ),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
-            CalendarHeader(onBack: onBack),
-            
-            const SizedBox(height: 20),
-            
-            // Stats du mois
-            MonthStats(monthStats: monthStats),
-            
-            const SizedBox(height: 16),
-            
-            // Légende
-            const CalendarLegend(),
-            
-            const SizedBox(height: 16),
-            
-            // Calendrier
-            CalendarGrid(nutritionData: nutritionData, currentDate: currentDate),
+          // Header avec navigation (non-sticky)
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: Row(
+          children: [
+            GestureDetector(
+                  onTap: widget.onBack,
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      color: Colors.white.withOpacity(0.9),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                ),
+                child: const Icon(
+                      LucideIcons.arrowLeft,
+                  size: 20,
+                  color: Color(0xFF0B132B),
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+                const Text(
+                  'Calendrier nutritionnel',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1A1A1A),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Page scrollable avec tout le contenu
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  // Stats du mois
+                  MonthStats(monthStats: _cachedMonthStats),
+                  
+                  const SizedBox(height: 16),
+                  
+                  // Bloc calendrier unifié avec légende intégrée
+                  CustomCard(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        color: Colors.white.withOpacity(0.9),
+                  ),
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        children: [
+                          // Header du mois dans le calendrier
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+                              // Flèche précédent
+            GestureDetector(
+                                onTap: () {
+                                  _changeMonth(false);
+                                },
+              child: Container(
+                                  padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  color: const Color(0xFF0B132B).withOpacity(0.1),
+                ),
+                child: const Icon(
+                  LucideIcons.chevronLeft,
+                  size: 16,
+                  color: Color(0xFF0B132B),
+                ),
+              ),
+            ),
+                              
+                              // Mois centré
+                              Text(
+                                '${_getMonthName(currentMonth.month)} ${currentMonth.year}',
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF1A1A1A),
+                                ),
+                              ),
+                              
+                              // Flèche suivant
+            GestureDetector(
+                                onTap: () {
+                                  _changeMonth(true);
+                                },
+              child: Container(
+                                  padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  color: const Color(0xFF0B132B).withOpacity(0.1),
+                ),
+                child: const Icon(
+                  LucideIcons.chevronRight,
+                  size: 16,
+                  color: Color(0xFF0B132B),
+                ),
+              ),
+            ),
           ],
         ),
+                          
+                          const SizedBox(height: 16),
+                          
+                          // Grille du calendrier
+                          CalendarGrid(
+                            nutritionData: _cachedNutritionData,
+                            currentMonth: currentMonth,
+                            selectedDate: widget.selectedDate,
+                            onDateSelected: widget.onDateSelected,
+                          ),
+                          
+                          const SizedBox(height: 16),
+                          
+                          // Légende intégrée dans le bloc
+                          const CalendarLegend(),
+      ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Map<String, int> _calculateMonthStats(Map<String, Map<String, dynamic>> nutritionData, DateTime currentDate) {
-    final monthEntries = nutritionData.entries.where((entry) {
-      final date = DateTime.parse(entry.key);
-      return date.month == currentDate.month && date.year == currentDate.year;
-    }).toList();
-    
-    final total = monthEntries.length;
-    final achieved = monthEntries.where((entry) => entry.value['achieved'] == true).length;
-    final totalCalories = monthEntries.fold(0, (sum, entry) => sum + (entry.value['calories'] as int));
-    
-    return {
-      'successRate': total > 0 ? ((achieved / total) * 100).round() : 0,
-      'achieved': achieved,
-      'avgCalories': total > 0 ? (totalCalories / total).round() : 0,
-    };
-  }
-}
-
-class CalendarHeader extends StatelessWidget {
-  final VoidCallback onBack;
-
-  const CalendarHeader({
-    super.key,
-    required this.onBack,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        GestureDetector(
-          onTap: onBack,
-          child: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              color: Colors.transparent,
-            ),
-            child: const Icon(
-              LucideIcons.chevronLeft,
-              size: 20,
-              color: Color(0xFF0B132B),
-            ),
-          ),
-        ),
-        const SizedBox(width: 16),
-        const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Calendrier nutritionnel',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1A1A1A),
-              ),
-            ),
-            Text(
-              'Suivi de vos objectifs caloriques',
-              style: TextStyle(
-                fontSize: 14,
-                color: Color(0xFF888888),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
+  String _getMonthName(int month) {
+    const List<String> monthNames = [
+      'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+      'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+    ];
+    return monthNames[month - 1];
   }
 }
 
@@ -267,184 +446,127 @@ class CalendarLegend extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CustomCard(
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(24),
-          color: Colors.white.withOpacity(0.9),
+    return Column(
+      children: [
+        // Titre
+        const Text(
+          'Atteinte de l\'objectif calorique de la journée',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Color(0xFF374151),
         ),
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          textAlign: TextAlign.center,
+        ),
+        
+        const SizedBox(height: 12),
+        
+        // Gradient avec pourcentages
+        Row(
           children: [
-            // Objectif atteint
-            Flexible(
+            // 0%
+            const Text(
+              '0%',
+              style: TextStyle(
+                fontSize: 12,
+                color: Color(0xFF6B7280),
+              ),
+            ),
+            
+            const SizedBox(width: 12),
+            
+            // Carrés du gradient
+            Expanded(
               child: Row(
-                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
+                  // Niveau 0 - Gris (0%)
                   Container(
-                    width: 16,
-                    height: 16,
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
-                      ),
-                      borderRadius: BorderRadius.all(Radius.circular(4)),
+                    width: 14,
+                    height: 14,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE5E7EB),
+                      borderRadius: BorderRadius.circular(3),
                     ),
                   ),
-                  const SizedBox(width: 6),
-                  const Flexible(
-                    child: Text(
-                      'Objectif atteint',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Color(0xFF888888),
-                      ),
-                      overflow: TextOverflow.ellipsis,
+                  // Niveau 1 - 25%
+                  Container(
+                    width: 14,
+                    height: 14,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0B132B).withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(3),
+              ),
+            ),
+                  // Niveau 2 - 50%
+                  Container(
+                    width: 14,
+                    height: 14,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0B132B).withOpacity(0.4),
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                  // Niveau 3 - 75%
+                  Container(
+                    width: 14,
+                    height: 14,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0B132B).withOpacity(0.6),
+                      borderRadius: BorderRadius.circular(3),
+              ),
+            ),
+                  // Niveau 4 - 100%
+                  Container(
+                    width: 14,
+                    height: 14,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0B132B),
+                      borderRadius: BorderRadius.circular(3),
                     ),
                   ),
                 ],
               ),
             ),
-            // Objectif non atteint
-            Flexible(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 16,
-                    height: 16,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFE5E5),
-                      border: Border.all(color: const Color(0xFFFF9999)),
-                      borderRadius: const BorderRadius.all(Radius.circular(4)),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  const Flexible(
-                    child: Text(
-                      'Non atteint',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Color(0xFF888888),
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // Pas de données
-            Flexible(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 16,
-                    height: 16,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF0F0F0),
-                      border: Border.all(color: const Color(0xFFCCCCCC)),
-                      borderRadius: const BorderRadius.all(Radius.circular(4)),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  const Flexible(
-                    child: Text(
-                      'Pas de données',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Color(0xFF888888),
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
+            
+            const SizedBox(width: 12),
+            
+            // 100%
+            const Text(
+              '100%',
+              style: TextStyle(
+                fontSize: 12,
+                color: Color(0xFF6B7280),
               ),
             ),
           ],
         ),
-      ),
+      ],
     );
   }
 }
 
 class CalendarGrid extends StatelessWidget {
   final Map<String, Map<String, dynamic>> nutritionData;
-  final DateTime currentDate;
+  final DateTime currentMonth;
+  final DateTime selectedDate;
+  final Function(DateTime)? onDateSelected;
 
   const CalendarGrid({
     super.key,
     required this.nutritionData,
-    required this.currentDate,
+    required this.currentMonth,
+    required this.selectedDate,
+    this.onDateSelected,
   });
 
   @override
   Widget build(BuildContext context) {
     final List<String> dayNames = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
-    final List<String> monthNames = [
-      'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
-      'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
-    ];
+    final days = _getDaysInMonth(currentMonth);
     
-    final days = _getDaysInMonth(currentDate);
-    
-    return CustomCard(
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(24),
-          color: Colors.white.withOpacity(0.9),
-        ),
-        padding: const EdgeInsets.all(24),
-        child: Column(
+    return Column(
           children: [
-            // Navigation mois
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                GestureDetector(
-                  onTap: () {}, // TODO: Implémenter navigation mois précédent
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      color: Colors.transparent,
-                    ),
-                    child: const Icon(
-                      LucideIcons.chevronLeft,
-                      size: 20,
-                      color: Color(0xFF0B132B),
-                    ),
-                  ),
-                ),
-                Text(
-                  '${monthNames[currentDate.month - 1]} ${currentDate.year}',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1A1A1A),
-                  ),
-                ),
-                GestureDetector(
-                  onTap: () {}, // TODO: Implémenter navigation mois suivant
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      color: Colors.transparent,
-                    ),
-                    child: const Icon(
-                      LucideIcons.chevronRight,
-                      size: 20,
-                      color: Color(0xFF0B132B),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            
-            const SizedBox(height: 24),
-            
             // Jours de la semaine
             Row(
               children: dayNames.map((day) => Expanded(
@@ -475,34 +597,24 @@ class CalendarGrid extends StatelessWidget {
                     final day = days[index];
                     final data = _getNutritionData(nutritionData, day.date);
                     final isToday = _isSameDay(day.date, DateTime.now());
+                    final isSelected = _isSameDay(day.date, selectedDate);
                     
                     return Expanded(
                       child: GestureDetector(
                         onTap: () => _onDayTap(day.date),
                         child: Container(
-                          height: 36,
-                          margin: const EdgeInsets.all(2),
-                          decoration: _getDayDecoration(day, data, isToday),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
+                      height: isToday ? 42 : 36,
+                      margin: EdgeInsets.all(isToday ? 1 : 2),
+                          decoration: _getDayDecoration(day, data, isToday, isSelected),
+                      child: Center(
+                        child: Text(
                                 '${day.date.day}',
                                 style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                  color: _getDayTextColor(day, data, isToday),
+                            fontSize: isToday ? 16 : 14,
+                            fontWeight: isToday ? FontWeight.bold : FontWeight.w500,
+                                  color: _getDayTextColor(day, data, isToday, isSelected),
                                 ),
                               ),
-                              if (data != null && day.isCurrentMonth)
-                                Text(
-                                  '${data['calories']}',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: _getDayTextColor(day, data, isToday).withOpacity(0.8),
-                                  ),
-                                ),
-                            ],
                           ),
                         ),
                       ),
@@ -512,8 +624,6 @@ class CalendarGrid extends StatelessWidget {
               );
             }),
           ],
-        ),
-      ),
     );
   }
 
@@ -558,7 +668,7 @@ class CalendarGrid extends StatelessWidget {
     return date1.year == date2.year && date1.month == date2.month && date1.day == date2.day;
   }
 
-  BoxDecoration _getDayDecoration(({DateTime date, bool isCurrentMonth}) day, Map<String, dynamic>? data, bool isToday) {
+  BoxDecoration _getDayDecoration(({DateTime date, bool isCurrentMonth}) day, Map<String, dynamic>? data, bool isToday, bool isSelected) {
     if (!day.isCurrentMonth) {
       return const BoxDecoration();
     }
@@ -566,17 +676,68 @@ class CalendarGrid extends StatelessWidget {
     Color backgroundColor;
     Color? borderColor;
 
-    if (data == null) {
-      backgroundColor = const Color(0xFFF8F8F8);
-    } else if (data['achieved'] == true) {
-      backgroundColor = const Color(0xFF0B132B);
-    } else {
-      backgroundColor = const Color(0xFFFFE5E5);
+    if (isSelected) {
+      // Le jour sélectionné garde une bordure distinctive
+      borderColor = const Color(0xFF1C2951);
     }
 
     // Bordure spéciale pour le jour actuel
-    if (isToday) {
+    if (isToday && !isSelected) {
       borderColor = const Color(0xFF1C2951);
+    }
+
+    // Debug: Afficher les données reçues
+    final dateStr = "${day.date.year}-${day.date.month.toString().padLeft(2, '0')}-${day.date.day.toString().padLeft(2, '0')}";
+    
+    // Vérifier si c'est un jour futur (après aujourd'hui)
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final currentDay = DateTime(day.date.year, day.date.month, day.date.day);
+    final isFutureDay = currentDay.isAfter(today);
+    
+    // Si c'est un jour futur, fond blanc transparent
+    if (isFutureDay) {
+      backgroundColor = Colors.white.withOpacity(0.1);
+    } else {
+      // Calcul du niveau de couleur basé sur le pourcentage d'objectif pour les jours passés/actuels
+      if (data == null || data['calories'] == null || data['target'] == null) {
+        // Pas de données - gris clair
+        backgroundColor = const Color(0xFFE5E7EB);
+        if (day.date.day <= 5) { // Debug seulement pour les 5 premiers jours
+          print('🔍 $dateStr: Pas de données -> Gris');
+        }
+      } else {
+        final calories = data['calories'] as int;
+        final targetCalories = data['target'] as int;
+        
+        if (targetCalories <= 0) {
+          backgroundColor = const Color(0xFFE5E7EB);
+          print('🔍 $dateStr: Target=0 -> Gris');
+        } else {
+          final percentage = (calories / targetCalories * 100).round();
+          
+          // Niveau de couleur basé sur le pourcentage
+          if (percentage == 0) {
+            backgroundColor = const Color(0xFFE5E7EB); // Gris - 0%
+            print('🔍 $dateStr: $calories/$targetCalories (0%) -> Gris');
+          } else if (percentage <= 25) {
+            backgroundColor = const Color(0xFF0B132B).withOpacity(0.2); // Bleu très clair - 1-25%
+            print('🔍 $dateStr: $calories/$targetCalories ($percentage%) -> Bleu 20%');
+          } else if (percentage <= 50) {
+            backgroundColor = const Color(0xFF0B132B).withOpacity(0.4); // Bleu clair - 26-50%
+            print('🔍 $dateStr: $calories/$targetCalories ($percentage%) -> Bleu 40%');
+          } else if (percentage <= 75) {
+            backgroundColor = const Color(0xFF0B132B).withOpacity(0.6); // Bleu moyen - 51-75%
+            print('🔍 $dateStr: $calories/$targetCalories ($percentage%) -> Bleu 60%');
+          } else if (percentage <= 99) {
+            backgroundColor = const Color(0xFF0B132B).withOpacity(0.8); // Bleu foncé - 76-99%
+            print('🔍 $dateStr: $calories/$targetCalories ($percentage%) -> Bleu 80%');
+          } else {
+            backgroundColor = const Color(0xFF0B132B); // Bleu complet - 100%+
+            print('🔍 $dateStr: $calories/$targetCalories ($percentage%) -> Bleu 100%');
+          }
+        }
+      }
     }
 
     return BoxDecoration(
@@ -586,24 +747,46 @@ class CalendarGrid extends StatelessWidget {
     );
   }
 
-  Color _getDayTextColor(({DateTime date, bool isCurrentMonth}) day, Map<String, dynamic>? data, bool isToday) {
+  Color _getDayTextColor(({DateTime date, bool isCurrentMonth}) day, Map<String, dynamic>? data, bool isToday, bool isSelected) {
     if (!day.isCurrentMonth) {
       return const Color(0xFFCCCCCC);
     }
 
-    if (data == null) {
-      return isToday ? const Color(0xFF0B132B) : const Color(0xFF888888);
-    }
-
-    if (data['achieved'] == true) {
-      return Colors.white;
+    // Calcul de la couleur de texte basé sur l'intensité du fond
+    if (data == null || data['calories'] == null || data['target'] == null) {
+      // Pas de données - fond gris clair, texte foncé
+      return const Color(0xFF374151);
     } else {
-      return const Color(0xFF888888);
+      final calories = data['calories'] as int;
+      final targetCalories = data['target'] as int;
+      
+      if (targetCalories <= 0) {
+        return const Color(0xFF374151);
+      } else {
+        final percentage = (calories / targetCalories * 100).round();
+        
+        // Couleur de texte selon l'intensité du fond
+        if (percentage == 0) {
+          return const Color(0xFF374151); // Fond gris - texte foncé
+        } else if (percentage <= 25) {
+          return const Color(0xFF374151); // Fond bleu très clair - texte foncé
+        } else if (percentage <= 50) {
+          return const Color(0xFF374151); // Fond bleu clair - texte foncé
+        } else if (percentage <= 75) {
+          return Colors.white; // Fond bleu moyen - texte blanc
+        } else if (percentage <= 99) {
+          return Colors.white; // Fond bleu foncé - texte blanc
+        } else {
+          return Colors.white; // Fond bleu complet - texte blanc
+        }
+      }
     }
   }
 
   void _onDayTap(DateTime date) {
-    // TODO: Implémenter la navigation vers le journal du jour sélectionné
-    print('Jour sélectionné: ${date.day}/${date.month}/${date.year}');
+    if (onDateSelected != null) {
+      onDateSelected!(date);
+    }
   }
 } 
+

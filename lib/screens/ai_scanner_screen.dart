@@ -318,6 +318,9 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
                         final allFoods = FoodItem(
                           name: 'Aliments détectés', // Nom générique pour tous les aliments
                           calories: 361, // Total des calories des aliments détectés (206+130+25)
+                          proteins: 54.0, // Estimation basée sur les calories (15% de 361 kcal)
+                          carbs: 45.0, // Estimation basée sur les calories (50% de 361 kcal)
+                          fats: 13.0, // Estimation basée sur les calories (35% de 361 kcal)
                           portion: 'Plat complet',
                         );
                         
@@ -503,9 +506,15 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
   }
 
   void _handleDashboardFoodValidation(FoodItem foodItem) {
-    // Utiliser la même logique que le journal - afficher directement la sélection de repas
-    // Ne PAS faire Navigator.pop car ça casse le contexte
-    NutritionQuickActionsSection.handleDashboardFoodCreation(context, foodItem);
+    // Fermer d'abord l'écran AI Scanner
+    Navigator.pop(context);
+    
+    // Attendre un délai pour que la fermeture soit complète puis utiliser le flux spécialisé
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (context.mounted) {
+        NutritionQuickActionsSection.showMealSelectionWithDetectedFood(context, foodItem);
+      }
+    });
   }
 
   void _takePicture() async {

@@ -39,25 +39,37 @@ class OpenFoodFactsProduct {
   double get defaultQuantity {
     if (quantity == null) return 100.0;
     
-    // Extract numeric value from quantity string (e.g., "170g" -> 170)
-    final RegExp regExp = RegExp(r'(\d+(?:\.\d+)?)');
+    // Extract numeric value from quantity string (e.g., "170g", "41,5 g e" -> 41.5)
+    // Handle both comma and dot as decimal separators
+    final RegExp regExp = RegExp(r'(\d+(?:[,\.]\d+)?)');
     final match = regExp.firstMatch(quantity!);
     if (match != null) {
-      return double.tryParse(match.group(1)!) ?? 100.0;
+      String numberStr = match.group(1)!;
+      // Replace comma with dot for parsing
+      numberStr = numberStr.replaceAll(',', '.');
+      return double.tryParse(numberStr) ?? 100.0;
     }
     
     return 100.0;
   }
 
-  // Get unit from quantity (e.g., "170g" -> "g")
+  // Get unit from quantity (e.g., "170g" -> "g", "41,5 g e" -> "g")
   String get unit {
     if (quantity == null) return 'g';
     
-    // Extract unit from quantity string
-    final RegExp regExp = RegExp(r'\d+(?:\.\d+)?(.*)');
+    // Remove the numeric part (including decimal) and extract the first word as unit
+    // Handle both comma and dot as decimal separators
+    final RegExp regExp = RegExp(r'\d+(?:[,\.]\d+)?\s*(\w+)');
     final match = regExp.firstMatch(quantity!);
     if (match != null && match.group(1)!.isNotEmpty) {
       return match.group(1)!.trim();
+    }
+    
+    // Fallback: if no clear unit found, try to extract first alphabetic sequence
+    final RegExp fallbackRegExp = RegExp(r'[a-zA-Z]+');
+    final fallbackMatch = fallbackRegExp.firstMatch(quantity!);
+    if (fallbackMatch != null) {
+      return fallbackMatch.group(0)!.trim();
     }
     
     return 'g';

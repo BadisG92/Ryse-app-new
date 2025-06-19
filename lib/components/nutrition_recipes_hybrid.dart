@@ -119,7 +119,7 @@ class _NutritionRecipesHybridState extends State<NutritionRecipesHybrid> {
       MaterialPageRoute(
         builder: (context) => RecipeDetailsScreen(
           recipe: recipe,
-          isFromDashboard: true, // L'onglet recettes est considéré comme dashboard
+          isFromDashboard: false, // L'onglet recettes affiche "Ajouter à un repas"
         ),
       ),
     );

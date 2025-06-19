@@ -12,11 +12,13 @@ import '../types/database_types.dart';
 class ManualFoodSearchBottomSheet extends StatefulWidget {
   final Function(FoodItem foodItem) onFoodCreated;
   final bool isFromDashboard;
+  final ScrollController? scrollController;
 
   const ManualFoodSearchBottomSheet({
     super.key,
     required this.onFoodCreated,
     this.isFromDashboard = false,
+    this.scrollController,
   });
 
   static void show(
@@ -35,6 +37,7 @@ class ManualFoodSearchBottomSheet extends StatefulWidget {
         builder: (context, scrollController) => ManualFoodSearchBottomSheet(
           onFoodCreated: onFoodCreated,
           isFromDashboard: isFromDashboard,
+          scrollController: scrollController,
         ),
       ),
     );
@@ -105,38 +108,26 @@ class _ManualFoodSearchBottomSheetState extends State<ManualFoodSearchBottomShee
 
   Future<List<Food>> _loadFrequentFoods() async {
     try {
-      // TODO: Implémenter la requête pour récupérer les aliments les plus utilisés par l'utilisateur
-      // Pour l'instant, simuler avec quelques aliments populaires
+      final user = AuthService().currentUser;
+      if (user == null) return [];
       
-      // Exemple de logique : récupérer les aliments les plus ajoutés aux repas
-      // SELECT f.*, COUNT(nj.food_id) as usage_count 
-      // FROM foods f 
-      // JOIN nutrition_journal nj ON f.id = nj.food_id 
-      // WHERE nj.user_id = current_user_id 
-      // GROUP BY f.id 
-      // ORDER BY usage_count DESC 
-      // LIMIT 5;
+      // Utiliser la nouvelle méthode du DatabaseService pour récupérer les aliments fréquents
+      final frequentFoods = await DatabaseService.getFrequentlyUsedFoods(
+        user.id, 
+        language: 'fr', 
+        limit: 20
+      );
       
-      return _getSimulatedFrequentFoods();
-    } catch (e) {
-      return [];
-    }
-  }
-
-  List<Food> _getSimulatedFrequentFoods() {
-    // Simuler des aliments fréquemment utilisés
-    // En réalité, cela viendrait de l'historique utilisateur
-    
-    // Priorité aux aliments personnalisés (qui sont en premier dans _allFoods)
-    if (_allFoods.length >= 5) {
-      final frequentFoods = _allFoods.take(5).toList();
-      print('🔄 Aliments fréquents simulés:');
+      print('🔄 Aliments fréquents récupérés: ${frequentFoods.length}');
       for (final food in frequentFoods) {
         print('   - ${food.getLocalizedName('fr')} (isCustom: ${food.isCustom}, origin: ${food.origin})');
       }
+      
       return frequentFoods;
+    } catch (e) {
+      print('❌ Erreur lors du chargement des aliments fréquents: $e');
+      return [];
     }
-    return [];
   }
 
   void _onSearchChanged() {
@@ -176,7 +167,7 @@ class _ManualFoodSearchBottomSheetState extends State<ManualFoodSearchBottomShee
     if (_searchQuery.isNotEmpty) {
       return 'Aucun aliment trouvé pour "$_searchQuery"';
     } else if (_frequentFoods.isEmpty) {
-      return 'Commencez à taper pour rechercher un aliment';
+      return 'Tapez pour rechercher un aliment\nou créez votre propre aliment personnalisé';
     } else {
       return 'Aucun aliment disponible';
     }
@@ -204,9 +195,9 @@ class _ManualFoodSearchBottomSheetState extends State<ManualFoodSearchBottomShee
           if (_searchQuery.isEmpty && _frequentFoods.isEmpty) ...[
             const SizedBox(height: 8),
             const Text(
-              'Ou utilisez le bouton "Créer un aliment" ci-dessus',
+              'Commencez à ajouter des aliments à vos repas\npour voir vos suggestions ici',
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 13,
                 color: Color(0xFF94A3B8),
               ),
               textAlign: TextAlign.center,
@@ -386,7 +377,7 @@ class _ManualFoodSearchBottomSheetState extends State<ManualFoodSearchBottomShee
           ),
           
           const SizedBox(height: 16),
-          
+      
           // Section titre pour les aliments fréquents
           if (_showingFrequentFoods && _frequentFoods.isNotEmpty) ...[
             Padding(
@@ -394,17 +385,17 @@ class _ManualFoodSearchBottomSheetState extends State<ManualFoodSearchBottomShee
               child: Row(
                 children: [
                   const Icon(
-                    LucideIcons.clock,
+                    LucideIcons.trendingUp,
                     size: 16,
-                    color: Color(0xFF64748B),
+                    color: Color(0xFF0B132B),
                   ),
                   const SizedBox(width: 8),
                   const Text(
-                    'Récemment utilisés',
+                    'Aliments fréquemment utilisés',
                     style: TextStyle(
                       fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF64748B),
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF0B132B),
                     ),
                   ),
                 ],
@@ -413,6 +404,7 @@ class _ManualFoodSearchBottomSheetState extends State<ManualFoodSearchBottomShee
             const SizedBox(height: 12),
           ],
           
+          // Contenu principal scrollable
           Expanded(
             child: _isLoading
                 ? const Center(
@@ -422,36 +414,39 @@ class _ManualFoodSearchBottomSheetState extends State<ManualFoodSearchBottomShee
                   )
                 : displayFoods.isEmpty
                     ? _buildEmptyState()
-                    : ListView.builder(
+                    : SingleChildScrollView(
+                        controller: widget.scrollController,
                         padding: const EdgeInsets.symmetric(horizontal: 24),
-                        itemCount: displayFoods.length,
-                        itemBuilder: (context, index) {
-                          final food = displayFoods[index];
-                          
-                          // Debug: Afficher les informations de l'aliment (focus sur Nutella)
-                          if (food.isCustom && food.getLocalizedName('fr').toLowerCase().contains('nutella')) {
-                            print('🎯 DEBUG - Nutella trouvé dans la liste:');
-                            print('   - isCustom: ${food.isCustom}');
-                            print('   - origin: ${food.origin}');
-                            print('   - barcode: ${food.barcode}');
-                          }
-                          
-                          return FoodSuggestionWidget(
-                            name: food.getLocalizedName('fr'),
-                            calories: food.calories,
-                            per: food.getLocalizedUnit('fr') != null && food.referenceQuantity != null 
-                                                                    ? '${food.referenceQuantity!.toStringAsFixed(food.referenceQuantity!.truncateToDouble() == food.referenceQuantity ? 0 : 1)} ${food.getLocalizedUnit('fr')}'
-                                : '100 g',
-                            isCustom: food.isCustom,
-                            origin: food.origin, // Transmettre l'origine pour l'affichage
-                            hasModifiedMacros: false, // Les aliments dans la recherche ne sont pas modifiés
-                            isRecipe: false, // Ce ne sont pas des recettes
-                            onTap: () {
-                              Navigator.pop(context);
-                              _showFoodDetailsBottomSheet(food);
-                            },
-                          );
-                        },
+                        child: Column(
+                          children: [
+                            ...displayFoods.map((food) {
+                              // Debug: Afficher les informations de l'aliment (focus sur Nutella)
+                              if (food.isCustom && food.getLocalizedName('fr').toLowerCase().contains('nutella')) {
+                                print('🎯 DEBUG - Nutella trouvé dans la liste:');
+                                print('   - isCustom: ${food.isCustom}');
+                                print('   - origin: ${food.origin}');
+                                print('   - barcode: ${food.barcode}');
+                              }
+                              
+                              return FoodSuggestionWidget(
+                                name: food.getLocalizedName('fr'),
+                                calories: food.calories,
+                                per: food.getLocalizedUnit('fr') != null && food.referenceQuantity != null 
+                                    ? '${food.referenceQuantity!.toStringAsFixed(food.referenceQuantity!.truncateToDouble() == food.referenceQuantity ? 0 : 1)} ${food.getLocalizedUnit('fr')}'
+                                    : '100 g',
+                                isCustom: food.isCustom,
+                                origin: food.origin, // Transmettre l'origine pour l'affichage
+                                hasModifiedMacros: false, // Les aliments dans la recherche ne sont pas modifiés
+                                isRecipe: false, // Ce ne sont pas des recettes
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  _showFoodDetailsBottomSheet(food);
+                                },
+                              );
+                            }),
+                            const SizedBox(height: 20), // Espace en bas pour le défilement
+                          ],
+                        ),
                       ),
           ),
         ],
@@ -465,6 +460,7 @@ class _ManualFoodSearchBottomSheetState extends State<ManualFoodSearchBottomShee
     
     EditableFoodDetailsBottomSheet.show(
       context,
+      id: food.id,
       name: food.getLocalizedName('fr'),
       calories: food.calories,
       proteins: food.proteins,
@@ -500,11 +496,8 @@ class _ManualFoodSearchBottomSheetState extends State<ManualFoodSearchBottomShee
           print('   - finalFoodItem.displayIcon: ${finalFoodItem.displayIcon}');
         }
             
-        if (widget.isFromDashboard) {
-          NutritionQuickActionsSection.handleDashboardFoodCreation(context, finalFoodItem);
-        } else {
-          widget.onFoodCreated(finalFoodItem);
-        }
+        // Toujours utiliser le callback - le flux dashboard est maintenant géré en amont
+        widget.onFoodCreated(finalFoodItem);
       },
     );
   }

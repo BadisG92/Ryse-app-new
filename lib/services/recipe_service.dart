@@ -92,7 +92,7 @@ class RecipeService {
       // Utiliser les valeurs directement depuis la table recipes (déjà par portion)
       calories: (recipeData['calories per portion'] ?? 0).round(),
       servings: recipeData['servings'] ?? 1,
-      tags: _convertTags(recipeData['tags']),
+      tags: _convertTags(recipeData, language),
       proteins: (recipeData['proteins per portion'] ?? 0).round(),
       carbs: (recipeData['carbs per portion'] ?? 0).round(),
       fats: (recipeData['fat per portion'] ?? 0).round(),
@@ -117,7 +117,7 @@ class RecipeService {
       // Utiliser les valeurs directement depuis la table recipes (déjà par portion)
       calories: (recipeData['calories per portion'] ?? 0).round(),
       servings: recipeData['servings'] ?? 1,
-      tags: _convertTags(recipeData['tags']),
+      tags: _convertTags(recipeData, language),
       proteins: (recipeData['proteins per portion'] ?? 0).round(),
       carbs: (recipeData['carbs per portion'] ?? 0).round(),
       fats: (recipeData['fat per portion'] ?? 0).round(),
@@ -133,7 +133,15 @@ class RecipeService {
     return duration.replaceAll('minutes', 'min').replaceAll('minute', 'min');
   }
 
-  static List<String> _convertTags(dynamic tags) {
+  static List<String> _convertTags(Map<String, dynamic> recipeData, String language) {
+    // Utiliser les tags français ou anglais selon la langue
+    dynamic tags;
+    if (language == 'fr') {
+      tags = recipeData['tags_fr'] ?? recipeData['tags_en'] ?? recipeData['tags'];
+    } else {
+      tags = recipeData['tags_en'] ?? recipeData['tags_fr'] ?? recipeData['tags'];
+    }
+    
     if (tags == null) return [];
     if (tags is List) return tags.cast<String>();
     return [];

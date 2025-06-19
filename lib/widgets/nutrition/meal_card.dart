@@ -2,26 +2,42 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../models/nutrition_models.dart';
 import '../../components/ui/custom_card.dart';
+import '../../services/food_entries_service.dart';
 
-class MealCard extends StatelessWidget {
+class MealCard extends StatefulWidget {
   final Meal meal;
   final VoidCallback onAddFood;
+  final VoidCallback? onFoodRemoved; // Callback pour notifier la suppression
 
   const MealCard({
     super.key,
     required this.meal,
     required this.onAddFood,
+    this.onFoodRemoved,
   });
 
   @override
+  State<MealCard> createState() => _MealCardState();
+}
+
+class _MealCardState extends State<MealCard> {
+  bool isExpanded = true; // Par défaut, le repas est étendu
+
+  @override
   Widget build(BuildContext context) {
-    int totalCalories = meal.items.fold(0, (sum, item) => sum + item.calories);
+    int totalCalories = widget.meal.items.fold(0, (sum, item) => sum + item.calories);
     
     return CustomCard(
       child: Column(
         children: [
-          // Header du repas
-          Container(
+          // Header du repas (toujours visible)
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                isExpanded = !isExpanded;
+              });
+            },
+            child: Container(
             padding: const EdgeInsets.all(16),
             decoration: const BoxDecoration(
               border: Border(
@@ -38,7 +54,7 @@ class MealCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      meal.name,
+                        widget.meal.name,
                       style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
@@ -46,7 +62,7 @@ class MealCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      meal.time,
+                        widget.meal.time,
                       style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w400,
@@ -55,6 +71,8 @@ class MealCard extends StatelessWidget {
                     ),
                   ],
                 ),
+                  Row(
+                    children: [
                 Text(
                   '$totalCalories kcal',
                   style: const TextStyle(
@@ -63,25 +81,38 @@ class MealCard extends StatelessWidget {
                     color: Color(0xFF1A1A1A),
                   ),
                 ),
+                      const SizedBox(width: 8),
+                      Icon(
+                        isExpanded ? LucideIcons.chevronUp : LucideIcons.chevronDown,
+                        size: 16,
+                        color: const Color(0xFF64748B),
+                      ),
+                    ],
+                  ),
               ],
+              ),
             ),
           ),
           
-          // Liste des aliments
+          // Liste des aliments (masquable)
+          if (isExpanded)
           Padding(
             padding: const EdgeInsets.all(12),
             child: Column(
               children: [
-                ...meal.items.map((item) => Padding(
+                  ...widget.meal.items.map((item) => Padding(
                   padding: const EdgeInsets.only(bottom: 12),
-                  child: FoodItemWidget(item: item),
+                    child: FoodItemWidget(
+                      item: item,
+                      onRemove: () => _showDeleteConfirmation(item),
+                    ),
                 )),
                 
                 const SizedBox(height: 8),
                 
                 // Bouton ajouter un aliment
                 GestureDetector(
-                  onTap: onAddFood,
+                    onTap: widget.onAddFood,
                   child: Container(
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(vertical: 12),
@@ -117,14 +148,185 @@ class MealCard extends StatelessWidget {
       ),
     );
   }
+
+  void _showDeleteConfirmation(FoodItem item) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (BuildContext context) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Handle bar
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE5E5E5),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                
+                const SizedBox(height: 20),
+                
+                // Icône de suppression
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(32),
+                  ),
+                  child: Icon(
+                    LucideIcons.trash2,
+                    size: 28,
+                    color: Colors.red[600],
+                  ),
+                ),
+                
+                const SizedBox(height: 20),
+                
+                // Titre
+                const Text(
+                  'Supprimer l\'aliment',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1A1A1A),
+                  ),
+                ),
+                
+                const SizedBox(height: 12),
+                
+                // Message de confirmation
+                Text(
+                  'Êtes-vous sûr de vouloir supprimer "${item.name}" de ce repas ?',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: Color(0xFF64748B),
+                    height: 1.4,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                
+                const SizedBox(height: 32),
+                
+                // Boutons
+                Row(
+                  children: [
+                    // Bouton Annuler
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => Navigator.of(context).pop(),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF8F9FA),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: const Color(0xFFE5E7EB),
+                              width: 1,
+                            ),
+                          ),
+                          child: const Text(
+                            'Annuler',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF64748B),
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                    ),
+                    
+                    const SizedBox(width: 12),
+                    
+                    // Bouton Supprimer
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () async {
+                          Navigator.of(context).pop();
+                          await _removeFood(item);
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          decoration: BoxDecoration(
+                            color: Colors.red[600],
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Text(
+                            'Supprimer',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                
+                const SizedBox(height: 24),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _removeFood(FoodItem item) async {
+    try {
+      // Vérifier que l'item a un ID
+      if (item.id == null) {
+        throw Exception('L\'aliment n\'a pas d\'identifiant valide');
+      }
+      
+      // Supprimer l'aliment de la base de données
+      await FoodEntriesService.removeFoodEntry(item.id!);
+      
+      // Notifier le parent qu'un aliment a été supprimé
+      if (widget.onFoodRemoved != null) {
+        widget.onFoodRemoved!();
+      }
+    } catch (e) {
+      // Afficher une erreur si la suppression échoue
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur lors de la suppression: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 }
 
 class FoodItemWidget extends StatelessWidget {
   final FoodItem item;
+  final VoidCallback onRemove;
 
   const FoodItemWidget({
     super.key,
     required this.item,
+    required this.onRemove,
   });
 
   @override
@@ -197,13 +399,13 @@ class FoodItemWidget extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              // Bouton points
+              // Bouton croix pour supprimer
               GestureDetector(
-                onTap: () {},
+                onTap: onRemove,
                 child: Container(
                   padding: const EdgeInsets.all(12),
                   child: const Icon(
-                    LucideIcons.ellipsis,
+                    LucideIcons.x,
                     size: 16,
                     color: Color(0xFF888888),
                   ),

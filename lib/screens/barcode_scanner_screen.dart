@@ -9,6 +9,8 @@ import '../services/openfoodfacts_service.dart';
 import '../services/auth_service.dart';
 import '../services/database_service.dart';
 import '../config/supabase_config.dart';
+import '../types/database_types.dart';
+import '../components/ui/nutrition_widgets.dart';
 
 class BarcodeScannerScreen extends StatefulWidget {
   final bool isFromDashboard;
@@ -1103,100 +1105,48 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
     print('DEBUG: Barcode: ${_scannedProduct!.barcode}');
 
     if (widget.isFromDashboard) {
-      // Créer un FoodItem basé sur les données scannées
+      // Mode dashboard - comportement existant
       final quantity = double.tryParse(_quantityController.text) ?? 100.0;
       final unit = _scannedProduct!.unit;
       final foodItem = nutrition_models.FoodItem(
-        name: _scannedProduct!.productName ?? 'Produit scanné', // Juste le nom, sans les calories
+        name: _scannedProduct!.productName ?? 'Produit scanné',
         calories: _getCalculatedCalories().round(),
         proteins: _getCalculatedProtein(),
         carbs: _getCalculatedCarbs(),
         fats: _getCalculatedFat(),
         portion: '${quantity.round()} $unit',
-        isScanned: true, // Marquer comme "scanné" pour utiliser l'icône de code-barres
+        isScanned: true,
       );
       
-      // Afficher le popup AVANT de déclencher la sélection
-      if (_scannedProduct!.barcode != null && _scannedProduct!.barcode!.isNotEmpty) {
-        print('DEBUG: Dashboard - Affichage du popup');
-        _pendingDashboardFoodItem = foodItem; // Stocker pour après le popup
-        _showSaveToCustomFoodsDialog();
-      } else {
-        // Pas de code-barres, comportement normal
-        print('DEBUG: Dashboard - Pas de code-barres, sélection directe');
       _handleDashboardFoodSelection(foodItem);
-      }
     } else {
-      // Comportement pour le journal - Afficher le popup d'abord
-      if (_scannedProduct!.barcode != null && _scannedProduct!.barcode!.isNotEmpty) {
-        print('DEBUG: Mode Journal - Affichage immédiat du popup');
-        _showSaveToCustomFoodsDialog();
-        // La fermeture de l'écran sera gérée dans le popup lui-même
-      } else {
-        // Pas de code-barres, comportement normal
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Produit ajouté au repas'),
-            backgroundColor: const Color(0xFF0B132B),
-            behavior: SnackBarBehavior.floating,
-            margin: const EdgeInsets.only(
-              top: 50,
-              left: 20,
-              right: 20,
-            ),
-          ),
-        );
-      }
+      // Mode journal - afficher le popup de choix de sauvegarde
+      _showSaveChoiceDialog();
     }
   }
 
-  void _closeScreenWithSnackBar() {
-    Navigator.pop(context);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Produit ajouté au repas'),
-        backgroundColor: const Color(0xFF0B132B),
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.only(
-          top: 50,
-          left: 20,
-          right: 20,
-        ),
-      ),
-    );
-  }
-
-  void _handleJournalFoodAddition() {
-    if (_scannedProduct == null) return;
-    
-    // Créer le FoodItem avec les données scannées
-    final quantity = double.tryParse(_quantityController.text) ?? 100.0;
-    final unit = _scannedProduct!.unit;
-    final foodItem = nutrition_models.FoodItem(
-      name: _scannedProduct!.productName ?? 'Produit scanné', // Juste le nom, sans les calories
-      calories: _getCalculatedCalories().round(),
-      proteins: _getCalculatedProtein(),
-      carbs: _getCalculatedCarbs(),
-      fats: _getCalculatedFat(),
-      portion: '${quantity.round()} $unit',
-      isScanned: true, // Marquer comme "scanné" pour utiliser l'icône de code-barres
-    );
-    
-    // Utiliser le callback si disponible, sinon fermer avec message
+  void _handleDashboardFoodSelection(nutrition_models.FoodItem foodItem) {
+    // Utiliser le callback si disponible (c'est le cas depuis le dashboard)
     if (widget.onFoodScanned != null) {
-      Navigator.pop(context); // Fermer l'écran scanner
-      widget.onFoodScanned!(foodItem); // Appeler le callback
+      Navigator.pop(context);
+      widget.onFoodScanned!(foodItem);
     } else {
-      _closeScreenWithSnackBar(); // Fallback : ancien comportement
+      // Fallback pour les anciens flux
+      // Fermer d'abord l'écran du scanner
+      Navigator.pop(context);
+      
+      // Attendre un délai pour que la fermeture soit complète puis utiliser le flux unifié
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (context.mounted) {
+          NutritionQuickActionsSection.showMealSelectionWithDetectedFood(context, foodItem);
+        }
+      });
     }
   }
 
-  void _showSaveToCustomFoodsDialog() async {
+  void _showSaveChoiceDialog() async {
     if (_scannedProduct == null) return;
     
-    print('DEBUG: _showSaveToCustomFoodsDialog appelée');
-
     // Vérifier d'abord si l'aliment existe déjà
     final user = AuthService().currentUser;
     if (user != null && _scannedProduct!.barcode != null) {
@@ -1206,32 +1156,8 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
       );
       
       if (existingFood != null) {
-        // L'aliment existe déjà, ne pas afficher le popup de sauvegarde
-        // mais continuer avec l'ajout au repas
-        if (mounted) {
-          // Afficher message d'information (optionnel)
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('${_scannedProduct!.productName ?? 'Ce produit'} est déjà dans vos aliments personnalisés'),
-              backgroundColor: const Color(0xFF059669),
-              duration: const Duration(seconds: 2),
-              behavior: SnackBarBehavior.floating,
-              margin: const EdgeInsets.only(
-                top: 50,
-                left: 20,
-                right: 20,
-              ),
-            ),
-          );
-          
-          // Continuer avec l'ajout au repas sans popup de sauvegarde
-          if (widget.isFromDashboard && _pendingDashboardFoodItem != null) {
-            _handleDashboardFoodSelection(_pendingDashboardFoodItem!);
-          } else {
-            // Mode journal : créer le FoodItem et utiliser le callback
-            _handleJournalFoodAddition();
-          }
-        }
+        // L'aliment existe déjà, l'utiliser directement
+        await _addExistingScannedFood(existingFood);
         return;
       }
     }
@@ -1288,7 +1214,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                 const SizedBox(height: 8),
                 
                 Text(
-                  'Souhaitez-vous ajouter "${_scannedProduct!.productName ?? 'ce produit'}" à vos aliments personnalisés ?',
+                  'Souhaitez-vous ajouter "${_scannedProduct!.productName ?? 'ce produit'}" à vos aliments personnalisés pour une réutilisation future ?',
                   style: const TextStyle(
                     fontSize: 14,
                     color: Color(0xFF64748B),
@@ -1305,11 +1231,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                       child: OutlinedButton(
                         onPressed: () {
                           Navigator.pop(context); // Fermer le popup
-                          if (widget.isFromDashboard && _pendingDashboardFoodItem != null) {
-                            _handleDashboardFoodSelection(_pendingDashboardFoodItem!);
-                          } else {
-                            _handleJournalFoodAddition(); // Mode journal
-                          }
+                          _addScannedFoodDirectly(); // Ajouter sans sauvegarder
                         },
                         style: OutlinedButton.styleFrom(
                           side: const BorderSide(color: Color(0xFFE2E8F0)),
@@ -1319,7 +1241,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                           ),
                         ),
                         child: const Text(
-                          'Non',
+                          'Non, juste ajouter',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
@@ -1335,12 +1257,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                       child: ElevatedButton(
                         onPressed: () async {
                           Navigator.pop(context); // Fermer popup
-                          await _saveToCustomFoods();
-                          if (widget.isFromDashboard && _pendingDashboardFoodItem != null) {
-                            _handleDashboardFoodSelection(_pendingDashboardFoodItem!);
-                          } else {
-                            _handleJournalFoodAddition(); // Mode journal
-                          }
+                          await _saveAndAddScannedFood(); // Sauvegarder puis ajouter
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF0B132B),
@@ -1350,7 +1267,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                           ),
                         ),
                         child: const Text(
-                          'Oui',
+                          'Oui, sauvegarder',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
@@ -1369,7 +1286,64 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
     );
   }
 
-  Future<void> _saveToCustomFoods() async {
+  Future<void> _addExistingScannedFood(Food existingFood) async {
+    // L'aliment existe déjà dans custom_foods, l'utiliser
+    final quantity = double.tryParse(_quantityController.text) ?? 100.0;
+    final unit = _scannedProduct!.unit;
+    
+    final foodItem = nutrition_models.FoodItem(
+      id: existingFood.id,
+      name: existingFood.getLocalizedName('fr'),
+      calories: _getCalculatedCalories().round(),
+      proteins: _getCalculatedProtein(),
+      carbs: _getCalculatedCarbs(),
+      fats: _getCalculatedFat(),
+      portion: '${quantity.round()} $unit',
+      isCustom: true,
+      isScanned: true,
+    );
+    
+    // Utiliser le callback si disponible
+    if (widget.onFoodScanned != null) {
+      Navigator.pop(context);
+      widget.onFoodScanned!(foodItem);
+    } else {
+      _closeScreenWithSnackBar();
+    }
+  }
+
+  Future<void> _addScannedFoodDirectly() async {
+    // Ajouter l'aliment sans le sauvegarder dans custom_foods
+    final quantity = double.tryParse(_quantityController.text) ?? 100.0;
+    final unit = _scannedProduct!.unit;
+    
+    // Utiliser le meilleur nom disponible
+    String productName = _scannedProduct!.productName ?? 
+                        _scannedProduct!.brands ?? 
+                        'Produit scanné ${_scannedProduct!.barcode ?? ''}';
+    
+    final foodItem = nutrition_models.FoodItem(
+      // Pas d'ID car pas sauvegardé dans custom_foods
+      name: productName,
+      calories: _getCalculatedCalories().round(),
+      proteins: _getCalculatedProtein(),
+      carbs: _getCalculatedCarbs(),
+      fats: _getCalculatedFat(),
+      portion: '${quantity.round()} $unit',
+      isCustom: false, // Pas un aliment custom puisque pas sauvegardé
+      isScanned: true, // Mais toujours scanné pour l'icône
+    );
+    
+    // Utiliser le callback si disponible
+    if (widget.onFoodScanned != null) {
+      Navigator.pop(context);
+      widget.onFoodScanned!(foodItem);
+    } else {
+      _closeScreenWithSnackBar();
+    }
+  }
+
+  Future<void> _saveAndAddScannedFood() async {
     if (_scannedProduct == null) return;
 
     try {
@@ -1378,20 +1352,28 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
       if (user == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('Vous devez être connecté pour sauvegarder un aliment'),
+            const SnackBar(
+              content: Text('Vous devez être connecté pour sauvegarder un aliment'),
               backgroundColor: Colors.red,
-              behavior: SnackBarBehavior.floating,
-              margin: const EdgeInsets.only(
-                top: 50,
-                left: 20,
-                right: 20,
-              ),
             ),
           );
         }
         return;
       }
+
+      // DEBUG: Afficher les données du produit
+      print('DEBUG - Données du produit avant sauvegarde:');
+      print('- productName: ${_scannedProduct!.productName}');
+      print('- barcode: ${_scannedProduct!.barcode}');
+      print('- brands: ${_scannedProduct!.brands}');
+      print('- quantity: ${_scannedProduct!.quantity}');
+      
+      // Utiliser le meilleur nom disponible
+      String productName = _scannedProduct!.productName ?? 
+                          _scannedProduct!.brands ?? 
+                          'Produit scanné ${_scannedProduct!.barcode ?? ''}';
+      
+      print('- Nom final choisi: $productName');
 
       // Calculer les macros pour 100g/ml (base de référence)
       final currentQuantity = double.tryParse(_quantityController.text) ?? 100.0;
@@ -1401,7 +1383,6 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
       final originalFats = _scannedProduct!.nutriments?.fat100g ?? 0.0;
 
       // Si l'unité est en grammes ou ml, on peut convertir à la base 100g/ml
-      // Sinon, on garde les valeurs actuelles
       final isWeightBasedUnit = _scannedProduct!.unit == 'g' || _scannedProduct!.unit == 'ml';
       
       final finalCalories = isWeightBasedUnit ? originalCalories.round() : _getCalculatedCalories().round();
@@ -1413,7 +1394,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
 
       final customFood = {
         'user_id': user.id,
-        'name': _scannedProduct!.productName ?? 'Produit scanné',
+        'name': productName, // Utiliser le nom amélioré
         'calories': finalCalories,
         'proteins': finalProteins,
         'carbs': finalCarbs,
@@ -1425,110 +1406,85 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
         'barcode': _scannedProduct!.barcode, // Sauvegarder le code-barres
       };
 
-      // Sauvegarder dans Supabase
+      print('DEBUG - Données à sauvegarder: $customFood');
+
+      // Sauvegarder dans Supabase et récupérer l'ID
       final response = await SupabaseConfig.client
           .from('custom_foods')
           .insert(customFood)
           .select()
           .single();
 
-      // Afficher une confirmation
+      print('DEBUG - Réponse Supabase: $response');
+
+      // Créer le FoodItem avec l'ID généré et les valeurs actuelles de la portion
+      final userQuantity = double.tryParse(_quantityController.text) ?? 100.0;
+      final userUnit = _scannedProduct!.unit;
+      
+      final foodItem = nutrition_models.FoodItem(
+        id: response['id'].toString(),
+        name: productName, // Utiliser le même nom amélioré
+        calories: _getCalculatedCalories().round(),
+        proteins: _getCalculatedProtein(),
+        carbs: _getCalculatedCarbs(),
+        fats: _getCalculatedFat(),
+        portion: '${userQuantity.round()} $userUnit',
+        isCustom: true,
+        isScanned: true,
+      );
+
+      print('DEBUG - FoodItem créé: ${foodItem.name}');
+
+      // Afficher confirmation de sauvegarde
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${_scannedProduct!.productName ?? 'Produit'} ajouté à vos aliments personnalisés'),
+            content: Text('$productName ajouté à vos aliments personnalisés'),
             backgroundColor: const Color(0xFF0B132B),
-            behavior: SnackBarBehavior.floating,
-            margin: const EdgeInsets.only(
-              top: 50,
-              left: 20,
-              right: 20,
-            ),
-            action: SnackBarAction(
-              label: 'Voir',
-              textColor: Colors.white,
-              onPressed: () {
-                // TODO: Naviguer vers la liste des aliments personnalisés
-              },
-            ),
+            duration: const Duration(seconds: 2),
           ),
         );
       }
+
+      // Utiliser le callback si disponible
+      if (widget.onFoodScanned != null) {
+        Navigator.pop(context);
+        widget.onFoodScanned!(foodItem);
+      } else {
+        _closeScreenWithSnackBar();
+      }
+
     } catch (e) {
-      print('Erreur lors de la sauvegarde: $e'); // Pour le debug
+      print('Erreur lors de la sauvegarde: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Erreur lors de la sauvegarde: ${e.toString()}'),
             backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-            margin: const EdgeInsets.only(
-              top: 50,
-              left: 20,
-              right: 20,
-            ),
           ),
         );
       }
     }
   }
 
-  void _handleDashboardFoodSelection(nutrition_models.FoodItem foodItem) {
-    // Simuler des repas existants
-    final existingMeals = <nutrition_models.Meal>[
-      nutrition_models.Meal(
-        name: 'Petit-déjeuner',
-        time: '08:30',
-        items: [
-          nutrition_models.FoodItem(
-            name: 'Café',
-            calories: 5,
-            portion: '1 tasse',
-          ),
-        ],
-      ),
-      nutrition_models.Meal(
-        name: 'Déjeuner',
-        time: '12:45',
-        items: [
-          nutrition_models.FoodItem(
-            name: 'Salade',
-            calories: 150,
-            portion: '200g',
-          ),
-        ],
-      ),
-    ];
-
-    // Sauvegarder le contexte avant de fermer l'écran
-    final currentContext = context;
+  void _closeScreenWithSnackBar() {
+    // Obtenir le ScaffoldMessenger avant de fermer l'écran
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
     
-    // Fermer l'écran du scanner
     Navigator.pop(context);
     
-    // Attendre un délai pour permettre au popup de se fermer s'il était ouvert
-    Future.delayed(const Duration(milliseconds: 100), () {
-      if (currentContext.mounted) {
-    MealSelectionBottomSheet.show(
-          currentContext,
-      foodName: foodItem.name,
-      existingMeals: existingMeals,
-      onExistingMealSelected: (meal) {
-        // TODO: Ajouter l'aliment au repas sélectionné
-            // Ajouter l'aliment au repas sélectionné
-      },
-      onCreateNewMeal: () {
-            // Utiliser le contexte sauvegardé
-        NewMealTypeBottomSheet.show(
-              currentContext,
-          onMealTypeSelected: (mealType, time) {
-            // TODO: Créer un nouveau repas avec l'aliment
-                // Créer un nouveau repas avec l'aliment
-          },
-        );
-      },
+    // Utiliser le ScaffoldMessenger sauvegardé après fermeture
+    scaffoldMessenger.showSnackBar(
+      const SnackBar(
+        content: Text('Produit ajouté au repas'),
+        backgroundColor: Color(0xFF0B132B),
+        behavior: SnackBarBehavior.floating,
+        margin: EdgeInsets.only(
+          top: 50,
+          left: 20,
+          right: 20,
+        ),
+      ),
     );
-      }
-    });
   }
 } 

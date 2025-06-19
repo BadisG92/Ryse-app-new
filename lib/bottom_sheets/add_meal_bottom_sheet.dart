@@ -3,7 +3,10 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../widgets/nutrition/option_widgets.dart';
 
 class AddMealBottomSheet {
-  static void show(BuildContext context, Function showAddFoodBottomSheet) {
+  static void show(
+    BuildContext context, 
+    Function(String mealType) onMealTypeSelected,
+  ) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -63,10 +66,7 @@ class AddMealBottomSheet {
                 subtitle: 'Commencez bien votre journée',
                 onTap: () {
                   Navigator.pop(context);
-                  // Ouvrir le bottom sheet d'ajout d'aliment après sélection du repas
-                  Future.delayed(const Duration(milliseconds: 300), () {
-                    showAddFoodBottomSheet();
-                  });
+                  onMealTypeSelected('Petit-déjeuner');
                 },
               ),
               
@@ -78,9 +78,7 @@ class AddMealBottomSheet {
                 subtitle: 'Votre repas principal de midi',
                 onTap: () {
                   Navigator.pop(context);
-                  Future.delayed(const Duration(milliseconds: 300), () {
-                    showAddFoodBottomSheet();
-                  });
+                  onMealTypeSelected('Déjeuner');
                 },
               ),
               
@@ -92,9 +90,7 @@ class AddMealBottomSheet {
                 subtitle: 'Terminez la journée en beauté',
                 onTap: () {
                   Navigator.pop(context);
-                  Future.delayed(const Duration(milliseconds: 300), () {
-                    showAddFoodBottomSheet();
-                  });
+                  onMealTypeSelected('Dîner');
                 },
               ),
               
@@ -106,9 +102,7 @@ class AddMealBottomSheet {
                 subtitle: 'Une petite pause gourmande',
                 onTap: () {
                   Navigator.pop(context);
-                  Future.delayed(const Duration(milliseconds: 300), () {
-                    showAddFoodBottomSheet();
-                  });
+                  onMealTypeSelected('Collation');
                 },
               ),
               

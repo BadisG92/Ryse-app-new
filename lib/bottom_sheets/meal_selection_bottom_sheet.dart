@@ -228,134 +228,136 @@ class MealSelectionBottomSheet {
         ),
         child: Padding(
           padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Handle bar
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE5E5E5),
-                  borderRadius: BorderRadius.circular(2),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Handle bar
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE5E5E5),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
-              ),
-              
-              const SizedBox(height: 20),
-              
-              // Header avec retour
-              Row(
-                children: [
-                  GestureDetector(
+                
+                const SizedBox(height: 20),
+                
+                // Header avec retour
+                Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.pop(context);
+                        // Re-ouvrir le premier bottom sheet
+                        show(
+                          context,
+                          foodName: foodName,
+                          existingMeals: existingMeals,
+                          onExistingMealSelected: onMealSelected,
+                          onCreateNewMeal: () {}, // Pas utilisé dans ce contexte
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          color: Colors.transparent,
+                        ),
+                        child: const Icon(
+                          LucideIcons.chevronLeft,
+                          size: 20,
+                          color: Color(0xFF0B132B),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    const Expanded(
+                      child: Text(
+                        'Choisir un repas',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1A1A1A),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                
+                const SizedBox(height: 24),
+                
+                // Liste des repas existants
+                ...existingMeals.map((meal) => Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  child: GestureDetector(
                     onTap: () {
                       Navigator.pop(context);
-                      // Re-ouvrir le premier bottom sheet
-                      show(
-                        context,
-                        foodName: foodName,
-                        existingMeals: existingMeals,
-                        onExistingMealSelected: onMealSelected,
-                        onCreateNewMeal: () {}, // Pas utilisé dans ce contexte
-                      );
+                      onMealSelected(meal);
                     },
                     child: Container(
-                      padding: const EdgeInsets.all(8),
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8),
-                        color: Colors.transparent,
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: const Color(0xFFE5E7EB),
+                          width: 1,
+                        ),
                       ),
-                      child: const Icon(
-                        LucideIcons.chevronLeft,
-                        size: 20,
-                        color: Color(0xFF0B132B),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  const Expanded(
-                    child: Text(
-                      'Choisir un repas',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF1A1A1A),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              
-              const SizedBox(height: 24),
-              
-              // Liste des repas existants
-              ...existingMeals.map((meal) => Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                child: GestureDetector(
-                  onTap: () {
-                    Navigator.pop(context);
-                    onMealSelected(meal);
-                  },
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: const Color(0xFFE5E7EB),
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF0B132B),
-                            borderRadius: BorderRadius.circular(8),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0B132B),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              _getMealIcon(meal.name),
+                              size: 16,
+                              color: Colors.white,
+                            ),
                           ),
-                          child: Icon(
-                            _getMealIcon(meal.name),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  meal.name,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF1A1A1A),
+                                  ),
+                                ),
+                                Text(
+                                  '${meal.time} • ${meal.items.length} aliment${meal.items.length > 1 ? 's' : ''}',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF64748B),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(
+                            LucideIcons.chevronRight,
                             size: 16,
-                            color: Colors.white,
+                            color: Color(0xFF64748B),
                           ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                meal.name,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF1A1A1A),
-                                ),
-                              ),
-                              Text(
-                                '${meal.time} • ${meal.items.length} aliment${meal.items.length > 1 ? 's' : ''}',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Color(0xFF64748B),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const Icon(
-                          LucideIcons.chevronRight,
-                          size: 16,
-                          color: Color(0xFF64748B),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              )),
-              
-              const SizedBox(height: 24),
-            ],
+                )),
+                
+                const SizedBox(height: 24),
+              ],
+            ),
           ),
         ),
       ),

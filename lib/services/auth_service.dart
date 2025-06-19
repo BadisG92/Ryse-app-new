@@ -226,6 +226,7 @@ class AuthService extends ChangeNotifier {
     double? weight,
     String? activityLevel,
     String? fitnessGoal,
+    int? dailyCalories,
   }) async {
     if (_currentUser == null) return false;
 
@@ -243,6 +244,7 @@ class AuthService extends ChangeNotifier {
       if (weight != null) updates['weight'] = weight;
       if (activityLevel != null) updates['activity_level'] = activityLevel;
       if (fitnessGoal != null) updates['fitness_goal'] = fitnessGoal;
+      if (dailyCalories != null) updates['daily_calories'] = dailyCalories;
 
       await _supabase
           .from('users')
@@ -260,6 +262,7 @@ class AuthService extends ChangeNotifier {
         weight: weight ?? _currentUser!.weight,
         activityLevel: activityLevel ?? _currentUser!.activityLevel,
         fitnessGoal: fitnessGoal ?? _currentUser!.fitnessGoal,
+        dailyCalories: dailyCalories ?? _currentUser!.dailyCalories,
       );
 
       _safeNotifyListeners();
@@ -270,6 +273,11 @@ class AuthService extends ChangeNotifier {
     } finally {
       _setLoading(false);
     }
+  }
+
+  /// Update daily calories goal
+  Future<bool> updateDailyCalories(int calories) async {
+    return await updateProfile(dailyCalories: calories);
   }
 
   /// Get stored access token
