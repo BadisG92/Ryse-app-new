@@ -214,7 +214,7 @@ class _CalendarViewState extends State<CalendarView> {
           // Page scrollable avec tout le contenu
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + kBottomNavigationBarHeight),
               child: Column(
                 children: [
                   // Stats du mois
@@ -332,111 +332,70 @@ class MonthStats extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        // Objectifs atteints
-        Expanded(
-          child: CustomCard(
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(24),
-                color: Colors.white.withOpacity(0.9),
-              ),
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                children: [
-                  Text(
-                    '${monthStats['successRate']}%',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF0B132B),
-                    ),
-                  ),
-                  const Text(
-                    'Objectifs atteints',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Color(0xFF888888),
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
+    return CustomCard(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _buildKpi(
+              value: '${monthStats['successRate']}%',
+              label: 'Objectifs\natteints',
             ),
-          ),
-        ),
-        
-        const SizedBox(width: 12),
-          
-        // Jours réussis
-        Expanded(
-          child: CustomCard(
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(24),
-                color: Colors.white.withOpacity(0.9),
-              ),
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                children: [
-                  Text(
-                    '${monthStats['achieved']}',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF0B132B),
-                    ),
-                  ),
-                  const Text(
-                    'Jours réussis',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Color(0xFF888888),
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
+            _buildKpi(
+              value: '${monthStats['achieved']}',
+              label: 'Jours\nréussis',
             ),
-          ),
-        ),
-        
-        const SizedBox(width: 12),
-        
-        // Kcal moyenne
-        Expanded(
-          child: CustomCard(
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(24),
-                color: Colors.white.withOpacity(0.9),
-              ),
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                children: [
-                  Text(
-                    '${monthStats['avgCalories']}',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF0B132B),
-                    ),
-                  ),
-                  const Text(
-                    'kcal moyenne',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Color(0xFF888888),
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
+            _buildKpi(
+              value: '${monthStats['avgCalories']}',
+              label: 'Moy.\ncalories',
             ),
-          ),
+          ],
         ),
-      ],
+      ),
+    );
+  }
+
+  Widget _buildKpi({required String value, required String label}) {
+    return Expanded(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF0B132B),
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 11,
+                color: Color(0xFF888888),
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

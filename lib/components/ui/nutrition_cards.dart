@@ -128,7 +128,7 @@ class MainCaloriesCard extends StatelessWidget {
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(6),
                   child: LinearProgressIndicator(
-                    value: min(profile.caloriesProgress, 1.0),
+                    value: min(animatedCalories / profile.targetCalories, 1.0),
                     backgroundColor: Colors.transparent,
                     valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF0B132B)),
                   ),

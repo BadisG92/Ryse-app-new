@@ -4,6 +4,8 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'ui/global_progress_models.dart';
 import 'ui/global_progress_widgets.dart';
+import '../services/dashboard_service.dart';
+import '../providers/goals_notifier.dart';
 
 class GlobalProgress extends StatefulWidget {
   const GlobalProgress({super.key});
@@ -20,6 +22,32 @@ class _GlobalProgressState extends State<GlobalProgress> {
   List<TrackingDay> _trackingDays = GlobalProgressData.weeklyTracking;
   HeaderStats _headerStats = GlobalProgressData.headerStats;
   List<AIRecommendation> _aiRecommendations = GlobalProgressData.aiRecommendations;
+  int _completedGoals = 0;
+  int _totalGoals = 0;
+  bool _loadingObjectives = true;
+  String get _objectivesText => _loadingObjectives ? '...' : '$_completedGoals/$_totalGoals objectifs';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadObjectives();
+    // Forcer la mise à jour du compteur d'objectifs
+    DashboardService.refreshGoalsNotifier();
+  }
+
+  Future<void> _loadObjectives() async {
+    try {
+      final goals = await DashboardService.getDailyGoals();
+      final completed = goals.where((g) => g.completed).length;
+      setState(() {
+        _completedGoals = completed;
+        _totalGoals = goals.length;
+        _loadingObjectives = false;
+      });
+    } catch (e) {
+      setState(() => _loadingObjectives = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -98,7 +126,12 @@ class _GlobalProgressState extends State<GlobalProgress> {
               children: [
                 _buildBannerItem(LucideIcons.flame, '7 jours'),
                 _buildBannerSeparator(),
-                _buildBannerItem(LucideIcons.target, '3/4 objectifs'),
+                ValueListenableBuilder<GoalsSummary>(
+                  valueListenable: GoalsNotifier.instance,
+                  builder: (context, summary, _) {
+                    return _buildBannerItem(LucideIcons.target, summary.toString());
+                  },
+                ),
                 _buildBannerSeparator(),
                 _buildBannerItemWithLogo('Progression'),
               ],

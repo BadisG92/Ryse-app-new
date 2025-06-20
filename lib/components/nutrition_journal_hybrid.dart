@@ -504,60 +504,8 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
       ),
       child: Column(
         children: [
-          // Header avec le résumé du jour
-          Container(
-            padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-            child: Column(
-              children: [
-                // Header avec date et calendrier
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _getDateTitle(selectedDate),
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF1A1A1A),
-                          ),
-                        ),
-                        Text(
-                          _formatDate(selectedDate),
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: const Color(0xFF1A1A1A).withOpacity(0.6),
-                          ),
-                        ),
-                      ],
-                    ),
-                    GestureDetector(
-                      onTap: () => setState(() => showCalendar = true),
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF0B132B),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(
-                          LucideIcons.expand,
-                          size: 20,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                
-                const SizedBox(height: 16),
-                
-                // Bilan calorique du jour
-                _buildDaySummary(),
-              ],
-            ),
-          ),
+          // Header supprimé fixe (désormais dans scroll)
+          const SizedBox.shrink(),
           
           // Liste des repas (scrollable)
           Expanded(
@@ -636,6 +584,57 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 140), // Ajout de padding bottom pour éviter la barre de navigation
                   child: Column(
                     children: [
+                      // Header (date + résumé) désormais scrollable
+                      Container(
+                        padding: const EdgeInsets.fromLTRB(0, 0, 0, 24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      _getDateTitle(selectedDate),
+                                      style: const TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF1A1A1A),
+                                      ),
+                                    ),
+                                    Text(
+                                      _formatDate(selectedDate),
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: const Color(0xFF1A1A1A).withOpacity(0.6),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                GestureDetector(
+                                  onTap: () => setState(() => showCalendar = true),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF0B132B),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: const Icon(
+                                      LucideIcons.expand,
+                                      size: 20,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            _buildDaySummary(),
+                          ],
+                        ),
+                      ),
                       // Repas existants
                         ...meals
                             .where((meal) => meal.items.isNotEmpty)
@@ -788,12 +787,22 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  value: totalCalories > 0 ? (totalCalories / targetCalories).clamp(0.0, 1.0) : 0.0,
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween<double>(
+                    begin: 0.0,
+                    end: totalCalories > 0 ? (totalCalories / targetCalories).clamp(0.0, 1.0) : 0.0,
+                  ),
+                  duration: const Duration(milliseconds: 1000),
+                  curve: Curves.easeOutExpo,
+                  builder: (context, value, _) {
+                    return LinearProgressIndicator(
+                      value: value,
                   backgroundColor: Colors.transparent,
                   valueColor: const AlwaysStoppedAnimation<Color>(
                     Color(0xFF0B132B),
                   ),
+                    );
+                  },
                 ),
               ),
             ),

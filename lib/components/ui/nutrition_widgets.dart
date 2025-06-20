@@ -394,60 +394,130 @@ class NutritionQuickActionsSection extends StatelessWidget {
         ),
         child: Padding(
           padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Handle bar
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE5E5E5),
-                  borderRadius: BorderRadius.circular(2),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Handle bar
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE5E5E5),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
-              ),
-              
-              const SizedBox(height: 20),
-              
-              // Titre avec nom de l'aliment détecté
-              Text(
-                'Ajouter "${detectedFood.name}"',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF1A1A1A),
+                
+                const SizedBox(height: 20),
+                
+                // Titre avec nom de l'aliment détecté
+                Text(
+                  'Ajouter "${detectedFood.name}"',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1A1A1A),
+                  ),
                 ),
-              ),
-              
-              const SizedBox(height: 16),
-              
-              const Text(
-                'À quel repas voulez-vous ajouter cet aliment ?',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF64748B),
+                
+                const SizedBox(height: 16),
+                
+                const Text(
+                  'À quel repas voulez-vous ajouter cet aliment ?',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF64748B),
+                  ),
+                  textAlign: TextAlign.center,
                 ),
-                textAlign: TextAlign.center,
-              ),
-              
-              const SizedBox(height: 24),
-              
-              // Option 1: Repas existant (si des repas existent)
-              if (existingMeals.isNotEmpty) ...[
+                
+                const SizedBox(height: 24),
+                
+                // Option 1: Repas existant (si des repas existent)
+                if (existingMeals.isNotEmpty) ...[
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.pop(context);
+                      // Montrer la liste des repas existants
+                      _showExistingMealsSelectionForDetectedFood(context, existingMeals, detectedFood);
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8F9FA),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: const Color(0xFFE5E7EB),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0B132B),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(
+                              LucideIcons.utensils,
+                              size: 16,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Ajouter à un repas existant',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF0B132B),
+                                  ),
+                                ),
+                                Text(
+                                  'Choisir parmi vos repas d\'aujourd\'hui',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF64748B),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(
+                            LucideIcons.chevronRight,
+                            size: 16,
+                            color: Color(0xFF64748B),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 12),
+                ],
+                
+                // Option 2: Nouveau repas
                 GestureDetector(
                   onTap: () {
                     Navigator.pop(context);
-                    // Montrer la liste des repas existants
-                    _showExistingMealsSelectionForDetectedFood(context, existingMeals, detectedFood);
+                    // Montrer la sélection de type de nouveau repas
+                    _showNewMealTypeSelectionForDetectedFood(context, detectedFood);
                   },
                   child: Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF8F9FA),
+                      color: const Color(0xFF0B132B).withOpacity(0.05),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: const Color(0xFFE5E7EB),
+                        color: const Color(0xFF0B132B).withOpacity(0.2),
                         width: 1,
                       ),
                     ),
@@ -460,7 +530,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: const Icon(
-                            LucideIcons.utensils,
+                            LucideIcons.plus,
                             size: 16,
                             color: Colors.white,
                           ),
@@ -471,7 +541,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Ajouter à un repas existant',
+                                'Créer un nouveau repas',
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
@@ -479,14 +549,14 @@ class NutritionQuickActionsSection extends StatelessWidget {
                                 ),
                               ),
                               Text(
-                                'Choisir parmi vos repas d\'aujourd\'hui',
+                                'Petit-déjeuner, déjeuner, dîner ou collation',
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: Color(0xFF64748B),
                                 ),
-          ),
-        ],
-      ),
+                              ),
+                            ],
+                          ),
                         ),
                         const Icon(
                           LucideIcons.chevronRight,
@@ -498,76 +568,9 @@ class NutritionQuickActionsSection extends StatelessWidget {
                   ),
                 ),
                 
-                const SizedBox(height: 12),
+                const SizedBox(height: 24),
               ],
-              
-              // Option 2: Nouveau repas
-              GestureDetector(
-                onTap: () {
-                  Navigator.pop(context);
-                  // Montrer la sélection de type de nouveau repas
-                  _showNewMealTypeSelectionForDetectedFood(context, detectedFood);
-                },
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0B132B).withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: const Color(0xFF0B132B).withOpacity(0.2),
-                      width: 1,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF0B132B),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(
-                          LucideIcons.plus,
-                          size: 16,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Créer un nouveau repas',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF0B132B),
-                              ),
-                            ),
-                            Text(
-                              'Petit-déjeuner, déjeuner, dîner ou collation',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Color(0xFF64748B),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Icon(
-                        LucideIcons.chevronRight,
-                        size: 16,
-                        color: Color(0xFF64748B),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              
-              const SizedBox(height: 24),
-            ],
+            ),
           ),
         ),
       ),
@@ -590,129 +593,132 @@ class NutritionQuickActionsSection extends StatelessWidget {
         ),
         child: Padding(
           padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Handle bar
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE5E5E5),
-                  borderRadius: BorderRadius.circular(2),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Handle bar
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE5E5E5),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
-              ),
-              
-              const SizedBox(height: 20),
-              
-              // Titre avec bouton retour
-              Row(
-                children: [
-                  GestureDetector(
+                
+                const SizedBox(height: 20),
+                
+                // Titre avec bouton retour
+                Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.pop(context);
+                        // Retourner au premier écran
+                        _showMealSelectionForDetectedFood(context, detectedFood);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          color: Colors.transparent,
+                        ),
+                        child: const Icon(
+                          LucideIcons.chevronLeft,
+                          size: 20,
+                          color: Color(0xFF0B132B),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    const Expanded(
+                      child: Text(
+                        'Choisir un repas',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1A1A1A),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                
+                const SizedBox(height: 24),
+                
+                // Liste des repas existants
+                ...existingMeals.map((meal) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: GestureDetector(
                     onTap: () {
                       Navigator.pop(context);
-                      // Retourner au premier écran
-                      _showMealSelectionForDetectedFood(context, detectedFood);
+                      // Ajouter directement l'aliment au repas sélectionné
+                      _addFoodToSelectedMeal(context, detectedFood, meal);
                     },
                     child: Container(
-                      padding: const EdgeInsets.all(8),
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8),
-                        color: Colors.transparent,
+                        color: const Color(0xFFF8F9FA),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: const Color(0xFFE5E7EB),
+                          width: 1,
+                        ),
                       ),
-                      child: const Icon(
-                        LucideIcons.chevronLeft,
-                        size: 20,
-                        color: Color(0xFF0B132B),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  const Expanded(
-                    child: Text(
-                      'Choisir un repas',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF1A1A1A),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              
-              const SizedBox(height: 24),
-              
-              // Liste des repas existants
-              ...existingMeals.map((meal) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: GestureDetector(
-                  onTap: () {
-                    Navigator.pop(context);
-                    // Ajouter directement l'aliment au repas sélectionné
-                    _addFoodToSelectedMeal(context, detectedFood, meal);
-                  },
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF8F9FA),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: const Color(0xFFE5E7EB),
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF0B132B),
-                            borderRadius: BorderRadius.circular(8),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0B132B),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(
+                              LucideIcons.utensils,
+                              size: 16,
+                              color: Colors.white,
+                            ),
                           ),
-                          child: const Icon(
-                            LucideIcons.utensils,
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  meal.name,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF0B132B),
+                                  ),
+                                ),
+                                Text(
+                                  '${meal.time} • ${meal.items.length} aliment(s)',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF64748B),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(
+                            LucideIcons.chevronRight,
                             size: 16,
-                            color: Colors.white,
+                            color: Color(0xFF64748B),
                           ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                meal.name,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF0B132B),
-                                ),
-                              ),
-                              Text(
-                                '${meal.time} • ${meal.items.length} aliment(s)',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Color(0xFF64748B),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const Icon(
-                          LucideIcons.chevronRight,
-                          size: 16,
-                          color: Color(0xFF64748B),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              )),
-              
-              const SizedBox(height: 24),
-            ],
+                )),
+                
+                const SizedBox(height: 24),
+              ],
+            ),
           ),
         ),
       ),
@@ -751,129 +757,132 @@ class NutritionQuickActionsSection extends StatelessWidget {
         ),
         child: Padding(
           padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Handle bar
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE5E5E5),
-                  borderRadius: BorderRadius.circular(2),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Handle bar
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE5E5E5),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
-              ),
-              
-              const SizedBox(height: 20),
-              
-              // Titre avec bouton retour
-              Row(
-                children: [
-                  GestureDetector(
+                
+                const SizedBox(height: 20),
+                
+                // Titre avec bouton retour
+                Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.pop(context);
+                        // Retourner au premier écran
+                        _showMealSelectionFirst(context);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          color: Colors.transparent,
+                        ),
+                        child: const Icon(
+                          LucideIcons.chevronLeft,
+                          size: 20,
+                          color: Color(0xFF0B132B),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    const Expanded(
+                      child: Text(
+                        'Choisir un repas',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1A1A1A),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                
+                const SizedBox(height: 24),
+                
+                // Liste des repas existants
+                ...existingMeals.map((meal) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: GestureDetector(
                     onTap: () {
                       Navigator.pop(context);
-                      // Retourner au premier écran
-                      _showMealSelectionFirst(context);
+                      // Maintenant montrer la recherche d'aliments avec le repas sélectionné
+                      _showManualFoodSearchForMeal(context, meal);
                     },
                     child: Container(
-                      padding: const EdgeInsets.all(8),
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8),
-                        color: Colors.transparent,
+                        color: const Color(0xFFF8F9FA),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: const Color(0xFFE5E7EB),
+                          width: 1,
+                        ),
                       ),
-                      child: const Icon(
-                        LucideIcons.chevronLeft,
-                        size: 20,
-                        color: Color(0xFF0B132B),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  const Expanded(
-                    child: Text(
-                      'Choisir un repas',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF1A1A1A),
-                      ),
-                    ),
-          ),
-        ],
-      ),
-              
-              const SizedBox(height: 24),
-              
-              // Liste des repas existants
-              ...existingMeals.map((meal) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: GestureDetector(
-                  onTap: () {
-                    Navigator.pop(context);
-                    // Maintenant montrer la recherche d'aliments avec le repas sélectionné
-                    _showManualFoodSearchForMeal(context, meal);
-                  },
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF8F9FA),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: const Color(0xFFE5E7EB),
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF0B132B),
-                            borderRadius: BorderRadius.circular(8),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0B132B),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(
+                              LucideIcons.utensils,
+                              size: 16,
+                              color: Colors.white,
+                            ),
                           ),
-                          child: const Icon(
-                            LucideIcons.utensils,
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  meal.name,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF0B132B),
+                                  ),
+                                ),
+                                Text(
+                                  '${meal.time} • ${meal.items.length} aliment(s)',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF64748B),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(
+                            LucideIcons.chevronRight,
                             size: 16,
-                            color: Colors.white,
+                            color: Color(0xFF64748B),
                           ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                meal.name,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF0B132B),
-                                ),
-                              ),
-                              Text(
-                                '${meal.time} • ${meal.items.length} aliment(s)',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Color(0xFF64748B),
-                                ),
-          ),
-        ],
-      ),
-                        ),
-                        const Icon(
-                          LucideIcons.chevronRight,
-                          size: 16,
-                          color: Color(0xFF64748B),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              )),
-              
-              const SizedBox(height: 24),
-            ],
+                )),
+                
+                const SizedBox(height: 24),
+              ],
+            ),
           ),
         ),
       ),
@@ -1890,18 +1899,51 @@ class HydrationAndMealsSection extends StatelessWidget {
 }
 
 // Bottom sheet pour ajouter de l'eau
-class WaterBottomSheet extends StatelessWidget {
+class WaterBottomSheet extends StatefulWidget {
   final Function(int milliliters)? onWaterAdded;
 
-  const WaterBottomSheet({
-    super.key,
-    this.onWaterAdded,
-  });
+  const WaterBottomSheet({super.key, this.onWaterAdded});
+
+  @override
+  State<WaterBottomSheet> createState() => _WaterBottomSheetState();
+}
+
+class _WaterBottomSheetState extends State<WaterBottomSheet> {
+  late final TextEditingController _controller;
+  final ScrollController _scrollController = ScrollController();
+  final FocusNode _focusNode = FocusNode();
+  final GlobalKey _textKey = GlobalKey();
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController();
+    _focusNode.addListener(() {
+      if (_focusNode.hasFocus) {
+        // S'assurer que le champ est visible dès que le clavier sort
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _textKey.currentContext != null) {
+            Scrollable.ensureVisible(
+              _textKey.currentContext!,
+              duration: const Duration(milliseconds: 100),
+              curve: Curves.easeIn,
+            );
+          }
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focusNode.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final customAmountController = TextEditingController();
-    
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -1917,68 +1959,72 @@ class WaterBottomSheet extends StatelessWidget {
           top: 24,
           bottom: MediaQuery.of(context).viewInsets.bottom + 24,
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Handle
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE2E8F0),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            
-            const SizedBox(height: 24),
-            
-            // Title
-            const Row(
-              children: [
-                Icon(
-                  LucideIcons.droplets,
-                  size: 24,
-                  color: Color(0xFF0B132B),
-                ),
-                SizedBox(width: 12),
-                Text(
-                  'Ajouter de l\'eau',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1A1A1A),
+        child: SingleChildScrollView(
+          controller: _scrollController,
+          reverse: true,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Handle
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE2E8F0),
+                    borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-              ],
-            ),
-            
-            const SizedBox(height: 24),
-            
-            // Options prédéfinies
-            ...NutritionData.waterOptions.map((option) =>
-              WaterOptionItem(
-                option: option,
-                onTap: () {
-                  onWaterAdded?.call(option.milliliters);
-                  Navigator.of(context).pop();
-                },
-              )
-            ).toList(),
-            
-            const SizedBox(height: 24),
-            
-            // Quantité personnalisée
-            _buildCustomAmountSection(context, customAmountController),
-          ],
+              ),
+              
+              const SizedBox(height: 24),
+              
+              // Title
+              const Row(
+                children: [
+                  Icon(
+                    LucideIcons.droplets,
+                    size: 24,
+                    color: Color(0xFF0B132B),
+                  ),
+                  SizedBox(width: 12),
+                  Text(
+                    'Ajouter de l\'eau',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1A1A1A),
+                    ),
+                  ),
+                ],
+              ),
+              
+              const SizedBox(height: 24),
+              
+              // Options prédéfinies
+              ...NutritionData.waterOptions.map((option) =>
+                WaterOptionItem(
+                  option: option,
+                  onTap: () {
+                    widget.onWaterAdded?.call(option.milliliters);
+                    Navigator.of(context).pop();
+                  },
+                )
+              ).toList(),
+              
+              const SizedBox(height: 24),
+              
+              // Quantité personnalisée
+              _buildCustomAmountSection(context),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildCustomAmountSection(BuildContext context, TextEditingController controller) {
+  Widget _buildCustomAmountSection(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1997,7 +2043,9 @@ class WaterBottomSheet extends StatelessWidget {
           children: [
             Expanded(
               child: TextField(
-                controller: controller,
+                key: _textKey,
+                controller: _controller,
+                focusNode: _focusNode,
                 keyboardType: TextInputType.number,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 decoration: InputDecoration(
@@ -2021,9 +2069,9 @@ class WaterBottomSheet extends StatelessWidget {
             CustomButton(
               text: 'Ajouter',
               onPressed: () {
-                final amount = int.tryParse(controller.text);
+                final amount = int.tryParse(_controller.text);
                 if (amount != null && amount > 0) {
-                  onWaterAdded?.call(amount);
+                  widget.onWaterAdded?.call(amount);
                   Navigator.of(context).pop();
                 }
               },

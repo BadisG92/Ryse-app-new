@@ -4,6 +4,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'sport_dashboard.dart';
 import 'sport_cardio_hybrid.dart';
 import 'sport_musculation_hybrid.dart';
+import '../services/dashboard_service.dart';
+import '../providers/goals_notifier.dart';
 
 class SportSection extends StatefulWidget {
   const SportSection({super.key});
@@ -17,6 +19,10 @@ class _SportSectionState extends State<SportSection>
   late PageController _pageController;
   late TabController _tabController;
   int _currentIndex = 0;
+  int _completedGoals = 0;
+  int _totalGoals = 0;
+  bool _loadingObjectives = true;
+  String get _objectivesText => _loadingObjectives ? '...' : '$_completedGoals/$_totalGoals objectifs';
 
   final List<String> _pageNames = ['Tableau de bord', 'Cardio', 'Musculation'];
   final List<IconData> _pageIcons = [
@@ -30,6 +36,9 @@ class _SportSectionState extends State<SportSection>
     super.initState();
     _pageController = PageController();
     _tabController = TabController(length: 3, vsync: this);
+    _loadObjectives();
+    // Forcer la mise à jour du compteur d'objectifs
+    DashboardService.refreshGoalsNotifier();
   }
 
   @override
@@ -52,6 +61,20 @@ class _SportSectionState extends State<SportSection>
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
     );
+  }
+
+  Future<void> _loadObjectives() async {
+    try {
+      final goals = await DashboardService.getDailyGoals();
+      final completed = goals.where((g) => g.completed).length;
+      setState(() {
+        _completedGoals = completed;
+        _totalGoals = goals.length;
+        _loadingObjectives = false;
+      });
+    } catch (e) {
+      setState(() => _loadingObjectives = false);
+    }
   }
 
   @override
@@ -110,7 +133,12 @@ class _SportSectionState extends State<SportSection>
               children: [
                 _buildBannerItem(LucideIcons.flame, '7 jours'),
                 _buildBannerSeparator(),
-                _buildBannerItem(LucideIcons.target, '4/5 objectifs'),
+                ValueListenableBuilder<GoalsSummary>(
+                  valueListenable: GoalsNotifier.instance,
+                  builder: (context, summary, _) {
+                    return _buildBannerItem(LucideIcons.target, summary.toString());
+                  },
+                ),
                 _buildBannerSeparator(),
                 _buildBannerItemWithLogo('Sport'),
               ],

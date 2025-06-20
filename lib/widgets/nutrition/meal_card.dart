@@ -21,7 +21,7 @@ class MealCard extends StatefulWidget {
 }
 
 class _MealCardState extends State<MealCard> {
-  bool isExpanded = true; // Par défaut, le repas est étendu
+  bool isExpanded = false; // Par défaut, le repas est replié
 
   @override
   Widget build(BuildContext context) {
@@ -293,25 +293,47 @@ class _MealCardState extends State<MealCard> {
 
   Future<void> _removeFood(FoodItem item) async {
     try {
+      debugPrint('🗑️ Début suppression de: ${item.name} (ID: ${item.id})');
+      
       // Vérifier que l'item a un ID
-      if (item.id == null) {
-        throw Exception('L\'aliment n\'a pas d\'identifiant valide');
+      if (item.id == null || item.id!.isEmpty) {
+        throw Exception('L\'aliment "${item.name}" n\'a pas d\'identifiant valide');
       }
       
       // Supprimer l'aliment de la base de données
-      await FoodEntriesService.removeFoodEntry(item.id!);
+      final success = await FoodEntriesService.removeFoodEntry(item.id!);
       
-      // Notifier le parent qu'un aliment a été supprimé
+      if (!success) {
+        throw Exception('La suppression a échoué');
+      }
+      
+      debugPrint('✅ Suppression réussie de: ${item.name}');
+      
+      // Afficher un message de succès
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${item.name} supprimé du repas'),
+            backgroundColor: const Color(0xFF0B132B),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+      
+      // Notifier le parent qu'un aliment a été supprimé pour recharger les données
       if (widget.onFoodRemoved != null) {
         widget.onFoodRemoved!();
       }
     } catch (e) {
+      debugPrint('❌ Erreur lors de la suppression de ${item.name}: $e');
+      
       // Afficher une erreur si la suppression échoue
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Erreur lors de la suppression: $e'),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
           ),
         );
       }

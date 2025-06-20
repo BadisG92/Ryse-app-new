@@ -231,51 +231,80 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
   }
 
   void _startAnimations() {
-    // Animation des calories avec durée fixe de 3 secondes
-    const animationDuration = 3000; // 3 secondes en millisecondes
-    const updateInterval = 20; // Mise à jour toutes les 20ms
-    final totalSteps = animationDuration ~/ updateInterval; // Nombre total d'étapes
-    final caloriesIncrement = (nutritionProfile.currentCalories / totalSteps).ceil(); // Incrément par étape
+    // 🎬 Animation des calories - 1000ms avec easeOutExpo
+    const caloriesDuration = 1000; // 1 seconde
+    const caloriesTickTime = 20; // 20ms
+    final caloriesTotalTicks = caloriesDuration ~/ caloriesTickTime; // 50 ticks
+    final caloriesIncrement = (nutritionProfile.currentCalories / caloriesTotalTicks).ceil();
     
-    Timer caloriesTimer = Timer.periodic(const Duration(milliseconds: updateInterval), (timer) {
-      if (animatedCalories >= nutritionProfile.currentCalories) {
+    Timer caloriesTimer = Timer.periodic(const Duration(milliseconds: caloriesTickTime), (timer) {
+      final elapsed = timer.tick * caloriesTickTime;
+      final progress = (elapsed / caloriesDuration).clamp(0.0, 1.0);
+      final easedProgress = Curves.easeOutExpo.transform(progress);
+      final targetValue = (nutritionProfile.currentCalories * easedProgress).round();
+      
+      setState(() => animatedCalories = targetValue);
+      
+      if (progress >= 1.0) {
         timer.cancel();
         setState(() => animatedCalories = nutritionProfile.currentCalories);
-      } else {
-        setState(() => animatedCalories = min(animatedCalories + caloriesIncrement, nutritionProfile.currentCalories));
       }
     });
     _timers.add(caloriesTimer);
 
-    // Animation protéines (plus lente pour étaler dans le temps)
-    Timer proteinTimer = Timer.periodic(const Duration(milliseconds: 30), (timer) {
-      if (animatedProtein >= nutritionProfile.currentProtein) {
+    // 🥩 Animation protéines - 800ms avec easeOutExpo
+    const proteinDuration = 800; // 800ms
+    const proteinTickTime = 20; // 20ms
+    
+    Timer proteinTimer = Timer.periodic(const Duration(milliseconds: proteinTickTime), (timer) {
+      final elapsed = timer.tick * proteinTickTime;
+      final progress = (elapsed / proteinDuration).clamp(0.0, 1.0);
+      final easedProgress = Curves.easeOutExpo.transform(progress);
+      final targetValue = (nutritionProfile.currentProtein * easedProgress).round();
+      
+      setState(() => animatedProtein = targetValue);
+      
+      if (progress >= 1.0) {
         timer.cancel();
         setState(() => animatedProtein = nutritionProfile.currentProtein);
-      } else {
-        setState(() => animatedProtein = min(animatedProtein + 2, nutritionProfile.currentProtein));
       }
     });
     _timers.add(proteinTimer);
 
-    // Animation glucides
-    Timer carbsTimer = Timer.periodic(const Duration(milliseconds: 35), (timer) {
-      if (animatedCarbs >= nutritionProfile.currentCarbs) {
+    // 🍞 Animation glucides - 1000ms avec easeOutExpo
+    const carbsDuration = 1000; // 1 seconde
+    const carbsTickTime = 20; // 20ms
+    
+    Timer carbsTimer = Timer.periodic(const Duration(milliseconds: carbsTickTime), (timer) {
+      final elapsed = timer.tick * carbsTickTime;
+      final progress = (elapsed / carbsDuration).clamp(0.0, 1.0);
+      final easedProgress = Curves.easeOutExpo.transform(progress);
+      final targetValue = (nutritionProfile.currentCarbs * easedProgress).round();
+      
+      setState(() => animatedCarbs = targetValue);
+      
+      if (progress >= 1.0) {
         timer.cancel();
         setState(() => animatedCarbs = nutritionProfile.currentCarbs);
-      } else {
-        setState(() => animatedCarbs = min(animatedCarbs + 3, nutritionProfile.currentCarbs));
       }
     });
     _timers.add(carbsTimer);
 
-    // Animation lipides
-    Timer fatTimer = Timer.periodic(const Duration(milliseconds: 45), (timer) {
-      if (animatedFat >= nutritionProfile.currentFat) {
+    // 🥑 Animation lipides - 1200ms avec easeOutExpo
+    const fatDuration = 1200; // 1.2 secondes
+    const fatTickTime = 30; // 30ms
+    
+    Timer fatTimer = Timer.periodic(const Duration(milliseconds: fatTickTime), (timer) {
+      final elapsed = timer.tick * fatTickTime;
+      final progress = (elapsed / fatDuration).clamp(0.0, 1.0);
+      final easedProgress = Curves.easeOutExpo.transform(progress);
+      final targetValue = (nutritionProfile.currentFat * easedProgress).round();
+      
+      setState(() => animatedFat = targetValue);
+      
+      if (progress >= 1.0) {
         timer.cancel();
         setState(() => animatedFat = nutritionProfile.currentFat);
-      } else {
-        setState(() => animatedFat = min(animatedFat + 1, nutritionProfile.currentFat));
       }
     });
     _timers.add(fatTimer);
@@ -473,18 +502,21 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
     }
     _timers.clear();
 
-    // Redémarrer avec durée fixe de 3 secondes
-    const animationDuration = 3000; // 3 secondes en millisecondes
-    const updateInterval = 20; // Mise à jour toutes les 20ms
-    final totalSteps = animationDuration ~/ updateInterval; // Nombre total d'étapes
-    final caloriesIncrement = (nutritionProfile.currentCalories / totalSteps).ceil(); // Incrément par étape
+    // Redémarrer avec les nouveaux paramètres - 1000ms easeOutExpo
+    const caloriesDuration = 1000; // 1 seconde
+    const caloriesTickTime = 20; // 20ms
 
-    Timer caloriesTimer = Timer.periodic(const Duration(milliseconds: updateInterval), (timer) {
-      if (animatedCalories >= nutritionProfile.currentCalories) {
+    Timer caloriesTimer = Timer.periodic(const Duration(milliseconds: caloriesTickTime), (timer) {
+      final elapsed = timer.tick * caloriesTickTime;
+      final progress = (elapsed / caloriesDuration).clamp(0.0, 1.0);
+      final easedProgress = Curves.easeOutExpo.transform(progress);
+      final targetValue = (nutritionProfile.currentCalories * easedProgress).round();
+      
+      setState(() => animatedCalories = targetValue);
+      
+      if (progress >= 1.0) {
         timer.cancel();
         setState(() => animatedCalories = nutritionProfile.currentCalories);
-      } else {
-        setState(() => animatedCalories = min(animatedCalories + caloriesIncrement, nutritionProfile.currentCalories));
       }
     });
     _timers.add(caloriesTimer);

@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
+import 'dashboard_service.dart';
 
 /// Service pour gérer le suivi d'hydratation
 class WaterService {
@@ -32,6 +33,9 @@ class WaterService {
         'notes': notes,
         'consumed_at': (consumedAt ?? DateTime.now()).toIso8601String(),
       });
+
+      // Mettre à jour les objectifs en temps réel
+      await DashboardService.invalidateAndRefreshGoals();
 
       return true;
     } catch (e) {
@@ -133,6 +137,10 @@ class WaterService {
   static Future<bool> deleteWaterEntry(String entryId) async {
     try {
       await _supabase.from('water_entries').delete().eq('id', entryId);
+      
+      // Mettre à jour les objectifs en temps réel
+      await DashboardService.invalidateAndRefreshGoals();
+      
       return true;
     } catch (e) {
       print('Erreur lors de la suppression: $e');

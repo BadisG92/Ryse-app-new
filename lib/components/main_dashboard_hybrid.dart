@@ -5,6 +5,7 @@ import 'dart:math';
 import 'ui/dashboard_models.dart';
 import 'ui/dashboard_cards.dart';
 import 'ui/dashboard_widgets.dart';
+import '../services/dashboard_service.dart';
 
 class MainDashboardHybrid extends StatefulWidget {
   const MainDashboardHybrid({super.key});
@@ -17,18 +18,19 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
     with TickerProviderStateMixin {
   
   // State variables
-  late UserProfile userProfile;
+  UserProfile? userProfile;
+  List<DailyGoal> dailyGoals = [];
+  List<ModulePreview> modulePreviews = [];
   late AnimationController _scoreAnimationController;
   late Timer _scoreTimer;
   int animatedScore = 0;
+  bool isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    userProfile = DashboardData.userProfile;
     _initializeAnimations();
-    _startScoreAnimation();
-    _loadOnboardingData();
+    _loadDashboardData();
   }
 
   @override
@@ -46,15 +48,59 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
   }
 
   void _startScoreAnimation() {
+    final targetScore = userProfile?.todayScore ?? 85;
     _scoreTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
-      if (animatedScore < userProfile.todayScore) {
+      if (animatedScore < targetScore) {
         setState(() {
-          animatedScore = min(animatedScore + 1, userProfile.todayScore);
+          animatedScore = min(animatedScore + 1, targetScore);
         });
       } else {
         timer.cancel();
       }
     });
+  }
+
+  Future<void> _loadDashboardData() async {
+    setState(() {
+      isLoading = true;
+    });
+
+    try {
+      // Charger toutes les données en parallèle
+      final futures = await Future.wait([
+        DashboardService.getUserProfile(),
+        DashboardService.getDailyGoals(),
+        DashboardService.getModulePreviews(),
+      ]);
+
+      final loadedProfile = futures[0] as UserProfile?;
+      final loadedGoals = futures[1] as List<DailyGoal>;
+      final loadedPreviews = futures[2] as List<ModulePreview>;
+
+      setState(() {
+        userProfile = loadedProfile;
+        dailyGoals = loadedGoals;
+        modulePreviews = loadedPreviews;
+        isLoading = false;
+      });
+
+      // Démarrer l'animation du score après chargement
+      if (userProfile != null) {
+        _startScoreAnimation();
+      }
+
+      // Charger aussi les données d'onboarding si nécessaire
+      await _loadOnboardingData();
+    } catch (e) {
+      print('Erreur lors du chargement des données: $e');
+      setState(() {
+        isLoading = false;
+        // Utiliser les données par défaut en cas d'erreur
+        userProfile = DashboardData.userProfile;
+        dailyGoals = DashboardData.dailyGoals;
+        modulePreviews = DashboardData.modulePreviews;
+      });
+    }
   }
 
   Future<void> _loadOnboardingData() async {
@@ -68,23 +114,23 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
     final activity = prefs.getString('activity') ?? '';
     final goal = prefs.getString('goal') ?? '';
     
-    // Recalculer les calories si les données sont disponibles
-    if (gender.isNotEmpty && age > 0 && weight > 0 && height > 0 && activity.isNotEmpty) {
+    // Recalculer les calories si les données sont disponibles et si le profil n'est pas encore chargé
+    if (userProfile != null && gender.isNotEmpty && age > 0 && weight > 0 && height > 0 && activity.isNotEmpty) {
       final calculatedCalories = MetabolicCalculator.calculateDailyGoal(
         gender, age, weight, height, activity, goal
       );
       
-      if (calculatedCalories > 0) {
+      if (calculatedCalories > 0 && calculatedCalories != userProfile!.dailyCalories) {
         setState(() {
           userProfile = UserProfile(
-            name: userProfile.name,
-            streak: userProfile.streak,
-            todayScore: userProfile.todayScore,
-            todayXP: userProfile.todayXP,
-            isPremium: userProfile.isPremium,
-            photosUsed: userProfile.photosUsed,
+            name: userProfile!.name,
+            streak: userProfile!.streak,
+            todayScore: userProfile!.todayScore,
+            todayXP: userProfile!.todayXP,
+            isPremium: userProfile!.isPremium,
+            photosUsed: userProfile!.photosUsed,
             dailyCalories: calculatedCalories,
-            currentCalories: userProfile.currentCalories,
+            currentCalories: userProfile!.currentCalories,
           );
         });
       }
@@ -105,6 +151,25 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
             ],
           ),
         ),
+        child: isLoading 
+          ? const Center(
+              child: CircularProgressIndicator(
+                color: Color(0xFF0B132B),
+              ),
+            )
+          : userProfile == null
+            ? const Center(
+                child: Text(
+                  'Erreur lors du chargement du profil',
+                  style: TextStyle(
+                    color: Color(0xFF64748B),
+                    fontSize: 16,
+                  ),
+                ),
+              )
+            : RefreshIndicator(
+                onRefresh: _refreshDashboardData,
+                color: const Color(0xFF0B132B),
         child: SingleChildScrollView(
           padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 120),
           child: Column(
@@ -113,7 +178,7 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
               
               // Header Gamifié avec charte graphique
               DashboardHeader(
-                profile: userProfile.copyWith(todayScore: animatedScore),
+                      profile: userProfile!.copyWith(todayScore: animatedScore),
                 onPremiumTap: _onPremiumTap,
               ),
               
@@ -121,22 +186,22 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
               
               // Quick Actions Gamifiées avec charte
               QuickActionsSection(
-                actions: DashboardData.getQuickActions(userProfile),
+                      actions: DashboardData.getQuickActions(userProfile!),
               ),
               
               const SizedBox(height: 16),
               
-              // Progression Visuelle Addictive
+                    // Progression Visuelle Addictive - Utilise les données dynamiques
               DailyGoalsSection(
-                goals: DashboardData.dailyGoals,
-                isPremium: userProfile.isPremium,
+                      goals: dailyGoals.isNotEmpty ? dailyGoals : DashboardData.dailyGoals,
+                      isPremium: userProfile!.isPremium,
               ),
               
               const SizedBox(height: 16),
               
-              // Aperçu Nutrition & Sport
+                    // Aperçu Nutrition & Sport - Utilise les données dynamiques
               ModulesPreviewSection(
-                modules: DashboardData.modulePreviews,
+                      modules: modulePreviews.isNotEmpty ? modulePreviews : DashboardData.modulePreviews,
                 onModuleTap: _onModuleTap,
               ),
               
@@ -150,7 +215,7 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
               const SizedBox(height: 16),
               
               // CTA Premium ou Insights IA
-              if (userProfile.isPremium)
+                    if (userProfile!.isPremium)
                 PremiumInsightsSection(
                   onViewAnalytics: _onViewAnalytics,
                 )
@@ -159,23 +224,33 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
                   onUpgrade: _onPremiumUpgrade,
                 ),
             ],
+                  ),
           ),
         ),
       ),
     );
   }
 
+  /// Actualiser les données du dashboard
+  Future<void> _refreshDashboardData() async {
+    await _loadDashboardData();
+  }
+
   // Event handlers - gardés intégrés pour la logique spécifique
   void _onPremiumTap() {
+    if (userProfile != null) {
     setState(() {
-      userProfile = userProfile.copyWith(isPremium: true);
+        userProfile = userProfile!.copyWith(isPremium: true);
     });
+    }
   }
 
   void _onPremiumUpgrade() {
+    if (userProfile != null) {
     setState(() {
-      userProfile = userProfile.copyWith(isPremium: true);
+        userProfile = userProfile!.copyWith(isPremium: true);
     });
+    }
     
     // TODO: Intégrer avec la logique de paiement
     ScaffoldMessenger.of(context).showSnackBar(

@@ -4,6 +4,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'nutrition_dashboard_hybrid.dart';
 import 'nutrition_journal_hybrid.dart';
 import 'nutrition_recipes_hybrid.dart';
+import '../services/dashboard_service.dart';
+import '../providers/goals_notifier.dart';
 
 class NutritionSection extends StatefulWidget {
   const NutritionSection({super.key});
@@ -17,6 +19,10 @@ class _NutritionSectionState extends State<NutritionSection>
   late PageController _pageController;
   late TabController _tabController;
   int _currentIndex = 0;
+  int _completedGoals = 0;
+  int _totalGoals = 0;
+  bool _loadingObjectives = true;
+  String get _objectivesText => _loadingObjectives ? '...' : '$_completedGoals/$_totalGoals objectifs';
 
   final List<String> _pageNames = ['Tableau de bord', 'Journal', 'Recettes'];
   final List<IconData> _pageIcons = [
@@ -30,6 +36,23 @@ class _NutritionSectionState extends State<NutritionSection>
     super.initState();
     _pageController = PageController();
     _tabController = TabController(length: 3, vsync: this);
+    _loadObjectives();
+    // Forcer la mise à jour du compteur d'objectifs
+    DashboardService.refreshGoalsNotifier();
+  }
+
+  Future<void> _loadObjectives() async {
+    try {
+      final goals = await DashboardService.getDailyGoals();
+      final completed = goals.where((g) => g.completed).length;
+      setState(() {
+        _completedGoals = completed;
+        _totalGoals = goals.length;
+        _loadingObjectives = false;
+      });
+    } catch (e) {
+      // ignore errors, keep default
+    }
   }
 
   @override
@@ -110,7 +133,12 @@ class _NutritionSectionState extends State<NutritionSection>
               children: [
                 _buildBannerItem(LucideIcons.flame, '7 jours'),
                 _buildBannerSeparator(),
-                _buildBannerItem(LucideIcons.target, '3/4 objectifs'),
+                ValueListenableBuilder<GoalsSummary>(
+                  valueListenable: GoalsNotifier.instance,
+                  builder: (context, summary, _) {
+                    return _buildBannerItem(LucideIcons.target, summary.toString());
+                  },
+                ),
                 _buildBannerSeparator(),
                 _buildBannerItemWithLogo('Nutrition'),
               ],

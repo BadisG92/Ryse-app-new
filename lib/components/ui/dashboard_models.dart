@@ -38,6 +38,29 @@ class UserProfile {
 
   // Message de salutation
   String get greetingMessage => 'Salut $name !';
+
+  // Méthode copyWith pour créer une copie modifiée
+  UserProfile copyWith({
+    String? name,
+    int? streak,
+    int? todayScore,
+    int? todayXP,
+    bool? isPremium,
+    int? photosUsed,
+    int? dailyCalories,
+    int? currentCalories,
+  }) {
+    return UserProfile(
+      name: name ?? this.name,
+      streak: streak ?? this.streak,
+      todayScore: todayScore ?? this.todayScore,
+      todayXP: todayXP ?? this.todayXP,
+      isPremium: isPremium ?? this.isPremium,
+      photosUsed: photosUsed ?? this.photosUsed,
+      dailyCalories: dailyCalories ?? this.dailyCalories,
+      currentCalories: currentCalories ?? this.currentCalories,
+    );
+  }
 }
 
 // Modèle d'objectif journalier
@@ -98,6 +121,22 @@ class DailyGoal {
       }
     }
     return '$progress%';
+  }
+
+  factory DailyGoal.fromMap(Map<String, dynamic> map) {
+    return DailyGoal(
+      id: map['id']?.toString() ?? 'unknown',
+      label: map['label'] ?? 'Objectif',
+      progress: (map['progress'] ?? 0) is double
+          ? (map['progress'] as double).round()
+          : (map['progress'] ?? 0),
+      xp: map['xp'] ?? 0,
+      completed: map['completed'] ?? false,
+      isPremium: map['isPremium'] ?? false,
+      currentValue: (map['currentValue'] as num?)?.toDouble(),
+      targetValue: (map['targetValue'] as num?)?.toDouble(),
+      unit: map['unit'],
+    );
   }
 }
 

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/nutrition_models.dart';
+import 'dashboard_service.dart';
 
 class FoodEntriesService {
   static final _supabase = Supabase.instance.client;
@@ -134,7 +135,7 @@ class FoodEntriesService {
         }
 
         final foodItem = FoodItem(
-          id: entry['recipe_id'] ?? entry['food_id']?.toString() ?? entry['custom_food_id']?.toString() ?? entry['id'],
+          id: entry['id'], // ✅ CORRECTION: Utiliser l'ID de l'entrée pour pouvoir la supprimer
           name: foodName,
           calories: (entry['calories'] as num).round(),
           proteins: (entry['proteins'] as num).toDouble(),
@@ -431,26 +432,41 @@ class FoodEntriesService {
   // Supprimer une entrée alimentaire
   static Future<bool> removeFoodEntry(String entryId) async {
     try {
+      debugPrint('🗑️ Tentative de suppression de l\'entrée: $entryId');
+      
       // Récupérer l'info de l'entrée avant suppression pour notification
       final entryInfo = await _supabase
           .from('food_entries')
-          .select('user_id, consumed_at')
+          .select('user_id, consumed_at, meal_id')
           .eq('id', entryId)
           .maybeSingle();
       
-      await _supabase.from('food_entries').delete().eq('id', entryId);
+      if (entryInfo == null) {
+        debugPrint('❌ Entrée introuvable avec l\'ID: $entryId');
+        return false;
+      }
+      
+      debugPrint('📋 Entrée trouvée: ${entryInfo['meal_id']} pour utilisateur ${entryInfo['user_id']}');
+      
+      // Supprimer l'entrée
+      final deleteResult = await _supabase
+          .from('food_entries')
+          .delete()
+          .eq('id', entryId);
+      
+      debugPrint('✅ Entrée supprimée avec succès de la base de données');
       
       // Déclencher la mise à jour des calculs nutritionnels
-      if (entryInfo != null) {
-        await _notifyNutritionUpdate(
-          entryInfo['user_id'] as String,
-          DateTime.parse(entryInfo['consumed_at'] as String),
-        );
-      }
+      await _notifyNutritionUpdate(
+        entryInfo['user_id'] as String,
+        DateTime.parse(entryInfo['consumed_at'] as String),
+      );
+      
+      debugPrint('🔔 Notification de mise à jour envoyée');
       
       return true;
     } catch (e) {
-      debugPrint('Erreur lors de la suppression: $e');
+      debugPrint('❌ Erreur lors de la suppression: $e');
       return false;
     }
   }
@@ -458,6 +474,9 @@ class FoodEntriesService {
   // Notifier la mise à jour nutritionnelle
   static Future<void> _notifyNutritionUpdate(String userId, DateTime date) async {
     try {
+      // Mettre à jour les objectifs du dashboard en temps réel
+      await DashboardService.invalidateAndRefreshGoals();
+      
       // Notifier via le stream controller pour la mise à jour en temps réel
       _nutritionUpdateController.add({
         'user_id': userId,

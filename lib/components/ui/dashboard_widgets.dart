@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'custom_card.dart';
 import 'custom_button.dart';
 import 'custom_badge.dart';
@@ -18,6 +19,7 @@ import '../../bottom_sheets/editable_food_details_bottom_sheet.dart';
 import '../../bottom_sheets/meal_selection_bottom_sheet.dart';
 import '../../bottom_sheets/new_meal_type_bottom_sheet.dart';
 import '../../models/nutrition_models.dart' as nutrition_models;
+import '../../services/water_service.dart';
 
 // Section des actions rapides
 class QuickActionsSection extends StatefulWidget {
@@ -135,181 +137,74 @@ class _QuickActionsSectionState extends State<QuickActionsSection> {
   }
 
   void _handleAddWater(BuildContext context) {
-    // Utiliser le même bottom sheet que le "+" d'hydratation du dashboard nutrition
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => WaterBottomSheet(
-        onWaterAdded: (milliliters) {
+    // Utiliser exactement le même bottom sheet que le bouton + d'hydratation du dashboard nutrition
+    NutritionBottomSheetHelper.showWaterSheet(context, _addWaterAmount);
+  }
+
+  void _addWaterAmount(int milliliters) async {
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('💧 ${milliliters}ml d\'eau ajoutés !'),
-              backgroundColor: const Color(0xFF0B132B),
-              duration: const Duration(seconds: 2),
+        const SnackBar(
+          content: Text('Vous devez être connecté pour enregistrer l\'hydratation'),
+          duration: Duration(seconds: 2),
             ),
           );
-        },
-      ),
-    );
+      return;
+  }
+
+    try {
+      // Ajouter l'entrée d'eau en base de données (même logique que le dashboard nutrition)
+      final success = await WaterService.addWaterEntry(
+        amount: milliliters,
+        sourceType: _getSourceTypeFromAmount(milliliters),
+      );
+
+      if (!success) {
+        throw Exception('Échec de l\'ajout d\'eau');
+      }
+
+      // Feedback visuel (même style que le dashboard nutrition)
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$milliliters ml d\'eau ajoutés ! 💧'),
+          duration: const Duration(seconds: 2),
+          backgroundColor: const Color(0xFF0B132B),
+              ),
+      );
+    } catch (e) {
+      debugPrint('Erreur lors de l\'ajout d\'eau: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Erreur lors de l\'ajout d\'eau'),
+          duration: Duration(seconds: 2),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // Méthode utilitaire pour déterminer le type de source selon la quantité (même que dashboard nutrition)
+  String _getSourceTypeFromAmount(int milliliters) {
+    switch (milliliters) {
+      case 250:
+        return 'glass';
+      case 500:
+        return 'bottle';
+      case 750:
+        return 'sports_bottle';
+      case 200:
+        return 'cup';
+      case 1000:
+        return 'bottle';
+      default:
+        return 'manual';
+    }
   }
 
   void _showAddMealBottomSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.6,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(24),
-            topRight: Radius.circular(24),
-          ),
-        ),
-        child: Column(
-          children: [
-            Container(
-              margin: const EdgeInsets.only(top: 12),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: const Color(0xFFE2E8F0),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'Ajouter un aliment',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1A1A1A),
-              ),
-            ),
-            const SizedBox(height: 24),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Column(
-                  children: [
-                    _buildAddMealOption(
-                      context,
-                      LucideIcons.pencil,
-                      'Saisie manuelle',
-                      'Rechercher et ajouter manuellement',
-                      () {
-                        Navigator.pop(context);
-                        _showManualEntryBottomSheet(context);
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    _buildAddMealOption(
-                      context,
-                      LucideIcons.camera,
-                      'Scanner avec l\'IA',
-                      'Prenez une photo de votre plat',
-                      () {
-                        Navigator.pop(context);
-                        _navigateToAIScanner(context);
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    _buildAddMealOption(
-                      context,
-                      LucideIcons.scan,
-                      'Code-barres',
-                      'Scanner le code-barres du produit',
-                      () {
-                        Navigator.pop(context);
-                        _navigateToBarcode(context);
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    _buildAddMealOption(
-                      context,
-                      LucideIcons.chefHat,
-                      'Mes recettes',
-                      'Choisir parmi vos recettes',
-                      () {
-                        Navigator.pop(context);
-                        _navigateToRecipes(context);
-                      },
-                    ),
-                    const SizedBox(height: 24),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAddMealOption(
-    BuildContext context,
-    IconData icon,
-    String title,
-    String subtitle,
-    VoidCallback onTap,
-  ) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF8FAFC),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
-                ),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: Colors.white, size: 24),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF1A1A1A),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Color(0xFF64748B),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(
-              LucideIcons.chevronRight,
-              color: Color(0xFF64748B),
-              size: 20,
-            ),
-          ],
-        ),
-      ),
-    );
+    // Utiliser exactement le même flux que le bouton + repas du dashboard nutrition
+    NutritionQuickActionsSection.showMealSelectionForDashboard(context);
   }
 
   void _navigateToAIScanner(BuildContext context) {
@@ -319,16 +214,6 @@ class _QuickActionsSectionState extends State<QuickActionsSection> {
         builder: (context) => const AIScannerScreen(isFromDashboard: true),
       ),
     );
-  }
-
-  void _navigateToBarcode(BuildContext context) {
-    // Utiliser le nouveau flux unifié avec sélection de repas
-    NutritionQuickActionsSection.showMealSelectionForScanner(context);
-  }
-
-  void _navigateToRecipes(BuildContext context) {
-    // Utiliser le nouveau flux unifié avec sélection de repas
-    NutritionQuickActionsSection.showMealSelectionForRecipe(context);
   }
 
   void _showCardioOptions(BuildContext context) {
