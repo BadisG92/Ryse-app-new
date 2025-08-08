@@ -1,6 +1,9 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../types/database_types.dart';
+import '../types/database_types.dart' as db;
 import '../models/sport_models.dart' as models;
+import '../models/nutrition_models.dart';
+import '../models/hiit_models.dart';
+import '../models/cardio_session_models.dart';
 import 'package:flutter/foundation.dart';
 
 class DatabaseService {
@@ -13,97 +16,67 @@ class DatabaseService {
   }
 
   // EXERCISES
-  // Retourne les exercices au format UI (models.Exercise) depuis Supabase
-  static Future<List<models.Exercise>> getSystemExercises({String? language}) async {
+  static Future<List<models.Exercise>> getExercises({String? language}) async {
     final lang = language ?? _getUserLanguage();
+    
     try {
-      // 1) Essayer la RPC "get_system_exercises_localized"
-      final response1 = await _client
+      // Utiliser la nouvelle fonction pour récupérer les exercices système
+      final response = await _client
           .rpc('get_system_exercises_localized', params: {'user_lang': lang});
-      if (response1 is List && response1.isNotEmpty) {
-        return response1.map<models.Exercise>((json) {
-          final map = json as Map<String, dynamic>;
-          final id = map['id']?.toString() ?? '';
-          final name = (map['name'] as String?) ?? '';
-          return models.Exercise(
-            id: id,
-            name: name,
-            muscleGroup: (map['muscle_group'] as String?) ?? '',
-            equipment: (map['equipment'] as String?) ?? '',
-            description: (map['description'] as String?) ?? '',
-            isCustom: (map['is_custom'] as bool?) ?? false,
-          );
-        }).toList();
-      }
-    } catch (_) {
-      // ignore and try next strategy
+      
+      if (response == null) return [];
+      
+      return (response as List)
+          .map((json) => _convertDbExerciseToModel(json, lang))
+          .toList();
+    } catch (e) {
+      print('❌ DatabaseService.getExercises: Erreur lors du chargement: $e');
+      
+      // Fallback avec des exercices de base en cas d'erreur
+      return _getFallbackExercises();
     }
-
-    try {
-      // 2) Essayer la RPC "get_exercises_localized" (utilisée côté nutrition)
-      final response2 = await _client
-          .rpc('get_exercises_localized', params: {'user_language': lang});
-      if (response2 is List && response2.isNotEmpty) {
-        return response2.map<models.Exercise>((json) {
-          final e = Exercise.fromJson(json as Map<String, dynamic>);
-          return models.Exercise(
-            id: e.id,
-            name: e.getLocalizedName(lang),
-            muscleGroup: e.muscleGroup,
-            equipment: e.equipment ?? '',
-            description: e.description ?? '',
-            isCustom: e.isCustom,
-          );
-        }).toList();
-      }
-    } catch (_) {
-      // ignore and try next strategy
-    }
-
-    try {
-      // 3) Fallback: lecture directe de la table exercises
-      final rows = await _client
-          .from('exercises')
-          .select('id, name_en, name_fr, muscle_group, equipment, description, is_custom')
-          .limit(200);
-      if (rows is List && rows.isNotEmpty) {
-        return rows.map<models.Exercise>((json) {
-          final map = json as Map<String, dynamic>;
-          final id = map['id']?.toString() ?? '';
-          final name = lang == 'fr'
-              ? (map['name_fr'] as String? ?? '')
-              : (map['name_en'] as String? ?? '');
-          return models.Exercise(
-            id: id,
-            name: name,
-            muscleGroup: (map['muscle_group'] as String?) ?? '',
-            equipment: (map['equipment'] as String?) ?? '',
-            description: (map['description'] as String?) ?? '',
-            isCustom: (map['is_custom'] as bool?) ?? false,
-          );
-        }).toList();
-      }
-    } catch (_) {
-      // ignore
-    }
-
-    return [];
   }
 
-  static Future<List<Exercise>> getExercises({String? language}) async {
-    final lang = language ?? _getUserLanguage();
-    
-    final response = await _client
-        .rpc('get_exercises_localized', params: {'user_language': lang});
-    
-    if (response == null) return [];
-    
-    return (response as List)
-        .map((json) => Exercise.fromJson(json))
-        .toList();
+  // Convertir l'exercice de la DB vers le modèle utilisé par l'UI
+  static models.Exercise _convertDbExerciseToModel(Map<String, dynamic> json, String language) {
+    return models.Exercise(
+      id: json['id'] ?? '',
+      name: json['name'] ?? '', // Le RPC retourne déjà le nom localisé
+      muscleGroup: models.MuscleGroups.normalize(json['muscle_group'] ?? ''),
+      equipment: json['equipment'] ?? '',
+      description: json['description'] ?? '',
+      isCustom: false, // Les exercices système ne sont jamais custom
+    );
   }
 
-  static Future<Exercise?> getExerciseById(String id, {String? language}) async {
+  // Méthode de fallback pour les exercices
+  static List<models.Exercise> _getFallbackExercises() {
+    return [
+      models.Exercise(
+        id: '1',
+        name: 'Pompes',
+        muscleGroup: 'Pectoraux',
+        equipment: 'Poids du corps',
+        description: 'Exercice de base pour le haut du corps',
+      ),
+      models.Exercise(
+        id: '2',
+        name: 'Squats',
+        muscleGroup: 'Jambes',
+        equipment: 'Poids du corps',
+        description: 'Exercice fondamental pour les jambes',
+      ),
+      models.Exercise(
+        id: '3',
+        name: 'Planche',
+        muscleGroup: 'Tronc',
+        equipment: 'Poids du corps',
+        description: 'Exercice isométrique pour le core',
+      ),
+    ];
+  }
+
+  static Future<models.Exercise?> getExerciseById(String id, {String? language}) async {
     final exercises = await getExercises(language: language);
     try {
       return exercises.firstWhere((exercise) => exercise.id == id);
@@ -112,13 +85,13 @@ class DatabaseService {
     }
   }
 
-  static Future<List<Exercise>> getExercisesByMuscleGroup(String muscleGroup, {String? language}) async {
+  static Future<List<models.Exercise>> getExercisesByMuscleGroup(String muscleGroup, {String? language}) async {
     final exercises = await getExercises(language: language);
     return exercises.where((exercise) => exercise.muscleGroup == muscleGroup).toList();
   }
 
   // FOODS
-  static Future<List<Food>> getFoods({String? language}) async {
+  static Future<List<db.Food>> getFoods({String? language}) async {
     try {
       print('🔍 DatabaseService.getFoods: Début du chargement...');
     
@@ -135,7 +108,7 @@ class DatabaseService {
         return [];
       }
       
-      final foods = response.map((json) => Food.fromJson(json)).toList();
+      final foods = response.map((json) => db.Food.fromJson(json)).toList();
       print('✅ DatabaseService.getFoods: ${foods.length} aliments traités avec succès');
       
       return foods;
@@ -149,9 +122,9 @@ class DatabaseService {
   }
 
   // Méthode de fallback pour tester l'interface
-  static List<Food> _getFallbackFoods() {
+  static List<db.Food> _getFallbackFoods() {
     return [
-      Food(
+      db.Food(
         id: '1',
         nameEn: 'Apple',
         nameFr: 'Pomme',
@@ -164,7 +137,7 @@ class DatabaseService {
         referenceUnitEn: 'g',
         referenceQuantity: 100.0,
       ),
-      Food(
+      db.Food(
         id: '2',
         nameEn: 'Banana',
         nameFr: 'Banane',
@@ -177,7 +150,7 @@ class DatabaseService {
         referenceUnitEn: 'g',
         referenceQuantity: 100.0,
       ),
-      Food(
+      db.Food(
         id: '3',
         nameEn: 'Chicken Breast',
         nameFr: 'Blanc de Poulet',
@@ -190,7 +163,7 @@ class DatabaseService {
         referenceUnitEn: 'g',
         referenceQuantity: 100.0,
       ),
-      Food(
+      db.Food(
         id: '4',
         nameEn: 'Brown Rice',
         nameFr: 'Riz Complet',
@@ -203,7 +176,7 @@ class DatabaseService {
         referenceUnitEn: 'g',
         referenceQuantity: 100.0,
       ),
-      Food(
+      db.Food(
         id: '5',
         nameEn: 'Greek Yogurt',
         nameFr: 'Yaourt Grec',
@@ -219,7 +192,7 @@ class DatabaseService {
     ];
   }
 
-  static Future<Food?> getFoodById(String id, {String? language}) async {
+  static Future<db.Food?> getFoodById(String id, {String? language}) async {
     final foods = await getFoods(language: language);
     try {
       return foods.firstWhere((food) => food.id == id);
@@ -228,7 +201,7 @@ class DatabaseService {
     }
   }
 
-  static Future<List<Food>> searchFoods(String query, {String? language}) async {
+  static Future<List<db.Food>> searchFoods(String query, {String? language}) async {
     final foods = await getFoods(language: language);
     final lang = language ?? _getUserLanguage();
     

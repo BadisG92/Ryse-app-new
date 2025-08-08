@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../models/sport_models.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../components/ui/custom_scrollbar.dart';
+import '../services/database_service.dart' as db;
 
 class WorkoutSessionScreen extends StatefulWidget {
   final String sessionName;
@@ -560,87 +561,15 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     );
   }
 
-  void _showAddExerciseDialog() {
+  void _showAddExerciseDialog() async {
     setState(() {
       _addExercisePressed = true;
     });
     
     final TextEditingController searchController = TextEditingController();
     List<Exercise> filteredExercises = [];
-    
-    // Base de données d'exercices prédéfinis (comme dans le bottom sheet)
-    final List<Exercise> predefinedExercises = [
-      const Exercise(
-        id: '1',
-        name: 'Développé couché',
-        muscleGroup: 'Pectoraux',
-        equipment: 'Barre',
-        description: 'Exercice pour les pectoraux avec barre',
-      ),
-      const Exercise(
-        id: '2',
-        name: 'Squat',
-        muscleGroup: 'Jambes',
-        equipment: 'Barre',
-        description: 'Exercice pour les jambes et fessiers',
-      ),
-      const Exercise(
-        id: '3',
-        name: 'Tractions',
-        muscleGroup: 'Dos',
-        equipment: 'Barre de traction',
-        description: 'Exercice pour le dos',
-      ),
-      const Exercise(
-        id: '4',
-        name: 'Développé militaire',
-        muscleGroup: 'Épaules',
-        equipment: 'Barre',
-        description: 'Exercice pour les épaules',
-      ),
-      const Exercise(
-        id: '5',
-        name: 'Curl biceps',
-        muscleGroup: 'Biceps',
-        equipment: 'Haltères',
-        description: 'Exercice pour les biceps',
-      ),
-      const Exercise(
-        id: '6',
-        name: 'Dips',
-        muscleGroup: 'Triceps',
-        equipment: 'Barres parallèles',
-        description: 'Exercice pour les triceps',
-      ),
-      const Exercise(
-        id: '7',
-        name: 'Soulevé de terre',
-        muscleGroup: 'Dos',
-        equipment: 'Barre',
-        description: 'Exercice composé pour le dos et les jambes',
-      ),
-      const Exercise(
-        id: '8',
-        name: 'Crunchs',
-        muscleGroup: 'Abdominaux',
-        equipment: 'Aucun',
-        description: 'Exercice pour les abdominaux',
-      ),
-      const Exercise(
-        id: '9',
-        name: 'Pompes',
-        muscleGroup: 'Pectoraux',
-        equipment: 'Aucun',
-        description: 'Exercice au poids du corps pour les pectoraux',
-      ),
-      const Exercise(
-        id: '10',
-        name: 'Rowing barre',
-        muscleGroup: 'Dos',
-        equipment: 'Barre',
-        description: 'Exercice pour le dos avec barre',
-      ),
-    ];
+    // Charger depuis Supabase
+    final List<Exercise> allExercises = await db.DatabaseService.getSystemExercises();
     
     showModalBottomSheet(
       context: context,
@@ -650,7 +579,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
         builder: (context, setModalState) {
           void filterExercises() {
             setModalState(() {
-              filteredExercises = predefinedExercises.where((exercise) {
+              filteredExercises = allExercises.where((exercise) {
                 return exercise.name
                     .toLowerCase()
                     .contains(searchController.text.toLowerCase());
@@ -660,7 +589,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
           
           searchController.addListener(filterExercises);
           if (filteredExercises.isEmpty && searchController.text.isEmpty) {
-            filteredExercises = predefinedExercises;
+            filteredExercises = allExercises;
           }
           
           return Padding(
