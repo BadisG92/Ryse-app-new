@@ -1,10 +1,20 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+import 'package:flutter/services.dart' show rootBundle;
 import '../types/database_types.dart';
 import '../models/sport_models.dart' as models;
 import 'package:flutter/foundation.dart';
 
 class DatabaseService {
   static final SupabaseClient _client = Supabase.instance.client;
+
+  // Simple in-memory cache to speed up guided sessions templates
+  static final Map<String, _TemplateCache> _templatesCacheByLang = {};
+  static const Duration _templatesCacheTtl = Duration(minutes: 5);
+  static final Map<String, List<models.ProgramExercise>> _templateExercisesCache = {};
+  static String _templatesPrefsKey(String lang) => 'workout_templates_cache_v1_$lang';
+  static String _templatesSeedAsset(String lang) => 'assets/seed/workout_templates_$lang.json';
 
   // Get current user language preference (default to 'en')
   static String _getUserLanguage() {
@@ -365,6 +375,320 @@ class DatabaseService {
     });
     
     return response != null ? List<Map<String, dynamic>>.from(response) : [];
+  }
+
+  // WORKOUT TEMPLATES (Séances guidées)
+  static Future<List<models.WorkoutProgram>> getWorkoutTemplates({String? language, bool includePublic = true}) async {
+    final lang = language ?? _getUserLanguage();
+    // Cache
+    final cache = _templatesCacheByLang[lang];
+    if (cache != null && DateTime.now().difference(cache.cachedAt) < _templatesCacheTtl) {
+      return cache.data;
+    }
+    // Récupérer templates publics + éventuellement privés de l'utilisateur connecté
+    final userId = _client.auth.currentUser?.id;
+
+    final nestedSelect = '''
+      id,
+      name_en,
+      name_fr,
+      description_en,
+      description_fr,
+      created_at,
+      estimated_duration_minutes,
+      workout_template_exercises(
+        order_index,
+        suggested_sets,
+        exercises:exercise_id(
+          id,
+          name_en,
+          name_fr,
+          muscle_group,
+          equipment
+        )
+      )
+    ''';
+
+    // Certaines versions du client Dart n'exposent pas .or(). On fait donc deux requêtes puis on fusionne côté client.
+    final List<dynamic> aggregated = [];
+    // 1) Pré-définis: tous les templates non custom (avec exercices imbriqués)
+    final predefinedResp = await _client
+        .from('workout_templates')
+        .select(nestedSelect)
+        .eq('is_custom', false)
+        .order('created_at', ascending: false);
+    if (predefinedResp is List) aggregated.addAll(predefinedResp);
+
+    // 2) Custom de l'utilisateur connecté
+    if (userId != null) {
+      final userResp = await _client
+          .from('workout_templates')
+          .select(nestedSelect)
+          .eq('is_custom', true)
+          .eq('user_id', userId)
+          .order('created_at', ascending: false);
+      if (userResp is List) aggregated.addAll(userResp);
+    }
+
+    if (aggregated.isEmpty) return [];
+
+    // Dédupliquer par id
+    final Map<String, Map<String, dynamic>> byId = {};
+    for (final item in aggregated) {
+      final map = item as Map<String, dynamic>;
+      final id = map['id']?.toString() ?? '';
+      if (id.isEmpty) continue;
+      byId[id] = map;
+    }
+    final templates = byId.values.toList();
+    // Trier par created_at desc si disponible
+    templates.sort((a, b) {
+      final ca = a['created_at']?.toString();
+      final cb = b['created_at']?.toString();
+      if (ca == null && cb == null) return 0;
+      if (ca == null) return 1;
+      if (cb == null) return -1;
+      return cb.compareTo(ca);
+    });
+
+    final result = templates.map<models.WorkoutProgram>((map) {
+      final rawRows = (map['workout_template_exercises'] as List?)?.cast<Map<String, dynamic>>() ?? const [];
+      final sortedRows = [...rawRows];
+      sortedRows.sort((a, b) => ((a['order_index'] as int?) ?? 0).compareTo((b['order_index'] as int?) ?? 0));
+      final exercises = sortedRows.map<models.ProgramExercise>((rm) {
+        final ex = (rm['exercises'] as Map<String, dynamic>?);
+        final exModel = models.Exercise(
+          id: ex?['id']?.toString() ?? '',
+          name: lang == 'fr' ? (ex?['name_fr'] as String? ?? '') : (ex?['name_en'] as String? ?? ''),
+          muscleGroup: (ex?['muscle_group'] as String?) ?? '',
+          equipment: (ex?['equipment'] as String?) ?? '',
+          description: '',
+          isCustom: false,
+        );
+        final sets = (rm['suggested_sets'] as int?) ?? 3;
+        return models.ProgramExercise(exercise: exModel, sets: sets);
+      }).toList();
+
+      return models.WorkoutProgram(
+        id: map['id']?.toString() ?? '',
+        name: lang == 'fr' ? (map['name_fr'] as String? ?? '') : (map['name_en'] as String? ?? ''),
+        description: lang == 'fr' ? (map['description_fr'] as String? ?? '') : (map['description_en'] as String? ?? ''),
+        type: '',
+        estimatedDuration: (map['estimated_duration_minutes'] as int?) ?? 45,
+        exercises: exercises,
+      );
+    }).toList();
+
+    // Save in in-memory cache
+    _templatesCacheByLang[lang] = _TemplateCache(data: result, cachedAt: DateTime.now());
+
+    // Persist compact cache to SharedPreferences for instant cold-start
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final compact = result.map((p) => {
+            'id': p.id,
+            'name_en': p.name, // name already localized; we also store both below if available
+            'name_fr': p.name,
+            'description_en': p.description,
+            'description_fr': p.description,
+            'estimated_duration_minutes': p.estimatedDuration,
+            'exercises': p.exercises
+                .map((e) => {
+                      'order_index': 0, // not needed for display order here
+                      'suggested_sets': e.sets,
+                      'exercise': {
+                        'id': e.exercise.id,
+                        'name_en': e.exercise.name,
+                        'name_fr': e.exercise.name,
+                        'muscle_group': e.exercise.muscleGroup,
+                        'equipment': e.exercise.equipment,
+                      }
+                    })
+                .toList(),
+          }).toList();
+      await prefs.setString(_templatesPrefsKey(lang), jsonEncode(compact));
+    } catch (_) {}
+    return result;
+  }
+
+  // Fast headers only (no exercises). For instant UI; exercises can be loaded lazily per template
+  static Future<List<models.WorkoutProgram>> getWorkoutTemplateHeaders({String? language, bool includePublic = true}) async {
+    final lang = language ?? _getUserLanguage();
+    final userId = _client.auth.currentUser?.id;
+    final headerSelect = '''
+      id,
+      name_en,
+      name_fr,
+      description_en,
+      description_fr,
+      created_at,
+      estimated_duration_minutes,
+      is_custom,
+      user_id
+    ''';
+
+    final List<dynamic> aggregated = [];
+    final predefinedResp = await _client
+        .from('workout_templates')
+        .select(headerSelect)
+        .eq('is_custom', false)
+        .order('created_at', ascending: false);
+    if (predefinedResp is List) aggregated.addAll(predefinedResp);
+    if (userId != null) {
+      final userResp = await _client
+          .from('workout_templates')
+          .select(headerSelect)
+          .eq('is_custom', true)
+          .eq('user_id', userId)
+          .order('created_at', ascending: false);
+      if (userResp is List) aggregated.addAll(userResp);
+    }
+    if (aggregated.isEmpty) return [];
+    final Map<String, Map<String, dynamic>> byId = {};
+    for (final item in aggregated) {
+      final map = item as Map<String, dynamic>;
+      final id = map['id']?.toString() ?? '';
+      if (id.isEmpty) continue;
+      byId[id] = map;
+    }
+    final templates = byId.values.toList();
+    templates.sort((a, b) => (b['created_at']?.toString() ?? '').compareTo(a['created_at']?.toString() ?? ''));
+    return templates.map<models.WorkoutProgram>((map) {
+      return models.WorkoutProgram(
+        id: map['id']?.toString() ?? '',
+        name: lang == 'fr' ? (map['name_fr'] as String? ?? '') : (map['name_en'] as String? ?? ''),
+        description: lang == 'fr' ? (map['description_fr'] as String? ?? '') : (map['description_en'] as String? ?? ''),
+        type: '',
+        estimatedDuration: (map['estimated_duration_minutes'] as int?) ?? 45,
+        exercises: const [],
+      );
+    }).toList();
+  }
+
+  // Load exercises for a specific template (cached)
+  static Future<List<models.ProgramExercise>> getWorkoutTemplateExercises(String templateId, {String? language}) async {
+    final lang = language ?? _getUserLanguage();
+    final cached = _templateExercisesCache[templateId];
+    if (cached != null) return cached;
+
+    final rows = await _client
+        .from('workout_template_exercises')
+        .select('order_index, suggested_sets, exercises:exercise_id(id, name_en, name_fr, muscle_group, equipment)')
+        .eq('template_id', templateId)
+        .order('order_index');
+
+    final list = (rows is List ? rows : const <dynamic>[])
+        .cast<Map<String, dynamic>>()
+        .map<models.ProgramExercise>((rm) {
+      final ex = (rm['exercises'] as Map<String, dynamic>?);
+      final exModel = models.Exercise(
+        id: ex?['id']?.toString() ?? '',
+        name: lang == 'fr' ? (ex?['name_fr'] as String? ?? '') : (ex?['name_en'] as String? ?? ''),
+        muscleGroup: (ex?['muscle_group'] as String?) ?? '',
+        equipment: (ex?['equipment'] as String?) ?? '',
+        description: '',
+        isCustom: false,
+      );
+      final sets = (rm['suggested_sets'] as int?) ?? 3;
+      return models.ProgramExercise(exercise: exModel, sets: sets);
+    }).toList();
+
+    _templateExercisesCache[templateId] = list;
+    return list;
+  }
+
+  // Instant load: return cached templates if available (memory or SharedPreferences), then refresh in background
+  static Future<List<models.WorkoutProgram>> getWorkoutTemplatesInstant({String? language}) async {
+    final lang = language ?? _getUserLanguage();
+    // 1) In-memory
+    final cache = _templatesCacheByLang[lang];
+    if (cache != null && DateTime.now().difference(cache.cachedAt) < _templatesCacheTtl) {
+      return cache.data;
+    }
+    // 2) SharedPreferences
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_templatesPrefsKey(lang));
+      if (raw != null && raw.isNotEmpty) {
+        final List list = jsonDecode(raw) as List;
+        final programs = list.map<models.WorkoutProgram>((m) {
+          final map = m as Map<String, dynamic>;
+          final List exList = (map['exercises'] as List? ?? const []);
+          final exercises = exList.map<models.ProgramExercise>((rm) {
+            final ex = (rm['exercise'] as Map<String, dynamic>?);
+            final exModel = models.Exercise(
+              id: ex?['id']?.toString() ?? '',
+              name: ex?['name_fr'] as String? ?? ex?['name_en'] as String? ?? '',
+              muscleGroup: ex?['muscle_group'] as String? ?? '',
+              equipment: ex?['equipment'] as String? ?? '',
+              description: '',
+              isCustom: false,
+            );
+            final sets = (rm['suggested_sets'] as int?) ?? 3;
+            return models.ProgramExercise(exercise: exModel, sets: sets);
+          }).toList();
+          return models.WorkoutProgram(
+            id: map['id']?.toString() ?? '',
+            name: map['name_fr'] as String? ?? map['name_en'] as String? ?? '',
+            description: map['description_fr'] as String? ?? map['description_en'] as String? ?? '',
+            type: '',
+            estimatedDuration: (map['estimated_duration_minutes'] as int?) ?? 45,
+            exercises: exercises,
+          );
+        }).toList();
+        // Background refresh (fire and forget)
+        // Refresh in background
+        // ignore: discarded_futures
+        getWorkoutTemplates(language: lang).catchError((_) {});
+        return programs;
+      }
+    } catch (_) {}
+    // 3) Seed asset on first launch
+    try {
+      final seed = await _loadSeedAsset(_templatesSeedAsset(lang));
+      if (seed != null) {
+        final List list = jsonDecode(seed) as List;
+        final programs = list.map<models.WorkoutProgram>((m) {
+          final map = m as Map<String, dynamic>;
+          final List exList = (map['exercises'] as List? ?? const []);
+          final exercises = exList.map<models.ProgramExercise>((rm) {
+            final ex = (rm['exercise'] as Map<String, dynamic>?);
+            final exModel = models.Exercise(
+              id: ex?['id']?.toString() ?? '',
+              name: ex?['name_fr'] as String? ?? ex?['name_en'] as String? ?? '',
+              muscleGroup: ex?['muscle_group'] as String? ?? '',
+              equipment: ex?['equipment'] as String? ?? '',
+              description: '',
+              isCustom: false,
+            );
+            final sets = (rm['suggested_sets'] as int?) ?? 3;
+            return models.ProgramExercise(exercise: exModel, sets: sets);
+          }).toList();
+          return models.WorkoutProgram(
+            id: map['id']?.toString() ?? '',
+            name: map['name_fr'] as String? ?? map['name_en'] as String? ?? '',
+            description: map['description_fr'] as String? ?? map['description_en'] as String? ?? '',
+            type: '',
+            estimatedDuration: (map['estimated_duration_minutes'] as int?) ?? 45,
+            exercises: exercises,
+          );
+        }).toList();
+        // Background refresh (fire and forget)
+        // ignore: discarded_futures
+        getWorkoutTemplates(language: lang).catchError((_) {});
+        return programs;
+      }
+    } catch (_) {}
+    // 4) Fallback: fetch remotely
+    return await getWorkoutTemplates(language: lang);
+  }
+
+  static Future<String?> _loadSeedAsset(String assetPath) async {
+    try {
+      return await rootBundle.loadString(assetPath);
+    } catch (_) {
+      return null;
+    }
   }
 
   static Future<UserDailySummary?> getUserDailySummary(
@@ -1005,3 +1329,10 @@ class DatabaseService {
   }
 
 } 
+
+class _TemplateCache {
+  final List<models.WorkoutProgram> data;
+  final DateTime cachedAt;
+
+  _TemplateCache({required this.data, required this.cachedAt});
+}

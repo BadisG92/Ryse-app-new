@@ -1,0 +1,92 @@
+[
+  {
+    "id": "9e89659c-d76c-4a19-b411-5b8ac7546d74",
+    "name_en": "Push Day",
+    "name_fr": "Jour Push",
+    "description_en": "Chest, shoulders and triceps strength session",
+    "description_fr": "Séance de force pour la poitrine, les épaules et les triceps",
+    "estimated_duration_minutes": 70,
+    "exercises": [
+      {"order_index":1, "suggested_sets":4, "exercise": {"id":"651cfcb4-42b7-425a-8c9d-3f2d2245f2c9","name_en":"Bench Press","name_fr":"Développé Couché","muscle_group":"pectoraux","equipment":"Haltères"}},
+      {"order_index":2, "suggested_sets":4, "exercise": {"id":"b56d213b-488a-4e2d-b938-9afb18280808","name_en":"Incline Dumbbell Press","name_fr":"Développé incliné haltères","muscle_group":"Poitrine","equipment":"Haltères"}},
+      {"order_index":3, "suggested_sets":3, "exercise": {"id":"b7b499f4-97e0-4599-9c6c-d247bc241204","name_en":"Lateral Raises","name_fr":"Élévations Latérales","muscle_group":"shoulders","equipment":"dumbbells"}},
+      {"order_index":4, "suggested_sets":3, "exercise": {"id":"9410e06c-d353-4db5-bb4e-408e1bc106f4","name_en":"Dumbbell Triceps Extension","name_fr":"Extension triceps haltères","muscle_group":"Triceps","equipment":"Haltères"}},
+      {"order_index":5, "suggested_sets":3, "exercise": {"id":"c870092e-0894-4774-ae12-ac3479a15c8e","name_en":"Dips","name_fr":"Dips","muscle_group":"Triceps","equipment":"Barres parallèles"}}
+    ]
+  },
+  {
+    "id": "2e9abb18-9f5d-4795-bf9e-4fd2d95829da",
+    "name_en": "Pull Day",
+    "name_fr": "Jour Pull",
+    "description_en": "Back and biceps workout for pulling strength",
+    "description_fr": "Séance dos et biceps pour développer la force de traction",
+    "estimated_duration_minutes": 65,
+    "exercises": [
+      {"order_index":1, "suggested_sets":4, "exercise": {"id":"b1dc071b-21bc-4ee9-85f8-354bf9c8a538","name_en":"Pull-Ups (Overhand)","name_fr":"Tractions pronation","muscle_group":"Dos","equipment":"Barre de traction"}},
+      {"order_index":2, "suggested_sets":4, "exercise": {"id":"41b039ee-81ff-4abe-b361-0b38347dc50f","name_en":"Rowing barre","name_fr":"Rowing barre","muscle_group":"Dos","equipment":"Barre"}},
+      {"order_index":3, "suggested_sets":3, "exercise": {"id":"1811d976-02e1-4043-96a0-2d00e8a26415","name_en":"Dumbbell Row","name_fr":"Rowing haltère","muscle_group":"Dos","equipment":"Haltères"}},
+      {"order_index":4, "suggested_sets":3, "exercise": {"id":"085b416f-9082-4a5b-ac50-7e69d0bf5235","name_en":"Curl biceps barre","name_fr":"Curl biceps barre","muscle_group":"Biceps","equipment":"Barre"}},
+      {"order_index":5, "suggested_sets":3, "exercise": {"id":"3aa339ff-d625-4495-abe2-83fe07ad6ca1","name_en":"Incline Curl","name_fr":"Curl incliné","muscle_group":"Biceps","equipment":"Haltères"}}
+    ]
+  },
+  {
+    "id": "2f565985-58e4-4769-8d52-c0ae78ee6dcd",
+    "name_en": "Leg Day",
+    "name_fr": "Jour Jambes",
+    "description_en": "Intense workout for legs and glutes",
+    "description_fr": "Entraînement intense pour les jambes et les fessiers",
+    "estimated_duration_minutes": 75,
+    "exercises": [
+      {"order_index":1, "suggested_sets":4, "exercise": {"id":"99d31925-a3a4-4519-a8c3-6d1a3cfbff9a","name_en":"Squat","name_fr":"Squat","muscle_group":"Jambes","equipment":"Barre"}},
+      {"order_index":2, "suggested_sets":4, "exercise": {"id":"4e5b1079-882a-44df-ba93-cd56dcd471c9","name_en":"Presse à cuisses","name_fr":"Presse à cuisses","muscle_group":"Jambes","equipment":"Machine"}},
+      {"order_index":3, "suggested_sets":3, "exercise": {"id":"aeaa2daa-b428-4ea4-b97f-d9a0d8f12317","name_en":"Stiff-Leg Deadlift","name_fr":"Soulevé de terre jambes tendues","muscle_group":"Ischios","equipment":"Barre"}},
+      {"order_index":4, "suggested_sets":3, "exercise": {"id":"86065a20-2616-4e43-ba87-117db454bd54","name_en":"Lunges","name_fr":"Fentes","muscle_group":"Jambes","equipment":"poids du corps"}},
+      {"order_index":5, "suggested_sets":4, "exercise": {"id":"8af1007c-23dd-4820-a867-82d5621a8981","name_en":"Hip thrust","name_fr":"Hip thrust","muscle_group":"Fessiers","equipment":"Barre"}}
+    ]
+  },
+  {
+    "id": "26f1fa6a-47c8-4d48-9c27-88ede24551ed",
+    "name_en": "Full Body Strength",
+    "name_fr": "Corps Complet Force",
+    "description_en": "Balanced full body strength training",
+    "description_fr": "Entraînement complet du corps orienté force",
+    "estimated_duration_minutes": 60,
+    "exercises": [
+      {"order_index":1, "suggested_sets":4, "exercise": {"id":"651cfcb4-42b7-425a-8c9d-3f2d2245f2c9","name_en":"Bench Press","name_fr":"Développé Couché","muscle_group":"pectoraux","equipment":"Haltères"}},
+      {"order_index":2, "suggested_sets":4, "exercise": {"id":"99d31925-a3a4-4519-a8c3-6d1a3cfbff9a","name_en":"Squat","name_fr":"Squat","muscle_group":"Jambes","equipment":"Barre"}},
+      {"order_index":3, "suggested_sets":4, "exercise": {"id":"b1dc071b-21bc-4ee9-85f8-354bf9c8a538","name_en":"Pull-Ups (Overhand)","name_fr":"Tractions pronation","muscle_group":"Dos","equipment":"Barre de traction"}},
+      {"order_index":4, "suggested_sets":4, "exercise": {"id":"24357c3f-f1e1-4293-90ac-dcbfbdd55748","name_en":"Deadlift","name_fr":"Soulevé de terre","muscle_group":"dos","equipment":"Barre"}},
+      {"order_index":5, "suggested_sets":3, "exercise": {"id":"b7000999-2048-4771-8a3f-18c68289ce5c","name_en":"Biceps Curl","name_fr":"Curl biceps","muscle_group":"Biceps","equipment":"Haltères"}}
+    ]
+  },
+  {
+    "id": "d9659a65-96f2-432b-9368-9c9e56139497",
+    "name_en": "Abs & Core",
+    "name_fr": "Abdos & Core",
+    "description_en": "Focused session on core strength and stability",
+    "description_fr": "Session ciblée sur la force et la stabilité du tronc",
+    "estimated_duration_minutes": 30,
+    "exercises": [
+      {"order_index":1, "suggested_sets":3, "exercise": {"id":"ccdddd5a-43c8-4845-a7bf-7ec36ce45b3c","name_en":"Cable Crunch","name_fr":"Crunch câble","muscle_group":"Abdos","equipment":"Machine à câble"}},
+      {"order_index":2, "suggested_sets":3, "exercise": {"id":"8b79c83a-f548-4830-ae4b-169fda918ec5","name_en":"Weighted Plank","name_fr":"Gainage lesté","muscle_group":"Core","equipment":"Poids du corps"}},
+      {"order_index":3, "suggested_sets":3, "exercise": {"id":"91c3c17a-0744-47a0-9c53-2a68d9fd2a53","name_en":"Hanging Leg Raises","name_fr":"Relevés de jambes suspendu","muscle_group":"Abdos","equipment":"Barre de traction"}},
+      {"order_index":4, "suggested_sets":3, "exercise": {"id":"804208ce-ea5a-47b4-b44b-08eae8567e06","name_en":"Dumbbell Russian Twist","name_fr":"Russian twist haltère","muscle_group":"Abdos","equipment":"Haltère"}},
+      {"order_index":5, "suggested_sets":3, "exercise": {"id":"2b5c5505-f18d-45af-a500-c58d185b4eaf","name_en":"Ab wheel rollout","name_fr":"Ab wheel rollout","muscle_group":"Core","equipment":"Roue abdominale"}}
+    ]
+  },
+  {
+    "id": "2c99aceb-5925-45e7-86d9-82a1c4cf0e00",
+    "name_en": "Upper Body Hypertrophy",
+    "name_fr": "Haut du corps hypertrophie",
+    "description_en": "Upper body session to maximize muscle growth",
+    "description_fr": "Séance haut du corps pour maximiser la prise de masse",
+    "estimated_duration_minutes": 70,
+    "exercises": [
+      {"order_index":1, "suggested_sets":4, "exercise": {"id":"b5d25baf-e033-4642-b14f-536b7a528dfc","name_en":"Développé incliné","name_fr":"Développé incliné","muscle_group":"Pectoraux","equipment":"Haltères"}},
+      {"order_index":2, "suggested_sets":4, "exercise": {"id":"b7b499f4-97e0-4599-9c6c-d247bc241204","name_en":"Lateral Raises","name_fr":"Élévations Latérales","muscle_group":"shoulders","equipment":"dumbbells"}},
+      {"order_index":3, "suggested_sets":4, "exercise": {"id":"ab3299f6-27bc-4597-ab18-c3adf46d41e7","name_en":"Seated Cable Row","name_fr":"Rowing assis poulie","muscle_group":"Dos","equipment":"Poulie"}},
+      {"order_index":4, "suggested_sets":4, "exercise": {"id":"fab6070f-7a51-41ca-921d-247970b2b9a1","name_en":"Curl haltères","name_fr":"Curl haltères","muscle_group":"Biceps","equipment":"Haltères"}},
+      {"order_index":5, "suggested_sets":4, "exercise": {"id":"69d5e5d4-0586-4e5c-b351-a28096249b72","name_en":"Triceps Rope Extension","name_fr":"Extension triceps corde","muscle_group":"Triceps","equipment":"Poulie"}}
+    ]
+  }
+]

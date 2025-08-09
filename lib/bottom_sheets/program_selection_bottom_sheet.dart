@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../models/sport_models.dart';
+import '../services/database_service.dart';
 
 class ProgramSelectionBottomSheet extends StatefulWidget {
   final Function(WorkoutProgram program) onProgramSelected;
@@ -17,180 +18,43 @@ class ProgramSelectionBottomSheet extends StatefulWidget {
 }
 
 class _ProgramSelectionBottomSheetState extends State<ProgramSelectionBottomSheet> {
-  // Base de données de programmes prédéfinis
-  final List<WorkoutProgram> _predefinedPrograms = [
-    WorkoutProgram(
-      id: '1',
-      name: 'Push Day - Haut du corps',
-      description: 'Séance de poussée : pectoraux, épaules, triceps',
-      type: 'Haut du corps',
-      estimatedDuration: 60,
-      exercises: [
-        ProgramExercise(
-          exercise: Exercise(
-            id: '1',
-            name: 'Développé couché',
-            muscleGroup: MuscleGroups.chest,
-            equipment: 'Barre',
-          ),
-          sets: 4,
-        ),
-        ProgramExercise(
-          exercise: Exercise(
-            id: '4',
-            name: 'Développé militaire',
-            muscleGroup: MuscleGroups.shoulders,
-            equipment: 'Barre',
-          ),
-          sets: 3,
-        ),
-        ProgramExercise(
-          exercise: Exercise(
-            id: '6',
-            name: 'Dips',
-            muscleGroup: MuscleGroups.triceps,
-            equipment: 'Barres parallèles',
-          ),
-          sets: 3,
-        ),
-        ProgramExercise(
-          exercise: Exercise(
-            id: '5',
-            name: 'Curl biceps',
-            muscleGroup: MuscleGroups.biceps,
-            equipment: 'Haltères',
-          ),
-          sets: 3,
-        ),
-      ],
-    ),
-    WorkoutProgram(
-      id: '2',
-      name: 'Pull Day - Haut du corps',
-      description: 'Séance de traction : dos, biceps',
-      type: 'Haut du corps',
-      estimatedDuration: 50,
-      exercises: [
-        ProgramExercise(
-          exercise: Exercise(
-            id: '3',
-            name: 'Tractions',
-            muscleGroup: MuscleGroups.back,
-            equipment: 'Barre de traction',
-          ),
-          sets: 4,
-        ),
-        ProgramExercise(
-          exercise: Exercise(
-            id: '7',
-            name: 'Soulevé de terre',
-            muscleGroup: MuscleGroups.back,
-            equipment: 'Barre',
-          ),
-          sets: 3,
-        ),
-        ProgramExercise(
-          exercise: Exercise(
-            id: '5',
-            name: 'Curl biceps',
-            muscleGroup: MuscleGroups.biceps,
-            equipment: 'Haltères',
-          ),
-          sets: 4,
-        ),
-      ],
-    ),
-    WorkoutProgram(
-      id: '3',
-      name: 'Leg Day - Bas du corps',
-      description: 'Séance jambes et fessiers complète',
-      type: 'Bas du corps',
-      estimatedDuration: 70,
-      exercises: [
-        ProgramExercise(
-          exercise: Exercise(
-            id: '2',
-            name: 'Squat',
-            muscleGroup: MuscleGroups.legs,
-            equipment: 'Barre',
-          ),
-          sets: 4,
-        ),
-        ProgramExercise(
-          exercise: Exercise(
-            id: '7',
-            name: 'Soulevé de terre',
-            muscleGroup: MuscleGroups.back,
-            equipment: 'Barre',
-          ),
-          sets: 3,
-        ),
-        ProgramExercise(
-          exercise: Exercise(
-            id: 'leg_press',
-            name: 'Presse à cuisses',
-            muscleGroup: MuscleGroups.legs,
-            equipment: 'Machine',
-          ),
-          sets: 3,
-        ),
-        ProgramExercise(
-          exercise: Exercise(
-            id: 'calf_raise',
-            name: 'Mollets debout',
-            muscleGroup: MuscleGroups.calves,
-            equipment: 'Machine',
-          ),
-          sets: 4,
-        ),
-      ],
-    ),
-    WorkoutProgram(
-      id: '4',
-      name: 'Full Body - Débutant',
-      description: 'Programme complet pour tout le corps',
-      type: 'Full body',
-      estimatedDuration: 45,
-      exercises: [
-        ProgramExercise(
-          exercise: Exercise(
-            id: '2',
-            name: 'Squat',
-            muscleGroup: MuscleGroups.legs,
-            equipment: 'Barre',
-          ),
-          sets: 3,
-        ),
-        ProgramExercise(
-          exercise: Exercise(
-            id: '1',
-            name: 'Développé couché',
-            muscleGroup: MuscleGroups.chest,
-            equipment: 'Barre',
-          ),
-          sets: 3,
-        ),
-        ProgramExercise(
-          exercise: Exercise(
-            id: '3',
-            name: 'Tractions',
-            muscleGroup: MuscleGroups.back,
-            equipment: 'Barre de traction',
-          ),
-          sets: 3,
-        ),
-        ProgramExercise(
-          exercise: Exercise(
-            id: '8',
-            name: 'Crunchs',
-            muscleGroup: MuscleGroups.abs,
-            equipment: 'Aucun',
-          ),
-          sets: 3,
-        ),
-      ],
-    ),
-  ];
+  // Programmes chargés depuis Supabase
+  List<WorkoutProgram> _fetchedPrograms = [];
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPrograms();
+  }
+
+  Future<void> _loadPrograms() async {
+    try {
+      // 1) Instant cache/seed for immediate UI
+      final instant = await DatabaseService.getWorkoutTemplatesInstant(language: 'fr');
+      if (!mounted) return;
+      setState(() {
+        _fetchedPrograms = instant;
+        _isLoading = false;
+      });
+
+      // 2) Fresh data in background; update UI if changed
+      final fresh = await DatabaseService.getWorkoutTemplates(language: 'fr', includePublic: true);
+      if (!mounted) return;
+      if (fresh.isNotEmpty) {
+        setState(() {
+          _fetchedPrograms = fresh;
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = 'Erreur de chargement des programmes';
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -247,46 +111,58 @@ class _ProgramSelectionBottomSheetState extends State<ProgramSelectionBottomShee
             
             // Liste des programmes
             Expanded(
-              child: ListView.builder(
-                itemCount: widget.customPrograms.length + _predefinedPrograms.length + 
-                    (widget.customPrograms.isNotEmpty ? 1 : 0), // +1 pour le séparateur
-                itemBuilder: (context, index) {
-                  if (index < widget.customPrograms.length) {
-                    // Programmes personnalisés en premier
-                    final program = widget.customPrograms[index];
-                    return _buildProgramCard(program, isCustom: true);
-                  } else if (index == widget.customPrograms.length && widget.customPrograms.isNotEmpty) {
-                    // Séparateur entre programmes personnalisés et prédéfinis
-                    return Container(
-                      margin: const EdgeInsets.symmetric(vertical: 16),
-                      child: Row(
-                        children: [
-                          Expanded(child: Divider(color: const Color(0xFFE2E8F0))),
-                          const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 16),
-                            child: Text(
-                              'Programmes prédéfinis',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Color(0xFF64748B),
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _error != null
+                      ? Center(
+                          child: Text(
+                            _error!,
+                            style: const TextStyle(color: Color(0xFFEF4444)),
                           ),
-                          Expanded(child: Divider(color: const Color(0xFFE2E8F0))),
-                        ],
-                      ),
-                    );
-                  } else {
-                    // Programmes prédéfinis
-                    final adjustedIndex = widget.customPrograms.isNotEmpty 
-                        ? index - widget.customPrograms.length - 1 
-                        : index - widget.customPrograms.length;
-                    final program = _predefinedPrograms[adjustedIndex];
-                    return _buildProgramCard(program, isCustom: false);
-                  }
-                },
-              ),
+                        )
+                      : ListView.builder(
+                          itemCount: widget.customPrograms.length + _fetchedPrograms.length +
+                              (widget.customPrograms.isNotEmpty ? 1 : 0),
+                          itemBuilder: (context, index) {
+                            if (index < widget.customPrograms.length) {
+                              // Programmes personnalisés en premier
+                              final program = widget.customPrograms[index];
+                              return _buildProgramCard(program, isCustom: true);
+                            } else if (index == widget.customPrograms.length && widget.customPrograms.isNotEmpty) {
+                              // Séparateur entre programmes personnalisés et ceux de Supabase
+                              return Container(
+                                margin: const EdgeInsets.symmetric(vertical: 16),
+                                child: Row(
+                                  children: [
+                                    Expanded(child: Divider(color: const Color(0xFFE2E8F0))),
+                                    const Padding(
+                                      padding: EdgeInsets.symmetric(horizontal: 16),
+                                      child: Text(
+                                        'Programmes',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Color(0xFF64748B),
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                    Expanded(child: Divider(color: const Color(0xFFE2E8F0))),
+                                  ],
+                                ),
+                              );
+                            } else {
+                              // Programmes depuis Supabase
+                              final adjustedIndex = widget.customPrograms.isNotEmpty
+                                  ? index - widget.customPrograms.length - 1
+                                  : index - widget.customPrograms.length;
+                              if (adjustedIndex < 0 || adjustedIndex >= _fetchedPrograms.length) {
+                                return const SizedBox.shrink();
+                              }
+                              final program = _fetchedPrograms[adjustedIndex];
+                              return _buildProgramCard(program, isCustom: false);
+                            }
+                          },
+                        ),
             ),
           ],
         ),

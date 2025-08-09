@@ -20,13 +20,18 @@
             }
         },
         "supabase": {
-            "command": "npx",
+            "command": "C:\\Windows\\System32\\cmd.exe",
             "args": [
+                "/c",
+                "npx",
                 "-y",
-                "@supabase/mcp-server-supabase@latest",
-                "--access-token",
-                "sbp_e1f7bf3ef0940b363b7695dd529e9b8ddcf8984a"
-            ]
+                "@supabase/mcp-server-supabase@0.4.5",
+                "--project-ref",
+                "mfskwlzgxjhhknlwpblq"
+            ],
+            "env": {
+                "SUPABASE_ACCESS_TOKEN": "sbp_e1f7bf3ef0940b363b7695dd529e9b8ddcf8984a"
+            }
         }
     }
 }
