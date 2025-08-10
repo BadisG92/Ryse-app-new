@@ -46,16 +46,22 @@ class DatabaseService {
 
     List<models.Exercise> base = [];
 
-    // 1) RPC get_system_exercises_localized
+    // Source unique: table exercises (plus custom_exercises visibles)
     try {
-      final response1 = await _client
-          .rpc('get_system_exercises_localized', params: {'user_lang': lang});
-      if (response1 is List && response1.isNotEmpty) {
-        base = response1.map<models.Exercise>((json) {
+      final rows = await _client
+          .from('exercises')
+          .select('id, name_en, name_fr, muscle_group, equipment, description, is_custom')
+          .order(lang == 'fr' ? 'name_fr' : 'name_en', ascending: true)
+          .limit(500);
+      if (rows is List && rows.isNotEmpty) {
+        base = rows.map<models.Exercise>((json) {
           final map = json as Map<String, dynamic>;
+          final name = lang == 'fr'
+              ? (map['name_fr'] as String? ?? '')
+              : (map['name_en'] as String? ?? '');
           return models.Exercise(
             id: map['id']?.toString() ?? '',
-            name: (map['name'] as String?) ?? '',
+            name: name,
             muscleGroup: (map['muscle_group'] as String?) ?? '',
             equipment: (map['equipment'] as String?) ?? '',
             description: (map['description'] as String?) ?? '',
@@ -64,53 +70,6 @@ class DatabaseService {
         }).toList();
       }
     } catch (_) {}
-
-    // 2) RPC get_exercises_localized
-    if (base.isEmpty) {
-      try {
-        final response2 = await _client
-            .rpc('get_exercises_localized', params: {'user_language': lang});
-        if (response2 is List && response2.isNotEmpty) {
-          base = response2.map<models.Exercise>((json) {
-            final e = Exercise.fromJson(json as Map<String, dynamic>);
-            return models.Exercise(
-              id: e.id,
-              name: e.getLocalizedName(lang),
-              muscleGroup: e.muscleGroup,
-              equipment: e.equipment ?? '',
-              description: e.description ?? '',
-              isCustom: e.isCustom,
-            );
-          }).toList();
-        }
-      } catch (_) {}
-    }
-
-    // 3) Direct table fallback if still empty
-    if (base.isEmpty) {
-      try {
-        final rows = await _client
-            .from('exercises')
-            .select('id, name_en, name_fr, muscle_group, equipment, description, is_custom')
-            .limit(200);
-        if (rows is List && rows.isNotEmpty) {
-          base = rows.map<models.Exercise>((json) {
-            final map = json as Map<String, dynamic>;
-            final name = lang == 'fr'
-                ? (map['name_fr'] as String? ?? '')
-                : (map['name_en'] as String? ?? '');
-            return models.Exercise(
-              id: map['id']?.toString() ?? '',
-              name: name,
-              muscleGroup: (map['muscle_group'] as String?) ?? '',
-              equipment: (map['equipment'] as String?) ?? '',
-              description: (map['description'] as String?) ?? '',
-              isCustom: (map['is_custom'] as bool?) ?? false,
-            );
-          }).toList();
-        }
-      } catch (_) {}
-    }
 
     if (includeCustom) {
       try {
@@ -134,7 +93,13 @@ class DatabaseService {
                 isCustom: true,
               );
             }).toList();
-            base.addAll(customs);
+            // Dédoublonnage par nom (priorité aux customs)
+            final existingNames = base.map((e) => e.name.toLowerCase()).toSet();
+            for (final cx in customs) {
+              if (!existingNames.contains(cx.name.toLowerCase())) {
+                base.add(cx);
+              }
+            }
           }
         }
       } catch (_) {}
@@ -804,6 +769,9 @@ class DatabaseService {
   static Future<void> persistCompletedWorkoutAsHistory({
     required models.WorkoutSession session,
     String? guidedTemplateId,
+    String? intensity, // 'Faible' | 'Modéré' | 'Élevé'
+    int? durationMinutes,
+    int? caloriesBurned,
   }) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) {
@@ -919,6 +887,38 @@ class DatabaseService {
     if (rows.isNotEmpty) {
       await _client.from('workout_set_history').insert(rows);
     }
+
+    // Create session summary row
+    try {
+      final numExercises = session.exercises.length;
+      final totalVolume = rows.fold<double>(0, (sum, r) => sum + (((r['weight'] as num?)?.toDouble() ?? 0) * ((r['reps'] as num?)?.toDouble() ?? 0)));
+      final intensityValue = intensity ?? 'Modéré';
+      final performedAtDate = DateTime.tryParse(performedAt) ?? DateTime.now();
+      final durationMins = durationMinutes ?? (session.endTime != null ? session.endTime!.difference(session.startTime).inMinutes : 0);
+      final sessionName = (session.name.trim().isEmpty)
+          ? 'Séance ${performedAtDate.toIso8601String().split('T').first}'
+          : session.name.trim();
+
+      debugPrint('📝 Creating workout_session_summary:');
+      debugPrint('  userId=$userId historySessionId=$historySessionId');
+      debugPrint('  name=$sessionName date=$performedAtDate durationMins=$durationMins');
+      debugPrint('  numExercises=$numExercises totalVolumeKg=${totalVolume.toStringAsFixed(2)}');
+      debugPrint('  caloriesBurned=${caloriesBurned ?? 0} intensity=$intensityValue template=$guidedTemplateId');
+
+      await _client.from('workout_session_summaries').insert({
+        'history_session_id': historySessionId,
+        'user_id': userId,
+        'session_name': sessionName,
+        'performed_at': performedAtDate.toIso8601String(),
+        'session_date': performedAtDate.toIso8601String().split('T')[0],
+        'duration_minutes': durationMins,
+        'num_exercises': numExercises,
+        'total_volume_kg': totalVolume,
+        'calories_burned': caloriesBurned ?? 0,
+        'intensity': intensityValue,
+        'guided_template_id': guidedTemplateId,
+      });
+    } catch (_) {}
 
     // Post-sync: for any custom exercise rows without custom_exercise_id yet, try to resolve and backfill
     try {

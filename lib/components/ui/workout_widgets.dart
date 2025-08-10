@@ -1,68 +1,253 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'custom_card.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'sport_models.dart';
 import 'sport_cards.dart';
 import '../../widgets/exercise/exercise_list_bottom_sheet.dart';
 
 // Section principale des statistiques de la semaine
-class WeeklyStatsSection extends StatelessWidget {
+class WeeklyStatsSection extends StatefulWidget {
   const WeeklyStatsSection({super.key});
 
   @override
+  State<WeeklyStatsSection> createState() => _WeeklyStatsSectionState();
+}
+
+class _WeeklyStatsSectionState extends State<WeeklyStatsSection> {
+  WeeklyStats? _stats;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadWeeklyStats();
+  }
+
+  Future<void> _loadWeeklyStats() async {
+    try {
+      final client = Supabase.instance.client;
+      final userId = client.auth.currentUser?.id;
+      if (userId == null) {
+        setState(() {
+          _stats = const WeeklyStats(sessions: '0', weight: '0 kg', calories: '0');
+          _loading = false;
+        });
+        return;
+      }
+
+      final now = DateTime.now();
+      // Lundi = 1, ... Dimanche = 7 → début de semaine = lundi
+      final todayMidnight = DateTime(now.year, now.month, now.day);
+      final startOfWeek = todayMidnight.subtract(Duration(days: (now.weekday - 1)));
+      final startIso = startOfWeek.toIso8601String();
+
+      final rows = await client
+          .from('workout_session_summaries')
+          .select('duration_minutes, total_volume_kg, calories_burned')
+          .eq('user_id', userId)
+          .gte('performed_at', startIso);
+
+      // Debug
+      // ignore: avoid_print
+      print('📊 WeeklyStats fetch from $startIso for user=$userId -> ${rows is List ? rows.length : 'null'} rows');
+      // ignore: avoid_print
+      print('📊 Rows: $rows');
+
+      int sessions = 0;
+      double totalVolume = 0;
+      int totalCalories = 0;
+
+      if (rows is List) {
+        sessions = rows.length;
+        for (final r in rows) {
+          totalVolume += ((r['total_volume_kg'] as num?)?.toDouble() ?? 0);
+          totalCalories += (r['calories_burned'] as int?) ?? 0;
+        }
+      }
+
+      setState(() {
+        _stats = WeeklyStats(
+          sessions: sessions.toString(),
+          weight: '${totalVolume.toStringAsFixed(0)} kg',
+          calories: totalCalories.toString(),
+        );
+        _loading = false;
+      });
+    } catch (_) {
+      // ignore: avoid_print
+      print('❌ WeeklyStats error');
+      setState(() {
+        _stats = const WeeklyStats(sessions: '0', weight: '0 kg', calories: '0');
+        _loading = false;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    const stats = WeeklyStats(
-      sessions: '3',
-      weight: '22 500 kg',
-      calories: '1 240',
-    );
-    
-    return WeeklyStatsCard(stats: stats);
+    if (_loading || _stats == null) {
+      return const WeeklyStatsCard(
+        stats: WeeklyStats(sessions: '—', weight: '—', calories: '—'),
+      );
+    }
+    return WeeklyStatsCard(stats: _stats!);
   }
 }
 
 // Section historique des séances de la semaine
-class WeekHistorySection extends StatelessWidget {
+class WeekHistorySection extends StatefulWidget {
   const WeekHistorySection({super.key});
 
-  static const List<WorkoutSession> _weekSessions = [
-    WorkoutSession(
-      name: 'Push/Pull/Legs',
-      day: 'Lundi',
-      calories: 340,
-      exercises: [
-        'Développé couché 4×8-10',
-        'Développé incliné 3×10-12',
-        'Écarté poulie 3×12-15',
-        'Développé militaire 4×8-10',
-      ],
-      lastUsed: 'Il y a 2 jours',
-    ),
-    WorkoutSession(
-      name: 'Séance Jambes',
-      day: 'Mercredi',
-      calories: 420,
-      exercises: [
-        'Squat 4×6-8',
-        'Presse à cuisses 3×12-15',
-        'Leg curl 3×12-15',
-        'Mollets 4×15-20',
-      ],
-      lastUsed: 'Il y a 4 jours',
-    ),
-    WorkoutSession(
-      name: 'Upper Body',
-      day: 'Vendredi',
-      calories: 380,
-      exercises: [
-        'Tractions 4×6-8',
-        'Rowing 4×8-10',
-        'Curl biceps 3×12-15',
-        'Extensions triceps 3×12-15',
-      ],
-      lastUsed: 'Il y a 6 jours',
-    ),
-  ];
+  @override
+  State<WeekHistorySection> createState() => _WeekHistorySectionState();
+}
+
+class _WeekHistorySectionState extends State<WeekHistorySection> {
+  List<WorkoutSession> _sessions = const [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadWeekHistory();
+  }
+
+  Future<void> _loadWeekHistory() async {
+    try {
+      final client = Supabase.instance.client;
+      final userId = client.auth.currentUser?.id;
+      if (userId == null) {
+        setState(() { _sessions = const []; _loading = false; });
+        return;
+      }
+
+      final now = DateTime.now();
+      final startOfWeek = DateTime(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1)); // lundi
+      final startDateStr = startOfWeek.toIso8601String().split('T').first;
+
+      final summaries = await client
+          .from('workout_session_summaries')
+          .select('history_session_id, session_name, performed_at, calories_burned, duration_minutes, total_volume_kg')
+          .eq('user_id', userId)
+          // Utiliser performed_at pour éviter tout souci de comparaison de types/date
+          .gte('performed_at', startOfWeek.toIso8601String())
+          .order('performed_at', ascending: false)
+          .limit(50);
+
+      // Debug
+      // ignore: avoid_print
+      print('🗓️ WeekHistory summaries since $startDateStr -> ${summaries is List ? summaries.length : 'null'}');
+      // ignore: avoid_print
+      print('🗓️ Summaries: $summaries');
+
+      final List<WorkoutSession> result = [];
+      if (summaries is List) {
+        for (final s in summaries) {
+          final sessionId = s['history_session_id']?.toString();
+          final name = s['session_name']?.toString() ?? '';
+          final performedAt = DateTime.tryParse(s['performed_at']?.toString() ?? '') ?? now;
+          final calories = (s['calories_burned'] as int?) ?? 0;
+          final dayLabel = _dayLabel(performedAt.weekday);
+          final lastUsed = _relativeDays(performedAt);
+          final durationMin = (s['duration_minutes'] as int?) ?? 0;
+          final totalVolume = (s['total_volume_kg'] as num?)?.toDouble() ?? 0.0;
+
+          // Fetch aggregated exercises for this session
+          final List<dynamic> sets = sessionId == null
+              ? const []
+              : await client
+                  .from('workout_set_history')
+                  // Pas de jointures; on lit aussi weight et best_set
+                  .select('exercise_name, reps, weight, best_set')
+                  .eq('history_session_id', sessionId)
+                  .limit(200);
+
+          // ignore: avoid_print
+          print('  • Session $sessionId -> sets: ${sets is List ? sets.length : 'null'}');
+
+          final Map<String, Map<String, dynamic>> agg = {};
+          if (sets is List) {
+            for (final r in sets) {
+              final String title = (r['exercise_name']?.toString() ?? '').trim();
+              
+              if (title.isEmpty) continue;
+              final reps = (r['reps'] as int?) ?? 0;
+              final weight = (r['weight'] as num?)?.toDouble();
+              final isBest = (r['best_set'] as bool?) ?? false;
+              final current = agg[title] ?? {'series': 0, 'reps': 0, 'best': null};
+              current['series'] = (current['series'] ?? 0) + 1;
+              current['reps'] = (current['reps'] ?? 0) + reps;
+              if (isBest) {
+                current['best'] = {'weight': weight, 'reps': reps};
+              }
+              agg[title] = current;
+            }
+          }
+
+          final items = agg.entries.map((e) {
+            final series = e.value['series'] as int? ?? 0;
+            final best = e.value['best'] as Map<String, dynamic>?;
+            final bestReps = best?['reps'] as int? ?? 0;
+            final bestWeight = (best?['weight'] as num?)?.toDouble();
+            return SessionExerciseBest(
+              name: e.key,
+              setsCount: series,
+              reps: bestReps,
+              weightKg: bestWeight,
+            );
+          }).toList();
+
+          // ignore: avoid_print
+          print('  ✓ Add session card: name=$name day=$dayLabel kcal=$calories exercises=${items.length}');
+
+          result.add(WorkoutSession(
+            name: name,
+            day: dayLabel,
+            calories: calories,
+            durationMinutes: durationMin,
+            totalVolumeKg: totalVolume,
+            items: items,
+            lastUsed: lastUsed,
+          ));
+        }
+      }
+
+      // ignore: avoid_print
+      print('✅ WeekHistory built ${result.length} items');
+      setState(() { _sessions = result; _loading = false; });
+    } catch (_) {
+      setState(() { _sessions = const []; _loading = false; });
+    }
+  }
+
+  static String _dayLabel(int weekday) {
+    switch (weekday) {
+      case DateTime.monday:
+        return 'Lundi';
+      case DateTime.tuesday:
+        return 'Mardi';
+      case DateTime.wednesday:
+        return 'Mercredi';
+      case DateTime.thursday:
+        return 'Jeudi';
+      case DateTime.friday:
+        return 'Vendredi';
+      case DateTime.saturday:
+        return 'Samedi';
+      case DateTime.sunday:
+      default:
+        return 'Dimanche';
+    }
+  }
+
+  static String _relativeDays(DateTime date) {
+    final now = DateTime.now();
+    final diff = now.difference(date).inDays;
+    if (diff <= 0) return "Aujourd'hui";
+    if (diff == 1) return 'Il y a 1 jour';
+    return 'Il y a $diff jours';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -90,10 +275,12 @@ class WeekHistorySection extends StatelessWidget {
                 ),
               ],
             ),
-            
             const SizedBox(height: 16),
-            
-            ..._weekSessions.map((session) => WorkoutHistoryCard(session: session)).toList(),
+            if (_loading)
+              const Center(child: CircularProgressIndicator())
+            else if (_sessions.isEmpty)
+              const Text('Aucune séance cette semaine', style: TextStyle(color: Color(0xFF64748B)))
+            else ..._sessions.map((s) => WorkoutHistoryCard(session: s)).toList(),
           ],
         ),
       ),

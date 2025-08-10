@@ -47,18 +47,36 @@ class ExerciseProgress {
   });
 }
 
+class SessionExerciseBest {
+  final String name;
+  final int setsCount;
+  final double? weightKg; // nullable if no weight entered
+  final int reps;
+
+  const SessionExerciseBest({
+    required this.name,
+    required this.setsCount,
+    required this.reps,
+    this.weightKg,
+  });
+}
+
 class WorkoutSession {
   final String name;
   final String day;
   final int calories;
-  final List<String> exercises;
+  final int durationMinutes;
+  final double totalVolumeKg;
+  final List<SessionExerciseBest> items;
   final String lastUsed;
 
   const WorkoutSession({
     required this.name,
     required this.day,
     required this.calories,
-    required this.exercises,
+    required this.durationMinutes,
+    required this.totalVolumeKg,
+    required this.items,
     required this.lastUsed,
   });
 }

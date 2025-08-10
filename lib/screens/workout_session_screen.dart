@@ -5,6 +5,8 @@ import '../models/sport_models.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../components/ui/custom_scrollbar.dart';
 import '../services/database_service.dart' as db;
+import '../services/calorie_burn_service.dart';
+import '../services/auth_service.dart';
 
 class WorkoutSessionScreen extends StatefulWidget {
   final String sessionName;
@@ -36,6 +38,8 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
   Duration _currentDuration = Duration.zero;
   bool _addSeriePressed = false;
   bool _addExercisePressed = false;
+  String? _selectedIntensity; // 'Faible' | 'Modéré' | 'Élevé'
+  int? _effectiveDurationMinutes; // permet d'éditer la durée réelle
   
   // Controllers pour gérer les inputs de chaque série de manière indépendante
   final Map<String, Map<int, TextEditingController>> _weightControllers = {};
@@ -114,6 +118,13 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
         : Duration.zero;
   }
 
+  Duration get _displayedDuration {
+    if (_effectiveDurationMinutes != null && _effectiveDurationMinutes! >= 0) {
+      return Duration(minutes: _effectiveDurationMinutes!);
+    }
+    return _sessionDuration;
+  }
+
   int get _totalSets {
     return _exercises.fold(0, (sum, exercise) => sum + exercise.sets.length);
   }
@@ -135,9 +146,19 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
   }
 
   int get _estimatedCalories {
-    final baseCalories = _totalWeight * 0.35;
-    final timeCalories = _sessionDuration.inMinutes * 5.0;
-    return (baseCalories + timeCalories).round();
+    final user = AuthService().currentUser;
+    final double assumedWeightKg = (user?.weight != null && user!.weight! > 0)
+        ? user.weight!
+        : 75.0; // fallback
+    final minutes = _displayedDuration.inMinutes > 0 ? _displayedDuration.inMinutes : 1;
+    final intensity = _selectedIntensity ?? 'Modéré';
+    return CalorieBurnService.calculateKcal(
+      'musculation',
+      assumedWeightKg,
+      minutes,
+      intensity: intensity,
+      totalWeightKg: _totalWeight,
+    );
   }
 
   int _getDisplayedSetsCount() {
@@ -227,7 +248,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     
     final set = currentExercise.sets[setIndex];
     
-    if (set.weight > 0 && set.reps > 0) {
+    if (set.reps > 0) {
       setState(() {
         final updatedSets = List<ExerciseSet>.from(currentExercise.sets);
         updatedSets[setIndex] = set.copyWith(isCompleted: true);
@@ -1000,6 +1021,9 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     db.DatabaseService.persistCompletedWorkoutAsHistory(
       session: completedSession,
       guidedTemplateId: widget.isFromProgram ? (widget.guidedTemplateId ?? _inferGuidedTemplateId()) : null,
+      intensity: _selectedIntensity,
+      durationMinutes: _displayedDuration.inMinutes,
+      caloriesBurned: _estimatedCalories,
     ).catchError((e) {
       debugPrint('❌ persistCompletedWorkoutAsHistory error: $e');
     });
@@ -1165,7 +1189,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                           Expanded(
                             child: _buildSummaryMetric(
                               'Durée',
-                              _formatDuration(_sessionDuration),
+                              _formatDuration(_displayedDuration),
                               LucideIcons.clock,
                             ),
                           ),
@@ -1216,10 +1240,24 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                       const Divider(height: 1, color: Color(0xFFE2E8F0)),
                       const SizedBox(height: 16),
                       
-                      _buildSummaryMetric(
-                        'Calories',
-                        '$_estimatedCalories kcal',
-                        LucideIcons.flame,
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildSummaryMetric(
+                              'Calories',
+                              '$_estimatedCalories kcal',
+                              LucideIcons.flame,
+                            ),
+                          ),
+                          Container(width: 1, height: 40, color: const Color(0xFFE2E8F0)),
+                          Expanded(
+                            child: _buildSummaryMetric(
+                              'Intensité',
+                              _selectedIntensity ?? '—',
+                              _selectedIntensity == 'Élevé' ? LucideIcons.zap : _selectedIntensity == 'Modéré' ? LucideIcons.activity : LucideIcons.wind,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -1315,6 +1353,96 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     final minutes = duration.inMinutes;
     final seconds = duration.inSeconds.remainder(60);
     return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  }
+
+  void _showIntensityAndDurationDialog() {
+    final TextEditingController minutesController = TextEditingController(
+      text: (_effectiveDurationMinutes ?? (_sessionDuration.inMinutes > 0 ? _sessionDuration.inMinutes : 1)).toString(),
+    );
+    String? selected = _selectedIntensity ?? 'Modéré';
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setStateDialog) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text(
+            'Intensité et durée',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF1A1A1A)),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Comment était l\'intensité de la séance ?', style: TextStyle(fontSize: 14, color: Color(0xFF64748B))),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  _buildIntensityChip('Faible', selected == 'Faible', () => setStateDialog(() => selected = 'Faible')),
+                  const SizedBox(width: 8),
+                  _buildIntensityChip('Modéré', selected == 'Modéré', () => setStateDialog(() => selected = 'Modéré')),
+                  const SizedBox(width: 8),
+                  _buildIntensityChip('Élevé', selected == 'Élevé', () => setStateDialog(() => selected = 'Élevé')),
+                ],
+              ),
+              const SizedBox(height: 20),
+              const Text('Durée effective (minutes)', style: TextStyle(fontSize: 14, color: Color(0xFF64748B))),
+              const SizedBox(height: 8),
+              TextField(
+                controller: minutesController,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: const Color(0xFFF8FAFC),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  hintText: 'Minutes',
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Annuler', style: TextStyle(color: Color(0xFF64748B))),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final minutes = int.tryParse(minutesController.text.trim());
+                setState(() {
+                  _selectedIntensity = selected;
+                  _effectiveDurationMinutes = (minutes != null && minutes > 0) ? minutes : (_sessionDuration.inMinutes > 0 ? _sessionDuration.inMinutes : 1);
+                });
+                Navigator.pop(context);
+                _showSessionSummary();
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0B132B)),
+              child: const Text('Valider', style: TextStyle(color: Colors.white)),
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildIntensityChip(String label, bool selected, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? const Color(0xFF0B132B) : const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: selected ? const Color(0xFF0B132B) : const Color(0xFFE2E8F0)),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(color: selected ? Colors.white : const Color(0xFF1A1A1A), fontWeight: FontWeight.w600),
+        ),
+      ),
+    );
   }
 
   @override
@@ -1979,7 +2107,8 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context); // Fermer le dialog de confirmation
-              _showSessionSummary(); // Afficher le bilan
+              // Demander intensité + durée avant le bilan
+              _showIntensityAndDurationDialog();
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF1C2951),

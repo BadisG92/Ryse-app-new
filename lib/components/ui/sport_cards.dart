@@ -120,13 +120,21 @@ class WeeklyStatsCard extends StatelessWidget {
 }
 
 // Card pour l'historique des séances
-class WorkoutHistoryCard extends StatelessWidget {
+class WorkoutHistoryCard extends StatefulWidget {
   final WorkoutSession session;
 
   const WorkoutHistoryCard({super.key, required this.session});
 
   @override
+  State<WorkoutHistoryCard> createState() => _WorkoutHistoryCardState();
+}
+
+class _WorkoutHistoryCardState extends State<WorkoutHistoryCard> {
+  bool _expanded = false;
+
+  @override
   Widget build(BuildContext context) {
+    final session = widget.session;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -144,33 +152,41 @@ class WorkoutHistoryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Titre séance
+          Text(
+            session.name,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF1A1A1A),
+            ),
+          ),
+          const SizedBox(height: 2),
+          // Jour
+          Text(
+            session.day,
+            style: const TextStyle(
+              fontSize: 12,
+              color: Color(0xFF64748B),
+            ),
+          ),
+          const SizedBox(height: 8),
+          // Ligne durée + volume + calories (bulle inchangée)
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
                   children: [
-                    Text(
-                      session.name,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF1A1A1A),
-                      ),
-                    ),
-                    Text(
-                      session.day,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF64748B),
-                      ),
-                    ),
+                    const Icon(LucideIcons.clock, size: 14, color: Color(0xFF1A1A1A)),
+                    const SizedBox(width: 6),
+                    Text('${session.durationMinutes} min', style: const TextStyle(fontSize: 12, color: Color(0xFF1A1A1A))),
+                    const SizedBox(width: 12),
+                    const Icon(LucideIcons.dumbbell, size: 14, color: Color(0xFF1A1A1A)),
+                    const SizedBox(width: 6),
+                    Text('${session.totalVolumeKg.toStringAsFixed(0)} kg', style: const TextStyle(fontSize: 12, color: Color(0xFF1A1A1A))),
                   ],
                 ),
               ),
-              // Bulle calories brûlées
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
@@ -182,59 +198,65 @@ class WorkoutHistoryCard extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
-                      LucideIcons.flame,
-                      size: 12,
-                      color: Colors.white,
-                    ),
+                    const Icon(LucideIcons.flame, size: 12, color: Colors.white),
                     const SizedBox(width: 4),
                     Text(
                       '${session.calories} kcal',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white),
                     ),
                   ],
                 ),
               ),
             ],
           ),
-          
+          // Toggle expand/collapse with icon only
           const SizedBox(height: 8),
-          
-          // Aperçu des exercices
-          Wrap(
-            spacing: 8,
-            runSpacing: 4,
-            children: session.exercises.map((exercise) {
-              return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(6),
+          Center(
+            child: IconButton(
+              onPressed: () => setState(() => _expanded = !_expanded),
+              icon: Icon(_expanded ? LucideIcons.chevronUp : LucideIcons.chevronDown,
+                  size: 18, color: const Color(0xFF1A1A1A)),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+              splashRadius: 16,
+            ),
+          ),
+          if (_expanded) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: const [
+                Expanded(
+                  child: Text('Exercice', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF1A1A1A))),
                 ),
-                child: Text(
-                  exercise,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: Color(0xFF64748B),
-                  ),
+                Text('Best set', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF1A1A1A))),
+              ],
+            ),
+            const SizedBox(height: 6),
+            ...session.items.map((it) {
+              final right = (it.weightKg != null && it.weightKg! > 0)
+                  ? '${it.weightKg!.toStringAsFixed(1)} kg × ${it.reps}'
+                  : '${it.reps} reps';
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '${it.setsCount} × ${it.name}',
+                        style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Text(right, style: const TextStyle(fontSize: 12, color: Color(0xFF1A1A1A))),
+                  ],
                 ),
               );
             }).toList(),
-          ),
+          ],
           
           const SizedBox(height: 8),
           
-          Text(
-            'Dernière utilisation: ${session.lastUsed}',
-            style: const TextStyle(
-              fontSize: 11,
-              color: Color(0xFF888888),
-            ),
-          ),
+          // Retiré: Dernière utilisation
         ],
       ),
     );
