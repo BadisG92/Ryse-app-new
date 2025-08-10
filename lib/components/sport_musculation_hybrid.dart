@@ -438,6 +438,7 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
           sessionName: name,
           exercises: [], // Liste vide pour session manuelle
           isFromProgram: false,
+          guidedTemplateId: null,
           onProgramSaved: (WorkoutProgram program) {
             _workoutService.addProgram(program);
             setState(() {}); // Rafraîchir l'UI
@@ -471,6 +472,7 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
           sessionName: program.name,
           exercises: programExercises,
           isFromProgram: true,
+          guidedTemplateId: program.id,
         ),
       ),
     );

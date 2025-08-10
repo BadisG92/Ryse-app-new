@@ -10,6 +10,7 @@ class WorkoutSessionScreen extends StatefulWidget {
   final String sessionName;
   final List<WorkoutExercise> exercises;
   final bool isFromProgram;
+  final String? guidedTemplateId; // si séance guidée, passer l'id du template
   final Function(WorkoutProgram)? onProgramSaved;
   final Function(WorkoutSession)? onSessionCompleted;
 
@@ -18,6 +19,7 @@ class WorkoutSessionScreen extends StatefulWidget {
     required this.sessionName,
     required this.exercises,
     this.isFromProgram = false,
+    this.guidedTemplateId,
     this.onProgramSaved,
     this.onSessionCompleted,
   });
@@ -284,8 +286,8 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     });
   }
 
-  void _addExercise(String name, String muscleGroup, {int setsCount = 3}) {
-    final exerciseId = DateTime.now().millisecondsSinceEpoch.toString();
+  void _addExercise(String name, String muscleGroup, {int setsCount = 3, String? exerciseId, bool isCustom = false}) {
+    final resolvedId = exerciseId ?? DateTime.now().millisecondsSinceEpoch.toString();
     
     setState(() {
       // Créer les séries vides
@@ -295,16 +297,16 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
       
       _exercises.add(WorkoutExercise(
         exercise: Exercise(
-          id: exerciseId,
+          id: resolvedId,
           name: name,
           muscleGroup: muscleGroup,
-          isCustom: true,
+          isCustom: isCustom || exerciseId == null,
         ),
         sets: sets,
       ));
       
       // Initialiser les controllers pour cet exercice
-      _initializeControllersForExercise(exerciseId, setsCount);
+      _initializeControllersForExercise(resolvedId, setsCount);
       
       // Si c'est le premier exercice, le sélectionner
       if (_exercises.length == 1) {
@@ -449,7 +451,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     }
   }
 
-  void _showSetsCountDialog(String exerciseName, String muscleGroup) {
+  void _showSetsCountDialog(String exerciseName, String muscleGroup, {String? exerciseId, bool isCustom = false}) {
     int selectedSets = 3; // Valeur par défaut
     
     showDialog(
@@ -536,7 +538,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
             ElevatedButton(
               onPressed: () {
                 Navigator.pop(context);
-                _addExercise(exerciseName, muscleGroup, setsCount: selectedSets);
+                _addExercise(exerciseName, muscleGroup, setsCount: selectedSets, exerciseId: exerciseId, isCustom: isCustom);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF0B132B),
@@ -659,9 +661,31 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                     // Bouton pour créer un exercice custom si pas de résultats
                     if (searchController.text.isNotEmpty && filteredExercises.isEmpty)
                       GestureDetector(
-                        onTap: () {
+                        onTap: () async {
+                          final tempName = searchController.text.trim();
                           Navigator.pop(context);
-                          _showSetsCountDialog(searchController.text, 'Personnalisé');
+                          // Ajouter immédiatement en local (custom) sans attendre l'UUID
+                          _showSetsCountDialog(tempName, 'Personnalisé', exerciseId: null, isCustom: true);
+                          // Création en arrière-plan puis synchronisation de l'UUID
+                          final created = await db.DatabaseService.createCustomExercise(
+                            name: tempName,
+                            muscleGroup: 'Personnalisé',
+                          );
+                          if (created != null && mounted) {
+                            setState(() {
+                              for (int i = 0; i < _exercises.length; i++) {
+                                final e = _exercises[i];
+                                if (e.exercise.isCustom && e.exercise.name == tempName) {
+                                  _exercises[i] = e.copyWith(
+                                    exercise: e.exercise.copyWith(
+                                      id: created.id,
+                                      isCustom: true,
+                                    ),
+                                  );
+                                }
+                              }
+                            });
+                          }
                           // Reset après un délai
                           Timer(const Duration(milliseconds: 200), () {
                             if (mounted) {
@@ -718,7 +742,11 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                           return GestureDetector(
                             onTap: () {
                               Navigator.pop(context);
-                              _showSetsCountDialog(exercise.name, exercise.muscleGroup);
+                              _showSetsCountDialog(
+                                exercise.name,
+                                exercise.muscleGroup,
+                                exerciseId: exercise.id,
+                              );
                               // Reset après un délai
                               Timer(const Duration(milliseconds: 200), () {
                                 if (mounted) {
@@ -742,13 +770,35 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        Text(
-                                          exercise.name,
-                                          style: const TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w600,
-                                            color: Color(0xFF1A1A1A),
-                                          ),
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                exercise.name,
+                                                style: const TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Color(0xFF1A1A1A),
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                            if (exercise.isCustom) ...[
+                                              const SizedBox(width: 8),
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: const Color(0xFF0B132B).withOpacity(0.08),
+                                                  borderRadius: BorderRadius.circular(8),
+                                                  border: Border.all(color: const Color(0xFF0B132B).withOpacity(0.2)),
+                                                ),
+                                                child: const Text(
+                                                  'Perso',
+                                                  style: TextStyle(fontSize: 10, color: Color(0xFF0B132B), fontWeight: FontWeight.w600),
+                                                ),
+                                              ),
+                                            ],
+                                          ],
                                         ),
                                         Text(
                                           exercise.muscleGroup,
@@ -760,11 +810,30 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                                       ],
                                     ),
                                   ),
-                                  const Icon(
-                                    LucideIcons.chevronRight,
-                                    size: 16,
-                                    color: Color(0xFF64748B),
-                                  ),
+                                  if (exercise.isCustom)
+                                    IconButton(
+                                      icon: const Icon(LucideIcons.eyeOff, size: 16, color: Color(0xFF64748B)),
+                                      tooltip: 'Masquer',
+                                      onPressed: () async {
+                                        final ok = await db.DatabaseService.hideCustomExercise(exercise.id);
+                                        if (ok) {
+                                          setModalState(() {
+                                            filteredExercises.removeAt(index);
+                                          });
+                                          if (context.mounted) {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              const SnackBar(content: Text('Exercice masqué de la liste'), duration: Duration(seconds: 2)),
+                                            );
+                                          }
+                                        }
+                                      },
+                                    )
+                                  else
+                                    const Icon(
+                                      LucideIcons.chevronRight,
+                                      size: 16,
+                                      color: Color(0xFF64748B),
+                                    ),
                                 ],
                               ),
                             ),
@@ -927,6 +996,14 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
       isCompleted: true,
     );
     
+    // Historiser la séance (manuel ou guidé)
+    db.DatabaseService.persistCompletedWorkoutAsHistory(
+      session: completedSession,
+      guidedTemplateId: widget.isFromProgram ? (widget.guidedTemplateId ?? _inferGuidedTemplateId()) : null,
+    ).catchError((e) {
+      debugPrint('❌ persistCompletedWorkoutAsHistory error: $e');
+    });
+
     // Appeler le callback pour valider la session
     if (widget.onSessionCompleted != null) {
       widget.onSessionCompleted!(completedSession);
@@ -935,6 +1012,14 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     print('Séance validée: ${completedSession.name}');
     print('- Durée totale: ${_formatDuration(completedSession.duration)}');
     print('- ${completedSession.completedSets}/${completedSession.totalSets} séries terminées');
+  }
+
+  // Si la session vient d'un programme, tenter d'extraire l'id depuis le nom (format optionnel) sinon null
+  String? _inferGuidedTemplateId() {
+    // Si on injecte le screen avec un programme, idéalement on passerait l'id en paramètre.
+    // Ici on tente juste de parser si le nom est au format "<nom> (#<id>)";
+    final match = RegExp(r'#([0-9a-fA-F-]{36})').firstMatch(widget.sessionName);
+    return match != null ? match.group(1) : null;
   }
 
   void _saveAsProgram(String sessionName) {

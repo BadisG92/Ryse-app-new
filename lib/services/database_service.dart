@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:flutter/services.dart' show rootBundle;
 import '../types/database_types.dart';
+import 'package:uuid/uuid.dart';
 import '../models/sport_models.dart' as models;
 import 'package:flutter/foundation.dart';
 
@@ -22,22 +23,39 @@ class DatabaseService {
     return 'fr'; // Default to French for now
   }
 
+  static Future<bool> hideCustomExercise(String exerciseId) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) return false;
+    try {
+      await _client
+          .from('custom_exercises')
+          .update({'visible_list': false})
+          .eq('id', exerciseId)
+          .eq('user_id', userId);
+      return true;
+    } catch (e) {
+      debugPrint('❌ hideCustomExercise error: $e');
+      return false;
+    }
+  }
+
   // EXERCISES
   // Retourne les exercices au format UI (models.Exercise) depuis Supabase
-  static Future<List<models.Exercise>> getSystemExercises({String? language}) async {
+  static Future<List<models.Exercise>> getSystemExercises({String? language, bool includeCustom = true}) async {
     final lang = language ?? _getUserLanguage();
+
+    List<models.Exercise> base = [];
+
+    // 1) RPC get_system_exercises_localized
     try {
-      // 1) Essayer la RPC "get_system_exercises_localized"
       final response1 = await _client
           .rpc('get_system_exercises_localized', params: {'user_lang': lang});
       if (response1 is List && response1.isNotEmpty) {
-        return response1.map<models.Exercise>((json) {
+        base = response1.map<models.Exercise>((json) {
           final map = json as Map<String, dynamic>;
-          final id = map['id']?.toString() ?? '';
-          final name = (map['name'] as String?) ?? '';
           return models.Exercise(
-            id: id,
-            name: name,
+            id: map['id']?.toString() ?? '',
+            name: (map['name'] as String?) ?? '',
             muscleGroup: (map['muscle_group'] as String?) ?? '',
             equipment: (map['equipment'] as String?) ?? '',
             description: (map['description'] as String?) ?? '',
@@ -45,59 +63,123 @@ class DatabaseService {
           );
         }).toList();
       }
-    } catch (_) {
-      // ignore and try next strategy
+    } catch (_) {}
+
+    // 2) RPC get_exercises_localized
+    if (base.isEmpty) {
+      try {
+        final response2 = await _client
+            .rpc('get_exercises_localized', params: {'user_language': lang});
+        if (response2 is List && response2.isNotEmpty) {
+          base = response2.map<models.Exercise>((json) {
+            final e = Exercise.fromJson(json as Map<String, dynamic>);
+            return models.Exercise(
+              id: e.id,
+              name: e.getLocalizedName(lang),
+              muscleGroup: e.muscleGroup,
+              equipment: e.equipment ?? '',
+              description: e.description ?? '',
+              isCustom: e.isCustom,
+            );
+          }).toList();
+        }
+      } catch (_) {}
     }
 
+    // 3) Direct table fallback if still empty
+    if (base.isEmpty) {
+      try {
+        final rows = await _client
+            .from('exercises')
+            .select('id, name_en, name_fr, muscle_group, equipment, description, is_custom')
+            .limit(200);
+        if (rows is List && rows.isNotEmpty) {
+          base = rows.map<models.Exercise>((json) {
+            final map = json as Map<String, dynamic>;
+            final name = lang == 'fr'
+                ? (map['name_fr'] as String? ?? '')
+                : (map['name_en'] as String? ?? '');
+            return models.Exercise(
+              id: map['id']?.toString() ?? '',
+              name: name,
+              muscleGroup: (map['muscle_group'] as String?) ?? '',
+              equipment: (map['equipment'] as String?) ?? '',
+              description: (map['description'] as String?) ?? '',
+              isCustom: (map['is_custom'] as bool?) ?? false,
+            );
+          }).toList();
+        }
+      } catch (_) {}
+    }
+
+    if (includeCustom) {
+      try {
+        final userId = _client.auth.currentUser?.id;
+        if (userId != null) {
+          final customRows = await _client
+              .from('custom_exercises')
+              .select('id, name, muscle_group, equipment, description, visible_list')
+              .eq('user_id', userId)
+              .eq('visible_list', true)
+              .order('created_at', ascending: false);
+          if (customRows is List && customRows.isNotEmpty) {
+            final customs = customRows.map<models.Exercise>((m) {
+              final map = m as Map<String, dynamic>;
+              return models.Exercise(
+                id: map['id']?.toString() ?? '',
+                name: (map['name'] as String?) ?? '',
+                muscleGroup: (map['muscle_group'] as String?) ?? '',
+                equipment: (map['equipment'] as String?) ?? '',
+                description: (map['description'] as String?) ?? '',
+                isCustom: true,
+              );
+            }).toList();
+            base.addAll(customs);
+          }
+        }
+      } catch (_) {}
+    }
+
+    return base;
+  }
+
+  // Create a custom exercise for the current user and return it (for immediate selection)
+  static Future<models.Exercise?> createCustomExercise({
+    required String name,
+    String muscleGroup = '',
+    String equipment = '',
+    String description = '',
+  }) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) {
+      throw Exception('User not authenticated');
+    }
     try {
-      // 2) Essayer la RPC "get_exercises_localized" (utilisée côté nutrition)
-      final response2 = await _client
-          .rpc('get_exercises_localized', params: {'user_language': lang});
-      if (response2 is List && response2.isNotEmpty) {
-        return response2.map<models.Exercise>((json) {
-          final e = Exercise.fromJson(json as Map<String, dynamic>);
-          return models.Exercise(
-            id: e.id,
-            name: e.getLocalizedName(lang),
-            muscleGroup: e.muscleGroup,
-            equipment: e.equipment ?? '',
-            description: e.description ?? '',
-            isCustom: e.isCustom,
-          );
-        }).toList();
-      }
-    } catch (_) {
-      // ignore and try next strategy
-    }
+      final row = await _client
+          .from('custom_exercises')
+          .insert({
+            'user_id': userId,
+            'name': name.trim(),
+            'muscle_group': muscleGroup,
+            'equipment': equipment,
+            'description': description,
+            'visible_list': true,
+          })
+          .select('id, name, muscle_group, equipment, description')
+          .single();
 
-    try {
-      // 3) Fallback: lecture directe de la table exercises
-      final rows = await _client
-          .from('exercises')
-          .select('id, name_en, name_fr, muscle_group, equipment, description, is_custom')
-          .limit(200);
-      if (rows is List && rows.isNotEmpty) {
-        return rows.map<models.Exercise>((json) {
-          final map = json as Map<String, dynamic>;
-          final id = map['id']?.toString() ?? '';
-          final name = lang == 'fr'
-              ? (map['name_fr'] as String? ?? '')
-              : (map['name_en'] as String? ?? '');
-          return models.Exercise(
-            id: id,
-            name: name,
-            muscleGroup: (map['muscle_group'] as String?) ?? '',
-            equipment: (map['equipment'] as String?) ?? '',
-            description: (map['description'] as String?) ?? '',
-            isCustom: (map['is_custom'] as bool?) ?? false,
-          );
-        }).toList();
-      }
-    } catch (_) {
-      // ignore
+      return models.Exercise(
+        id: row['id']?.toString() ?? '',
+        name: row['name'] as String? ?? name,
+        muscleGroup: row['muscle_group'] as String? ?? muscleGroup,
+        equipment: row['equipment'] as String? ?? equipment,
+        description: row['description'] as String? ?? description,
+        isCustom: true,
+      );
+    } catch (e) {
+      debugPrint('❌ createCustomExercise error: $e');
+      return null;
     }
-
-    return [];
   }
 
   static Future<List<Exercise>> getExercises({String? language}) async {
@@ -718,6 +800,153 @@ class DatabaseService {
     return WorkoutSession.fromJson(response);
   }
 
+  // Persist session details as per-set history rows
+  static Future<void> persistCompletedWorkoutAsHistory({
+    required models.WorkoutSession session,
+    String? guidedTemplateId,
+  }) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) {
+      throw Exception('User not authenticated');
+    }
+
+    // Generate a unique history session id
+    final historySessionId = const Uuid().v4();
+    final performedAt = (session.endTime ?? DateTime.now()).toIso8601String();
+
+    // Helper: validate uuid format
+    bool _isValidUuid(String value) {
+      final uuidRegex = RegExp(
+          r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12} ?$',
+          multiLine: false);
+      return uuidRegex.hasMatch(value);
+    }
+
+    // Ensure an exercise exists in DB and return a valid uuid. If name matches an existing, reuse it. Otherwise create a custom one for the user.
+    Future<String?> _ensureExerciseExistsAndGetId(models.Exercise exercise) async {
+      // If already a valid UUID, return it as-is
+      if (exercise.id.isNotEmpty && _isValidUuid(exercise.id)) {
+        return exercise.id;
+      }
+
+      final name = exercise.name.trim();
+      if (name.isEmpty) return null;
+
+      // 1) Try exact match on name_fr
+      try {
+        final fr = await _client
+            .from('exercises')
+            .select('id')
+            .eq('name_fr', name)
+            .limit(1);
+        if (fr is List && fr.isNotEmpty) {
+          final id = fr.first['id']?.toString();
+          if (id != null && _isValidUuid(id)) return id;
+        }
+      } catch (_) {}
+
+      // 2) Try exact match on name_en
+      try {
+        final en = await _client
+            .from('exercises')
+            .select('id')
+            .eq('name_en', name)
+            .limit(1);
+        if (en is List && en.isNotEmpty) {
+          final id = en.first['id']?.toString();
+          if (id != null && _isValidUuid(id)) return id;
+        }
+      } catch (_) {}
+
+      // 3) Create a custom exercise for this user (in custom_exercises)
+      try {
+        final insert = await _client
+            .from('custom_exercises')
+            .insert({
+              'user_id': userId,
+              'name': name,
+              'muscle_group': exercise.muscleGroup,
+              'equipment': exercise.equipment,
+              'description': exercise.description,
+            })
+            .select('id')
+            .single();
+        final id = insert['id']?.toString();
+        if (id != null && _isValidUuid(id)) return id;
+      } catch (_) {}
+
+      return null;
+    }
+
+    // Flatten sets into per-set rows with global set_order
+    final List<Map<String, dynamic>> rows = [];
+    int globalOrder = 1;
+    for (final we in session.exercises) {
+      // Récupérer un exercise_id UUID valide pour l'historisation
+      String? exerciseId;
+      String? customExerciseId;
+      if (we.exercise.isCustom) {
+        // custom: id se trouve dans custom_exercises
+        if (_isValidUuid(we.exercise.id)) {
+          customExerciseId = we.exercise.id;
+        } else {
+          // Pas encore d'UUID (création en cours): insérer en historique avec null côté custom_exercise_id
+          // On garde la ligne (pas de FK not null) pour ne pas perdre la séance.
+          customExerciseId = null;
+        }
+      } else {
+        exerciseId = await _ensureExerciseExistsAndGetId(we.exercise);
+        if (exerciseId == null) continue;
+      }
+      for (final set in we.sets.where((s) => s.isCompleted)) {
+        rows.add({
+          'user_id': userId,
+          'history_session_id': historySessionId,
+          'guided_template_id': guidedTemplateId,
+          'exercise_id': exerciseId,
+          'custom_exercise_id': customExerciseId,
+          'exercise_name': we.exercise.name,
+          'set_order': globalOrder++,
+          'weight': set.weight,
+          'reps': set.reps,
+          'performed_at': performedAt,
+          'session_name': session.name,
+        });
+      }
+    }
+
+    // Insert in bulk into workout_set_history
+    if (rows.isNotEmpty) {
+      await _client.from('workout_set_history').insert(rows);
+    }
+
+    // Post-sync: for any custom exercise rows without custom_exercise_id yet, try to resolve and backfill
+    try {
+      for (final we in session.exercises.where((e) => e.exercise.isCustom)) {
+        final name = we.exercise.name.trim();
+        if (we.exercise.id.isEmpty || we.exercise.id.length < 36) {
+          final created = await _client
+              .from('custom_exercises')
+              .select('id')
+              .eq('user_id', userId)
+              .eq('name', name)
+              .limit(1);
+          if (created is List && created.isNotEmpty) {
+            final cid = created.first['id']?.toString();
+            if (cid != null) {
+              await _client
+                  .from('workout_set_history')
+                  .update({'custom_exercise_id': cid})
+                  .eq('history_session_id', historySessionId)
+                  .filter('custom_exercise_id', 'is', null)
+                  .eq('exercise_name', name);
+            }
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
   static Future<HiitSession?> createHiitSession(HiitSession session) async {
     final response = await _client
         .from('hiit_sessions')
@@ -782,8 +1011,8 @@ class DatabaseService {
     return CardioSession.fromJson(response);
   }
 
-  // CUSTOM CONTENT CREATION
-  static Future<Exercise?> createCustomExercise(Exercise exercise) async {
+  // Legacy: create an exercise directly in base 'exercises' table (kept for backward-compat under new name)
+  static Future<Exercise?> createExerciseInBase(Exercise exercise) async {
     final response = await _client
         .from('exercises')
         .insert(exercise.toJson())

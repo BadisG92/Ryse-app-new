@@ -15,6 +15,24 @@ class Exercise {
     this.isCustom = false,
   });
 
+  Exercise copyWith({
+    String? id,
+    String? name,
+    String? muscleGroup,
+    String? equipment,
+    String? description,
+    bool? isCustom,
+  }) {
+    return Exercise(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      muscleGroup: muscleGroup ?? this.muscleGroup,
+      equipment: equipment ?? this.equipment,
+      description: description ?? this.description,
+      isCustom: isCustom ?? this.isCustom,
+    );
+  }
+
   factory Exercise.fromJson(Map<String, dynamic> json) {
     return Exercise(
       id: json['id'] ?? '',

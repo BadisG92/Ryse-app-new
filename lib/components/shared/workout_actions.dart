@@ -219,6 +219,7 @@ class WorkoutActions {
           sessionName: name,
           exercises: [],
           isFromProgram: false,
+          guidedTemplateId: null,
           onProgramSaved: (WorkoutProgram program) {
             WorkoutService().addProgram(program);
           },
@@ -248,6 +249,7 @@ class WorkoutActions {
           sessionName: program.name,
           exercises: programExercises,
           isFromProgram: true,
+          guidedTemplateId: program.id,
           onSessionCompleted: (WorkoutSession session) {
             print('Session complétée: ${session.name}');
           },
