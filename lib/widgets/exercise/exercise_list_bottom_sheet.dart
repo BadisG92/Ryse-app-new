@@ -1,9 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'exercise_detail_page.dart';
 
-class ExerciseListBottomSheet extends StatelessWidget {
+class ExerciseListBottomSheet extends StatefulWidget {
   const ExerciseListBottomSheet({super.key});
+
+  @override
+  State<ExerciseListBottomSheet> createState() => _ExerciseListBottomSheetState();
+
+  static void show(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => const ExerciseListBottomSheet(),
+    );
+  }
+}
+
+class _ExerciseListBottomSheetState extends State<ExerciseListBottomSheet> {
+  List<Map<String, dynamic>> _items = const [];
+  bool _loading = true;
 
   static const List<Map<String, dynamic>> exercisesData = [
     {
@@ -233,6 +251,110 @@ class ExerciseListBottomSheet extends StatelessWidget {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final client = Supabase.instance.client;
+      final userId = client.auth.currentUser?.id;
+      if (userId == null) {
+        setState(() { _items = exercisesData; _loading = false; });
+        return;
+      }
+
+      final rows = await client
+          .from('workout_set_history')
+          .select('history_session_id, exercise_name, weight, reps, performed_at, best_set')
+          .eq('user_id', userId)
+          .order('performed_at', ascending: false);
+
+      final Map<String, Map<String, dynamic>> agg = {};
+      if (rows is List) {
+        for (final r in rows) {
+          final name = (r['exercise_name']?.toString() ?? '').trim();
+          if (name.isEmpty) continue;
+          final sid = r['history_session_id']?.toString() ?? '';
+          final performedAt = DateTime.tryParse(r['performed_at']?.toString() ?? '');
+          final weight = (r['weight'] as num?)?.toDouble() ?? 0.0;
+          final reps = (r['reps'] as int?) ?? 0;
+          final isBest = (r['best_set'] as bool?) ?? false;
+
+          final current = agg[name] ?? {
+            'name': name,
+            'sessionsSet': <String>{}, // distinct session ids
+            'lastWeightLabel': 'N/A',
+            'lastSeen': DateTime.fromMillisecondsSinceEpoch(0),
+            'perSession': <String, Map<String, dynamic>>{},
+          };
+
+          if (performedAt != null && sid.isNotEmpty) {
+            (current['sessionsSet'] as Set<String>).add(sid);
+            final Map<String, dynamic> perSess = (current['perSession'] as Map<String, dynamic>)[sid] ?? {
+              'date': performedAt,
+              'weight': 0.0,
+              'reps': 0,
+              'score': 0.0,
+              'isBest': false,
+            };
+            final double score = weight > 0 ? (weight * reps) : reps.toDouble();
+            if (isBest || (!perSess['isBest'] && score > (perSess['score'] as double))) {
+              perSess['date'] = performedAt;
+              perSess['weight'] = weight;
+              perSess['reps'] = reps;
+              perSess['score'] = score;
+              perSess['isBest'] = isBest || perSess['isBest'];
+              (current['perSession'] as Map<String, dynamic>)[sid] = perSess;
+            } else {
+              (current['perSession'] as Map<String, dynamic>)[sid] = perSess;
+            }
+          }
+
+          agg[name] = current;
+        }
+      }
+
+      String _fmtWeight(double w) {
+        if (w <= 0) return '';
+        if ((w % 1).abs() < 1e-6) {
+          return '${w.toInt()} kg';
+        }
+        return '${w.toStringAsFixed(1)} kg';
+      }
+
+      final list = agg.values.map((m) {
+        final sessionsCount = (m['sessionsSet'] as Set<String>).length;
+        // Trouver la session la plus récente et son best
+        String label = 'N/A';
+        DateTime latest = DateTime.fromMillisecondsSinceEpoch(0);
+        (m['perSession'] as Map<String, dynamic>).forEach((sid, data) {
+          final dt = data['date'] as DateTime;
+          if (dt.isAfter(latest)) {
+            latest = dt;
+            final w = (data['weight'] as double);
+            final r = (data['reps'] as int);
+            label = w > 0 ? _fmtWeight(w) : (r > 0 ? '$r reps' : 'N/A');
+          }
+        });
+
+        return {
+          'name': m['name'],
+          'sessions': sessionsCount,
+          'lastWeight': label,
+          'progress': '',
+        };
+      }).where((e) => (e['sessions'] as int) > 0).toList()
+        ..sort((a, b) => (b['sessions'] as int).compareTo(a['sessions'] as int));
+
+      setState(() { _items = list; _loading = false; });
+    } catch (_) {
+      setState(() { _items = exercisesData; _loading = false; });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Container(
       height: MediaQuery.of(context).size.height * 0.8,
@@ -306,14 +428,16 @@ class ExerciseListBottomSheet extends StatelessWidget {
           
           // Liste des exercices
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: exercisesData.length,
-              itemBuilder: (context, index) {
-                final exercise = exercisesData[index];
-                return _buildExerciseItem(context, exercise);
-              },
-            ),
+            child: _loading
+                ? const Center(child: CircularProgressIndicator())
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: _items.length,
+                    itemBuilder: (context, index) {
+                      final exercise = _items[index];
+                      return _buildExerciseItem(context, exercise);
+                    },
+                  ),
           ),
         ],
       ),
@@ -331,7 +455,7 @@ class ExerciseListBottomSheet extends StatelessWidget {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => ExerciseDetailPage(exercise: exercise),
+                builder: (context) => ExerciseDetailPage(exerciseName: exercise['name'] as String),
               ),
             );
           },

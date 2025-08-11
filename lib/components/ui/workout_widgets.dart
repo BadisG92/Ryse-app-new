@@ -289,18 +289,127 @@ class _WeekHistorySectionState extends State<WeekHistorySection> {
 }
 
 // Section progression des exercices
-class ExerciseProgressSection extends StatelessWidget {
+class ExerciseProgressSection extends StatefulWidget {
   const ExerciseProgressSection({super.key});
 
-  static const List<ExerciseProgress> _exerciseProgress = [
-    ExerciseProgress(name: 'Développé couché', current: '85kg', progress: '+12%', sessions: 24),
-    ExerciseProgress(name: 'Squat', current: '120kg', progress: '+18%', sessions: 18),
-    ExerciseProgress(name: 'Soulevé de terre', current: '140kg', progress: '+15%', sessions: 20),
-    ExerciseProgress(name: 'Tractions', current: '+15kg', progress: '+25%', sessions: 22),
-  ];
+  @override
+  State<ExerciseProgressSection> createState() => _ExerciseProgressSectionState();
+}
+
+class _ExerciseProgressSectionState extends State<ExerciseProgressSection> {
+  List<ExerciseProgress> _exercises = [];
+  bool _loading = true;
+  bool _showAll = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadExerciseProgress();
+  }
+
+  Future<void> _loadExerciseProgress() async {
+    try {
+      final client = Supabase.instance.client;
+      final userId = client.auth.currentUser?.id;
+      if (userId == null) {
+        setState(() {
+          _exercises = [];
+          _loading = false;
+        });
+        return;
+      }
+
+      // Requête pour récupérer les stats par exercice
+      final exerciseStats = await client
+          .from('workout_set_history')
+          .select('exercise_name, weight, reps, performed_at, best_set')
+          .eq('user_id', userId)
+          .order('performed_at', ascending: false);
+
+      final Map<String, Map<String, dynamic>> aggByExercise = {};
+      
+      if (exerciseStats is List) {
+        for (final row in exerciseStats) {
+          final exerciseName = row['exercise_name']?.toString()?.trim() ?? '';
+          if (exerciseName.isEmpty) continue;
+
+          final current = aggByExercise[exerciseName] ?? {
+            'sessions': <String>{}, // Set des dates de sessions
+            'lastBestWeight': null,
+            'lastBestReps': 0,
+          };
+
+          // Compter les sessions uniques (approximation via performed_at formaté en jour)
+          final performedAt = DateTime.tryParse(row['performed_at']?.toString() ?? '');
+          if (performedAt != null) {
+            final sessionKey = '${performedAt.year}-${performedAt.month}-${performedAt.day}';
+            (current['sessions'] as Set<String>).add(sessionKey);
+          }
+
+          // Récupérer le dernier best set
+          final isBest = row['best_set'] as bool? ?? false;
+          if (isBest) {
+            final weight = (row['weight'] as num?)?.toDouble();
+            final reps = row['reps'] as int? ?? 0;
+            current['lastBestWeight'] = weight;
+            current['lastBestReps'] = reps;
+          }
+
+          aggByExercise[exerciseName] = current;
+        }
+      }
+
+      String _fmtWeight(double w) {
+        if (w <= 0) return '';
+        if ((w % 1).abs() < 1e-6) {
+          return '${w.toInt()} kg';
+        }
+        return '${w.toStringAsFixed(1)} kg';
+      }
+
+      // Transformer en modèle ExerciseProgress
+      final allExercises = aggByExercise.entries.map((e) {
+        final sessions = (e.value['sessions'] as Set<String>).length;
+        final lastWeight = e.value['lastBestWeight'] as double?;
+        final lastReps = e.value['lastBestReps'] as int? ?? 0;
+        
+        String current = '';
+        if (lastWeight != null && lastWeight > 0) {
+          current = _fmtWeight(lastWeight);
+        } else if (lastReps > 0) {
+          current = '$lastReps reps';
+        } else {
+          current = 'N/A';
+        }
+
+        return ExerciseProgress(
+          name: e.key,
+          current: current,
+          progress: '', // Pas de calcul de progression pour l'instant
+          sessions: sessions,
+        );
+      }).where((ex) => ex.sessions > 0).toList();
+
+      // Trier par nombre de sessions décroissant
+      allExercises.sort((a, b) => b.sessions.compareTo(a.sessions));
+
+      setState(() {
+        _exercises = allExercises;
+        _loading = false;
+      });
+    } catch (e) {
+      debugPrint('❌ Error loading exercise progress: $e');
+      setState(() {
+        _exercises = [];
+        _loading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final displayedExercises = _showAll ? _exercises : _exercises.take(4).toList();
+    
     return CustomCard(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -345,7 +454,12 @@ class ExerciseProgressSection extends StatelessWidget {
             
             const SizedBox(height: 16),
             
-            ..._exerciseProgress.map((progress) => ExerciseProgressCard(progress: progress)).toList(),
+            if (_loading)
+              const Center(child: CircularProgressIndicator())
+            else if (_exercises.isEmpty)
+              const Text('Aucun exercice trouvé', style: TextStyle(color: Color(0xFF64748B)))
+            else
+              ...displayedExercises.map((progress) => ExerciseProgressCard(progress: progress)).toList(),
           ],
         ),
       ),

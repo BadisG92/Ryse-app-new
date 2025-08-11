@@ -93,7 +93,7 @@ class WeeklyStatsCard extends StatelessWidget {
                 Expanded(
                   child: WeeklyStatCard(
                     title: stats.sessions,
-                    subtitle: 'Séances réalisées',
+                    subtitle: 'Séances',
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -413,16 +413,14 @@ class ExerciseProgressCard extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () {
-            final exerciseData = _getExerciseDataByName(progress.name);
-            if (exerciseData != null) {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ExerciseDetailPage(exercise: exerciseData),
-                ),
-              );
-            }
+          onTap: () async {
+            // Charger les détails réels depuis Supabase via un écran qui sait interroger par nom
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ExerciseDetailPage(exerciseName: progress.name),
+              ),
+            );
           },
           borderRadius: BorderRadius.circular(12),
           child: Container(
