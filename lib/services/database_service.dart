@@ -84,15 +84,15 @@ class DatabaseService {
           if (customRows is List && customRows.isNotEmpty) {
             final customs = customRows.map<models.Exercise>((m) {
               final map = m as Map<String, dynamic>;
-              return models.Exercise(
+          return models.Exercise(
                 id: map['id']?.toString() ?? '',
                 name: (map['name'] as String?) ?? '',
                 muscleGroup: (map['muscle_group'] as String?) ?? '',
                 equipment: (map['equipment'] as String?) ?? '',
                 description: (map['description'] as String?) ?? '',
                 isCustom: true,
-              );
-            }).toList();
+          );
+        }).toList();
             // Dédoublonnage par nom (priorité aux customs)
             final existingNames = base.map((e) => e.name.toLowerCase()).toSet();
             for (final cx in customs) {
@@ -133,7 +133,7 @@ class DatabaseService {
           .select('id, name, muscle_group, equipment, description')
           .single();
 
-      return models.Exercise(
+          return models.Exercise(
         id: row['id']?.toString() ?? '',
         name: row['name'] as String? ?? name,
         muscleGroup: row['muscle_group'] as String? ?? muscleGroup,
@@ -446,6 +446,8 @@ class DatabaseService {
       workout_template_exercises(
         order_index,
         suggested_sets,
+        suggested_reps_min,
+        suggested_reps_max,
         exercises:exercise_id(
           id,
           name_en,
@@ -466,7 +468,7 @@ class DatabaseService {
         .order('created_at', ascending: false);
     if (predefinedResp is List) aggregated.addAll(predefinedResp);
 
-    // 2) Custom de l'utilisateur connecté
+    // 2) Custom de l'utilisateur connecté (anciens templates dans workout_templates)
     if (userId != null) {
       final userResp = await _client
           .from('workout_templates')
@@ -475,6 +477,88 @@ class DatabaseService {
           .eq('user_id', userId)
           .order('created_at', ascending: false);
       if (userResp is List) aggregated.addAll(userResp);
+    }
+
+    // 3) Nouveaux templates utilisateur (dans user_workout_templates)
+    if (userId != null) {
+      final userTemplateSelect = '''
+        id,
+        name,
+        description,
+        created_at,
+        estimated_duration_minutes,
+        user_workout_template_exercises(
+          order_index,
+          suggested_sets,
+          suggested_reps_min,
+          suggested_reps_max,
+          exercises:exercise_id(
+            id,
+            name_en,
+            name_fr,
+            muscle_group,
+            equipment
+          ),
+          custom_exercises:custom_exercise_id(
+            id,
+            name,
+            muscle_group,
+            equipment
+          )
+        )
+      ''';
+      
+      final userTemplatesResp = await _client
+          .from('user_workout_templates')
+          .select(userTemplateSelect)
+          .eq('user_id', userId)
+          .order('created_at', ascending: false);
+      
+      if (userTemplatesResp is List) {
+        // Convertir les templates utilisateur au format attendu
+        for (final template in userTemplatesResp) {
+          final convertedTemplate = {
+            'id': template['id'],
+            'name_en': template['name'],
+            'name_fr': template['name'],
+            'description_en': template['description'],
+            'description_fr': template['description'],
+            'created_at': template['created_at'],
+            'estimated_duration_minutes': template['estimated_duration_minutes'],
+            'workout_template_exercises': (template['user_workout_template_exercises'] as List?)
+                ?.map((ex) {
+                  // Gérer exercice générique vs custom
+                  final genericEx = ex['exercises'] as Map<String, dynamic>?;
+                  final customEx = ex['custom_exercises'] as Map<String, dynamic>?;
+                  
+                  Map<String, dynamic>? exerciseData;
+                  if (genericEx != null) {
+                    exerciseData = genericEx;
+                  } else if (customEx != null) {
+                    // Adapter les exercices custom au format attendu
+                    exerciseData = {
+                      'id': customEx['id'],
+                      'name_en': customEx['name'],
+                      'name_fr': customEx['name'],
+                      'muscle_group': customEx['muscle_group'],
+                      'equipment': customEx['equipment'],
+                    };
+                  }
+                  
+                  return {
+                    'order_index': ex['order_index'],
+                    'suggested_sets': ex['suggested_sets'],
+                    'suggested_reps_min': ex['suggested_reps_min'],
+                    'suggested_reps_max': ex['suggested_reps_max'],
+                    'exercises': exerciseData,
+                  };
+                })
+                .where((ex) => ex['exercises'] != null)
+                .toList() ?? [],
+          };
+          aggregated.add(convertedTemplate);
+        }
+      }
     }
 
     if (aggregated.isEmpty) return [];
@@ -513,16 +597,32 @@ class DatabaseService {
           isCustom: false,
         );
         final sets = (rm['suggested_sets'] as int?) ?? 3;
-        return models.ProgramExercise(exercise: exModel, sets: sets);
+        final repsMin = (rm['suggested_reps_min'] as int?);
+        final repsMax = (rm['suggested_reps_max'] as int?);
+        return models.ProgramExercise(
+          exercise: exModel, 
+          sets: sets,
+          suggestedRepsMin: repsMin,
+          suggestedRepsMax: repsMax,
+        );
       }).toList();
 
+      // Détecter si c'est un template custom (vient de user_workout_templates)
+      // Les templates custom ont name_en = name_fr et description_en = description_fr
+      final nameEn = map['name_en'] as String? ?? '';
+      final nameFr = map['name_fr'] as String? ?? '';
+      final descEn = map['description_en'] as String? ?? '';
+      final descFr = map['description_fr'] as String? ?? '';
+      final isCustomTemplate = (nameEn == nameFr) && (descEn == descFr) && nameEn.isNotEmpty;
+      
       return models.WorkoutProgram(
         id: map['id']?.toString() ?? '',
-        name: lang == 'fr' ? (map['name_fr'] as String? ?? '') : (map['name_en'] as String? ?? ''),
-        description: lang == 'fr' ? (map['description_fr'] as String? ?? '') : (map['description_en'] as String? ?? ''),
+        name: lang == 'fr' ? nameFr : nameEn,
+        description: lang == 'fr' ? descFr : descEn,
         type: '',
         estimatedDuration: (map['estimated_duration_minutes'] as int?) ?? 45,
         exercises: exercises,
+        isCustom: isCustomTemplate,
       );
     }).toList();
 
@@ -620,7 +720,7 @@ class DatabaseService {
 
     final rows = await _client
         .from('workout_template_exercises')
-        .select('order_index, suggested_sets, exercises:exercise_id(id, name_en, name_fr, muscle_group, equipment)')
+        .select('order_index, suggested_sets, suggested_reps_min, suggested_reps_max, exercises:exercise_id(id, name_en, name_fr, muscle_group, equipment)')
         .eq('template_id', templateId)
         .order('order_index');
 
@@ -637,7 +737,14 @@ class DatabaseService {
         isCustom: false,
       );
       final sets = (rm['suggested_sets'] as int?) ?? 3;
-      return models.ProgramExercise(exercise: exModel, sets: sets);
+      final repsMin = (rm['suggested_reps_min'] as int?);
+      final repsMax = (rm['suggested_reps_max'] as int?);
+      return models.ProgramExercise(
+        exercise: exModel, 
+        sets: sets,
+        suggestedRepsMin: repsMin,
+        suggestedRepsMax: repsMax,
+      );
     }).toList();
 
     _templateExercisesCache[templateId] = list;
@@ -672,7 +779,14 @@ class DatabaseService {
               isCustom: false,
             );
             final sets = (rm['suggested_sets'] as int?) ?? 3;
-            return models.ProgramExercise(exercise: exModel, sets: sets);
+            final repsMin = (rm['suggestedRepsMin'] as int?);
+            final repsMax = (rm['suggestedRepsMax'] as int?);
+            return models.ProgramExercise(
+              exercise: exModel, 
+              sets: sets,
+              suggestedRepsMin: repsMin,
+              suggestedRepsMax: repsMax,
+            );
           }).toList();
           return models.WorkoutProgram(
             id: map['id']?.toString() ?? '',
@@ -709,7 +823,14 @@ class DatabaseService {
               isCustom: false,
             );
             final sets = (rm['suggested_sets'] as int?) ?? 3;
-            return models.ProgramExercise(exercise: exModel, sets: sets);
+            final repsMin = (rm['suggestedRepsMin'] as int?);
+            final repsMax = (rm['suggestedRepsMax'] as int?);
+            return models.ProgramExercise(
+              exercise: exModel, 
+              sets: sets,
+              suggestedRepsMin: repsMin,
+              suggestedRepsMax: repsMax,
+            );
           }).toList();
           return models.WorkoutProgram(
             id: map['id']?.toString() ?? '',
@@ -728,6 +849,165 @@ class DatabaseService {
     } catch (_) {}
     // 4) Fallback: fetch remotely
     return await getWorkoutTemplates(language: lang);
+  }
+
+  // SAUVEGARDE DES TEMPLATES UTILISATEUR
+  static Future<String> saveUserWorkoutTemplate(models.WorkoutSession session) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) throw Exception('User not authenticated');
+
+    final sessionDuration = session.endTime?.difference(session.startTime).inMinutes ?? 45;
+    
+    // 1. Créer le template utilisateur
+    final templateData = {
+      'user_id': userId,
+      'name': session.name,
+      'description': 'Programme créé à partir d\'une séance manuelle',
+      'is_custom': true,
+      'estimated_duration_minutes': sessionDuration,
+    };
+
+    final templateResult = await _client
+        .from('user_workout_templates')
+        .insert(templateData)
+        .select('id')
+        .single();
+    
+    final templateId = templateResult['id'] as String;
+
+    // 2. Créer les exercices du template
+    final exerciseData = <Map<String, dynamic>>[];
+    
+    debugPrint('=== DEBUG SAUVEGARDE EXERCICES ===');
+    debugPrint('Nombre d\'exercices dans la session: ${session.exercises.length}');
+    
+    for (int i = 0; i < session.exercises.length; i++) {
+      final workoutExercise = session.exercises[i];
+      final exercise = workoutExercise.exercise;
+      
+      // Compter le nombre de séries validées pour cet exercice
+      final completedSets = workoutExercise.sets.where((set) => set.isCompleted).length;
+      final totalSets = workoutExercise.sets.length;
+      
+      debugPrint('Exercice ${i + 1}: ${exercise.name}');
+      debugPrint('- Total séries: $totalSets');
+      debugPrint('- Séries validées: $completedSets');
+      debugPrint('- Est custom: ${exercise.isCustom}');
+      debugPrint('- ID exercice: ${exercise.id}');
+      
+      if (completedSets == 0) {
+        debugPrint('- IGNORÉ (aucune série validée)');
+        continue; // Ignorer les exercices sans série validée
+      }
+      
+      final exerciseRow = <String, dynamic>{
+        'template_id': templateId,
+        'order_index': i,
+        'suggested_sets': completedSets,
+        'suggested_reps_min': 0, // Par défaut comme demandé
+        'suggested_reps_max': 0, // Par défaut comme demandé
+      };
+
+      // Gérer exercice générique vs custom
+      // Vérifier d'abord si l'exercice existe dans custom_exercises
+      final customExerciseCheck = await _client
+          .from('custom_exercises')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('name', exercise.name)
+          .maybeSingle();
+      
+      if (customExerciseCheck != null || exercise.isCustom) {
+        debugPrint('- TRAITEMENT EXERCICE CUSTOM');
+        
+        if (customExerciseCheck != null) {
+          // Exercice custom existe déjà
+          exerciseRow['custom_exercise_id'] = customExerciseCheck['id'];
+          debugPrint('- Exercice custom trouvé: ${customExerciseCheck['id']}');
+        } else {
+          debugPrint('- Création d\'un nouvel exercice custom');
+          // Créer l'exercice custom s'il n'existe pas
+          final newCustomExercise = {
+            'user_id': userId,
+            'name': exercise.name,
+            'muscle_group': exercise.muscleGroup,
+            'equipment': exercise.equipment,
+            'description': exercise.description,
+            'visible_list': true,
+          };
+          
+          final customResult = await _client
+              .from('custom_exercises')
+              .insert(newCustomExercise)
+              .select('id')
+              .single();
+              
+          exerciseRow['custom_exercise_id'] = customResult['id'];
+          debugPrint('- Nouvel exercice custom créé: ${customResult['id']}');
+        }
+      } else {
+        debugPrint('- TRAITEMENT EXERCICE GÉNÉRIQUE');
+        // Vérifier que l'exercice existe bien dans la table exercises
+        final genericExerciseCheck = await _client
+            .from('exercises')
+            .select('id')
+            .eq('id', exercise.id)
+            .maybeSingle();
+        
+        if (genericExerciseCheck != null) {
+          // Exercice générique - utiliser l'ID directement
+          exerciseRow['exercise_id'] = exercise.id;
+          debugPrint('- ID exercice générique: ${exercise.id}');
+        } else {
+          debugPrint('- ERREUR: Exercice générique introuvable avec ID: ${exercise.id}');
+          debugPrint('- Création d\'un exercice custom à la place');
+          // Créer comme exercice custom si l'ID générique n'existe pas
+          final newCustomExercise = {
+            'user_id': userId,
+            'name': exercise.name,
+            'muscle_group': exercise.muscleGroup,
+            'equipment': exercise.equipment,
+            'description': exercise.description,
+            'visible_list': true,
+          };
+          
+          final customResult = await _client
+              .from('custom_exercises')
+              .insert(newCustomExercise)
+              .select('id')
+              .single();
+              
+          exerciseRow['custom_exercise_id'] = customResult['id'];
+          debugPrint('- Exercice custom créé à la place: ${customResult['id']}');
+        }
+      }
+      
+      debugPrint('- Ajout exercice à la liste: $exerciseRow');
+      exerciseData.add(exerciseRow);
+    }
+
+    // 3. Insérer tous les exercices
+    debugPrint('Nombre d\'exercices à insérer: ${exerciseData.length}');
+    if (exerciseData.isNotEmpty) {
+      debugPrint('Données à insérer: $exerciseData');
+      try {
+        final result = await _client
+            .from('user_workout_template_exercises')
+            .insert(exerciseData)
+            .select();
+        debugPrint('✅ Exercices insérés avec succès: $result');
+      } catch (e) {
+        debugPrint('❌ Erreur lors de l\'insertion des exercices: $e');
+        rethrow;
+      }
+    } else {
+      debugPrint('⚠️ Aucun exercice à insérer (liste vide)');
+    }
+
+    // Invalider le cache pour forcer le rechargement de la liste
+    _templatesCacheByLang.clear();
+    
+    return templateId;
   }
 
   static Future<String?> _loadSeedAsset(String assetPath) async {
@@ -763,6 +1043,55 @@ class DatabaseService {
         .single();
     
     return WorkoutSession.fromJson(response);
+  }
+
+  // Helper method to generate unique session name with numbering if needed
+  static Future<String> generateUniqueSessionName({
+    required String baseSessionName,
+    required DateTime performedAtDate,
+  }) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) {
+      throw Exception('User not authenticated');
+    }
+
+    // Check for existing sessions with the same name on the same day
+    final sessionDate = performedAtDate.toIso8601String().split('T')[0];
+    final existingSessions = await _client
+        .from('workout_session_summaries')
+        .select('session_name')
+        .eq('user_id', userId)
+        .eq('session_date', sessionDate)
+        .like('session_name', '$baseSessionName%')
+        .order('session_name', ascending: false);
+    
+    // Generate unique session name with numbering if needed
+    String sessionName = baseSessionName;
+    if (existingSessions is List && existingSessions.isNotEmpty) {
+      int maxNumber = 1;
+      final baseNamePattern = RegExp(r'^' + RegExp.escape(baseSessionName) + r'( \((\d+)\))?$');
+      
+      for (final existing in existingSessions) {
+        final existingName = existing['session_name']?.toString() ?? '';
+        final match = baseNamePattern.firstMatch(existingName);
+        if (match != null) {
+          if (match.group(2) != null) {
+            // Found numbered version like "Séance (2)"
+            final number = int.tryParse(match.group(2)!) ?? 1;
+            maxNumber = maxNumber > number ? maxNumber : number + 1;
+          } else if (existingName == baseSessionName) {
+            // Found exact match without number
+            maxNumber = maxNumber > 1 ? maxNumber : 2;
+          }
+        }
+      }
+      
+      if (maxNumber > 1) {
+        sessionName = '$baseSessionName ($maxNumber)';
+      }
+    }
+
+    return sessionName;
   }
 
   // Persist session details as per-set history rows
@@ -853,16 +1182,43 @@ class DatabaseService {
       // Récupérer un exercise_id UUID valide pour l'historisation
       String? exerciseId;
       String? customExerciseId;
-      if (we.exercise.isCustom) {
-        // custom: id se trouve dans custom_exercises
-        if (_isValidUuid(we.exercise.id)) {
+      
+      // Vérifier d'abord si l'exercice existe dans custom_exercises (comme dans saveUserWorkoutTemplate)
+      final customExerciseCheck = await _client
+          .from('custom_exercises')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('name', we.exercise.name)
+          .maybeSingle();
+      
+      if (customExerciseCheck != null || we.exercise.isCustom) {
+        // Exercice custom
+        if (customExerciseCheck != null) {
+          customExerciseId = customExerciseCheck['id'];
+        } else if (_isValidUuid(we.exercise.id)) {
           customExerciseId = we.exercise.id;
         } else {
-          // Pas encore d'UUID (création en cours): insérer en historique avec null côté custom_exercise_id
-          // On garde la ligne (pas de FK not null) pour ne pas perdre la séance.
-          customExerciseId = null;
+          // Créer l'exercice custom s'il n'existe pas
+          try {
+            final insert = await _client
+                .from('custom_exercises')
+                .insert({
+                  'user_id': userId,
+                  'name': we.exercise.name,
+                  'muscle_group': we.exercise.muscleGroup,
+                  'equipment': we.exercise.equipment,
+                  'description': we.exercise.description,
+                  'visible_list': true,
+                })
+                .select('id')
+                .single();
+            customExerciseId = insert['id']?.toString();
+          } catch (_) {
+            customExerciseId = null;
+          }
         }
       } else {
+        // Exercice générique
         exerciseId = await _ensureExerciseExistsAndGetId(we.exercise);
         if (exerciseId == null) continue;
       }
@@ -895,9 +1251,16 @@ class DatabaseService {
       final intensityValue = intensity ?? 'Modéré';
       final performedAtDate = DateTime.tryParse(performedAt) ?? DateTime.now();
       final durationMins = durationMinutes ?? (session.endTime != null ? session.endTime!.difference(session.startTime).inMinutes : 0);
-      final sessionName = (session.name.trim().isEmpty)
+      
+      // Generate unique session name with automatic numbering
+      final baseSessionName = (session.name.trim().isEmpty)
           ? 'Séance ${performedAtDate.toIso8601String().split('T').first}'
           : session.name.trim();
+      
+      final sessionName = await generateUniqueSessionName(
+        baseSessionName: baseSessionName,
+        performedAtDate: performedAtDate,
+      );
 
       debugPrint('📝 Creating workout_session_summary:');
       debugPrint('  userId=$userId historySessionId=$historySessionId');
@@ -918,7 +1281,11 @@ class DatabaseService {
         'intensity': intensityValue,
         'guided_template_id': guidedTemplateId,
       });
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('❌ Error creating workout_session_summary: $e');
+      // Re-throw the error so it's not silently ignored
+      rethrow;
+    }
 
     // Post-sync: for any custom exercise rows without custom_exercise_id yet, try to resolve and backfill
     try {
@@ -1564,4 +1931,4 @@ class _TemplateCache {
   final DateTime cachedAt;
 
   _TemplateCache({required this.data, required this.cachedAt});
-}
+} 

@@ -99,19 +99,27 @@ class ExerciseSet {
 class WorkoutExercise {
   final Exercise exercise;
   final List<ExerciseSet> sets;
+  final int? suggestedRepsMin;
+  final int? suggestedRepsMax;
 
   const WorkoutExercise({
     required this.exercise,
     required this.sets,
+    this.suggestedRepsMin,
+    this.suggestedRepsMax,
   });
 
   WorkoutExercise copyWith({
     Exercise? exercise,
     List<ExerciseSet>? sets,
+    int? suggestedRepsMin,
+    int? suggestedRepsMax,
   }) {
     return WorkoutExercise(
       exercise: exercise ?? this.exercise,
       sets: sets ?? this.sets,
+      suggestedRepsMin: suggestedRepsMin ?? this.suggestedRepsMin,
+      suggestedRepsMax: suggestedRepsMax ?? this.suggestedRepsMax,
     );
   }
 
@@ -121,6 +129,8 @@ class WorkoutExercise {
       sets: (json['sets'] as List)
           .map((setJson) => ExerciseSet.fromJson(setJson))
           .toList(),
+      suggestedRepsMin: json['suggestedRepsMin'],
+      suggestedRepsMax: json['suggestedRepsMax'],
     );
   }
 
@@ -128,6 +138,8 @@ class WorkoutExercise {
     return {
       'exercise': exercise.toJson(),
       'sets': sets.map((set) => set.toJson()).toList(),
+      'suggestedRepsMin': suggestedRepsMin,
+      'suggestedRepsMax': suggestedRepsMax,
     };
   }
 }
@@ -241,16 +253,22 @@ class MuscleGroups {
 class ProgramExercise {
   final Exercise exercise;
   final int sets;
+  final int? suggestedRepsMin;
+  final int? suggestedRepsMax;
 
   const ProgramExercise({
     required this.exercise,
     required this.sets,
+    this.suggestedRepsMin,
+    this.suggestedRepsMax,
   });
 
   factory ProgramExercise.fromJson(Map<String, dynamic> json) {
     return ProgramExercise(
       exercise: Exercise.fromJson(json['exercise']),
       sets: json['sets'] ?? 3,
+      suggestedRepsMin: json['suggestedRepsMin'],
+      suggestedRepsMax: json['suggestedRepsMax'],
     );
   }
 
@@ -258,6 +276,8 @@ class ProgramExercise {
     return {
       'exercise': exercise.toJson(),
       'sets': sets,
+      'suggestedRepsMin': suggestedRepsMin,
+      'suggestedRepsMax': suggestedRepsMax,
     };
   }
 }
@@ -270,6 +290,7 @@ class WorkoutProgram {
   final String type; // 'Haut du corps', 'Bas du corps', 'Full body'
   final int estimatedDuration; // en minutes
   final List<ProgramExercise> exercises;
+  final bool isCustom; // true si le programme vient de user_workout_templates
 
   const WorkoutProgram({
     required this.id,
@@ -278,6 +299,7 @@ class WorkoutProgram {
     required this.type,
     required this.estimatedDuration,
     required this.exercises,
+    this.isCustom = false,
   });
 
   factory WorkoutProgram.fromJson(Map<String, dynamic> json) {
@@ -290,6 +312,7 @@ class WorkoutProgram {
       exercises: (json['exercises'] as List)
           .map((exerciseJson) => ProgramExercise.fromJson(exerciseJson))
           .toList(),
+      isCustom: json['isCustom'] ?? false,
     );
   }
 
@@ -301,6 +324,7 @@ class WorkoutProgram {
       'type': type,
       'estimatedDuration': estimatedDuration,
       'exercises': exercises.map((exercise) => exercise.toJson()).toList(),
+      'isCustom': isCustom,
     };
   }
 } 

@@ -1005,12 +1005,19 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     );
   }
 
-  void _validateSession() {
+  void _validateSession() async {
     // Créer la session complète et validée
     final sessionEndTime = DateTime.now();
+    
+    // Generate unique session name with automatic numbering if needed
+    final uniqueSessionName = await db.DatabaseService.generateUniqueSessionName(
+      baseSessionName: widget.sessionName,
+      performedAtDate: sessionEndTime,
+    );
+    
     final completedSession = WorkoutSession(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
-      name: widget.sessionName,
+      name: uniqueSessionName,
       startTime: _sessionStartTime ?? DateTime.now(),
       endTime: sessionEndTime,
       exercises: _exercises,
@@ -1046,7 +1053,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     return match != null ? match.group(1) : null;
   }
 
-  void _saveAsProgram(String sessionName) {
+  void _saveAsProgram(String sessionName) async {
     // Calculer la durée réelle de la session au moment de la sauvegarde
     final sessionEndTime = DateTime.now();
     final realSessionDuration = _sessionStartTime != null 
@@ -1063,48 +1070,62 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
       isCompleted: true,
     );
     
-    // Créer le programme à partir de la séance
-    final programExercises = _exercises.map((workoutExercise) {
-      return ProgramExercise(
-        exercise: workoutExercise.exercise,
-        sets: workoutExercise.sets.length,
+    try {
+      // Sauvegarder dans Supabase
+      final templateId = await db.DatabaseService.saveUserWorkoutTemplate(completedSession);
+      debugPrint('✅ Template utilisateur sauvegardé avec ID: $templateId');
+      
+      // Créer le programme à partir de la séance (pour compatibilité avec l'ancien système)
+      final programExercises = _exercises.map((workoutExercise) {
+        return ProgramExercise(
+          exercise: workoutExercise.exercise,
+          sets: workoutExercise.sets.length,
+        );
+      }).toList();
+      
+      // S'assurer qu'on a au moins 1 minute affichée, même pour des sessions courtes
+      final durationInMinutes = realSessionDuration.inMinutes > 0 
+          ? realSessionDuration.inMinutes 
+          : (realSessionDuration.inSeconds > 0 ? 1 : 1); // Minimum 1 minute
+      
+      final workoutProgram = WorkoutProgram(
+        id: templateId,
+        name: sessionName,
+        description: 'Programme créé à partir d\'une séance manuelle',
+        type: 'Personnalisé',
+        estimatedDuration: durationInMinutes,
+        exercises: programExercises,
       );
-    }).toList();
-    
-    // S'assurer qu'on a au moins 1 minute affichée, même pour des sessions courtes
-    final durationInMinutes = realSessionDuration.inMinutes > 0 
-        ? realSessionDuration.inMinutes 
-        : (realSessionDuration.inSeconds > 0 ? 1 : 1); // Minimum 1 minute
-    
-    final workoutProgram = WorkoutProgram(
-      id: completedSession.id + "_program",
-      name: sessionName,
-      description: 'Programme créé à partir d\'une séance manuelle',
-      type: 'Personnalisé',
-      estimatedDuration: durationInMinutes,
-      exercises: programExercises,
-    );
-    
-    // Appeler les callbacks pour sauvegarder dans l'écran parent
-    if (widget.onSessionCompleted != null) {
-      widget.onSessionCompleted!(completedSession);
+      
+      // Appeler les callbacks pour sauvegarder dans l'écran parent
+      if (widget.onSessionCompleted != null) {
+        widget.onSessionCompleted!(completedSession);
+      }
+      
+      if (widget.onProgramSaved != null) {
+        widget.onProgramSaved!(workoutProgram);
+      }
+      
+      debugPrint('=== DEBUG SAUVEGARDE ===');
+      debugPrint('Séance validée: ${completedSession.name}');
+      debugPrint('- Template ID: $templateId');
+      debugPrint('- Heure début: $_sessionStartTime');
+      debugPrint('- Heure fin: $sessionEndTime');
+      debugPrint('- Durée en minutes: $durationInMinutes');
+      
+    } catch (e) {
+      debugPrint('❌ Erreur lors de la sauvegarde du template: $e');
+      // Afficher un message d'erreur à l'utilisateur
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur lors de la sauvegarde: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     }
-    
-    if (widget.onProgramSaved != null) {
-      widget.onProgramSaved!(workoutProgram);
-    }
-    
-    print('=== DEBUG SAUVEGARDE ===');
-    print('Séance validée: ${completedSession.name}');
-    print('- Heure début: $_sessionStartTime');
-    print('- Heure fin: $sessionEndTime');
-    print('- Durée en secondes: ${realSessionDuration.inSeconds}');
-    print('- Durée en minutes: ${realSessionDuration.inMinutes}');
-    print('- Durée calculée: $durationInMinutes min');
-    print('- Durée formatée: ${_formatDuration(realSessionDuration)}');
-    print('Programme créé: ${workoutProgram.name}');
-    print('- estimatedDuration: ${workoutProgram.estimatedDuration} min');
-    print('========================');
   }
 
   void _showSessionSummary() {
@@ -1968,7 +1989,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
             child: _buildNumberField(
               controller: _getRepsController(setIndex),
               focusNode: _getRepsFocusNode(setIndex),
-              hintText: '0',
+              hintText: _getRepsSuggestionHint(),
               onChanged: (value) {
                 final reps = int.tryParse(value) ?? 0;
                 _updateSetValue(setIndex, reps: reps);
@@ -2130,5 +2151,26 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
         ],
       ),
     );
+  }
+
+  // Générer le placeholder pour les répétitions selon les suggestions
+  String _getRepsSuggestionHint() {
+    if (_currentExerciseIndex < 0 || _currentExerciseIndex >= _exercises.length) {
+      return '0';
+    }
+    
+    final currentExercise = _exercises[_currentExerciseIndex];
+    final repsMin = currentExercise.suggestedRepsMin;
+    final repsMax = currentExercise.suggestedRepsMax;
+    
+    if (repsMin != null && repsMax != null) {
+      return '$repsMin-$repsMax';
+    } else if (repsMin != null) {
+      return '$repsMin+';
+    } else if (repsMax != null) {
+      return '≤$repsMax';
+    } else {
+      return '0';
+    }
   }
 }

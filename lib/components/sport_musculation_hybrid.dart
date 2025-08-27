@@ -461,6 +461,8 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
           programExercise.sets,
           (index) => const ExerciseSet(reps: 0, weight: 0),
         ),
+        suggestedRepsMin: programExercise.suggestedRepsMin,
+        suggestedRepsMax: programExercise.suggestedRepsMax,
       );
     }).toList();
 

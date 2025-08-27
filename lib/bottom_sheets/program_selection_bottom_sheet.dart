@@ -22,6 +22,9 @@ class _ProgramSelectionBottomSheetState extends State<ProgramSelectionBottomShee
   List<WorkoutProgram> _fetchedPrograms = [];
   bool _isLoading = true;
   String? _error;
+  
+  // Pour gérer l'expansion des exercices
+  Set<String> _expandedPrograms = {};
 
   @override
   void initState() {
@@ -123,46 +126,46 @@ class _ProgramSelectionBottomSheetState extends State<ProgramSelectionBottomShee
                       : ListView.builder(
                           itemCount: widget.customPrograms.length + _fetchedPrograms.length +
                               (widget.customPrograms.isNotEmpty ? 1 : 0),
-                          itemBuilder: (context, index) {
-                            if (index < widget.customPrograms.length) {
-                              // Programmes personnalisés en premier
-                              final program = widget.customPrograms[index];
-                              return _buildProgramCard(program, isCustom: true);
-                            } else if (index == widget.customPrograms.length && widget.customPrograms.isNotEmpty) {
+                itemBuilder: (context, index) {
+                  if (index < widget.customPrograms.length) {
+                    // Programmes personnalisés en premier
+                    final program = widget.customPrograms[index];
+                    return _buildProgramCard(program, isCustom: true);
+                  } else if (index == widget.customPrograms.length && widget.customPrograms.isNotEmpty) {
                               // Séparateur entre programmes personnalisés et ceux de Supabase
-                              return Container(
-                                margin: const EdgeInsets.symmetric(vertical: 16),
-                                child: Row(
-                                  children: [
-                                    Expanded(child: Divider(color: const Color(0xFFE2E8F0))),
-                                    const Padding(
-                                      padding: EdgeInsets.symmetric(horizontal: 16),
-                                      child: Text(
+                    return Container(
+                      margin: const EdgeInsets.symmetric(vertical: 16),
+                      child: Row(
+                        children: [
+                          Expanded(child: Divider(color: const Color(0xFFE2E8F0))),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 16),
+                            child: Text(
                                         'Programmes',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: Color(0xFF64748B),
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ),
-                                    Expanded(child: Divider(color: const Color(0xFFE2E8F0))),
-                                  ],
-                                ),
-                              );
-                            } else {
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF64748B),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          Expanded(child: Divider(color: const Color(0xFFE2E8F0))),
+                        ],
+                      ),
+                    );
+                  } else {
                               // Programmes depuis Supabase
-                              final adjustedIndex = widget.customPrograms.isNotEmpty
-                                  ? index - widget.customPrograms.length - 1
-                                  : index - widget.customPrograms.length;
+                    final adjustedIndex = widget.customPrograms.isNotEmpty 
+                        ? index - widget.customPrograms.length - 1 
+                        : index - widget.customPrograms.length;
                               if (adjustedIndex < 0 || adjustedIndex >= _fetchedPrograms.length) {
                                 return const SizedBox.shrink();
                               }
                               final program = _fetchedPrograms[adjustedIndex];
-                              return _buildProgramCard(program, isCustom: false);
-                            }
-                          },
-                        ),
+                    return _buildProgramCard(program, isCustom: false);
+                  }
+                },
+              ),
             ),
           ],
         ),
@@ -171,13 +174,11 @@ class _ProgramSelectionBottomSheetState extends State<ProgramSelectionBottomShee
   }
 
   Widget _buildProgramCard(WorkoutProgram program, {bool isCustom = false}) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.pop(context);
-        widget.onProgramSelected(program);
-      },
-      child: Container(
-        padding: const EdgeInsets.all(16),
+    final isExpanded = _expandedPrograms.contains(program.id);
+    // Utiliser le flag isCustom du programme lui-même
+    final isCustomProgram = program.isCustom;
+    
+    return Container(
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -187,31 +188,22 @@ class _ProgramSelectionBottomSheetState extends State<ProgramSelectionBottomShee
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: isCustom 
-                          ? [const Color(0xFF059669), const Color(0xFF10B981)] 
-                          : [const Color(0xFF0B132B), const Color(0xFF1C2951)],
-                    ),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    isCustom ? LucideIcons.user : LucideIcons.dumbbell,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+          // Header cliquable pour sélectionner le workout
+          GestureDetector(
+            onTap: () {
+              Navigator.pop(context);
+              widget.onProgramSelected(program);
+            },
+                        child: Container(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Titre et badge custom
+                  Row(
                     children: [
-                      Text(
+                      Expanded(
+                        child: Text(
                         program.name,
                         style: const TextStyle(
                           fontSize: 16,
@@ -219,32 +211,34 @@ class _ProgramSelectionBottomSheetState extends State<ProgramSelectionBottomShee
                           color: Color(0xFF1A1A1A),
                         ),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        program.description,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: Color(0xFF64748B),
-                        ),
                       ),
+                      if (isCustomProgram) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0B132B),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Text(
+                            'Créé par toi',
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
-                ),
-                const Icon(
-                  LucideIcons.chevronRight,
-                  size: 16,
-                  color: Color(0xFF64748B),
-                ),
-              ],
-            ),
-            
-            const SizedBox(height: 12),
+                  
+                  const SizedBox(height: 6),
             
             // Informations du programme
             Row(
               children: [
-                // Pour les programmes personnalisés, on ne montre pas la durée
-                if (!isCustom) ...[
+                      // Pour les programmes custom, pas de durée
+                      if (!isCustomProgram) ...[
                   _buildProgramInfo(
                     LucideIcons.clock,
                     '${program.estimatedDuration} min',
@@ -252,21 +246,47 @@ class _ProgramSelectionBottomSheetState extends State<ProgramSelectionBottomShee
                   const SizedBox(width: 16),
                 ],
                 _buildProgramInfo(
-                  LucideIcons.target,
-                  program.type,
-                ),
-                const SizedBox(width: 16),
-                _buildProgramInfo(
-                  LucideIcons.listChecks,
-                  '${program.exercises.length} exercices',
-                ),
-              ],
+                        LucideIcons.listChecks,
+                        '${program.exercises.length} exercice${program.exercises.length > 1 ? 's' : ''}',
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-            
-            const SizedBox(height: 12),
-            
-            // Liste des exercices du programme
-            Wrap(
+          ),
+          
+          // Bouton d'expansion
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                if (isExpanded) {
+                  _expandedPrograms.remove(program.id);
+                } else {
+                  _expandedPrograms.add(program.id);
+                }
+              });
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    isExpanded ? LucideIcons.chevronUp : LucideIcons.chevronDown,
+                    size: 14,
+                    color: const Color(0xFF64748B),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          
+          // Liste des exercices (expandable)
+          if (isExpanded) ...[
+            Container(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              child: Wrap(
               spacing: 8,
               runSpacing: 4,
               children: program.exercises.map((programExercise) {
@@ -287,9 +307,10 @@ class _ProgramSelectionBottomSheetState extends State<ProgramSelectionBottomShee
                   ),
                 );
               }).toList(),
+              ),
             ),
           ],
-        ),
+        ],
       ),
     );
   }

@@ -444,10 +444,11 @@ class ExerciseProgressCard extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        '${progress.sessions} séances',
+                        '${progress.sessions} séance${progress.sessions > 1 ? 's' : ''}',
                         style: const TextStyle(
                           fontSize: 12,
-                          color: Color(0xFF64748B),
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF0B132B),
                         ),
                       ),
                     ],

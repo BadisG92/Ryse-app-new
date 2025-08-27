@@ -559,10 +559,8 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
         .toList()
       ..sort((a, b) => (a['date'] as DateTime).compareTo(b['date'] as DateTime));
 
-    final int sessionsCount = period
-        .map((e) => DateTime((e['date'] as DateTime).year, (e['date'] as DateTime).month, (e['date'] as DateTime).day))
-        .toSet()
-        .length;
+    // Compter les sessions uniques (pas les jours uniques)
+    final int sessionsCount = period.length;
 
     // Déterminer l'unité dominante sur la période (poids si >0 présent au moins une fois)
     final List<Map<String, dynamic>> sessionsFull = (exercise?['sessionsFull'] as List? ?? [])
