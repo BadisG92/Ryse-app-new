@@ -6,6 +6,7 @@ import '../types/database_types.dart';
 import 'package:uuid/uuid.dart';
 import '../models/sport_models.dart' as models;
 import 'package:flutter/foundation.dart';
+import 'workout_cache_service.dart';
 
 class DatabaseService {
   static final SupabaseClient _client = Supabase.instance.client;
@@ -1281,6 +1282,10 @@ class DatabaseService {
         'intensity': intensityValue,
         'guided_template_id': guidedTemplateId,
       });
+      
+      // Invalide le cache pour cet utilisateur après une nouvelle séance
+      WorkoutCacheService.invalidateUserCache(userId);
+      
     } catch (e) {
       debugPrint('❌ Error creating workout_session_summary: $e');
       // Re-throw the error so it's not silently ignored

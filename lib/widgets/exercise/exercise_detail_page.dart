@@ -3,6 +3,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:math' as math;
+import '../../services/workout_cache_service.dart';
 
 class ExerciseDetailPage extends StatefulWidget {
   final String exerciseName;
@@ -27,8 +28,7 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
   }
 
   Future<void> _load() async {
-    final client = Supabase.instance.client;
-    final userId = client.auth.currentUser?.id;
+    final userId = Supabase.instance.client.auth.currentUser?.id;
     if (userId == null) {
       setState(() {
         exercise = {
@@ -44,7 +44,20 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
       return;
     }
 
-    // Récupérer toutes les séries de cet exercice pour l'utilisateur
+    // Utilise le service de cache optimisé
+    final exerciseData = await WorkoutCacheService.getExerciseDetails(userId, widget.exerciseName);
+
+    setState(() {
+      exercise = exerciseData;
+    });
+  }
+
+  void _loadOld() async {
+    // Ancienne méthode conservée pour référence - à supprimer plus tard
+    final client = Supabase.instance.client;
+    final userId = client.auth.currentUser?.id;
+    if (userId == null) return;
+
     final rows = await client
         .from('workout_set_history')
         .select('history_session_id, performed_at, weight, reps, best_set')
