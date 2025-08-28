@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../models/cardio_session_models.dart';
+import '../services/cardio_service.dart';
 
 class CardioTrackingScreen extends StatefulWidget {
   final String activityType;
@@ -310,7 +311,16 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () {
+                    onPressed: () async {
+                      // Historiser la session dans Supabase
+                      try {
+                        await _saveSessionToSupabase();
+                        debugPrint('✅ Session cardio sauvegardée');
+                      } catch (e) {
+                        debugPrint('❌ Erreur sauvegarde session: $e');
+                        // Continuer même en cas d'erreur pour ne pas bloquer l'utilisateur
+                      }
+                      
                       Navigator.pop(context); // Fermer dialog
                       Navigator.pop(context); // Retourner au cardio
                     },
@@ -657,6 +667,23 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
         ),
       ),
     );
+  }
+
+  /// Sauvegarde la session dans Supabase
+  Future<void> _saveSessionToSupabase() async {
+    try {
+      await CardioService.saveCompletedCardioSession(
+        sessionData: _session,
+        intensity: 'Modéré', // Valeur par défaut, pourrait être demandée à l'utilisateur
+        notes: null,
+      );
+      
+      // Invalider le cache pour rafraîchir les données
+      CardioService.invalidateCache();
+    } catch (e) {
+      debugPrint('❌ Erreur lors de la sauvegarde: $e');
+      rethrow;
+    }
   }
 
   String _getObjectiveText() {

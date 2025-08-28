@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../models/cardio_session_models.dart';
+import '../services/cardio_service.dart';
 
 class ManualCardioEntryScreen extends StatefulWidget {
   final String activityType;
@@ -121,7 +122,16 @@ class _ManualCardioEntryScreenState extends State<ManualCardioEntryScreen> {
         ),
         actions: [
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
+              // Historiser la session dans Supabase
+              try {
+                await _saveManualSessionToSupabase(entry);
+                debugPrint('✅ Session manuelle cardio sauvegardée');
+              } catch (e) {
+                debugPrint('❌ Erreur sauvegarde session manuelle: $e');
+                // Continuer même en cas d'erreur pour ne pas bloquer l'utilisateur
+              }
+              
               Navigator.pop(context); // Fermer dialog
               Navigator.pop(context); // Retourner au cardio
             },
@@ -146,6 +156,38 @@ class _ManualCardioEntryScreenState extends State<ManualCardioEntryScreen> {
       setState(() {
         _selectedDate = picked;
       });
+    }
+  }
+
+  /// Sauvegarde la session manuelle dans Supabase
+  Future<void> _saveManualSessionToSupabase(ManualCardioEntry entry) async {
+    try {
+      // Convertir l'entrée manuelle en CardioSessionData
+      final sessionData = CardioSessionData(
+        activityType: widget.activityType,
+        activityTitle: widget.activityTitle,
+        formatTitle: widget.formatTitle,
+        startTime: _selectedDate.subtract(entry.duration),
+        endTime: _selectedDate,
+        duration: entry.duration,
+        distance: entry.distance,
+        steps: entry.steps,
+        calories: entry.calculateCalories(),
+        averageSpeed: entry.calculateAverageSpeed(),
+        currentSpeed: entry.calculateAverageSpeed(),
+      );
+      
+      await CardioService.saveCompletedCardioSession(
+        sessionData: sessionData,
+        intensity: 'Modéré', // Valeur par défaut
+        notes: entry.notes,
+      );
+      
+      // Invalider le cache pour rafraîchir les données
+      CardioService.invalidateCache();
+    } catch (e) {
+      debugPrint('❌ Erreur lors de la sauvegarde manuelle: $e');
+      rethrow;
     }
   }
 

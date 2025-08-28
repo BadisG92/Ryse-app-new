@@ -27,10 +27,8 @@ class SportCardioHybrid extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // 1. Bloc "Cette semaine" avec statistiques
-            WeeklyStatsSection(
-              stats: CardioData.weeklyStats,
-            ),
+            // 1. Bloc "Cette semaine" avec statistiques (connecté à Supabase)
+            const WeeklyStatsSection(),
             
             const SizedBox(height: 16),
             
@@ -42,18 +40,15 @@ class SportCardioHybrid extends StatelessWidget {
             
             const SizedBox(height: 16),
             
-            // 3. Bloc "Dernière séance enregistrée"
-            SessionCard(
-              session: CardioData.lastSession,
+            // 3. Bloc "Dernière séance enregistrée" (connecté à Supabase)
+            LastSessionSection(
               onDetailsTap: () => _showSessionDetails(context),
             ),
             
             const SizedBox(height: 16),
             
-            // 4. Bloc "Vos séances de la semaine"
-            WeekSessionsSection(
-              sessions: CardioData.weekSessions,
-            ),
+            // 4. Bloc "Vos séances de la semaine" (connecté à Supabase)
+            const WeekSessionsSection(),
             
             const SizedBox(height: 16),
             
@@ -199,7 +194,10 @@ class SportCardioHybrid extends StatelessWidget {
     String activityType = 'running'; // défaut
     String activityTitle = 'Course à pied'; // défaut
     
-    if (formatTitle.toLowerCase().contains('vélo') || formatTitle.toLowerCase().contains('bike')) {
+    if (formatTitle.toLowerCase().contains('hiit')) {
+      activityType = 'hiit';
+      activityTitle = 'HIIT';
+    } else if (formatTitle.toLowerCase().contains('vélo') || formatTitle.toLowerCase().contains('bike')) {
       activityType = 'bike';
       activityTitle = 'Vélo';
     } else if (formatTitle.toLowerCase().contains('marche') || formatTitle.toLowerCase().contains('walk')) {
@@ -228,7 +226,10 @@ class SportCardioHybrid extends StatelessWidget {
     String activityType = 'running'; // défaut
     String activityTitle = 'Course à pied'; // défaut
     
-    if (formatTitle.toLowerCase().contains('vélo') || formatTitle.toLowerCase().contains('bike')) {
+    if (formatTitle.toLowerCase().contains('hiit')) {
+      activityType = 'hiit';
+      activityTitle = 'HIIT';
+    } else if (formatTitle.toLowerCase().contains('vélo') || formatTitle.toLowerCase().contains('bike')) {
       activityType = 'bike';
       activityTitle = 'Vélo';
     } else if (formatTitle.toLowerCase().contains('marche') || formatTitle.toLowerCase().contains('walk')) {

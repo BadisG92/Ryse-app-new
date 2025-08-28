@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../models/hiit_models.dart';
+import '../models/cardio_session_models.dart';
+import '../services/cardio_service.dart';
 
 class HiitSessionScreen extends StatefulWidget {
   final HiitWorkout workout;
@@ -246,7 +248,20 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
                  SizedBox(
                    width: double.infinity,
                    child: ElevatedButton(
-                     onPressed: () {
+                     onPressed: () async {
+                       // Historiser la session HIIT dans Supabase
+                       try {
+                         await _saveHiitSessionToSupabase(
+                           actualDuration: actualDuration,
+                           caloriesBurned: caloriesBurned,
+                           roundsCompleted: roundsCompleted,
+                         );
+                         debugPrint('✅ Session HIIT sauvegardée');
+                       } catch (e) {
+                         debugPrint('❌ Erreur sauvegarde session HIIT: $e');
+                         // Continuer même en cas d'erreur pour ne pas bloquer l'utilisateur
+                       }
+                       
                        Navigator.pop(context); // Fermer le dialog
                        _exitSession(); // Puis fermer la session HIIT
                      },
@@ -554,7 +569,22 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
                     ),
                     const SizedBox(height: 32),
                     ElevatedButton(
-                      onPressed: _exitSession,
+                      onPressed: () async {
+                        // Historiser la session HIIT complète dans Supabase
+                        try {
+                          await _saveHiitSessionToSupabase(
+                            actualDuration: _session.workout.totalDuration,
+                            caloriesBurned: (_session.workout.totalDuration / 60 * 12).round(),
+                            roundsCompleted: _session.workout.totalRounds,
+                          );
+                          debugPrint('✅ Session HIIT complète sauvegardée');
+                        } catch (e) {
+                          debugPrint('❌ Erreur sauvegarde session HIIT complète: $e');
+                          // Continuer même en cas d'erreur pour ne pas bloquer l'utilisateur
+                        }
+                        
+                        _exitSession();
+                      },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white,
                         foregroundColor: _getPhaseColor(),
@@ -582,6 +612,42 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
         ),
       ),
     );
+  }
+
+  /// Sauvegarde la session HIIT dans Supabase
+  Future<void> _saveHiitSessionToSupabase({
+    required int actualDuration,
+    required int caloriesBurned,
+    required int roundsCompleted,
+  }) async {
+    try {
+      // Créer une session cardio depuis les données HIIT
+      final sessionData = CardioSessionData(
+        activityType: 'hiit',
+        activityTitle: 'HIIT',
+        formatTitle: widget.workout.title,
+        startTime: _session.startTime,
+        endTime: DateTime.now(),
+        duration: Duration(minutes: actualDuration),
+        distance: 0, // HIIT n'a pas de distance
+        steps: 0, // HIIT n'a pas de pas
+        calories: caloriesBurned,
+        averageSpeed: 0, // HIIT n'a pas de vitesse
+        currentSpeed: 0, // HIIT n'a pas de vitesse
+      );
+      
+      await CardioService.saveCompletedCardioSession(
+        sessionData: sessionData,
+        intensity: 'Élevé', // HIIT est toujours intense
+        notes: 'Séries complètes: $roundsCompleted/${_session.workout.totalRounds}',
+      );
+      
+      // Invalider le cache pour rafraîchir les données
+      CardioService.invalidateCache();
+    } catch (e) {
+      debugPrint('❌ Erreur lors de la sauvegarde HIIT: $e');
+      rethrow;
+    }
   }
 
   Widget _buildInfoItem(String label, String value) {

@@ -3,9 +3,14 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'ui/custom_card.dart';
 import '../screens/cardio_tracking_screen.dart';
 import '../screens/hiit_session_screen.dart';
+import '../screens/manual_cardio_entry_screen.dart';
 import '../models/cardio_session_models.dart';
 import '../models/hiit_models.dart';
-import '../services/workout_service.dart';
+
+import '../services/sport_dashboard_service.dart';
+import '../services/cardio_service.dart';
+import 'ui/cardio_models.dart';
+import 'ui/chunked_progress_bar.dart';
 import '../widgets/sport/sport_calendar_view.dart';
 import 'shared/workout_actions.dart';
 
@@ -16,63 +21,45 @@ class SportDashboard extends StatefulWidget {
   State<SportDashboard> createState() => _SportDashboardState();
 }
 
-class _SportDashboardState extends State<SportDashboard>
-    with TickerProviderStateMixin {
+class _SportDashboardState extends State<SportDashboard> {
   bool showCalendar = false;
-  int weeklyCalories = 0;
-  int dailyStreak = 7; // Streak en jours pour le bandeau du haut
-  int weeklyStreak = 3; // Streak en semaines pour le résumé
-  late AnimationController _animationController;
-  late Animation<int> _caloriesAnimation;
+  SportDashboardData? _dashboardData;
+  bool _loading = true;
 
   @override
   void initState() {
     super.initState();
-    _setupAnimation();
+    _loadDashboardData();
   }
 
-  void _setupAnimation() {
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 1500),
-      vsync: this,
-    );
-
-    _caloriesAnimation = IntTween(
-      begin: 0,
-      end: 1260,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeOut,
-    ));
-
-    _caloriesAnimation.addListener(() {
+  /// Charge les données du dashboard depuis Supabase
+  Future<void> _loadDashboardData() async {
+    try {
+      final data = await SportDashboardService.getDashboardData();
       setState(() {
-        weeklyCalories = _caloriesAnimation.value;
+        _dashboardData = data;
+        _loading = false;
       });
-    });
 
-    // Démarrer l'animation après 300ms
-    Future.delayed(const Duration(milliseconds: 300), () {
-      _animationController.forward();
-    });
+
+    } catch (e) {
+      setState(() {
+        _loading = false;
+      });
+      debugPrint('❌ Erreur chargement dashboard: $e');
+    }
   }
+
+
+
+
 
   @override
   void dispose() {
-    _animationController.dispose();
     super.dispose();
   }
 
-  // Données pour le calendrier compact (7 derniers jours)
-  final List<Map<String, dynamic>> recentWorkouts = [
-    {"date": "L", "hasWorkout": true, "activities": ["musculation"]},
-    {"date": "M", "hasWorkout": false, "activities": []},
-    {"date": "M", "hasWorkout": true, "activities": ["cardio"]},
-    {"date": "J", "hasWorkout": true, "activities": ["musculation", "cardio"]}, // Jour combiné
-    {"date": "V", "hasWorkout": false, "activities": []},
-    {"date": "S", "hasWorkout": true, "activities": ["cardio"]},
-    {"date": "D", "hasWorkout": false, "activities": []},
-  ];
+
 
   @override
   Widget build(BuildContext context) {
@@ -81,9 +68,6 @@ class _SportDashboardState extends State<SportDashboard>
         onBack: () => setState(() => showCalendar = false),
       );
     }
-
-    const int targetWeeklyCalories = 2000;
-    final int avgDailyCalories = (weeklyCalories / 7).round();
 
     return Container(
       decoration: const BoxDecoration(
@@ -98,22 +82,37 @@ class _SportDashboardState extends State<SportDashboard>
         child: Column(
           children: [            
             // 1. Bloc calories (objectif / brûlées / progression)
-            _buildWeeklyCalories(targetWeeklyCalories, avgDailyCalories),
+            if (_loading)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(40),
+                  child: CircularProgressIndicator(),
+                ),
+              )
+            else if (_dashboardData != null)
+              _buildWeeklyCalories(_dashboardData!)
+            else
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(40),
+                  child: Text('Erreur de chargement des données'),
+                ),
+              ),
             
             const SizedBox(height: 16),
             
-            // 2. Bloc "Activité du jour"
+            // 2. Bloc "Progression" (ex-Résumé de la semaine)
+            _buildWeeklySummary(),
+            
+            const SizedBox(height: 16),
+            
+            // 3. Bloc "Activité du jour"
             _buildDailyActivities(),
             
             const SizedBox(height: 16),
             
-            // 3. Bloc "Séances récentes"
+            // 4. Bloc "Séances récentes"
             _buildRecentWorkouts(),
-            
-            const SizedBox(height: 16),
-            
-            // 4. Bloc "Résumé de la semaine"
-            _buildWeeklySummary(),
             
             const SizedBox(height: 16),
             
@@ -128,7 +127,16 @@ class _SportDashboardState extends State<SportDashboard>
     );
   }
 
-  Widget _buildWeeklyCalories(int targetWeeklyCalories, int avgDailyCalories) {
+  Widget _buildWeeklyCalories(SportDashboardData data) {
+    // Calculs pour les nouveaux KPIs
+    final now = DateTime.now();
+    final dayOfWeek = now.weekday; // 1 = Lundi, 7 = Dimanche
+    final dailyAverage = dayOfWeek > 0 ? (data.totalCalories / dayOfWeek).round() : 0;
+    
+    final completedChunks = (data.totalCalories / 500).floor();
+    final remainder = data.totalCalories % 500;
+    final kcalToNext = remainder == 0 ? (data.totalCalories == 0 ? 500 : 0) : 500 - remainder;
+
     return CustomCard(
       child: Container(
         decoration: BoxDecoration(
@@ -146,7 +154,7 @@ class _SportDashboardState extends State<SportDashboard>
           padding: const EdgeInsets.all(12),
           child: Column(
             children: [
-              // Cercle principal avec compteur animé
+              // Cercle principal avec compteur (même style qu'avant)
               Container(
                 margin: const EdgeInsets.only(bottom: 16),
                 child: Stack(
@@ -184,7 +192,7 @@ class _SportDashboardState extends State<SportDashboard>
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            weeklyCalories.toString(),
+                            data.totalCalories.toString(),
                             style: const TextStyle(
                               fontSize: 32,
                               fontWeight: FontWeight.w300,
@@ -205,40 +213,45 @@ class _SportDashboardState extends State<SportDashboard>
                 ),
               ),
               
-              // Statistiques en 3 colonnes
+              // Statistiques en 3 colonnes avec alignement parfait
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _buildCaloriesStat('Kcal brûlées', weeklyCalories, const Color(0xFF0B132B)),
-                  _buildCaloriesStat('Objectif hebdo', targetWeeklyCalories, const Color(0xFF1C2951)),
-                  _buildCaloriesStat('Moyenne/jour', avgDailyCalories, const Color(0xFF888888)),
+                  // KPI gauche
+                  Expanded(
+                    child: _buildCaloriesStat('Moyenne / jour', dailyAverage, const Color(0xFF0B132B)),
+                  ),
+                  // KPI central (aligné avec le cercle)
+                  Expanded(
+                    child: _buildCaloriesStat('Paliers franchis', completedChunks, const Color(0xFF1C2951)),
+                  ),
+                  // KPI droite
+                  Expanded(
+                    child: _buildCaloriesStat('Séances', data.totalSessions, const Color(0xFF888888)),
+                  ),
                 ],
               ),
               
               const SizedBox(height: 16),
               
-              // Barre de progression principale
+              // Barre de progression par paliers (même taille et position)
               Container(
                 width: double.infinity,
                 height: 12,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8F8F8),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
-                  child: LinearProgressIndicator(
-                    value: (weeklyCalories / targetWeeklyCalories).clamp(0.0, 1.0),
-                    backgroundColor: Colors.transparent,
-                    valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF0B132B)),
-                  ),
+                child: ChunkedProgressBar(
+                  currentKcal: data.totalCalories,
+                  chunkSize: 500,
+                  height: 12,
+                  borderRadius: 6,
                 ),
               ),
               
               const SizedBox(height: 8),
               
+              // Texte sous la barre (même style)
               Text(
-                '${((weeklyCalories / targetWeeklyCalories) * 100).round()}% de l\'objectif hebdo atteint',
+                kcalToNext > 0 
+                    ? 'Encore $kcalToNext kcal pour atteindre ton prochain palier'
+                    : 'Palier atteint ! Félicitations 🎉',
                 style: const TextStyle(
                   fontSize: 12,
                   color: Color(0xFF888888),
@@ -260,6 +273,7 @@ class _SportDashboardState extends State<SportDashboard>
             fontSize: 12,
             color: Color(0xFF888888),
           ),
+          textAlign: TextAlign.center, // Centrage du texte
         ),
         const SizedBox(height: 4),
         Text(
@@ -269,12 +283,52 @@ class _SportDashboardState extends State<SportDashboard>
             fontWeight: FontWeight.bold,
             color: color,
           ),
+          textAlign: TextAlign.center, // Centrage du texte
         ),
       ],
     );
   }
 
+
+
   Widget _buildRecentWorkouts() {
+    if (_dashboardData == null) {
+      return CustomCard(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                children: [
+                  Icon(
+                    LucideIcons.activity,
+                    size: 20,
+                    color: Color(0xFF0B132B),
+                  ),
+                  SizedBox(width: 12),
+                  Text(
+                    'Séances récentes',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1A1A1A),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const Center(child: CircularProgressIndicator()),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Récupérer les données des séances récentes depuis le cache
+    final recentWorkouts = SportDashboardService.getCachedRecentWorkouts();
+    final recentDays = recentWorkouts['recentDays'] as List<dynamic>? ?? [];
+
     return CustomCard(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -322,14 +376,14 @@ class _SportDashboardState extends State<SportDashboard>
             
             const SizedBox(height: 16),
             
-            // Grille des 7 jours
+            // Grille des 7 jours avec vraies données
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: recentWorkouts.map((day) {
+              children: recentDays.map<Widget>((day) {
                 return Column(
                   children: [
                     Text(
-                      day['date'],
+                      day['date'] ?? '',
                       style: const TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
@@ -340,7 +394,10 @@ class _SportDashboardState extends State<SportDashboard>
                     _buildDashboardSportIcon(
                       day['activities'] != null 
                         ? List<String>.from(day['activities']) 
-                        : <String>[]
+                        : <String>[],
+                      cardioTypes: day['cardioTypes'] != null 
+                        ? List<String>.from(day['cardioTypes'])
+                        : <String>[],
                     ),
                   ],
                 );
@@ -461,6 +518,25 @@ class _SportDashboardState extends State<SportDashboard>
   }
 
   Widget _buildWeeklySummary() {
+    if (_dashboardData == null) {
+      return const CustomCard(
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+
+    final data = _dashboardData!;
+    
+    // Formatage du temps total (en minutes -> heures et minutes)
+    final totalMinutes = data.totalDurationMinutes;
+    final hours = totalMinutes ~/ 60;
+    final minutes = totalMinutes % 60;
+    final timeText = hours > 0 
+        ? '${hours}h ${minutes}min'
+        : '${minutes}min';
+
     return CustomCard(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -487,17 +563,17 @@ class _SportDashboardState extends State<SportDashboard>
                       color: const Color(0xFF0B132B).withOpacity(0.05),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Column(
+                    child: Column(
                       children: [
                         Text(
-                          '4/5',
-                          style: TextStyle(
+                          data.totalSessions.toString(),
+                          style: const TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
                             color: Color(0xFF0B132B),
                           ),
                         ),
-                        Text(
+                        const Text(
                           'Séances cette semaine',
                           style: TextStyle(
                             fontSize: 11,
@@ -528,7 +604,7 @@ class _SportDashboardState extends State<SportDashboard>
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              weeklyStreak.toString(),
+                              data.streak.toString(),
                               style: const TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
@@ -559,10 +635,10 @@ class _SportDashboardState extends State<SportDashboard>
                 color: const Color(0xFFF8FAFC),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Row(
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
+                  const Text(
                     'Temps total cette semaine',
                     style: TextStyle(
                       fontSize: 14,
@@ -570,8 +646,8 @@ class _SportDashboardState extends State<SportDashboard>
                     ),
                   ),
                   Text(
-                    '4h 35min',
-                    style: TextStyle(
+                    timeText,
+                    style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF0B132B),
@@ -589,14 +665,14 @@ class _SportDashboardState extends State<SportDashboard>
   Widget _buildQuickStart() {
     final List<Map<String, dynamic>> actions = [
       {
-        'icon': LucideIcons.dumbbell,
-        'label': 'Musculation',
-        'colors': [const Color(0xFF0B132B), const Color(0xFF1C2951)]
-      },
-      {
         'icon': LucideIcons.activity,
         'label': 'Cardio',
         'colors': [const Color(0xFF0B132B).withOpacity(0.8), const Color(0xFF1C2951).withOpacity(0.8)]
+      },
+      {
+        'icon': LucideIcons.dumbbell,
+        'label': 'Musculation',
+        'colors': [const Color(0xFF0B132B), const Color(0xFF1C2951)]
       },
     ];
 
@@ -675,6 +751,84 @@ class _SportDashboardState extends State<SportDashboard>
   }
 
   Widget _buildDailyActivities() {
+    if (_dashboardData == null) {
+    return CustomCard(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(
+                  LucideIcons.trendingUp,
+                  size: 16,
+                  color: Color(0xFF0B132B),
+                ),
+                SizedBox(width: 8),
+                Text(
+                  'Activités du jour',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1A1A1A),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+              const Center(child: CircularProgressIndicator()),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Récupérer les données du jour depuis SportDashboardService
+    final dailyActivities = SportDashboardService.getCachedDailyActivities();
+    final cardioSessions = dailyActivities['cardioSessions'] as List<dynamic>? ?? [];
+    final musculationSessions = dailyActivities['musculationSessions'] as List<dynamic>? ?? [];
+    
+    // Si aucune activité aujourd'hui
+    if (cardioSessions.isEmpty && musculationSessions.isEmpty) {
+      return CustomCard(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                  Icon(
+                    LucideIcons.trendingUp,
+                    size: 16,
+                    color: Color(0xFF0B132B),
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                    'Activités du jour',
+                          style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                            color: Color(0xFF1A1A1A),
+                          ),
+                        ),
+                      ],
+                    ),
+              const SizedBox(height: 16),
+              const Text(
+                'Aucune activité aujourd\'hui',
+                          style: TextStyle(
+                            fontSize: 14,
+                  color: Color(0xFF64748B),
+                          ),
+                        ),
+                      ],
+                    ),
+        ),
+      );
+    }
+
     return CustomCard(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -702,141 +856,117 @@ class _SportDashboardState extends State<SportDashboard>
             
             const SizedBox(height: 16),
             
-            // Musculation
+            // Liste des activités
             Column(
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 6,
-                          backgroundColor: Color(0xFF0B132B),
-                        ),
-                        SizedBox(width: 8),
-                        Text(
-                          'Musculation',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF1A1A1A),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const Row(
-                      children: [
-                        Text(
-                          '1h 15min',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF0B132B),
-                          ),
-                        ),
-                        Text(
-                          ' • 280 kcal',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Color(0xFF888888),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  width: double.infinity,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8F8F8),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: const LinearProgressIndicator(
-                      value: 1.0,
-                      backgroundColor: Colors.transparent,
-                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF0B132B)),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            
-            const SizedBox(height: 16),
-            
-            // Cardio
-            Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 6,
-                          backgroundColor: const Color(0xFF0B132B).withOpacity(0.7),
-                        ),
-                        const SizedBox(width: 8),
-                        const Text(
-                          'Course',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF1A1A1A),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const Row(
-                      children: [
-                        Text(
-                          '20min',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF0B132B),
-                          ),
-                        ),
-                        Text(
-                          ' • 62 kcal',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Color(0xFF888888),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  width: double.infinity,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8F8F8),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: 0.75,
-                      backgroundColor: Colors.transparent,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        const Color(0xFF0B132B).withOpacity(0.7),
-                      ),
-                    ),
-                  ),
-                ),
+                // Séances musculation
+                ...musculationSessions.map((session) => _buildActivityItem(
+                  iconData: LucideIcons.dumbbell,
+                  name: session['session_name'] ?? 'Musculation',
+                  duration: _formatDuration(session['duration_minutes'] ?? 0),
+                  calories: session['calories_burned'] ?? 0,
+                )),
+                
+                // Séances cardio
+                ...cardioSessions.map((session) => _buildActivityItem(
+                  iconData: _getCardioIcon(session['activity_type'] ?? ''),
+                  name: session['activity_title'] ?? 'Cardio',
+                  duration: _formatDurationSeconds(session['duration_seconds'] ?? 0),
+                  calories: session['calories'] ?? 0,
+                )),
               ],
             ),
           ],
         ),
       ),
     );
+  }
+
+  Widget _buildActivityItem({
+    required IconData iconData,
+    required String name,
+    required String duration,
+    required int calories,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+                  children: [
+          // Icône activité
+          Icon(
+            iconData,
+            size: 20,
+            color: const Color(0xFF0B132B),
+          ),
+          
+          const SizedBox(width: 12),
+          
+          // Nom activité
+          Expanded(
+            child: Text(
+              name,
+              style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF1A1A1A),
+                          ),
+                        ),
+                    ),
+          
+          // Durée en gras
+                        Text(
+            duration,
+            style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF0B132B),
+                          ),
+                        ),
+          
+          // Séparateur
+          const Text(
+            ' · ',
+                          style: TextStyle(
+              fontSize: 14,
+                            color: Color(0xFF888888),
+                          ),
+                        ),
+          
+          // Kcal en gris clair
+          Text(
+            '${calories} kcal',
+            style: const TextStyle(
+              fontSize: 14,
+              color: Color(0xFF888888),
+                  ),
+                ),
+              ],
+      ),
+    );
+  }
+
+  IconData _getCardioIcon(String activityType) {
+    // Utilise toujours la même icône pour le cardio
+    return LucideIcons.activity;
+  }
+
+  String _formatDuration(int minutes) {
+    if (minutes < 60) {
+      return '${minutes}min';
+    } else {
+      final hours = minutes ~/ 60;
+      final remainingMinutes = minutes % 60;
+      if (remainingMinutes == 0) {
+        return '${hours}h';
+      } else {
+        return '${hours}h${remainingMinutes.toString().padLeft(2, '0')}';
+      }
+    }
+  }
+
+  String _formatDurationSeconds(int seconds) {
+    final minutes = seconds ~/ 60;
+    return _formatDuration(minutes);
   }
 
 
@@ -860,162 +990,16 @@ class _SportDashboardState extends State<SportDashboard>
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(24),
-            topRight: Radius.circular(24),
-          ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Handle
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE2E8F0),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              
-              const SizedBox(height: 24),
-              
-              const Text(
-                'Cardio',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1A1A1A),
-                ),
-              ),
-              
-              const SizedBox(height: 8),
-              
-              const Text(
-                'Choisissez votre activité cardio',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF64748B),
-                ),
-              ),
-              
-              const SizedBox(height: 24),
-              
-              // Grille 2x2 avec les 4 options cardio
-              Column(
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildCardioOption(
-                          icon: LucideIcons.bike,
-                          title: 'Vélo',
-                          onTap: () => _handleCardioSelection('Vélo'),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildCardioOption(
-                          icon: LucideIcons.footprints,
-                          title: 'Marche',
-                          onTap: () => _handleCardioSelection('Marche'),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildCardioOption(
-                          icon: LucideIcons.zap,
-                          title: 'Course',
-                          onTap: () => _handleCardioSelection('Course'),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildCardioOption(
-                          icon: LucideIcons.timer,
-                          title: 'HIIT',
-                          onTap: () => _handleCardioSelection('HIIT'),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              
-              const SizedBox(height: 24),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCardioOption({
-    required IconData icon,
-    required String title,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF8FAFC),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
-        ),
-        child: Column(
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: const Color(0xFF0B132B),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: Colors.white, size: 24),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF1A1A1A),
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
+      isScrollControlled: true,
+      builder: (context) => _CardioSelectionBottomSheet(),
     );
   }
 
 
 
-  // Méthodes de navigation pour cardio
-  void _handleCardioSelection(String cardioType) {
-    Navigator.pop(context); // Fermer le bottom sheet
-    
-    if (cardioType == 'HIIT') {
-      _showHIITOptions();
-    } else {
-      // Pour les autres types de cardio, aller directement à l'écran de tracking
-      _startCardioSession(cardioType);
-    }
-  }
+
+
+
 
   void _showHIITOptions() {
     // Ici on peut implémenter les options HIIT ou aller directement au HIIT
@@ -1377,7 +1361,7 @@ class _SportDashboardState extends State<SportDashboard>
     );
   }
 
-  Widget _buildDashboardSportIcon(List<String> activities) {
+  Widget _buildDashboardSportIcon(List<String> activities, {List<String> cardioTypes = const []}) {
     const size = 32.0;
     
     if (activities.isEmpty) {
@@ -1435,10 +1419,10 @@ class _SportDashboardState extends State<SportDashboard>
                     ],
                   ),
                 ),
-                child: const Align(
-                  alignment: Alignment(0.3, 0.3),
+                child: Align(
+                  alignment: const Alignment(0.3, 0.3),
                   child: Icon(
-                    LucideIcons.activity,
+                    _getCardioIcon(cardioTypes.isNotEmpty ? cardioTypes.first : 'running'),
                     size: 12,
                     color: Colors.white,
                   ),
@@ -1499,9 +1483,9 @@ class _SportDashboardState extends State<SportDashboard>
             ),
           ],
         ),
-        child: const Center(
+        child: Center(
           child: Icon(
-            LucideIcons.activity,
+            _getCardioIcon(cardioTypes.isNotEmpty ? cardioTypes.first : 'running'),
             size: 14,
             color: Colors.white,
           ),
@@ -1510,6 +1494,623 @@ class _SportDashboardState extends State<SportDashboard>
     }
 
     return Container(); // Fallback
+  }
+}
+
+// Widget pour la sélection d'activités cardio (connecté à Supabase)
+class _CardioSelectionBottomSheet extends StatefulWidget {
+  @override
+  State<_CardioSelectionBottomSheet> createState() => _CardioSelectionBottomSheetState();
+}
+
+class _CardioSelectionBottomSheetState extends State<_CardioSelectionBottomSheet> {
+  List<CardioActivityType> _activities = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadActivities();
+  }
+
+  Future<void> _loadActivities() async {
+    try {
+      final activities = await CardioService.getCardioActivities(language: 'fr');
+      setState(() {
+        _activities = activities;
+        _loading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _loading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(24),
+          topRight: Radius.circular(24),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Handle
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE2E8F0),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            
+            const SizedBox(height: 24),
+            
+            const Text(
+              'Cardio',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1A1A1A),
+              ),
+            ),
+            
+            const SizedBox(height: 8),
+            
+            const Text(
+              'Choisissez votre activité cardio',
+              style: TextStyle(
+                fontSize: 14,
+                color: Color(0xFF64748B),
+              ),
+            ),
+            
+            const SizedBox(height: 24),
+            
+            if (_loading)
+              const Center(child: CircularProgressIndicator())
+            else if (_activities.isEmpty)
+              const Center(
+                child: Text(
+                  'Aucune activité disponible',
+                  style: TextStyle(color: Color(0xFF64748B)),
+                ),
+              )
+            else
+              GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: 2,
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
+                childAspectRatio: 1.3,
+                children: _activities.map((activity) {
+                  return _buildCardioOption(
+                    icon: _getIconFromName(activity.iconName),
+                    title: activity.name,
+                    onTap: () => _handleCardioSelection(activity.activityKey, activity.name),
+                  );
+                }).toList(),
+              ),
+            
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Convertit le nom d'icône en IconData
+  IconData _getIconFromName(String iconName) {
+    switch (iconName.toLowerCase()) {
+      case 'activity':
+        return LucideIcons.activity;
+      case 'bike':
+        return LucideIcons.bike;
+      case 'footprints':
+        return LucideIcons.footprints;
+      case 'flame':
+        return LucideIcons.flame;
+      default:
+        return LucideIcons.activity;
+    }
+  }
+
+  Widget _buildCardioOption({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8F8F8),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: const Color(0xFFE2E8F0),
+            width: 1,
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    const Color(0xFF0B132B).withOpacity(0.8), 
+                    const Color(0xFF1C2951).withOpacity(0.8)
+                  ],
+                ),
+              ),
+              child: Icon(
+                icon,
+                size: 20,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF888888),
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _handleCardioSelection(String activityKey, String activityTitle) {
+    Navigator.pop(context);
+    // Naviguer vers la section cardio avec l'activité sélectionnée
+    _navigateToCardioSection(activityKey, activityTitle);
+  }
+
+  void _navigateToCardioSection(String activityKey, String activityTitle) {
+    // Utiliser la même logique que dans sport_cardio_hybrid.dart
+    _showActivityFormatsModal(activityKey, activityTitle);
+  }
+
+  void _showActivityFormatsModal(String activityType, String activityTitle) {
+    // Importer la logique depuis sport_cardio_hybrid.dart
+    final formats = _getActivityFormats(activityType);
+    
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _ActivityFormatsModal(
+        activityTitle: activityTitle,
+        activityType: activityType,
+        formats: formats,
+      ),
+    );
+  }
+
+  List<ActivityFormat> _getActivityFormats(String activityType) {
+    return CardioData.activityFormats[activityType] ?? [];
+  }
+}
+
+// Widget pour afficher les formats d'activité cardio
+class _ActivityFormatsModal extends StatelessWidget {
+  final String activityTitle;
+  final String activityType;
+  final List<ActivityFormat> formats;
+
+  const _ActivityFormatsModal({
+    required this.activityTitle,
+    required this.activityType,
+    required this.formats,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(24),
+          topRight: Radius.circular(24),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Handle
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE2E8F0),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            
+            const SizedBox(height: 24),
+            
+            Text(
+              activityTitle,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1A1A1A),
+              ),
+            ),
+            
+            const SizedBox(height: 8),
+            
+            const Text(
+              'Choisissez votre format',
+              style: TextStyle(
+                fontSize: 14,
+                color: Color(0xFF64748B),
+              ),
+            ),
+            
+            const SizedBox(height: 24),
+            
+            // Liste des formats
+            ...formats.map((format) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _buildFormatOption(
+                context,
+                icon: format.icon,
+                title: format.title,
+                description: format.description,
+                onTap: () => _handleFormatSelection(context, format),
+              ),
+            )).toList(),
+            
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFormatOption(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String description,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: const Color(0xFF0B132B),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: Colors.white, size: 24),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1A1A1A),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    description,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF64748B),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              LucideIcons.chevronRight,
+              size: 20,
+              color: Color(0xFF64748B),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _handleFormatSelection(BuildContext context, ActivityFormat format) {
+    Navigator.pop(context);
+    
+    // Gestion spéciale pour HIIT
+    if (activityType == 'hiit') {
+      _handleHiitSelection(context, format);
+    } else if (format.configurable) {
+      _showConfigurationModal(context, format);
+    } else {
+      _showRecordingChoiceModal(context, format);
+    }
+  }
+
+  void _handleHiitSelection(BuildContext context, ActivityFormat format) {
+    if (format.configurable && format.configType == 'hiit') {
+      // HIIT personnalisé - pour l'instant, on lance un HIIT par défaut
+      _startHiitWorkout(context, 'beginner');
+    } else {
+      // HIIT prédéfini
+      String workoutType;
+      switch (format.title) {
+        case 'HIIT débutant':
+          workoutType = 'beginner';
+          break;
+        case 'HIIT intense':
+          workoutType = 'intense';
+          break;
+        case 'Tabata':
+          workoutType = 'tabata';
+          break;
+        default:
+          workoutType = 'beginner';
+      }
+      _startHiitWorkout(context, workoutType);
+    }
+  }
+
+  void _startHiitWorkout(BuildContext context, String workoutType) {
+    HiitWorkout workout;
+    
+    switch (workoutType) {
+      case 'beginner':
+        workout = const HiitWorkout(
+          id: 'hiit_beginner',
+          title: 'HIIT débutant',
+          description: '15 min - 30s effort / 30s repos',
+          workDuration: 30,
+          restDuration: 30,
+          totalDuration: 15,
+          totalRounds: 15,
+        );
+        break;
+      case 'intense':
+        workout = const HiitWorkout(
+          id: 'hiit_intense',
+          title: 'HIIT intense',
+          description: '20 min - 45s effort / 15s repos',
+          workDuration: 45,
+          restDuration: 15,
+          totalDuration: 20,
+          totalRounds: 20,
+        );
+        break;
+      case 'tabata':
+        workout = const HiitWorkout(
+          id: 'tabata',
+          title: 'Tabata',
+          description: '4 min - 20s effort / 10s repos',
+          workDuration: 20,
+          restDuration: 10,
+          totalDuration: 4,
+          totalRounds: 8,
+        );
+        break;
+      default:
+        workout = const HiitWorkout(
+          id: 'hiit_beginner',
+          title: 'HIIT débutant',
+          description: '15 min - 30s effort / 30s repos',
+          workDuration: 30,
+          restDuration: 30,
+          totalDuration: 15,
+          totalRounds: 15,
+        );
+    }
+    
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => HiitSessionScreen(workout: workout),
+      ),
+    );
+  }
+
+  void _showConfigurationModal(BuildContext context, ActivityFormat format) {
+    // Pour l'instant, on lance directement avec des valeurs par défaut
+    if (format.configType == 'distance') {
+      _startTracking(context, format.title, targetDistance: 5.0);
+    } else if (format.configType == 'duration') {
+      _startTracking(context, format.title, targetDurationMinutes: 30);
+    }
+  }
+
+  void _showRecordingChoiceModal(BuildContext context, ActivityFormat format) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(24),
+            topRight: Radius.circular(24),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE2E8F0),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 24),
+              
+              Text(
+                format.title,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1A1A1A),
+                ),
+              ),
+              
+              const SizedBox(height: 24),
+              
+              // Bouton Tracker
+              if (format.trackable)
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _startTracking(context, format.title);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF0B132B),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'Tracker ma séance',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              
+              if (format.trackable)
+                const SizedBox(height: 12),
+              
+              // Bouton Déclarer
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _openManualEntry(context, format.title);
+                  },
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Color(0xFF0B132B)),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    'Déclarer ma séance',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF0B132B),
+                    ),
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 24),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _startTracking(BuildContext context, String formatTitle, {double? targetDistance, int? targetDurationMinutes}) {
+    CardioObjective? objective;
+    
+    if (targetDistance != null) {
+      objective = CardioObjective(
+        type: 'distance',
+        targetDistance: targetDistance,
+        activityType: activityType,
+        formatTitle: formatTitle,
+      );
+    } else if (targetDurationMinutes != null) {
+      objective = CardioObjective(
+        type: 'duration',
+        targetDuration: Duration(minutes: targetDurationMinutes),
+        activityType: activityType,
+        formatTitle: formatTitle,
+      );
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CardioTrackingScreen(
+          activityType: activityType,
+          activityTitle: activityTitle,
+          formatTitle: formatTitle,
+          objective: objective,
+        ),
+      ),
+    );
+  }
+
+  void _openManualEntry(BuildContext context, String formatTitle) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ManualCardioEntryScreen(
+          activityType: activityType,
+          activityTitle: activityTitle,
+          formatTitle: formatTitle,
+        ),
+      ),
+    );
   }
 }
 

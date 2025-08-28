@@ -7,6 +7,7 @@ import 'package:uuid/uuid.dart';
 import '../models/sport_models.dart' as models;
 import 'package:flutter/foundation.dart';
 import 'workout_cache_service.dart';
+import 'sport_dashboard_service.dart';
 
 class DatabaseService {
   static final SupabaseClient _client = Supabase.instance.client;
@@ -1285,6 +1286,11 @@ class DatabaseService {
       
       // Invalide le cache pour cet utilisateur après une nouvelle séance
       WorkoutCacheService.invalidateUserCache(userId);
+      
+      // Invalide aussi le cache du SportDashboardService
+      SportDashboardService.invalidateCache();
+      
+      debugPrint('🔄 Caches invalidated after workout session save');
       
     } catch (e) {
       debugPrint('❌ Error creating workout_session_summary: $e');

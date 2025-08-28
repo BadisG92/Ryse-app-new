@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../components/ui/custom_card.dart';
+import '../../services/sport_dashboard_service.dart';
 
 class SportCalendarView extends StatefulWidget {
   final VoidCallback onBack;
@@ -16,34 +17,69 @@ class SportCalendarView extends StatefulWidget {
 
 class _SportCalendarViewState extends State<SportCalendarView> {
   late DateTime selectedMonth;
+  Map<String, Map<String, dynamic>> _sportData = {};
+  Map<String, dynamic> _monthStats = {};
+  bool _loading = true;
 
   @override
   void initState() {
     super.initState();
     selectedMonth = DateTime.now();
+    _loadMonthData();
+  }
+
+  Future<void> _loadMonthData() async {
+    setState(() {
+      _loading = true;
+    });
+
+    try {
+      final data = await SportDashboardService.getMonthSportData(selectedMonth);
+      setState(() {
+        _sportData = Map<String, Map<String, dynamic>>.from(data['monthData'] ?? {});
+        _monthStats = data['stats'] ?? {};
+        _loading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _loading = false;
+      });
+      debugPrint('❌ Error loading calendar data: $e');
+    }
   }
 
   void _previousMonth() {
     setState(() {
       selectedMonth = DateTime(selectedMonth.year, selectedMonth.month - 1, 1);
     });
+    _loadMonthData();
   }
 
   void _nextMonth() {
     setState(() {
       selectedMonth = DateTime(selectedMonth.year, selectedMonth.month + 1, 1);
     });
+    _loadMonthData();
   }
 
   @override
   Widget build(BuildContext context) {
     final DateTime currentDate = DateTime.now();
     
-    // Génération des données pour le mois sélectionné
-    final Map<String, Map<String, dynamic>> sportData = _generateMonthData(selectedMonth);
-
-    // Calcul des stats du mois sélectionné
-    final monthStats = _calculateMonthStats(sportData, selectedMonth);
+    if (_loading) {
+      return Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFFF8FAFC), Color(0xFFF1F5F9)],
+          ),
+        ),
+        child: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
     
     return Container(
       decoration: const BoxDecoration(
@@ -66,7 +102,7 @@ class _SportCalendarViewState extends State<SportCalendarView> {
             const SizedBox(height: 20),
             
             // Stats du mois
-            SportMonthStats(monthStats: monthStats),
+            SportMonthStats(monthStats: Map<String, int>.from(_monthStats)),
             
             const SizedBox(height: 16),
             
@@ -77,7 +113,7 @@ class _SportCalendarViewState extends State<SportCalendarView> {
             
             // Calendrier
             SportCalendarGrid(
-              sportData: sportData, 
+              sportData: _sportData, 
               currentDate: currentDate,
               selectedMonth: selectedMonth,
               onPreviousMonth: _previousMonth,
@@ -89,54 +125,7 @@ class _SportCalendarViewState extends State<SportCalendarView> {
     );
   }
 
-  Map<String, Map<String, dynamic>> _generateMonthData(DateTime month) {
-    // Génération de données fictives pour le mois sélectionné
-    final Map<String, Map<String, dynamic>> data = {};
-    final int daysInMonth = DateTime(month.year, month.month + 1, 0).day;
-    
-    for (int day = 1; day <= daysInMonth; day++) {
-      final dateKey = "${month.year}-${month.month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}";
-      
-      // Pattern pour générer des données variées
-      if (day % 7 == 0 || day % 7 == 6) { // Weekend - repos
-        data[dateKey] = {"activities": [], "completed": false};
-      } else if (day % 3 == 0) { // Tous les 3 jours - cardio + musculation
-        data[dateKey] = {"activities": ["musculation", "cardio"], "completed": true};
-      } else if (day % 2 == 0) { // Jours pairs - musculation
-        data[dateKey] = {"activities": ["musculation"], "completed": true};
-      } else if (day % 5 == 1) { // Certains jours - cardio
-        data[dateKey] = {"activities": ["cardio"], "completed": true};
-      } else { // Autres jours - repos
-        data[dateKey] = {"activities": [], "completed": false};
-      }
-    }
-    
-    return data;
-  }
 
-  Map<String, int> _calculateMonthStats(Map<String, Map<String, dynamic>> sportData, DateTime month) {
-    final monthEntries = sportData.entries.where((entry) {
-      final date = DateTime.parse(entry.key);
-      return date.month == month.month && date.year == month.year;
-    }).toList();
-    
-    final total = monthEntries.length;
-    final activeDays = monthEntries.where((entry) => (entry.value['activities'] as List).isNotEmpty).length;
-    final musculationDays = monthEntries.where((entry) => (entry.value['activities'] as List).contains('musculation')).length;
-    final cardioDays = monthEntries.where((entry) => (entry.value['activities'] as List).contains('cardio')).length;
-    final bothDays = monthEntries.where((entry) {
-      final activities = entry.value['activities'] as List;
-      return activities.contains('musculation') && activities.contains('cardio');
-    }).length;
-    
-    return {
-      'activeDays': activeDays,
-      'musculationDays': musculationDays,
-      'cardioDays': cardioDays,
-      'bothDays': bothDays,
-      'successRate': total > 0 ? ((activeDays / total) * 100).round() : 0,
-    };
-  }
 }
 
 class SportCalendarHeader extends StatelessWidget {
@@ -610,20 +599,22 @@ class SportCalendarGrid extends StatelessWidget {
                 isCurrentDay: isCurrentDay,
               )
             : Container(
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(8),
-                  color: isCurrentMonth ? Colors.transparent : Colors.transparent,
+                  color: const Color(0xFFF1F5F9),
                   border: isCurrentDay 
-                      ? Border.all(color: const Color(0xFF0B132B), width: 2)
-                      : null,
+                      ? Border.all(color: const Color(0xFF1C2951), width: 2)
+                      : Border.all(color: const Color(0xFFE2E8F0)),
                 ),
                 child: Center(
                   child: Text(
                     dayDate.day.toString(),
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 12,
                       color: isCurrentMonth 
-                          ? const Color(0xFF1A1A1A)
+                          ? const Color(0xFF64748B)
                           : const Color(0xFFBBBBBB), // Grisé pour les autres mois
                       fontWeight: isCurrentDay ? FontWeight.bold : FontWeight.normal,
                     ),
@@ -649,13 +640,19 @@ class SportDayIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const double size = 40.0;
+    
     if (activities.isEmpty) {
-      // Jour de repos - Identique au dashboard
+      // Jour de repos - Taille fixe et centré
       return Container(
+        width: size,
+        height: size,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(8),
           color: const Color(0xFFF1F5F9),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
+          border: isCurrentDay 
+              ? Border.all(color: const Color(0xFF1C2951), width: 2)
+              : Border.all(color: const Color(0xFFE2E8F0)),
         ),
         child: Center(
           child: Text(
@@ -663,19 +660,23 @@ class SportDayIcon extends StatelessWidget {
             style: const TextStyle(
               fontSize: 12,
               color: Color(0xFF64748B),
+              fontWeight: FontWeight.w500,
             ),
           ),
         ),
       );
     } else if (activities.contains('musculation') && activities.contains('cardio')) {
-      // Les deux activités - Taille maximale pour correspondre aux autres
+      // Les deux activités - Taille fixe
       return CombinedActivityIcon(
-        size: 40, // Augmenté de 38 à 40
+        size: size,
         dayNumber: dayNumber,
+        isCurrentDay: isCurrentDay,
       );
     } else if (activities.contains('musculation')) {
-      // Musculation seulement avec gradient comme dans le dashboard
+      // Musculation seulement - Taille fixe
       return Container(
+        width: size,
+        height: size,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(8),
           gradient: const LinearGradient(
@@ -683,6 +684,9 @@ class SportDayIcon extends StatelessWidget {
             end: Alignment.bottomRight,
             colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
           ),
+          border: isCurrentDay 
+              ? Border.all(color: const Color(0xFF1C2951), width: 2)
+              : null,
           boxShadow: [
             BoxShadow(
               color: const Color(0xFF0B132B).withOpacity(0.2),
@@ -716,8 +720,10 @@ class SportDayIcon extends StatelessWidget {
         ),
       );
     } else if (activities.contains('cardio')) {
-      // Cardio seulement avec gradient comme dans le dashboard
+      // Cardio seulement - Taille fixe
       return Container(
+        width: size,
+        height: size,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(8),
           gradient: LinearGradient(
@@ -728,6 +734,9 @@ class SportDayIcon extends StatelessWidget {
               const Color(0xFF1C2951).withOpacity(0.7)
             ],
           ),
+          border: isCurrentDay 
+              ? Border.all(color: const Color(0xFF1C2951), width: 2)
+              : null,
           boxShadow: [
             BoxShadow(
               color: const Color(0xFF0B132B).withOpacity(0.2),
@@ -769,18 +778,26 @@ class SportDayIcon extends StatelessWidget {
 class CombinedActivityIcon extends StatelessWidget {
   final double size;
   final int? dayNumber;
+  final bool isCurrentDay;
 
   const CombinedActivityIcon({
     super.key,
     required this.size,
     this.dayNumber,
+    this.isCurrentDay = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
+    return Container(
       width: size,
       height: size,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        border: isCurrentDay 
+            ? Border.all(color: const Color(0xFF1C2951), width: 2)
+            : null,
+      ),
       child: Stack(
         children: [
           // Partie musculation (haut-gauche) - Couleur légende
@@ -794,7 +811,7 @@ class CombinedActivityIcon extends StatelessWidget {
                 color: const Color(0xFF0B132B), // Couleur de la légende musculation
               ),
               child: const Align(
-                alignment: Alignment(-0.3, -0.3),
+                alignment: Alignment(-0.2, -0.2),
                 child: Icon(
                   LucideIcons.dumbbell,
                   size: 10,
@@ -821,7 +838,7 @@ class CombinedActivityIcon extends StatelessWidget {
                 ),
               ),
               child: const Align(
-                alignment: Alignment(0.3, 0.3),
+                alignment: Alignment(0.2, 0.2),
                 child: Icon(
                   LucideIcons.activity,
                   size: 10,

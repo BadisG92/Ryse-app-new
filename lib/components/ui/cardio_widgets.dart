@@ -3,16 +3,47 @@ import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'custom_card.dart';
 import 'cardio_models.dart';
+import '../../services/cardio_service.dart';
 import 'cardio_cards.dart';
 
-// Section des statistiques hebdomadaires
-class WeeklyStatsSection extends StatelessWidget {
-  final WeeklyCardioStats stats;
+// Section des statistiques hebdomadaires (connectée à Supabase)
+class WeeklyStatsSection extends StatefulWidget {
+  const WeeklyStatsSection({super.key});
 
-  const WeeklyStatsSection({
-    super.key,
-    required this.stats,
-  });
+  @override
+  State<WeeklyStatsSection> createState() => _WeeklyStatsSectionState();
+}
+
+class _WeeklyStatsSectionState extends State<WeeklyStatsSection> {
+  CardioWeeklyStats? _stats;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadWeeklyStats();
+  }
+
+  Future<void> _loadWeeklyStats() async {
+    try {
+      final stats = await CardioService.getWeeklyStats();
+      setState(() {
+        _stats = stats;
+        _loading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _loading = false;
+        // Fallback vers des stats vides
+        _stats = const CardioWeeklyStats(
+          totalDistance: 0,
+          totalDuration: Duration.zero,
+          totalCalories: 0,
+          sessionsCount: 0,
+        );
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -41,30 +72,41 @@ class WeeklyStatsSection extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: WeeklyStatCard(
-                    title: stats.distanceText,
-                    subtitle: 'Distance',
+            
+            if (_loading)
+              const Center(child: CircularProgressIndicator())
+            else if (_stats != null)
+              Row(
+                children: [
+                  Expanded(
+                    child: WeeklyStatCard(
+                      title: _stats!.distanceText,
+                      subtitle: 'Distance',
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: WeeklyStatCard(
-                    title: stats.durationText,
-                    subtitle: 'Temps',
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: WeeklyStatCard(
+                      title: _stats!.durationText,
+                      subtitle: 'Temps',
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: WeeklyStatCard(
-                    title: stats.caloriesText,
-                    subtitle: 'Calories',
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: WeeklyStatCard(
+                      title: _stats!.caloriesText,
+                      subtitle: 'Calories',
+                    ),
                   ),
+                ],
+              )
+            else
+              const Center(
+                child: Text(
+                  'Aucune donnée disponible',
+                  style: TextStyle(color: Color(0xFF64748B)),
                 ),
-              ],
-            ),
+              ),
           ],
         ),
       ),
@@ -72,14 +114,42 @@ class WeeklyStatsSection extends StatelessWidget {
   }
 }
 
-// Section de sélection d'activités
-class ActivitySelectionSection extends StatelessWidget {
+// Section de sélection d'activités (connectée à Supabase)
+class ActivitySelectionSection extends StatefulWidget {
   final Function(String activityType, String activityTitle) onActivitySelected;
 
   const ActivitySelectionSection({
     super.key,
     required this.onActivitySelected,
   });
+
+  @override
+  State<ActivitySelectionSection> createState() => _ActivitySelectionSectionState();
+}
+
+class _ActivitySelectionSectionState extends State<ActivitySelectionSection> {
+  List<CardioActivityType> _activities = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadActivities();
+  }
+
+  Future<void> _loadActivities() async {
+    try {
+      final activities = await CardioService.getCardioActivities(language: 'fr');
+      setState(() {
+        _activities = activities;
+        _loading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _loading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -108,36 +178,103 @@ class ActivitySelectionSection extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 2,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              childAspectRatio: 1.3,
-              children: CardioData.activityTypes.map((activity) {
-                return ActivityCard(
-                  icon: activity.icon,
-                  title: activity.title,
-                  onTap: () => onActivitySelected(activity.id, activity.title),
-                );
-              }).toList(),
-            ),
+            
+            if (_loading)
+              const Center(child: CircularProgressIndicator())
+            else if (_activities.isEmpty)
+              const Center(
+                child: Text(
+                  'Aucune activité disponible',
+                  style: TextStyle(color: Color(0xFF64748B)),
+                ),
+              )
+            else
+              GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: 2,
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
+                childAspectRatio: 1.3,
+                children: _activities.map((activity) {
+                  return ActivityCard(
+                    icon: _getIconFromName(activity.iconName),
+                    title: activity.name,
+                    onTap: () => widget.onActivitySelected(activity.activityKey, activity.name),
+                  );
+                }).toList(),
+              ),
           ],
         ),
       ),
     );
   }
+
+  /// Convertit le nom d'icône en IconData
+  IconData _getIconFromName(String iconName) {
+    switch (iconName) {
+      case 'activity':
+        return LucideIcons.activity;
+      case 'bike':
+        return LucideIcons.bike;
+      case 'footprints':
+        return LucideIcons.footprints;
+      case 'flame':
+        return LucideIcons.flame;
+      case 'zap':
+        return LucideIcons.zap;
+      case 'target':
+        return LucideIcons.target;
+      case 'clock':
+        return LucideIcons.clock;
+      case 'mountain':
+        return LucideIcons.mountain;
+      case 'trending-up':
+        return LucideIcons.trendingUp;
+      case 'timer':
+        return LucideIcons.timer;
+      default:
+        return LucideIcons.activity; // icône par défaut
+    }
+  }
 }
 
-// Section des sessions de la semaine
-class WeekSessionsSection extends StatelessWidget {
-  final List<CardioSession> sessions;
+// Section de la dernière séance (connectée à Supabase)
+class LastSessionSection extends StatefulWidget {
+  final VoidCallback? onDetailsTap;
 
-  const WeekSessionsSection({
+  const LastSessionSection({
     super.key,
-    required this.sessions,
+    this.onDetailsTap,
   });
+
+  @override
+  State<LastSessionSection> createState() => _LastSessionSectionState();
+}
+
+class _LastSessionSectionState extends State<LastSessionSection> {
+  CompletedCardioSession? _lastSession;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLastSession();
+  }
+
+  Future<void> _loadLastSession() async {
+    try {
+      final session = await CardioService.getLastSession();
+      setState(() {
+        _lastSession = session;
+        _loading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _loading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -147,42 +284,353 @@ class WeekSessionsSection extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Vos séances de la semaine',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF1A1A1A),
-              ),
+            Row(
+              children: [
+                const Icon(
+                  LucideIcons.clock,
+                  size: 20,
+                  color: Color(0xFF0B132B),
+                ),
+                const SizedBox(width: 12),
+                const Text(
+                  'Dernière séance',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1A1A1A),
+                  ),
+                ),
+              ],
             ),
             
             const SizedBox(height: 16),
             
-            // Liste des séances
-            ...sessions.asMap().entries.map((entry) {
-              final index = entry.key;
-              final session = entry.value;
-              final isLast = index == sessions.length - 1;
-              
-              return Column(
-                children: [
-                  WeekSessionItem(session: session),
-                  if (!isLast) ...[
-                    const SizedBox(height: 16),
-                    Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 16),
-                      height: 1,
-                      color: const Color(0xFFE2E8F0),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                ],
-              );
-            }).toList(),
+            if (_loading)
+              const Center(child: CircularProgressIndicator())
+            else if (_lastSession != null)
+              _buildSessionContent(_lastSession!)
+            else
+              const Center(
+                child: Text(
+                  'Aucune séance enregistrée',
+                  style: TextStyle(color: Color(0xFF64748B)),
+                ),
+              ),
           ],
         ),
       ),
     );
+  }
+
+  Widget _buildSessionContent(CompletedCardioSession session) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            // Informations principales
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  session.activityTitle,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1A1A1A),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  session.timeAgo,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF64748B),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        
+        const SizedBox(height: 16),
+        
+        // Grille des données
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildMetric('Durée', session.durationText, LucideIcons.clock),
+                  ),
+                  if (session.distance != null && session.distance! > 0) ...[
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _buildMetric('Distance', session.distanceText, LucideIcons.mapPin),
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildMetric('Calories', session.caloriesText, LucideIcons.flame),
+                  ),
+                  if (session.paceText.isNotEmpty) ...[
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _buildMetric('Allure', session.paceText, LucideIcons.gauge),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMetric(String label, String value, IconData icon) {
+    return Column(
+      children: [
+        Icon(icon, size: 16, color: const Color(0xFF0B132B)),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF1A1A1A),
+          ),
+        ),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            color: Color(0xFF64748B),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// Section des sessions de la semaine (connectée à Supabase)
+class WeekSessionsSection extends StatefulWidget {
+  const WeekSessionsSection({super.key});
+
+  @override
+  State<WeekSessionsSection> createState() => _WeekSessionsSectionState();
+}
+
+class _WeekSessionsSectionState extends State<WeekSessionsSection> {
+  List<CompletedCardioSession> _sessions = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadWeekSessions();
+  }
+
+  Future<void> _loadWeekSessions() async {
+    try {
+      final sessions = await CardioService.getWeekSessions();
+      setState(() {
+        _sessions = sessions;
+        _loading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _loading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomCard(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(
+                  LucideIcons.activity,
+                  size: 20,
+                  color: Color(0xFF0B132B),
+                ),
+                const SizedBox(width: 12),
+                const Text(
+                  'Vos séances de la semaine',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1A1A1A),
+                  ),
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 16),
+            
+            if (_loading)
+              const Center(child: CircularProgressIndicator())
+            else if (_sessions.isEmpty)
+              const Text(
+                'Aucune séance cette semaine',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF64748B),
+                ),
+              )
+            else
+              // Liste des séances
+              ..._sessions.asMap().entries.map((entry) {
+                final index = entry.key;
+                final session = entry.value;
+                final isLast = index == _sessions.length - 1;
+                
+                return Column(
+                  children: [
+                    _buildWeekSessionItem(session),
+                    if (!isLast) ...[
+                      const SizedBox(height: 16),
+                      Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 16),
+                        height: 1,
+                        color: const Color(0xFFE2E8F0),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                  ],
+                );
+              }).toList(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWeekSessionItem(CompletedCardioSession session) {
+    return Row(
+      children: [
+        // Petite icône simple sans encadré
+        Icon(
+          _getActivityIcon(session.activityType),
+          color: const Color(0xFF0B132B),
+          size: 20,
+        ),
+        
+        const SizedBox(width: 12),
+        
+        // Informations de la séance
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Titre : HIIT - Tabata (activityTitle - formatTitle)
+              RichText(
+                text: TextSpan(
+                  children: [
+                    TextSpan(
+                      text: session.activityTitle,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF1A1A1A),
+                      ),
+                    ),
+                    TextSpan(
+                      text: ' - ${session.formatTitle}',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF64748B),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 4),
+              // Jour de la semaine
+              Text(
+                _getDayText(session.startTime),
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF64748B),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  _buildSessionStat(LucideIcons.clock, session.durationText),
+                  if (session.distance != null && session.distance! > 0) ...[
+                    const SizedBox(width: 16),
+                    _buildSessionStat(LucideIcons.mapPin, session.distanceText),
+                  ],
+                  const SizedBox(width: 16),
+                  _buildSessionStat(LucideIcons.flame, session.caloriesText),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSessionStat(IconData icon, String value) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 12, color: const Color(0xFF64748B)),
+        const SizedBox(width: 4),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 12,
+            color: Color(0xFF64748B),
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _getDayText(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date).inDays;
+    
+    if (difference == 0) return 'Aujourd\'hui';
+    if (difference == 1) return 'Hier';
+    
+    final weekDays = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+    return weekDays[date.weekday - 1];
+  }
+
+  IconData _getActivityIcon(String activityType) {
+    switch (activityType) {
+      case 'running':
+        return LucideIcons.activity;
+      case 'bike':
+        return LucideIcons.bike;
+      case 'walking':
+        return LucideIcons.footprints;
+      case 'hiit':
+        return LucideIcons.flame;
+      default:
+        return LucideIcons.activity;
+    }
   }
 }
 

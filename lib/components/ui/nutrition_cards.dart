@@ -93,24 +93,32 @@ class MainCaloriesCard extends StatelessWidget {
                 ),
               ),
               
-              // Statistiques en 3 colonnes
+              // Statistiques en 3 colonnes avec alignement parfait
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  CaloriesStatItem(
-                    label: 'Consommées', 
-                    value: profile.currentCalories, 
-                    color: const Color(0xFF0B132B),
+                  // KPI gauche
+                  Expanded(
+                    child: CaloriesStatItem(
+                      label: 'Consommées', 
+                      value: profile.currentCalories, 
+                      color: const Color(0xFF0B132B),
+                    ),
                   ),
-                  CaloriesStatItem(
-                    label: 'Restantes', 
-                    value: profile.remainingCalories, 
-                    color: const Color(0xFF1C2951),
+                  // KPI central (aligné avec le cercle)
+                  Expanded(
+                    child: CaloriesStatItem(
+                      label: 'Restantes', 
+                      value: profile.remainingCalories, 
+                      color: const Color(0xFF1C2951),
+                    ),
                   ),
-                  CaloriesStatItem(
-                    label: 'Objectif', 
-                    value: profile.targetCalories, 
-                    color: const Color(0xFF888888),
+                  // KPI droite
+                  Expanded(
+                    child: CaloriesStatItem(
+                      label: 'Objectif', 
+                      value: profile.targetCalories, 
+                      color: const Color(0xFF888888),
+                    ),
                   ),
                 ],
               ),
@@ -175,6 +183,7 @@ class CaloriesStatItem extends StatelessWidget {
             fontSize: 12,
             color: Color(0xFF888888),
           ),
+          textAlign: TextAlign.center, // Centrage du texte
         ),
         const SizedBox(height: 4),
         Text(
@@ -184,6 +193,7 @@ class CaloriesStatItem extends StatelessWidget {
             fontWeight: FontWeight.bold,
             color: color,
           ),
+          textAlign: TextAlign.center, // Centrage du texte
         ),
       ],
     );
