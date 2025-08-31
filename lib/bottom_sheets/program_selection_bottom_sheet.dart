@@ -196,8 +196,8 @@ class _ProgramSelectionBottomSheetState extends State<ProgramSelectionBottomShee
             },
                         child: Container(
               padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Titre et badge custom
                   Row(

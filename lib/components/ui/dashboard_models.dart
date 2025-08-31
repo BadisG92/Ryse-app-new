@@ -319,7 +319,7 @@ class DashboardData {
     ),
   ];
 
-  // Actions rapides selon le profil utilisateur
+  // Actions rapides selon le profil utilisateur (version complète - conservée pour compatibilité)
   static List<QuickAction> getQuickActions(UserProfile profile) {
     return [
       const QuickAction(
@@ -355,6 +355,36 @@ class DashboardData {
         id: 'weight_tracking',
         label: 'Poids',
         icon: LucideIcons.scale,
+      ),
+    ];
+  }
+
+  // Actions essentielles pour le nouveau dashboard (4 maximum)
+  static List<QuickAction> getEssentialActions(UserProfile profile) {
+    return [
+      const QuickAction(
+        id: 'add_meal',
+        label: 'Repas',
+        icon: LucideIcons.utensils,
+      ),
+      QuickAction(
+        id: 'take_photo',
+        label: 'Scanner',
+        icon: (!profile.isPremium && profile.photosUsed >= 3) 
+            ? LucideIcons.lock 
+            : LucideIcons.camera,
+        isDisabled: !profile.isPremium && profile.photosUsed >= 3,
+        isPremiumRequired: !profile.isPremium && profile.photosUsed >= 3,
+      ),
+      const QuickAction(
+        id: 'add_water',
+        label: 'Hydratation',
+        icon: LucideIcons.droplets,
+      ),
+      const QuickAction(
+        id: 'workout',
+        label: 'Entraînement',
+        icon: LucideIcons.dumbbell,
       ),
     ];
   }
