@@ -389,6 +389,38 @@ class DashboardData {
     ];
   }
 
+  // Actions gamifiées avec pesée (5 actions)
+  static List<QuickAction> getGamifiedActions(UserProfile profile) {
+    return [
+      const QuickAction(
+        id: 'add_meal',
+        label: 'Repas',
+        icon: LucideIcons.utensils,
+      ),
+      const QuickAction(
+        id: 'take_photo',
+        label: 'Scanner',
+        icon: LucideIcons.camera,
+        // Plus de limite Premium - fonctionnalité incluse de base
+      ),
+      const QuickAction(
+        id: 'add_water',
+        label: 'Eau',
+        icon: LucideIcons.droplets,
+      ),
+      const QuickAction(
+        id: 'workout',
+        label: 'Sport',
+        icon: LucideIcons.dumbbell,
+      ),
+      const QuickAction(
+        id: 'weight_tracking',
+        label: 'Pesée',
+        icon: LucideIcons.scale,
+      ),
+    ];
+  }
+
   // Previews des modules
   static const List<ModulePreview> modulePreviews = [
     ModulePreview(

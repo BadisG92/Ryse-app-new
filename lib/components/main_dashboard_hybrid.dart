@@ -5,7 +5,6 @@ import 'dart:async';
 import 'dart:math';
 import 'ui/dashboard_models.dart';
 import 'ui/custom_card.dart';
-import 'ui/custom_button.dart';
 import 'ui/custom_badge.dart';
 import '../services/dashboard_service.dart';
 
@@ -178,49 +177,47 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
             children: [
               const SizedBox(height: 40), // Safe area
               
-              // Header compact et focalisé
-              CompactDashboardHeader(
+              // Header gamifié dynamique
+              GamifiedDashboardHeader(
                 profile: userProfile!.copyWith(todayScore: animatedScore),
-                onPremiumTap: _onPremiumTap,
               ),
               
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
               
-              // Résumé quotidien avec tendances
-              DailyOverviewCard(
+              // Vue d'ensemble Nutrition + Sport
+              NutritionSportOverview(
                 profile: userProfile!,
                 goals: dailyGoals.isNotEmpty ? dailyGoals : DashboardData.dailyGoals,
               ),
               
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
               
-              // Actions essentielles uniquement (4 max)
-              EssentialActionsSection(
-                actions: DashboardData.getEssentialActions(userProfile!),
+              // Actions rapides gamifiées (5 actions avec pesée)
+              GamifiedActionsSection(
+                actions: DashboardData.getGamifiedActions(userProfile!),
               ),
               
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
               
-              // Progrès détaillé et motivationnel
-              DetailedProgressSection(
+              // Progression compacte mais engageante (comme l'ancien)
+              CompactProgressSection(
                 goals: dailyGoals.isNotEmpty ? dailyGoals : DashboardData.dailyGoals,
                 profile: userProfile!,
               ),
               
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
               
-              // Insights personnalisés et conseils IA
-              PersonalizedInsightsSection(
+              // Coach intégré + motivation
+              IntegratedCoachSection(
                 profile: userProfile!,
-                isPremium: userProfile!.isPremium,
-                onUpgrade: _onPremiumUpgrade,
-                onViewAnalytics: _onViewAnalytics,
+                completedGoals: dailyGoals.where((g) => g.completed).length,
+                totalGoals: dailyGoals.length,
               ),
               
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
               
-              // Motivation et streak (placement optimal)
-              MotivationSection(
+              // Badge de réussite du jour
+              DailyAchievementBadge(
                 profile: userProfile!,
                 completedGoals: dailyGoals.where((g) => g.completed).length,
                 totalGoals: dailyGoals.length,
@@ -238,94 +235,65 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
     await _loadDashboardData();
   }
 
-  // Event handlers - gardés intégrés pour la logique spécifique
-  void _onPremiumTap() {
-    if (userProfile != null) {
-    setState(() {
-        userProfile = userProfile!.copyWith(isPremium: true);
-    });
-    }
-  }
-
-  void _onPremiumUpgrade() {
-    if (userProfile != null) {
-    setState(() {
-        userProfile = userProfile!.copyWith(isPremium: true);
-    });
-    }
-    
-    // TODO: Intégrer avec la logique de paiement
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Bienvenue dans Ryze Premium ! 🎉')),
-    );
-  }
+  // Event handlers simplifiés - plus de Premium à gérer
 
 
-  void _onViewAnalytics() {
-    // TODO: Ouvrir les analytics avancés
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Ouverture des analytics avancés')),
-    );
-  }
 }
 
-// Header compact remplaçant l'ancien header volumineux
-class CompactDashboardHeader extends StatelessWidget {
+// Header gamifié et dynamique
+class GamifiedDashboardHeader extends StatelessWidget {
   final UserProfile profile;
-  final VoidCallback? onPremiumTap;
 
-  const CompactDashboardHeader({
+  const GamifiedDashboardHeader({
     super.key,
     required this.profile,
-    this.onPremiumTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    // Calculer l'état du jour pour les couleurs dynamiques
+    final isGreatDay = profile.todayScore >= 80;
+    final streakColor = profile.streak >= 7 ? const Color(0xFFFFD700) : Colors.white;
+    
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        gradient: const LinearGradient(
-          colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+        borderRadius: BorderRadius.circular(24),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isGreatDay 
+              ? [const Color(0xFF0B132B), const Color(0xFF1C2951), const Color(0xFF2D4A6B)]
+              : [const Color(0xFF0B132B), const Color(0xFF1C2951)],
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF0B132B).withOpacity(0.2),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
+            color: const Color(0xFF0B132B).withOpacity(0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
-      child: Row(
+      child: Column(
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  profile.greetingMessage,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Row(
+          // Top row: Salutation + Score
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(LucideIcons.flame, size: 16, color: Colors.white),
-                    const SizedBox(width: 6),
                     Text(
-                      '${profile.streak} jours',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.white.withOpacity(0.9),
+                      profile.greetingMessage,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(height: 4),
                     Text(
-                      profile.xpText,
+                      isGreatDay ? 'Journée exceptionnelle ! ✨' : 'C\'est parti pour une belle journée !',
                       style: TextStyle(
                         fontSize: 14,
                         color: Colors.white.withOpacity(0.9),
@@ -333,80 +301,134 @@ class CompactDashboardHeader extends StatelessWidget {
                     ),
                   ],
                 ),
-              ],
-            ),
-          ),
-          // Score circulaire compact
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
-              shape: BoxShape.circle,
-            ),
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    profile.todayScore.toString(),
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  Text(
-                    'pts',
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: Colors.white.withOpacity(0.8),
-                    ),
-                  ),
-                ],
               ),
-            ),
+              // Score circulaire animé
+              Container(
+                width: 80,
+                height: 80,
+                child: Stack(
+                  children: [
+                    // Background circle
+                    Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.2),
+                          width: 2,
+                        ),
+                      ),
+                    ),
+                    // Score
+                    Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            profile.todayScore.toString(),
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          Text(
+                            'points',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Colors.white.withOpacity(0.8),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          if (!profile.isPremium) ...[
-            const SizedBox(width: 12),
-            GestureDetector(
-              onTap: onPremiumTap,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          
+          const SizedBox(height: 16),
+          
+          // Bottom row: Streak + XP avec style gamifié
+          Row(
+            children: [
+              // Streak badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: streakColor.withOpacity(0.3),
+                    width: 1,
+                  ),
                 ),
-                child: const Row(
+                child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(LucideIcons.crown, size: 14, color: Colors.white),
-                    SizedBox(width: 4),
+                    Icon(LucideIcons.flame, size: 16, color: streakColor),
+                    const SizedBox(width: 6),
                     Text(
-                      'PRO',
+                      '${profile.streak} jours',
                       style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: streakColor,
+                      ),
+                    ),
+                    if (profile.streak >= 7) ...[
+                      const SizedBox(width: 4),
+                      Text(
+                        '🔥',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              
+              const Spacer(),
+              
+              // XP badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(LucideIcons.zap, size: 16, color: Colors.white),
+                    const SizedBox(width: 6),
+                    Text(
+                      '+${profile.todayXP} XP',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
                         color: Colors.white,
                       ),
                     ),
                   ],
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ],
       ),
     );
   }
 }
 
-// Résumé quotidien avec KPI essentiels
-class DailyOverviewCard extends StatelessWidget {
+// Vue d'ensemble Nutrition + Sport
+class NutritionSportOverview extends StatelessWidget {
   final UserProfile profile;
   final List<DailyGoal> goals;
 
-  const DailyOverviewCard({
+  const NutritionSportOverview({
     super.key,
     required this.profile,
     required this.goals,
@@ -416,7 +438,6 @@ class DailyOverviewCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final completedGoals = goals.where((g) => g.completed).length;
     final caloriesProgress = profile.caloriesProgress.clamp(0.0, 1.0);
-    final remainingCalories = profile.remainingCalories;
     
     return CustomCard(
       child: Padding(
@@ -425,7 +446,7 @@ class DailyOverviewCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Aujourd\'hui en un coup d\'œil',
+              'Nutrition & Sport aujourd\'hui',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -434,26 +455,56 @@ class DailyOverviewCard extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             
-            // Métriques principales en grille 2x2
+            // Métriques principales en grille 2x2 (Nutrition + Sport)
             Row(
               children: [
+                Expanded(
+                  child: _buildMetricTile(
+                    icon: LucideIcons.utensils,
+                    title: 'Nutrition',
+                    value: '${profile.currentCalories}',
+                    subtitle: '/${profile.dailyCalories} kcal',
+                    color: const Color(0xFF0B132B),
+                    progress: caloriesProgress,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildMetricTile(
+                    icon: LucideIcons.dumbbell,
+                    title: 'Sport',
+                    value: '342', // TODO: Vraies données sport
+                    subtitle: 'kcal brûlées',
+                    color: const Color(0xFF0B132B),
+                    progress: 0.6, // TODO: Vrai progrès sport
+                  ),
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 12),
+            
+            Row(
+              children: [
+                Expanded(
+                  child: _buildMetricTile(
+                    icon: LucideIcons.droplets,
+                    title: 'Hydratation',
+                    value: '1.2L', // TODO: Vraies données
+                    subtitle: '/2.0L',
+                    color: const Color(0xFF0B132B),
+                    progress: 0.6,
+                  ),
+                ),
+                const SizedBox(width: 12),
                 Expanded(
                   child: _buildMetricTile(
                     icon: LucideIcons.target,
                     title: 'Objectifs',
                     value: '$completedGoals/${goals.length}',
-                    subtitle: completedGoals >= 3 ? 'Excellent !' : 'En cours',
+                    subtitle: completedGoals >= 3 ? 'Top ! 🔥' : 'En cours',
                     color: completedGoals >= 3 ? const Color(0xFF22C55E) : const Color(0xFF0B132B),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _buildMetricTile(
-                    icon: LucideIcons.flame,
-                    title: 'Calories',
-                    value: '${profile.currentCalories}',
-                    subtitle: remainingCalories > 0 ? '-$remainingCalories kcal' : 'Objectif atteint',
-                    color: const Color(0xFF0B132B),
+                    progress: completedGoals / goals.length,
                   ),
                 ),
               ],
@@ -532,57 +583,109 @@ class DailyOverviewCard extends StatelessWidget {
     required String value,
     required String subtitle,
     required Color color,
+    double? progress,
   }) {
+    final hasProgress = progress != null;
+    
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0B132B).withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(icon, size: 16, color: color),
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, size: 16, color: color),
+              ),
               const SizedBox(width: 8),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: Color(0xFF64748B),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF64748B),
+                  ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+              ),
+              const SizedBox(width: 2),
+              Expanded(
+                child: Text(
+                  subtitle,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF64748B),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
           ),
-          Text(
-            subtitle,
-            style: const TextStyle(
-              fontSize: 11,
-              color: Color(0xFF64748B),
+          if (hasProgress) ...[
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              height: 4,
+              decoration: BoxDecoration(
+                color: const Color(0xFFE2E8F0),
+                borderRadius: BorderRadius.circular(2),
+              ),
+              child: FractionallySizedBox(
+                alignment: Alignment.centerLeft,
+                widthFactor: progress.clamp(0.0, 1.0),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: color,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );
   }
 }
 
-// Actions essentielles (4 maximum)
-class EssentialActionsSection extends StatelessWidget {
+// Actions rapides gamifiées (5 actions avec pesée)
+class GamifiedActionsSection extends StatelessWidget {
   final List<QuickAction> actions;
 
-  const EssentialActionsSection({
+  const GamifiedActionsSection({
     super.key,
     required this.actions,
   });
@@ -604,17 +707,42 @@ class EssentialActionsSection extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            Row(
-              children: actions.take(4).map((action) => 
-                Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.only(
-                      right: actions.indexOf(action) < 3 ? 12 : 0,
-                    ),
-                    child: _buildEssentialAction(context, action),
-                  ),
-                )
-              ).toList(),
+            // Grille 2x3 pour 5 actions uniformes
+            Column(
+              children: [
+                // Première ligne : 3 actions
+                Row(
+                  children: actions.take(3).map((action) => 
+                    Expanded(
+                      child: Padding(
+                        padding: EdgeInsets.only(
+                          right: actions.indexOf(action) < 2 ? 8 : 0,
+                        ),
+                        child: _buildGamifiedAction(context, action),
+                      ),
+                    )
+                  ).toList(),
+                ),
+                const SizedBox(height: 8),
+                // Deuxième ligne : 2 actions centrées
+                Row(
+                  children: [
+                    Expanded(flex: 1, child: Container()),
+                    ...actions.skip(3).take(2).map((action) => 
+                      Expanded(
+                        flex: 2,
+                        child: Padding(
+                          padding: EdgeInsets.only(
+                            right: actions.indexOf(action) < actions.length - 1 ? 8 : 0,
+                          ),
+                          child: _buildGamifiedAction(context, action),
+                        ),
+                      )
+                    ).toList(),
+                    Expanded(flex: 1, child: Container()),
+                  ],
+                ),
+              ],
             ),
           ],
         ),
@@ -622,38 +750,51 @@ class EssentialActionsSection extends StatelessWidget {
     );
   }
 
-  Widget _buildEssentialAction(BuildContext context, QuickAction action) {
+  Widget _buildGamifiedAction(BuildContext context, QuickAction action) {
     return GestureDetector(
-      onTap: () => _handleEssentialAction(context, action),
+      onTap: () => _handleGamifiedAction(context, action),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        height: 80, // Taille fixe pour uniformité
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           gradient: action.isDisabled 
               ? null
               : const LinearGradient(
                   colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
           color: action.isDisabled ? const Color(0xFFF1F5F9) : null,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: action.isDisabled ? null : [
+            BoxShadow(
+              color: const Color(0xFF0B132B).withOpacity(0.2),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
         ),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
               action.icon,
               size: 24,
               color: action.isDisabled ? const Color(0xFF64748B) : Colors.white,
             ),
-            const SizedBox(height: 8),
-            Text(
-              action.label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: action.isDisabled ? const Color(0xFF64748B) : Colors.white,
+            const SizedBox(height: 6),
+            Flexible(
+              child: Text(
+                action.label,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: action.isDisabled ? const Color(0xFF64748B) : Colors.white,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -661,7 +802,7 @@ class EssentialActionsSection extends StatelessWidget {
     );
   }
 
-  void _handleEssentialAction(BuildContext context, QuickAction action) {
+  void _handleGamifiedAction(BuildContext context, QuickAction action) {
     if (action.isDisabled || action.isPremiumRequired) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -709,11 +850,430 @@ class EssentialActionsSection extends StatelessWidget {
           ),
         );
         break;
+      case 'weight_tracking':
+        // TODO: Ouvrir saisie de poids
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Enregistrement du poids'),
+            backgroundColor: Color(0xFF0B132B),
+          ),
+        );
+        break;
     }
   }
 }
 
-// Progrès détaillé avec tendances
+// Progression compacte mais engageante (style ancien amélioré)
+class CompactProgressSection extends StatelessWidget {
+  final List<DailyGoal> goals;
+  final UserProfile profile;
+
+  const CompactProgressSection({
+    super.key,
+    required this.goals,
+    required this.profile,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final completedGoals = goals.where((g) => g.completed).length;
+    final totalGoals = goals.length;
+    
+    return CustomCard(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            // Header avec progression globale
+            Row(
+              children: [
+                Icon(
+                  LucideIcons.target,
+                  size: 20,
+                  color: Color(0xFF0B132B),
+                ),
+                const SizedBox(width: 12),
+                const Text(
+                  'Objectifs du jour',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1A1A1A),
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: completedGoals >= 3 
+                        ? const Color(0xFF22C55E).withOpacity(0.1)
+                        : const Color(0xFF0B132B).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '$completedGoals/$totalGoals',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: completedGoals >= 3 
+                          ? const Color(0xFF22C55E)
+                          : const Color(0xFF0B132B),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 12),
+            
+            // Liste compacte des objectifs
+            ...goals.map((goal) => 
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _buildCompactGoalItem(goal),
+              )
+            ).toList(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCompactGoalItem(DailyGoal goal) {
+    final isCompleted = goal.completed;
+    
+    return Row(
+      children: [
+        // Icône de statut
+        Container(
+          width: 20,
+          height: 20,
+          decoration: BoxDecoration(
+            color: isCompleted 
+                ? const Color(0xFF22C55E)
+                : const Color(0xFFE2E8F0),
+            shape: BoxShape.circle,
+          ),
+          child: isCompleted 
+              ? const Icon(LucideIcons.check, size: 12, color: Colors.white)
+              : null,
+        ),
+        
+        const SizedBox(width: 12),
+        
+        // Texte de l'objectif
+        Expanded(
+          child: Text(
+            goal.label,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: isCompleted 
+                  ? const Color(0xFF1A1A1A)
+                  : const Color(0xFF64748B),
+              decoration: isCompleted ? TextDecoration.lineThrough : null,
+            ),
+          ),
+        ),
+        
+        // Badge XP ou progression
+        if (isCompleted)
+          CustomBadge(
+            text: '+${goal.xp} XP',
+            backgroundColor: const Color(0xFF22C55E).withOpacity(0.1),
+            textColor: const Color(0xFF22C55E),
+          )
+        else
+          Text(
+            goal.progressText,
+            style: const TextStyle(
+              fontSize: 12,
+              color: Color(0xFF64748B),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+// Coach intégré (sans Premium)
+class IntegratedCoachSection extends StatelessWidget {
+  final UserProfile profile;
+  final int completedGoals;
+  final int totalGoals;
+
+  const IntegratedCoachSection({
+    super.key,
+    required this.profile,
+    required this.completedGoals,
+    required this.totalGoals,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final coachMessage = _getCoachMessage(profile, completedGoals, totalGoals);
+    final coachEmoji = _getCoachEmoji(completedGoals, totalGoals);
+    
+    return CustomCard(
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              const Color(0xFF0B132B).withOpacity(0.03),
+              Colors.transparent,
+            ],
+          ),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            // Avatar du coach avec animation
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+                ),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF0B132B).withOpacity(0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Center(
+                child: Text(
+                  coachEmoji,
+                  style: const TextStyle(fontSize: 24),
+                ),
+              ),
+            ),
+            
+            const SizedBox(width: 16),
+            
+            // Message du coach
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Coach Ryze',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF0B132B),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    coachMessage,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF64748B),
+                      height: 1.3,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _getCoachMessage(UserProfile profile, int completed, int total) {
+    final completionRate = completed / total;
+    final hour = DateTime.now().hour;
+    
+    if (completionRate >= 0.75) {
+      return "Excellent ! Tu es sur une lancée fantastique aujourd'hui. Continue comme ça ! 🔥";
+    } else if (completionRate >= 0.5) {
+      return "Bon rythme ! Tu es à mi-parcours de tes objectifs. Encore un petit effort !";
+    } else if (hour < 12) {
+      return "La journée commence bien ! Prends un bon petit-déjeuner pour avoir de l'énergie.";
+    } else if (hour < 17) {
+      return "C'est le moment parfait pour se remettre sur les rails. Que dirais-tu d'une pause active ?";
+    } else {
+      return "Pas de stress ! Même les petites actions comptent. Demain sera un nouveau jour !";
+    }
+  }
+
+  String _getCoachEmoji(int completed, int total) {
+    final completionRate = completed / total;
+    if (completionRate >= 0.75) return "🏆";
+    if (completionRate >= 0.5) return "💪";
+    if (completionRate >= 0.25) return "👍";
+    return "🎯";
+  }
+}
+
+// Badge de réussite du jour
+class DailyAchievementBadge extends StatelessWidget {
+  final UserProfile profile;
+  final int completedGoals;
+  final int totalGoals;
+
+  const DailyAchievementBadge({
+    super.key,
+    required this.profile,
+    required this.completedGoals,
+    required this.totalGoals,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final achievement = _getTodayAchievement(profile, completedGoals, totalGoals);
+    if (achievement == null) return Container();
+    
+    return CustomCard(
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              achievement['color'].withOpacity(0.1),
+              Colors.transparent,
+            ],
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: achievement['color'].withOpacity(0.2),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            // Badge d'achievement
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: achievement['color'],
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: achievement['color'].withOpacity(0.3),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Center(
+                child: Text(
+                  achievement['emoji'],
+                  style: const TextStyle(fontSize: 28),
+                ),
+              ),
+            ),
+            
+            const SizedBox(width: 16),
+            
+            // Texte d'achievement
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    achievement['title'],
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: achievement['color'],
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    achievement['description'],
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF64748B),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // Bonus XP
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: achievement['color'].withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                '+${achievement['xp']} XP',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: achievement['color'],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Map<String, dynamic>? _getTodayAchievement(UserProfile profile, int completed, int total) {
+    final completionRate = completed / total;
+    final streak = profile.streak;
+    final caloriesProgress = profile.caloriesProgress;
+    
+    // Achievement parfait
+    if (completed == total) {
+      return {
+        'title': 'Jour Parfait !',
+        'description': 'Tous les objectifs atteints !',
+        'emoji': '🏆',
+        'color': const Color(0xFFFFD700),
+        'xp': 100,
+      };
+    }
+    
+    // Achievement streak
+    if (streak >= 7 && completionRate >= 0.75) {
+      return {
+        'title': 'Série de Feu !',
+        'description': '$streak jours consécutifs !',
+        'emoji': '🔥',
+        'color': const Color(0xFFFF6B35),
+        'xp': 75,
+      };
+    }
+    
+    // Achievement calories
+    if (caloriesProgress >= 0.9 && caloriesProgress <= 1.1) {
+      return {
+        'title': 'Équilibre Parfait',
+        'description': 'Objectif calorique maîtrisé !',
+        'emoji': '⚖️',
+        'color': const Color(0xFF22C55E),
+        'xp': 50,
+      };
+    }
+    
+    // Achievement progression
+    if (completionRate >= 0.75) {
+      return {
+        'title': 'Belle Progression !',
+        'description': 'Tu es sur la bonne voie !',
+        'emoji': '💪',
+        'color': const Color(0xFF0B132B),
+        'xp': 25,
+      };
+    }
+    
+    return null;
+  }
+}
+
+// Section détaillée supprimée - remplacée par CompactProgressSection
 class DetailedProgressSection extends StatelessWidget {
   final List<DailyGoal> goals;
   final UserProfile profile;
@@ -860,7 +1420,8 @@ class DetailedProgressSection extends StatelessWidget {
   }
 }
 
-// Insights personnalisés
+// Section détaillée supprimée car remplacée par CompactProgressSection
+// Cette classe est conservée pour éviter les erreurs de compilation
 class PersonalizedInsightsSection extends StatelessWidget {
   final UserProfile profile;
   final bool isPremium;
@@ -877,113 +1438,14 @@ class PersonalizedInsightsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CustomCard(
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              const Color(0xFF0B132B).withOpacity(0.03),
-              Colors.transparent,
-            ],
-          ),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  isPremium ? LucideIcons.sparkles : LucideIcons.lightbulb,
-                  size: 20,
-                  color: const Color(0xFF0B132B),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  isPremium ? 'Conseils personnalisés' : 'Conseil du jour',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1A1A),
-                  ),
-                ),
-                const Spacer(),
-                if (isPremium)
-                  CustomBadge(
-                    text: 'IA',
-                    backgroundColor: const Color(0xFF0B132B).withOpacity(0.1),
-                    textColor: const Color(0xFF0B132B),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.7),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                isPremium 
-                    ? _getPremiumInsight(profile)
-                    : _getBasicInsight(profile),
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF1A1A1A),
-                  height: 1.4,
-                ),
-              ),
-            ),
-            
-            const SizedBox(height: 16),
-            
-            if (isPremium)
-              CustomButton(
-                text: 'Voir analytics détaillés',
-                icon: Icon(LucideIcons.trendingUp, size: 16, color: Colors.white),
-                width: double.infinity,
-                onPressed: onViewAnalytics,
-              )
-            else
-              CustomButton(
-                text: 'Débloquer Coach IA',
-                icon: Icon(LucideIcons.crown, size: 16, color: Colors.white),
-                width: double.infinity,
-                onPressed: onUpgrade,
-              ),
-          ],
-        ),
-      ),
-    );
+    // Section supprimée - fonctionnalité intégrée dans IntegratedCoachSection
+    return Container();
   }
 
-  String _getPremiumInsight(UserProfile profile) {
-    final caloriesProgress = (profile.caloriesProgress * 100).round();
-    if (caloriesProgress < 50) {
-      return '🎯 Vous êtes en dessous de vos objectifs caloriques. Je recommande une collation riche en protéines vers 16h pour optimiser votre métabolisme.';
-    } else if (caloriesProgress > 110) {
-      return '⚡ Excellent ! Vous dépassez vos objectifs. Pensez à augmenter votre activité physique pour maintenir l\'équilibre.';
-    } else {
-      return '✨ Progression parfaite ! Votre rythme alimentaire est optimal. Continuez ainsi pour atteindre vos objectifs.';
-    }
-  }
-
-  String _getBasicInsight(UserProfile profile) {
-    final hour = DateTime.now().hour;
-    if (hour < 10) {
-      return '🌅 Bon matin ! Un petit-déjeuner riche en protéines vous donnera l\'énergie nécessaire pour la journée.';
-    } else if (hour < 16) {
-      return '☀️ Pensez à vous hydrater régulièrement et à prendre une pause active de 5 minutes.';
-    } else {
-      return '🌆 Le soir approche, privilégiez un dîner léger pour bien récupérer cette nuit.';
-    }
-  }
 }
 
-// Section motivation finale
+// Section motivation supprimée car remplacée par IntegratedCoachSection et DailyAchievementBadge
+// Cette classe est conservée pour éviter les erreurs de compilation
 class MotivationSection extends StatelessWidget {
   final UserProfile profile;
   final int completedGoals;
@@ -998,89 +1460,8 @@ class MotivationSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isGreatDay = completedGoals >= totalGoals * 0.75;
-    
-    return CustomCard(
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: isGreatDay 
-                ? [const Color(0xFF22C55E).withOpacity(0.05), Colors.transparent]
-                : [const Color(0xFF0B132B).withOpacity(0.05), Colors.transparent],
-          ),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: isGreatDay ? const Color(0xFF22C55E) : const Color(0xFF0B132B),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                isGreatDay ? LucideIcons.trophy : LucideIcons.target,
-                color: Colors.white,
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    isGreatDay 
-                        ? 'Journée exceptionnelle !'
-                        : 'Continuez vos efforts !',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: isGreatDay ? const Color(0xFF22C55E) : const Color(0xFF0B132B),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    isGreatDay
-                        ? 'Vous excellez dans vos habitudes, gardez cette énergie !'
-                        : 'Chaque petit pas compte, vous êtes sur la bonne voie.',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Color(0xFF64748B),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // Streak badge
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: const Color(0xFF0B132B).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(LucideIcons.flame, size: 16, color: Color(0xFF0B132B)),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${profile.streak}',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF0B132B),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+    // Section supprimée - fonctionnalité intégrée dans IntegratedCoachSection et DailyAchievementBadge
+    return Container();
   }
 }
 
