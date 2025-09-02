@@ -4,6 +4,8 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'dart:async';
 import 'dart:math';
 import 'ui/dashboard_models.dart';
+import 'ui/dashboard_cards.dart';
+import 'ui/dashboard_widgets.dart';
 import 'ui/custom_card.dart';
 import 'ui/custom_badge.dart';
 import '../services/dashboard_service.dart';
@@ -96,10 +98,10 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
       print('Erreur lors du chargement des données: $e');
       setState(() {
         isLoading = false;
-        // Utiliser les données par défaut en cas d'erreur
-        userProfile = DashboardData.userProfile;
-        dailyGoals = DashboardData.dailyGoals;
-        modulePreviews = DashboardData.modulePreviews;
+        // Ne pas utiliser de données statiques - rester vide
+        userProfile = null;
+        dailyGoals = [];
+        modulePreviews = [];
       });
     }
   }
@@ -171,62 +173,70 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
             : RefreshIndicator(
                 onRefresh: _refreshDashboardData,
                 color: const Color(0xFF0B132B),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 120),
-          child: Column(
-            children: [
-              const SizedBox(height: 40), // Safe area
-              
-              // Header gamifié dynamique
-              GamifiedDashboardHeader(
-                profile: userProfile!.copyWith(todayScore: animatedScore),
-              ),
-              
-              const SizedBox(height: 16),
-              
-              // Vue d'ensemble Nutrition + Sport
-              NutritionSportOverview(
-                profile: userProfile!,
-                goals: dailyGoals.isNotEmpty ? dailyGoals : DashboardData.dailyGoals,
-              ),
-              
-              const SizedBox(height: 16),
-              
-              // Actions rapides gamifiées (5 actions avec pesée)
-              GamifiedActionsSection(
-                actions: DashboardData.getGamifiedActions(userProfile!),
-              ),
-              
-              const SizedBox(height: 16),
-              
-              // Progression compacte mais engageante (comme l'ancien)
-              CompactProgressSection(
-                goals: dailyGoals.isNotEmpty ? dailyGoals : DashboardData.dailyGoals,
-                profile: userProfile!,
-              ),
-              
-              const SizedBox(height: 16),
-              
-              // Coach intégré + motivation
-              IntegratedCoachSection(
-                profile: userProfile!,
-                completedGoals: dailyGoals.where((g) => g.completed).length,
-                totalGoals: dailyGoals.length,
-              ),
-              
-              const SizedBox(height: 16),
-              
-              // Badge de réussite du jour
-              DailyAchievementBadge(
-                profile: userProfile!,
-                completedGoals: dailyGoals.where((g) => g.completed).length,
-                totalGoals: dailyGoals.length,
-              ),
-            ],
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.only(bottom: 120),
+                  child: Column(
+                    children: [
+                      // Header Gamifié avec charte graphique (pleine largeur)
+                      DashboardHeader(
+                        profile: userProfile!.copyWith(todayScore: animatedScore),
+                        onPremiumTap: _onPremiumTap,
+                      ),
+                      
+                      // Contenu avec padding normal
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Column(
+                          children: [
+                            const SizedBox(height: 16),
+                            
+                            // Objectifs du jour (avec progression calorique et globale ajoutées)
+                            EnhancedDailyGoalsSection(
+                              goals: dailyGoals.isNotEmpty ? dailyGoals : DashboardData.dailyGoals,
+                              profile: userProfile!,
+                              isPremium: userProfile!.isPremium,
+                            ),
+                            
+                            const SizedBox(height: 16),
+                            
+                            // Que faisons-nous aujourd'hui ? (5 actions format original)
+                            QuickActionsSection(
+                              actions: DashboardData.getOriginalActionsWithWeight(userProfile!),
+                            ),
+                            
+                            const SizedBox(height: 16),
+                            
+                            // Suivi Nutrition & Sport (format hybrid nouveau)
+                            NutritionSportTrackingSection(
+                              modules: modulePreviews,
+                              onModuleTap: _onModuleTap,
+                            ),
+                            
+                            const SizedBox(height: 16),
+                            
+                            // Social Proof & FOMO (format original)
+                            CommunityStatsSection(
+                              stats: DashboardData.communityStats,
+                            ),
+                            
+                            const SizedBox(height: 16),
+                            
+                            // CTA Premium (format original)
+                            userProfile!.isPremium
+                                ? PremiumInsightsSection(
+                                    onViewAnalytics: _onViewAnalytics,
+                                  )
+                                : PremiumCTASection(
+                                    onUpgrade: _onPremiumUpgrade,
+                                  ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-          ),
-        ),
-      ),
+                ),
+              ),
+            ),
     );
   }
 
@@ -235,276 +245,181 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
     await _loadDashboardData();
   }
 
-  // Event handlers simplifiés - plus de Premium à gérer
+  // Event handlers - restaurés du design original
+  void _onPremiumTap() {
+    if (userProfile != null) {
+      setState(() {
+        userProfile = userProfile!.copyWith(isPremium: true);
+      });
+    }
+  }
 
-
-}
-
-// Header gamifié et dynamique
-class GamifiedDashboardHeader extends StatelessWidget {
-  final UserProfile profile;
-
-  const GamifiedDashboardHeader({
-    super.key,
-    required this.profile,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    // Calculer l'état du jour pour les couleurs dynamiques
-    final isGreatDay = profile.todayScore >= 80;
-    final streakColor = profile.streak >= 7 ? const Color(0xFFFFD700) : Colors.white;
+  void _onPremiumUpgrade() {
+    if (userProfile != null) {
+      setState(() {
+        userProfile = userProfile!.copyWith(isPremium: true);
+      });
+    }
     
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isGreatDay 
-              ? [const Color(0xFF0B132B), const Color(0xFF1C2951), const Color(0xFF2D4A6B)]
-              : [const Color(0xFF0B132B), const Color(0xFF1C2951)],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF0B132B).withOpacity(0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // Top row: Salutation + Score
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      profile.greetingMessage,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      isGreatDay ? 'Journée exceptionnelle ! ✨' : 'C\'est parti pour une belle journée !',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.white.withOpacity(0.9),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              // Score circulaire animé
-              Container(
-                width: 80,
-                height: 80,
-                child: Stack(
-                  children: [
-                    // Background circle
-                    Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.2),
-                          width: 2,
-                        ),
-                      ),
-                    ),
-                    // Score
-                    Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            profile.todayScore.toString(),
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                          Text(
-                            'points',
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: Colors.white.withOpacity(0.8),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          
-          const SizedBox(height: 16),
-          
-          // Bottom row: Streak + XP avec style gamifié
-          Row(
-            children: [
-              // Streak badge
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: streakColor.withOpacity(0.3),
-                    width: 1,
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(LucideIcons.flame, size: 16, color: streakColor),
-                    const SizedBox(width: 6),
-                    Text(
-                      '${profile.streak} jours',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: streakColor,
-                      ),
-                    ),
-                    if (profile.streak >= 7) ...[
-                      const SizedBox(width: 4),
-                      Text(
-                        '🔥',
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              
-              const Spacer(),
-              
-              // XP badge
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(LucideIcons.zap, size: 16, color: Colors.white),
-                    const SizedBox(width: 6),
-                    Text(
-                      '+${profile.todayXP} XP',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+    // TODO: Intégrer avec la logique de paiement
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Bienvenue dans Ryze Premium ! 🎉')),
     );
   }
+
+  void _onModuleTap(String moduleTitle) {
+    // TODO: Navigation vers les modules spécifiques
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Navigation vers $moduleTitle')),
+    );
+  }
+
+  void _onViewAnalytics() {
+    // TODO: Ouvrir les analytics avancés
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Ouverture des analytics avancés')),
+    );
+  }
+
+
 }
 
-// Vue d'ensemble Nutrition + Sport
-class NutritionSportOverview extends StatelessWidget {
-  final UserProfile profile;
+// Section objectifs améliorée avec progression calorique et globale
+class EnhancedDailyGoalsSection extends StatefulWidget {
   final List<DailyGoal> goals;
+  final UserProfile profile;
+  final bool isPremium;
 
-  const NutritionSportOverview({
+  const EnhancedDailyGoalsSection({
     super.key,
-    required this.profile,
     required this.goals,
+    required this.profile,
+    required this.isPremium,
   });
 
   @override
+  State<EnhancedDailyGoalsSection> createState() => _EnhancedDailyGoalsSectionState();
+}
+
+class _EnhancedDailyGoalsSectionState extends State<EnhancedDailyGoalsSection>
+    with TickerProviderStateMixin {
+  
+  late AnimationController _progressAnimationController;
+  late Animation<double> _progressAnimation;
+  int animatedProgress = 0;
+  late Timer _progressTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeAnimation();
+    _startProgressAnimation();
+  }
+
+  @override
+  void didUpdateWidget(EnhancedDailyGoalsSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Redémarrer l'animation si les objectifs ont changé
+    if (oldWidget.goals != widget.goals) {
+      _startProgressAnimation();
+    }
+  }
+
+  @override
+  void dispose() {
+    _progressAnimationController.dispose();
+    if (_progressTimer.isActive) _progressTimer.cancel();
+    super.dispose();
+  }
+
+  void _initializeAnimation() {
+    _progressAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 1200),
+      vsync: this,
+    );
+    
+    _progressAnimation = CurvedAnimation(
+      parent: _progressAnimationController,
+      curve: Curves.easeOutExpo,
+    );
+  }
+
+  void _startProgressAnimation() {
+    // Calculer la progression globale basée sur les pourcentages réels (25% par objectif)
+    double totalProgress = 0;
+    for (final goal in widget.goals) {
+      // Chaque objectif vaut 25% du total maximum, cappé à 25%
+      final cappedProgress = goal.progress.clamp(0, 100); // Capper à 100%
+      final goalContribution = (cappedProgress / 100.0) * 25.0; // Max 25% par objectif
+      totalProgress += goalContribution;
+    }
+    final targetProgress = totalProgress.round().clamp(0, 100); // Progression totale sur 100
+    
+    // Animation par étapes pour un effet plus fluide
+    const tickTime = 20; // 20ms
+    const duration = 1200; // 1.2 secondes
+    final totalTicks = duration ~/ tickTime;
+    
+    _progressTimer = Timer.periodic(const Duration(milliseconds: tickTime), (timer) {
+      final elapsed = timer.tick * tickTime;
+      final progress = (elapsed / duration).clamp(0.0, 1.0);
+      final easedProgress = Curves.easeOutExpo.transform(progress);
+      final currentValue = (targetProgress * easedProgress).round();
+      
+      setState(() => animatedProgress = currentValue);
+      
+      if (progress >= 1.0) {
+        timer.cancel();
+        setState(() => animatedProgress = targetProgress);
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final completedGoals = goals.where((g) => g.completed).length;
-    final caloriesProgress = profile.caloriesProgress.clamp(0.0, 1.0);
+    // Calculer les stats
+    final completedGoals = widget.goals.where((goal) => goal.completed).length;
+    final totalGoals = widget.goals.length;
+    
+    // Progression globale réelle (0.0 à 1.0)
+    final globalProgressReal = completedGoals / totalGoals;
+    
+    // Progression animée pour l'affichage (0 à 100%)
+    final globalProgressAnimated = animatedProgress / 100.0;
     
     return CustomCard(
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Nutrition & Sport aujourd\'hui',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF1A1A1A),
-              ),
-            ),
-            const SizedBox(height: 16),
-            
-            // Métriques principales en grille 2x2 (Nutrition + Sport)
+            // Header
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Expanded(
-                  child: _buildMetricTile(
-                    icon: LucideIcons.utensils,
-                    title: 'Nutrition',
-                    value: '${profile.currentCalories}',
-                    subtitle: '/${profile.dailyCalories} kcal',
-                    color: const Color(0xFF0B132B),
-                    progress: caloriesProgress,
-                  ),
+                Row(
+                  children: [
+                    Icon(
+                      LucideIcons.target, 
+                      size: 20, 
+                      color: Color(0xFF0B132B),
+                    ),
+                    const SizedBox(width: 12),
+                    const Text(
+                      'Objectifs du jour',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF1A1A1A),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildMetricTile(
-                    icon: LucideIcons.dumbbell,
-                    title: 'Sport',
-                    value: '342', // TODO: Vraies données sport
-                    subtitle: 'kcal brûlées',
-                    color: const Color(0xFF0B132B),
-                    progress: 0.6, // TODO: Vrai progrès sport
-                  ),
-                ),
-              ],
-            ),
-            
-            const SizedBox(height: 12),
-            
-            Row(
-              children: [
-                Expanded(
-                  child: _buildMetricTile(
-                    icon: LucideIcons.droplets,
-                    title: 'Hydratation',
-                    value: '1.2L', // TODO: Vraies données
-                    subtitle: '/2.0L',
-                    color: const Color(0xFF0B132B),
-                    progress: 0.6,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildMetricTile(
-                    icon: LucideIcons.target,
-                    title: 'Objectifs',
-                    value: '$completedGoals/${goals.length}',
-                    subtitle: completedGoals >= 3 ? 'Top ! 🔥' : 'En cours',
-                    color: completedGoals >= 3 ? const Color(0xFF22C55E) : const Color(0xFF0B132B),
-                    progress: completedGoals / goals.length,
+                Text(
+                  '$completedGoals/$totalGoals',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF0B132B),
                   ),
                 ),
               ],
@@ -512,7 +427,16 @@ class NutritionSportOverview extends StatelessWidget {
             
             const SizedBox(height: 16),
             
-            // Barre de progression calories avec style nutrition
+            // Liste des objectifs
+            ...widget.goals.map((goal) => DailyGoalItem(
+              goal: goal,
+              isPremium: widget.isPremium,
+            )).toList(),
+            
+            const SizedBox(height: 16),
+            
+            
+            // Progression globale (format complet comme avant)
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -530,7 +454,7 @@ class NutritionSportOverview extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text(
-                        'Progression calorique',
+                        'Progression',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
@@ -538,7 +462,7 @@ class NutritionSportOverview extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        '${(caloriesProgress * 100).round()}%',
+                        '$animatedProgress%',
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
@@ -557,7 +481,7 @@ class NutritionSportOverview extends StatelessWidget {
                     ),
                     child: FractionallySizedBox(
                       alignment: Alignment.centerLeft,
-                      widthFactor: caloriesProgress,
+                      widthFactor: globalProgressAnimated,
                       child: Container(
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
@@ -576,106 +500,149 @@ class NutritionSportOverview extends StatelessWidget {
       ),
     );
   }
+}
 
-  Widget _buildMetricTile({
-    required IconData icon,
-    required String title,
-    required String value,
-    required String subtitle,
-    required Color color,
-    double? progress,
-  }) {
-    final hasProgress = progress != null;
-    
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF0B132B).withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
+// Bloc suivi Nutrition & Sport (hybrid format nouveau)
+class NutritionSportTrackingSection extends StatelessWidget {
+  final List<ModulePreview> modules;
+  final Function(String moduleTitle)? onModuleTap;
+
+  const NutritionSportTrackingSection({
+    super.key,
+    required this.modules,
+    this.onModuleTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomCard(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  LucideIcons.activity,
+                  size: 20,
+                  color: Color(0xFF0B132B),
                 ),
-                child: Icon(icon, size: 16, color: color),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: Color(0xFF64748B),
+                const SizedBox(width: 12),
+                const Text(
+                  'Suivi Nutrition & Sport',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1A1A1A),
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: color,
-                ),
-              ),
-              const SizedBox(width: 2),
-              Expanded(
-                child: Text(
-                  subtitle,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF64748B),
+              ],
+            ),
+            
+            const SizedBox(height: 16),
+            
+            // Blocs Nutrition et Sport style hybrid
+            Row(
+              children: modules.map((module) => 
+                Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      right: modules.indexOf(module) < modules.length - 1 ? 12 : 0,
+                    ),
+                    child: _buildHybridModuleCard(module),
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-          if (hasProgress) ...[
-            const SizedBox(height: 8),
-            Container(
-              width: double.infinity,
-              height: 4,
-              decoration: BoxDecoration(
-                color: const Color(0xFFE2E8F0),
-                borderRadius: BorderRadius.circular(2),
-              ),
-              child: FractionallySizedBox(
-                alignment: Alignment.centerLeft,
-                widthFactor: progress.clamp(0.0, 1.0),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: color,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
+                )
+              ).toList(),
             ),
           ],
-        ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHybridModuleCard(ModulePreview module) {
+    return GestureDetector(
+      onTap: onModuleTap != null 
+          ? () => onModuleTap!(module.title)
+          : null,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF0B132B).withOpacity(0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header avec icône et titre
+            Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(colors: module.gradientColors),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    module.icon,
+                    size: 18,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    module.title,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1A1A1A),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 12),
+            
+            // Stats du module
+            ...module.stats.entries.map((entry) => 
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      entry.key,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF64748B),
+                      ),
+                    ),
+                    Text(
+                      entry.value,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF1A1A1A),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            ).toList(),
+          ],
+        ),
       ),
     );
   }

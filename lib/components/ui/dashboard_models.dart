@@ -421,6 +421,41 @@ class DashboardData {
     ];
   }
 
+  // Actions originales avec pesée pour le dashboard hybrid
+  static List<QuickAction> getOriginalActionsWithWeight(UserProfile profile) {
+    return [
+      const QuickAction(
+        id: 'add_meal',
+        label: 'Ajouter un plat',
+        icon: LucideIcons.utensils,
+      ),
+      const QuickAction(
+        id: 'add_water',
+        label: 'Ajouter de l\'eau',
+        icon: LucideIcons.droplets,
+      ),
+      QuickAction(
+        id: 'take_photo',
+        label: 'Prendre une photo',
+        icon: (!profile.isPremium && profile.photosUsed >= 3) 
+            ? LucideIcons.lock 
+            : LucideIcons.camera,
+        isDisabled: !profile.isPremium && profile.photosUsed >= 3,
+        isPremiumRequired: !profile.isPremium && profile.photosUsed >= 3,
+      ),
+      const QuickAction(
+        id: 'workout',
+        label: 'Entraînement',
+        icon: LucideIcons.dumbbell,
+      ),
+      const QuickAction(
+        id: 'weight_tracking',
+        label: 'Poids',
+        icon: LucideIcons.scale,
+      ),
+    ];
+  }
+
   // Previews des modules
   static const List<ModulePreview> modulePreviews = [
     ModulePreview(
