@@ -63,7 +63,7 @@ class FoodEntriesService {
               origin,
               barcode
             ),
-            recipes:recipe_id (
+            recipes_database:recipe_id (
               id,
               name_fr,
               name_en
@@ -113,9 +113,9 @@ class FoodEntriesService {
           foodName = entry['scanned_food_name'];
           isCustom = false;
           isScanned = true;
-        } else if (entry['recipes'] != null) {
+        } else if (entry['recipes_database'] != null) {
           // Recette
-          final recipe = entry['recipes'];
+          final recipe = entry['recipes_database'];
           foodName = recipe['name_fr'] ?? recipe['name_en'] ?? 'Recette';
           isCustom = false;
           isRecipe = true;

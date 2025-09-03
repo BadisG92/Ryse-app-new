@@ -339,15 +339,15 @@ class Recipe {
 
   factory Recipe.fromJson(Map<String, dynamic> json) {
     return Recipe(
-      id: json['id'],
-      nameEn: json['name_en'],
-      nameFr: json['name_fr'],
+      id: json['id']?.toString() ?? '',
+      nameEn: json['name_en'] ?? '',
+      nameFr: json['name_fr'] ?? '',
       ingredients: json['ingredients'],
       stepsEn: List<String>.from(json['steps_en'] ?? []),
       stepsFr: List<String>.from(json['steps_fr'] ?? []),
       imageUrl: json['image_url'],
-      duration: json['duration'],
-      servings: json['servings'],
+      duration: json['duration']?.toString(),
+      servings: json['servings'] ?? 1,
       difficulty: json['difficulty'],
       tags: json['tags'] != null ? List<String>.from(json['tags']) : null,
       isCustom: json['is_custom'] ?? false,

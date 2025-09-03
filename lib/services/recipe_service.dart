@@ -8,19 +8,34 @@ class RecipeService {
   /// Récupère toutes les recettes depuis Supabase
   static Future<List<Recipe>> getAllRecipes({String language = 'fr'}) async {
     try {
+      print('🔍 RecipeService.getAllRecipes - Début du chargement...');
+      
       // Récupérer toutes les recettes avec leurs valeurs nutritionnelles directement
       final recipesResponse = await _supabase
-          .from('recipes')
+          .from('recipes_database')
           .select('*')
           .eq('is_public', true);
 
+      print('🔍 RecipeService.getAllRecipes - Réponse brute: ${recipesResponse.length} recettes');
+      print('🔍 RecipeService.getAllRecipes - Première recette: ${recipesResponse.isNotEmpty ? recipesResponse.first : "Aucune"}');
+
       List<Recipe> recipes = [];
       
-      for (var recipeData in recipesResponse) {
-        // Pour la liste des recettes, on n'a plus besoin de charger les ingrédients
-        // Les valeurs nutritionnelles sont déjà dans la table recipes
-        recipes.add(_mapToRecipeFromDataOptimized(recipeData, language));
+      for (int i = 0; i < recipesResponse.length; i++) {
+        var recipeData = recipesResponse[i];
+        print('🔍 RecipeService.getAllRecipes - Traitement recette $i: ${recipeData['name_fr']}');
+        try {
+          // Utiliser directement Recipe.fromJson maintenant que la classe l'a
+          final recipe = Recipe.fromJson(recipeData);
+          recipes.add(recipe);
+          print('✅ RecipeService.getAllRecipes - Recette $i ajoutée avec succès');
+        } catch (e) {
+          print('❌ RecipeService.getAllRecipes - Erreur pour recette $i: $e');
+        }
       }
+      
+      print('✅ RecipeService.getAllRecipes - ${recipes.length} recettes traitées avec succès');
+      
       
       return recipes;
     } catch (e) {
@@ -34,22 +49,35 @@ class RecipeService {
     try {
       // Récupérer la recette
       final recipeResponse = await _supabase
-          .from('recipes')
+          .from('recipes_database')
           .select('*')
           .eq('id', recipeId)
           .single();
 
+      // Convertir les ID entiers en string
+      recipeResponse['id'] = recipeResponse['id']?.toString();
+
       // Récupérer les ingrédients avec les données nutritionnelles
       final ingredientsResponse = await _supabase
-          .from('recipe_ingredients')
-          .select('*, foods!inner(*)')
+          .from('recipe_ingredient_database')
+          .select('*, food_database!inner(*)')
           .eq('recipe_id', recipeId)
           .order('display_order');
 
       // Créer les RecipeIngredient avec quantités pour la recette complète (1 portion × servings)
       List<RecipeIngredient> ingredients = [];
       for (var ing in ingredientsResponse) {
-        final food = ing['foods'];
+        // Convertir les ID entiers en string pour recipe_ingredient_database
+        ing['id'] = ing['id']?.toString();
+        ing['recipe_id'] = ing['recipe_id']?.toString();
+        ing['food_id'] = ing['food_id']?.toString();
+        
+        final food = ing['food_database'];
+        if (food != null) {
+          // Convertir l'ID de food_database aussi
+          food['id'] = food['id']?.toString();
+        }
+        
         final baseQuantity = double.parse(ing['quantity'].toString()); // Quantité pour 1 portion
         final servings = recipeResponse['servings'];
         
@@ -57,7 +85,7 @@ class RecipeService {
           id: ing['id'].toString(),
           name: language == 'fr' ? (food['name_fr'] ?? food['name_en']) : (food['name_en'] ?? food['name_fr']),
           quantity: baseQuantity * servings, // Quantité totale pour toute la recette
-          unit: ing['unit'] ?? '',
+          unit: ing['unite'] ?? '',
           caloriesPer100g: double.parse((food['calories'] ?? 0).toString()),
           proteinsPer100g: double.parse((food['proteins'] ?? 0).toString()),
           carbsPer100g: double.parse((food['carbs'] ?? 0).toString()),
@@ -66,7 +94,7 @@ class RecipeService {
       }
 
       // Créer la Recipe de base avec les valeurs nutritionnelles de la table recipes
-      final baseRecipe = _mapToRecipeFromData(recipeResponse, ingredientsResponse, language);
+      final baseRecipe = Recipe.fromJson(recipeResponse);
 
       return RecipeDetailModel(
         baseRecipe: baseRecipe,
@@ -85,7 +113,7 @@ class RecipeService {
     String language
   ) {
     return Recipe(
-      id: recipeData['id'].hashCode,
+      id: int.parse(recipeData['id'].toString()),
       name: language == 'fr' ? (recipeData['name_fr'] ?? recipeData['name_en']) : (recipeData['name_en'] ?? recipeData['name_fr']),
       image: recipeData['image_url'] ?? "/placeholder.svg?height=200&width=200",
       duration: _formatDuration(recipeData['duration']),
@@ -110,7 +138,7 @@ class RecipeService {
     String language
   ) {
     return Recipe(
-      id: recipeData['id'].hashCode,
+      id: int.parse(recipeData['id'].toString()),
       name: language == 'fr' ? (recipeData['name_fr'] ?? recipeData['name_en']) : (recipeData['name_en'] ?? recipeData['name_fr']),
       image: recipeData['image_url'] ?? "/placeholder.svg?height=200&width=200",
       duration: _formatDuration(recipeData['duration']),
@@ -149,10 +177,10 @@ class RecipeService {
 
   static List<String> _formatIngredientsFromData(List<dynamic> ingredients, String language) {
     return ingredients.map((ing) {
-      final food = ing['foods'];
+      final food = ing['food_database'];
       final foodName = language == 'fr' ? (food['name_fr'] ?? food['name_en']) : (food['name_en'] ?? food['name_fr']);
       final quantity = ing['quantity'].toString();
-      final unit = ing['unit'] ?? '';
+      final unit = ing['unite'] ?? '';
       return "$quantity $unit - $foodName";
     }).cast<String>().toList();
   }

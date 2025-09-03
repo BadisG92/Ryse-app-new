@@ -375,16 +375,37 @@ class DatabaseService {
 
   // RECIPES
   static Future<List<Recipe>> getRecipes({String? language}) async {
-    final lang = language ?? _getUserLanguage();
-    
-    final response = await _client
-        .rpc('get_recipes_localized', params: {'user_language': lang});
-    
-    if (response == null) return [];
-    
-    return (response as List)
-        .map((json) => Recipe.fromJson(json))
-        .toList();
+    try {
+      print('🔍 DatabaseService.getRecipes: Début du chargement...');
+      
+      // Récupérer toutes les recettes depuis recipes_database
+      final response = await _client
+          .from('recipes_database')
+          .select('*')
+          .range(0, 1000); // Récupérer jusqu'à 1000 recettes
+      
+      print('🔍 DatabaseService.getRecipes: Réponse reçue: ${response.length} recettes depuis recipes_database');
+      
+      if (response.isEmpty) {
+        print('⚠️ DatabaseService.getRecipes: Aucune recette trouvée dans la table');
+        return [];
+      }
+      
+      final recipes = response.map((json) {
+        // Convertir les ID entiers en string
+        json['id'] = json['id']?.toString();
+        return Recipe.fromJson(json);
+      }).toList();
+      print('✅ DatabaseService.getRecipes: ${recipes.length} recettes chargées depuis recipes_database');
+      
+      return recipes;
+    } catch (e) {
+      print('❌ DatabaseService.getRecipes: Erreur lors du chargement: $e');
+      print('❌ Type d\'erreur: ${e.runtimeType}');
+      
+      // Retourner une liste vide en cas d'erreur
+      return [];
+    }
   }
 
   static Future<Recipe?> getRecipeById(String id, {String? language}) async {
@@ -1635,7 +1656,7 @@ class DatabaseService {
 
   static Future<Recipe?> createCustomRecipe(Recipe recipe) async {
     final response = await _client
-        .from('recipes')
+        .from('recipes_database')
         .insert(recipe.toJson())
         .select()
         .single();

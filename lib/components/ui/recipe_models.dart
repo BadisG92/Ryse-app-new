@@ -45,8 +45,8 @@ class RecipeIngredient {
     );
   }
 
-  // Formatter pour l'affichage (ex: "200g - Poulet")
-  String get displayText => "${quantity.toStringAsFixed(0)} $unit - $name";
+  // Formatter pour l'affichage (ex: "200 g - Poulet")
+  String get displayText => "${quantity.toStringAsFixed(1)} $unit - $name";
 }
 
 // Modèle pour gérer l'état d'une recette avec portions modifiables
@@ -138,6 +138,115 @@ class Recipe {
     required this.steps,
     required this.difficulty,
   });
+
+  // Factory pour créer une Recipe depuis JSON (base de données)
+  factory Recipe.fromJson(Map<String, dynamic> json) {
+    print('🔍 Recipe.fromJson - JSON reçu: ${json.keys.toList()}');
+    print('🔍 Recipe.fromJson - Données complètes: $json');
+    
+    try {
+      final id = json['id'] is int ? json['id'] : int.tryParse(json['id'].toString()) ?? 0;
+      print('🔍 Recipe.fromJson - ID: $id');
+      
+      final name = json['name_fr'] ?? json['name_en'] ?? '';
+      print('🔍 Recipe.fromJson - Name: $name');
+      
+      final calories = json['calories per portion'] ?? 0;
+      print('🔍 Recipe.fromJson - Calories: $calories');
+      
+      final tags = _parseTagsFromJson(json);
+      print('🔍 Recipe.fromJson - Tags: $tags');
+      
+      final steps = _parseStepsFromJson(json);
+      print('🔍 Recipe.fromJson - Steps: $steps');
+      
+      return Recipe(
+        id: id,
+        name: name,
+        image: json['image_url'] ?? "/placeholder.svg?height=200&width=200",
+        duration: json['duration']?.toString() ?? "0 min",
+        calories: calories,
+        servings: json['servings'] ?? 1,
+        tags: tags,
+        proteins: json['proteins per portion'] ?? 0,
+        carbs: json['carbs per portion'] ?? 0,
+        fats: json['fat per portion'] ?? 0,
+        ingredients: [], // Les ingrédients seront chargés séparément
+        steps: steps,
+        difficulty: json['difficulty'] ?? 'Facile',
+      );
+    } catch (e) {
+      print('❌ Recipe.fromJson - Erreur: $e');
+      rethrow;
+    }
+  }
+
+  // Helper pour parser les tags depuis JSON
+  static List<String> _parseTagsFromJson(Map<String, dynamic> json) {
+    try {
+      print('🔍 _parseTagsFromJson - tags_fr: ${json['tags_fr']} (type: ${json['tags_fr'].runtimeType})');
+      print('🔍 _parseTagsFromJson - tags_en: ${json['tags_en']} (type: ${json['tags_en'].runtimeType})');
+      
+      // Gérer les tags français en priorité
+      if (json['tags_fr'] != null) {
+        if (json['tags_fr'] is String && json['tags_fr'].toString().isNotEmpty) {
+          final tagsList = json['tags_fr'].toString().split(',').map((tag) => tag.trim()).toList();
+          return tagsList.where((tag) => tag.isNotEmpty).toList();
+        } else if (json['tags_fr'] is List) {
+          return List<String>.from(json['tags_fr']);
+        }
+      }
+      
+      // Sinon utiliser les tags anglais
+      if (json['tags_en'] != null) {
+        if (json['tags_en'] is String && json['tags_en'].toString().isNotEmpty) {
+          final tagsList = json['tags_en'].toString().split(',').map((tag) => tag.trim()).toList();
+          return tagsList.where((tag) => tag.isNotEmpty).toList();
+        } else if (json['tags_en'] is List) {
+          return List<String>.from(json['tags_en']);
+        }
+      }
+      
+      return [];
+    } catch (e) {
+      print('❌ _parseTagsFromJson - Erreur: $e');
+      return [];
+    }
+  }
+
+  // Helper pour parser les étapes depuis JSON
+  static List<String> _parseStepsFromJson(Map<String, dynamic> json) {
+    try {
+      print('🔍 _parseStepsFromJson - steps_fr: ${json['steps_fr']} (type: ${json['steps_fr'].runtimeType})');
+      print('🔍 _parseStepsFromJson - steps_en: ${json['steps_en']} (type: ${json['steps_en'].runtimeType})');
+      
+      // Gérer les étapes françaises en priorité
+      if (json['steps_fr'] != null) {
+        if (json['steps_fr'] is String && json['steps_fr'].toString().isNotEmpty) {
+          // D'après les logs, les étapes sont séparées par des "|", pas des points
+          final stepsList = json['steps_fr'].toString().split('|').map((step) => step.trim()).toList();
+          return stepsList.where((step) => step.isNotEmpty).toList();
+        } else if (json['steps_fr'] is List) {
+          return List<String>.from(json['steps_fr']);
+        }
+      }
+      
+      // Sinon utiliser les étapes anglaises
+      if (json['steps_en'] != null) {
+        if (json['steps_en'] is String && json['steps_en'].toString().isNotEmpty) {
+          final stepsList = json['steps_en'].toString().split('|').map((step) => step.trim()).toList();
+          return stepsList.where((step) => step.isNotEmpty).toList();
+        } else if (json['steps_en'] is List) {
+          return List<String>.from(json['steps_en']);
+        }
+      }
+      
+      return [];
+    } catch (e) {
+      print('❌ _parseStepsFromJson - Erreur: $e');
+      return [];
+    }
+  }
 
   // Helpers pour compatibilité avec l'écran de détails
   String get time => duration;

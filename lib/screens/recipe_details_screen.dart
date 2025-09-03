@@ -83,7 +83,7 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
       
       // Récupérer l'ID de la recette depuis le hash (on va chercher avec le nom)
       final recipesResponse = await SupabaseConfig.client
-          .from('recipes')
+          .from('recipes_database')
           .select('id')
           .eq('name_fr', widget.recipe.name)
           .limit(1);
@@ -94,24 +94,40 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
         return;
       }
       
-      final recipeId = recipesResponse.first['id'];
+      final recipeId = recipesResponse.first['id']?.toString();
       _realRecipeId = recipeId; // Stocker l'ID réel
+      
+      if (recipeId == null) {
+        print('ID de recette null pour: ${widget.recipe.name}');
+        setState(() => isLoadingIngredients = false);
+        return;
+      }
       
       // Récupérer les ingrédients avec les données nutritionnelles
       final ingredientsResponse = await SupabaseConfig.client
-          .from('recipe_ingredients')
-          .select('*, foods!inner(*)')
+          .from('recipe_ingredient_database')
+          .select('*, food_database!inner(*)')
           .eq('recipe_id', recipeId)
           .order('display_order');
 
       List<DetailedIngredient> ingredients = [];
       for (var ing in ingredientsResponse) {
-        final food = ing['foods'];
+        // Convertir les ID entiers en string
+        ing['id'] = ing['id']?.toString();
+        ing['recipe_id'] = ing['recipe_id']?.toString();
+        ing['food_id'] = ing['food_id']?.toString();
+        
+        final food = ing['food_database'];
+        if (food != null) {
+          // Convertir l'ID de food_database aussi
+          food['id'] = food['id']?.toString();
+        }
+        
         ingredients.add(DetailedIngredient(
           id: ing['id'].toString(),
           name: food['name_fr'] ?? food['name_en'] ?? 'Aliment inconnu',
           baseQuantity: double.parse(ing['quantity'].toString()),
-          unit: ing['unit'] ?? '',
+          unit: ing['unite'] ?? '',
           caloriesPer100g: double.parse((food['calories'] ?? 0).toString()),
           proteinsPer100g: double.parse((food['proteins'] ?? 0).toString()),
           carbsPer100g: double.parse((food['carbs'] ?? 0).toString()),
@@ -1169,7 +1185,7 @@ class _EditIngredientsScreenState extends State<EditIngredientsScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '${currentQuantity.toStringAsFixed(currentQuantity.truncateToDouble() == currentQuantity ? 0 : 1)}${_getQuantityUnit(originalQuantity)} • ${baseCalories} kcal',
+                  '${currentQuantity.toStringAsFixed(currentQuantity.truncateToDouble() == currentQuantity ? 0 : 1)} ${_getIngredientUnit(ingredient)} • ${baseCalories} kcal',
                   style: const TextStyle(
                     fontSize: 13,
                     color: Color(0xFF64748B),
@@ -1220,11 +1236,14 @@ class _EditIngredientsScreenState extends State<EditIngredientsScreen> {
       glucides: carbs,
       lipides: fats,
       quantity: currentQuantity,
+      referenceUnit: detailedIngredient.unit, // Utiliser l'unité de l'ingrédient de la recette
       isModified: tempCustomizedIngredients.containsKey(ingredientKey),
       // Utiliser onFoodSaved pour juste enregistrer les modifications sans ajouter au repas
       onFoodSaved: (foodItem) {
         setState(() {
-          tempCustomizedIngredients[ingredientKey] = double.parse(foodItem.portion.replaceAll('g', ''));
+          // Enlever toutes les unités possibles de la portion pour récupérer le nombre
+          String portionNumber = foodItem.portion.replaceAll(RegExp(r'[a-zA-Zàâäéèêëïîôùûüÿç\s]+'), '');
+          tempCustomizedIngredients[ingredientKey] = double.tryParse(portionNumber) ?? currentQuantity;
         });
         
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1243,5 +1262,14 @@ class _EditIngredientsScreenState extends State<EditIngredientsScreen> {
     if (quantity.contains('tasse')) return ' tasse(s)';
     if (quantity.contains('cuillère')) return ' cuillère(s)';
     return 'g'; // par défaut
+  }
+
+  // Nouvelle fonction pour récupérer l'unité réelle d'un ingrédient
+  String _getIngredientUnit(String ingredientKey) {
+    final detailedIngredient = widget.detailedIngredients.firstWhere(
+      (ing) => '${ing.baseQuantity}${ing.unit} - ${ing.name}' == ingredientKey,
+      orElse: () => widget.detailedIngredients.first,
+    );
+    return detailedIngredient.unit;
   }
 } 
