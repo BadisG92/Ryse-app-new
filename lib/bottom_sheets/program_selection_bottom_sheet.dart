@@ -34,27 +34,21 @@ class _ProgramSelectionBottomSheetState extends State<ProgramSelectionBottomShee
 
   Future<void> _loadPrograms() async {
     try {
-      // 1) Instant cache/seed for immediate UI
-      final instant = await DatabaseService.getWorkoutTemplatesInstant(language: 'fr');
+      // Charger directement les programmes depuis la base de données
+      final programs = await DatabaseService.getWorkoutTemplates(language: 'fr', includePublic: true);
       if (!mounted) return;
       setState(() {
-        _fetchedPrograms = instant;
+        _fetchedPrograms = programs;
         _isLoading = false;
       });
-
-      // 2) Fresh data in background; update UI if changed
-      final fresh = await DatabaseService.getWorkoutTemplates(language: 'fr', includePublic: true);
-      if (!mounted) return;
-      if (fresh.isNotEmpty) {
-        setState(() {
-          _fetchedPrograms = fresh;
-        });
-      }
     } catch (e) {
+      print('❌ Erreur lors du chargement des programmes: $e');
       if (!mounted) return;
       setState(() {
         _error = 'Erreur de chargement des programmes';
         _isLoading = false;
+        // Utiliser des programmes de démonstration en cas d'erreur
+        _fetchedPrograms = [];
       });
     }
   }

@@ -145,7 +145,7 @@ class _ManualFoodSearchBottomSheetState extends State<ManualFoodSearchBottomShee
         _filteredFoods = _allFoods.where((food) {
           final name = food.getLocalizedName('fr').toLowerCase();
           return name.contains(query);
-        }).take(20).toList(); // Limiter à 20 résultats de recherche
+        }).take(100).toList(); // Limiter à 100 résultats pour la performance
       }
     });
   }

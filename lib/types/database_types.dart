@@ -101,7 +101,7 @@ class Food {
 
   factory Food.fromJson(Map<String, dynamic> json) {
     return Food(
-      id: json['id'],
+      id: json['id']?.toString() ?? '',
       nameEn: json['name_en'],
       nameFr: json['name_fr'],
       calories: json['calories'],

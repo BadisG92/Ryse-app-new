@@ -181,23 +181,76 @@ class DatabaseService {
     try {
       print('🔍 DatabaseService.getFoods: Début du chargement...');
     
-      // Essayer d'abord l'accès direct à la table
-    final response = await _client
-          .from('foods')
-          .select('*')
-          .limit(50); // Limiter pour tester
-      
-      print('🔍 DatabaseService.getFoods: Réponse reçue: ${response.length} aliments');
-      
-      if (response.isEmpty) {
-        print('⚠️ DatabaseService.getFoods: Aucun aliment trouvé dans la table');
-        return [];
+      // Approche 1: Tenter d'abord une requête avec limit élevé (plus rapide si autorisé)
+      try {
+        print('🔍 DatabaseService.getFoods: Tentative avec limit(4000) pour récupérer tous les aliments...');
+        final response = await _client
+            .from('food_database')
+            .select('*')
+            .limit(4000) // Légèrement au-dessus de 3456 pour être sûr
+            .order('id');
+        
+        print('🔍 DatabaseService.getFoods: ${response.length} aliments récupérés avec limit');
+        
+        if (response.isNotEmpty) {
+          final foods = response.map((json) => Food.fromJson(json)).toList();
+          
+          // Si on a récupéré moins que prévu et exactement 1000, c'est probablement la limite par défaut
+          if (foods.length == 1000) {
+            print('⚠️ DatabaseService.getFoods: Limite de 1000 détectée, utilisation de la pagination...');
+            // Continuer avec la pagination
+          } else {
+            print('✅ DatabaseService.getFoods: ${foods.length} aliments chargés avec limit (Total attendu: 3456)');
+            return foods;
+          }
+        }
+      } catch (limitError) {
+        print('⚠️ DatabaseService.getFoods: Échec avec limit, utilisation de la pagination: $limitError');
       }
       
-      final foods = response.map((json) => Food.fromJson(json)).toList();
-      print('✅ DatabaseService.getFoods: ${foods.length} aliments traités avec succès');
+      // Approche 2: Pagination pour récupérer TOUS les aliments (contourner la limite de 1000)
+      print('🔍 DatabaseService.getFoods: Utilisation de la pagination...');
+      List<Food> allFoods = [];
+      const int batchSize = 1000; // Taille de lot pour pagination
+      int offset = 0;
+      bool hasMoreData = true;
       
-      return foods;
+      while (hasMoreData) {
+        print('🔍 DatabaseService.getFoods: Récupération lot ${(offset ~/ batchSize) + 1} (offset: $offset, limit: $batchSize)');
+        
+        final response = await _client
+            .from('food_database')
+            .select('*')
+            .range(offset, offset + batchSize - 1)
+            .order('id'); // Assurer un ordre cohérent pour la pagination
+        
+        print('🔍 DatabaseService.getFoods: ${response.length} aliments récupérés dans ce lot');
+        
+        if (response.isEmpty || response.length < batchSize) {
+          hasMoreData = false;
+        }
+        
+        // Convertir et ajouter à la liste totale
+        final batchFoods = response.map((json) => Food.fromJson(json)).toList();
+        allFoods.addAll(batchFoods);
+        
+        offset += batchSize;
+        
+        // Sécurité: éviter les boucles infinies (max 10 lots = 10000 aliments)
+        if ((offset ~/ batchSize) > 10) {
+          print('⚠️ DatabaseService.getFoods: Arrêt de sécurité après 10 lots');
+          break;
+        }
+      }
+      
+      print('✅ DatabaseService.getFoods: ${allFoods.length} aliments chargés au total avec pagination (Attendu: 3456)');
+      
+      if (allFoods.isEmpty) {
+        print('⚠️ DatabaseService.getFoods: Aucun aliment trouvé dans la table');
+        return _getFallbackFoods();
+      }
+      
+      return allFoods;
     } catch (e) {
       print('❌ DatabaseService.getFoods: Erreur lors du chargement: $e');
       print('❌ Type d\'erreur: ${e.runtimeType}');
@@ -1609,6 +1662,21 @@ class DatabaseService {
     return categories;
   }
 
+  // Debug method to check the total count of foods in the database
+  static Future<int> getFoodsCount() async {
+    try {
+      final response = await _client
+          .from('food_database')
+          .select('id');
+      
+      print('🔍 DatabaseService.getFoodsCount: Total foods in database: ${response.length}');
+      return response.length;
+    } catch (e) {
+      print('❌ DatabaseService.getFoodsCount: Erreur: $e');
+      return 0;
+    }
+  }
+
   // MÉTHODE POUR RÉCUPÉRER LES ALIMENTS FRÉQUEMMENT UTILISÉS
   static Future<List<Food>> getFrequentlyUsedFoods(String userId, {String? language, int limit = 20}) async {
     try {
@@ -1645,7 +1713,7 @@ class DatabaseService {
           .from('food_entries')
           .select('''
             food_id,
-            foods!inner (
+            food_database!inner (
               id,
               name_en,
               name_fr,
@@ -1683,8 +1751,8 @@ class DatabaseService {
       for (final entry in regularFoodsQuery) {
         final foodId = entry['food_id'].toString();
         regularFoodCounts[foodId] = (regularFoodCounts[foodId] ?? 0) + 1;
-        if (entry['foods'] != null) {
-          regularFoodData[foodId] = entry['foods'];
+        if (entry['food_database'] != null) {
+          regularFoodData[foodId] = entry['food_database'];
         }
       }
 

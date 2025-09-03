@@ -52,7 +52,7 @@ class FoodEntriesService {
             has_modified_macros,
             scanned_food_name,
             is_scanned,
-            foods:food_id (
+            food_database:food_id (
               id,
               name_fr,
               name_en
@@ -125,8 +125,8 @@ class FoodEntriesService {
           foodName = customFood['name'] ?? 'Aliment personnalisé';
           isCustom = true;
           isScanned = customFood['origin'] == 'barcode';
-        } else if (entry['foods'] != null) {
-          final food = entry['foods'];
+        } else if (entry['food_database'] != null) {
+          final food = entry['food_database'];
           foodName = food['name_fr'] ?? food['name_en'] ?? 'Aliment';
           isCustom = false;
           isScanned = false;
