@@ -75,7 +75,11 @@ class _NutritionRecipesHybridState extends State<NutritionRecipesHybrid> {
                     searchController: _searchController,
                     searchQuery: searchQuery,
                     onSearchChanged: _onSearchChanged,
-                    onFilterPressed: _showFiltersModal,
+                    onFiltersApplied: (Map<String, Set<String>> filters) {
+                      setState(() {
+                        selectedAdvancedFilters = filters;
+                      });
+                    },
                   ),
                   
                   // Filtres actifs (espacement réduit)

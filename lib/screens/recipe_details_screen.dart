@@ -340,7 +340,7 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
           SizedBox(
             width: double.infinity,
             child: Text(
-              '1 portion • ${widget.recipe.time}',
+              '1 portion • ${widget.recipe.time} min',
               style: const TextStyle(
                 fontSize: 14,
                 color: Color(0xFF64748B),

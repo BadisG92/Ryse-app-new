@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'recipe_details_screen.dart';
+import 'test_filter_screen.dart';
 import '../components/ui/recipe_models.dart';
 import '../components/ui/recipe_widgets.dart';
 import '../components/ui/recipe_cards.dart';
+import '../components/ui/working_filter_modal.dart';
 import '../models/nutrition_models.dart';
 
 class SelectRecipeScreen extends StatefulWidget {
@@ -24,27 +26,59 @@ class _SelectRecipeScreenState extends State<SelectRecipeScreen> {
   String searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
   
-  // Filtres avancés
-  Map<String, Set<String>> selectedAdvancedFilters = {
-    'regime': <String>{},
-    'duree': <String>{},
-    'calories': <String>{},
-    'difficulte': <String>{},
-  };
+  // Filtres avancés - synchronisés avec content_tags
+  Map<String, Set<String>> selectedAdvancedFilters = {};
 
   List<Recipe> get recipes => RecipeData.allRecipes;
 
   List<Recipe> get filteredRecipes {
-    // Vérifier si un filtre avancé est active
     final bool hasAdvancedFilters = selectedAdvancedFilters.values.any((set) => set.isNotEmpty);
     
-    // Filtrer les recettes selon la recherche et les filtres
-    return RecipeFilters.filterRecipes(
+    if (hasAdvancedFilters) {
+      print('🎯 FILTRAGE ACTIF dans l\'UI');
+      print('🎯 Filtres sélectionnés: $selectedAdvancedFilters');
+    }
+    
+    final result = RecipeFilters.filterRecipes(
       recipes,
       searchQuery: searchQuery.isEmpty ? null : searchQuery,
       selectedFilters: hasAdvancedFilters ? selectedAdvancedFilters : null,
     );
+    
+    if (hasAdvancedFilters) {
+      print('🎯 UI: ${result.length} recettes après filtrage');
+    }
+    
+    return result;
   }
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeFilters();
+  }
+
+  // Initialise les filtres depuis RecipeFilters.advancedFilters
+  void _initializeFilters() async {
+    print('🔍 INIT: Initialisation des filtres depuis RecipeFilters');
+    
+    // Forcer l'initialisation de RecipeFilters
+    RecipeFilters.initialize();
+    
+    // Attendre un peu que les filtres se chargent
+    await Future.delayed(const Duration(milliseconds: 500));
+    
+    setState(() {
+      // Créer un Set vide pour chaque catégorie disponible
+      for (final category in RecipeFilters.advancedFilters.keys) {
+        selectedAdvancedFilters[category] = <String>{};
+      }
+      print('🔍 INIT: Categories disponibles = ${selectedAdvancedFilters.keys.toList()}');
+      print('🔍 INIT: RecipeFilters.advancedFilters = ${RecipeFilters.advancedFilters}');
+    });
+  }
+
+  // Plus besoin de _loadDynamicFilters, supprimé
 
   @override
   void dispose() {
@@ -101,7 +135,13 @@ class _SelectRecipeScreenState extends State<SelectRecipeScreen> {
                   searchController: _searchController,
                   searchQuery: searchQuery,
                   onSearchChanged: _onSearchChanged,
-                  onFilterPressed: _showFiltersModal,
+                  onFiltersApplied: (Map<String, Set<String>> filters) {
+                    print('🔥🔥🔥 onFiltersApplied APPELÉ avec: $filters');
+                    setState(() {
+                      selectedAdvancedFilters = filters;
+                    });
+                    print('🔥🔥🔥 selectedAdvancedFilters mis à jour: $selectedAdvancedFilters');
+                  },
                 ),
                 
                 // Filtres actifs
@@ -231,7 +271,7 @@ class _SelectRecipeScreenState extends State<SelectRecipeScreen> {
                   
                   // Résumé (durée, portions, calories)
                   Text(
-                    '${recipe.duration} • ${recipe.servings} pers. • ${recipe.calories} kcal',
+                    '${recipe.duration} min • ${recipe.servings} pers. • ${recipe.calories} kcal',
                     style: const TextStyle(
                       fontSize: 13,
                       color: Color(0xFF64748B),
@@ -265,51 +305,6 @@ class _SelectRecipeScreenState extends State<SelectRecipeScreen> {
     });
   }
 
-  void _showFiltersModal() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setModalState) => Container(
-          height: MediaQuery.of(context).size.height * 0.75,
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(20),
-              topRight: Radius.circular(20),
-            ),
-          ),
-          child: FilterModalContent(
-            selectedFilters: selectedAdvancedFilters,
-            onFilterChanged: (filterKey, option, selected) {
-              setModalState(() {
-                if (selected) {
-                  selectedAdvancedFilters[filterKey]?.add(option);
-                } else {
-                  selectedAdvancedFilters[filterKey]?.remove(option);
-                }
-              });
-            },
-            onClearAll: () {
-              setModalState(() {
-                selectedAdvancedFilters.forEach((key, value) {
-                  value.clear();
-                });
-              });
-            },
-            onApply: () {
-              setState(() {
-                // Les filtres sont déjà mis à jour dans setModalState
-              });
-              Navigator.pop(context);
-            },
-            selectedCount: RecipeFilters.countSelectedFilters(selectedAdvancedFilters),
-          ),
-        ),
-      ),
-    );
-  }
 
   void _removeSpecificFilter(Map<String, String> filterData) {
     setState(() {

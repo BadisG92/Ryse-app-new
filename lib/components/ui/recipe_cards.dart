@@ -78,7 +78,7 @@ class RecipeListCard extends StatelessWidget {
                   Row(
                     children: [
                       Text(
-                        '${recipe.duration} • ${recipe.servings} pers.',
+                        '${recipe.duration} min • ${recipe.servings} pers.',
                         style: const TextStyle(
                           fontSize: 13,
                           color: Color(0xFF666666),
@@ -260,7 +260,7 @@ class RecipeCarouselCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${recipe.duration} • ${recipe.servings} pers.',
+                      '${recipe.duration} min • ${recipe.servings} pers.',
                       style: const TextStyle(
                         fontSize: 12,
                         color: Colors.white70,

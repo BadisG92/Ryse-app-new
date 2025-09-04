@@ -257,18 +257,18 @@ class NutritionTip {
 
 // Données statiques de nutrition
 class NutritionData {
-  // Profil nutrition exemple
+  // Profil nutrition vide - les vraies données viennent de la base
   static const NutritionProfile profile = NutritionProfile(
-    targetCalories: 2500,
-    currentCalories: 1247,
-    targetProtein: 150,
-    currentProtein: 85,
-    targetCarbs: 250,
-    currentCarbs: 120,
-    targetFat: 80,
-    currentFat: 45,
-    currentWaterMl: 480,
-    targetWaterMl: 2000,
+    targetCalories: 0,
+    currentCalories: 0,
+    targetProtein: 0,
+    currentProtein: 0,
+    targetCarbs: 0,
+    currentCarbs: 0,
+    targetFat: 0,
+    currentFat: 0,
+    currentWaterMl: 0,
+    targetWaterMl: 0,
   );
 
   // Macronutriments
@@ -301,41 +301,8 @@ class NutritionData {
     ];
   }
 
-  // Repas de la journée
-  static const List<Meal> meals = [
-    Meal(
-      id: 'breakfast',
-      name: 'Petit-déjeuner',
-      shortName: 'P.déj',
-      calories: 320,
-      isCompleted: true,
-      time: TimeOfDay(hour: 8, minute: 0),
-    ),
-    Meal(
-      id: 'lunch',
-      name: 'Déjeuner',
-      shortName: 'Déj',
-      calories: 450,
-      isCompleted: true,
-      time: TimeOfDay(hour: 12, minute: 30),
-    ),
-    Meal(
-      id: 'snack',
-      name: 'Collation',
-      shortName: 'Coll',
-      calories: 180,
-      isCompleted: true,
-      time: TimeOfDay(hour: 16, minute: 0),
-    ),
-    Meal(
-      id: 'dinner',
-      name: 'Dîner',
-      shortName: 'Dîner',
-      calories: 0,
-      isCompleted: false,
-      time: TimeOfDay(hour: 20, minute: 0),
-    ),
-  ];
+  // Repas vides - les vraies données viennent de la base
+  static const List<Meal> meals = [];
 
   // Actions rapides
   static const List<NutritionQuickAction> quickActions = [
@@ -402,10 +369,10 @@ class NutritionData {
     ),
   ];
 
-  // Statistiques des repas
-  static int get completedMeals => meals.where((meal) => meal.isCompleted).length;
-  static int get totalMeals => meals.length;
-  static String get mealsProgress => '$completedMeals/$totalMeals';
+  // Statistiques des repas - calculées dynamiquement depuis les vraies données
+  static int get completedMeals => 0;
+  static int get totalMeals => 0;
+  static String get mealsProgress => '0/0';
 }
 
 // Extension pour la copie du profil nutrition

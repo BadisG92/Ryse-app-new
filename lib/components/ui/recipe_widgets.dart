@@ -8,14 +8,14 @@ class RecipeSearchSection extends StatelessWidget {
   final TextEditingController searchController;
   final String searchQuery;
   final ValueChanged<String> onSearchChanged;
-  final VoidCallback onFilterPressed;
+  final Function(Map<String, Set<String>>)? onFiltersApplied;
 
   const RecipeSearchSection({
     super.key,
     required this.searchController,
     required this.searchQuery,
     required this.onSearchChanged,
-    required this.onFilterPressed,
+    this.onFiltersApplied,
   });
 
   @override
@@ -50,7 +50,169 @@ class RecipeSearchSection extends StatelessWidget {
         // Icône de filtre à l'extérieur
         const SizedBox(width: 12),
         IconButton(
-          onPressed: onFilterPressed,
+          onPressed: () {
+            print('🔴 OUVERTURE MODAL BOTTOM SHEET 🔴');
+            
+            // Récupérer les filtres depuis content_tags
+            final availableFilters = RecipeFilters.advancedFilters;
+            print('🔴 Filtres disponibles: ${availableFilters.keys}');
+            
+            // État persistant pour tous les tags
+            Map<String, bool> selectedTags = {};
+            for (var category in availableFilters.entries) {
+              final tags = category.value.values.first; // Les tags de cette catégorie
+              for (String tag in tags) {
+                selectedTags[tag] = false;
+              }
+            }
+            
+            print('🔴 CALLBACK onFiltersApplied: ${onFiltersApplied.runtimeType}');
+            
+            showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              builder: (context) {
+                return StatefulBuilder(
+                  builder: (context, setModalState) {
+                    return Container(
+                      height: MediaQuery.of(context).size.height * 0.75,
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(20),
+                          topRight: Radius.circular(20),
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          const SizedBox(height: 20),
+                          const Text('Filtres', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
+                          const SizedBox(height: 20),
+                          Expanded(
+                            child: SingleChildScrollView(
+                              padding: const EdgeInsets.symmetric(horizontal: 20),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: availableFilters.entries.map((categoryEntry) {
+                                  final categoryName = categoryEntry.key;
+                                  final tags = categoryEntry.value.values.first;
+                                  
+                                  return Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        categoryName,
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                          color: Color(0xFF1A1A1A),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 12),
+                                      Wrap(
+                                        spacing: 8,
+                                        runSpacing: 8,
+                                        children: tags.map<Widget>((tag) {
+                                          final isSelected = selectedTags[tag] ?? false;
+                                          return GestureDetector(
+                                            onTap: () {
+                                              print('🔴 TAG CLIQUÉ: $tag dans $categoryName (était $isSelected)');
+                                              setModalState(() {
+                                                selectedTags[tag] = !isSelected;
+                                                print('🔴 TAG MAINTENANT: $tag = ${selectedTags[tag]}');
+                                              });
+                                            },
+                                            child: Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                              decoration: BoxDecoration(
+                                                color: isSelected ? const Color(0xFF0B132B) : const Color(0xFFF8F8F8),
+                                                borderRadius: BorderRadius.circular(20),
+                                                border: Border.all(
+                                                  color: isSelected ? const Color(0xFF0B132B) : const Color(0xFFE2E8F0),
+                                                ),
+                                              ),
+                                              child: Text(
+                                                tag,
+                                                style: TextStyle(
+                                                  color: isSelected ? Colors.white : const Color(0xFF1A1A1A),
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        }).toList(),
+                                      ),
+                                      const SizedBox(height: 24),
+                                    ],
+                                  );
+                                }).toList(),
+                              ),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(20),
+                            child: SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  final selectedTagsList = selectedTags.entries.where((e) => e.value).map((e) => e.key).toList();
+                                  print('🔴 VALIDER: ${selectedTagsList.length} filtres sélectionnés');
+                                  print('🔴 Tags sélectionnés: $selectedTagsList');
+                                  
+                                  // Organiser les tags par catégorie pour le callback
+                                  Map<String, Set<String>> filtersForCallback = {};
+                                  for (var categoryEntry in availableFilters.entries) {
+                                    final categoryName = categoryEntry.key;
+                                    final categoryTags = categoryEntry.value.values.first;
+                                    
+                                    // Filtres sélectionnés pour cette catégorie
+                                    final selectedInCategory = categoryTags.where((tag) => selectedTags[tag] == true).toSet();
+                                    if (selectedInCategory.isNotEmpty) {
+                                      filtersForCallback[categoryName] = selectedInCategory;
+                                    }
+                                  }
+                                  
+                                  print('🔴 Filtres organisés par catégorie: $filtersForCallback');
+                                  
+                                  // Appeler le callback pour appliquer les filtres
+                                  if (onFiltersApplied != null) {
+                                    try {
+                                      onFiltersApplied!(filtersForCallback);
+                                      print('🔴 Callback onFiltersApplied appelé avec: $filtersForCallback');
+                                    } catch (e) {
+                                      print('🔴 ERREUR callback: $e');
+                                    }
+                                  }
+                                  
+                                  Navigator.pop(context);
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF0B132B),
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                child: Text(
+                                  'Valider (${selectedTags.values.where((v) => v).length})',
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                );
+              },
+            );
+          },
           icon: const Icon(
             LucideIcons.settings,
             size: 20,
@@ -338,43 +500,38 @@ class FilterModalContent extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    ...categoryFilters.entries.map((filterEntry) {
-                      final filterKey = filterEntry.key;
-                      final filterOptions = filterEntry.value;
-                      
-                      return Column(
-                        children: [
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: filterOptions.map((option) {
-                              final isSelected = selectedFilters[filterKey]?.contains(option) ?? false;
-                              
-                              return ChoiceChip(
-                                label: Text(option),
-                                selected: isSelected,
-                                showCheckmark: false,
-                                onSelected: (bool selected) => onFilterChanged(filterKey, option, selected),
-                                backgroundColor: const Color(0xFFF8F8F8),
-                                selectedColor: const Color(0xFF0B132B),
-                                labelStyle: TextStyle(
-                                  color: isSelected ? Colors.white : const Color(0xFF1A1A1A),
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(20),
-                                  side: BorderSide(
-                                    color: isSelected ? const Color(0xFF0B132B) : const Color(0xFFE2E8F0),
-                                  ),
-                                ),
-                              );
-                            }).toList(),
+                    // Tags du filtre - structure simplifiée
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: (categoryFilters.values.expand((list) => list).toList()).map((option) {
+                        final isSelected = selectedFilters[categoryTitle]?.contains(option) ?? false;
+                        
+                        return GestureDetector(
+                          onTap: () {
+                            onFilterChanged(categoryTitle, option, !isSelected);
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: isSelected ? const Color(0xFF0B132B) : const Color(0xFFF8F8F8),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: isSelected ? const Color(0xFF0B132B) : const Color(0xFFE2E8F0),
+                              ),
+                            ),
+                            child: Text(
+                              option,
+                              style: TextStyle(
+                                color: isSelected ? Colors.white : const Color(0xFF1A1A1A),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
                           ),
-                          const SizedBox(height: 8),
-                        ],
-                      );
-                    }).toList(),
+                        );
+                      }).toList(),
+                    ),
                     const SizedBox(height: 24),
                   ],
                 );

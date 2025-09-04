@@ -8,33 +8,24 @@ class RecipeService {
   /// Récupère toutes les recettes depuis Supabase
   static Future<List<Recipe>> getAllRecipes({String language = 'fr'}) async {
     try {
-      print('🔍 RecipeService.getAllRecipes - Début du chargement...');
-      
       // Récupérer toutes les recettes avec leurs valeurs nutritionnelles directement
       final recipesResponse = await _supabase
           .from('recipes_database')
           .select('*')
           .eq('is_public', true);
 
-      print('🔍 RecipeService.getAllRecipes - Réponse brute: ${recipesResponse.length} recettes');
-      print('🔍 RecipeService.getAllRecipes - Première recette: ${recipesResponse.isNotEmpty ? recipesResponse.first : "Aucune"}');
-
       List<Recipe> recipes = [];
       
       for (int i = 0; i < recipesResponse.length; i++) {
         var recipeData = recipesResponse[i];
-        print('🔍 RecipeService.getAllRecipes - Traitement recette $i: ${recipeData['name_fr']}');
         try {
           // Utiliser directement Recipe.fromJson maintenant que la classe l'a
           final recipe = Recipe.fromJson(recipeData);
           recipes.add(recipe);
-          print('✅ RecipeService.getAllRecipes - Recette $i ajoutée avec succès');
         } catch (e) {
-          print('❌ RecipeService.getAllRecipes - Erreur pour recette $i: $e');
+          print('❌ Erreur pour recette $i: $e');
         }
       }
-      
-      print('✅ RecipeService.getAllRecipes - ${recipes.length} recettes traitées avec succès');
       
       
       return recipes;
@@ -211,5 +202,49 @@ class RecipeService {
     final allRecipes = await getAllRecipes(language: language);
     // Prendre minimum 5 recettes, ou toutes si moins de 5
     return allRecipes.take(5).toList();
+  }
+
+  /// Récupère tous les tags uniques depuis les recettes pour les organiser dans content_tags
+  static Future<Set<String>> getAllUniqueTags({String language = 'fr'}) async {
+    try {
+      print('🔍 RecipeService.getAllUniqueTags - Récupération des tags...');
+      
+      // Récupérer toutes les recettes
+      final recipesResponse = await _supabase
+          .from('recipes_database')
+          .select('tags_fr, tags_en')
+          .eq('is_public', true);
+
+      print('🔍 Found ${recipesResponse.length} recipes to extract tags from');
+
+      Set<String> allTags = {};
+      
+      for (var recipe in recipesResponse) {
+        // Récupérer les tags selon la langue
+        String? tagsString;
+        if (language == 'fr') {
+          tagsString = recipe['tags_fr'] ?? recipe['tags_en'];
+        } else {
+          tagsString = recipe['tags_en'] ?? recipe['tags_fr'];
+        }
+        
+        if (tagsString != null && tagsString.isNotEmpty) {
+          // Séparer les tags par virgule et les nettoyer
+          List<String> tags = tagsString
+              .split(',')
+              .map((tag) => tag.trim())
+              .where((tag) => tag.isNotEmpty)
+              .toList();
+          
+          allTags.addAll(tags);
+        }
+      }
+      
+      print('✅ Extracted ${allTags.length} unique tags: ${allTags.take(10).toList()}...');
+      return allTags;
+    } catch (e) {
+      print('❌ Erreur lors de la récupération des tags: $e');
+      return {};
+    }
   }
 } 

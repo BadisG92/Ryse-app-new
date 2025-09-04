@@ -1,5 +1,7 @@
 // Modèles de données et logique pour les recettes
 import '../../services/recipe_service.dart';
+import '../../services/content_tags_service.dart';
+import '../../config/app_config.dart';
 
 // Modèle pour un ingrédient dans une recette
 class RecipeIngredient {
@@ -141,24 +143,12 @@ class Recipe {
 
   // Factory pour créer une Recipe depuis JSON (base de données)
   factory Recipe.fromJson(Map<String, dynamic> json) {
-    print('🔍 Recipe.fromJson - JSON reçu: ${json.keys.toList()}');
-    print('🔍 Recipe.fromJson - Données complètes: $json');
-    
     try {
       final id = json['id'] is int ? json['id'] : int.tryParse(json['id'].toString()) ?? 0;
-      print('🔍 Recipe.fromJson - ID: $id');
-      
       final name = json['name_fr'] ?? json['name_en'] ?? '';
-      print('🔍 Recipe.fromJson - Name: $name');
-      
       final calories = json['calories per portion'] ?? 0;
-      print('🔍 Recipe.fromJson - Calories: $calories');
-      
       final tags = _parseTagsFromJson(json);
-      print('🔍 Recipe.fromJson - Tags: $tags');
-      
       final steps = _parseStepsFromJson(json);
-      print('🔍 Recipe.fromJson - Steps: $steps');
       
       return Recipe(
         id: id,
@@ -184,9 +174,6 @@ class Recipe {
   // Helper pour parser les tags depuis JSON
   static List<String> _parseTagsFromJson(Map<String, dynamic> json) {
     try {
-      print('🔍 _parseTagsFromJson - tags_fr: ${json['tags_fr']} (type: ${json['tags_fr'].runtimeType})');
-      print('🔍 _parseTagsFromJson - tags_en: ${json['tags_en']} (type: ${json['tags_en'].runtimeType})');
-      
       // Gérer les tags français en priorité
       if (json['tags_fr'] != null) {
         if (json['tags_fr'] is String && json['tags_fr'].toString().isNotEmpty) {
@@ -209,7 +196,6 @@ class Recipe {
       
       return [];
     } catch (e) {
-      print('❌ _parseTagsFromJson - Erreur: $e');
       return [];
     }
   }
@@ -217,9 +203,6 @@ class Recipe {
   // Helper pour parser les étapes depuis JSON
   static List<String> _parseStepsFromJson(Map<String, dynamic> json) {
     try {
-      print('🔍 _parseStepsFromJson - steps_fr: ${json['steps_fr']} (type: ${json['steps_fr'].runtimeType})');
-      print('🔍 _parseStepsFromJson - steps_en: ${json['steps_en']} (type: ${json['steps_en'].runtimeType})');
-      
       // Gérer les étapes françaises en priorité
       if (json['steps_fr'] != null) {
         if (json['steps_fr'] is String && json['steps_fr'].toString().isNotEmpty) {
@@ -243,7 +226,6 @@ class Recipe {
       
       return [];
     } catch (e) {
-      print('❌ _parseStepsFromJson - Erreur: $e');
       return [];
     }
   }
@@ -251,6 +233,19 @@ class Recipe {
   // Helpers pour compatibilité avec l'écran de détails
   String get time => duration;
   int get portions => servings;
+  
+  // Helper pour normaliser les strings pour comparaison
+  static String _normalizeString(String str) {
+    return str.toLowerCase()
+        .replaceAll('é', 'e')
+        .replaceAll('è', 'e')
+        .replaceAll('ê', 'e')
+        .replaceAll('à', 'a')
+        .replaceAll('ç', 'c')
+        .replaceAll('ù', 'u')
+        .replaceAll('ô', 'o')
+        .replaceAll('î', 'i');
+  }
 
   // Helper pour vérifier si la recette correspond aux filtres
   bool matchesFilters({
@@ -265,51 +260,63 @@ class Recipe {
     }
 
     // Filtres avancés
-    if (filters != null) {
-      // Filtre régime alimentaire avec mapping vers les tags de la base de données
-      final regimeFilters = filters['regime'] ?? <String>{};
-      if (regimeFilters.isNotEmpty) {
-        bool hasMatchingTag = false;
-        for (String regimeFilter in regimeFilters) {
-          // Utiliser le mapping pour convertir le filtre français vers les tags anglais
-          final mappedTags = RecipeFilters.regimeFilterMapping[regimeFilter] ?? [regimeFilter];
-          if (mappedTags.any((mappedTag) => tags.contains(mappedTag))) {
-            hasMatchingTag = true;
-            break;
+    if (filters != null && filters.isNotEmpty) {
+      // Log initial une fois par recette
+      bool shouldLog = name.contains("Smoothie") || name.contains("Pancakes") || name.contains("Salade");
+      
+      if (shouldLog) {
+        print('\n📋 Test de "$name"');
+        print('   Tags recette: $tags');
+      }
+      
+      // Pour chaque catégorie de filtre actif
+      for (final filterEntry in filters.entries) {
+        final categoryName = filterEntry.key;
+        final selectedOptions = filterEntry.value;
+        
+        if (selectedOptions.isNotEmpty) {
+          bool hasMatch = false;
+          
+          if (shouldLog) {
+            print('   Catégorie "$categoryName": cherche ${selectedOptions.toList()}');
+          }
+          
+          // Vérifier chaque option sélectionnée
+          for (String selectedOption in selectedOptions) {
+            // Vérifier chaque tag de la recette
+            for (String recipeTag in tags) {
+              // Comparaison exacte ET insensible à la casse
+              if (recipeTag.toLowerCase().trim() == selectedOption.toLowerCase().trim()) {
+                hasMatch = true;
+                if (shouldLog) {
+                  print('   ✅ MATCH: "$recipeTag" == "$selectedOption"');
+                }
+                break;
+              }
+            }
+            
+            if (hasMatch) break;
+          }
+          
+          // Si aucun match pour cette catégorie, exclure
+          if (!hasMatch) {
+            if (shouldLog) {
+              print('   ❌ Pas de match pour "$categoryName"');
+            }
+            return false;
           }
         }
-        if (!hasMatchingTag) {
-          return false;
-        }
       }
-
-      // Filtre durée
-      final dureeFilters = filters['duree'] ?? <String>{};
-      if (dureeFilters.isNotEmpty) {
-        if (!_matchesDurationFilter(dureeFilters)) {
-          return false;
-        }
-      }
-
-      // Filtre calories
-      final caloriesFilters = filters['calories'] ?? <String>{};
-      if (caloriesFilters.isNotEmpty) {
-        if (!_matchesCaloriesFilter(caloriesFilters)) {
-          return false;
-        }
-      }
-
-      // Filtre difficulté (basé sur durée)
-      final difficulteFilters = filters['difficulte'] ?? <String>{};
-      if (difficulteFilters.isNotEmpty) {
-        if (!_matchesDifficultyFilter(difficulteFilters)) {
-          return false;
-        }
+      
+      if (shouldLog) {
+        print('   ✅ Recette acceptée!');
       }
     }
 
     return true;
   }
+
+  // Méthodes spéciales pour certains filtres (activées si nécessaire)
 
   bool _matchesDurationFilter(Set<String> filters) {
     final durationMinutes = _extractDurationMinutes();
@@ -380,32 +387,174 @@ class Recipe {
   }
 }
 
-// Filtres de recettes
+// Filtres de recettes - Données dynamiques depuis Supabase
 class RecipeFilters {
-  static const Map<String, Map<String, List<String>>> advancedFilters = {
-    'Régime alimentaire': {
-      'regime': ['Végétarien', 'Végan', 'Sans gluten', 'Keto', 'Paléo', 'Méditerranéen']
-    },
-    'Temps de préparation': {
-      'duree': ['Moins de 15 min', '15-30 min', '30-45 min', 'Plus de 45 min']
-    },
-    'Calories': {
-      'calories': ['Moins de 300 kcal', '300-500 kcal', '500-700 kcal', 'Plus de 700 kcal']
-    },
-    'Difficulté': {
-      'difficulte': ['Facile', 'Moyen', 'Difficile']
-    },
-  };
+  // Variables privées pour stocker les catégories dynamiques
+  static Map<String, Map<String, List<String>>> _advancedFilters = {};
+  static Map<String, List<String>> _regimeFilterMapping = {};
+  static bool _isLoaded = false;
 
-  // Mapping des filtres de l'interface vers les tags français de la base de données
-  static const Map<String, List<String>> regimeFilterMapping = {
-    'Végétarien': ['Végétarien', 'À base de plantes'],
-    'Végan': ['Végan', 'À base de plantes'],
-    'Sans gluten': ['Sans gluten'],
-    'Keto': ['Keto', 'Faible en glucides'],
-    'Paléo': ['Paléo', 'Faible en glucides'],
-    'Méditerranéen': ['Méditerranéen', 'Sain', 'Riche en oméga-3'],
-  };
+  // Interface publique - retourne les filtres (vides au début, chargés dynamiquement)
+  static Map<String, Map<String, List<String>>> get advancedFilters => _advancedFilters;
+  static Map<String, List<String>> get regimeFilterMapping => _regimeFilterMapping;
+
+  // Initialisation - charge les catégories dynamiquement depuis Supabase
+  static void initialize() {
+    print('🟡 RecipeFilters.initialize() called');
+    print('🟡 _isLoaded = $_isLoaded');
+    if (!_isLoaded) {
+      print('🟡 Starting _loadFiltersFromSupabase()...');
+      _loadFiltersFromSupabase();
+    } else {
+      print('🟡 Filters already loaded: $_advancedFilters');
+    }
+  }
+
+  // Charge les filtres depuis content_tags
+  static Future<void> _loadFiltersFromSupabase() async {
+    try {
+      print('🔄 Chargement des filtres depuis content_tags...');
+      
+      // Récupérer les tags organisés depuis content_tags
+      final organizedTags = await ContentTagsService.getOrganizedTagsForFilters();
+      
+      if (organizedTags.isEmpty) {
+        print('⚠️ Aucun tag trouvé dans content_tags, utilisation des filtres par défaut');
+        _useDefaultFilters();
+        _isLoaded = true;
+        return;
+      }
+      
+      print('✅ Tags trouvés dans content_tags: ${organizedTags.keys.length} catégories');
+      
+      // Construire la structure de filtres pour l'UI
+      _advancedFilters = {};
+      
+      for (final entry in organizedTags.entries) {
+        final categoryName = entry.key;
+        final tags = entry.value;
+        
+        if (tags.isNotEmpty) {
+          // Structure: Map<categoryName, Map<categoryName, List<tags>>>
+          _advancedFilters[categoryName] = {
+            categoryName: tags
+          };
+          print('   - Catégorie "$categoryName": ${tags.length} tags');
+        }
+      }
+      
+      print('✅ Filtres chargés depuis content_tags: ${_advancedFilters.keys.toList()}');
+      _isLoaded = true;
+      
+    } catch (e) {
+      print('❌ Erreur lors du chargement: $e');
+      _useDefaultFilters();
+      _isLoaded = true;
+    }
+  }
+
+  // Génère une clé de filtre depuis le nom de catégorie
+  static String _generateFilterKey(String categoryName) {
+    // Convertir le nom français en clé simple
+    return categoryName
+        .toLowerCase()
+        .replaceAll(' ', '_')
+        .replaceAll('\'', '')
+        .replaceAll('é', 'e')
+        .replaceAll('è', 'e')
+        .replaceAll('ê', 'e')
+        .replaceAll('à', 'a')
+        .replaceAll('ç', 'c')
+        .replaceAll('ù', 'u')
+        .replaceAll('è', 'e')
+        .replaceAll('ô', 'o')
+        .replaceAll('î', 'i');
+  }
+
+  // Utilise des filtres par défaut en cas d'erreur
+  static void _useDefaultFilters() {
+    _advancedFilters = {
+      'Calories': {
+        'calories': ['Moins de 300 kcal', '300-500 kcal', '500-700 kcal', 'Plus de 700 kcal']
+      },
+      'Temps de préparation': {
+        'duree': ['Moins de 15 min', '15-30 min', '30-45 min', 'Plus de 45 min']
+      },
+    };
+    _regimeFilterMapping = {};
+  }
+
+  // Convertit le nom de catégorie en clé pour la logique
+  static String _getCategoryKey(String category) {
+    // Les catégories correspondent maintenant aux clés content_tags
+    switch (category) {
+      case 'type_alimentation':
+        return 'regime';
+      case 'moment_consommation':
+        return 'moment';
+      case 'type_plat':
+        return 'type';
+      case 'difficulte':
+        return 'difficulte';
+      case 'duree':
+        return 'duree';
+      case 'calories':
+        return 'calories';
+      default:
+        return 'autres';
+    }
+  }
+
+  // Convertit une clé de catégorie en nom d'affichage
+  static String _getCategoryDisplayName(String categoryKey) {
+    switch (categoryKey) {
+      case 'type_alimentation':
+        return 'Type d\'alimentation';
+      case 'moment_consommation':
+        return 'Moment de consommation';
+      case 'type_plat':
+        return 'Type de plat';
+      case 'difficulte':
+        return 'Difficulté';
+      case 'duree':
+        return 'Durée';
+      case 'calories':
+        return 'Calories';
+      case 'autres':
+        return 'Autres';
+      default:
+        return categoryKey;
+    }
+  }
+
+  // Extraire les tags relatifs au moment de consommation
+  static List<String> _extractMomentTags(Set<String> allTags) {
+    const momentKeywords = ['petit-déjeuner', 'breakfast', 'déjeuner', 'lunch', 'collation', 'snack', 'dîner', 'dinner', 'goûter', 'apéritif'];
+    return allTags.where((tag) => 
+      momentKeywords.any((keyword) => tag.toLowerCase().contains(keyword.toLowerCase()))
+    ).toList()..sort();
+  }
+
+  // Extraire les tags relatifs au régime alimentaire
+  static List<String> _extractRegimeTags(Set<String> allTags) {
+    const regimeKeywords = ['végétarien', 'vegetarian', 'végan', 'vegan', 'gluten', 'keto', 'paléo', 'paleo', 'méditerranéen', 'mediterranean', 'bio', 'organic'];
+    return allTags.where((tag) => 
+      regimeKeywords.any((keyword) => tag.toLowerCase().contains(keyword.toLowerCase()))
+    ).toList()..sort();
+  }
+
+  // Créer le mapping dynamique pour les régimes
+  static Map<String, List<String>> _createRegimeMapping(Set<String> allTags) {
+    Map<String, List<String>> mapping = {};
+    
+    // Grouper les tags similaires
+    final regimeTags = _extractRegimeTags(allTags);
+    for (final tag in regimeTags) {
+      mapping[tag] = [tag]; // Mapping simple 1:1 pour commencer
+    }
+    
+    return mapping;
+  }
 
   // Logique de filtrage pure
   static List<Recipe> filterRecipes(
@@ -413,10 +562,31 @@ class RecipeFilters {
     String? searchQuery,
     Map<String, Set<String>>? selectedFilters,
   }) {
-    return recipes.where((recipe) => recipe.matchesFilters(
+    if (selectedFilters != null && selectedFilters.isNotEmpty) {
+      print('🔍 === DÉBUT FILTRAGE ===');
+      print('🔍 Nombre de recettes: ${recipes.length}');
+      print('🔍 Filtres actifs:');
+      for (var entry in selectedFilters.entries) {
+        if (entry.value.isNotEmpty) {
+          print('   - ${entry.key}: ${entry.value.toList()}');
+        }
+      }
+    }
+    
+    final filtered = recipes.where((recipe) => recipe.matchesFilters(
       searchQuery: searchQuery,
       filters: selectedFilters,
     )).toList();
+    
+    if (selectedFilters != null && selectedFilters.isNotEmpty) {
+      print('✅ === FIN FILTRAGE ===');
+      print('✅ Résultat: ${filtered.length} recettes trouvées');
+      if (filtered.isNotEmpty) {
+        print('✅ Exemples: ${filtered.take(3).map((r) => r.name).toList()}');
+      }
+    }
+    
+    return filtered;
   }
 
   // Obtenir les filtres actifs avec leurs clés
@@ -450,114 +620,7 @@ class RecipeFilters {
 class RecipeData {
   // Variables privées pour stocker les données Supabase
   static List<Recipe> _featuredRecipes = [
-    // Données par défaut au cas où Supabase ne répond pas
-    Recipe(
-      id: 1,
-      name: "Bowl protéiné post-workout",
-      image: "/placeholder.svg?height=200&width=200",
-      duration: "10 min",
-      calories: 350,
-      servings: 1,
-      tags: ["Riche en protéines", "Rapide"],
-      proteins: 28,
-      carbs: 35,
-      fats: 8,
-      difficulty: "Facile",
-      ingredients: [
-        "200g - Yaourt grec nature",
-        "1 - Banane mûre",
-        "30g - Flocons d'avoine",
-        "1 cuillère - Miel",
-        "10g - Amandes effilées",
-      ],
-      steps: [
-        "Dans un bol, versez le yaourt grec.",
-        "Coupez la banane en rondelles et ajoutez-la au yaourt.",
-        "Saupoudrez les flocons d'avoine par-dessus.",
-        "Arrosez d'une cuillère de miel.",
-        "Terminez en parsemant d'amandes effilées.",
-      ],
-    ),
-    Recipe(
-      id: 2,
-      name: "Salade de quinoa aux légumes",
-      image: "/placeholder.svg?height=200&width=200",
-      duration: "15 min",
-      calories: 280,
-      servings: 1,
-      tags: ["Végétarien", "Sain", "À base de plantes"],
-      proteins: 12,
-      carbs: 35,
-      fats: 8,
-      difficulty: "Facile",
-      ingredients: [
-        "100g - Quinoa cuit",
-        "50g - Tomates cerises",
-        "50g - Concombre",
-        "30g - Feta",
-        "1 cuillère - Huile d'olive",
-      ],
-      steps: [
-        "Coupez les tomates cerises en deux.",
-        "Découpez le concombre en dés.",
-        "Mélangez le quinoa avec les légumes.",
-        "Ajoutez la feta émiettée.",
-        "Assaisonnez avec l'huile d'olive.",
-      ],
-    ),
-    Recipe(
-      id: 3,
-      name: "Smoothie protéiné banane",
-      image: "/placeholder.svg?height=200&width=200",
-      duration: "5 min",
-      calories: 320,
-      servings: 1,
-      tags: ["Riche en protéines", "Rapide", "Boisson"],
-      proteins: 25,
-      carbs: 30,
-      fats: 6,
-      difficulty: "Facile",
-      ingredients: [
-        "1 - Banane",
-        "200ml - Lait d'amande",
-        "30g - Protéine en poudre",
-        "1 cuillère - Beurre d'amande",
-        "1/2 cuillère - Cannelle",
-      ],
-      steps: [
-        "Pelez et coupez la banane.",
-        "Versez tous les ingrédients dans un blender.",
-        "Mixez pendant 1 minute.",
-        "Servez immédiatement.",
-      ],
-    ),
-    Recipe(
-      id: 4,
-      name: "Wrap au poulet grillé",
-      image: "/placeholder.svg?height=200&width=200",
-      duration: "12 min",
-      calories: 420,
-      servings: 1,
-      tags: ["Riche en protéines", "Rapide"],
-      proteins: 35,
-      carbs: 25,
-      fats: 18,
-      difficulty: "Facile",
-      ingredients: [
-        "1 - Tortilla complète",
-        "120g - Blanc de poulet",
-        "50g - Salade verte",
-        "30g - Avocat",
-        "2 cuillères - Sauce yaourt",
-      ],
-      steps: [
-        "Faites griller le poulet et découpez-le.",
-        "Étalez la sauce sur la tortilla.",
-        "Ajoutez la salade et l'avocat.",
-        "Disposez le poulet au centre.",
-        "Roulez le wrap fermement.",
-      ],
-    ),
+    // Pas de données par défaut - utiliser uniquement Supabase
   ];
   
   static List<Recipe> _allRecipes = _featuredRecipes;
@@ -570,6 +633,8 @@ class RecipeData {
   // Initialisation - charge les données Supabase en arrière-plan
   static void initialize() {
     _loadRecipesFromSupabase();
+    // Aussi initialiser les filtres dynamiques
+    RecipeFilters.initialize();
   }
 
   // Charge les données depuis Supabase et met à jour les listes

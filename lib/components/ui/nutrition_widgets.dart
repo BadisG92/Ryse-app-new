@@ -2485,7 +2485,7 @@ class _AddFoodBottomSheetForQuickActionsState extends State<AddFoodBottomSheetFo
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text('Protéines'),
-                  Text('25g'),
+                  Text('0g'),
                 ],
               ),
               const SizedBox(height: 8),
@@ -2493,7 +2493,7 @@ class _AddFoodBottomSheetForQuickActionsState extends State<AddFoodBottomSheetFo
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text('Glucides'),
-                  Text('5g'),
+                  Text('0g'),
                 ],
               ),
               const SizedBox(height: 8),
@@ -2501,7 +2501,7 @@ class _AddFoodBottomSheetForQuickActionsState extends State<AddFoodBottomSheetFo
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text('Lipides'),
-                  Text('15g'),
+                  Text('0g'),
                 ],
               ),
             ],
@@ -2751,8 +2751,8 @@ class _AddFoodBottomSheetForQuickActionsState extends State<AddFoodBottomSheetFo
   void _goToFoodSearchScreen() {
     setState(() {
       _currentStep = 1;
-      _selectedFood = 'Saumon grillé';
-      _selectedCalories = 280;
+      _selectedFood = '';
+      _selectedCalories = 0;
     });
   }
 

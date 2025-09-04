@@ -276,7 +276,7 @@ class _DatabaseIntegrationExampleState extends State<DatabaseIntegrationExample>
                 '${recipe.servings} portions • ${recipe.difficulty ?? 'N/A'} • ${recipe.getLocalizedSteps(currentLanguage).length} étapes'
               ),
               trailing: recipe.duration != null 
-                  ? Chip(label: Text(recipe.duration!))
+                  ? Chip(label: Text('${recipe.duration!} min'))
                   : null,
             )),
             if (recipes.length > 3)
