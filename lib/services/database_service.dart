@@ -8,6 +8,7 @@ import '../models/sport_models.dart' as models;
 import 'package:flutter/foundation.dart';
 import 'workout_cache_service.dart';
 import 'sport_dashboard_service.dart';
+import 'offline_workout_service.dart';
 
 class DatabaseService {
   static final SupabaseClient _client = Supabase.instance.client;
@@ -41,10 +42,76 @@ class DatabaseService {
     }
   }
 
+  // Créer un exercice custom
+  static Future<models.Exercise?> createCustomExercise({
+    required String name,
+    required String muscleGroup,
+    String equipment = '',
+    String description = '',
+  }) async {
+    final offlineService = OfflineWorkoutService();
+    
+    // Si hors ligne, créer l'exercice localement
+    if (!offlineService.isOnline) {
+      debugPrint('📵 Mode hors ligne - Création exercice custom en local');
+      final exercise = await offlineService.createOfflineCustomExercise(
+        name: name,
+        muscleGroup: muscleGroup,
+      );
+      return exercise;
+    }
+    
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) {
+      return null;
+    }
+    try {
+      final row = await _client
+          .from('custom_exercises')
+          .insert({
+            'user_id': userId,
+            'name': name.trim(),
+            'muscle_group': muscleGroup,
+            'equipment': equipment,
+            'description': description,
+            'visible_list': true,
+          })
+          .select('id, name, muscle_group, equipment, description')
+          .single();
+
+      return models.Exercise(
+        id: row['id']?.toString() ?? '',
+        name: row['name'] as String? ?? name,
+        muscleGroup: row['muscle_group'] as String? ?? muscleGroup,
+        equipment: row['equipment'] as String? ?? equipment,
+        description: row['description'] as String? ?? description,
+        isCustom: true,
+      );
+    } catch (e) {
+      debugPrint('❌ createCustomExercise error: $e');
+      return null;
+    }
+  }
+
   // EXERCISES
-  // Retourne les exercices au format UI (models.Exercise) depuis Supabase
+  // Retourne les exercices au format UI (models.Exercise) depuis Supabase ou cache offline
   static Future<List<models.Exercise>> getSystemExercises({String? language, bool includeCustom = true}) async {
     final lang = language ?? _getUserLanguage();
+    final offlineService = OfflineWorkoutService();
+
+    // Si hors ligne, utiliser le cache
+    if (!offlineService.isOnline) {
+      debugPrint('📵 Mode hors ligne - Utilisation du cache des exercices');
+      final cachedExercises = await offlineService.getCachedExercises();
+      
+      if (cachedExercises.isEmpty && offlineService.hasCachedData()) {
+        debugPrint('⚠️ Cache corrompu - tentative de récupération');
+      } else if (cachedExercises.isEmpty) {
+        debugPrint('⚠️ Aucun exercice en cache - première utilisation nécessite une connexion');
+      }
+      
+      return cachedExercises;
+    }
 
     List<models.Exercise> base = [];
 
@@ -107,47 +174,20 @@ class DatabaseService {
       } catch (_) {}
     }
 
+    // Rafraîchir le cache seulement si nécessaire (pas à chaque appel)
+    if (base.isNotEmpty) {
+      final offlineService = OfflineWorkoutService();
+      // Ne rafraîchir que si le cache est expiré ou inexistant
+      if (!offlineService.isCacheValid()) {
+        offlineService.refreshCache().catchError((e) {
+          debugPrint('⚠️ Erreur mise à jour cache: $e');
+        });
+      }
+    }
+
     return base;
   }
 
-  // Create a custom exercise for the current user and return it (for immediate selection)
-  static Future<models.Exercise?> createCustomExercise({
-    required String name,
-    String muscleGroup = '',
-    String equipment = '',
-    String description = '',
-  }) async {
-    final userId = _client.auth.currentUser?.id;
-    if (userId == null) {
-      throw Exception('User not authenticated');
-    }
-    try {
-      final row = await _client
-          .from('custom_exercises')
-          .insert({
-            'user_id': userId,
-            'name': name.trim(),
-            'muscle_group': muscleGroup,
-            'equipment': equipment,
-            'description': description,
-            'visible_list': true,
-          })
-          .select('id, name, muscle_group, equipment, description')
-          .single();
-
-          return models.Exercise(
-        id: row['id']?.toString() ?? '',
-        name: row['name'] as String? ?? name,
-        muscleGroup: row['muscle_group'] as String? ?? muscleGroup,
-        equipment: row['equipment'] as String? ?? equipment,
-        description: row['description'] as String? ?? description,
-        isCustom: true,
-      );
-    } catch (e) {
-      debugPrint('❌ createCustomExercise error: $e');
-      return null;
-    }
-  }
 
   static Future<List<Exercise>> getExercises({String? language}) async {
     final lang = language ?? _getUserLanguage();
@@ -1178,6 +1218,21 @@ class DatabaseService {
     int? durationMinutes,
     int? caloriesBurned,
   }) async {
+    final offlineService = OfflineWorkoutService();
+    
+    // Si hors ligne, sauvegarder la séance localement pour sync ultérieure
+    if (!offlineService.isOnline) {
+      debugPrint('📵 Mode hors ligne - Sauvegarde locale de la séance');
+      await offlineService.saveSessionForSync(
+        session,
+        guidedTemplateId: guidedTemplateId,
+        intensity: intensity,
+        durationMinutes: durationMinutes,
+        caloriesBurned: caloriesBurned,
+      );
+      return;
+    }
+    
     final userId = _client.auth.currentUser?.id;
     if (userId == null) {
       throw Exception('User not authenticated');

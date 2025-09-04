@@ -8,6 +8,7 @@ import '../services/database_service.dart' as db;
 import '../services/calorie_burn_service.dart';
 import '../services/auth_service.dart';
 import '../services/dashboard_service.dart';
+import '../services/offline_workout_service.dart';
 
 class WorkoutSessionScreen extends StatefulWidget {
   final String sessionName;
@@ -42,6 +43,11 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
   String? _selectedIntensity; // 'Faible' | 'Modéré' | 'Élevé'
   int? _effectiveDurationMinutes; // permet d'éditer la durée réelle
   
+  // Mode offline
+  final OfflineWorkoutService _offlineService = OfflineWorkoutService();
+  StreamSubscription<OfflineStatus>? _offlineStatusSubscription;
+  OfflineStatus? _offlineStatus;
+  
   // Controllers pour gérer les inputs de chaque série de manière indépendante
   final Map<String, Map<int, TextEditingController>> _weightControllers = {};
   final Map<String, Map<int, TextEditingController>> _repsControllers = {};
@@ -69,6 +75,20 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     }
     
     _startTimer();
+    
+    // Initialiser le service offline et écouter les changements de statut
+    _initOfflineMode();
+  }
+  
+  void _initOfflineMode() async {
+    await _offlineService.initialize();
+    _offlineStatusSubscription = _offlineService.statusStream.listen((status) {
+      if (mounted) {
+        setState(() {
+          _offlineStatus = status;
+        });
+      }
+    });
   }
 
   @override
@@ -76,6 +96,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     _timer.cancel();
     _scrollController.dispose();
     _currentFocusNode.dispose();
+    _offlineStatusSubscription?.cancel();
     // Dispose des controllers
     for (var controllers in _weightControllers.values) {
       for (var controller in controllers.values) {
@@ -592,8 +613,42 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     
     final TextEditingController searchController = TextEditingController();
     List<Exercise> filteredExercises = [];
-    // Charger depuis Supabase
+    // Charger depuis Supabase ou cache offline
     final List<Exercise> allExercises = await db.DatabaseService.getSystemExercises();
+    
+    // Si aucun exercice et mode hors ligne, afficher un message
+    if (allExercises.isEmpty && _offlineStatus != null && !_offlineStatus!.isOnline) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(LucideIcons.wifiOff, color: Colors.white, size: 20),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'Aucun exercice disponible hors ligne. Connectez-vous au moins une fois pour télécharger les exercices.',
+                    style: TextStyle(fontSize: 14),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.orange,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+        
+        // Reset le bouton après un délai
+        Timer(const Duration(milliseconds: 200), () {
+          if (mounted) {
+            setState(() {
+              _addExercisePressed = false;
+            });
+          }
+        });
+        return;
+      }
+    }
     
     showModalBottomSheet(
       context: context,
@@ -1025,6 +1080,9 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
       isCompleted: true,
     );
     
+    // Vérifier si on est hors ligne
+    final isOffline = _offlineStatus != null && !_offlineStatus!.isOnline;
+    
     // Historiser la séance (manuel ou guidé)
     db.DatabaseService.persistCompletedWorkoutAsHistory(
       session: completedSession,
@@ -1039,6 +1097,38 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
         debugPrint('✅ Dashboard principal mis à jour après musculation');
       } catch (e) {
         debugPrint('⚠️ Erreur lors de la mise à jour du dashboard principal: $e');
+      }
+      
+      // Afficher un message différent si on est hors ligne
+      if (isOffline && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(LucideIcons.wifiOff, color: Colors.white, size: 20),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Séance sauvegardée localement',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      Text(
+                        'Elle sera synchronisée dès le retour du réseau',
+                        style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.9)),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.orange,
+            duration: const Duration(seconds: 4),
+          ),
+        );
       }
     }).catchError((e) {
       debugPrint('❌ persistCompletedWorkoutAsHistory error: $e');
@@ -1515,20 +1605,54 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                       textAlign: TextAlign.center,
                     ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      _formatDurationRealTime(_currentDuration),
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.white,
+                  Row(
+                    children: [
+                      // Indicateur de mode offline
+                      if (_offlineStatus != null && !_offlineStatus!.isOnline) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                LucideIcons.wifiOff,
+                                size: 14,
+                                color: Colors.orange.shade300,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Hors ligne',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.orange.shade300,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      // Timer
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          _formatDurationRealTime(_currentDuration),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white,
+                          ),
+                        ),
                       ),
-                    ),
+                    ],
                   ),
                 ],
                 ),

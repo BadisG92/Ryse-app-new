@@ -5,6 +5,8 @@ import 'config/supabase_config.dart';
 import 'services/auth_service.dart';
 import 'components/ui/recipe_models.dart';
 import 'pages/ryze_app.dart';
+import 'services/offline_workout_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -14,6 +16,11 @@ void main() async {
   
   // Initialize Recipe Data from Supabase (en arrière-plan)
   RecipeData.initialize();
+  
+  // Initialize Offline Service pour la musculation
+  final offlineService = OfflineWorkoutService();
+  await SharedPreferencesSync().init(); // Pour les vérifications rapides
+  await offlineService.initialize();
   
   runApp(const MyApp());
 }

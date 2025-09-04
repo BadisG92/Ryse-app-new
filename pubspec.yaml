@@ -65,6 +65,9 @@ dependencies:
   
   # Barcode Scanner
   mobile_scanner: ^4.0.1
+  
+  # Network connectivity
+  connectivity_plus: ^6.0.5
 
 dev_dependencies:
   flutter_test:
