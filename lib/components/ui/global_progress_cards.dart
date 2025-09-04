@@ -285,38 +285,17 @@ class WeeklyBalanceCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // En-tête avec score global
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            // En-tête sans score global
+            const Row(
               children: [
-                const Row(
-                  children: [
-                    Icon(LucideIcons.check, size: 20, color: Color(0xFF0B132B)),
-                    SizedBox(width: 8),
-                    Text(
-                      'Bilan Global de la Semaine',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF1A1A1A),
-                      ),
-                    ),
-                  ],
-                ),
-                // Badge du score global
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: balance.scoreColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    '${(balance.globalScore * 100).round()}%',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: balance.scoreColor,
-                    ),
+                Icon(LucideIcons.check, size: 20, color: Color(0xFF0B132B)),
+                SizedBox(width: 8),
+                Text(
+                  'Bilan Global de la Semaine',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1A1A1A),
                   ),
                 ),
               ],
@@ -368,30 +347,35 @@ class _BalanceItemRow extends StatelessWidget {
             style: const TextStyle(fontSize: 14, color: Color(0xFF64748B)),
           ),
         ),
-        // Barre de progression mini
+        // Barre de progression uniforme avec couleur bleue
         Container(
           width: 60,
-          height: 6,
+          height: 8,
           margin: const EdgeInsets.only(right: 8),
           decoration: BoxDecoration(
-            color: Colors.grey.shade200,
-            borderRadius: BorderRadius.circular(3),
+            color: const Color(0xFFF8F8F8),
+            borderRadius: BorderRadius.circular(4),
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(3),
+            borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
               value: item.progress,
               backgroundColor: Colors.transparent,
-              valueColor: AlwaysStoppedAnimation<Color>(item.statusColor),
+              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF0B132B)),
             ),
           ),
         ),
-        Text(
-          item.valueText,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: Color(0xFF0B132B),
+        // Conteneur à largeur fixe pour aligner toutes les valeurs
+        SizedBox(
+          width: 90, // Largeur fixe pour aligner les barres
+          child: Text(
+            item.valueText,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF0B132B),
+            ),
+            textAlign: TextAlign.left,
           ),
         ),
       ],
@@ -730,9 +714,9 @@ class AIRecommendationCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    recommendation.title,
-                    style: const TextStyle(
+                  const Text(
+                    'Conseil intelligent',
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: Color(0xFF1A1A1A),

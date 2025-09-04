@@ -185,7 +185,7 @@ class AIRecommendationSection extends StatelessWidget {
   AIRecommendation _selectRecommendation(List<AIRecommendation> recommendations) {
     if (recommendations.isEmpty) {
       return const AIRecommendation(
-        message: "Continue tes efforts, tu es sur la bonne voie ! 🚀",
+        message: "Continue tes efforts, tu es sur la bonne voie !",
         type: RecommendationType.general,
         priority: 1,
       );

@@ -91,10 +91,10 @@ class WeeklyBalance {
 
   // Message motivationnel selon le score
   String get motivationalMessage {
-    if (globalScore >= 0.9) return 'Semaine parfaite ! 🏆';
-    if (globalScore >= 0.7) return 'Excellent travail ! 💪';
-    if (globalScore >= 0.5) return 'Bon rythme ! 🚀';
-    return 'Continue tes efforts ! ⭐';
+    if (globalScore >= 0.9) return 'Semaine parfaite !';
+    if (globalScore >= 0.7) return 'Excellent travail !';
+    if (globalScore >= 0.5) return 'Bon rythme !';
+    return 'Continue tes efforts !';
   }
 
   // Couleur selon le score
@@ -125,7 +125,13 @@ class BalanceItem {
   double get progress => target > 0 ? achieved / target : 0.0;
 
   // Texte de valeur affiché
-  String get valueText => '$achieved / $target $unit';
+  String get valueText {
+    // Cas spécial pour les séances de sport : n'afficher que le nombre achieved
+    if (label == 'Séances de sport') {
+      return '$achieved $unit';
+    }
+    return '$achieved / $target $unit';
+  }
 
   // Couleur selon la progression
   Color get statusColor {

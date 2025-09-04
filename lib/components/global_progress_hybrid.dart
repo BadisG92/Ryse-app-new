@@ -5,6 +5,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'ui/global_progress_models.dart';
 import 'ui/global_progress_widgets.dart';
 import '../services/dashboard_service.dart';
+import '../services/progress_service.dart';
 import '../providers/goals_notifier.dart';
 
 class GlobalProgress extends StatefulWidget {
@@ -16,7 +17,7 @@ class GlobalProgress extends StatefulWidget {
 
 class _GlobalProgressState extends State<GlobalProgress> {
   
-  // État des données (peut être alimenté par des providers/BLoCs)
+  // État des données (chargées depuis ProgressService)
   WeightProgress _weightProgress = GlobalProgressData.weightProgress;
   WeeklyBalance _weeklyBalance = GlobalProgressData.weeklyBalance;
   List<TrackingDay> _trackingDays = GlobalProgressData.weeklyTracking;
@@ -25,12 +26,14 @@ class _GlobalProgressState extends State<GlobalProgress> {
   int _completedGoals = 0;
   int _totalGoals = 0;
   bool _loadingObjectives = true;
+  bool _loadingProgress = true;
   String get _objectivesText => _loadingObjectives ? '...' : '$_completedGoals/$_totalGoals objectifs';
 
   @override
   void initState() {
     super.initState();
     _loadObjectives();
+    _loadProgressData();
     // Forcer la mise à jour du compteur d'objectifs
     DashboardService.refreshGoalsNotifier();
   }
@@ -46,6 +49,42 @@ class _GlobalProgressState extends State<GlobalProgress> {
       });
     } catch (e) {
       setState(() => _loadingObjectives = false);
+    }
+  }
+
+  Future<void> _loadProgressData() async {
+    try {
+      print('🔄 Chargement des données de progression depuis ProgressService...');
+      
+      // Charger toutes les données en parallèle
+      final results = await Future.wait([
+        ProgressService.getWeeklyBalance(),
+        ProgressService.getWeeklyTracking(),
+        ProgressService.getHeaderStats(),
+        ProgressService.getAIRecommendations(),
+      ]);
+      
+      setState(() {
+        _weeklyBalance = results[0] as WeeklyBalance;
+        _trackingDays = results[1] as List<TrackingDay>;
+        _headerStats = results[2] as HeaderStats;
+        _aiRecommendations = results[3] as List<AIRecommendation>;
+        _loadingProgress = false;
+      });
+      
+      print('✅ Données de progression chargées:');
+      print('   - Bilan hebdomadaire: ${_weeklyBalance.items.length} items');
+      print('   - Tracking: ${_trackingDays.length} jours');
+      print('   - Recommandations IA: ${_aiRecommendations.length} items');
+      
+      // Debug du bilan hebdomadaire
+      for (final item in _weeklyBalance.items) {
+        print('   - ${item.label}: ${item.achieved}/${item.target} ${item.unit}');
+      }
+      
+    } catch (e) {
+      print('❌ Erreur lors du chargement des données de progression: $e');
+      setState(() => _loadingProgress = false);
     }
   }
 
@@ -74,17 +113,23 @@ class _GlobalProgressState extends State<GlobalProgress> {
                     const SizedBox(height: 16),
                     
                     // Section du bilan global hebdomadaire
-                    GlobalProgressSectionBuilder.buildBalanceSection(_weeklyBalance),
+                    _loadingProgress 
+                      ? _buildLoadingSection() 
+                      : GlobalProgressSectionBuilder.buildBalanceSection(_weeklyBalance),
                     
                     const SizedBox(height: 16),
                     
                     // Section de tracking hebdomadaire (nutrition + sport)
-                    GlobalProgressSectionBuilder.buildTrackingSection(_trackingDays),
+                    _loadingProgress 
+                      ? _buildLoadingSection() 
+                      : GlobalProgressSectionBuilder.buildTrackingSection(_trackingDays),
                     
                     const SizedBox(height: 16),
                     
                     // Section des recommandations IA
-                    GlobalProgressSectionBuilder.buildAISection(_aiRecommendations),
+                    _loadingProgress 
+                      ? _buildLoadingSection() 
+                      : GlobalProgressSectionBuilder.buildAISection(_aiRecommendations),
                     
                     // Espace en bas pour éviter que le contenu soit coupé
                     const SizedBox(height: 100),
@@ -124,7 +169,7 @@ class _GlobalProgressState extends State<GlobalProgress> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _buildBannerItem(LucideIcons.flame, '7 jours'),
+                _buildBannerItem(LucideIcons.flame, _headerStats.dailyStreak),
                 _buildBannerSeparator(),
                 ValueListenableBuilder<GoalsSummary>(
                   valueListenable: GoalsNotifier.instance,
@@ -133,7 +178,7 @@ class _GlobalProgressState extends State<GlobalProgress> {
                   },
                 ),
                 _buildBannerSeparator(),
-                _buildBannerItemWithLogo('Progression'),
+                _buildBannerItemWithLogo(_headerStats.currentStatus),
               ],
             ),
           ),
@@ -379,6 +424,40 @@ class _GlobalProgressState extends State<GlobalProgress> {
       SnackBar(
         content: Text('Poids mis à jour : ${newWeight.toStringAsFixed(1)} kg'),
         duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  Widget _buildLoadingSection() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          const CircularProgressIndicator(
+            color: Color(0xFF0B132B),
+            strokeWidth: 2,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Chargement des données...',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[600],
+            ),
+          ),
+        ],
       ),
     );
   }
