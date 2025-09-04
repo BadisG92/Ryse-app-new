@@ -1,0 +1,8 @@
+name: populate_recipe_images
+description: Script pour populer les URLs d'images de recettes
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  supabase: ^2.2.4

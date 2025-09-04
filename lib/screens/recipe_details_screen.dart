@@ -8,6 +8,7 @@ import '../models/nutrition_models.dart' as nutrition_models;
 import '../config/supabase_config.dart';
 import '../services/auth_service.dart';
 import '../services/food_entries_service.dart';
+import '../services/recipe_image_service.dart';
 
 // Modèle pour un ingrédient détaillé avec ses valeurs nutritionnelles
 class DetailedIngredient {
@@ -291,28 +292,15 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
   }
 
   Widget _buildRecipeImage() {
-    return Container(
-      width: double.infinity,
-      height: 200,
-      color: const Color(0xFFF8F9FA),
-      child: const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              LucideIcons.chefHat,
-              size: 48,
-              color: Color(0xFF64748B),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Photo de la recette',
-              style: TextStyle(
-                fontSize: 16,
-                color: Color(0xFF64748B),
-              ),
-            ),
-          ],
+    return AspectRatio(
+      aspectRatio: 16 / 9, // Format 16:9 pour un bel affichage
+      child: Container(
+        width: double.infinity,
+        child: RecipeImageService.buildRecipeImage(
+          imageUrl: widget.recipe.image,
+          width: double.infinity,
+          height: double.infinity,
+          fit: BoxFit.cover,
         ),
       ),
     );

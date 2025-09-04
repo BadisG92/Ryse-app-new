@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'recipe_models.dart';
+import '../../services/recipe_image_service.dart';
 
 // Card de recette pour la liste verticale
 class RecipeListCard extends StatelessWidget {
@@ -34,22 +35,12 @@ class RecipeListCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // Image placeholder
-            Container(
+            // Image de la recette
+            RecipeImageService.buildRecipeImage(
+              imageUrl: recipe.image,
               width: 80,
               height: 80,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8F9FA),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE5E7EB)),
-              ),
-              child: const Center(
-                child: Icon(
-                  LucideIcons.chefHat,
-                  size: 24,
-                  color: Color(0xFF64748B),
-                ),
-              ),
+              fit: BoxFit.cover,
             ),
             
             const SizedBox(width: 16),
@@ -178,20 +169,14 @@ class RecipeCarouselCard extends StatelessWidget {
         ),
         child: Stack(
           children: [
-            // Image de fond (placeholder)
-            Container(
-              width: double.infinity,
-              height: double.infinity,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                color: const Color(0xFFF0F0F0),
-              ),
-              child: const Center(
-                child: Icon(
-                  LucideIcons.image,
-                  size: 48,
-                  color: Color(0xFFCCCCCC),
-                ),
+            // Image de fond
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: RecipeImageService.buildRecipeImage(
+                imageUrl: recipe.image,
+                width: double.infinity,
+                height: double.infinity,
+                fit: BoxFit.cover,
               ),
             ),
             

@@ -7,6 +7,7 @@ import '../components/ui/recipe_widgets.dart';
 import '../components/ui/recipe_cards.dart';
 import '../components/ui/working_filter_modal.dart';
 import '../models/nutrition_models.dart';
+import '../services/recipe_image_service.dart';
 
 class SelectRecipeScreen extends StatefulWidget {
   final bool isFromDashboard;
@@ -231,19 +232,13 @@ class _SelectRecipeScreenState extends State<SelectRecipeScreen> {
         child: Row(
           children: [
             // Image carrée 64x64
-            Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8F8F8),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Center(
-                child: Icon(
-                  LucideIcons.chefHat,
-                  size: 24,
-                  color: Color(0xFFCCCCCC),
-                ),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: RecipeImageService.buildRecipeImage(
+                imageUrl: recipe.image,
+                width: 64,
+                height: 64,
+                fit: BoxFit.cover,
               ),
             ),
             
