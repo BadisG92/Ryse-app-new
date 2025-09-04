@@ -29,7 +29,19 @@
       "Read(/C:\\rise app v2\\ryze_app\\lib\\components/**)",
       "Read(/C:\\rise app v2\\ryze_app\\lib\\components/**)",
       "Read(/C:\\rise app v2\\ryze_app\\lib\\components/**)",
-      "Read(/C:\\rise app v2\\ryze_app\\lib\\services/**)"
+      "Read(/C:\\rise app v2\\ryze_app\\lib\\services/**)",
+      "Read(/C:\\rise app v2\\ryze_app\\lib\\components/**)",
+      "Read(/C:\\rise app v2\\ryze_app\\lib\\components\\ui/**)",
+      "Read(/C:\\rise app v2\\ryze_app\\lib\\components\\ui/**)",
+      "Read(/C:\\rise app v2\\ryze_app\\lib\\components\\ui/**)",
+      "Read(/C:\\rise app v2\\ryze_app\\lib\\components\\ui/**)",
+      "Read(/C:\\rise app v2\\ryze_app\\lib\\components\\ui/**)",
+      "Read(/C:\\rise app v2\\ryze_app\\lib\\components/**)",
+      "Read(/C:\\rise app v2\\ryze_app\\lib\\components/**)",
+      "Read(/C:\\rise app v2\\ryze_app\\lib\\components/**)",
+      "Read(/C:\\rise app v2\\ryze_app\\lib\\components\\ui/**)",
+      "Read(/C:\\rise app v2\\ryze_app\\lib\\screens/**)",
+      "Read(/C:\\rise app v2\\ryze_app\\lib\\components/**)"
     ],
     "deny": [],
     "ask": []
@@ -37,5 +49,6 @@
   "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "supabase"
-  ]
+  ],
+  "outputStyle": "default"
 }

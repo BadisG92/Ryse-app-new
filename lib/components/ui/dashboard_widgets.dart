@@ -130,6 +130,9 @@ class _QuickActionsSectionState extends State<QuickActionsSection> {
       case 'musculation':
         _showMusculationOptions(context);
         break;
+      case 'workout':
+        _showWorkoutSelectionBottomSheet(context);
+        break;
       case 'weight_tracking':
         _navigateToWeightEvolution(context);
         break;
@@ -219,6 +222,166 @@ class _QuickActionsSectionState extends State<QuickActionsSection> {
   void _showCardioOptions(BuildContext context) {
     // Utiliser exactement le même bottom sheet que dans le dashboard sport
     _showCardioBottomSheet(context);
+  }
+
+  void _showWorkoutSelectionBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(24),
+            topRight: Radius.circular(24),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Handle
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE2E8F0),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 24),
+              
+              const Text(
+                'Entraînement',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1A1A1A),
+                ),
+              ),
+              
+              const SizedBox(height: 8),
+              
+              const Text(
+                'Choisissez votre type d\'entraînement',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF64748B),
+                ),
+              ),
+              
+              const SizedBox(height: 24),
+              
+              // 2 boutons côte à côte pour cardio et musculation
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildWorkoutTypeOption(
+                      context,
+                      icon: LucideIcons.activity,
+                      title: 'Cardio',
+                      subtitle: 'Course, vélo, HIIT...',
+                      onTap: () {
+                        Navigator.pop(context);
+                        _showCardioOptions(context);
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: _buildWorkoutTypeOption(
+                      context,
+                      icon: LucideIcons.dumbbell,
+                      title: 'Musculation',
+                      subtitle: 'Force, résistance...',
+                      onTap: () {
+                        Navigator.pop(context);
+                        _showMusculationOptions(context);
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              
+              const SizedBox(height: 24),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWorkoutTypeOption(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF0B132B).withOpacity(0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+                ),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF0B132B).withOpacity(0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Icon(icon, color: Colors.white, size: 28),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1A1A1A),
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Color(0xFF64748B),
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _showMusculationOptions(BuildContext context) {

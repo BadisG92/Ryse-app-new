@@ -818,8 +818,8 @@ class NutritionQuickActionsSection extends StatelessWidget {
                   child: GestureDetector(
                     onTap: () {
                       Navigator.pop(context);
-                      // Maintenant montrer la recherche d'aliments avec le repas sélectionné
-                      _showManualFoodSearchForMeal(context, meal);
+                      // Afficher les options d'ajout comme dans le journal
+                      _showAddFoodOptionsForDashboard(context, meal);
                     },
                     child: Container(
                       width: double.infinity,
@@ -907,8 +907,8 @@ class NutritionQuickActionsSection extends StatelessWidget {
           // Obtenir le context depuis le navigator stocké
           final newContext = navigator.context;
           if (newContext.mounted) {
-            print('🔍 Ouverture recherche aliments avec navigator context');
-            _showManualFoodSearchForNewMeal(newContext, mealType);
+            print('🔍 Ouverture options d\'ajout avec navigator context');
+            _showAddFoodOptionsForNewMeal(newContext, mealType);
           } else {
             print('❌ Navigator context invalide');
           }
@@ -1300,6 +1300,217 @@ class NutritionQuickActionsSection extends StatelessWidget {
     );
   }
 
+  // Méthode statique pour afficher les options d'ajout pour le dashboard (comme dans le journal)
+  static void _showAddFoodOptionsForDashboard(BuildContext context, nutrition_models.Meal selectedMeal) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle bar
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE5E5E5),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              
+              const SizedBox(height: 20),
+              
+              // Titre
+              const Text(
+                'Ajouter un aliment',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1A1A1A),
+                ),
+              ),
+              
+              const SizedBox(height: 16),
+              
+              const Text(
+                'Choisissez comment vous souhaitez ajouter votre aliment',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF64748B),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              
+              const SizedBox(height: 24),
+              
+              // Options d'ajout (identiques au journal)
+              _buildFoodOption(
+                context,
+                icon: LucideIcons.pencil,
+                title: 'Saisie manuelle',
+                subtitle: 'Rechercher et ajouter manuellement',
+                onTap: () {
+                  Navigator.pop(context);
+                  _showManualFoodSearchForMeal(context, selectedMeal);
+                },
+              ),
+              
+              const SizedBox(height: 12),
+              
+              _buildFoodOption(
+                context,
+                icon: LucideIcons.camera,
+                title: 'Scanner avec l\'IA',
+                subtitle: 'Prenez une photo de votre plat',
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AIScannerScreen(
+                        isFromDashboard: true,
+                      ),
+                    ),
+                  );
+                },
+              ),
+              
+              const SizedBox(height: 12),
+              
+              _buildFoodOption(
+                context,
+                icon: LucideIcons.scan,
+                title: 'Code-barres',
+                subtitle: 'Scanner le code-barres du produit',
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => BarcodeScannerScreen(
+                        isFromDashboard: true,
+                        onFoodScanned: (foodItem) {
+                          _addFoodToSelectedMeal(context, foodItem, selectedMeal);
+                        },
+                      ),
+                    ),
+                  );
+                },
+              ),
+              
+              const SizedBox(height: 12),
+              
+              _buildFoodOption(
+                context,
+                icon: LucideIcons.chefHat,
+                title: 'Mes recettes',
+                subtitle: 'Choisir parmi vos recettes sauvegardées',
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => SelectRecipeScreen(
+                        isFromDashboard: true,
+                        onRecipeSelected: (recipe) {
+                          _addFoodToSelectedMeal(context, recipe, selectedMeal);
+                        },
+                      ),
+                    ),
+                  );
+                },
+              ),
+              
+              const SizedBox(height: 24),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Widget helper pour les options d'ajout
+  static Widget _buildFoodOption(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8F9FA),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: const Color(0xFFE5E7EB),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: const Color(0xFF0B132B),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                icon,
+                color: Colors.white,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1A1A1A),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF64748B),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              LucideIcons.chevronRight,
+              size: 16,
+              color: Color(0xFF64748B),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   // Méthode statique pour afficher la recherche d'aliments avec un repas existant pré-sélectionné
   static void _showManualFoodSearchForMeal(BuildContext context, nutrition_models.Meal selectedMeal) {
     ManualFoodSearchBottomSheet.show(
@@ -1339,6 +1550,146 @@ class NutritionQuickActionsSection extends StatelessWidget {
             // Le callback reçoit déjà un FoodItem depuis RecipeDetailsScreen
             _addFoodToSelectedMeal(context, foodItem, selectedMeal);
           },
+        ),
+      ),
+    );
+  }
+
+  // Méthode statique pour afficher les options d'ajout pour un nouveau repas (comme dans le journal)
+  static void _showAddFoodOptionsForNewMeal(BuildContext context, String mealType) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle bar
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE5E5E5),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              
+              const SizedBox(height: 20),
+              
+              // Titre
+              const Text(
+                'Ajouter un aliment',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1A1A1A),
+                ),
+              ),
+              
+              const SizedBox(height: 16),
+              
+              const Text(
+                'Choisissez comment vous souhaitez ajouter votre aliment',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF64748B),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              
+              const SizedBox(height: 24),
+              
+              // Options d'ajout pour nouveau repas
+              _buildFoodOption(
+                context,
+                icon: LucideIcons.pencil,
+                title: 'Saisie manuelle',
+                subtitle: 'Rechercher et ajouter manuellement',
+                onTap: () {
+                  Navigator.pop(context);
+                  _showManualFoodSearchForNewMeal(context, mealType);
+                },
+              ),
+              
+              const SizedBox(height: 12),
+              
+              _buildFoodOption(
+                context,
+                icon: LucideIcons.camera,
+                title: 'Scanner avec l\'IA',
+                subtitle: 'Prenez une photo de votre plat',
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AIScannerScreen(
+                        isFromDashboard: true,
+                      ),
+                    ),
+                  );
+                },
+              ),
+              
+              const SizedBox(height: 12),
+              
+              _buildFoodOption(
+                context,
+                icon: LucideIcons.scan,
+                title: 'Code-barres',
+                subtitle: 'Scanner le code-barres du produit',
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => BarcodeScannerScreen(
+                        isFromDashboard: true,
+                        onFoodScanned: (foodItem) {
+                          _addFoodToNewMealJournalStyle(context, foodItem, mealType);
+                        },
+                      ),
+                    ),
+                  );
+                },
+              ),
+              
+              const SizedBox(height: 12),
+              
+              _buildFoodOption(
+                context,
+                icon: LucideIcons.chefHat,
+                title: 'Mes recettes',
+                subtitle: 'Choisir parmi vos recettes sauvegardées',
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => SelectRecipeScreen(
+                        isFromDashboard: true,
+                        onRecipeSelected: (recipe) {
+                          _addFoodToNewMealJournalStyle(context, recipe, mealType);
+                        },
+                      ),
+                    ),
+                  );
+                },
+              ),
+              
+              const SizedBox(height: 24),
+            ],
+          ),
         ),
       ),
     );
