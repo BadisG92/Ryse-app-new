@@ -4,7 +4,11 @@
       "Bash(flutter analyze:*)",
       "Bash(sed:*)",
       "Bash(dir:*)",
-      "Bash(dart:*)"
+      "Bash(dart:*)",
+      "Read(/C:\\rise app v2\\ryze_app\\lib\\services/**)",
+      "Read(/C:\\rise app v2\\ryze_app\\lib\\components\\ui/**)",
+      "Read(/C:\\rise app v2\\ryze_app\\lib\\services/**)",
+      "Bash(move:*)"
     ],
     "deny": [],
     "ask": []

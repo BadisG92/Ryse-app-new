@@ -881,20 +881,9 @@ class DatabaseService {
       debugPrint('   - Lipides: $totalFats');
       debugPrint('🔍 Calories par repas: $mealCalories');
 
-      // Si aucune donnée n'est trouvée, générer des données de test
+      // Si aucune donnée n'est trouvée, garder les valeurs à zéro
       if (foodEntriesResponse.isEmpty) {
-        debugPrint('⚠️ Aucune donnée trouvée, génération de données de test...');
-        // Générer quelques données de test pour la démonstration
-        totalCalories = 1247;
-        totalProteins = 85;
-        totalCarbs = 120;
-        totalFats = 45;
-        mealCalories = {
-          'breakfast': 320,
-          'lunch': 450,
-          'snack': 150,
-          'dinner': 327,
-        };
+        debugPrint('⚠️ Aucune donnée trouvée, conservation des valeurs par défaut à zéro');
       }
 
       // Calculer les objectifs de macronutriments (estimation basée sur les calories)
@@ -958,18 +947,18 @@ class DatabaseService {
       // Retourner des données par défaut en cas d'erreur
       return {
         'targetCalories': 2500,
-        'currentCalories': 1247,
+        'currentCalories': 0,
         'targetProtein': 109,
-        'currentProtein': 85,
+        'currentProtein': 0,
         'targetCarbs': 312,
-        'currentCarbs': 120,
+        'currentCarbs': 0,
         'targetFat': 90,
-        'currentFat': 45,
+        'currentFat': 0,
         'mealCalories': {
-          'breakfast': 320,
-          'lunch': 450,
-          'snack': 150,
-          'dinner': 327,
+          'breakfast': 0,
+          'lunch': 0,
+          'snack': 0,
+          'dinner': 0,
         },
         'currentWaterMl': 0,
         'targetWaterMl': 2000,

@@ -272,7 +272,7 @@ class DashboardData {
     isPremium: false,
     photosUsed: 2,
     dailyCalories: 2500,
-    currentCalories: 1247,
+    currentCalories: 0,
   );
 
   // Objectifs journaliers exemple
@@ -462,8 +462,8 @@ class DashboardData {
       title: 'Nutrition',
       icon: LucideIcons.apple,
       stats: {
-        'Calories': '1247 kcal',
-        'Eau': '1.2L',
+        'Calories': '0 kcal',
+        'Eau': '0L',
       },
       gradientColors: [Color(0xFF0B132B), Color(0xFF1C2951)],
     ),
