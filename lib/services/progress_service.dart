@@ -640,45 +640,96 @@ class ProgressService {
 
   static Future<int> _getDailyStreak(String userId) async {
     // Calculer la streak quotidienne basée sur l'activité
+    // Remise à zéro seulement après 7 jours consécutifs sans activité
     try {
-      int streak = 0;
       final now = DateTime.now();
+      int streak = 0;
+      int consecutiveInactiveDays = 0;
       
-      for (int i = 0; i < 30; i++) { // Vérifier jusqu'à 30 jours
+      for (int i = 0; i < 60; i++) { // Vérifier jusqu'à 60 jours pour une streak plus longue
         final date = now.subtract(Duration(days: i));
         final hasActivity = await _hasActivityForDate(userId, date);
         
         if (hasActivity) {
           streak++;
+          consecutiveInactiveDays = 0; // Réinitialiser le compteur d'inactivité
         } else {
-          break; // Streak brisée
+          consecutiveInactiveDays++;
+          
+          // Si on a 7 jours consécutifs sans activité, on arrête la streak
+          if (consecutiveInactiveDays >= 7) {
+            break;
+          }
+          // Sinon on continue à compter la streak (jour d'inactivité toléré)
         }
       }
       
       return streak;
     } catch (e) {
+      print('❌ Erreur calcul streak: $e');
       return 0;
     }
   }
 
   static Future<bool> _hasActivityForDate(String userId, DateTime date) async {
     try {
-      // Pour l'instant, simuler la vérification d'activité
-      // TODO: Implémenter avec les vraies méthodes des services
-      
-      // Vérifier sport (cette partie fonctionne déjà)
+      // Vérifier sport (musculation et cardio)
       final sportActivities = await _getSportActivitiesForDate(userId, date);
       if (sportActivities.isNotEmpty) return true;
       
-      // Simuler une activité nutrition/hydratation pour les jours récents
-      final daysDiff = DateTime.now().difference(date).inDays;
-      if (daysDiff <= 7) {
-        // Simuler 70% de chance d'avoir une activité pour les 7 derniers jours
-        return (date.day + date.month) % 10 < 7;
-      }
+      // Vérifier hydratation (au moins une entrée d'eau)
+      final hasWater = await _hasWaterForDate(userId, date);
+      if (hasWater) return true;
+      
+      // Vérifier nutrition (au moins un repas enregistré)
+      final hasFood = await _hasFoodForDate(userId, date);
+      if (hasFood) return true;
       
       return false;
     } catch (e) {
+      print('❌ Erreur vérification activité pour $date: $e');
+      return false;
+    }
+  }
+
+  /// Vérifie s'il y a des entrées d'eau pour une date donnée
+  static Future<bool> _hasWaterForDate(String userId, DateTime date) async {
+    try {
+      final startOfDay = DateTime(date.year, date.month, date.day);
+      final endOfDay = startOfDay.add(const Duration(days: 1));
+      
+      final response = await _client
+        .from('water_entries')
+        .select('id')
+        .eq('user_id', userId)
+        .gte('date', startOfDay.toIso8601String())
+        .lt('date', endOfDay.toIso8601String())
+        .limit(1);
+      
+      return response.isNotEmpty;
+    } catch (e) {
+      print('❌ Erreur vérification eau pour $date: $e');
+      return false;
+    }
+  }
+
+  /// Vérifie s'il y a des entrées de nourriture pour une date donnée
+  static Future<bool> _hasFoodForDate(String userId, DateTime date) async {
+    try {
+      final startOfDay = DateTime(date.year, date.month, date.day);
+      final endOfDay = startOfDay.add(const Duration(days: 1));
+      
+      final response = await _client
+        .from('food_entries')
+        .select('id')
+        .eq('user_id', userId)
+        .gte('date', startOfDay.toIso8601String())
+        .lt('date', endOfDay.toIso8601String())
+        .limit(1);
+      
+      return response.isNotEmpty;
+    } catch (e) {
+      print('❌ Erreur vérification nourriture pour $date: $e');
       return false;
     }
   }
