@@ -91,14 +91,14 @@ class ProgressService {
         // Récupérer le score nutrition pour cette date
         final nutritionScore = await _getNutritionScoreForDate(userId, date);
         
-        // Récupérer l'activité sport pour cette date
-        final sportActivity = await _getSportActivityForDate(userId, date);
+        // Récupérer les activités sport pour cette date (comme dans le calendrier sport)
+        final sportActivities = await _getSportActivitiesForDate(userId, date);
 
         trackingDays.add(TrackingDay(
           dayLabel: dayLabel,
           date: date,
           nutritionScore: nutritionScore,
-          sportActivity: sportActivity,
+          sportActivities: sportActivities,
         ));
       }
 
@@ -348,50 +348,90 @@ class ProgressService {
 
   static Future<TrackingScore> _getNutritionScoreForDate(String userId, DateTime date) async {
     try {
-      // Pour l'instant, simuler une évaluation basée sur la date
-      // TODO: Implémenter avec FoodEntriesService.getEntriesForDate
+      // Récupérer l'objectif calorique de l'utilisateur
+      final userResponse = await _client
+          .from('users')
+          .select('daily_calories')
+          .eq('id', userId)
+          .maybeSingle();
       
-      // Simuler des scores variables selon les jours
-      final dayOfWeek = date.weekday;
-      if (dayOfWeek <= 5) { // Lundi à vendredi
-        return TrackingScore.achieved;
-      } else if (dayOfWeek == 6) { // Samedi
-        return TrackingScore.partial;
-      } else { // Dimanche
-        return TrackingScore.missed;
+      final dailyCaloriesGoal = userResponse?['daily_calories'] ?? 2000;
+      
+      // Calculer les dates de début et fin du jour
+      final startOfDay = DateTime(date.year, date.month, date.day);
+      final endOfDay = startOfDay.add(const Duration(days: 1));
+      
+      // Récupérer les entrées alimentaires pour ce jour
+      final foodEntriesResponse = await _client
+          .from('food_entries')
+          .select('calories')
+          .eq('user_id', userId)
+          .gte('consumed_at', startOfDay.toIso8601String())
+          .lt('consumed_at', endOfDay.toIso8601String());
+      
+      // Calculer les calories totales du jour
+      double dayCalories = 0;
+      for (final entry in foodEntriesResponse) {
+        dayCalories += (entry['calories'] as num).toDouble();
       }
+      
+      print('🍎 Nutrition ${date.day}/${date.month}: ${foodEntriesResponse.length} entrées, $dayCalories calories, objectif: $dailyCaloriesGoal');
+      
+      // Déterminer le score basé sur le pourcentage d'objectif atteint
+      if (dailyCaloriesGoal <= 0) return TrackingScore.missed;
+      
+      final percentage = dayCalories / dailyCaloriesGoal;
+      
+      TrackingScore score;
+      if (percentage >= 0.9) { // ≥90% = achieved
+        score = TrackingScore.achieved;
+      } else if (dayCalories > 0) { // Toute calorie enregistrée = partial
+        score = TrackingScore.partial;
+      } else { // Aucune calorie = missed
+        score = TrackingScore.missed;
+      }
+      
+      print('🍎 Score final pour ${date.day}/${date.month}: $score');
+      return score;
+      
     } catch (e) {
+      print('❌ Erreur récupération score nutrition pour $date: $e');
       return TrackingScore.missed;
     }
   }
 
-  static Future<SportActivity> _getSportActivityForDate(String userId, DateTime date) async {
+  static Future<List<String>> _getSportActivitiesForDate(String userId, DateTime date) async {
     try {
       final dateString = date.toIso8601String().split('T')[0];
       
-      // Vérifier les sessions de musculation
-      final workoutSessions = await _client
+      // Utiliser exactement la même logique que SportDashboardService.getMonthSportData
+      // Sessions cardio du jour (terminées seulement)
+      final cardioSessions = await _client
+          .from('cardio_sessions')
+          .select('session_date, activity_type')
+          .eq('user_id', userId)
+          .eq('session_date', dateString)
+          .eq('is_completed', true);
+
+      // Sessions musculation du jour
+      final musculationSessions = await _client
           .from('workout_session_summaries')
-          .select('session_type')
+          .select('session_date')
           .eq('user_id', userId)
           .eq('session_date', dateString);
+
+      // Construire la liste des activités exactement comme dans le calendrier sport
+      final activities = <String>[];
+      if (musculationSessions.isNotEmpty) activities.add('musculation');
+      if (cardioSessions.isNotEmpty) activities.add('cardio');
       
-      if (workoutSessions.isNotEmpty) {
-        return SportActivity.musculation;
-      }
+      print('💪 Sport ${date.day}/${date.month}: activities = $activities (${musculationSessions.length} musculation, ${cardioSessions.length} cardio)');
       
-      // Pour l'instant, pas de vérification cardio
-      // TODO: Implémenter CardioService.getSessionsForDate
+      return activities;
       
-      // Simuler quelques activités selon les jours
-      final dayOfWeek = date.weekday;
-      if (dayOfWeek == 3 || dayOfWeek == 6) { // Mercredi et samedi -> cardio simulé
-        return SportActivity.cardio;
-      }
-      
-      return SportActivity.none;
     } catch (e) {
-      return SportActivity.none;
+      print('❌ Erreur récupération activités sport pour $date: $e');
+      return [];
     }
   }
 
@@ -627,8 +667,8 @@ class ProgressService {
       // TODO: Implémenter avec les vraies méthodes des services
       
       // Vérifier sport (cette partie fonctionne déjà)
-      final sportActivity = await _getSportActivityForDate(userId, date);
-      if (sportActivity != SportActivity.none) return true;
+      final sportActivities = await _getSportActivitiesForDate(userId, date);
+      if (sportActivities.isNotEmpty) return true;
       
       // Simuler une activité nutrition/hydratation pour les jours récents
       final daysDiff = DateTime.now().difference(date).inDays;
@@ -724,7 +764,7 @@ class ProgressService {
         dayLabel: _getDayLabel(date.weekday),
         date: date,
         nutritionScore: TrackingScore.missed,
-        sportActivity: SportActivity.none,
+        sportActivities: [], // Liste vide = pas d'activité
       );
     });
   }

@@ -559,12 +559,22 @@ class _TrackingDayIndicator extends StatelessWidget {
   }
 
   LinearGradient? _getSportGradient(TrackingDay day) {
-    if (day.sportActivity != null && day.sportActivity != SportActivity.none) {
+    // Pour les activités combinées, on utilise un gradient comme dans le calendrier sport
+    if (day.hasBothActivities) {
+      return null; // Géré différemment dans les icônes combinées
+    } else if (day.hasCardio) {
+      // Cardio avec gradient comme dans sport_calendar_view.dart
       return LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: day.sportActivity!.gradient,
+        colors: [
+          const Color(0xFF0B132B).withOpacity(0.7), 
+          const Color(0xFF1C2951).withOpacity(0.7)
+        ],
       );
+    } else if (day.hasMusculation) {
+      // Musculation avec couleur solide comme dans sport_calendar_view.dart
+      return null; // Utilise la couleur solide
     }
     return null;
   }
@@ -574,8 +584,15 @@ class _TrackingDayIndicator extends StatelessWidget {
   }
 
   Color? _getSportColor(TrackingDay day) {
-    return (day.sportActivity == null || day.sportActivity == SportActivity.none) 
-        ? const Color(0xFFF1F5F9) : null;
+    if (!day.hasAnyActivity) {
+      return const Color(0xFFF1F5F9);
+    } else if (day.hasBothActivities) {
+      return null; // Géré dans les icônes combinées
+    } else if (day.hasMusculation) {
+      // Couleur solide pour musculation comme dans sport_calendar_view.dart
+      return const Color(0xFF0B132B);
+    }
+    return null;
   }
 
   Border? _getNutritionBorder(TrackingDay day) {
@@ -584,14 +601,13 @@ class _TrackingDayIndicator extends StatelessWidget {
   }
 
   Border? _getSportBorder(TrackingDay day) {
-    return (day.sportActivity == null || day.sportActivity == SportActivity.none)
-        ? Border.all(color: const Color(0xFFE2E8F0)) : null;
+    return !day.hasAnyActivity ? Border.all(color: const Color(0xFFE2E8F0)) : null;
   }
 
   List<BoxShadow>? _getBoxShadow(TrackingDay day, bool isNutrition) {
     final hasValidContent = isNutrition 
         ? day.nutritionScore != TrackingScore.missed
-        : day.sportActivity != null && day.sportActivity != SportActivity.none;
+        : day.hasAnyActivity;
 
     if (hasValidContent) {
       return [
@@ -613,9 +629,67 @@ class _TrackingDayIndicator extends StatelessWidget {
         );
       }
     } else {
-      if (day.sportActivity != null && day.sportActivity!.hasIcon) {
-        return Center(
-          child: Icon(day.sportActivity!.icon, color: Colors.white, size: 14),
+      // Nouvelle logique pour les icônes sport basée sur sportActivities
+      if (day.hasBothActivities) {
+        // Icône combinée exactement comme dans le calendrier sport
+        return Stack(
+          children: [
+            // Partie musculation (haut-gauche)
+            ClipPath(
+              clipper: UpperLeftClipper(),
+              child: Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  color: const Color(0xFF0B132B), // Couleur musculation
+                ),
+                child: const Align(
+                  alignment: Alignment(-0.2, -0.2),
+                  child: Icon(
+                    LucideIcons.dumbbell,
+                    size: 10,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+            // Partie cardio (bas-droite)
+            ClipPath(
+              clipper: LowerRightClipper(),
+              child: Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      const Color(0xFF0B132B).withOpacity(0.7), 
+                      const Color(0xFF1C2951).withOpacity(0.7)
+                    ],
+                  ),
+                ),
+                child: const Align(
+                  alignment: Alignment(0.2, 0.2),
+                  child: Icon(
+                    LucideIcons.activity,
+                    size: 10,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      } else if (day.hasMusculation) {
+        return const Center(
+          child: Icon(LucideIcons.dumbbell, color: Colors.white, size: 14),
+        );
+      } else if (day.hasCardio) {
+        return const Center(
+          child: Icon(LucideIcons.activity, color: Colors.white, size: 14),
         );
       }
     }
@@ -741,4 +815,35 @@ class AIRecommendationCard extends StatelessWidget {
       ),
     );
   }
-} 
+}
+
+// CustomClippers pour les icônes combinées (copiés du calendrier sport)
+class UpperLeftClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    final path = Path();
+    path.moveTo(0, 0);
+    path.lineTo(size.width, 0);
+    path.lineTo(0, size.height);
+    path.close();
+    return path;
+  }
+
+  @override
+  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
+}
+
+class LowerRightClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    final path = Path();
+    path.moveTo(size.width, 0);
+    path.lineTo(size.width, size.height);
+    path.lineTo(0, size.height);
+    path.close();
+    return path;
+  }
+
+  @override
+  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
+}

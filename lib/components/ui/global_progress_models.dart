@@ -149,17 +149,17 @@ class TrackingDay {
   final String dayLabel; // 'L', 'M', etc.
   final DateTime date;
   final TrackingScore nutritionScore;
-  final SportActivity? sportActivity;
+  final List<String> sportActivities; // ['musculation', 'cardio'] comme dans le calendrier sport
 
   const TrackingDay({
     required this.dayLabel,
     required this.date,
     required this.nutritionScore,
-    this.sportActivity,
+    this.sportActivities = const [],
   });
 
   // Détermine si c'est un jour réussi globalement
-  bool get isSuccessfulDay => nutritionScore != TrackingScore.missed && sportActivity != null;
+  bool get isSuccessfulDay => nutritionScore != TrackingScore.missed && sportActivities.isNotEmpty;
 
   // Couleur principale pour l'affichage
   Color get primaryColor {
@@ -167,6 +167,25 @@ class TrackingDay {
     if (nutritionScore == TrackingScore.partial) return const Color(0xFF64748B);
     return const Color(0xFFF1F5F9);
   }
+
+  // Compatibilité avec l'ancien système SportActivity pour ne pas casser le code existant
+  SportActivity? get sportActivity {
+    if (sportActivities.contains('musculation') && sportActivities.contains('cardio')) {
+      return SportActivity.musculation; // Prioriser musculation par défaut
+    } else if (sportActivities.contains('musculation')) {
+      return SportActivity.musculation;
+    } else if (sportActivities.contains('cardio')) {
+      return SportActivity.cardio;
+    } else {
+      return SportActivity.none;
+    }
+  }
+
+  // Nouveaux getters pour correspondre au calendrier sport
+  bool get hasMusculation => sportActivities.contains('musculation');
+  bool get hasCardio => sportActivities.contains('cardio');
+  bool get hasBothActivities => hasMusculation && hasCardio;
+  bool get hasAnyActivity => sportActivities.isNotEmpty;
 }
 
 // Score de tracking (nutrition)
@@ -451,43 +470,43 @@ class GlobalProgressData {
       dayLabel: 'L',
       date: DateTime.now().subtract(const Duration(days: 6)),
       nutritionScore: TrackingScore.achieved,
-      sportActivity: SportActivity.musculation,
+      sportActivities: ['musculation'],
     ),
     TrackingDay(
       dayLabel: 'M',
       date: DateTime.now().subtract(const Duration(days: 5)),
       nutritionScore: TrackingScore.partial,
-      sportActivity: SportActivity.none,
+      sportActivities: [],
     ),
     TrackingDay(
       dayLabel: 'M',
       date: DateTime.now().subtract(const Duration(days: 4)),
       nutritionScore: TrackingScore.achieved,
-      sportActivity: SportActivity.cardio,
+      sportActivities: ['cardio'],
     ),
     TrackingDay(
       dayLabel: 'J',
       date: DateTime.now().subtract(const Duration(days: 3)),
       nutritionScore: TrackingScore.achieved,
-      sportActivity: SportActivity.none,
+      sportActivities: [],
     ),
     TrackingDay(
       dayLabel: 'V',
       date: DateTime.now().subtract(const Duration(days: 2)),
       nutritionScore: TrackingScore.partial,
-      sportActivity: SportActivity.musculation,
+      sportActivities: ['musculation'],
     ),
     TrackingDay(
       dayLabel: 'S',
       date: DateTime.now().subtract(const Duration(days: 1)),
       nutritionScore: TrackingScore.missed,
-      sportActivity: SportActivity.cardio,
+      sportActivities: ['cardio'],
     ),
     TrackingDay(
       dayLabel: 'D',
       date: DateTime.now(),
       nutritionScore: TrackingScore.missed,
-      sportActivity: SportActivity.none,
+      sportActivities: ['musculation', 'cardio'], // Exemple d'une journée avec les deux
     ),
   ];
 
@@ -545,7 +564,7 @@ class GlobalProgressData {
       label: 'Musculation',
     ),
     const TrackingLegend(
-      color: Color(0xFF1C2951),
+      color: Color(0xFF0B132B), // Même couleur de base que le gradient cardio
       icon: LucideIcons.activity,
       label: 'Cardio',
     ),
