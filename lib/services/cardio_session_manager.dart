@@ -4,6 +4,7 @@ import '../models/cardio_session_models.dart';
 import 'cardio_service.dart';
 import 'sport_dashboard_service.dart';
 import 'workout_cache_service.dart';
+import 'dashboard_service.dart';
 
 /// Manager pour gérer le cycle de vie des séances cardio
 /// S'assure que toutes les séances terminées sont bien historisées
@@ -132,6 +133,14 @@ class CardioSessionManager {
         }
       } catch (e) {
         debugPrint('⚠️ Could not invalidate WorkoutCacheService: $e');
+      }
+      
+      // 3. Invalider le dashboard principal pour mettre à jour les objectifs et modules
+      try {
+        await DashboardService.invalidateAndRefreshAfterWorkout();
+        debugPrint('✅ Dashboard principal mis à jour après cardio');
+      } catch (e) {
+        debugPrint('⚠️ Erreur lors de la mise à jour du dashboard principal: $e');
       }
       
     } catch (e) {

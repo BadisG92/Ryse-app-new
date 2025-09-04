@@ -7,6 +7,7 @@ import '../components/ui/custom_scrollbar.dart';
 import '../services/database_service.dart' as db;
 import '../services/calorie_burn_service.dart';
 import '../services/auth_service.dart';
+import '../services/dashboard_service.dart';
 
 class WorkoutSessionScreen extends StatefulWidget {
   final String sessionName;
@@ -1031,7 +1032,15 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
       intensity: _selectedIntensity,
       durationMinutes: _displayedDuration.inMinutes,
       caloriesBurned: _estimatedCalories,
-    ).catchError((e) {
+    ).then((_) {
+      // Invalider le cache du dashboard principal après la sauvegarde
+      try {
+        DashboardService.invalidateAndRefreshAfterWorkout();
+        debugPrint('✅ Dashboard principal mis à jour après musculation');
+      } catch (e) {
+        debugPrint('⚠️ Erreur lors de la mise à jour du dashboard principal: $e');
+      }
+    }).catchError((e) {
       debugPrint('❌ persistCompletedWorkoutAsHistory error: $e');
     });
 

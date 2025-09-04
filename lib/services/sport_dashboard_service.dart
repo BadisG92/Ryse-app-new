@@ -109,6 +109,12 @@ class SportDashboardService {
           .gte('session_date', startOfDay.toIso8601String().split('T')[0])
           .eq('is_completed', true)
           .order('created_at', ascending: false);
+      
+      debugPrint('🏋️ DEBUG SportDashboard: ${cardioSessions.length} sessions cardio trouvées');
+      for (int i = 0; i < cardioSessions.length; i++) {
+        final session = cardioSessions[i];
+        debugPrint('   [$i] ID: ${session['id']}, Type: ${session['activity_type']}, Date: ${session['session_date']}, Completed: ${session['is_completed']}');
+      }
 
       // Sessions musculation du jour
       final musculationSessions = await _client

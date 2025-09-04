@@ -4,6 +4,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../config/supabase_config.dart';
 import '../components/ui/dashboard_models.dart';
 import '../providers/goals_notifier.dart';
+import 'sport_dashboard_service.dart';
 
 class DashboardService {
   static final SupabaseClient _supabase = SupabaseConfig.client;
@@ -132,7 +133,9 @@ class DashboardService {
       final dailyCaloriesGoal = userProfile?['daily_calories'] ?? 2000;
       final dailyWaterGoal = (userProfile?['daily_water_goal'] ?? 2000) / 1000.0; // En litres
 
-      // Créer les objectifs avec les vraies données
+      // Créer les objectifs avec les vraies données (avec workout goal)
+      final workoutGoal = await _getWorkoutGoal(user.id);
+      
       final result = [
         DailyGoal(
           id: 'meals',
@@ -164,16 +167,7 @@ class DashboardService {
           targetValue: dailyCaloriesGoal.toDouble(),
           unit: 'cal',
         ),
-        DailyGoal(
-          id: 'workout',
-          label: 'Faire une séance aujourd\'hui',
-          progress: 0, // TODO: Récupérer des vraies données d'entraînement
-          xp: 30,
-          completed: false, // TODO: Vérifier les sessions d'entraînement
-          currentValue: 0,
-          targetValue: 1,
-          unit: '',
-        ),
+        workoutGoal,
       ];
 
       // Mettre en cache
@@ -233,6 +227,9 @@ class DashboardService {
       }
       final currentWaterL = currentWaterMl / 1000.0;
 
+      // Récupérer le module Sport avec vraies données
+      final sportModule = await _getSportModulePreview();
+      
       return [
         ModulePreview(
           title: 'Nutrition',
@@ -243,16 +240,7 @@ class DashboardService {
           },
           gradientColors: const [Color(0xFF0B132B), Color(0xFF1C2951)],
         ),
-        // Module Sport reste statique pour l'instant
-        const ModulePreview(
-          title: 'Sport',
-          icon: LucideIcons.dumbbell,
-          stats: {
-            'Calories': '342 kcal',
-            'Séances': '1 / 3',
-          },
-          gradientColors: [Color(0xFF0B132B), Color(0xFF1C2951)],
-        ),
+        sportModule,
       ];
     } catch (e) {
       print('Erreur lors de la récupération des aperçus modules: $e');
@@ -277,6 +265,123 @@ class DashboardService {
     // Le notifier est déjà mis à jour dans getDailyGoals()
   }
 
+  /// Récupérer l'objectif workout avec les données du dashboard sport
+  static Future<DailyGoal> _getWorkoutGoal(String userId) async {
+    try {
+      // Utiliser les données du dashboard sport (activités du jour)
+      final sportData = await SportDashboardService.getDashboardData();
+      final totalSessions = sportData.totalTodaySessions;
+      final completed = totalSessions >= 1;
+      
+      print('🏋️ DEBUG Workout Goal (via SportDashboard): $totalSessions séances, completed: $completed');
+
+      return DailyGoal(
+        id: 'workout',
+        label: 'Faire une séance aujourd\'hui',
+        progress: completed ? 100 : 0,
+        xp: 30,
+        completed: completed,
+        currentValue: totalSessions.toDouble(),
+        targetValue: 1,
+        unit: '',
+      );
+    } catch (e) {
+      print('❌ Erreur lors de la récupération de l\'objectif workout: $e');
+      return const DailyGoal(
+        id: 'workout',
+        label: 'Faire une séance aujourd\'hui',
+        progress: 0,
+        xp: 30,
+        completed: false,
+        currentValue: 0,
+        targetValue: 1,
+        unit: '',
+      );
+    }
+  }
+
+  /// Récupérer le module Sport avec les données du dashboard sport
+  static Future<ModulePreview> _getSportModulePreview() async {
+    try {
+      final user = _supabase.auth.currentUser;
+      if (user == null) {
+        return const ModulePreview(
+          title: 'Sport',
+          icon: LucideIcons.dumbbell,
+          stats: {
+            'Calories': '0 kcal',
+            'Séances': '0 aujourd\'hui',
+          },
+          gradientColors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+        );
+      }
+
+      final today = DateTime.now();
+      final todayStr = DateTime(today.year, today.month, today.day).toIso8601String().split('T')[0];
+      
+      print('📊 DEBUG Module Sport - Récupération DIRECTE pour: ${user.id}, date: $todayStr');
+
+      // Récupérer DIRECTEMENT les mêmes données que le bloc "activité du jour"
+      final cardioSessions = await _supabase
+          .from('cardio_sessions')
+          .select('calories, activity_type, session_date')
+          .eq('user_id', user.id)
+          .gte('session_date', todayStr)
+          .eq('is_completed', true)
+          .order('created_at', ascending: false);
+
+      final musculationSessions = await _supabase
+          .from('workout_session_summaries')
+          .select('calories_burned, session_name, session_date')
+          .eq('user_id', user.id)
+          .gte('session_date', todayStr)
+          .order('created_at', ascending: false);
+      
+      print('📊 DEBUG Sessions trouvées:');
+      print('   - Cardio: ${cardioSessions.length} sessions');
+      print('   - Musculation: ${musculationSessions.length} sessions');
+      
+      // Calculer les calories EXACTEMENT comme le bloc activité du jour
+      int totalCalories = 0;
+      for (var session in cardioSessions) {
+        final calories = (session['calories'] as int?) ?? 0;
+        totalCalories += calories;
+        print('     -> Cardio ${session['activity_type']} le ${session['session_date']}: ${calories}kcal');
+      }
+      for (var session in musculationSessions) {
+        final calories = (session['calories_burned'] as int?) ?? 0;
+        totalCalories += calories;
+        print('     -> Musculation ${session['session_name']} le ${session['session_date']}: ${calories}kcal');
+      }
+      
+      final totalSessions = cardioSessions.length + musculationSessions.length;
+      
+      print('📊 DEBUG Module Sport FINAL: $totalSessions séances, $totalCalories kcal (devrait être 251)');
+      print('📊 DEBUG Comparaison: Bloc activité = 251kcal, Module = ${totalCalories}kcal');
+
+      return ModulePreview(
+        title: 'Sport',
+        icon: LucideIcons.dumbbell,
+        stats: {
+          'Calories': '$totalCalories kcal',
+          'Séances': '$totalSessions aujourd\'hui',
+        },
+        gradientColors: const [Color(0xFF0B132B), Color(0xFF1C2951)],
+      );
+    } catch (e) {
+      print('❌ Erreur lors de la récupération du module Sport: $e');
+      return const ModulePreview(
+        title: 'Sport',
+        icon: LucideIcons.dumbbell,
+        stats: {
+          'Calories': '0 kcal',
+          'Séances': '0 aujourd\'hui',
+        },
+        gradientColors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+      );
+    }
+  }
+
   /// Invalider le cache et mettre à jour les objectifs en temps réel
   /// Appelé après ajout/suppression de nourriture ou d'eau
   static Future<void> invalidateAndRefreshGoals() async {
@@ -289,6 +394,33 @@ class DashboardService {
     // Récupérer les nouvelles données (qui mettra à jour le notifier)
     final goals = await getDailyGoals();
     print('✅ Objectifs mis à jour en temps réel avec ${goals.length} objectifs');
+    
+    // Afficher le détail pour debug
+    for (var goal in goals) {
+      print('   - ${goal.label}: ${goal.currentValue}/${goal.targetValue} ${goal.unit} (${goal.progress}%)');
+    }
+  }
+  
+  /// Invalider le cache après une séance sport
+  /// Appelé après completion d'une séance cardio ou musculation
+  static Future<void> invalidateAndRefreshAfterWorkout() async {
+    print('🏋️ Invalidation du cache après séance sport...');
+    
+    // Vider le cache pour forcer une nouvelle récupération
+    _cachedGoals = null;
+    _cachedGoalsDate = null;
+    
+    // Invalider aussi le cache du sport dashboard service
+    try {
+      SportDashboardService.invalidateCache();
+      print('🏋️ Cache SportDashboardService invalidé');
+    } catch (e) {
+      print('⚠️ Erreur lors de l\'invalidation du cache sport: $e');
+    }
+    
+    // Récupérer les nouvelles données
+    final goals = await getDailyGoals();
+    print('✅ Dashboard mis à jour après séance avec ${goals.length} objectifs');
     
     // Afficher le détail pour debug
     for (var goal in goals) {
