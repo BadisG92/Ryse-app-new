@@ -91,9 +91,6 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
       if (userProfile != null) {
         _startScoreAnimation();
       }
-
-      // Charger aussi les données d'onboarding si nécessaire
-      await _loadOnboardingData();
     } catch (e) {
       print('Erreur lors du chargement des données: $e');
       setState(() {
@@ -106,39 +103,11 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
     }
   }
 
-  Future<void> _loadOnboardingData() async {
-    final prefs = await SharedPreferences.getInstance();
-    
-    // Récupérer les données de l'onboarding si disponibles
-    final gender = prefs.getString('gender') ?? '';
-    final age = prefs.getInt('age') ?? 0;
-    final weight = prefs.getDouble('weight') ?? 0;
-    final height = prefs.getDouble('height') ?? 0;
-    final activity = prefs.getString('activity') ?? '';
-    final goal = prefs.getString('goal') ?? '';
-    
-    // Recalculer les calories si les données sont disponibles et si le profil n'est pas encore chargé
-    if (userProfile != null && gender.isNotEmpty && age > 0 && weight > 0 && height > 0 && activity.isNotEmpty) {
-      final calculatedCalories = MetabolicCalculator.calculateDailyGoal(
-        gender, age, weight, height, activity, goal
-      );
-      
-      if (calculatedCalories > 0 && calculatedCalories != userProfile!.dailyCalories) {
-        setState(() {
-          userProfile = UserProfile(
-            name: userProfile!.name,
-            streak: userProfile!.streak,
-            todayScore: userProfile!.todayScore,
-            todayXP: userProfile!.todayXP,
-            isPremium: userProfile!.isPremium,
-            photosUsed: userProfile!.photosUsed,
-            dailyCalories: calculatedCalories,
-            currentCalories: userProfile!.currentCalories,
-          );
-        });
-      }
-    }
-  }
+  // Supprimé : Le dashboard ne doit pas recalculer les objectifs
+  // Les objectifs sont calculés uniquement :
+  // 1. À l'onboarding (première utilisation)
+  // 2. Quand l'utilisateur modifie ses paramètres dans la page paramètres
+  // Le dashboard récupère les objectifs depuis DashboardService qui utilise les bonnes données historiques
 
   @override
   Widget build(BuildContext context) {

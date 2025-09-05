@@ -183,19 +183,46 @@ class ProgressService {
 
   // MÉTHODES PRIVÉES POUR RÉCUPÉRER LES DONNÉES
 
+  /// Récupère le profil utilisateur historique valide pour une date donnée
+  static Future<Map<String, dynamic>?> _getUserProfileForDate(String userId, DateTime date) async {
+    try {
+      // D'abord essayer de récupérer depuis l'historique
+      final historyResponse = await _client
+          .from('user_profile_history')
+          .select('*')
+          .eq('user_id', userId)
+          .lte('valid_from', date.toIso8601String())
+          .or('valid_until.is.null,valid_until.gte.${date.toIso8601String()}')
+          .order('valid_from', ascending: false)
+          .limit(1)
+          .maybeSingle();
+      
+      if (historyResponse != null) {
+        return historyResponse;
+      }
+      
+      // Fallback: utiliser le profil actuel
+      final userResponse = await _client
+          .from('users')
+          .select('daily_calories, daily_water_goal')
+          .eq('id', userId)
+          .maybeSingle();
+      
+      return userResponse;
+    } catch (e) {
+      print('❌ Erreur récupération profil historique pour $date: $e');
+      return null;
+    }
+  }
+
   static Future<Map<String, int>> _getNutritionWeeklyData(String userId, DateTime start, DateTime end) async {
     try {
       int calorieTargetDays = 0;
       int totalMeals = 0;
       
-      // Récupérer l'objectif calorique de l'utilisateur
-      final userResponse = await _client
-          .from('users')
-          .select('daily_calories')
-          .eq('id', userId)
-          .maybeSingle();
-      
-      final dailyCaloriesGoal = userResponse?['daily_calories'] ?? 2000;
+      // Récupérer l'objectif calorique pour la période donnée
+      final userProfile = await _getUserProfileForDate(userId, start);
+      final dailyCaloriesGoal = userProfile?['daily_calories'] ?? 2000;
       
       // Parcourir chaque jour de la semaine
       for (int i = 0; i < 7; i++) {
@@ -248,14 +275,9 @@ class ProgressService {
     try {
       int validatedDays = 0;
       
-      // Récupérer l'objectif d'hydratation de l'utilisateur
-      final userResponse = await _client
-          .from('users')
-          .select('daily_water_goal')
-          .eq('id', userId)
-          .maybeSingle();
-      
-      final dailyWaterGoal = userResponse?['daily_water_goal'] ?? 2000; // en ml
+      // Récupérer l'objectif d'hydratation pour la période donnée
+      final userProfile = await _getUserProfileForDate(userId, start);
+      final dailyWaterGoal = userProfile?['daily_water_goal'] ?? 2000; // en ml
       
       // Parcourir chaque jour de la semaine
       for (int i = 0; i < 7; i++) {
@@ -702,8 +724,8 @@ class ProgressService {
         .from('water_entries')
         .select('id')
         .eq('user_id', userId)
-        .gte('date', startOfDay.toIso8601String())
-        .lt('date', endOfDay.toIso8601String())
+        .gte('consumed_at', startOfDay.toIso8601String())
+        .lt('consumed_at', endOfDay.toIso8601String())
         .limit(1);
       
       return response.isNotEmpty;
@@ -723,8 +745,8 @@ class ProgressService {
         .from('food_entries')
         .select('id')
         .eq('user_id', userId)
-        .gte('date', startOfDay.toIso8601String())
-        .lt('date', endOfDay.toIso8601String())
+        .gte('consumed_at', startOfDay.toIso8601String())
+        .lt('consumed_at', endOfDay.toIso8601String())
         .limit(1);
       
       return response.isNotEmpty;

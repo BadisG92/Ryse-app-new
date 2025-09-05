@@ -69,7 +69,14 @@
       "mcp__supabase__execute_sql",
       "mcp__supabase__apply_migration",
       "Bash(find:*)",
-      "Bash(git restore:*)"
+      "Bash(git restore:*)",
+      "Bash(npx supabase db dump:*)",
+      "mcp__supabase__list_tables",
+      "Bash(flutter clean:*)",
+      "Bash(del /s /q \"build\")",
+      "Bash(del /s /q \".dart_tool\")",
+      "Bash(del /s /q \".flutter-plugins\")",
+      "Bash(rd:*)"
     ],
     "deny": [],
     "ask": []
