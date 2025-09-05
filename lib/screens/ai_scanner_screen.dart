@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:camera/camera.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'dart:io';
 import '../bottom_sheets/editable_food_details_bottom_sheet.dart';
 import '../bottom_sheets/meal_selection_bottom_sheet.dart';
 import '../bottom_sheets/new_meal_type_bottom_sheet.dart';
@@ -18,9 +22,106 @@ class AIScannerScreen extends StatefulWidget {
   State<AIScannerScreen> createState() => _AIScannerScreenState();
 }
 
-class _AIScannerScreenState extends State<AIScannerScreen> {
+class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingObserver {
   bool isAnalyzing = false;
   bool hasResult = false;
+  bool isCameraInitialized = false;
+  bool isFlashOn = false;
+  String? errorMessage;
+  
+  CameraController? _cameraController;
+  List<CameraDescription>? _cameras;
+  final ImagePicker _imagePicker = ImagePicker();
+  File? _capturedImage;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _initializeCamera();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _cameraController?.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (_cameraController == null || !_cameraController!.value.isInitialized) {
+      return;
+    }
+
+    if (state == AppLifecycleState.inactive) {
+      _cameraController?.dispose();
+    } else if (state == AppLifecycleState.resumed) {
+      _initializeCamera();
+    }
+  }
+
+  Future<void> _initializeCamera() async {
+    try {
+      // Vérifier les permissions
+      final cameraPermission = await Permission.camera.request();
+      if (cameraPermission != PermissionStatus.granted) {
+        setState(() {
+          errorMessage = 'Permission caméra requise pour scanner les aliments';
+        });
+        return;
+      }
+
+      // Obtenir les caméras disponibles
+      _cameras = await availableCameras();
+      if (_cameras == null || _cameras!.isEmpty) {
+        setState(() {
+          errorMessage = 'Aucune caméra disponible sur cet appareil';
+        });
+        return;
+      }
+
+      // Initialiser le contrôleur de caméra avec la caméra arrière
+      final backCamera = _cameras!.firstWhere(
+        (camera) => camera.lensDirection == CameraLensDirection.back,
+        orElse: () => _cameras!.first,
+      );
+
+      _cameraController = CameraController(
+        backCamera,
+        ResolutionPreset.high,
+        enableAudio: false,
+      );
+
+      await _cameraController!.initialize();
+      
+      setState(() {
+        isCameraInitialized = true;
+        errorMessage = null;
+      });
+    } catch (e) {
+      setState(() {
+        errorMessage = 'Erreur d\'initialisation de la caméra: $e';
+        isCameraInitialized = false;
+      });
+    }
+  }
+
+  Future<void> _toggleFlash() async {
+    if (_cameraController == null) return;
+    
+    try {
+      setState(() {
+        isFlashOn = !isFlashOn;
+      });
+      
+      await _cameraController!.setFlashMode(
+        isFlashOn ? FlashMode.torch : FlashMode.off,
+      );
+    } catch (e) {
+      print('Erreur toggle flash: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,32 +136,13 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
   Widget _buildCameraScreen() {
     return Stack(
       children: [
-        // Simulation de la vue caméra
-        Container(
-          width: double.infinity,
-          height: double.infinity,
-          color: Colors.black,
-          child: Center(
-            child: Container(
-              width: 200,
-              height: 200,
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.white, width: 2),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Center(
-                child: Text(
-                  'Vue caméra simulée',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ),
-          ),
-        ),
+        // Vue caméra ou message d'erreur
+        if (errorMessage != null)
+          _buildErrorView()
+        else if (isCameraInitialized && _cameraController != null)
+          _buildCameraPreview()
+        else
+          _buildLoadingView(),
         
         // Header
         Positioned(
@@ -85,16 +167,19 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
                   ),
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.black54,
-                  borderRadius: BorderRadius.circular(25),
-                ),
-                child: const Icon(
-                  LucideIcons.flashlight,
-                  color: Colors.white,
-                  size: 24,
+              GestureDetector(
+                onTap: _toggleFlash,
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    borderRadius: BorderRadius.circular(25),
+                  ),
+                  child: Icon(
+                    isFlashOn ? LucideIcons.flashlight : LucideIcons.flashlightOff,
+                    color: isFlashOn ? Colors.yellow : Colors.white,
+                    size: 24,
+                  ),
                 ),
               ),
             ],
@@ -143,40 +228,240 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
           ),
         ),
         
-        // Bouton de capture
+        // Boutons de capture
         Positioned(
           bottom: 50,
           left: 0,
           right: 0,
-          child: Center(
-            child: GestureDetector(
-              onTap: _takePicture,
-              child: Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: isAnalyzing ? Colors.grey : Colors.white,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 4),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              // Bouton galerie
+              GestureDetector(
+                onTap: _pickImageFromGallery,
+                child: Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2),
+                  ),
+                  child: const Icon(
+                    LucideIcons.image,
+                    color: Colors.white,
+                    size: 24,
+                  ),
                 ),
-                child: isAnalyzing
-                    ? const Center(
-                        child: CircularProgressIndicator(
-                          color: Color(0xFF0B132B),
-                          strokeWidth: 3,
-                        ),
-                      )
-                    : const Icon(
-                        LucideIcons.camera,
-                        color: Colors.black,
-                        size: 32,
-                      ),
               ),
-            ),
+              
+              // Bouton capture principal
+              GestureDetector(
+                onTap: isCameraInitialized && !isAnalyzing ? _takePicture : null,
+                child: Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: isAnalyzing ? Colors.grey : Colors.white,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 4),
+                  ),
+                  child: isAnalyzing
+                      ? const Center(
+                          child: CircularProgressIndicator(
+                            color: Color(0xFF0B132B),
+                            strokeWidth: 3,
+                          ),
+                        )
+                      : const Icon(
+                          LucideIcons.camera,
+                          color: Colors.black,
+                          size: 32,
+                        ),
+                ),
+              ),
+              
+              // Bouton switch caméra
+              GestureDetector(
+                onTap: _switchCamera,
+                child: Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2),
+                  ),
+                  child: const Icon(
+                    LucideIcons.rotateCw,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ],
     );
+  }
+
+  Widget _buildCameraPreview() {
+    return SizedBox(
+      width: double.infinity,
+      height: double.infinity,
+      child: CameraPreview(_cameraController!),
+    );
+  }
+
+  Widget _buildLoadingView() {
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      color: Colors.black,
+      child: const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(
+              color: Colors.white,
+            ),
+            SizedBox(height: 16),
+            Text(
+              'Initialisation de la caméra...',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorView() {
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      color: Colors.black,
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                LucideIcons.cameraOff,
+                color: Colors.white,
+                size: 64,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                errorMessage!,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: _initializeCamera,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0B132B),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                ),
+                child: const Text(
+                  'Réessayer',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _switchCamera() async {
+    if (_cameras == null || _cameras!.length < 2) return;
+    
+    try {
+      await _cameraController?.dispose();
+      
+      final currentCamera = _cameraController?.description;
+      final newCamera = _cameras!.firstWhere(
+        (camera) => camera.lensDirection != currentCamera?.lensDirection,
+        orElse: () => _cameras!.first,
+      );
+      
+      _cameraController = CameraController(
+        newCamera,
+        ResolutionPreset.high,
+        enableAudio: false,
+      );
+      
+      await _cameraController!.initialize();
+      setState(() {});
+    } catch (e) {
+      print('Erreur changement de caméra: $e');
+    }
+  }
+
+  Future<void> _pickImageFromGallery() async {
+    try {
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 80,
+      );
+      
+      if (image != null) {
+        setState(() {
+          _capturedImage = File(image.path);
+        });
+        _analyzeImage();
+      }
+    } catch (e) {
+      print('Erreur sélection image: $e');
+    }
+  }
+
+  Future<void> _takePicture() async {
+    if (_cameraController == null || !_cameraController!.value.isInitialized) {
+      return;
+    }
+
+    try {
+      setState(() {
+        isAnalyzing = true;
+      });
+
+      final XFile image = await _cameraController!.takePicture();
+      setState(() {
+        _capturedImage = File(image.path);
+      });
+      
+      _analyzeImage();
+    } catch (e) {
+      setState(() {
+        isAnalyzing = false;
+      });
+      print('Erreur prise de photo: $e');
+    }
+  }
+
+  Future<void> _analyzeImage() async {
+    // Simulation de l'analyse IA (à remplacer par une vraie API)
+    await Future.delayed(const Duration(seconds: 3));
+
+    setState(() {
+      isAnalyzing = false;
+      hasResult = true;
+    });
   }
 
   Widget _buildResultScreen() {
@@ -231,30 +516,37 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
             height: 200,
             margin: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFFF8F9FA),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: const Color(0xFFE5E7EB)),
             ),
-            child: const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    LucideIcons.image,
-                    size: 48,
-                    color: Color(0xFF64748B),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'Photo analysée',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Color(0xFF64748B),
+            child: _capturedImage != null
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.file(
+                      _capturedImage!,
+                      fit: BoxFit.cover,
+                    ),
+                  )
+                : const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          LucideIcons.image,
+                          size: 48,
+                          color: Color(0xFF64748B),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          'Photo analysée',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Color(0xFF64748B),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
-            ),
           ),
           
           // Résultats de l'analyse
@@ -272,7 +564,7 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
                 ),
                 const SizedBox(height: 16),
                 
-                // Aliments détectés (mockés)
+                // Aliments détectés (mockés - à remplacer par vraie IA)
                 _buildDetectedFood(
                   name: 'Saumon grillé',
                   confidence: 95,
@@ -363,6 +655,7 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
                       setState(() {
                         hasResult = false;
                         isAnalyzing = false;
+                        _capturedImage = null;
                       });
                     },
                     style: OutlinedButton.styleFrom(
@@ -516,18 +809,4 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
       }
     });
   }
-
-  void _takePicture() async {
-    setState(() {
-      isAnalyzing = true;
-    });
-
-    // Simulation de l'analyse
-    await Future.delayed(const Duration(seconds: 3));
-
-    setState(() {
-      isAnalyzing = false;
-      hasResult = true;
-    });
-  }
-} 
+}

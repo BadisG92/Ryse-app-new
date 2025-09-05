@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:camera/camera.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'dart:io';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../bottom_sheets/meal_selection_bottom_sheet.dart';
 import '../bottom_sheets/new_meal_type_bottom_sheet.dart';
@@ -27,25 +32,40 @@ class BarcodeScannerScreen extends StatefulWidget {
 }
 
 class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   bool isScanning = false;
   bool hasResult = false;
   bool isLoadingProduct = false;
+  bool isFlashOn = false;
+  bool isCameraInitialized = false;
+  String? errorMessage;
   late AnimationController _animationController;
   late Animation<double> _animation;
   final TextEditingController _quantityController = TextEditingController();
 
-  MobileScannerController? _scannerController;
+  // Mobile scanner pour scan automatique
+  MobileScannerController? _mobileScannerController;
+  
+  // Camera fallback pour web si nécessaire
+  CameraController? _cameraController;
+  List<CameraDescription>? _cameras;
+  final ImagePicker _imagePicker = ImagePicker();
+  File? _capturedImage;
 
   OpenFoodFactsProduct? _scannedProduct;
-  String? _errorMessage;
   nutrition_models.FoodItem? _pendingDashboardFoodItem;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _quantityController.text = '100'; // Quantité par défaut
-    _scannerController = MobileScannerController();
+    
+    // Utiliser mobile_scanner par défaut, camera seulement en fallback pour web si nécessaire
+    _mobileScannerController = MobileScannerController();
+    if (kIsWeb) {
+      _initializeCamera(); // Fallback pour web si mobile_scanner ne fonctionne pas
+    }
     _animationController = AnimationController(
       duration: const Duration(seconds: 2),
       vsync: this,
@@ -60,8 +80,94 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
   void dispose() {
     _animationController.dispose();
     _quantityController.dispose();
-    _scannerController?.dispose();
+    WidgetsBinding.instance.removeObserver(this);
+    _mobileScannerController?.dispose();
+    _cameraController?.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (_cameraController == null || !_cameraController!.value.isInitialized) {
+      return;
+    }
+
+    if (state == AppLifecycleState.inactive) {
+      _cameraController?.dispose();
+    } else if (state == AppLifecycleState.resumed) {
+      _initializeCamera();
+    }
+  }
+
+  Future<void> _initializeCamera() async {
+    try {
+      // Vérifier les permissions
+      final cameraPermission = await Permission.camera.request();
+      if (cameraPermission != PermissionStatus.granted) {
+        setState(() {
+          errorMessage = 'Permission caméra requise pour scanner les codes-barres';
+        });
+        return;
+      }
+
+      // Obtenir les caméras disponibles
+      _cameras = await availableCameras();
+      if (_cameras == null || _cameras!.isEmpty) {
+        setState(() {
+          errorMessage = 'Aucune caméra disponible sur cet appareil';
+        });
+        return;
+      }
+
+      // Initialiser le contrôleur de caméra avec la caméra arrière
+      final backCamera = _cameras!.firstWhere(
+        (camera) => camera.lensDirection == CameraLensDirection.back,
+        orElse: () => _cameras!.first,
+      );
+
+      _cameraController = CameraController(
+        backCamera,
+        ResolutionPreset.high,
+        enableAudio: false,
+      );
+
+      await _cameraController!.initialize();
+      
+      setState(() {
+        isCameraInitialized = true;
+        errorMessage = null;
+      });
+    } catch (e) {
+      setState(() {
+        errorMessage = 'Erreur d\'initialisation de la caméra: $e';
+        isCameraInitialized = false;
+      });
+    }
+  }
+
+  Future<void> _switchCamera() async {
+    if (_cameras == null || _cameras!.length < 2) return;
+    
+    try {
+      await _cameraController?.dispose();
+      
+      final currentCamera = _cameraController?.description;
+      final newCamera = _cameras!.firstWhere(
+        (camera) => camera.lensDirection != currentCamera?.lensDirection,
+        orElse: () => _cameras!.first,
+      );
+      
+      _cameraController = CameraController(
+        newCamera,
+        ResolutionPreset.high,
+        enableAudio: false,
+      );
+      
+      await _cameraController!.initialize();
+      setState(() {});
+    } catch (e) {
+      print('Erreur changement de caméra: $e');
+    }
   }
 
   @override
@@ -77,10 +183,10 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
   Widget _buildScannerScreen() {
     return Stack(
       children: [
-        // Vue caméra réelle
-        if (!isLoadingProduct)
-                      MobileScanner(
-              controller: _scannerController!,
+        // Vue caméra réelle avec mobile_scanner
+        if (!isLoadingProduct && !kIsWeb)
+          MobileScanner(
+            controller: _mobileScannerController!,
             onDetect: (BarcodeCapture capture) {
               final List<Barcode> barcodes = capture.barcodes;
               if (barcodes.isNotEmpty && !isLoadingProduct) {
@@ -91,6 +197,10 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
               }
             },
           ),
+          
+        // Vue caméra fallback pour web
+        if (!isLoadingProduct && kIsWeb)
+          _buildCameraView(),
         
         // Vue caméra simulée pendant le chargement
         if (isLoadingProduct)
@@ -123,21 +233,42 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                   ),
                 ),
               ),
-              // Bouton saisie manuelle dans le header
-              GestureDetector(
-                onTap: _showManualBarcodeInput,
-                child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.black54,
-                  borderRadius: BorderRadius.circular(25),
-                ),
-                child: const Icon(
-                    LucideIcons.type,
-                  color: Colors.white,
-                  size: 24,
+              Row(
+                children: [
+                  // Bouton flash
+                  GestureDetector(
+                    onTap: _toggleFlash,
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.black54,
+                        borderRadius: BorderRadius.circular(25),
+                      ),
+                      child: Icon(
+                        isFlashOn ? LucideIcons.flashlight : LucideIcons.flashlightOff,
+                        color: isFlashOn ? Colors.yellow : Colors.white,
+                        size: 24,
+                      ),
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 12),
+                  // Bouton saisie manuelle
+                  GestureDetector(
+                    onTap: _showManualBarcodeInput,
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.black54,
+                        borderRadius: BorderRadius.circular(25),
+                      ),
+                      child: const Icon(
+                        LucideIcons.type,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -398,7 +529,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                 const SizedBox(width: 16),
                 Expanded(
                   child: Text(
-                    _errorMessage != null ? 'Erreur' : 'Produit trouvé',
+                    errorMessage != null ? 'Erreur' : 'Produit trouvé',
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
@@ -411,11 +542,11 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
           ),
           
           Expanded(
-            child: _errorMessage != null ? _buildErrorContent() : _buildProductContent(),
+            child: errorMessage != null ? _buildErrorContent() : _buildProductContent(),
           ),
           
           // Boutons d'action (seulement si pas d'erreur)
-          if (_errorMessage == null && _scannedProduct != null)
+          if (errorMessage == null && _scannedProduct != null)
             _buildActionButtons(),
         ],
       ),
@@ -435,7 +566,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
           ),
           const SizedBox(height: 16),
           Text(
-            _errorMessage!,
+            errorMessage!,
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
@@ -459,7 +590,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
               onPressed: () {
                 setState(() {
                   hasResult = false;
-                  _errorMessage = null;
+                  errorMessage = null;
                   _scannedProduct = null;
                 });
               },
@@ -733,7 +864,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
           SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-              onPressed: _errorMessage == null ? _handleAddToMeal : null,
+              onPressed: errorMessage == null ? _handleAddToMeal : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF0B132B),
                       padding: const EdgeInsets.symmetric(vertical: 16),
@@ -761,7 +892,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                     onPressed: () {
                       setState(() {
                         hasResult = false;
-                  _errorMessage = null;
+                  errorMessage = null;
                   _scannedProduct = null;
                       });
                     },
@@ -867,6 +998,122 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
     if (!_animationController.isAnimating) {
       _animationController.repeat();
     }
+  }
+
+  // Contrôle du flash
+  Future<void> _toggleFlash() async {
+    try {
+      setState(() {
+        isFlashOn = !isFlashOn;
+      });
+      
+      // Utiliser mobile_scanner pour le flash
+      if (_mobileScannerController != null) {
+        await _mobileScannerController!.toggleTorch();
+      } else if (_cameraController != null) {
+        // Fallback pour camera
+        await _cameraController!.setFlashMode(
+          isFlashOn ? FlashMode.torch : FlashMode.off,
+        );
+      }
+    } catch (e) {
+      print('Erreur toggle flash: $e');
+      // Revert state if error
+      setState(() {
+        isFlashOn = !isFlashOn;
+      });
+    }
+  }
+
+  Widget _buildCameraView() {
+    if (errorMessage != null) {
+      return _buildErrorView();
+    } else if (isCameraInitialized && _cameraController != null) {
+      return _buildCameraPreview();
+    } else {
+      return _buildLoadingView();
+    }
+  }
+
+  Widget _buildCameraPreview() {
+    return SizedBox(
+      width: double.infinity,
+      height: double.infinity,
+      child: CameraPreview(_cameraController!),
+    );
+  }
+
+  Widget _buildLoadingView() {
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      color: Colors.black,
+      child: const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(
+              color: Colors.white,
+            ),
+            SizedBox(height: 16),
+            Text(
+              'Initialisation de la caméra...',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorView() {
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      color: Colors.black,
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                LucideIcons.cameraOff,
+                color: Colors.white,
+                size: 64,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                errorMessage!,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: _initializeCamera,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0B132B),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                ),
+                child: const Text(
+                  'Réessayer',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   // Afficher la saisie manuelle du code-barres
@@ -1078,11 +1325,11 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
           _quantityController.text = product.defaultQuantity.round().toString();
           isLoadingProduct = false;
       hasResult = true;
-          _errorMessage = null;
+          errorMessage = null;
         });
       } else {
         setState(() {
-          _errorMessage = OpenFoodFactsService.getErrorMessage(product);
+          errorMessage = OpenFoodFactsService.getErrorMessage(product);
           isLoadingProduct = false;
           hasResult = true;
           _scannedProduct = null;
@@ -1090,7 +1337,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
       }
     } catch (e) {
       setState(() {
-        _errorMessage = 'Erreur lors de la récupération du produit';
+        errorMessage = 'Erreur lors de la récupération du produit';
         isLoadingProduct = false;
         hasResult = true;
         _scannedProduct = null;
