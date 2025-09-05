@@ -166,19 +166,39 @@ class _GlobalProgressState extends State<GlobalProgress> {
                 colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
               ),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            child: Stack(
+              alignment: Alignment.center,
               children: [
-                _buildBannerItem(LucideIcons.flame, _headerStats.dailyStreak),
-                _buildBannerSeparator(),
-                ValueListenableBuilder<GoalsSummary>(
-                  valueListenable: GoalsNotifier.instance,
-                  builder: (context, summary, _) {
-                    return _buildBannerItem(LucideIcons.target, summary.toString());
-                  },
+                // Contenu centré
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _buildBannerItem(LucideIcons.flame, _headerStats.dailyStreak),
+                    _buildBannerSeparator(),
+                    ValueListenableBuilder<GoalsSummary>(
+                      valueListenable: GoalsNotifier.instance,
+                      builder: (context, summary, _) {
+                        return _buildBannerItem(LucideIcons.target, summary.toString());
+                      },
+                    ),
+                    _buildBannerSeparator(),
+                    _buildBannerItemWithLogo(_headerStats.currentStatus),
+                  ],
                 ),
-                _buildBannerSeparator(),
-                _buildBannerItemWithLogo(_headerStats.currentStatus),
+                // Icône settings alignée à droite
+                Positioned(
+                  right: 12,
+                  child: GestureDetector(
+                    onTap: () {
+                      Navigator.pushNamed(context, '/settings');
+                    },
+                    child: const Icon(
+                      LucideIcons.settings,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
