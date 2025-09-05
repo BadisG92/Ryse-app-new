@@ -1925,7 +1925,7 @@ class DatabaseService {
       debugPrint('🔍 Récupération des objectifs utilisateur...');
       final userResponse = await _client
           .from('users')
-          .select('daily_calories, daily_water_goal')
+          .select('daily_calories, daily_protein, daily_carbs, daily_fat, daily_water_goal')
           .eq('id', userId)
           .maybeSingle();
 
@@ -1988,13 +1988,15 @@ class DatabaseService {
         debugPrint('⚠️ Aucune donnée trouvée, conservation des valeurs par défaut à zéro');
       }
 
-      // Calculer les objectifs de macronutriments (estimation basée sur les calories)
-      // Protéines: 15-20% des calories (4 cal/g)
-      // Glucides: 45-55% des calories (4 cal/g)  
-      // Lipides: 25-35% des calories (9 cal/g)
-      final targetProtein = ((targetCalories * 0.175) / 4).round(); // 17.5% des calories
-      final targetCarbs = ((targetCalories * 0.50) / 4).round();    // 50% des calories
-      final targetFat = ((targetCalories * 0.325) / 9).round();     // 32.5% des calories
+      // Récupérer les vrais objectifs de macronutriments de l'utilisateur
+      final targetProtein = userResponse?['daily_protein'] as int? ?? ((targetCalories * 0.175) / 4).round();
+      final targetCarbs = userResponse?['daily_carbs'] as int? ?? ((targetCalories * 0.50) / 4).round();
+      final targetFat = userResponse?['daily_fat'] as int? ?? ((targetCalories * 0.325) / 9).round();
+      
+      debugPrint('🔍 Objectifs macros utilisateur:');
+      debugPrint('   - Protéines: ${targetProtein}g');
+      debugPrint('   - Glucides: ${targetCarbs}g');
+      debugPrint('   - Lipides: ${targetFat}g');
 
       // Récupérer les données d'hydratation du jour
       debugPrint('🔍 Récupération des données d\'hydratation...');

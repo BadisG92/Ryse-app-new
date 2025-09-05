@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/auth_service.dart';
 import 'package:provider/provider.dart';
 import '../providers/goals_notifier.dart';
@@ -74,10 +75,96 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   }
   
   Future<void> _loadSettings() async {
+    try {
+      final supabase = Supabase.instance.client;
+      final userId = supabase.auth.currentUser?.id;
+      
+      if (userId == null) {
+        // Si pas connecté, charger depuis SharedPreferences
+        await _loadFromSharedPreferences();
+        return;
+      }
+      
+      // Charger les données depuis Supabase
+      final response = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', userId)
+          .single();
+      
+      // Charger aussi le profil historique actuel pour les macros personnalisées
+      final historyResponse = await supabase
+          .from('user_profile_history')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('is_current', true)
+          .maybeSingle();
+      
+      setState(() {
+        // Données du profil
+        _gender = response['gender'] ?? 'Homme';
+        _age = response['age']?.toString() ?? '25';
+        _height = response['height']?.toString() ?? '175';
+        _weight = response['weight']?.toString() ?? '70';
+        
+        // Objectifs et activité
+        _activityLevel = response['activity_level'] ?? 'moderate';
+        _mainGoal = response['fitness_goal'] ?? 'maintain';
+        _targetWeight = response['target_weight']?.toString() ?? response['weight']?.toString() ?? _weight;
+        
+        // Valeurs nutritionnelles
+        _caloriesTarget = response['daily_calories'] ?? 2200;
+        _proteinTarget = response['daily_protein'] ?? 150;
+        _carbsTarget = response['daily_carbs'] ?? 200;
+        _fatTarget = response['daily_fat'] ?? 80;
+        
+        // Macros personnalisées depuis l'historique si disponible
+        if (historyResponse != null) {
+          _hasCustomMacros = historyResponse['has_custom_macros'] ?? false;
+          _proteinPercentage = historyResponse['protein_percentage'] ?? 0.30;
+          _carbsPercentage = historyResponse['carbs_percentage'] ?? 0.40;
+          _fatPercentage = historyResponse['fat_percentage'] ?? 0.30;
+        }
+        
+        // Restrictions alimentaires
+        _dietaryRestrictions = List<String>.from(response['dietary_restrictions'] ?? []);
+      });
+      
+      // Charger les préférences locales depuis SharedPreferences
+      await _loadLocalPreferences();
+      
+    } catch (e) {
+      print('Erreur lors du chargement des paramètres depuis Supabase: $e');
+      // En cas d'erreur, charger depuis SharedPreferences
+      await _loadFromSharedPreferences();
+    }
+  }
+  
+  Future<void> _loadLocalPreferences() async {
     final prefs = await SharedPreferences.getInstance();
     
     setState(() {
-      // Charger les données depuis SharedPreferences
+      // Préférences locales (non stockées dans Supabase)
+      _dailyReminder = prefs.getBool('daily_reminder') ?? true;
+      _workoutReminder = prefs.getBool('workout_reminder') ?? true;
+      _mealReminder = prefs.getBool('meal_reminder') ?? true;
+      _progressNotifications = prefs.getBool('progress_notifications') ?? true;
+      _reminderTime = prefs.getString('reminder_time') ?? '08:00';
+      
+      _language = prefs.getString('language') ?? 'Français';
+      _measurementUnit = prefs.getString('measurement_unit') ?? 'Métrique';
+      _startWeekDay = prefs.getString('start_week_day') ?? 'Lundi';
+      _darkMode = prefs.getBool('dark_mode') ?? false;
+      _soundEffects = prefs.getBool('sound_effects') ?? true;
+      _hapticFeedback = prefs.getBool('haptic_feedback') ?? true;
+    });
+  }
+  
+  Future<void> _loadFromSharedPreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    
+    setState(() {
+      // Charger les données depuis SharedPreferences (fallback)
       _gender = prefs.getString('user_gender') ?? 'Homme';
       _age = prefs.getString('user_age') ?? '25';
       _height = prefs.getString('user_height') ?? '175';
@@ -114,9 +201,67 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   }
   
   Future<void> _saveSettings() async {
+    try {
+      final supabase = Supabase.instance.client;
+      final userId = supabase.auth.currentUser?.id;
+      
+      if (userId != null) {
+        // Calculer le BMR si les données ont changé
+        final bmr = MetabolicCalculations.calculateBMR(_userProfile);
+        
+        // Sauvegarder dans Supabase
+        await supabase.from('users').update({
+          'gender': _gender,
+          'age': int.tryParse(_age) ?? 25,
+          'height': double.tryParse(_height) ?? 175,
+          'weight': double.tryParse(_weight) ?? 70,
+          'target_weight': double.tryParse(_targetWeight) ?? double.tryParse(_weight) ?? 70,
+          'activity_level': _activityLevel,
+          'fitness_goal': _mainGoal,
+          'daily_calories': _caloriesTarget,
+          'daily_protein': _proteinTarget,
+          'daily_carbs': _carbsTarget,
+          'daily_fat': _fatTarget,
+          'bmr': bmr,
+          'dietary_restrictions': _dietaryRestrictions,
+          'updated_at': DateTime.now().toIso8601String(),
+        }).eq('id', userId);
+        
+        // Si les macros sont personnalisées, les sauvegarder dans l'historique
+        if (_hasCustomMacros) {
+          await supabase.from('user_profile_history').update({
+            'has_custom_macros': _hasCustomMacros,
+            'protein_percentage': _proteinPercentage,
+            'carbs_percentage': _carbsPercentage,
+            'fat_percentage': _fatPercentage,
+          }).eq('user_id', userId).eq('is_current', true);
+        }
+      }
+      
+      // Sauvegarder aussi localement pour la synchronisation
+      await _saveToSharedPreferences();
+      
+    } catch (e) {
+      print('Erreur lors de la sauvegarde dans Supabase: $e');
+      // En cas d'erreur, sauvegarder localement
+      await _saveToSharedPreferences();
+      
+      // Afficher une erreur à l'utilisateur
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur de sauvegarde. Les modifications sont enregistrées localement.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    }
+  }
+  
+  Future<void> _saveToSharedPreferences() async {
     final prefs = await SharedPreferences.getInstance();
     
-    // Sauvegarder toutes les préférences
+    // Sauvegarder toutes les préférences localement
     await prefs.setString('user_gender', _gender);
     await prefs.setString('user_age', _age);
     await prefs.setString('user_height', _height);

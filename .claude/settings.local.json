@@ -65,7 +65,11 @@
       "Read(/C:\\rise app v2\\ryze_app\\lib\\services/**)",
       "Read(/C:\\rise app v2\\ryze_app\\lib\\services/**)",
       "Bash(flutter build:*)",
-      "Bash(flutter run:*)"
+      "Bash(flutter run:*)",
+      "mcp__supabase__execute_sql",
+      "mcp__supabase__apply_migration",
+      "Bash(find:*)",
+      "Bash(git restore:*)"
     ],
     "deny": [],
     "ask": []
