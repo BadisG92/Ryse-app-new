@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/nutrition_models.dart';
+import '../models/ai_analysis_models.dart';
 import 'dashboard_service.dart';
 
 class FoodEntriesService {
@@ -520,5 +521,153 @@ class FoodEntriesService {
         items: [],
       ),
     ];
+  }
+
+  /// Créer un aliment personnalisé à partir des détections IA
+  static Future<String?> createAICustomFood({
+    required String userId,
+    required String mealName,
+    required List<DetectedFood> detectedFoods,
+    required double totalCalories,
+    required double totalProteins,
+    required double totalCarbs,
+    required double totalFats,
+    required double totalWeight,
+  }) async {
+    try {
+      print('🎯 Création custom_food avec données IA:');
+      print('   - name: $mealName');
+      print('   - totalWeight: ${totalWeight}g');
+      print('   - totalCalories: $totalCalories');
+      print('   - totalProteins: $totalProteins');
+      print('   - totalCarbs: $totalCarbs');  
+      print('   - totalFats: $totalFats');
+      print('   - calories (pour 100g): ${((totalCalories / totalWeight) * 100).round()}');
+      print('   - proteins (pour 100g): ${((totalProteins / totalWeight) * 100).round()}');
+      print('   - carbs (pour 100g): ${((totalCarbs / totalWeight) * 100).round()}');
+      print('   - fats (pour 100g): ${((totalFats / totalWeight) * 100).round()}');
+      print('   - user_id: $userId');
+      
+      // Insérer dans custom_foods avec les bons noms de colonnes
+      final response = await _supabase
+          .from('custom_foods')
+          .insert({
+            'name': mealName,
+            'calories': ((totalCalories / totalWeight) * 100).round(),
+            'proteins': ((totalProteins / totalWeight) * 100).round(),
+            'carbs': ((totalCarbs / totalWeight) * 100).round(),
+            'fats': ((totalFats / totalWeight) * 100).round(),
+            'user_id': userId,
+            'origin': 'photo_ia',
+            'created_at': DateTime.now().toIso8601String(),
+          })
+          .select()
+          .single();
+
+      print('✅ Custom food créé avec succès: ${response['id']}');
+      return response['id'].toString();
+    } catch (e) {
+      print('❌ Erreur lors de la création de l\'aliment personnalisé IA: $e');
+      return null;
+    }
+  }
+
+  /// Ajouter un aliment personnalisé IA au journal
+  static Future<bool> addAIFoodEntry({
+    required String userId,
+    required String mealName,
+    required List<DetectedFood> detectedFoods,
+    required String aiMealName,
+    DateTime? consumedAt,
+  }) async {
+    try {
+      // Calculer les totaux
+      double totalCalories = 0;
+      double totalProteins = 0;
+      double totalCarbs = 0;
+      double totalFats = 0;
+      double totalWeight = 0;
+
+      for (final food in detectedFoods) {
+        totalCalories += food.calories;
+        totalProteins += food.nutrition.proteins;
+        totalCarbs += food.nutrition.carbs;
+        totalFats += food.nutrition.fats;
+        totalWeight += food.estimatedQuantity;
+      }
+
+      // Créer l'aliment personnalisé
+      final customFoodId = await createAICustomFood(
+        userId: userId,
+        mealName: aiMealName,
+        detectedFoods: detectedFoods,
+        totalCalories: totalCalories,
+        totalProteins: totalProteins,
+        totalCarbs: totalCarbs,
+        totalFats: totalFats,
+        totalWeight: totalWeight,
+      );
+
+      if (customFoodId == null) {
+        return false;
+      }
+
+      // Ajouter l'entrée au journal
+      final mealType = _mealTypeMapping[mealName];
+      if (mealType == null) {
+        debugPrint('Type de repas non reconnu: $mealName');
+        return false;
+      }
+
+      final targetDate = consumedAt ?? DateTime.now();
+      
+      // Générer un meal_id pour ce repas
+      final mealId = await generateMealId(
+        userId: userId,
+        mealName: mealName,
+        forDate: targetDate,
+      );
+
+      if (mealId == null) {
+        return false;
+      }
+
+      print('🍽️ Création entrée food_entries:');
+      print('   - user_id: $userId');
+      print('   - meal_type: $mealType');
+      print('   - meal_id: $mealId');
+      print('   - custom_food_id: $customFoodId');
+      print('   - quantity: ${totalWeight}g');
+      print('   - unit: g');
+      print('   - calories: $totalCalories');
+      print('   - proteins: $totalProteins');
+      print('   - carbs: $totalCarbs');
+      print('   - fats: $totalFats');
+
+      // Insérer dans food_entries avec les bonnes colonnes
+      await _supabase.from('food_entries').insert({
+        'user_id': userId,
+        'meal_type': mealType,
+        'meal_id': mealId,
+        'custom_food_id': int.parse(customFoodId),
+        'quantity': totalWeight,
+        'unit': 'g',
+        'calories': totalCalories.round(),
+        'proteins': totalProteins,
+        'carbs': totalCarbs,
+        'fats': totalFats,
+        'consumed_at': targetDate.toIso8601String(),
+      });
+      
+      print('✅ Entrée food_entries créée avec succès');
+
+      // Notifier la mise à jour de la nutrition
+      await _notifyNutritionUpdate(userId, targetDate);
+
+      return true;
+    } catch (e) {
+      debugPrint('Erreur lors de l\'ajout de l\'aliment IA: $e');
+      return false;
+    }
   }
 } 

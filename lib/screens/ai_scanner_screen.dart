@@ -1,21 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:camera/camera.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:io';
+import 'dart:typed_data';
 import '../bottom_sheets/editable_food_details_bottom_sheet.dart';
 import '../bottom_sheets/meal_selection_bottom_sheet.dart';
 import '../bottom_sheets/new_meal_type_bottom_sheet.dart';
 import '../models/nutrition_models.dart';
 import '../components/ui/nutrition_widgets.dart';
+import '../services/gemini_analysis_service.dart';
+import '../models/ai_analysis_models.dart';
+import '../services/food_entries_service.dart';
+import '../services/auth_service.dart';
 
 class AIScannerScreen extends StatefulWidget {
   final bool isFromDashboard;
+  final String? mealName; // Pour flux depuis journal
+  final String? mealId;   // Pour flux depuis journal
   
   const AIScannerScreen({
     super.key,
     this.isFromDashboard = false,
+    this.mealName,
+    this.mealId,
   });
 
   @override
@@ -28,11 +38,26 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
   bool isCameraInitialized = false;
   bool isFlashOn = false;
   String? errorMessage;
+  AIAnalysisResult? _analysisResult;
+  
+  // Contrôleur pour le nom de l'aliment modifiable
+  final TextEditingController _mealNameController = TextEditingController();
+  
+  // Animation de chargement IA
+  int _loadingPhase = 0;
+  List<String> _loadingPhases = [
+    'Traitement de l\'image...',
+    'Détection des aliments...',
+    'Analyse nutritionnelle...',
+    'Calcul des calories...',
+    'Finalisation...',
+  ];
   
   CameraController? _cameraController;
   List<CameraDescription>? _cameras;
   final ImagePicker _imagePicker = ImagePicker();
   File? _capturedImage;
+  Uint8List? _capturedImageBytes; // Pour l'affichage web
 
   @override
   void initState() {
@@ -45,6 +70,7 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _cameraController?.dispose();
+    _mealNameController.dispose();
     super.dispose();
   }
 
@@ -128,7 +154,11 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
-        child: hasResult ? _buildResultScreen() : _buildCameraScreen(),
+        child: hasResult 
+            ? _buildResultScreen() 
+            : isAnalyzing 
+                ? _buildAILoadingScreen() 
+                : _buildCameraScreen(),
       ),
     );
   }
@@ -414,19 +444,51 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
 
   Future<void> _pickImageFromGallery() async {
     try {
+      // Sur web, on affiche un debug message pour comprendre le problème
+      if (kIsWeb) {
+        print('🌐 Tentative de sélection d\'image sur web...');
+      }
+      
       final XFile? image = await _imagePicker.pickImage(
         source: ImageSource.gallery,
         imageQuality: 80,
+        maxWidth: 1024,
+        maxHeight: 1024,
       );
       
+      print('📷 Image sélectionnée: ${image?.path ?? "aucune"}');
+      
       if (image != null) {
-        setState(() {
-          _capturedImage = File(image.path);
-        });
-        _analyzeImage();
+        if (kIsWeb) {
+          // Sur web, on utilise directement l'objet XFile
+          print('🌐 Traitement image web: ${image.name}, taille: ${await image.length()} bytes');
+          
+          // Lire les bytes pour l'analyse et l'affichage
+          final bytes = await image.readAsBytes();
+          print('📊 Bytes lus: ${bytes.length}');
+          
+          // Sauvegarder pour l'affichage web
+          setState(() {
+            _capturedImage = File(image.path); // Garde pour compatibilité
+            _capturedImageBytes = Uint8List.fromList(bytes); // Pour l'affichage web
+          });
+          
+          _analyzeImageFromBytes(bytes);
+        } else {
+          // Sur mobile, utilisation normale
+          print('📱 Traitement image mobile: ${image.path}');
+          setState(() {
+            _capturedImage = File(image.path);
+          });
+          _analyzeImage();
+        }
+      } else {
+        print('❌ Aucune image sélectionnée');
+        _showErrorSnackbar('Aucune image sélectionnée');
       }
     } catch (e) {
-      print('Erreur sélection image: $e');
+      print('❌ Erreur sélection image: $e');
+      _showErrorSnackbar('Erreur lors de la sélection: $e');
     }
   }
 
@@ -441,11 +503,23 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
       });
 
       final XFile image = await _cameraController!.takePicture();
-      setState(() {
-        _capturedImage = File(image.path);
-      });
       
-      _analyzeImage();
+      if (kIsWeb) {
+        // Sur web, sauvegarder aussi les bytes
+        final bytes = await image.readAsBytes();
+        setState(() {
+          _capturedImage = File(image.path);
+          _capturedImageBytes = Uint8List.fromList(bytes);
+        });
+        _analyzeImageFromBytes(bytes);
+      } else {
+        // Sur mobile
+        setState(() {
+          _capturedImage = File(image.path);
+          _capturedImageBytes = null;
+        });
+        _analyzeImage();
+      }
     } catch (e) {
       setState(() {
         isAnalyzing = false;
@@ -455,13 +529,262 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
   }
 
   Future<void> _analyzeImage() async {
-    // Simulation de l'analyse IA (à remplacer par une vraie API)
-    await Future.delayed(const Duration(seconds: 3));
+    if (_capturedImage == null) return;
 
-    setState(() {
-      isAnalyzing = false;
-      hasResult = true;
-    });
+    try {
+      if (mounted) {
+        setState(() {
+          _loadingPhase = 0;
+        });
+      }
+
+      // Démarrer l'animation de chargement
+      _startLoadingAnimation();
+
+      // Validate image file first
+      final validationError = await GeminiAnalysisService.validateImageFile(_capturedImage!);
+      if (validationError != null) {
+        if (mounted) {
+          setState(() {
+            isAnalyzing = false;
+            errorMessage = validationError;
+          });
+        }
+        return;
+      }
+
+      // Analyze image with Gemini service (with fallback to mock data)
+      final result = await GeminiAnalysisService.analyzeImageWithFallback(_capturedImage!);
+      
+      if (mounted) {
+        setState(() {
+          isAnalyzing = false;
+          _analysisResult = result;
+          
+          if (result.success && result.detectedFoods.isNotEmpty) {
+            hasResult = true;
+            errorMessage = null;
+            // Mettre à jour le nom du repas avec le nom généré par l'IA
+            _mealNameController.text = result.mealName ?? 'Plat détecté par IA';
+          } else {
+            hasResult = false;
+            errorMessage = result.error?.contains('API') == true 
+                ? 'Le service IA est temporairement surchargé.\nMerci de réessayer dans quelques minutes.' 
+                : 'Aucun aliment détecté dans cette image';
+          }
+        });
+      }
+
+    } catch (e) {
+      setState(() {
+        isAnalyzing = false;
+        hasResult = false;
+        errorMessage = 'Erreur lors de l\'analyse: $e';
+      });
+    }
+  }
+
+  /// Écran de chargement IA animé avec phases
+  Widget _buildAILoadingScreen() {
+    return Container(
+      color: const Color(0xFF0B132B),
+      child: Column(
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      isAnalyzing = false;
+                      hasResult = false;
+                      _capturedImage = null;
+                      _capturedImageBytes = null;
+                    });
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      color: Colors.white24,
+                    ),
+                    child: const Icon(
+                      LucideIcons.chevronLeft,
+                      size: 20,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                const Expanded(
+                  child: Text(
+                    'Analyse IA en cours...',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Contenu principal
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Robot IA animé
+                Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    color: Colors.white12,
+                    borderRadius: BorderRadius.circular(60),
+                    border: Border.all(color: Colors.white, width: 2),
+                  ),
+                  child: Center(
+                    child: TweenAnimationBuilder(
+                      duration: const Duration(milliseconds: 1500),
+                      tween: Tween<double>(begin: 0, end: 1),
+                      builder: (context, double value, child) {
+                        return Transform.scale(
+                          scale: 0.8 + (0.2 * value),
+                          child: Icon(
+                            LucideIcons.brain,
+                            size: 64,
+                            color: Colors.white.withOpacity(0.8 + (0.2 * value)),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                
+                const SizedBox(height: 40),
+                
+                // Phase actuelle
+                Text(
+                  _loadingPhase < _loadingPhases.length 
+                      ? _loadingPhases[_loadingPhase]
+                      : 'Finalisation...',
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                
+                const SizedBox(height: 32),
+                
+                // Indicateur de progression avec phases
+                Container(
+                  width: 280,
+                  child: Column(
+                    children: List.generate(_loadingPhases.length, (index) {
+                      final isCompleted = index < _loadingPhase;
+                      final isCurrent = index == _loadingPhase;
+                      
+                      return Container(
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          children: [
+                            // Cercle de progression
+                            Container(
+                              width: 24,
+                              height: 24,
+                              decoration: BoxDecoration(
+                                color: isCompleted 
+                                    ? const Color(0xFF0B132B) 
+                                    : Colors.white24,
+                                shape: BoxShape.circle,
+                                border: isCurrent ? Border.all(
+                                  color: const Color(0xFF0B132B),
+                                  width: 2,
+                                ) : null,
+                              ),
+                              child: isCompleted 
+                                  ? const Icon(
+                                      Icons.circle,
+                                      size: 16,
+                                      color: Colors.white,
+                                    )
+                                  : isCurrent 
+                                      ? Container(
+                                          margin: const EdgeInsets.all(4),
+                                          decoration: const BoxDecoration(
+                                            color: Color(0xFF0B132B),
+                                            shape: BoxShape.circle,
+                                          ),
+                                        )
+                                      : null,
+                            ),
+                            const SizedBox(width: 12),
+                            // Texte de la phase
+                            Expanded(
+                              child: Text(
+                                _loadingPhases[index],
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: isCompleted 
+                                      ? Colors.white
+                                      : isCurrent 
+                                          ? Colors.white
+                                          : Colors.white54,
+                                  fontWeight: isCompleted || isCurrent ? FontWeight.w500 : FontWeight.normal,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                  ),
+                ),
+                
+                const SizedBox(height: 40),
+                
+                // Barre de progression globale
+                Container(
+                  width: 200,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                  child: FractionallySizedBox(
+                    widthFactor: (_loadingPhase + 1) / _loadingPhases.length,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [const Color(0xFF0B132B), const Color(0xFF1A1A2E)],
+                        ),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                ),
+                
+                const SizedBox(height: 16),
+                
+                Text(
+                  '${((_loadingPhase + 1) / _loadingPhases.length * 100).round()}%',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white70,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildResultScreen() {
@@ -510,6 +833,62 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
             ),
           ),
           
+          // Nom du plat modifiable (visible seulement quand on a un résultat)
+          if (hasResult && _analysisResult != null && _analysisResult!.success)
+            Container(
+              margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Nom du plat',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF374151),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: _mealNameController,
+                    decoration: InputDecoration(
+                      hintText: 'Nom du plat détecté par l\'IA',
+                      filled: true,
+                      fillColor: const Color(0xFFF9FAFB),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: Color(0xFF0B132B), width: 2),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 12,
+                      ),
+                      suffixIcon: IconButton(
+                        icon: const Icon(LucideIcons.pencil, size: 16),
+                        onPressed: () {
+                          // Focus sur le champ pour édition
+                          FocusScope.of(context).requestFocus();
+                        },
+                      ),
+                    ),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF1F2937),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          
           // Photo analysée
           Container(
             width: double.infinity,
@@ -519,13 +898,20 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: const Color(0xFFE5E7EB)),
             ),
-            child: _capturedImage != null
+            child: _capturedImage != null || _capturedImageBytes != null
                 ? ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: Image.file(
-                      _capturedImage!,
-                      fit: BoxFit.cover,
-                    ),
+                    child: kIsWeb && _capturedImageBytes != null
+                        ? Image.memory(
+                            _capturedImageBytes!,
+                            fit: BoxFit.cover,
+                          )
+                        : _capturedImage != null
+                            ? Image.file(
+                                _capturedImage!,
+                                fit: BoxFit.cover,
+                              )
+                            : const SizedBox(),
                   )
                 : const Center(
                     child: Column(
@@ -564,27 +950,33 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
                 ),
                 const SizedBox(height: 16),
                 
-                // Aliments détectés (mockés - à remplacer par vraie IA)
-                _buildDetectedFood(
-                  name: 'Saumon grillé',
-                  confidence: 95,
-                  calories: 206,
-                  quantity: '150g',
-                ),
-                const SizedBox(height: 12),
-                _buildDetectedFood(
-                  name: 'Riz basmati',
-                  confidence: 88,
-                  calories: 130,
-                  quantity: '100g',
-                ),
-                const SizedBox(height: 12),
-                _buildDetectedFood(
-                  name: 'Brocolis',
-                  confidence: 92,
-                  calories: 25,
-                  quantity: '80g',
-                ),
+                // Aliments détectés via IA
+                if (_analysisResult != null && _analysisResult!.success)
+                  ...(_analysisResult!.detectedFoods.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final food = entry.value;
+                    return Column(
+                      children: [
+                        if (index > 0) const SizedBox(height: 12),
+                        _buildDetectedFood(
+                          name: food.name,
+                          confidence: (food.confidence * 100).round(),
+                          calories: food.calories,
+                          quantity: '${food.estimatedQuantity.round()}g',
+                        ),
+                      ],
+                    );
+                  }).toList())
+                else
+                  const Center(
+                    child: Text(
+                      'Aucun aliment détecté',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Color(0xFF64748B),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -603,31 +995,21 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
                 Container(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () {
+                    onPressed: () async {
+                      if (_analysisResult == null || !_analysisResult!.success || _analysisResult!.detectedFoods.isEmpty) {
+                        return;
+                      }
+
                       // Si on vient du dashboard, déclencher la sélection de repas
-                      if (widget.isFromDashboard) {
-                        // Créer un FoodItem représentant tous les aliments détectés
-                        final allFoods = FoodItem(
-                          name: 'Aliments détectés', // Nom générique pour tous les aliments
-                          calories: 361, // Total des calories des aliments détectés (206+130+25)
-                          proteins: 54.0, // Estimation basée sur les calories (15% de 361 kcal)
-                          carbs: 45.0, // Estimation basée sur les calories (50% de 361 kcal)
-                          fats: 13.0, // Estimation basée sur les calories (35% de 361 kcal)
-                          portion: 'Plat complet',
-                        );
-                        
-                        // Fermer l'écran actuel et ouvrir la sélection de repas
-                        Navigator.pop(context);
-                        _handleDashboardFoodValidation(allFoods);
+                      if (widget.mealName != null && widget.mealId != null) {
+                        // Flux depuis le journal - ajouter directement au repas sélectionné
+                        await _addFoodsToSpecificMeal(widget.mealName!, widget.mealId!);
+                      } else if (widget.isFromDashboard) {
+                        // Flux depuis le dashboard - demander la sélection du repas
+                        await _addFoodsToJournalWithSelection();
                       } else {
-                        // Flux normal du journal
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Aliments ajoutés au repas'),
-                            backgroundColor: Color(0xFF0B132B),
-                          ),
-                        );
+                        // Flux normal du scanner - demander la sélection du repas
+                        await _addFoodsToJournalWithSelection();
                       }
                     },
                     style: ElevatedButton.styleFrom(
@@ -652,11 +1034,17 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
                   width: double.infinity,
                   child: OutlinedButton(
                     onPressed: () {
-                      setState(() {
-                        hasResult = false;
-                        isAnalyzing = false;
-                        _capturedImage = null;
-                      });
+                      if (mounted) {
+                        setState(() {
+                          hasResult = false;
+                          isAnalyzing = false;
+                          _capturedImage = null;
+                          _capturedImageBytes = null;
+                          _analysisResult = null;
+                          _mealNameController.clear();
+                          errorMessage = null;
+                        });
+                      }
                     },
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
@@ -707,12 +1095,15 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
               children: [
                 Row(
                   children: [
-                    Text(
-                      name,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF1A1A1A),
+                    Expanded(
+                      child: Text(
+                        name,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1A1A1A),
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -771,14 +1162,23 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
     );
   }
 
-  void _editDetectedFood(String name, int baseCalories, String currentQuantity) {
+  void _editDetectedFood(String name, int calories, String currentQuantity) {
     final quantity = double.tryParse(currentQuantity.replaceAll('g', '')) ?? 100;
-    final calories = (baseCalories * quantity / 100).round();
     
-    // Calcul des macronutriments (valeurs approximatives basées sur les calories)
-    final protein = (calories * 0.15 / 4); // 15% des calories en protéines
-    final carbs = (calories * 0.55 / 4); // 55% des calories en glucides  
-    final fat = (calories * 0.30 / 9); // 30% des calories en lipides
+    // Trouver l'aliment correspondant dans les résultats pour avoir les vraies macros
+    DetectedFood? matchedFood;
+    if (_analysisResult != null && _analysisResult!.success) {
+      try {
+        matchedFood = _analysisResult!.detectedFoods.firstWhere((food) => food.name == name);
+      } catch (e) {
+        // Aliment non trouvé, utiliser des valeurs par défaut
+      }
+    }
+    
+    // Utiliser les macros de l'IA ou des valeurs approximatives
+    final protein = matchedFood?.nutrition.proteins ?? (calories * 0.15 / 4);
+    final carbs = matchedFood?.nutrition.carbs ?? (calories * 0.55 / 4);  
+    final fat = matchedFood?.nutrition.fats ?? (calories * 0.30 / 9);
 
     EditableFoodDetailsBottomSheet.show(
       context,
@@ -798,15 +1198,305 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
     );
   }
 
-  void _handleDashboardFoodValidation(FoodItem foodItem) {
-    // Fermer d'abord l'écran AI Scanner
-    Navigator.pop(context);
-    
-    // Attendre un délai pour que la fermeture soit complète puis utiliser le flux spécialisé
-    Future.delayed(const Duration(milliseconds: 100), () {
-      if (context.mounted) {
-        NutritionQuickActionsSection.showMealSelectionWithDetectedFood(context, foodItem);
+
+  /// Ajouter tous les aliments détectés à un repas spécifique (flux depuis journal)
+  Future<void> _addFoodsToSpecificMeal(String mealName, String mealId) async {
+    if (_analysisResult == null || !_analysisResult!.success || _analysisResult!.detectedFoods.isEmpty) {
+      return;
+    }
+
+    try {
+      // Obtenir l'utilisateur connecté
+      final authService = AuthService();
+      final user = authService.currentUser;
+      if (user == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Erreur: utilisateur non connecté'),
+              backgroundColor: Color(0xFFDC2626),
+            ),
+          );
+        }
+        return;
       }
+
+      // Ajouter directement au repas comme un seul aliment personnalisé
+      final success = await FoodEntriesService.addAIFoodEntry(
+        userId: user.id,
+        mealName: mealName,
+        detectedFoods: _analysisResult!.detectedFoods,
+        aiMealName: _mealNameController.text.isNotEmpty ? _mealNameController.text : 'Plat détecté par IA',
+        consumedAt: DateTime.now(),
+      );
+
+      if (mounted) {
+        Navigator.pop(context);
+        
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${_analysisResult!.mealName ?? "Plat IA"} ajouté au $mealName'),
+              backgroundColor: const Color(0xFF0B132B),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Erreur lors de l\'ajout'),
+              backgroundColor: Color(0xFFDC2626),
+            ),
+          );
+        }
+      }
+
+    } catch (e) {
+      print('Erreur lors de l\'ajout au repas spécifique: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Erreur lors de l\'ajout au repas'),
+            backgroundColor: Color(0xFFDC2626),
+          ),
+        );
+      }
+    }
+  }
+
+  /// Ajouter tous les aliments détectés avec sélection de repas
+  Future<void> _addFoodsToJournalWithSelection() async {
+    if (_analysisResult == null || !_analysisResult!.success || _analysisResult!.detectedFoods.isEmpty) {
+      return;
+    }
+
+    try {
+      // Obtenir l'utilisateur connecté
+      final authService = AuthService();
+      final user = authService.currentUser;
+      if (user == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Erreur: utilisateur non connecté'),
+              backgroundColor: Color(0xFFDC2626),
+            ),
+          );
+        }
+        return;
+      }
+
+      // Récupérer les repas existants pour aujourd'hui
+      final allMeals = await FoodEntriesService.getFoodEntriesForDate(user.id, DateTime.now());
+      
+      // Filtrer seulement les repas qui ont des aliments (vrais repas existants)
+      final existingMeals = allMeals.where((meal) => meal.items.isNotEmpty).toList();
+      
+      print('🍽️ Repas trouvés au total: ${allMeals.length}');
+      print('🍽️ Repas avec aliments: ${existingMeals.length}');
+      
+      // Utiliser le widget de sélection de repas existant
+      MealSelectionBottomSheet.show(
+        context,
+        foodName: _mealNameController.text.isNotEmpty ? _mealNameController.text : '${_analysisResult!.detectedFoods.length} aliment(s) détecté(s)',
+        existingMeals: existingMeals,
+        onExistingMealSelected: (Meal selectedMeal) async {
+          await _addAIFoodToExistingMeal(selectedMeal, user.id);
+        },
+        onCreateNewMeal: () {
+          NewMealTypeBottomSheet.show(
+            context,
+            onMealTypeSelected: (String mealType, String time) async {
+              await _addAIFoodToNewMeal(mealType, user.id);
+            },
+          );
+        },
+      );
+
+    } catch (e) {
+      print('Erreur lors de l\'affichage de la sélection de repas: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Erreur lors de l\'affichage de la sélection de repas'),
+            backgroundColor: Color(0xFFDC2626),
+          ),
+        );
+      }
+    }
+  }
+
+  /// Ajouter l'aliment IA à un repas existant
+  Future<void> _addAIFoodToExistingMeal(Meal selectedMeal, String userId) async {
+    try {
+      final success = await FoodEntriesService.addAIFoodEntry(
+        userId: userId,
+        mealName: selectedMeal.name,
+        detectedFoods: _analysisResult!.detectedFoods,
+        aiMealName: _mealNameController.text.isNotEmpty ? _mealNameController.text : 'Plat détecté par IA',
+        consumedAt: DateTime.now(),
+      );
+
+      if (mounted) {
+        Navigator.pop(context);
+        
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${_analysisResult!.mealName ?? "Plat IA"} ajouté au ${selectedMeal.name}'),
+              backgroundColor: const Color(0xFF0B132B),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Erreur lors de l\'ajout'),
+              backgroundColor: Color(0xFFDC2626),
+            ),
+          );
+        }
+      }
+      
+    } catch (e) {
+      print('Erreur lors de l\'ajout au repas existant: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Erreur lors de l\'ajout au repas'),
+            backgroundColor: Color(0xFFDC2626),
+          ),
+        );
+      }
+    }
+  }
+
+  /// Ajouter l'aliment IA à un nouveau repas
+  Future<void> _addAIFoodToNewMeal(String mealType, String userId) async {
+    try {
+      final success = await FoodEntriesService.addAIFoodEntry(
+        userId: userId,
+        mealName: mealType,
+        detectedFoods: _analysisResult!.detectedFoods,
+        aiMealName: _mealNameController.text.isNotEmpty ? _mealNameController.text : 'Plat détecté par IA',
+        consumedAt: DateTime.now(),
+      );
+
+      if (mounted) {
+        Navigator.pop(context);
+        
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${_analysisResult!.mealName ?? "Plat IA"} ajouté au $mealType'),
+              backgroundColor: const Color(0xFF0B132B),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Erreur lors de l\'ajout'),
+              backgroundColor: Color(0xFFDC2626),
+            ),
+          );
+        }
+      }
+      
+    } catch (e) {
+      print('Erreur lors de l\'ajout au nouveau repas: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Erreur lors de l\'ajout au nouveau repas'),
+            backgroundColor: Color(0xFFDC2626),
+          ),
+        );
+      }
+    }
+  }
+
+
+  /// Démarrer l'animation de chargement avec phases
+  void _startLoadingAnimation() async {
+    setState(() {
+      _loadingPhase = 0;
     });
+    
+    // Avancer les phases automatiquement
+    for (int i = 0; i < _loadingPhases.length; i++) {
+      if (mounted && isAnalyzing) {
+        setState(() {
+          _loadingPhase = i;
+        });
+        await Future.delayed(Duration(milliseconds: i == 0 ? 300 : 800)); // Premier délai plus court
+      }
+    }
+  }
+
+  /// Analyser une image à partir de bytes (pour le web)
+  Future<void> _analyzeImageFromBytes(List<int> bytes) async {
+    try {
+      if (mounted) {
+        setState(() {
+          isAnalyzing = true;
+          hasResult = false;
+          errorMessage = null;
+          _loadingPhase = 0;
+        });
+      }
+
+      print('🔍 Début analyse image web: ${bytes.length} bytes');
+
+      // Démarrer l'animation de chargement
+      _startLoadingAnimation();
+
+      // Convertir en Uint8List et analyser directement
+      final Uint8List imageBytes = Uint8List.fromList(bytes);
+      
+      // Analyze image directly from bytes (Web compatible)
+      final result = await GeminiAnalysisService.analyzeImageFromBytes(imageBytes);
+      
+      print('🤖 Résultat analyse: success=${result.success}, aliments=${result.detectedFoods.length}');
+      
+      if (mounted) {
+        setState(() {
+          isAnalyzing = false;
+          _analysisResult = result;
+          
+          if (result.success && result.detectedFoods.isNotEmpty) {
+            hasResult = true;
+            errorMessage = null;
+            // Mettre à jour le nom du repas avec le nom généré par l'IA
+            _mealNameController.text = result.mealName ?? 'Plat détecté par IA';
+          } else {
+            hasResult = false;
+            errorMessage = result.error?.contains('API') == true 
+                ? 'Le service IA est temporairement surchargé.\nMerci de réessayer dans quelques minutes.' 
+                : 'Aucun aliment détecté dans cette image';
+          }
+        });
+      }
+
+    } catch (e) {
+      print('❌ Erreur analyse image web: $e');
+      if (mounted) {
+        setState(() {
+          isAnalyzing = false;
+          hasResult = false;
+          errorMessage = 'Le service IA est temporairement surchargé.\nMerci de réessayer dans quelques minutes.';
+        });
+      }
+    }
+  }
+
+  /// Afficher un message d'erreur
+  void _showErrorSnackbar(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: const Color(0xFFDC2626),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
   }
 }

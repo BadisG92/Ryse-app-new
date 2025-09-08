@@ -932,11 +932,24 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
                 subtitle: 'Prenez une photo de votre plat',
                 onTap: () {
                   Navigator.pop(context);
-                  // ✅ Navigation directe sans problème de contexte
+                  // ✅ Navigation directe avec informations du repas sélectionné
+                  String? mealName;
+                  String? mealId;
+                  
+                  if (_selectedMealIndex != null && _selectedMealIndex! < meals.length) {
+                    final selectedMeal = meals[_selectedMealIndex!];
+                    mealName = selectedMeal.name;
+                    mealId = selectedMeal.id;
+                  }
+                  
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const AIScannerScreen(),
+                      builder: (context) => AIScannerScreen(
+                        isFromDashboard: false,
+                        mealName: mealName,
+                        mealId: mealId,
+                      ),
                     ),
                   );
                 },

@@ -6,7 +6,12 @@ import '../screens/barcode_scanner_screen.dart';
 import '../screens/select_recipe_screen.dart';
 
 class AddFoodBottomSheet {
-  static void show(BuildContext context, Function showManualEntryBottomSheet) {
+  static void show(
+    BuildContext context, 
+    Function showManualEntryBottomSheet, {
+    String? mealName,
+    String? mealId,
+  }) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -85,7 +90,11 @@ class AddFoodBottomSheet {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const AIScannerScreen(),
+                      builder: (context) => AIScannerScreen(
+                        isFromDashboard: mealName == null && mealId == null,
+                        mealName: mealName,
+                        mealId: mealId,
+                      ),
                     ),
                   );
                 },

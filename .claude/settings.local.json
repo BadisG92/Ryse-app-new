@@ -76,7 +76,8 @@
       "Bash(del /s /q \"build\")",
       "Bash(del /s /q \".dart_tool\")",
       "Bash(del /s /q \".flutter-plugins\")",
-      "Bash(rd:*)"
+      "Bash(rd:*)",
+      "Bash(flutter:*)"
     ],
     "deny": [],
     "ask": []
