@@ -50,5 +50,8 @@
 	<string>Cette application utilise la caméra pour scanner les aliments et analyser les plats avec l'IA nutritionnelle.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Cette application accède à vos photos pour analyser les aliments et calculer leurs valeurs nutritionnelles.</string>
+	<!-- Permission pour la localisation -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Cette application utilise votre localisation pour vous proposer des recommandations nutritionnelles adaptées à votre région et culture alimentaire.</string>
 </dict>
 </plist>

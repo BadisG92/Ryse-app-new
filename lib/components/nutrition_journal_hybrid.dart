@@ -968,7 +968,7 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
                     MaterialPageRoute(
                       builder: (context) => BarcodeScannerScreen(
                         isFromDashboard: false,
-                        onFoodScanned: _addFoodToSelectedMeal, // Passer le callback
+                        onFoodScanned: (food) => _addFoodToSelectedMeal(food), // Passer le callback
                       ),
                     ),
                   );

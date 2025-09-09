@@ -44,7 +44,8 @@ dependencies:
   camera: ^0.10.5+9
   permission_handler: ^11.3.1
   image_picker: ^1.1.2
-  google_ml_kit: ^0.18.0
+  # google_ml_kit: ^0.18.0  # Temporairement commenté pour iOS compatibility
+  mobile_scanner: ^7.0.1  # Scanner de codes-barres moderne - version la plus récente
   http: ^1.2.1
   geolocator: ^12.0.0
   
