@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:provider/provider.dart';
 import 'ui/custom_card.dart';
 import '../models/nutrition_models.dart';
 import '../widgets/nutrition/meal_card.dart';
@@ -12,6 +13,8 @@ import '../screens/select_recipe_screen.dart';
 import '../bottom_sheets/manual_food_search_bottom_sheet.dart';
 import '../services/food_entries_service.dart';
 import '../services/auth_service.dart';
+import '../services/localization_service.dart';
+import '../services/translations.dart';
 import '../bottom_sheets/add_meal_bottom_sheet.dart';
 
 class NutritionJournalHybrid extends StatefulWidget {
@@ -398,15 +401,27 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
                 const SizedBox(height: 16),
               ],
               
-              // Options pour créer un nouveau repas
-              ...['Petit-déjeuner', 'Déjeuner', 'Collation', 'Dîner'].map((mealType) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: MealOptionWidget(
-                    icon: _getMealIcon(mealType),
-                    title: 'Nouveau $mealType',
-                    subtitle: 'Créer un nouveau bloc de repas',
-                    onTap: () async {
+              // Options pour créer un nouveau repas avec traduction
+              Consumer<LocalizationService>(
+                builder: (context, locService, child) {
+                  final mealTypes = [
+                    ('breakfast', 'breakfast'.tr(locService.currentLanguageCode)),
+                    ('lunch', 'lunch'.tr(locService.currentLanguageCode)),
+                    ('snack', 'snack'.tr(locService.currentLanguageCode)),
+                    ('dinner', 'dinner'.tr(locService.currentLanguageCode)),
+                  ];
+                  
+                  return Column(
+                    children: mealTypes.map((mealData) {
+                      final mealKey = mealData.$1;
+                      final mealType = mealData.$2;
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: MealOptionWidget(
+                          icon: _getMealIcon(mealType),
+                          title: '${"new_meal_type".tr(locService.currentLanguageCode)} $mealType',
+                          subtitle: 'create_new_meal_block'.tr(locService.currentLanguageCode),
+                          onTap: () async {
                       Navigator.pop(context);
                       
                       // Utiliser notre nouvelle logique de pré-génération d'ID
@@ -462,10 +477,13 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
                           }
                         }
                       }
-                    },
-                  ),
-                );
-              }),
+                          },
+                        ),
+                      );
+                    }).toList(),
+                  );
+                },
+              ),
               
               const SizedBox(height: 24),
             ],
@@ -752,26 +770,28 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
             const SizedBox(height: 12),
             
             // Ligne de texte principale avec style bicolore
-            RichText(
-              text: TextSpan(
-                children: [
-                  TextSpan(
-                    text: '$totalCalories kcal',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF0B132B),
+            Consumer<LocalizationService>(
+              builder: (context, locService, child) => RichText(
+                text: TextSpan(
+                  children: [
+                    TextSpan(
+                      text: '$totalCalories kcal',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF0B132B),
+                      ),
                     ),
-                  ),
-                  TextSpan(
-                    text: ' / $targetCalories kcal consommées',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w400,
-                      color: Color(0xFF64748B),
+                    TextSpan(
+                      text: ' / $targetCalories ${"kcal_consumed".tr(locService.currentLanguageCode)}',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w400,
+                        color: Color(0xFF64748B),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
             
@@ -813,17 +833,23 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _buildSimpleMacroIndicator(
-                  'Protéines',
-                  '${totalProteins.toStringAsFixed(0)}g',
+                Consumer<LocalizationService>(
+                  builder: (context, locService, child) => _buildSimpleMacroIndicator(
+                    'proteins'.tr(locService.currentLanguageCode),
+                    '${totalProteins.toStringAsFixed(0)}g',
+                  ),
                 ),
-                _buildSimpleMacroIndicator(
-                  'Glucides',
-                  '${totalCarbs.toStringAsFixed(0)}g',
+                Consumer<LocalizationService>(
+                  builder: (context, locService, child) => _buildSimpleMacroIndicator(
+                    'carbs'.tr(locService.currentLanguageCode),
+                    '${totalCarbs.toStringAsFixed(0)}g',
+                  ),
                 ),
-                _buildSimpleMacroIndicator(
-                  'Lipides',
-                  '${totalFats.toStringAsFixed(0)}g',
+                Consumer<LocalizationService>(
+                  builder: (context, locService, child) => _buildSimpleMacroIndicator(
+                    'lipids'.tr(locService.currentLanguageCode),
+                    '${totalFats.toStringAsFixed(0)}g',
+                  ),
                 ),
               ],
             ),

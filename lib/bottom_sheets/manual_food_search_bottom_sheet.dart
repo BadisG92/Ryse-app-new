@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:provider/provider.dart';
 import '../widgets/nutrition/option_widgets.dart';
 import '../bottom_sheets/editable_food_details_bottom_sheet.dart';
 import '../bottom_sheets/create_custom_food_bottom_sheet.dart';
@@ -7,6 +8,8 @@ import '../models/nutrition_models.dart';
 import '../components/ui/nutrition_widgets.dart';
 import '../services/database_service.dart';
 import '../services/auth_service.dart';
+import '../services/localization_service.dart';
+import '../services/translations.dart';
 import '../types/database_types.dart';
 
 class ManualFoodSearchBottomSheet extends StatefulWidget {
@@ -163,48 +166,52 @@ class _ManualFoodSearchBottomSheetState extends State<ManualFoodSearchBottomShee
     }
   }
 
-  String _getEmptyStateMessage() {
+  String _getEmptyStateMessage(String languageCode) {
     if (_searchQuery.isNotEmpty) {
-      return 'Aucun aliment trouvé pour "$_searchQuery"';
+      return 'no_food_found'.tr(languageCode).replaceAll('{query}', _searchQuery);
     } else if (_frequentFoods.isEmpty) {
-      return 'Tapez pour rechercher un aliment\nou créez votre propre aliment personnalisé';
+      return 'type_to_search'.tr(languageCode);
     } else {
-      return 'Aucun aliment disponible';
+      return 'no_food_available'.tr(languageCode);
     }
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            _searchQuery.isNotEmpty ? LucideIcons.search : LucideIcons.type,
-            size: 48,
-            color: const Color(0xFF64748B),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            _getEmptyStateMessage(),
-            style: const TextStyle(
-              fontSize: 16,
-              color: Color(0xFF64748B),
-            ),
-            textAlign: TextAlign.center,
-          ),
-          if (_searchQuery.isEmpty && _frequentFoods.isEmpty) ...[
-            const SizedBox(height: 8),
-            const Text(
-              'Commencez à ajouter des aliments à vos repas\npour voir vos suggestions ici',
-              style: TextStyle(
-                fontSize: 13,
-                color: Color(0xFF94A3B8),
+    return Consumer<LocalizationService>(
+      builder: (context, localizationService, _) {
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                _searchQuery.isNotEmpty ? LucideIcons.search : LucideIcons.type,
+                size: 48,
+                color: const Color(0xFF64748B),
               ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ],
-      ),
+              const SizedBox(height: 16),
+              Text(
+                _getEmptyStateMessage(localizationService.currentLanguageCode),
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: Color(0xFF64748B),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              if (_searchQuery.isEmpty && _frequentFoods.isEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  'start_adding_foods'.tr(localizationService.currentLanguageCode),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF94A3B8),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -252,14 +259,18 @@ class _ManualFoodSearchBottomSheetState extends State<ManualFoodSearchBottomShee
                   ),
                 ),
                 const SizedBox(width: 16),
-                const Expanded(
-                  child: Text(
-                    'Rechercher un aliment',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF1A1A1A),
-                    ),
+                Expanded(
+                  child: Consumer<LocalizationService>(
+                    builder: (context, localizationService, _) {
+                      return Text(
+                        'search_food'.tr(localizationService.currentLanguageCode),
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1A1A1A),
+                        ),
+                      );
+                    },
                   ),
                 ),
               ],
@@ -276,25 +287,29 @@ class _ManualFoodSearchBottomSheetState extends State<ManualFoodSearchBottomShee
                 width: 1,
               ),
             ),
-            child: TextField(
-              controller: _searchController,
-              decoration: const InputDecoration(
-                hintText: 'Rechercher un aliment...',
-                hintStyle: TextStyle(
-                  color: Color(0xFF64748B),
-                  fontSize: 16,
-                ),
-                prefixIcon: Icon(
-                  LucideIcons.search,
-                  color: Color(0xFF64748B),
-                  size: 20,
-                ),
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 16,
-                ),
-              ),
+            child: Consumer<LocalizationService>(
+              builder: (context, localizationService, _) {
+                return TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'search_food_placeholder'.tr(localizationService.currentLanguageCode),
+                    hintStyle: const TextStyle(
+                      color: Color(0xFF64748B),
+                      fontSize: 16,
+                    ),
+                    prefixIcon: const Icon(
+                      LucideIcons.search,
+                      color: Color(0xFF64748B),
+                      size: 20,
+                    ),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 16,
+                    ),
+                  ),
+                );
+              },
             ),
           ),
           
@@ -343,26 +358,30 @@ class _ManualFoodSearchBottomSheetState extends State<ManualFoodSearchBottomShee
                       ),
                     ),
                     const SizedBox(width: 16),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Créer un aliment',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF0B132B),
-                            ),
-                          ),
-                          Text(
-                            'Créez votre propre aliment personnalisé',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Color(0xFF64748B),
-                            ),
-                          ),
-                        ],
+                    Expanded(
+                      child: Consumer<LocalizationService>(
+                        builder: (context, localizationService, _) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'create_food'.tr(localizationService.currentLanguageCode),
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF0B132B),
+                                ),
+                              ),
+                              Text(
+                                'create_custom_food_desc'.tr(localizationService.currentLanguageCode),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF64748B),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
                       ),
                     ),
                     const Icon(
@@ -380,26 +399,30 @@ class _ManualFoodSearchBottomSheetState extends State<ManualFoodSearchBottomShee
       
           // Section titre pour les aliments fréquents
           if (_showingFrequentFoods && _frequentFoods.isNotEmpty) ...[
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Row(
-                children: [
-                  const Icon(
-                    LucideIcons.trendingUp,
-                    size: 16,
-                    color: Color(0xFF0B132B),
+            Consumer<LocalizationService>(
+              builder: (context, localizationService, _) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        LucideIcons.trendingUp,
+                        size: 16,
+                        color: Color(0xFF0B132B),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'frequently_used_foods'.tr(localizationService.currentLanguageCode),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF0B132B),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Aliments fréquemment utilisés',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF0B132B),
-                    ),
-                  ),
-                ],
-              ),
+                );
+              },
             ),
             const SizedBox(height: 12),
           ],

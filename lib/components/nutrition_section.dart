@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:provider/provider.dart';
 import 'nutrition_dashboard_hybrid.dart';
 import 'nutrition_journal_hybrid.dart';
 import 'nutrition_recipes_hybrid.dart';
 import '../services/dashboard_service.dart';
 import '../services/streak_service.dart';
 import '../services/header_cache_service.dart';
+import '../services/localization_service.dart';
+import '../services/translations.dart';
 import '../providers/goals_notifier.dart';
+import 'ui/language_switch_buttons.dart';
 
 class NutritionSection extends StatefulWidget {
   const NutritionSection({super.key});
@@ -29,7 +33,13 @@ class _NutritionSectionState extends State<NutritionSection>
   String get _objectivesText => _loadingObjectives ? '...' : '$_completedGoals/$_totalGoals objectifs';
   String get _streakText => _loadingStreak ? '...' : '$_currentStreak jours';
 
-  final List<String> _pageNames = ['Tableau de bord', 'Journal', 'Recettes'];
+  List<String> _getPageNames(String languageCode) {
+    return [
+      'dashboard'.tr(languageCode),
+      'journal'.tr(languageCode),
+      'recipes'.tr(languageCode),
+    ];
+  }
   final List<IconData> _pageIcons = [
     LucideIcons.activity,
     LucideIcons.bookOpen,
@@ -117,23 +127,28 @@ class _NutritionSectionState extends State<NutritionSection>
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
-            // Header avec titre et indicateurs de page
-            _buildHeader(),
-            
-            // Contenu principal avec PageView
-            Expanded(
-              child: PageView(
-                controller: _pageController,
-                onPageChanged: _onPageChanged,
-                children: const [
-                  NutritionDashboardHybrid(),
-                  NutritionJournalHybrid(),
-                  NutritionRecipesHybrid(),
-                ],
-              ),
+            Column(
+              children: [
+                // Header avec titre et indicateurs de page
+                _buildHeader(),
+                
+                // Contenu principal avec PageView
+                Expanded(
+                  child: PageView(
+                    controller: _pageController,
+                    onPageChanged: _onPageChanged,
+                    children: const [
+                      NutritionDashboardHybrid(),
+                      NutritionJournalHybrid(),
+                      NutritionRecipesHybrid(),
+                    ],
+                  ),
+                ),
+              ],
             ),
+            const LanguageSwitchButtons(),
           ],
         ),
       ),
@@ -215,17 +230,22 @@ class _NutritionSectionState extends State<NutritionSection>
                                 ),
                                 const SizedBox(width: 6),
                                 Flexible(
-                                  child: Text(
-                                    _pageNames[index],
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w500,
-                                      color: isSelected 
-                                          ? const Color(0xFF0B132B)
-                                          : const Color(0xFF888888),
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                    textAlign: TextAlign.center,
+                                  child: Consumer<LocalizationService>(
+                                    builder: (context, localizationService, _) {
+                                      final pageNames = _getPageNames(localizationService.currentLanguageCode);
+                                      return Text(
+                                        pageNames[index],
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w500,
+                                          color: isSelected 
+                                              ? const Color(0xFF0B132B)
+                                              : const Color(0xFF888888),
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                        textAlign: TextAlign.center,
+                                      );
+                                    },
                                   ),
                                 ),
                               ],

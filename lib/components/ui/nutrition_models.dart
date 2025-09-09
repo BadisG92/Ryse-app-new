@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'dart:math';
+import '../../services/translations.dart';
 
 // Modèle de profil nutritionnel
 class NutritionProfile {
@@ -46,7 +47,10 @@ class NutritionProfile {
   int get waterProgressPercent => (waterLevel * 100).round();
 
   // Messages dynamiques
-  String get progressMessage => '${caloriesProgressPercent}% de l\'objectif atteint';
+  String getProgressMessage([String? languageCode]) {
+    final lang = languageCode ?? 'fr';
+    return 'percent_of_goal_achieved'.tr(lang).replaceAll('{percent}', caloriesProgressPercent.toString());
+  }
   
   String get statusMessage {
     if (caloriesProgress >= 0.9) return 'Excellent travail ! 🎉';
@@ -93,6 +97,7 @@ class NutritionProfile {
 
 // Modèle de macronutriment
 class MacroNutrient {
+  final String id;
   final String name;
   final String unit;
   final int current;
@@ -101,6 +106,7 @@ class MacroNutrient {
   final IconData icon;
 
   const MacroNutrient({
+    required this.id,
     required this.name,
     required this.unit,
     required this.current,
@@ -272,10 +278,12 @@ class NutritionData {
   );
 
   // Macronutriments
-  static List<MacroNutrient> getMacros(NutritionProfile profile) {
+  static List<MacroNutrient> getMacros(NutritionProfile profile, [String? languageCode]) {
+    final lang = languageCode ?? 'fr'; // Default to French
     return [
       MacroNutrient(
-        name: 'Protéines',
+        id: 'protein',
+        name: 'proteins'.tr(lang),
         unit: 'g',
         current: profile.currentProtein,
         target: profile.targetProtein,
@@ -283,7 +291,8 @@ class NutritionData {
         icon: LucideIcons.zap,
       ),
       MacroNutrient(
-        name: 'Glucides',
+        id: 'carbs',
+        name: 'carbohydrates'.tr(lang),
         unit: 'g',
         current: profile.currentCarbs,
         target: profile.targetCarbs,
@@ -291,7 +300,8 @@ class NutritionData {
         icon: LucideIcons.wheat,
       ),
       MacroNutrient(
-        name: 'Lipides',
+        id: 'fats',
+        name: 'lipids'.tr(lang),
         unit: 'g',
         current: profile.currentFat,
         target: profile.targetFat,
@@ -328,46 +338,58 @@ class NutritionData {
     ),
   ];
 
-  // Options d'eau
-  static const List<WaterOption> waterOptions = [
-    WaterOption(
-      label: '1 verre',
-      amount: '250 ml',
-      icon: LucideIcons.wine,
-      milliliters: 250,
-    ),
-    WaterOption(
-      label: '1 gourde',
-      amount: '500 ml',
-      icon: LucideIcons.cupSoda,
-      milliliters: 500,
-    ),
-    WaterOption(
-      label: '1 litre',
-      amount: '1000 ml',
-      icon: LucideIcons.milk,
-      milliliters: 1000,
-    ),
-  ];
+  // Options d'eau avec traductions
+  static List<WaterOption> getWaterOptions([String? languageCode]) {
+    final lang = languageCode ?? 'fr';
+    return [
+      WaterOption(
+        label: 'one_glass'.tr(lang),
+        amount: '250 ml',
+        icon: LucideIcons.wine,
+        milliliters: 250,
+      ),
+      WaterOption(
+        label: 'one_bottle'.tr(lang),
+        amount: '500 ml',
+        icon: LucideIcons.cupSoda,
+        milliliters: 500,
+      ),
+      WaterOption(
+        label: 'one_liter'.tr(lang),
+        amount: '1000 ml',
+        icon: LucideIcons.milk,
+        milliliters: 1000,
+      ),
+    ];
+  }
 
-  // Conseils IA
-  static const List<NutritionTip> tips = [
-    NutritionTip(
-      content: '💡 Astuce : Buvez un verre d\'eau avant chaque repas pour une meilleure digestion et satiété.',
-      category: 'hydration',
-      accentColor: Color(0xFF0B132B),
-    ),
-    NutritionTip(
-      content: '⏰ Timing parfait : Consommez vos protéines dans les 30 minutes après l\'entraînement.',
-      category: 'timing',
-      accentColor: Color(0xFF1C2951),
-    ),
-    NutritionTip(
-      content: '⚖️ Équilibre : Votre ratio protéines/glucides est optimal pour votre objectif.',
-      category: 'balance',
-      accentColor: Color(0xFF22C55E),
-    ),
-  ];
+  // Options d'eau constants pour compatibilité (deprecated)
+  static const List<WaterOption> waterOptions = [];
+
+  // Conseils IA avec traductions
+  static List<NutritionTip> getTips([String? languageCode]) {
+    final lang = languageCode ?? 'fr';
+    return [
+      NutritionTip(
+        content: 'ai_tip_hydration'.tr(lang),
+        category: 'hydration',
+        accentColor: const Color(0xFF0B132B),
+      ),
+      NutritionTip(
+        content: 'ai_tip_timing'.tr(lang),
+        category: 'timing',
+        accentColor: const Color(0xFF1C2951),
+      ),
+      NutritionTip(
+        content: 'ai_tip_balance'.tr(lang),
+        category: 'balance',
+        accentColor: const Color(0xFF22C55E),
+      ),
+    ];
+  }
+
+  // Conseils IA constants pour compatibilité (deprecated)
+  static const List<NutritionTip> tips = [];
 
   // Statistiques des repas - calculées dynamiquement depuis les vraies données
   static int get completedMeals => 0;

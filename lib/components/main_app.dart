@@ -5,6 +5,7 @@ import 'nutrition_section.dart';
 import 'sport_section.dart';
 import 'global_progress_hybrid.dart';
 import 'onboarding_gamified_hybrid.dart';
+import 'ui/language_switch_buttons.dart';
 
 class MainApp extends StatefulWidget {
   const MainApp({super.key});
@@ -55,28 +56,7 @@ class _MainAppState extends State<MainApp> {
             ),
           ),
           _renderContent(),
-          // Bouton de test pour l'onboarding - EN HAUT A DROITE
-          Positioned(
-            top: 50,
-            right: 20,
-            child: FloatingActionButton(
-              mini: true,
-              backgroundColor: Colors.orange,
-              heroTag: "test_onboarding",
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => OnboardingGamifiedHybrid(
-                      onComplete: () {
-                        Navigator.of(context).pop();
-                      },
-                    ),
-                  ),
-                );
-              },
-              child: const Icon(Icons.school, color: Colors.white),
-            ),
-          ),
+          const LanguageSwitchButtons(),
           Positioned(
             left: 0,
             right: 0,

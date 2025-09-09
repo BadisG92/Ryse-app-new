@@ -16,8 +16,11 @@ import '../services/database_service.dart';
 import '../services/water_service.dart';
 import '../services/food_entries_service.dart';
 import '../services/auth_service.dart';
+import '../services/localization_service.dart';
+import '../services/translations.dart';
 import '../models/nutrition_models.dart' as nutrition_models;
 import '../screens/select_recipe_screen.dart';
+import 'package:provider/provider.dart';
 
 class NutritionDashboardHybrid extends StatefulWidget {
   const NutritionDashboardHybrid({super.key});
@@ -92,52 +95,7 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
       final mealCalories = dashboardData['mealCalories'] as Map<String, double>;
       debugPrint('🔧 Dashboard: Calories par repas = $mealCalories');
       
-      realMeals = [
-        const Meal(
-          id: 'breakfast',
-          name: 'Petit-déjeuner',
-          shortName: 'P.déj',
-          calories: 0,
-          isCompleted: false,
-          time: TimeOfDay(hour: 8, minute: 0),
-        ).copyWith(
-          calories: mealCalories['breakfast']?.round() ?? 0,
-          isCompleted: (mealCalories['breakfast'] ?? 0) > 0,
-        ),
-        const Meal(
-          id: 'lunch',
-          name: 'Déjeuner',
-          shortName: 'Déj',
-          calories: 0,
-          isCompleted: false,
-          time: TimeOfDay(hour: 12, minute: 30),
-        ).copyWith(
-          calories: mealCalories['lunch']?.round() ?? 0,
-          isCompleted: (mealCalories['lunch'] ?? 0) > 0,
-        ),
-        const Meal(
-          id: 'snack',
-          name: 'Collation',
-          shortName: 'Coll',
-          calories: 0,
-          isCompleted: false,
-          time: TimeOfDay(hour: 16, minute: 0),
-        ).copyWith(
-          calories: mealCalories['snack']?.round() ?? 0,
-          isCompleted: (mealCalories['snack'] ?? 0) > 0,
-        ),
-        const Meal(
-          id: 'dinner',
-          name: 'Dîner',
-          shortName: 'Dîner',
-          calories: 0,
-          isCompleted: false,
-          time: TimeOfDay(hour: 20, minute: 0),
-        ).copyWith(
-          calories: mealCalories['dinner']?.round() ?? 0,
-          isCompleted: (mealCalories['dinner'] ?? 0) > 0,
-        ),
-      ];
+      realMeals = _createMealsWithTranslations(mealCalories);
 
       debugPrint('🔧 Dashboard: ${realMeals.length} repas créés');
       for (final meal in realMeals) {
@@ -345,13 +303,15 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
               const SizedBox(height: 16),
               
               // Macronutriments avec animations - sans pourcentages et sans icônes
-              MacronutrientsCard(
-                macros: NutritionData.getMacros(nutritionProfile),
-                animatedValues: {
-                  'protéines': animatedProtein,
-                  'glucides': animatedCarbs,
-                  'lipides': animatedFat,
-                },
+              Consumer<LocalizationService>(
+                builder: (context, locService, child) => MacronutrientsCard(
+                  macros: NutritionData.getMacros(nutritionProfile, locService.currentLanguageCode),
+                  animatedValues: {
+                    'protein': animatedProtein,
+                    'carbs': animatedCarbs,
+                    'fats': animatedFat,
+                  },
+                ),
               ),
               
               const SizedBox(height: 16),
@@ -367,8 +327,13 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
               const SizedBox(height: 16),
               
               // Conseil IA - avec icône IA
-              AITipCard(
-                tip: NutritionData.tips.first, // TODO: Rotation intelligente
+              Consumer<LocalizationService>(
+                builder: (context, localizationService, _) {
+                  final tips = NutritionData.getTips(localizationService.currentLanguageCode);
+                  return AITipCard(
+                    tip: tips.first, // TODO: Rotation intelligente
+                  );
+                },
               ),
               
               const SizedBox(height: 16),
@@ -418,10 +383,11 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
   void _addWaterAmount(int milliliters) async {
     final userId = Supabase.instance.client.auth.currentUser?.id;
     if (userId == null) {
+      final locService = Provider.of<LocalizationService>(context, listen: false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Vous devez être connecté pour enregistrer l\'hydratation'),
-          duration: Duration(seconds: 2),
+        SnackBar(
+          content: Text('must_be_logged_in_water'.tr(locService.currentLanguageCode)),
+          duration: const Duration(seconds: 2),
         ),
       );
       return;
@@ -442,19 +408,21 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
       await _refreshHydrationDataOnly();
 
       // Feedback visuel
+      final locService = Provider.of<LocalizationService>(context, listen: false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('$milliliters ml d\'eau ajoutés ! 💧'),
+          content: Text('water_added_success'.tr(locService.currentLanguageCode).replaceAll('{amount}', milliliters.toString())),
           duration: const Duration(seconds: 2),
           backgroundColor: const Color(0xFF0B132B),
         ),
       );
     } catch (e) {
       debugPrint('Erreur lors de l\'ajout d\'eau: $e');
+      final locService = Provider.of<LocalizationService>(context, listen: false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Erreur lors de l\'ajout d\'eau'),
-          duration: Duration(seconds: 2),
+        SnackBar(
+          content: Text('error_adding_water'.tr(locService.currentLanguageCode)),
+          duration: const Duration(seconds: 2),
           backgroundColor: Colors.red,
         ),
       );
@@ -522,6 +490,46 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
     _timers.add(caloriesTimer);
   }
 
+  List<Meal> _createMealsWithTranslations(Map<String, double> mealCalories) {
+    final locService = Provider.of<LocalizationService>(context, listen: false);
+    final lang = locService.currentLanguageCode;
+    
+    return [
+      Meal(
+        id: 'breakfast',
+        name: 'breakfast'.tr(lang),
+        shortName: locService.isFrench ? 'P.déj' : 'Brkf',
+        calories: mealCalories['breakfast']?.round() ?? 0,
+        isCompleted: (mealCalories['breakfast'] ?? 0) > 0,
+        time: const TimeOfDay(hour: 8, minute: 0),
+      ),
+      Meal(
+        id: 'lunch',
+        name: 'lunch'.tr(lang),
+        shortName: locService.isFrench ? 'Déj' : 'Lnch',
+        calories: mealCalories['lunch']?.round() ?? 0,
+        isCompleted: (mealCalories['lunch'] ?? 0) > 0,
+        time: const TimeOfDay(hour: 12, minute: 30),
+      ),
+      Meal(
+        id: 'snack',
+        name: 'snack'.tr(lang),
+        shortName: locService.isFrench ? 'Coll' : 'Snck',
+        calories: mealCalories['snack']?.round() ?? 0,
+        isCompleted: (mealCalories['snack'] ?? 0) > 0,
+        time: const TimeOfDay(hour: 16, minute: 0),
+      ),
+      Meal(
+        id: 'dinner',
+        name: 'dinner'.tr(lang),
+        shortName: locService.isFrench ? 'Dîner' : 'Dnnr',
+        calories: mealCalories['dinner']?.round() ?? 0,
+        isCompleted: (mealCalories['dinner'] ?? 0) > 0,
+        time: const TimeOfDay(hour: 20, minute: 0),
+      ),
+    ];
+  }
+
   void _showAddFoodBottomSheet() {
     showModalBottomSheet(
       context: context,
@@ -553,45 +561,52 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
               const SizedBox(height: 20),
               
               // Titre
-              const Text(
-                'Ajouter un aliment',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF1A1A1A),
+              Consumer<LocalizationService>(
+                builder: (context, locService, child) => Text(
+                  'add_food'.tr(locService.currentLanguageCode),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1A1A1A),
+                  ),
                 ),
               ),
               
               const SizedBox(height: 16),
               
-              const Text(
-                'Choisissez comment vous souhaitez ajouter votre aliment',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF64748B),
+              Consumer<LocalizationService>(
+                builder: (context, locService, child) => Text(
+                  'choose_how_to_add_food'.tr(locService.currentLanguageCode),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF64748B),
+                  ),
+                  textAlign: TextAlign.center,
                 ),
-                textAlign: TextAlign.center,
               ),
               
               const SizedBox(height: 24),
               
               // Options d'ajout d'aliment
-              FoodOptionWidget(
-                icon: LucideIcons.pencil,
-                title: 'Saisie manuelle',
-                subtitle: 'Rechercher et ajouter manuellement',
-                onTap: () {
-                  Navigator.pop(context);
-                  _showManualEntryBottomSheet();
-                },
+              Consumer<LocalizationService>(
+                builder: (context, locService, child) => FoodOptionWidget(
+                  icon: LucideIcons.pencil,
+                  title: 'manual_entry'.tr(locService.currentLanguageCode),
+                  subtitle: 'search_and_add_manually'.tr(locService.currentLanguageCode),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showManualEntryBottomSheet();
+                  },
+                ),
               ),
               
               const SizedBox(height: 12),
               
-              FoodOptionWidget(
-                icon: LucideIcons.camera,
-                title: 'Scanner avec l\'IA',
-                subtitle: 'Prenez une photo de votre plat',
+              Consumer<LocalizationService>(
+                builder: (context, locService, child) => FoodOptionWidget(
+                  icon: LucideIcons.camera,
+                  title: 'ai_scanner'.tr(locService.currentLanguageCode),
+                  subtitle: 'take_photo_of_dish'.tr(locService.currentLanguageCode),
                 onTap: () async {
                   Navigator.pop(context);
                   // Navigation directe comme dans les boutons rapides - simple et efficace
@@ -603,33 +618,38 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
                   );
                   // Rafraîchir les données au retour
                   _refreshNutritionData();
-                },
+                  },
+                ),
               ),
               
               const SizedBox(height: 12),
               
-              FoodOptionWidget(
-                icon: LucideIcons.scan,
-                title: 'Code-barres',
-                subtitle: 'Scanner le code-barres du produit',
+              Consumer<LocalizationService>(
+                builder: (context, locService, child) => FoodOptionWidget(
+                  icon: LucideIcons.scan,
+                  title: 'barcode'.tr(locService.currentLanguageCode),
+                  subtitle: 'scan_product_barcode'.tr(locService.currentLanguageCode),
                 onTap: () {
                   Navigator.pop(context);
                   // Utiliser EXACTEMENT le même flux que la saisie manuelle
                   _showScannerEntryBottomSheet();
-                },
+                  },
+                ),
               ),
               
               const SizedBox(height: 12),
               
-              FoodOptionWidget(
-                icon: LucideIcons.chefHat,
-                title: 'Mes recettes',
-                subtitle: 'Choisir parmi vos recettes sauvegardées',
-                onTap: () {
-                  Navigator.pop(context);
-                  // Utiliser EXACTEMENT le même flux que la saisie manuelle
-                  _showRecipeEntryBottomSheet();
-                },
+              Consumer<LocalizationService>(
+                builder: (context, locService, child) => FoodOptionWidget(
+                  icon: LucideIcons.chefHat,
+                  title: 'my_recipes'.tr(locService.currentLanguageCode),
+                  subtitle: 'choose_from_saved_recipes'.tr(locService.currentLanguageCode),
+                  onTap: () {
+                    Navigator.pop(context);
+                    // Utiliser EXACTEMENT le même flux que la saisie manuelle
+                    _showRecipeEntryBottomSheet();
+                  },
+                ),
               ),
               
               const SizedBox(height: 24),
@@ -701,25 +721,29 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
               const SizedBox(height: 20),
               
               // Titre
-              const Text(
-                'Ajouter une recette',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF1A1A1A),
+              Consumer<LocalizationService>(
+                builder: (context, locService, child) => Text(
+                  'add_recipe'.tr(locService.currentLanguageCode),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1A1A1A),
+                  ),
                 ),
               ),
               
               const SizedBox(height: 16),
               
-              const Text(
-                'Voulez-vous ajouter à un repas existant ou créer un nouveau repas ?',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF64748B),
+              Consumer<LocalizationService>(
+                builder: (context, locService, child) => Text(
+                  'add_to_existing_or_new_meal'.tr(locService.currentLanguageCode),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF64748B),
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
                 ),
-                textAlign: TextAlign.center,
-              ),
               
               const SizedBox(height: 24),
               
@@ -757,23 +781,27 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
                           ),
                         ),
                         const SizedBox(width: 16),
-                        const Expanded(
+                        Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                'Ajouter à un repas existant',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF0B132B),
+                              Consumer<LocalizationService>(
+                                builder: (context, locService, _) => Text(
+                                  'add_to_existing_meal'.tr(locService.currentLanguageCode),
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF0B132B),
+                                  ),
                                 ),
                               ),
-                              Text(
-                                'Choisir parmi vos repas d\'aujourd\'hui',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Color(0xFF64748B),
+                              Consumer<LocalizationService>(
+                                builder: (context, locService, _) => Text(
+                                  'choose_from_todays_meals'.tr(locService.currentLanguageCode),
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF64748B),
+                                  ),
                                 ),
                               ),
                             ],
@@ -825,23 +853,27 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
                         ),
                       ),
                       const SizedBox(width: 16),
-                      const Expanded(
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'Créer un nouveau repas',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF0B132B),
+                            Consumer<LocalizationService>(
+                              builder: (context, locService, _) => Text(
+                                'create_new_meal'.tr(locService.currentLanguageCode),
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF0B132B),
+                                ),
                               ),
                             ),
-                            Text(
-                              'Choisir le type de repas à créer',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Color(0xFF64748B),
+                            Consumer<LocalizationService>(
+                              builder: (context, locService, _) => Text(
+                                'choose_meal_type_to_create'.tr(locService.currentLanguageCode),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF64748B),
+                                ),
                               ),
                             ),
                           ],
@@ -919,13 +951,15 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
                     ),
                   ),
                   const SizedBox(width: 16),
-                  const Expanded(
-                    child: Text(
-                      'Choisir un repas',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF1A1A1A),
+                  Expanded(
+                    child: Consumer<LocalizationService>(
+                      builder: (context, locService, _) => Text(
+                        'choose_meal'.tr(locService.currentLanguageCode),
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1A1A1A),
+                        ),
                       ),
                     ),
                   ),
@@ -981,11 +1015,13 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
                                   color: Color(0xFF0B132B),
                                 ),
                               ),
-                              Text(
-                                '${meal.time} • ${meal.items.length} aliment(s)',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Color(0xFF64748B),
+                              Consumer<LocalizationService>(
+                                builder: (context, locService, _) => Text(
+                                  '${meal.time} • ${meal.items.length} ${'food_items'.tr(locService.currentLanguageCode)}',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF64748B),
+                                  ),
                                 ),
                               ),
                             ],
@@ -1085,54 +1121,9 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
           targetWaterMl: dashboardData['targetWaterMl'],
         );
 
-        // Mettre à jour les repas
+        // Mettre à jour les repas avec traductions
         final mealCalories = dashboardData['mealCalories'] as Map<String, double>;
-        realMeals = [
-          const Meal(
-            id: 'breakfast',
-            name: 'Petit-déjeuner',
-            shortName: 'P.déj',
-            calories: 0,
-            isCompleted: false,
-            time: TimeOfDay(hour: 8, minute: 0),
-          ).copyWith(
-            calories: mealCalories['breakfast']?.round() ?? 0,
-            isCompleted: (mealCalories['breakfast'] ?? 0) > 0,
-          ),
-          const Meal(
-            id: 'lunch',
-            name: 'Déjeuner',
-            shortName: 'Déj',
-            calories: 0,
-            isCompleted: false,
-            time: TimeOfDay(hour: 12, minute: 30),
-          ).copyWith(
-            calories: mealCalories['lunch']?.round() ?? 0,
-            isCompleted: (mealCalories['lunch'] ?? 0) > 0,
-          ),
-          const Meal(
-            id: 'snack',
-            name: 'Collation',
-            shortName: 'Coll',
-            calories: 0,
-            isCompleted: false,
-            time: TimeOfDay(hour: 16, minute: 0),
-          ).copyWith(
-            calories: mealCalories['snack']?.round() ?? 0,
-            isCompleted: (mealCalories['snack'] ?? 0) > 0,
-          ),
-          const Meal(
-            id: 'dinner',
-            name: 'Dîner',
-            shortName: 'Dîner',
-            calories: 0,
-            isCompleted: false,
-            time: TimeOfDay(hour: 20, minute: 0),
-          ).copyWith(
-            calories: mealCalories['dinner']?.round() ?? 0,
-            isCompleted: (mealCalories['dinner'] ?? 0) > 0,
-          ),
-        ];
+        realMeals = _createMealsWithTranslations(mealCalories);
       });
 
       // Redémarrer les animations avec les nouvelles valeurs
@@ -1188,24 +1179,28 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
               const SizedBox(height: 20),
               
               // Titre
-              const Text(
-                'Scanner un code-barres',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF1A1A1A),
+              Consumer<LocalizationService>(
+                builder: (context, locService, _) => Text(
+                  'scan_barcode'.tr(locService.currentLanguageCode),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1A1A1A),
+                  ),
                 ),
               ),
               
               const SizedBox(height: 16),
               
-              const Text(
-                'Voulez-vous ajouter à un repas existant ou créer un nouveau repas ?',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF64748B),
+              Consumer<LocalizationService>(
+                builder: (context, locService, _) => Text(
+                  'add_to_existing_or_new_meal'.tr(locService.currentLanguageCode),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF64748B),
+                  ),
+                  textAlign: TextAlign.center,
                 ),
-                textAlign: TextAlign.center,
               ),
               
               const SizedBox(height: 24),
@@ -1244,23 +1239,27 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
                           ),
                         ),
                         const SizedBox(width: 16),
-                        const Expanded(
+                        Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                'Ajouter à un repas existant',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF0B132B),
+                              Consumer<LocalizationService>(
+                                builder: (context, locService, _) => Text(
+                                  'add_to_existing_meal'.tr(locService.currentLanguageCode),
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF0B132B),
+                                  ),
                                 ),
                               ),
-                              Text(
-                                'Choisir parmi vos repas d\'aujourd\'hui',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Color(0xFF64748B),
+                              Consumer<LocalizationService>(
+                                builder: (context, locService, _) => Text(
+                                  'choose_from_todays_meals'.tr(locService.currentLanguageCode),
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF64748B),
+                                  ),
                                 ),
                               ),
                             ],
@@ -1312,23 +1311,27 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
                         ),
                       ),
                       const SizedBox(width: 16),
-                      const Expanded(
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'Créer un nouveau repas',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF0B132B),
+                            Consumer<LocalizationService>(
+                              builder: (context, locService, _) => Text(
+                                'create_new_meal'.tr(locService.currentLanguageCode),
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF0B132B),
+                                ),
                               ),
                             ),
-                            Text(
-                              'Choisir le type de repas à créer',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Color(0xFF64748B),
+                            Consumer<LocalizationService>(
+                              builder: (context, locService, _) => Text(
+                                'choose_meal_type_to_create'.tr(locService.currentLanguageCode),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF64748B),
+                                ),
                               ),
                             ),
                           ],
@@ -1406,13 +1409,15 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
                     ),
                   ),
                   const SizedBox(width: 16),
-                  const Expanded(
-                    child: Text(
-                      'Choisir un repas',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF1A1A1A),
+                  Expanded(
+                    child: Consumer<LocalizationService>(
+                      builder: (context, locService, _) => Text(
+                        'choose_meal'.tr(locService.currentLanguageCode),
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1A1A1A),
+                        ),
                       ),
                     ),
                   ),
@@ -1468,11 +1473,13 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
                                   color: Color(0xFF0B132B),
                                 ),
                               ),
-                              Text(
-                                '${meal.time} • ${meal.items.length} aliment(s)',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Color(0xFF64748B),
+                              Consumer<LocalizationService>(
+                                builder: (context, locService, _) => Text(
+                                  '${meal.time} • ${meal.items.length} ${'food_items'.tr(locService.currentLanguageCode)}',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF64748B),
+                                  ),
                                 ),
                               ),
                             ],

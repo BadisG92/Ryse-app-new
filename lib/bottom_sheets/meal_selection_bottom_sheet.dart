@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:provider/provider.dart';
 import '../models/nutrition_models.dart';
+import '../services/localization_service.dart';
+import '../services/translations.dart';
 
 class MealSelectionBottomSheet {
   static void show(
@@ -40,25 +43,33 @@ class MealSelectionBottomSheet {
               const SizedBox(height: 20),
               
               // Title
-              Text(
-                'Ajouter "$foodName"',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF1A1A1A),
-                ),
-                textAlign: TextAlign.center,
+              Consumer<LocalizationService>(
+                builder: (context, localizationService, _) {
+                  return Text(
+                    'add_food_title'.tr(localizationService.currentLanguageCode).replaceAll('{foodName}', foodName),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1A1A1A),
+                    ),
+                    textAlign: TextAlign.center,
+                  );
+                },
               ),
               
               const SizedBox(height: 8),
               
-              const Text(
-                'Où souhaitez-vous ajouter cet aliment ?',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF64748B),
-                ),
-                textAlign: TextAlign.center,
+              Consumer<LocalizationService>(
+                builder: (context, localizationService, _) {
+                  return Text(
+                    'where_add_food'.tr(localizationService.currentLanguageCode),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF64748B),
+                    ),
+                    textAlign: TextAlign.center,
+                  );
+                },
               ),
               
               const SizedBox(height: 24),
@@ -101,26 +112,30 @@ class MealSelectionBottomSheet {
                           ),
                         ),
                         const SizedBox(width: 16),
-                        const Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Ajouter à un repas existant',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF1A1A1A),
-                                ),
-                              ),
-                              Text(
-                                'Choisir parmi vos repas du jour',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Color(0xFF64748B),
-                                ),
-                              ),
-                            ],
+                        Expanded(
+                          child: Consumer<LocalizationService>(
+                            builder: (context, localizationService, _) {
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'add_to_existing_meal'.tr(localizationService.currentLanguageCode),
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF1A1A1A),
+                                    ),
+                                  ),
+                                  Text(
+                                    'choose_from_daily_meals'.tr(localizationService.currentLanguageCode),
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Color(0xFF64748B),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
                           ),
                         ),
                         const Icon(
@@ -168,26 +183,30 @@ class MealSelectionBottomSheet {
                         ),
                       ),
                       const SizedBox(width: 16),
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Créer un nouveau repas',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF0B132B),
-                              ),
-                            ),
-                            Text(
-                              'Petit-déjeuner, déjeuner, dîner ou collation',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Color(0xFF64748B),
-                              ),
-                            ),
-                          ],
+                      Expanded(
+                        child: Consumer<LocalizationService>(
+                          builder: (context, localizationService, _) {
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'create_new_meal'.tr(localizationService.currentLanguageCode),
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF0B132B),
+                                  ),
+                                ),
+                                Text(
+                                  'meal_type_options'.tr(localizationService.currentLanguageCode),
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF64748B),
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
                         ),
                       ),
                       const Icon(
@@ -273,14 +292,18 @@ class MealSelectionBottomSheet {
                       ),
                     ),
                     const SizedBox(width: 16),
-                    const Expanded(
-                      child: Text(
-                        'Choisir un repas',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF1A1A1A),
-                        ),
+                    Expanded(
+                      child: Consumer<LocalizationService>(
+                        builder: (context, localizationService, _) {
+                          return Text(
+                            'choose_meal'.tr(localizationService.currentLanguageCode),
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF1A1A1A),
+                            ),
+                          );
+                        },
                       ),
                     ),
                   ],
@@ -334,12 +357,21 @@ class MealSelectionBottomSheet {
                                     color: Color(0xFF1A1A1A),
                                   ),
                                 ),
-                                Text(
-                                  '${meal.time} • ${meal.items.length} aliment${meal.items.length > 1 ? 's' : ''}',
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: Color(0xFF64748B),
-                                  ),
+                                Consumer<LocalizationService>(
+                                  builder: (context, localizationService, _) {
+                                    final count = meal.items.length;
+                                    final plural = count > 1 ? 's' : '';
+                                    final foodText = 'food_item_count'.tr(localizationService.currentLanguageCode)
+                                        .replaceAll('{count}', count.toString())
+                                        .replaceAll('{plural}', plural);
+                                    return Text(
+                                      '${meal.time} • $foodText',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Color(0xFF64748B),
+                                      ),
+                                    );
+                                  },
                                 ),
                               ],
                             ),

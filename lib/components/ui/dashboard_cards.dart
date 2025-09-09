@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'dart:math';
+import 'package:provider/provider.dart';
 import 'custom_badge.dart';
 import 'dashboard_models.dart';
+import '../../services/localization_service.dart';
+import '../../services/translations.dart';
 
 // Header gamifié du dashboard
 class DashboardHeader extends StatelessWidget {
@@ -115,20 +118,24 @@ class DashboardHeader extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(width: 4),
-                            Text(
-                              'jours',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.white.withOpacity(0.8),
+                            Consumer<LocalizationService>(
+                              builder: (context, locService, child) => Text(
+                                'days'.tr(locService.currentLanguageCode),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.white.withOpacity(0.8),
+                                ),
                               ),
                             ),
                           ],
                         ),
                         const SizedBox(width: 12),
-                        CustomBadge(
-                          text: 'Série en cours !',
-                          backgroundColor: Colors.white.withOpacity(0.1),
-                          textColor: Colors.white,
+                        Consumer<LocalizationService>(
+                          builder: (context, locService, child) => CustomBadge(
+                            text: 'current_series'.tr(locService.currentLanguageCode),
+                            backgroundColor: Colors.white.withOpacity(0.1),
+                            textColor: Colors.white,
+                          ),
                         ),
                       ],
                     ),
@@ -136,20 +143,24 @@ class DashboardHeader extends StatelessWidget {
                     const SizedBox(height: 6),
                     
                     // Greeting
-                    Text(
-                      profile.greetingMessage,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                    Consumer<LocalizationService>(
+                      builder: (context, locService, child) => Text(
+                        profile.greetingMessage(locService.currentLanguageCode),
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                     
-                    Text(
-                      profile.xpText,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.white.withOpacity(0.8),
+                    Consumer<LocalizationService>(
+                      builder: (context, locService, child) => Text(
+                        profile.xpText(locService.currentLanguageCode),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.white.withOpacity(0.8),
+                        ),
                       ),
                     ),
                   ],

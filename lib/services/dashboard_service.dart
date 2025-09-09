@@ -7,6 +7,8 @@ import '../providers/goals_notifier.dart';
 import 'progress_service_v2.dart';
 import 'streak_service.dart';
 import 'sport_dashboard_service.dart';
+import 'localization_service.dart';
+import 'translations.dart';
 
 class DashboardService {
   static final SupabaseClient _supabase = SupabaseConfig.client;
@@ -14,6 +16,18 @@ class DashboardService {
   // ==== CACHE DES OBJECTIFS JOURNALIERS ====
   static List<DailyGoal>? _cachedGoals;
   static DateTime? _cachedGoalsDate;
+  
+  // ==== CACHE DES MODULES PREVIEW ====
+  static List<ModulePreview>? _cachedModules;
+  static DateTime? _cachedModulesDate;
+
+  /// Vider le cache des objectifs et modules (appelé quand la langue change)
+  static void clearGoalsCache() {
+    _cachedGoals = null;
+    _cachedGoalsDate = null;
+    _cachedModules = null;
+    _cachedModulesDate = null;
+  }
 
   /// Récupérer le profil utilisateur pour le dashboard
   static Future<UserProfile?> getUserProfile() async {
@@ -140,13 +154,17 @@ class DashboardService {
       final dailyCaloriesGoal = userProfile?['daily_calories'] ?? 2000;
       final dailyWaterGoal = (userProfile?['daily_water_goal'] ?? 2000) / 1000.0; // En litres
 
+      // Get language for translations
+      final locService = LocalizationService.instance;
+      final languageCode = locService.currentLanguageCode;
+      
       // Créer les objectifs avec les vraies données (avec workout goal)
       final workoutGoal = await _getWorkoutGoal(user.id);
       
       final result = [
         DailyGoal(
           id: 'meals',
-          label: 'Suivre mes repas aujourd\'hui',
+          label: 'track_meals_today'.tr(languageCode),
           progress: ((mealsCount / 3) * 100).round(),
           xp: 25,
           completed: mealsCount >= 3,
@@ -156,7 +174,9 @@ class DashboardService {
         ),
         DailyGoal(
           id: 'water',
-          label: 'Boire ${dailyWaterGoal.toStringAsFixed(1)}L d\'eau',
+          label: languageCode == 'fr' 
+            ? 'Boire ${dailyWaterGoal.toStringAsFixed(1)}L d\'eau'
+            : 'Drink ${dailyWaterGoal.toStringAsFixed(1)}L of water',
           progress: ((currentWaterL / dailyWaterGoal) * 100).round().clamp(0, 100),
           xp: 15,
           completed: currentWaterL >= dailyWaterGoal,
@@ -166,7 +186,7 @@ class DashboardService {
         ),
         DailyGoal(
           id: 'calories',
-          label: 'Atteindre mes calories',
+          label: 'reach_calorie_goal'.tr(languageCode),
           progress: ((currentCalories / dailyCaloriesGoal) * 100).round().clamp(0, 100),
           xp: 25,
           completed: currentCalories >= dailyCaloriesGoal * 0.9, // 90% = complété
@@ -203,6 +223,12 @@ class DashboardService {
       final user = _supabase.auth.currentUser;
       if (user == null) return [];
 
+      // Cache quotidien pour les modules
+      final todayStr = DateTime.now().toIso8601String().split('T')[0];
+      if (_cachedModules != null && _cachedModulesDate?.toIso8601String().split('T')[0] == todayStr) {
+        return _cachedModules!;
+      }
+
       final today = DateTime.now();
       final startOfDay = DateTime(today.year, today.month, today.day);
       final endOfDay = startOfDay.add(const Duration(days: 1));
@@ -234,21 +260,31 @@ class DashboardService {
       }
       final currentWaterL = currentWaterMl / 1000.0;
 
+      // Get language for translations
+      final locService = LocalizationService.instance;
+      final languageCode = locService.currentLanguageCode;
+      
       // Récupérer le module Sport avec vraies données
       final sportModule = await _getSportModulePreview();
       
-      return [
+      final result = [
         ModulePreview(
-          title: 'Nutrition',
+          title: 'nutrition'.tr(languageCode),
           icon: LucideIcons.apple,
           stats: {
-            'Calories': '${currentCalories.round()} kcal',
-            'Eau': '${currentWaterL.toStringAsFixed(1)}L',
+            'calories'.tr(languageCode): '${currentCalories.round()} kcal',
+            'water'.tr(languageCode): '${currentWaterL.toStringAsFixed(1)}L',
           },
           gradientColors: const [Color(0xFF0B132B), Color(0xFF1C2951)],
         ),
         sportModule,
       ];
+      
+      // Mettre en cache
+      _cachedModules = result;
+      _cachedModulesDate = today;
+      
+      return result;
     } catch (e) {
       print('Erreur lors de la récupération des aperçus modules: $e');
       return [];
@@ -282,9 +318,13 @@ class DashboardService {
       
       print('🏋️ DEBUG Workout Goal (via SportDashboard): $totalSessions séances, completed: $completed');
 
+      // Get language for translations
+      final locService = LocalizationService.instance;
+      final languageCode = locService.currentLanguageCode;
+      
       return DailyGoal(
         id: 'workout',
-        label: 'Faire une séance aujourd\'hui',
+        label: 'complete_workout'.tr(languageCode),
         progress: completed ? 100 : 0,
         xp: 30,
         completed: completed,
@@ -294,9 +334,13 @@ class DashboardService {
       );
     } catch (e) {
       print('❌ Erreur lors de la récupération de l\'objectif workout: $e');
-      return const DailyGoal(
+      // Get language for translations (fallback)
+      final locService = LocalizationService.instance;
+      final languageCode = locService.currentLanguageCode;
+      
+      return DailyGoal(
         id: 'workout',
-        label: 'Faire une séance aujourd\'hui',
+        label: 'complete_workout'.tr(languageCode),
         progress: 0,
         xp: 30,
         completed: false,
@@ -310,16 +354,20 @@ class DashboardService {
   /// Récupérer le module Sport avec les données du dashboard sport
   static Future<ModulePreview> _getSportModulePreview() async {
     try {
+      // Get language for translations
+      final locService = LocalizationService.instance;
+      final languageCode = locService.currentLanguageCode;
+      
       final user = _supabase.auth.currentUser;
       if (user == null) {
-        return const ModulePreview(
-          title: 'Sport',
+        return ModulePreview(
+          title: 'sport'.tr(languageCode),
           icon: LucideIcons.dumbbell,
           stats: {
-            'Calories': '0 kcal',
-            'Séances': '0 auj.',
+            'calories'.tr(languageCode): '0 kcal',
+            'sessions'.tr(languageCode): languageCode == 'fr' ? '0 auj.' : '0 today',
           },
-          gradientColors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+          gradientColors: const [Color(0xFF0B132B), Color(0xFF1C2951)],
         );
       }
 
@@ -367,24 +415,28 @@ class DashboardService {
       print('📊 DEBUG Comparaison: Bloc activité = 251kcal, Module = ${totalCalories}kcal');
 
       return ModulePreview(
-        title: 'Sport',
+        title: 'sport'.tr(languageCode),
         icon: LucideIcons.dumbbell,
         stats: {
-          'Calories': '$totalCalories kcal',
-          'Séances': '$totalSessions auj.',
+          'calories'.tr(languageCode): '$totalCalories kcal',
+          'sessions'.tr(languageCode): languageCode == 'fr' ? '$totalSessions auj.' : '$totalSessions today',
         },
         gradientColors: const [Color(0xFF0B132B), Color(0xFF1C2951)],
       );
     } catch (e) {
       print('❌ Erreur lors de la récupération du module Sport: $e');
-      return const ModulePreview(
-        title: 'Sport',
+      // Get language for translations (fallback)
+      final locService = LocalizationService.instance;
+      final languageCode = locService.currentLanguageCode;
+      
+      return ModulePreview(
+        title: 'sport'.tr(languageCode),
         icon: LucideIcons.dumbbell,
         stats: {
-          'Calories': '0 kcal',
-          'Séances': '0 auj.',
+          'calories'.tr(languageCode): '0 kcal',
+          'sessions'.tr(languageCode): languageCode == 'fr' ? '0 auj.' : '0 today',
         },
-        gradientColors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+        gradientColors: const [Color(0xFF0B132B), Color(0xFF1C2951)],
       );
     }
   }

@@ -8,6 +8,7 @@ import '../services/dashboard_service.dart';
 import '../services/streak_service.dart';
 import '../services/header_cache_service.dart';
 import '../providers/goals_notifier.dart';
+import 'ui/language_switch_buttons.dart';
 
 class SportSection extends StatefulWidget {
   const SportSection({super.key});
@@ -117,23 +118,28 @@ class _SportSectionState extends State<SportSection>
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
-            // Header avec titre et indicateurs de page
-            _buildHeader(),
-            
-            // Contenu principal avec PageView
-            Expanded(
-              child: PageView(
-                controller: _pageController,
-                onPageChanged: _onPageChanged,
-                children: const [
-                  SportDashboard(),
-                  SportCardioHybrid(),
-                  SportMusculationHybrid(),
-                ],
-              ),
+            Column(
+              children: [
+                // Header avec titre et indicateurs de page
+                _buildHeader(),
+                
+                // Contenu principal avec PageView
+                Expanded(
+                  child: PageView(
+                    controller: _pageController,
+                    onPageChanged: _onPageChanged,
+                    children: const [
+                      SportDashboard(),
+                      SportCardioHybrid(),
+                      SportMusculationHybrid(),
+                    ],
+                  ),
+                ),
+              ],
             ),
+            const LanguageSwitchButtons(),
           ],
         ),
       ),

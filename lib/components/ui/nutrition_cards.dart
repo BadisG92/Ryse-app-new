@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'dart:math';
+import 'package:provider/provider.dart';
 import 'custom_card.dart';
 import 'nutrition_models.dart';
+import '../../services/localization_service.dart';
+import '../../services/translations.dart';
 
 // Carte principale des calories avec animation
 class MainCaloriesCard extends StatelessWidget {
@@ -42,11 +45,13 @@ class MainCaloriesCard extends StatelessWidget {
         const SizedBox(width: 3),
         Padding(
           padding: const EdgeInsets.only(bottom: 2),
-          child: Text(
-            'kcal',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.white.withOpacity(0.8),
+          child: Consumer<LocalizationService>(
+            builder: (context, locService, child) => Text(
+              'kcal_unit'.tr(locService.currentLanguageCode),
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.white.withOpacity(0.8),
+              ),
             ),
           ),
         ),
@@ -112,11 +117,13 @@ class MainCaloriesCard extends StatelessWidget {
                         children: [
                           _buildCaloriesWithUnit(animatedCalories),
                           const SizedBox(height: 4),
-                          Text(
-                            'Consommées',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.white.withOpacity(0.8),
+                          Consumer<LocalizationService>(
+                            builder: (context, locService, child) => Text(
+                              'consumed'.tr(locService.currentLanguageCode),
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.white.withOpacity(0.8),
+                              ),
                             ),
                           ),
                         ],
@@ -131,26 +138,32 @@ class MainCaloriesCard extends StatelessWidget {
                 children: [
                   // KPI gauche
                   Expanded(
-                    child: CaloriesStatItem(
-                      label: 'Consommées', 
-                      value: profile.currentCalories, 
-                      color: const Color(0xFF0B132B),
+                    child: Consumer<LocalizationService>(
+                      builder: (context, locService, child) => CaloriesStatItem(
+                        label: 'consumed'.tr(locService.currentLanguageCode), 
+                        value: profile.currentCalories, 
+                        color: const Color(0xFF0B132B),
+                      ),
                     ),
                   ),
                   // KPI central (aligné avec le cercle)
                   Expanded(
-                    child: CaloriesStatItem(
-                      label: 'Restantes', 
-                      value: profile.remainingCalories, 
-                      color: const Color(0xFF1C2951),
+                    child: Consumer<LocalizationService>(
+                      builder: (context, locService, child) => CaloriesStatItem(
+                        label: 'remaining'.tr(locService.currentLanguageCode), 
+                        value: profile.remainingCalories, 
+                        color: const Color(0xFF1C2951),
+                      ),
                     ),
                   ),
                   // KPI droite
                   Expanded(
-                    child: CaloriesStatItem(
-                      label: 'Objectif', 
-                      value: profile.targetCalories, 
-                      color: const Color(0xFF888888),
+                    child: Consumer<LocalizationService>(
+                      builder: (context, locService, child) => CaloriesStatItem(
+                        label: 'objective'.tr(locService.currentLanguageCode), 
+                        value: profile.targetCalories, 
+                        color: const Color(0xFF888888),
+                      ),
                     ),
                   ),
                 ],
@@ -178,12 +191,16 @@ class MainCaloriesCard extends StatelessWidget {
               
               const SizedBox(height: 8),
               
-              Text(
-                profile.progressMessage,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: Color(0xFF888888),
-                ),
+              Consumer<LocalizationService>(
+                builder: (context, localizationService, _) {
+                  return Text(
+                    profile.getProgressMessage(localizationService.currentLanguageCode),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF888888),
+                    ),
+                  );
+                },
               ),
             ],
           ),
@@ -268,20 +285,22 @@ class MacronutrientsCard extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         child: Column(
           children: [
-            const Row(
+            Row(
               children: [
-                Icon(
+                const Icon(
                   LucideIcons.trendingUp,
                   size: 16,
                   color: Color(0xFF0B132B),
                 ),
-                SizedBox(width: 8),
-                Text(
-                  'Macronutriments',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1A1A),
+                const SizedBox(width: 8),
+                Consumer<LocalizationService>(
+                  builder: (context, locService, child) => Text(
+                    'macronutrients'.tr(locService.currentLanguageCode),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1A1A1A),
+                    ),
                   ),
                 ),
               ],
@@ -290,7 +309,7 @@ class MacronutrientsCard extends StatelessWidget {
             const SizedBox(height: 16),
             
             ...macros.map((macro) {
-              final animatedValue = animatedValues[macro.name.toLowerCase()] ?? macro.current;
+              final animatedValue = animatedValues[macro.id] ?? macro.current;
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: MacroNutrientItem(
@@ -315,26 +334,26 @@ class MacroNutrientItem extends StatelessWidget {
   });
 
   // Couleurs d'origine selon l'ancien fichier
-  LinearGradient _getGradientColor(String macroName) {
-    switch (macroName.toLowerCase()) {
-      case 'protéines':
+  LinearGradient _getGradientColor(String macroId) {
+    switch (macroId.toLowerCase()) {
+      case 'protein':
         return const LinearGradient(colors: [Color(0xFF0B132B), Color(0xFF1C2951)]);
-      case 'glucides':
+      case 'carbs':
         return LinearGradient(colors: [Color(0xFF0B132B).withOpacity(0.7), Color(0xFF1C2951).withOpacity(0.7)]);
-      case 'lipides':
+      case 'fats':
         return const LinearGradient(colors: [Color(0xFF888888), Color(0xFFAAAAAA)]);
       default:
         return const LinearGradient(colors: [Color(0xFF888888), Color(0xFFAAAAAA)]);
     }
   }
 
-  Color _getProgressColor(String macroName) {
-    switch (macroName.toLowerCase()) {
-      case 'protéines':
+  Color _getProgressColor(String macroId) {
+    switch (macroId.toLowerCase()) {
+      case 'protein':
         return const Color(0xFF0B132B);
-      case 'glucides':
+      case 'carbs':
         return Color(0xFF0B132B).withOpacity(0.7);
-      case 'lipides':
+      case 'fats':
         return const Color(0xFF888888);
       default:
         return const Color(0xFF888888);
@@ -355,7 +374,7 @@ class MacroNutrientItem extends StatelessWidget {
                   width: 12,
                   height: 12,
                   decoration: BoxDecoration(
-                    gradient: _getGradientColor(macro.name),
+                    gradient: _getGradientColor(macro.id),
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -408,7 +427,7 @@ class MacroNutrientItem extends StatelessWidget {
             child: LinearProgressIndicator(
               value: min(macro.progress, 1.0),
               backgroundColor: Colors.transparent,
-              valueColor: AlwaysStoppedAnimation<Color>(_getProgressColor(macro.name)),
+              valueColor: AlwaysStoppedAnimation<Color>(_getProgressColor(macro.id)),
             ),
           ),
         ),
@@ -450,14 +469,16 @@ class HydrationCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 6),
                       Flexible(
-                        child: Text(
-                          'Hydratation',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF1A1A1A),
+                        child: Consumer<LocalizationService>(
+                          builder: (context, locService, child) => Text(
+                            'hydration'.tr(locService.currentLanguageCode),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF1A1A1A),
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
@@ -565,27 +586,31 @@ class MealsCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Flexible(
-                  child: Row(
-                    children: [
-                      Icon(
-                        LucideIcons.clock,
-                        size: 16,
-                        color: Color(0xFF0B132B),
-                      ),
-                      SizedBox(width: 6),
-                      Flexible(
-                        child: Text(
-                          'Repas',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF1A1A1A),
+                Flexible(
+                  child: Consumer<LocalizationService>(
+                    builder: (context, localizationService, _) {
+                      return Row(
+                        children: [
+                          const Icon(
+                            LucideIcons.clock,
+                            size: 16,
+                            color: Color(0xFF0B132B),
                           ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              'meals'.tr(localizationService.currentLanguageCode),
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF1A1A1A),
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
                 ),
                 Row(
@@ -648,41 +673,61 @@ class MealRowItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Row(
+    return Consumer<LocalizationService>(
+      builder: (context, localizationService, _) {
+        // Generate translated short name based on current language
+        String getTranslatedShortName() {
+          switch (meal.id) {
+            case 'breakfast':
+              return localizationService.isFrench ? 'P.déj' : 'Brkf';
+            case 'lunch':
+              return localizationService.isFrench ? 'Déj' : 'Lnch';
+            case 'snack':
+              return localizationService.isFrench ? 'Coll' : 'Snck';
+            case 'dinner':
+              return localizationService.isFrench ? 'Dîner' : 'Dnnr';
+            default:
+              return meal.shortName;
+          }
+        }
+
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(
-                gradient: meal.isCompleted 
-                    ? LinearGradient(colors: meal.statusGradient)
-                    : null,
-                color: meal.isCompleted ? null : meal.statusColor,
-                shape: BoxShape.circle,
-              ),
+            Row(
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    gradient: meal.isCompleted 
+                        ? LinearGradient(colors: meal.statusGradient)
+                        : null,
+                    color: meal.isCompleted ? null : meal.statusColor,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  getTranslatedShortName(),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF1A1A1A),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 8),
             Text(
-              meal.shortName,
+              meal.caloriesText,
               style: const TextStyle(
                 fontSize: 12,
-                color: Color(0xFF1A1A1A),
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF0B132B),
               ),
             ),
           ],
-        ),
-        Text(
-          meal.caloriesText,
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-            color: Color(0xFF0B132B),
-          ),
-        ),
-      ],
+        );
+      },
     );
   }
 }
@@ -726,13 +771,17 @@ class AITipCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Astuce IA',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF1A1A1A),
-                      ),
+                    Consumer<LocalizationService>(
+                      builder: (context, localizationService, _) {
+                        return Text(
+                          'ai_tip'.tr(localizationService.currentLanguageCode),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF1A1A1A),
+                          ),
+                        );
+                      },
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -838,6 +887,7 @@ class WaterOptionItem extends StatelessWidget {
 // Extension pour copier MacroNutrient avec valeur courante
 extension MacroNutrientCopyWith on MacroNutrient {
   MacroNutrient copyWith({
+    String? id,
     String? name,
     String? unit,
     int? current,
@@ -846,6 +896,7 @@ extension MacroNutrientCopyWith on MacroNutrient {
     IconData? icon,
   }) {
     return MacroNutrient(
+      id: id ?? this.id,
       name: name ?? this.name,
       unit: unit ?? this.unit,
       current: current ?? this.current,

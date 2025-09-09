@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'config/supabase_config.dart';
 import 'services/auth_service.dart';
+import 'services/localization_service.dart';
 import 'components/ui/recipe_models.dart';
 import 'pages/ryze_app.dart';
 import 'services/offline_workout_service.dart';
@@ -23,6 +24,9 @@ void main() async {
   await SharedPreferencesSync().init(); // Pour les vérifications rapides
   await offlineService.initialize();
   
+  // Initialize Localization Service
+  await LocalizationService.instance.initialize();
+  
   runApp(const MyApp());
 }
 
@@ -34,6 +38,7 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthService()),
+        ChangeNotifierProvider.value(value: LocalizationService.instance),
       ],
       child: MaterialApp(
         title: 'Ryze App',

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:provider/provider.dart';
 import 'dart:async';
 import 'dart:math';
 import 'ui/dashboard_models.dart';
@@ -9,6 +10,8 @@ import 'ui/dashboard_widgets.dart';
 import 'ui/custom_card.dart';
 import 'ui/custom_badge.dart';
 import '../services/dashboard_service.dart';
+import '../services/localization_service.dart';
+import '../services/translations.dart';
 
 class MainDashboardHybrid extends StatefulWidget {
   const MainDashboardHybrid({super.key});
@@ -34,13 +37,22 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
     super.initState();
     _initializeAnimations();
     _loadDashboardData();
+    
+    // Listen to language changes
+    LocalizationService.instance.addListener(_onLanguageChanged);
   }
 
   @override
   void dispose() {
     _scoreAnimationController.dispose();
     _scoreTimer.cancel();
+    LocalizationService.instance.removeListener(_onLanguageChanged);
     super.dispose();
+  }
+
+  void _onLanguageChanged() {
+    // Reload dashboard data when language changes
+    _loadDashboardData();
   }
 
   void _initializeAnimations() {
@@ -130,12 +142,14 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
               ),
             )
           : userProfile == null
-            ? const Center(
-                child: Text(
-                  'Erreur lors du chargement du profil',
-                  style: TextStyle(
-                    color: Color(0xFF64748B),
-                    fontSize: 16,
+            ? Consumer<LocalizationService>(
+                builder: (context, locService, child) => Center(
+                  child: Text(
+                    'error'.tr(locService.currentLanguageCode),
+                    style: const TextStyle(
+                      color: Color(0xFF64748B),
+                      fontSize: 16,
+                    ),
                   ),
                 ),
               )
@@ -169,23 +183,31 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
                             const SizedBox(height: 16),
                             
                             // Que faisons-nous aujourd'hui ? (5 actions format original)
-                            QuickActionsSection(
-                              actions: DashboardData.getOriginalActionsWithWeight(userProfile!),
+                            Consumer<LocalizationService>(
+                              builder: (context, locService, child) => QuickActionsSection(
+                                actions: DashboardData.getOriginalActionsWithWeight(userProfile!, locService.currentLanguageCode),
+                              ),
                             ),
                             
                             const SizedBox(height: 16),
                             
                             // Suivi Nutrition & Sport (format hybrid nouveau)
-                            NutritionSportTrackingSection(
-                              modules: modulePreviews,
-                              onModuleTap: _onModuleTap,
+                            Consumer<LocalizationService>(
+                              builder: (context, locService, child) => NutritionSportTrackingSection(
+                                modules: modulePreviews.isNotEmpty 
+                                  ? modulePreviews 
+                                  : DashboardData.getModulePreviews(locService.currentLanguageCode),
+                                onModuleTap: _onModuleTap,
+                              ),
                             ),
                             
                             const SizedBox(height: 16),
                             
                             // Social Proof & FOMO (format original)
-                            CommunityStatsSection(
-                              stats: DashboardData.communityStats,
+                            Consumer<LocalizationService>(
+                              builder: (context, locService, child) => CommunityStatsSection(
+                                stats: DashboardData.getCommunityStats(locService.currentLanguageCode),
+                              ),
                             ),
                             
                             const SizedBox(height: 16),
@@ -231,22 +253,25 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
     }
     
     // TODO: Intégrer avec la logique de paiement
+    final locService = LocalizationService.instance;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Bienvenue dans Ryze Premium ! 🎉')),
+      SnackBar(content: Text('welcome_premium'.tr(locService.currentLanguageCode))),
     );
   }
 
   void _onModuleTap(String moduleTitle) {
     // TODO: Navigation vers les modules spécifiques
+    final locService = LocalizationService.instance;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Navigation vers $moduleTitle')),
+      SnackBar(content: Text('${'navigate_to'.tr(locService.currentLanguageCode)} $moduleTitle')),
     );
   }
 
   void _onViewAnalytics() {
     // TODO: Ouvrir les analytics avancés
+    final locService = LocalizationService.instance;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Ouverture des analytics avancés')),
+      SnackBar(content: Text('open_advanced_analytics'.tr(locService.currentLanguageCode))),
     );
   }
 
@@ -373,12 +398,14 @@ class _EnhancedDailyGoalsSectionState extends State<EnhancedDailyGoalsSection>
                       color: Color(0xFF0B132B),
                     ),
                     const SizedBox(width: 12),
-                    const Text(
-                      'Objectifs du jour',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF1A1A1A),
+                    Consumer<LocalizationService>(
+                      builder: (context, locService, child) => Text(
+                        'dashboard_daily_goals'.tr(locService.currentLanguageCode),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1A1A1A),
+                        ),
                       ),
                     ),
                   ],
@@ -422,12 +449,14 @@ class _EnhancedDailyGoalsSectionState extends State<EnhancedDailyGoalsSection>
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Progression',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: Color(0xFF1A1A1A),
+                      Consumer<LocalizationService>(
+                        builder: (context, locService, child) => Text(
+                          'progress'.tr(locService.currentLanguageCode),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF1A1A1A),
+                          ),
                         ),
                       ),
                       Text(
@@ -498,12 +527,14 @@ class NutritionSportTrackingSection extends StatelessWidget {
                   color: Color(0xFF0B132B),
                 ),
                 const SizedBox(width: 12),
-                const Text(
-                  'Suivi Nutrition & Sport',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1A1A),
+                Consumer<LocalizationService>(
+                  builder: (context, locService, child) => Text(
+                    'nutrition_sport_tracking'.tr(locService.currentLanguageCode),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1A1A1A),
+                    ),
                   ),
                 ),
               ],
@@ -740,10 +771,11 @@ class GamifiedActionsSection extends StatelessWidget {
 
   void _handleGamifiedAction(BuildContext context, QuickAction action) {
     if (action.isDisabled || action.isPremiumRequired) {
+      final locService = LocalizationService.instance;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Fonctionnalité disponible avec Premium'),
-          backgroundColor: Color(0xFF0B132B),
+        SnackBar(
+          content: Text('feature_premium_only'.tr(locService.currentLanguageCode)),
+          backgroundColor: const Color(0xFF0B132B),
         ),
       );
       return;
@@ -752,37 +784,41 @@ class GamifiedActionsSection extends StatelessWidget {
     switch (action.id) {
       case 'add_meal':
         // TODO: Ouvrir sélection de repas
+        final locService = LocalizationService.instance;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Ajout de repas'),
-            backgroundColor: Color(0xFF0B132B),
+          SnackBar(
+            content: Text('adding_meal'.tr(locService.currentLanguageCode)),
+            backgroundColor: const Color(0xFF0B132B),
           ),
         );
         break;
       case 'add_water':
         // TODO: Ouvrir ajout d'eau
+        final locService = LocalizationService.instance;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Ajout d\'hydratation'),
-            backgroundColor: Color(0xFF0B132B),
+          SnackBar(
+            content: Text('adding_hydration'.tr(locService.currentLanguageCode)),
+            backgroundColor: const Color(0xFF0B132B),
           ),
         );
         break;
       case 'take_photo':
         // TODO: Ouvrir scanner IA
+        final locService = LocalizationService.instance;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Scanner d\'aliments'),
-            backgroundColor: Color(0xFF0B132B),
+          SnackBar(
+            content: Text('food_scanner'.tr(locService.currentLanguageCode)),
+            backgroundColor: const Color(0xFF0B132B),
           ),
         );
         break;
       case 'workout':
         // TODO: Ouvrir sélection d'entraînement
+        final locService = LocalizationService.instance;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Démarrage d\'entraînement'),
-            backgroundColor: Color(0xFF0B132B),
+          SnackBar(
+            content: Text('starting_workout'.tr(locService.currentLanguageCode)),
+            backgroundColor: const Color(0xFF0B132B),
           ),
         );
         break;
@@ -829,12 +865,14 @@ class CompactProgressSection extends StatelessWidget {
                   color: Color(0xFF0B132B),
                 ),
                 const SizedBox(width: 12),
-                const Text(
-                  'Objectifs du jour',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1A1A),
+                Consumer<LocalizationService>(
+                  builder: (context, locService, child) => Text(
+                    'daily_objectives'.tr(locService.currentLanguageCode),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1A1A1A),
+                    ),
                   ),
                 ),
                 const Spacer(),

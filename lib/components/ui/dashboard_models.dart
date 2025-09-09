@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'dart:math';
+import '../../services/translations.dart';
 
 // Modèle d'utilisateur gamifié
 class UserProfile {
@@ -28,16 +29,16 @@ class UserProfile {
   double get caloriesProgress => currentCalories / dailyCalories;
 
   // Formattage du streak
-  String get streakText => '$streak jours';
+  String streakText(String languageCode) => '$streak ${'days'.tr(languageCode)}';
 
   // Formattage des XP
-  String get xpText => '+$todayXP XP aujourd\'hui';
+  String xpText(String languageCode) => '+$todayXP XP ${'today'.tr(languageCode)}';
 
   // Reste de calories
   int get remainingCalories => max(0, dailyCalories - currentCalories);
 
   // Message de salutation
-  String get greetingMessage => 'Salut $name !';
+  String greetingMessage(String languageCode) => '${'hello'.tr(languageCode)} $name !';
 
   // Méthode copyWith pour créer une copie modifiée
   UserProfile copyWith({
@@ -320,143 +321,167 @@ class DashboardData {
   ];
 
   // Actions rapides selon le profil utilisateur (version complète - conservée pour compatibilité)
-  static List<QuickAction> getQuickActions(UserProfile profile) {
+  static List<QuickAction> getQuickActions(UserProfile profile, String languageCode) {
     return [
-      const QuickAction(
+      QuickAction(
         id: 'add_meal',
-        label: 'Ajouter un plat',
+        label: 'add_meal'.tr(languageCode),
         icon: LucideIcons.utensils,
       ),
-      const QuickAction(
+      QuickAction(
         id: 'add_water',
-        label: 'Ajouter de l\'eau',
+        label: 'add_water'.tr(languageCode),
         icon: LucideIcons.droplets,
       ),
       QuickAction(
         id: 'take_photo',
-        label: 'Prendre une photo',
+        label: 'take_photo'.tr(languageCode),
         icon: (!profile.isPremium && profile.photosUsed >= 3) 
             ? LucideIcons.lock 
             : LucideIcons.camera,
         isDisabled: !profile.isPremium && profile.photosUsed >= 3,
         isPremiumRequired: !profile.isPremium && profile.photosUsed >= 3,
       ),
-      const QuickAction(
+      QuickAction(
         id: 'cardio',
-        label: 'Cardio',
+        label: 'cardio'.tr(languageCode),
         icon: LucideIcons.activity,
       ),
-      const QuickAction(
+      QuickAction(
         id: 'musculation',
-        label: 'Musculation',
+        label: 'musculation'.tr(languageCode),
         icon: LucideIcons.dumbbell,
       ),
-      const QuickAction(
+      QuickAction(
         id: 'weight_tracking',
-        label: 'Poids',
+        label: 'weight_tracking'.tr(languageCode),
         icon: LucideIcons.scale,
       ),
     ];
   }
 
   // Actions essentielles pour le nouveau dashboard (4 maximum)
-  static List<QuickAction> getEssentialActions(UserProfile profile) {
+  static List<QuickAction> getEssentialActions(UserProfile profile, String languageCode) {
     return [
-      const QuickAction(
+      QuickAction(
         id: 'add_meal',
-        label: 'Repas',
+        label: 'meals'.tr(languageCode),
         icon: LucideIcons.utensils,
       ),
       QuickAction(
         id: 'take_photo',
-        label: 'Scanner',
+        label: 'scan_food'.tr(languageCode),
         icon: (!profile.isPremium && profile.photosUsed >= 3) 
             ? LucideIcons.lock 
             : LucideIcons.camera,
         isDisabled: !profile.isPremium && profile.photosUsed >= 3,
         isPremiumRequired: !profile.isPremium && profile.photosUsed >= 3,
       ),
-      const QuickAction(
+      QuickAction(
         id: 'add_water',
-        label: 'Hydratation',
+        label: 'hydration'.tr(languageCode),
         icon: LucideIcons.droplets,
       ),
-      const QuickAction(
+      QuickAction(
         id: 'workout',
-        label: 'Entraînement',
+        label: 'start_workout'.tr(languageCode),
         icon: LucideIcons.dumbbell,
       ),
     ];
   }
 
   // Actions gamifiées avec pesée (5 actions)
-  static List<QuickAction> getGamifiedActions(UserProfile profile) {
+  static List<QuickAction> getGamifiedActions(UserProfile profile, String languageCode) {
     return [
-      const QuickAction(
+      QuickAction(
         id: 'add_meal',
-        label: 'Repas',
+        label: 'meals'.tr(languageCode),
         icon: LucideIcons.utensils,
       ),
-      const QuickAction(
+      QuickAction(
         id: 'take_photo',
-        label: 'Scanner',
+        label: 'scan_food'.tr(languageCode),
         icon: LucideIcons.camera,
         // Plus de limite Premium - fonctionnalité incluse de base
       ),
-      const QuickAction(
+      QuickAction(
         id: 'add_water',
-        label: 'Eau',
+        label: 'water'.tr(languageCode),
         icon: LucideIcons.droplets,
       ),
-      const QuickAction(
+      QuickAction(
         id: 'workout',
-        label: 'Sport',
+        label: 'sport'.tr(languageCode),
         icon: LucideIcons.dumbbell,
       ),
-      const QuickAction(
+      QuickAction(
         id: 'weight_tracking',
-        label: 'Pesée',
+        label: 'weighing'.tr(languageCode),
         icon: LucideIcons.scale,
       ),
     ];
   }
 
   // Actions originales avec pesée pour le dashboard hybrid
-  static List<QuickAction> getOriginalActionsWithWeight(UserProfile profile) {
+  static List<QuickAction> getOriginalActionsWithWeight(UserProfile profile, String languageCode) {
     return [
-      const QuickAction(
+      QuickAction(
         id: 'add_meal',
-        label: 'Ajouter un plat',
+        label: 'add_meal'.tr(languageCode),
         icon: LucideIcons.utensils,
       ),
-      const QuickAction(
+      QuickAction(
         id: 'add_water',
-        label: 'Ajouter de l\'eau',
+        label: 'add_water'.tr(languageCode),
         icon: LucideIcons.droplets,
       ),
       QuickAction(
         id: 'take_photo',
-        label: 'Prendre une photo',
+        label: 'take_photo'.tr(languageCode),
         icon: (!profile.isPremium && profile.photosUsed >= 3) 
             ? LucideIcons.lock 
             : LucideIcons.camera,
         isDisabled: !profile.isPremium && profile.photosUsed >= 3,
         isPremiumRequired: !profile.isPremium && profile.photosUsed >= 3,
       ),
-      const QuickAction(
+      QuickAction(
         id: 'workout',
-        label: 'Entraînement',
+        label: 'start_workout'.tr(languageCode),
         icon: LucideIcons.dumbbell,
       ),
-      const QuickAction(
+      QuickAction(
         id: 'weight_tracking',
-        label: 'Poids',
+        label: 'weight_tracking'.tr(languageCode),
         icon: LucideIcons.scale,
       ),
     ];
   }
 
   // Previews des modules
+  static List<ModulePreview> getModulePreviews(String languageCode) {
+    return [
+      ModulePreview(
+        title: 'nutrition'.tr(languageCode),
+        icon: LucideIcons.apple,
+        stats: {
+          'calories'.tr(languageCode): '0 kcal',
+          'water'.tr(languageCode): '0L',
+        },
+        gradientColors: const [Color(0xFF0B132B), Color(0xFF1C2951)],
+      ),
+      ModulePreview(
+        title: 'sport'.tr(languageCode),
+        icon: LucideIcons.dumbbell,
+        stats: {
+          'calories'.tr(languageCode): '342 kcal',
+          'sessions'.tr(languageCode): '1 / 3',
+        },
+        gradientColors: const [Color(0xFF0B132B), Color(0xFF1C2951)],
+      ),
+    ];
+  }
+  
+  // Legacy constant for compatibility (will be removed)
   static const List<ModulePreview> modulePreviews = [
     ModulePreview(
       title: 'Nutrition',
@@ -479,6 +504,15 @@ class DashboardData {
   ];
 
   // Stats communautaires
+  static CommunityStats getCommunityStats(String languageCode) {
+    return CommunityStats(
+      activeUsers: 2847,
+      topChallenge: 'sugar_free_challenge'.tr(languageCode),
+      completedGoalsToday: 1250,
+    );
+  }
+  
+  // Legacy constant for compatibility (will be removed)
   static const CommunityStats communityStats = CommunityStats(
     activeUsers: 2847,
     topChallenge: '30 jours sans sucre',
@@ -486,6 +520,15 @@ class DashboardData {
   );
 
   // Features premium
+  static List<Map<String, String>> getPremiumFeatures(String languageCode) {
+    return [
+      {'value': '∞', 'label': 'photos'.tr(languageCode)},
+      {'value': '24/7', 'label': 'ai_coach'.tr(languageCode)},
+      {'value': '0', 'label': 'advertisements'.tr(languageCode)},
+    ];
+  }
+  
+  // Legacy constant for compatibility (will be removed)
   static const List<Map<String, String>> premiumFeatures = [
     {'value': '∞', 'label': 'Photos'},
     {'value': '24/7', 'label': 'Coach IA'},

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:provider/provider.dart';
 import 'custom_card.dart';
 import 'custom_button.dart';
 import 'custom_badge.dart';
@@ -12,6 +13,8 @@ import 'nutrition_widgets.dart';
 import '../shared/workout_actions.dart';
 import '../../screens/ai_scanner_screen.dart';
 import '../../screens/barcode_scanner_screen.dart';
+import '../../services/localization_service.dart';
+import '../../services/translations.dart';
 import '../../screens/select_recipe_screen.dart';
 import '../../screens/weight_evolution_screen.dart';
 import '../../bottom_sheets/manual_food_search_bottom_sheet.dart';
@@ -20,6 +23,8 @@ import '../../bottom_sheets/meal_selection_bottom_sheet.dart';
 import '../../bottom_sheets/new_meal_type_bottom_sheet.dart';
 import '../../models/nutrition_models.dart' as nutrition_models;
 import '../../services/water_service.dart';
+import '../../services/localization_service.dart';
+import '../../services/translations.dart';
 
 // Section des actions rapides
 class QuickActionsSection extends StatefulWidget {
@@ -48,17 +53,19 @@ class _QuickActionsSectionState extends State<QuickActionsSection> {
     return CustomCard(
       child: Column(
         children: [
-          const Padding(
-            padding: EdgeInsets.only(left: 12, right: 12, top: 12),
+          Padding(
+            padding: const EdgeInsets.only(left: 12, right: 12, top: 12),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Que faisons-nous aujourd\'hui ?',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1A1A),
+                Consumer<LocalizationService>(
+                  builder: (context, locService, child) => Text(
+                    'what_today'.tr(locService.currentLanguageCode),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1A1A1A),
+                    ),
                   ),
                 ),
               ],
@@ -105,10 +112,11 @@ class _QuickActionsSectionState extends State<QuickActionsSection> {
 
   void _handleQuickAction(BuildContext context, QuickAction action) {
     if (action.isDisabled || action.isPremiumRequired) {
+      final locService = context.read<LocalizationService>();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Fonctionnalité disponible avec Premium'),
-          backgroundColor: Color(0xFF0B132B),
+        SnackBar(
+          content: Text('premium_feature'.tr(locService.currentLanguageCode)),
+          backgroundColor: const Color(0xFF0B132B),
         ),
       );
       return;
@@ -147,14 +155,15 @@ class _QuickActionsSectionState extends State<QuickActionsSection> {
   void _addWaterAmount(int milliliters) async {
     final userId = Supabase.instance.client.auth.currentUser?.id;
     if (userId == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Vous devez être connecté pour enregistrer l\'hydratation'),
-          duration: Duration(seconds: 2),
-            ),
-          );
+      final locService = context.read<LocalizationService>();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('must_be_connected'.tr(locService.currentLanguageCode)),
+          duration: const Duration(seconds: 2),
+        ),
+      );
       return;
-  }
+    }
 
     try {
       // Ajouter l'entrée d'eau en base de données (même logique que le dashboard nutrition)
@@ -168,19 +177,21 @@ class _QuickActionsSectionState extends State<QuickActionsSection> {
       }
 
       // Feedback visuel (même style que le dashboard nutrition)
+      final locService = context.read<LocalizationService>();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('$milliliters ml d\'eau ajoutés ! 💧'),
+          content: Text('$milliliters ${'water_added'.tr(locService.currentLanguageCode)}'),
           duration: const Duration(seconds: 2),
           backgroundColor: const Color(0xFF0B132B),
-              ),
+        ),
       );
     } catch (e) {
       debugPrint('Erreur lors de l\'ajout d\'eau: $e');
+      final locService = context.read<LocalizationService>();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Erreur lors de l\'ajout d\'eau'),
-          duration: Duration(seconds: 2),
+        SnackBar(
+          content: Text('water_add_error'.tr(locService.currentLanguageCode)),
+          duration: const Duration(seconds: 2),
           backgroundColor: Colors.red,
         ),
       );
@@ -256,12 +267,14 @@ class _QuickActionsSectionState extends State<QuickActionsSection> {
               
               const SizedBox(height: 24),
               
-              const Text(
-                'Entraînement',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1A1A1A),
+              Consumer<LocalizationService>(
+                builder: (context, locService, child) => Text(
+                  'training'.tr(locService.currentLanguageCode),
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1A1A1A),
+                  ),
                 ),
               ),
               
@@ -545,7 +558,7 @@ class _QuickActionsSectionState extends State<QuickActionsSection> {
     Navigator.pop(context); // Fermer le bottom sheet
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Démarrage de la séance $cardioType'),
+        content: Text('${'starting_session'.tr(context.read<LocalizationService>().currentLanguageCode)} $cardioType'),
         backgroundColor: const Color(0xFF0B132B),
       ),
     );
@@ -632,12 +645,14 @@ class DailyGoalsSection extends StatelessWidget {
                       color: Color(0xFF0B132B),
                     ),
                     const SizedBox(width: 12),
-                    const Text(
-                      'Objectifs du jour',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF1A1A1A),
+                    Consumer<LocalizationService>(
+                      builder: (context, locService, child) => Text(
+                        'dashboard_daily_goals'.tr(locService.currentLanguageCode),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1A1A1A),
+                        ),
                       ),
                     ),
                   ],
@@ -734,12 +749,14 @@ class CommunityStatsSection extends StatelessWidget {
                   color: Color(0xFF0B132B),
                 ),
                 const SizedBox(width: 12),
-                const Text(
-                  'Communauté Ryze',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1A1A),
+                Consumer<LocalizationService>(
+                  builder: (context, locService, child) => Text(
+                    'ryze_community'.tr(locService.currentLanguageCode),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1A1A1A),
+                    ),
                   ),
                 ),
               ],
@@ -750,15 +767,19 @@ class CommunityStatsSection extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _buildCommunityStat(
-                  stats.activeUsersText,
-                  'membres actifs',
-                  LucideIcons.users,
+                Consumer<LocalizationService>(
+                  builder: (context, locService, child) => _buildCommunityStat(
+                    stats.activeUsersText,
+                    'active_members'.tr(locService.currentLanguageCode),
+                    LucideIcons.users,
+                  ),
                 ),
-                _buildCommunityStat(
-                  stats.completedGoalsToday.toString(),
-                  'objectifs atteints',
-                  LucideIcons.target,
+                Consumer<LocalizationService>(
+                  builder: (context, locService, child) => _buildCommunityStat(
+                    stats.completedGoalsToday.toString(),
+                    'goals_achieved'.tr(locService.currentLanguageCode),
+                    LucideIcons.target,
+                  ),
                 ),
               ],
             ),
@@ -858,23 +879,31 @@ class PremiumCTASection extends StatelessWidget {
                   color: Color(0xFF0B132B),
                 ),
                 const SizedBox(width: 12),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Débloquez votre potentiel',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF1A1A1A),
+                      Consumer<LocalizationService>(
+                        builder: (context, locService, child) => Text(
+                          locService.currentLanguageCode == 'fr' 
+                            ? 'Débloquez votre potentiel'
+                            : 'Unlock your potential',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF1A1A1A),
+                          ),
                         ),
                       ),
-                      Text(
-                        'Photos illimitées + Coach IA personnel',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF64748B),
+                      Consumer<LocalizationService>(
+                        builder: (context, locService, child) => Text(
+                          locService.currentLanguageCode == 'fr' 
+                            ? 'Photos illimitées + Coach IA personnel'
+                            : 'Unlimited photos + Personal AI Coach',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF64748B),
+                          ),
                         ),
                       ),
                     ],
@@ -897,22 +926,26 @@ class PremiumCTASection extends StatelessWidget {
             
             const SizedBox(height: 16),
             
-            CustomButton(
-              text: 'Essayer 7 jours gratuits',
-              icon: const Icon(LucideIcons.sparkles, size: 16, color: Colors.white),
-              width: double.infinity,
-              onPressed: onUpgrade,
+            Consumer<LocalizationService>(
+              builder: (context, locService, child) => CustomButton(
+                text: 'try_7_days_free'.tr(locService.currentLanguageCode),
+                icon: const Icon(LucideIcons.sparkles, size: 16, color: Colors.white),
+                width: double.infinity,
+                onPressed: onUpgrade,
+              ),
             ),
             
             const SizedBox(height: 8),
             
-            const Text(
-              'Puis 15€/mois • Annulable à tout moment',
-              style: TextStyle(
-                fontSize: 12,
-                color: Color(0xFF64748B),
+            Consumer<LocalizationService>(
+              builder: (context, locService, child) => Text(
+                'then_price_monthly'.tr(locService.currentLanguageCode),
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF64748B),
+                ),
+                textAlign: TextAlign.center,
               ),
-              textAlign: TextAlign.center,
             ),
           ],
         ),
@@ -954,18 +987,20 @@ class PremiumInsightsSection extends StatelessWidget {
                   color: Color(0xFF0B132B),
                 ),
                 const SizedBox(width: 12),
-                const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Coach IA Personnel',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF1A1A1A),
+                Consumer<LocalizationService>(
+                  builder: (context, locService, child) => Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'ai_coach'.tr(locService.currentLanguageCode),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1A1A1A),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
                 const Spacer(),
                 CustomBadge(

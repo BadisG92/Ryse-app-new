@@ -7,6 +7,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/auth_service.dart';
 import '../services/streak_service.dart';
 import '../services/header_cache_service.dart';
+import '../services/localization_service.dart';
+import '../services/translations.dart';
 import 'package:provider/provider.dart';
 import '../providers/goals_notifier.dart';
 import '../components/ui/onboarding_models.dart';
@@ -179,6 +181,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   
   Future<void> _loadLocalPreferences() async {
     final prefs = await SharedPreferences.getInstance();
+    final locService = LocalizationService.instance;
     
     setState(() {
       // Préférences locales (non stockées dans Supabase)
@@ -188,7 +191,8 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
       _progressNotifications = prefs.getBool('progress_notifications') ?? true;
       _reminderTime = prefs.getString('reminder_time') ?? '08:00';
       
-      _language = prefs.getString('language') ?? 'Français';
+      // Synchroniser avec le service de localisation
+      _language = locService.isFrench ? 'Français' : 'English';
       _measurementUnit = prefs.getString('measurement_unit') ?? 'Métrique';
       _startWeekDay = prefs.getString('start_week_day') ?? 'Lundi';
       _darkMode = prefs.getBool('dark_mode') ?? false;
@@ -1000,11 +1004,12 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                 child: Column(
                   children: [
                     // Section Profil
-                    _buildExpandableSection(
-                      key: 'profile',
-                      icon: LucideIcons.user,
-                      title: 'Profil',
-                      subtitle: '$_age ans, $_weight kg, $_height cm',
+                    Consumer<LocalizationService>(
+                      builder: (context, locService, child) => _buildExpandableSection(
+                        key: 'profile',
+                        icon: LucideIcons.user,
+                        title: 'settings_profile'.tr(locService.currentLanguageCode),
+                        subtitle: '$_age ans, $_weight kg, $_height cm',
                       children: [
                         _buildSectionContent(
                           child: Column(
@@ -1058,14 +1063,16 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                           ),
                         ),
                       ],
+                      ),
                     ),
                     
                     // Section Objectifs
-                    _buildExpandableSection(
-                      key: 'objectives',
-                      icon: LucideIcons.target,
-                      title: 'Objectifs',
-                      subtitle: _getGoalSummary(),
+                    Consumer<LocalizationService>(
+                      builder: (context, locService, child) => _buildExpandableSection(
+                        key: 'objectives',
+                        icon: LucideIcons.target,
+                        title: 'settings_objectives'.tr(locService.currentLanguageCode),
+                        subtitle: _getGoalSummary(),
                       children: [
                         _buildSectionContent(
                           child: Column(
@@ -1132,6 +1139,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                           ),
                         ),
                       ],
+                      ),
                     ),
                     
                     // Section Notifications
@@ -1202,8 +1210,9 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     GestureDetector(
-                                      onTap: () {
+                                      onTap: () async {
                                         setState(() => _language = 'Français');
+                                        await LocalizationService.instance.setLanguage('fr');
                                         _saveSettings();
                                       },
                                       child: Container(
@@ -1234,8 +1243,9 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                     ),
                                     const SizedBox(width: 24),
                                     GestureDetector(
-                                      onTap: () {
+                                      onTap: () async {
                                         setState(() => _language = 'English');
+                                        await LocalizationService.instance.setLanguage('en');
                                         _saveSettings();
                                       },
                                       child: Container(
