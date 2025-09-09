@@ -9,6 +9,8 @@ import '../services/calorie_burn_service.dart';
 import '../services/auth_service.dart';
 import '../services/dashboard_service.dart';
 import '../services/offline_workout_service.dart';
+import '../services/workout_cache_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class WorkoutSessionScreen extends StatefulWidget {
   final String sessionName;
@@ -61,6 +63,11 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
   
   // Pour tracker quelle série est actuellement active
   int? _activeSetIndex;
+  
+  // Pour la bulle d'historique
+  bool _showHistoryBubble = false;
+  final GlobalKey _historyIconKey = GlobalKey();
+  Map<String, dynamic>? _exerciseHistoryData;
 
   @override
   void initState() {
@@ -428,6 +435,46 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     });
   }
   
+  Future<void> _loadExerciseHistory() async {
+    if (_exercises.isEmpty) return;
+    
+    final currentExercise = _exercises[_currentExerciseIndex];
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    
+    if (userId == null) {
+      setState(() {
+        _exerciseHistoryData = null;
+      });
+      return;
+    }
+    
+    try {
+      final exerciseData = await WorkoutCacheService.getExerciseDetails(userId, currentExercise.exercise.name);
+      setState(() {
+        _exerciseHistoryData = exerciseData;
+      });
+    } catch (e) {
+      setState(() {
+        _exerciseHistoryData = null;
+      });
+    }
+  }
+  
+  void _toggleHistoryBubble() {
+    setState(() {
+      if (!_showHistoryBubble) {
+        _loadExerciseHistory();
+      }
+      _showHistoryBubble = !_showHistoryBubble;
+    });
+  }
+  
+  void _hideHistoryBubble() {
+    setState(() {
+      _showHistoryBubble = false;
+    });
+  }
+
   void _onFieldFocusChanged(int setIndex, bool hasFocus) {
     if (hasFocus) {
       setState(() {
@@ -1567,7 +1614,12 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return _buildWorkoutScreen();
+    return Stack(
+      children: [
+        _buildWorkoutScreen(),
+        _buildHistoryBubble(),
+      ],
+    );
   }
 
   Widget _buildWorkoutScreen() {
@@ -1831,18 +1883,42 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                     Expanded(
                       child: Column(
                         children: [
-                          Text(
-                            _exercises[_currentExerciseIndex].exercise.name,
-                            style: const TextStyle(
-                            fontSize: 18, // Réduit de 24 à 18
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                            textAlign: TextAlign.center,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        // Supprimé l'affichage du groupe musculaire
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  _exercises[_currentExerciseIndex].exercise.name,
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              GestureDetector(
+                                key: _historyIconKey,
+                                onTap: _toggleHistoryBubble,
+                                child: Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Icon(
+                                    LucideIcons.calendar,
+                                    size: 18,
+                                    color: Colors.white.withOpacity(0.9),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          // Supprimé l'affichage du groupe musculaire
                         ],
                       ),
                     ),
@@ -2305,5 +2381,296 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     } else {
       return '0';
     }
+  }
+
+  Widget _buildHistoryBubble() {
+    if (!_showHistoryBubble) return const SizedBox.shrink();
+
+    final screenWidth = MediaQuery.of(context).size.width;
+    final bubbleWidth = screenWidth * 0.9;
+    final maxSets = (_exerciseHistoryData?['maxSets'] as int?) ?? 0;
+    final sessionHistory = (_exerciseHistoryData?['sessionHistory'] as List?) ?? [];
+
+    return Positioned.fill(
+      child: GestureDetector(
+        onTap: _hideHistoryBubble, // Fermer en cliquant hors de la bulle
+        child: Container(
+          color: Colors.black.withOpacity(0.4),
+          child: Center(
+            child: GestureDetector(
+              onTap: () {}, // Empêcher la fermeture en cliquant sur la bulle
+              child: Container(
+                width: bubbleWidth,
+                constraints: const BoxConstraints(maxHeight: 450),
+                margin: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1C2951).withOpacity(0.95), // Couleur de l'app avec transparence
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.1),
+                    width: 1,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.3),
+                      blurRadius: 30,
+                      offset: const Offset(0, 15),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header de la bulle
+                    Row(
+                      children: [
+                        Icon(
+                          LucideIcons.calendar,
+                          size: 22,
+                          color: Colors.white.withOpacity(0.9),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Historique des séances',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white.withOpacity(0.9),
+                              decoration: TextDecoration.none,
+                            ),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: _hideHistoryBubble,
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              LucideIcons.x,
+                              size: 18,
+                              color: Colors.white.withOpacity(0.7),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    
+                    const SizedBox(height: 12),
+                    
+                    // Contenu de la bulle
+                    if (sessionHistory.isEmpty)
+                      _buildNoHistoryMessage()
+                    else
+                      _buildHistoryTable(maxSets, sessionHistory),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNoHistoryMessage() {
+    return Container(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        children: [
+          Icon(
+            LucideIcons.dumbbell,
+            size: 56,
+            color: Colors.white.withOpacity(0.3),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Aucun historique',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Colors.white.withOpacity(0.9),
+              decoration: TextDecoration.none,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'C\'est votre première fois avec cet exercice !\nVos performances seront enregistrées pour vous guider lors des prochaines séances.',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.white.withOpacity(0.6),
+              height: 1.4,
+              decoration: TextDecoration.none,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHistoryTable(int maxSets, List sessionHistory) {
+    return Expanded(
+      child: SingleChildScrollView(
+        child: Column(
+          children: [
+            // Header du tableau
+            Row(
+              children: [
+                // Header Date fixe
+                Container(
+                  width: 70,
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    'Date',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white.withOpacity(0.8),
+                      decoration: TextDecoration.none,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                // Header scrollable (Max + Séries)
+                Expanded(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 80,
+                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                          child: Text(
+                            'Max',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white.withOpacity(0.8),
+                              decoration: TextDecoration.none,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                        ...List.generate(maxSets, (index) => Container(
+                          width: 70,
+                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                          child: Text(
+                            'S${index + 1}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white.withOpacity(0.8),
+                              decoration: TextDecoration.none,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        )),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 8),
+            
+            // Lignes de données avec fond uniforme
+            ...sessionHistory.map((session) {
+              final allSets = (session['allSets'] as List<String>?) ?? [];
+              return Container(
+                margin: const EdgeInsets.only(bottom: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    // Date fixe
+                    Container(
+                      width: 70,
+                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                      child: Text(
+                        _formatBubbleDate(session['date']),
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white.withOpacity(0.9),
+                          decoration: TextDecoration.none,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    // Partie scrollable (Max + Séries)
+                    Expanded(
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            // Charge Max
+                            Container(
+                              width: 80,
+                              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                              child: Text(
+                                session['weight'] ?? '—',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.white.withOpacity(0.7),
+                                  decoration: TextDecoration.none,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                            // Toutes les séries
+                            ...List.generate(maxSets, (seriesIndex) => Container(
+                              width: 70,
+                              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                              child: Text(
+                                seriesIndex < allSets.length ? _formatBubbleSetValue(allSets[seriesIndex]) : '—',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.white.withOpacity(0.6),
+                                  decoration: TextDecoration.none,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            )),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatBubbleDate(String dateStr) {
+    final date = DateTime.parse(dateStr);
+    return '${date.day}/${date.month}';
+  }
+
+  String _formatBubbleSetValue(String setValue) {
+    // Raccourcir les valeurs pour la bulle
+    if (setValue.contains(' kg x ')) {
+      final parts = setValue.split(' kg x ');
+      return '${parts[0]}×${parts[1]}';
+    } else if (setValue.contains(' reps')) {
+      return setValue.replaceAll(' reps', '');
+    }
+    return setValue;
   }
 }
