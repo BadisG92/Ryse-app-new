@@ -101,10 +101,11 @@ class WorkoutCacheService {
       // Requête optimisée pour un exercice spécifique
       final rows = await _client
           .from('workout_set_history')
-          .select('history_session_id, performed_at, weight, reps, best_set')
+          .select('history_session_id, performed_at, weight, reps, best_set, set_order')
           .eq('user_id', userId)
           .eq('exercise_name', exerciseName)
-          .order('performed_at', ascending: true);
+          .order('performed_at', ascending: true)
+          .order('set_order', ascending: true);
       
       // Traitement côté client (inchangé pour compatibilité)
       final processedData = _processExerciseData(rows, exerciseName);
@@ -120,9 +121,10 @@ class WorkoutCacheService {
     }
   }
   
-  /// Traite les données d'exercice (logique existante préservée)
+  /// Traite les données d'exercice (logique modifiée pour récupérer toutes les séries)
   static Map<String, dynamic> _processExerciseData(List<dynamic> rows, String exerciseName) {
     final Map<String, Map<String, dynamic>> bySession = {};
+    final Map<String, List<Map<String, dynamic>>> allSetsBySession = {};
     
     if (rows is List) {
       for (final r in rows) {
@@ -133,6 +135,17 @@ class WorkoutCacheService {
         final weight = (r['weight'] as num?)?.toDouble() ?? 0.0;
         final reps = (r['reps'] as int?) ?? 0;
         final isBest = (r['best_set'] as bool?) ?? false;
+        final setOrder = (r['set_order'] as int?) ?? 0;
+
+        // Stocker toutes les séries pour cette session
+        final allSets = allSetsBySession[sid] ?? <Map<String, dynamic>>[];
+        allSets.add({
+          'weight': weight,
+          'reps': reps,
+          'isBest': isBest,
+          'setOrder': setOrder,
+        });
+        allSetsBySession[sid] = allSets;
 
         final current = bySession[sid] ?? {
           'date': performedAt,
@@ -145,6 +158,7 @@ class WorkoutCacheService {
 
         final score = weight > 0 ? (weight * reps) : reps.toDouble();
 
+        // Garder la meilleure série pour la progression/graphique
         if (isBest || (!current['isBest'] && score > (current['score'] as double))) {
           current['date'] = performedAt ?? current['date'];
           current['weight'] = weight;
@@ -176,15 +190,49 @@ class WorkoutCacheService {
     final List<String> labels = [];
     final List<Map<String, dynamic>> history = [];
     
+    // Calculer le nombre maximal de séries dans une session
+    int maxSets = 0;
+    for (final sessionId in allSetsBySession.keys) {
+      final sets = allSetsBySession[sessionId] ?? [];
+      if (sets.length > maxSets) {
+        maxSets = sets.length;
+      }
+    }
+    
     for (final s in sessions) {
       final double w = (s['weight'] as double);
       final int r = (s['reps'] as int);
       bestSeries.add(w > 0 ? w : r.toDouble());
       final dt = s['date'] as DateTime;
+      
+      // Trouver les sets pour cette session
+      final sessionId = bySession.entries
+          .where((entry) => entry.value == s)
+          .map((entry) => entry.key)
+          .first;
+      final sets = allSetsBySession[sessionId] ?? [];
+      
+      // Trier les sets par set_order
+      sets.sort((a, b) => (a['setOrder'] as int).compareTo(b['setOrder'] as int));
+      
+      // Formater toutes les séries
+      final List<String> formattedSets = [];
+      for (final set in sets) {
+        final setWeight = set['weight'] as double;
+        final setReps = set['reps'] as int;
+        if (setWeight > 0) {
+          formattedSets.add('${setWeight % 1 == 0 ? setWeight.toInt() : setWeight.toStringAsFixed(1)} kg x $setReps');
+        } else {
+          formattedSets.add('$setReps reps');
+        }
+      }
+      
       history.add({
         'date': dt.toIso8601String(),
         'weight': _fmtKg(w),
         'reps': '$r',
+        'allSets': formattedSets,
+        'sessionId': sessionId,
       });
       labels.add('${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}');
     }
@@ -218,6 +266,7 @@ class WorkoutCacheService {
               })
           .toList(),
       'sessionHistory': history.take(10).toList().reversed.toList(),
+      'maxSets': maxSets,
     };
   }
   

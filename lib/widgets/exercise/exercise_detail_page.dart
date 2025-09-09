@@ -20,11 +20,18 @@ class ExerciseDetailPage extends StatefulWidget {
 class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
   String selectedPeriod = 'Ce mois-ci';
   Map<String, dynamic>? exercise; // données dynamiques
+  final ScrollController _tableScrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _tableScrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -745,108 +752,201 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
           ),
         ),
         const SizedBox(height: 16),
-        _buildSessionHeader(),
-        ...(exercise?['sessionHistory'] ?? []).map((session) => _buildSessionItem(session)).toList(),
+        _buildScrollableSessionTable(),
       ],
     );
   }
 
-  Widget _buildSessionHeader() {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 0),
-      decoration: const BoxDecoration(
-        border: Border(
-          bottom: BorderSide(
-            color: Color(0xFFE2E8F0),
-            width: 2,
+  Widget _buildScrollableSessionTable() {
+    final maxSets = (exercise?['maxSets'] as int?) ?? 0;
+    final sessionHistory = (exercise?['sessionHistory'] as List?) ?? [];
+    
+    if (maxSets == 0 || sessionHistory.isEmpty) {
+      return const Text(
+        'Aucune séance trouvée',
+        style: TextStyle(
+          fontSize: 14,
+          color: Color(0xFF64748B),
+        ),
+      );
+    }
+
+
+    return Row(
+      children: [
+        // Colonne Date fixe
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header Date
+            Container(
+              width: 100,
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 0),
+              decoration: const BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    color: Color(0xFFE2E8F0),
+                    width: 2,
+                  ),
+                ),
+              ),
+              child: const Text(
+                'Date',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF64748B),
+                ),
+              ),
+            ),
+            // Dates des séances
+            ...sessionHistory.map((session) => Container(
+              width: 100,
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 0),
+              decoration: const BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    color: Color(0xFFE2E8F0),
+                    width: 1,
+                  ),
+                ),
+              ),
+              child: Text(
+                _formatActualDate(session['date']),
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF1A1A1A),
+                ),
+              ),
+            )),
+          ],
+        ),
+        // Partie scrollable (Charge Max + toutes les séries)
+        Expanded(
+          child: SingleChildScrollView(
+            controller: _tableScrollController,
+            scrollDirection: Axis.horizontal,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header scrollable
+                Row(
+                  children: [
+                    // Header Charge Max
+                    Container(
+                      width: 100,
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 0),
+                      decoration: const BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(
+                            color: Color(0xFFE2E8F0),
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                      child: const Text(
+                        'Charge Max',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF64748B),
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    // Headers des séries
+                    ...List.generate(maxSets, (index) {
+                      return Container(
+                        width: 100,
+                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                        decoration: const BoxDecoration(
+                          border: Border(
+                            bottom: BorderSide(
+                              color: Color(0xFFE2E8F0),
+                              width: 2,
+                            ),
+                          ),
+                        ),
+                        child: Text(
+                          'Série ${index + 1}',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF64748B),
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+                // Lignes de données scrollables
+                ...sessionHistory.map((session) {
+                  final allSets = (session['allSets'] as List<String>?) ?? [];
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: Row(
+                      children: [
+                        // Charge Max
+                        Container(
+                          width: 100,
+                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 0),
+                          decoration: const BoxDecoration(
+                            border: Border(
+                              bottom: BorderSide(
+                                color: Color(0xFFE2E8F0),
+                                width: 1,
+                              ),
+                            ),
+                          ),
+                          child: Text(
+                            session['weight'] ?? '—',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Color(0xFF64748B),
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                        // Toutes les séries
+                        ...List.generate(maxSets, (seriesIndex) {
+                          return Container(
+                            width: 100,
+                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                            decoration: const BoxDecoration(
+                              border: Border(
+                                bottom: BorderSide(
+                                  color: Color(0xFFE2E8F0),
+                                  width: 1,
+                                ),
+                              ),
+                            ),
+                            child: Text(
+                              seriesIndex < allSets.length ? allSets[seriesIndex] : '—',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF64748B),
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          );
+                        }),
+                      ],
+                    ),
+                  );
+                }),
+              ],
+            ),
           ),
         ),
-      ),
-      child: const Row(
-        children: [
-          Expanded(
-            flex: 2,
-            child: Text(
-              'Date',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF64748B),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              'Charge Max',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF64748B),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              'Rep',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF64748B),
-              ),
-            ),
-          ),
-        ],
-      ),
+      ],
     );
   }
 
-  Widget _buildSessionItem(Map<String, dynamic> session) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 0),
-      decoration: const BoxDecoration(
-        border: Border(
-          bottom: BorderSide(
-            color: Color(0xFFE2E8F0),
-            width: 1,
-          ),
-        ),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 2,
-            child: Text(
-              _formatActualDate(session['date']),
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF1A1A1A),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              session['weight'],
-              style: const TextStyle(
-                fontSize: 14,
-                color: Color(0xFF64748B),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              session['reps'],
-              style: const TextStyle(
-                fontSize: 14,
-                color: Color(0xFF64748B),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+
+
 
   String _formatActualDate(String dateStr) {
     final date = DateTime.parse(dateStr);
