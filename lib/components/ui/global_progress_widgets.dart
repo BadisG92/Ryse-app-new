@@ -123,7 +123,7 @@ class WeightProgressSection extends StatelessWidget {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => WeightEvolutionScreen(progress: progress),
+            builder: (context) => const WeightEvolutionScreen(),
           ),
         );
       },

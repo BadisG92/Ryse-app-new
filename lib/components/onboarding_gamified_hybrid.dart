@@ -762,6 +762,31 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
         'updated_at': DateTime.now().toIso8601String(),
       }).eq('id', supabase.auth.currentUser!.id);
       
+      // Créer une entrée dans l'historique pour marquer le poids initial de l'onboarding
+      final weight = double.tryParse(userData['weight'] ?? '0') ?? 0.0;
+      if (weight > 0) {
+        await supabase.from('user_profile_history').insert({
+          'user_id': supabase.auth.currentUser!.id,
+          'gender': userData['gender'],
+          'birth_date': birthDate,
+          'age': int.tryParse(userData['age'] ?? '0'),
+          'height': double.tryParse(userData['height'] ?? '0'),
+          'weight': weight,
+          'activity_level': userData['activity'],
+          'fitness_goal': userData['goal'],
+          'dietary_restrictions': userData['restrictions'],
+          'daily_calories': calories,
+          'daily_protein': macros['protein'],
+          'daily_carbs': macros['carbs'],
+          'daily_fat': macros['fat'],
+          'bmr': bmr,
+          'valid_from': DateTime.now().toIso8601String(),
+          'is_current': true,
+          'change_source': 'onboarding_completion',
+          'weight_modified': true, // Marquer comme pesée intentionnelle
+        });
+      }
+      
       // Aussi sauvegarder en local pour la compatibilité
       await prefs.setInt('daily_calories', calories);
       await prefs.setInt('daily_protein', macros['protein']!);

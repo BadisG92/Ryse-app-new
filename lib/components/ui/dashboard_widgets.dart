@@ -574,7 +574,7 @@ class _QuickActionsSectionState extends State<QuickActionsSection> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => WeightEvolutionScreen(progress: weightProgress),
+        builder: (context) => const WeightEvolutionScreen(),
       ),
     );
   }

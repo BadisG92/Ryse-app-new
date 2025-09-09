@@ -89,6 +89,9 @@ class WeightEvolutionCard extends StatelessWidget {
                           LineChartData(
                             minY: progress.minY,
                             maxY: progress.maxY,
+                            // Étendre légèrement l'axe X pour la ligne d'objectif
+                            minX: 0,
+                            maxX: (progress.entries.length + 1).toDouble(),
                             gridData: FlGridData(
                               show: true,
                               drawVerticalLine: false,
@@ -129,9 +132,10 @@ class WeightEvolutionCard extends StatelessWidget {
                                   interval: isSmallScreen ? 2 : 1,
                                   getTitlesWidget: (value, meta) {
                                     int index = value.toInt();
-                                    if (index >= 0 && index < progress.chartDates.length) {
+                                    if (index >= 0 && index < progress.entries.length) {
+                                      final entry = progress.entries[index];
                                       return Text(
-                                        progress.chartDates[index],
+                                        '${entry.date.day}/${entry.date.month}',
                                         style: const TextStyle(
                                           color: Color(0xFF64748B),
                                           fontSize: 9,
@@ -139,16 +143,47 @@ class WeightEvolutionCard extends StatelessWidget {
                                         ),
                                       );
                                     }
-                                    return const Text('');
+                                    return const SizedBox.shrink();
                                   },
                                 ),
                               ),
                             ),
                             borderData: FlBorderData(show: false),
+                            // Gestion des tooltips améliorée
+                            lineTouchData: LineTouchData(
+                              enabled: true,
+                              touchTooltipData: LineTouchTooltipData(
+                                getTooltipColor: (touchedSpot) => const Color(0xFF0B132B),
+                                tooltipRoundedRadius: 8,
+                                tooltipPadding: const EdgeInsets.all(8),
+                                tooltipMargin: 8,
+                                getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
+                                  return touchedBarSpots.map((barSpot) {
+                                    // Afficher le tooltip seulement pour la première ligne (données réelles, barDataIndex = 0)
+                                    if (barSpot.barIndex == 0 && barSpot.x.toInt() < progress.entries.length) {
+                                      final entry = progress.entries[barSpot.x.toInt()];
+                                      return LineTooltipItem(
+                                        '${barSpot.y.toStringAsFixed(1)} kg',
+                                        const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w500,
+                                          fontSize: 12,
+                                        ),
+                                      );
+                                    }
+                                    return null;
+                                  }).toList();
+                                },
+                                fitInsideHorizontally: true,
+                                fitInsideVertically: true,
+                              ),
+                            ),
                             lineBarsData: [
-                              // Ligne principale des données
+                              // Ligne principale des données - seulement points réels
                               LineChartBarData(
-                                spots: progress.chartSpots,
+                                spots: progress.entries.asMap().entries.map((entry) {
+                                  return FlSpot(entry.key.toDouble(), entry.value.weight);
+                                }).toList(),
                                 isCurved: true,
                                 color: const Color(0xFF0B132B),
                                 barWidth: 2,
@@ -169,13 +204,12 @@ class WeightEvolutionCard extends StatelessWidget {
                                   color: const Color(0xFF0B132B).withOpacity(0.1),
                                 ),
                               ),
-                              // Ligne d'objectif (si objectif défini et différent)
-                              if (progress.targetWeight > 0 && 
-                                  progress.targetWeight != progress.initialWeight)
+                              // Ligne d'objectif - étendue sur toute la largeur
+                              if (progress.targetWeight > 0)
                                 LineChartBarData(
                                   spots: [
                                     FlSpot(0, progress.targetWeight),
-                                    FlSpot((progress.chartSpots.length - 1).toDouble(), progress.targetWeight),
+                                    FlSpot((progress.entries.length + 1).toDouble(), progress.targetWeight),
                                   ],
                                   isCurved: false,
                                   color: const Color(0xFF64748B), // Gris pour l'objectif

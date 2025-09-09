@@ -7,6 +7,8 @@ import 'ui/global_progress_widgets.dart';
 import '../services/dashboard_service.dart';
 import '../services/progress_service_v2.dart';
 import '../services/header_cache_service.dart';
+import '../services/weight_service.dart';
+import '../screens/weight_evolution_screen.dart';
 import '../providers/goals_notifier.dart';
 
 class GlobalProgress extends StatefulWidget {
@@ -18,8 +20,8 @@ class GlobalProgress extends StatefulWidget {
 
 class _GlobalProgressState extends State<GlobalProgress> {
   
-  // État des données (chargées depuis ProgressService)
-  WeightProgress _weightProgress = GlobalProgressData.weightProgress;
+  // État des données (chargées depuis les services)
+  WeightProgress? _weightProgress;
   WeeklyBalance _weeklyBalance = GlobalProgressData.weeklyBalance;
   List<TrackingDay> _trackingDays = GlobalProgressData.weeklyTracking;
   HeaderStats? _headerStats; // Pas d'initialisation par défaut
@@ -74,21 +76,23 @@ class _GlobalProgressState extends State<GlobalProgress> {
       // S'assurer que le cache est propre pour éviter les conflits de statut
       ProgressServiceV2.forceRefresh();
       
-      // Charger avec le nouveau service optimisé pour les bilans hebdo
+      // Charger avec le nouveau service optimisé pour les bilans hebdo + données de poids réelles
       final results = await Future.wait([
+        WeightService.getWeightProgress(),
         ProgressServiceV2.getWeeklyBalance(),
         ProgressServiceV2.getWeeklyTracking(),
         ProgressServiceV2.getHeaderStats(),
         ProgressServiceV2.getAIRecommendations(),
       ]);
       
-      final newHeaderStats = results[2] as HeaderStats;
+      final newHeaderStats = results[3] as HeaderStats;
       
       setState(() {
-        _weeklyBalance = results[0] as WeeklyBalance;
-        _trackingDays = results[1] as List<TrackingDay>;
+        _weightProgress = results[0] as WeightProgress;
+        _weeklyBalance = results[1] as WeeklyBalance;
+        _trackingDays = results[2] as List<TrackingDay>;
         _headerStats = newHeaderStats;
-        _aiRecommendations = results[3] as List<AIRecommendation>;
+        _aiRecommendations = results[4] as List<AIRecommendation>;
         _loadingProgress = false;
       });
       
@@ -128,10 +132,12 @@ class _GlobalProgressState extends State<GlobalProgress> {
                   child: Column(
                     children: [
                       // Section d'évolution du poids avec graphique
-                      GlobalProgressSectionBuilder.buildWeightSection(
-                        _weightProgress,
-                        _onEditWeight,
-                      ),
+                      _weightProgress != null 
+                        ? GlobalProgressSectionBuilder.buildWeightSection(
+                            _weightProgress!,
+                            _onEditWeight,
+                          )
+                        : _buildLoadingSection(),
                       
                       const SizedBox(height: 16),
                       
@@ -290,202 +296,18 @@ class _GlobalProgressState extends State<GlobalProgress> {
     );
   }
 
-  // Action d'édition du poids (garde l'intégration)
+  // Action d'édition du poids - naviguer vers la page dédiée
   void _onEditWeight() {
     HapticFeedback.lightImpact();
     
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => _buildWeightEditBottomSheet(),
-    );
-  }
-
-  // Bottom sheet d'édition du poids (garde l'intégration)
-  Widget _buildWeightEditBottomSheet() {
-    double currentWeight = _weightProgress.currentWeight;
-    final TextEditingController weightController = 
-        TextEditingController(text: currentWeight.toStringAsFixed(1));
-
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.5,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(24),
-          topRight: Radius.circular(24),
-        ),
-      ),
-      child: Column(
-        children: [
-          // Handle pour fermer
-          Container(
-            margin: const EdgeInsets.only(top: 12),
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: const Color(0xFFE2E8F0),
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          
-          // En-tête
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              children: [
-                const Text(
-                  'Modifier le poids',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1A1A),
-                  ),
-                ),
-                const Spacer(),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close, color: Color(0xFF64748B)),
-                ),
-              ],
-            ),
-          ),
-          
-          // Formulaire de poids
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                children: [
-                  // Champ de saisie
-                  TextField(
-                    controller: weightController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,1}')),
-                    ],
-                    decoration: InputDecoration(
-                      labelText: 'Poids actuel (kg)',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Color(0xFF0B132B)),
-                      ),
-                    ),
-                    onChanged: (value) {
-                      final parsedWeight = double.tryParse(value);
-                      if (parsedWeight != null) {
-                        currentWeight = parsedWeight;
-                      }
-                    },
-                  ),
-                  
-                  const SizedBox(height: 20),
-                  
-                  // Informations contextuelles
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Informations',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF1A1A1A),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Poids initial : ${_weightProgress.initialWeight.toStringAsFixed(1)} kg',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF64748B),
-                          ),
-                        ),
-                        Text(
-                          'Objectif : ${_weightProgress.targetWeight.toStringAsFixed(1)} kg',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF64748B),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  
-                  const Spacer(),
-                  
-                  // Bouton de sauvegarde
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        _updateWeight(currentWeight);
-                        Navigator.pop(context);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF0B132B),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text('Enregistrer'),
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 20),
-                ],
-              ),
-            ),
-          ),
-        ],
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const WeightEvolutionScreen(),
       ),
     );
   }
 
-  // Mise à jour du poids (garde l'intégration)
-  void _updateWeight(double newWeight) {
-    HapticFeedback.lightImpact();
-    
-    setState(() {
-      // Créer une nouvelle entrée de poids
-      final newEntry = WeightEntry(
-        date: DateTime.now(),
-        weight: newWeight,
-      );
-
-      // Mettre à jour la progression de poids
-      final updatedEntries = List<WeightEntry>.from(_weightProgress.entries)
-        ..add(newEntry);
-
-      _weightProgress = WeightProgress(
-        currentWeight: newWeight,
-        previousWeight: _weightProgress.currentWeight, // L'ancien devient le précédent
-        initialWeight: _weightProgress.initialWeight,
-        targetWeight: _weightProgress.targetWeight,
-        entries: updatedEntries,
-      );
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Poids mis à jour : ${newWeight.toStringAsFixed(1)} kg'),
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
 
   Widget _buildLoadingSection() {
     return Container(

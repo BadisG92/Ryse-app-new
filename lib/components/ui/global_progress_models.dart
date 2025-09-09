@@ -47,21 +47,29 @@ class WeightProgress {
     }).toList();
   }
 
-  // Plage Y pour le graphique (incluant l'objectif si défini)
+  // Plage Y pour le graphique avec marge de 5%
   double get minY {
     final weights = entries.map((e) => e.weight).toList();
-    if (targetWeight > 0 && targetWeight != initialWeight) {
-      weights.add(targetWeight);
-    }
-    return weights.reduce((a, b) => a < b ? a : b) - 1.0;
+    weights.add(targetWeight); // Toujours inclure le target weight
+    
+    final minWeight = weights.reduce((a, b) => a < b ? a : b);
+    final maxWeight = weights.reduce((a, b) => a > b ? a : b);
+    final range = maxWeight - minWeight;
+    final margin = range * 0.05; // Marge de 5%
+    
+    return minWeight - (margin + 1.0); // +1.0 pour une marge minimum
   }
   
   double get maxY {
     final weights = entries.map((e) => e.weight).toList();
-    if (targetWeight > 0 && targetWeight != initialWeight) {
-      weights.add(targetWeight);
-    }
-    return weights.reduce((a, b) => a > b ? a : b) + 1.0;
+    weights.add(targetWeight); // Toujours inclure le target weight
+    
+    final minWeight = weights.reduce((a, b) => a < b ? a : b);
+    final maxWeight = weights.reduce((a, b) => a > b ? a : b);
+    final range = maxWeight - minWeight;
+    final margin = range * 0.05; // Marge de 5%
+    
+    return maxWeight + (margin + 1.0); // +1.0 pour une marge minimum
   }
 
   // Dates pour les axes
@@ -426,22 +434,8 @@ class HeaderStatItem {
   });
 }
 
-// Données statiques pour le global progress
+// Données statiques pour le global progress (garde seulement les données non-poids)
 class GlobalProgressData {
-  // Progression de poids exemple
-  static final WeightProgress weightProgress = WeightProgress(
-    currentWeight: 69.7,
-    previousWeight: 72.0,
-    initialWeight: 75.0,
-    targetWeight: 68.0,
-    entries: [
-      WeightEntry(date: DateTime(2024, 1, 1), weight: 72.0),
-      WeightEntry(date: DateTime(2024, 1, 8), weight: 71.2),
-      WeightEntry(date: DateTime(2024, 1, 15), weight: 70.5),
-      WeightEntry(date: DateTime(2024, 1, 22), weight: 69.8),
-      WeightEntry(date: DateTime(2024, 1, 29), weight: 69.7),
-    ],
-  );
 
   // Bilan hebdomadaire
   static const WeeklyBalance weeklyBalance = WeeklyBalance(
