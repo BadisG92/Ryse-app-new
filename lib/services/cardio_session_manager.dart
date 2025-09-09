@@ -5,6 +5,8 @@ import 'cardio_service.dart';
 import 'sport_dashboard_service.dart';
 import 'workout_cache_service.dart';
 import 'dashboard_service.dart';
+import 'location_service.dart';
+import 'cardio_calculator.dart';
 
 /// Manager pour gérer le cycle de vie des séances cardio
 /// S'assure que toutes les séances terminées sont bien historisées
@@ -93,6 +95,70 @@ class CardioSessionManager {
     }
   }
 
+  /// Termine une séance cardio avec données GPS et s'assure qu'elle soit bien historisée
+  static Future<void> completeCardioSessionWithGPS({
+    required CardioSessionData sessionData,
+    String? intensity,
+    String? notes,
+  }) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) {
+      throw Exception('User not authenticated');
+    }
+
+    try {
+      // Récupérer les données GPS finales
+      final gpsDistance = LocationService.calculateTotalDistance();
+      final gpsAverageSpeed = LocationService.calculateAverageSpeed(); 
+      final gpsRoute = LocationService.currentRoute;
+      final gpsElevation = CardioCalculator.calculateElevationStats(gpsRoute);
+      
+      // Calculer les calories avec les vraies données
+      final finalCalories = CardioCalculator.calculateCalories(
+        activityType: sessionData.activityType,
+        duration: sessionData.duration,
+        averageSpeed: gpsAverageSpeed,
+        distance: gpsDistance,
+      );
+
+      // Calculer l'allure pour la course
+      final paceSeconds = LocationService.calculatePacePerKm();
+
+      // Sauvegarder la session complète
+      await CardioService.saveCompletedCardioSession(
+        sessionData: sessionData.copyWith(
+          distance: gpsDistance > 0 ? gpsDistance : sessionData.distance,
+          averageSpeed: gpsAverageSpeed > 0 ? gpsAverageSpeed : sessionData.averageSpeed,
+          calories: finalCalories > 0 ? finalCalories : sessionData.calories,
+          route: gpsRoute.isNotEmpty ? gpsRoute : sessionData.route,
+          endTime: DateTime.now(),
+        ),
+        intensity: intensity ?? 'Modéré',
+        notes: notes,
+      );
+
+      debugPrint('✅ Cardio session avec GPS terminée - Distance: ${gpsDistance.toStringAsFixed(2)}km, Vitesse moy: ${gpsAverageSpeed.toStringAsFixed(1)}km/h');
+
+      // Nettoyer les données GPS
+      LocationService.clearRoute();
+
+      // Invalider les caches
+      _invalidateAllCaches();
+
+      // Mettre à jour le dashboard principal
+      try {
+        await DashboardService.invalidateAndRefreshAfterWorkout();
+        debugPrint('✅ Dashboard principal mis à jour après cardio GPS');
+      } catch (e) {
+        debugPrint('⚠️ Erreur lors de la mise à jour du dashboard principal: $e');
+      }
+      
+    } catch (e) {
+      debugPrint('❌ Error completing cardio session with GPS: $e');
+      rethrow;
+    }
+  }
+
   /// Termine une séance cardio et s'assure qu'elle soit bien historisée
   static Future<void> completeCardioSession({
     required String sessionId,
@@ -122,18 +188,7 @@ class CardioSessionManager {
       debugPrint('✅ Cardio session completed: $sessionId');
 
       // 2. Invalider le cache pour forcer le rechargement des données
-      CardioService.invalidateCache();
-      SportDashboardService.invalidateCache();
-      
-      // Aussi invalider WorkoutCacheService pour le dashboard unifié
-      try {
-        final userId = _client.auth.currentUser?.id;
-        if (userId != null) {
-          WorkoutCacheService.invalidateUserCache(userId);
-        }
-      } catch (e) {
-        debugPrint('⚠️ Could not invalidate WorkoutCacheService: $e');
-      }
+      _invalidateAllCaches();
       
       // 3. Invalider le dashboard principal pour mettre à jour les objectifs et modules
       try {
@@ -265,6 +320,22 @@ class CardioSessionManager {
     } catch (e) {
       debugPrint('❌ Error creating completed cardio session: $e');
       rethrow;
+    }
+  }
+
+  /// Invalide tous les caches après une séance cardio
+  static void _invalidateAllCaches() {
+    CardioService.invalidateCache();
+    SportDashboardService.invalidateCache();
+    
+    // Aussi invalider WorkoutCacheService pour le dashboard unifié
+    try {
+      final userId = _client.auth.currentUser?.id;
+      if (userId != null) {
+        WorkoutCacheService.invalidateUserCache(userId);
+      }
+    } catch (e) {
+      debugPrint('⚠️ Could not invalidate WorkoutCacheService: $e');
     }
   }
 }

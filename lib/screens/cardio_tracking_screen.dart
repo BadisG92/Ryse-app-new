@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../models/cardio_session_models.dart';
 import '../services/cardio_service.dart';
+import '../services/location_service.dart';
+import '../services/cardio_calculator.dart';
+import '../services/cardio_session_manager.dart';
 
 class CardioTrackingScreen extends StatefulWidget {
   final String activityType;
@@ -26,12 +29,15 @@ class CardioTrackingScreen extends StatefulWidget {
 class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
   late CardioSessionData _session;
   Timer? _timer;
-  final Random _random = Random(); // Pour simuler les données
+  StreamSubscription<LocationPoint>? _locationSubscription;
+  bool _useGPS = false;
+  bool _gpsPermissionGranted = false;
 
   @override
   void initState() {
     super.initState();
     _initializeSession();
+    _checkGPSPermissions();
   }
 
   void _initializeSession() {
@@ -48,43 +54,88 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
   @override
   void dispose() {
     _timer?.cancel();
+    _locationSubscription?.cancel();
+    if (_useGPS) {
+      LocationService.stopLocationTracking();
+    }
     super.dispose();
   }
 
-  void _startTracking() {
+  /// Vérifie les permissions GPS au démarrage
+  Future<void> _checkGPSPermissions() async {
+    final hasPermission = await LocationService.checkAndRequestPermissions();
+    setState(() {
+      _gpsPermissionGranted = hasPermission;
+      if (hasPermission) {
+        _useGPS = true; // Activer GPS par défaut si permissions accordées
+      }
+    });
+    
+    if (!hasPermission) {
+      _showGPSPermissionDialog();
+    }
+  }
+
+  /// Affiche un dialog pour expliquer les permissions GPS
+  void _showGPSPermissionDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.location_on, color: Color(0xFFFFB000)),
+            SizedBox(width: 8),
+            Text('Géolocalisation'),
+          ],
+        ),
+        content: const Text(
+          'Pour un suivi précis de votre distance et vitesse, autorisez l\'accès à votre position. '
+          'Vous pouvez toujours utiliser le mode manuel dans les réglages.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Plus tard'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _checkGPSPermissions();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0B132B),
+            ),
+            child: const Text('Autoriser', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _startTracking() async {
+    // Démarrer le suivi GPS si disponible
+    if (_useGPS && _gpsPermissionGranted) {
+      final gpsStarted = await LocationService.startLocationTracking();
+      if (gpsStarted) {
+        _locationSubscription = LocationService.locationStream?.listen(_onLocationUpdate);
+      }
+    }
+
+    // Timer principal pour mettre à jour l'interface
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       setState(() {
-        // Simuler l'augmentation du temps
+        // Mettre à jour le temps
         _session = _session.copyWith(
           duration: Duration(seconds: _session.duration.inSeconds + 1),
         );
 
-        // Simuler l'augmentation de distance et pas (selon l'activité)
-        double speedIncrement;
-        int stepsIncrement = 0;
-        
-        switch (widget.activityType) {
-          case 'running':
-            speedIncrement = _random.nextDouble() * 0.003 + 0.002; // ~8-12 km/h
-            break;
-          case 'bike':
-            speedIncrement = _random.nextDouble() * 0.005 + 0.004; // ~15-25 km/h
-            break;
-          case 'walking':
-            speedIncrement = _random.nextDouble() * 0.001 + 0.001; // ~4-6 km/h
-            stepsIncrement = _random.nextInt(3) + 1; // 1-3 pas par seconde
-            break;
-          default:
-            speedIncrement = 0.002;
+        if (_useGPS && _gpsPermissionGranted) {
+          // Utiliser les données GPS réelles
+          _updateFromGPS();
+        } else {
+          // Mode simulation (fallback)
+          _updateWithSimulation();
         }
-
-        _session = _session.copyWith(
-          distance: _session.distance + speedIncrement,
-          currentSpeed: speedIncrement * 3600, // convertir en km/h
-          averageSpeed: _session.calculateAverageSpeed(),
-          steps: _session.steps + stepsIncrement,
-          calories: _session.calculateCalories(),
-        );
 
         // Vérifier si objectif atteint
         if (_session.isTargetReached()) {
@@ -98,8 +149,81 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
     });
   }
 
+  /// Met à jour les données basées sur le GPS
+  void _updateFromGPS() {
+    final distance = LocationService.calculateTotalDistance();
+    final averageSpeed = LocationService.calculateAverageSpeed();
+    final currentSpeed = LocationService.calculateCurrentSpeed();
+    final route = LocationService.currentRoute;
+    
+    // Calculer les calories avec les vraies données
+    final calories = CardioCalculator.calculateCalories(
+      activityType: widget.activityType,
+      duration: _session.duration,
+      averageSpeed: averageSpeed,
+      distance: distance,
+    );
+
+    // Calculer les pas pour la marche (estimation basée sur la cadence)
+    int steps = _session.steps;
+    if (widget.activityType == 'walking' && currentSpeed > 0) {
+      // Estimation : ~100-120 pas par minute selon la vitesse
+      final stepsPerMinute = (currentSpeed * 20).clamp(80, 140); // pas/min
+      steps = ((stepsPerMinute / 60) * _session.duration.inSeconds).round();
+    }
+
+    _session = _session.copyWith(
+      distance: distance,
+      currentSpeed: currentSpeed,
+      averageSpeed: averageSpeed,
+      steps: steps,
+      calories: calories,
+      route: route,
+    );
+  }
+
+  /// Met à jour avec des données simulées (fallback)
+  void _updateWithSimulation() {
+    final Random random = Random();
+    double speedIncrement;
+    int stepsIncrement = 0;
+    
+    switch (widget.activityType) {
+      case 'running':
+        speedIncrement = random.nextDouble() * 0.003 + 0.002; // ~8-12 km/h
+        break;
+      case 'bike':
+        speedIncrement = random.nextDouble() * 0.005 + 0.004; // ~15-25 km/h
+        break;
+      case 'walking':
+        speedIncrement = random.nextDouble() * 0.001 + 0.001; // ~4-6 km/h
+        stepsIncrement = random.nextInt(3) + 1; // 1-3 pas par seconde
+        break;
+      default:
+        speedIncrement = 0.002;
+    }
+
+    _session = _session.copyWith(
+      distance: _session.distance + speedIncrement,
+      currentSpeed: speedIncrement * 3600, // convertir en km/h
+      averageSpeed: _session.calculateAverageSpeed(),
+      steps: _session.steps + stepsIncrement,
+      calories: _session.calculateCalories(),
+    );
+  }
+
+  /// Callback appelé à chaque nouvelle position GPS
+  void _onLocationUpdate(LocationPoint locationPoint) {
+    debugPrint('📍 Nouvelle position GPS: ${locationPoint.latitude}, ${locationPoint.longitude}');
+    // Les calculs sont faits dans _updateFromGPS(), pas besoin d'action ici
+  }
+
   void _pauseTracking() {
     _timer?.cancel();
+    if (_useGPS) {
+      LocationService.stopLocationTracking();
+      _locationSubscription?.cancel();
+    }
     setState(() {
       _session = _session.copyWith(isRunning: false, isPaused: true);
     });
@@ -111,6 +235,10 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
 
   void _stopTracking() {
     _timer?.cancel();
+    if (_useGPS) {
+      LocationService.stopLocationTracking();
+      _locationSubscription?.cancel();
+    }
     setState(() {
       _session = _session.copyWith(
         isRunning: false,
@@ -312,9 +440,17 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: () async {
-                      // Historiser la session dans Supabase
+                      // Historiser la session avec GPS dans Supabase
                       try {
-                        await _saveSessionToSupabase();
+                        if (_useGPS && _gpsPermissionGranted) {
+                          await CardioSessionManager.completeCardioSessionWithGPS(
+                            sessionData: _session,
+                            intensity: 'Modéré',
+                            notes: null,
+                          );
+                        } else {
+                          await _saveSessionToSupabase();
+                        }
                         debugPrint('✅ Session cardio sauvegardée');
                       } catch (e) {
                         debugPrint('❌ Erreur sauvegarde session: $e');
@@ -408,13 +544,59 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        widget.activityTitle,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                        ),
+                      Row(
+                        children: [
+                          Text(
+                            widget.activityTitle,
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          // Indicateur GPS
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: _useGPS && _gpsPermissionGranted 
+                                ? Colors.green.withValues(alpha: 0.2)
+                                : Colors.orange.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: _useGPS && _gpsPermissionGranted 
+                                  ? Colors.green
+                                  : Colors.orange,
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  _useGPS && _gpsPermissionGranted 
+                                    ? LucideIcons.satellite 
+                                    : LucideIcons.wifiOff,
+                                  size: 12,
+                                  color: _useGPS && _gpsPermissionGranted 
+                                    ? Colors.green
+                                    : Colors.orange,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  _useGPS && _gpsPermissionGranted ? 'GPS' : 'SIMU',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    color: _useGPS && _gpsPermissionGranted 
+                                      ? Colors.green
+                                      : Colors.orange,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                       Text(
                         widget.formatTitle,
@@ -425,18 +607,32 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
                       ),
                     ],
                   ),
-                  IconButton(
-                    onPressed: () {
-                      if (_session.isRunning) {
-                        _pauseTracking();
-                      }
-                      Navigator.pop(context);
-                    },
-                    icon: const Icon(
-                      LucideIcons.x,
-                      color: Colors.white,
-                      size: 24,
-                    ),
+                  Row(
+                    children: [
+                      // Bouton toggle GPS (si permissions refusées)
+                      if (!_gpsPermissionGranted)
+                        IconButton(
+                          onPressed: _checkGPSPermissions,
+                          icon: const Icon(
+                            LucideIcons.mapPin,
+                            color: Colors.white70,
+                            size: 20,
+                          ),
+                        ),
+                      IconButton(
+                        onPressed: () {
+                          if (_session.isRunning) {
+                            _pauseTracking();
+                          }
+                          Navigator.pop(context);
+                        },
+                        icon: const Icon(
+                          LucideIcons.x,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
