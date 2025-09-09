@@ -12,6 +12,7 @@ import '../bottom_sheets/new_meal_type_bottom_sheet.dart';
 import '../models/nutrition_models.dart';
 import '../components/ui/nutrition_widgets.dart';
 import '../services/gemini_analysis_service.dart';
+import '../services/gemini_analysis_service_v2.dart';
 import '../models/ai_analysis_models.dart';
 import '../services/food_entries_service.dart';
 import '../services/auth_service.dart';
@@ -37,11 +38,17 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
   bool hasResult = false;
   bool isCameraInitialized = false;
   bool isFlashOn = false;
+  bool showNoteInput = false;
   String? errorMessage;
   AIAnalysisResult? _analysisResult;
+  String _aiNote = '';
   
   // Contrôleur pour le nom de l'aliment modifiable
   final TextEditingController _mealNameController = TextEditingController();
+  // Contrôleur pour la note IA
+  final TextEditingController _noteController = TextEditingController();
+  
+  static const int maxNoteLength = 140;
   
   // Animation de chargement IA
   int _loadingPhase = 0;
@@ -71,6 +78,7 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
     WidgetsBinding.instance.removeObserver(this);
     _cameraController?.dispose();
     _mealNameController.dispose();
+    _noteController.dispose();
     super.dispose();
   }
 
@@ -158,7 +166,12 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
             ? _buildResultScreen() 
             : isAnalyzing 
                 ? _buildAILoadingScreen() 
-                : _buildCameraScreen(),
+                : Stack(
+                    children: [
+                      _buildCameraScreen(),
+                      if (showNoteInput) _buildNoteInputOverlay(),
+                    ],
+                  ),
       ),
     );
   }
@@ -473,14 +486,16 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
             _capturedImageBytes = Uint8List.fromList(bytes); // Pour l'affichage web
           });
           
-          _analyzeImageFromBytes(bytes);
+          // Sauvegarder les bytes pour l'analyse après la note
+          _capturedImageBytes = bytes;
+          _showNoteInputOverlay();
         } else {
           // Sur mobile, utilisation normale
           print('📱 Traitement image mobile: ${image.path}');
           setState(() {
             _capturedImage = File(image.path);
           });
-          _analyzeImage();
+          _showNoteInputOverlay();
         }
       } else {
         print('❌ Aucune image sélectionnée');
@@ -511,15 +526,15 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
           _capturedImage = File(image.path);
           _capturedImageBytes = Uint8List.fromList(bytes);
         });
-        _analyzeImageFromBytes(bytes);
+        _capturedImageBytes = bytes;
       } else {
         // Sur mobile
         setState(() {
           _capturedImage = File(image.path);
           _capturedImageBytes = null;
         });
-        _analyzeImage();
       }
+      _showNoteInputOverlay();
     } catch (e) {
       setState(() {
         isAnalyzing = false;
@@ -1038,10 +1053,13 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
                         setState(() {
                           hasResult = false;
                           isAnalyzing = false;
+                          showNoteInput = false;
                           _capturedImage = null;
                           _capturedImageBytes = null;
                           _analysisResult = null;
                           _mealNameController.clear();
+                          _noteController.clear();
+                          _aiNote = '';
                           errorMessage = null;
                         });
                       }
@@ -1477,6 +1495,286 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
 
     } catch (e) {
       print('❌ Erreur analyse image web: $e');
+      if (mounted) {
+        setState(() {
+          isAnalyzing = false;
+          hasResult = false;
+          errorMessage = 'Le service IA est temporairement surchargé.\nMerci de réessayer dans quelques minutes.';
+        });
+      }
+    }
+  }
+
+  /// Afficher l'overlay de saisie de note
+  void _showNoteInputOverlay() {
+    setState(() {
+      showNoteInput = true;
+    });
+  }
+
+  /// Construire l'overlay de saisie de note
+  Widget _buildNoteInputOverlay() {
+    return Positioned.fill(
+      child: Container(
+        color: Colors.black.withOpacity(0.8),
+        child: Center(
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 24),
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Titre
+                const Text(
+                  'Ajouter une note pour l\'IA',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1A1A1A),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Décrivez votre plat pour améliorer la précision de l\'analyse',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF64748B),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+                
+                // Champ de saisie
+                TextField(
+                  controller: _noteController,
+                  maxLength: maxNoteLength,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    hintText: 'Ex: Assiette de saumon 150g avec quinoa et haricots verts',
+                    hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFF0B132B), width: 2),
+                    ),
+                    contentPadding: const EdgeInsets.all(16),
+                    counterStyle: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF64748B),
+                    ),
+                  ),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: Color(0xFF1A1A1A),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                
+                // Boutons
+                Row(
+                  children: [
+                    // Bouton Ignorer
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: _skipNote,
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          side: const BorderSide(color: Color(0xFFE2E8F0)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          'Ignorer',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF64748B),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Bouton Analyser
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: _analyzeWithNote,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF0B132B),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          'Analyser',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Ignorer la saisie de note et procéder à l'analyse
+  void _skipNote() {
+    setState(() {
+      showNoteInput = false;
+      _aiNote = '';
+      _noteController.clear();
+    });
+    _startAnalysis();
+  }
+
+  /// Analyser avec la note utilisateur
+  void _analyzeWithNote() {
+    setState(() {
+      _aiNote = _noteController.text.trim();
+      showNoteInput = false;
+    });
+    _startAnalysis();
+  }
+
+  /// Démarrer l'analyse avec ou sans note
+  void _startAnalysis() {
+    setState(() {
+      isAnalyzing = true;
+    });
+    
+    if (kIsWeb && _capturedImageBytes != null) {
+      _analyzeImageFromBytesWithNote(_capturedImageBytes!);
+    } else if (_capturedImage != null) {
+      _analyzeImageWithNote();
+    }
+  }
+
+  /// Analyser image avec note utilisateur
+  Future<void> _analyzeImageWithNote() async {
+    if (_capturedImage == null) return;
+
+    try {
+      if (mounted) {
+        setState(() {
+          _loadingPhase = 0;
+        });
+      }
+
+      // Démarrer l'animation de chargement
+      _startLoadingAnimation();
+
+      // Validate image file first
+      final validationError = await GeminiAnalysisServiceV2.validateImageFile(_capturedImage!);
+      if (validationError != null) {
+        if (mounted) {
+          setState(() {
+            isAnalyzing = false;
+            errorMessage = validationError;
+          });
+        }
+        return;
+      }
+
+      // Analyze image with Gemini service V2 (with user note)
+      final result = await GeminiAnalysisServiceV2.analyzeImageWithFallback(
+        _capturedImage!,
+        userNote: _aiNote.isNotEmpty ? _aiNote : null,
+      );
+      
+      if (mounted) {
+        setState(() {
+          isAnalyzing = false;
+          _analysisResult = result;
+          
+          if (result.success && result.detectedFoods.isNotEmpty) {
+            hasResult = true;
+            errorMessage = null;
+            // Mettre à jour le nom du repas avec le nom généré par l'IA
+            _mealNameController.text = result.mealName ?? 'Plat détecté par IA';
+          } else {
+            hasResult = false;
+            errorMessage = result.error?.contains('API') == true 
+                ? 'Le service IA est temporairement surchargé.\nMerci de réessayer dans quelques minutes.' 
+                : 'Aucun aliment détecté dans cette image';
+          }
+        });
+      }
+
+    } catch (e) {
+      setState(() {
+        isAnalyzing = false;
+        hasResult = false;
+        errorMessage = 'Erreur lors de l\'analyse: $e';
+      });
+    }
+  }
+
+  /// Analyser image depuis bytes avec note utilisateur (pour web)
+  Future<void> _analyzeImageFromBytesWithNote(List<int> bytes) async {
+    try {
+      if (mounted) {
+        setState(() {
+          isAnalyzing = true;
+          hasResult = false;
+          errorMessage = null;
+          _loadingPhase = 0;
+        });
+      }
+
+      print('🔍 Début analyse image web avec note: "${_aiNote}"');
+
+      // Démarrer l'animation de chargement
+      _startLoadingAnimation();
+
+      // Convertir en Uint8List et analyser directement avec note
+      final Uint8List imageBytes = Uint8List.fromList(bytes);
+      
+      // Analyze image directly from bytes with user note (Web compatible)
+      final result = await GeminiAnalysisServiceV2.analyzeImageFromBytes(
+        imageBytes,
+        userNote: _aiNote.isNotEmpty ? _aiNote : null,
+      );
+      
+      print('🤖 Résultat analyse avec note: success=${result.success}, aliments=${result.detectedFoods.length}');
+      
+      if (mounted) {
+        setState(() {
+          isAnalyzing = false;
+          _analysisResult = result;
+          
+          if (result.success && result.detectedFoods.isNotEmpty) {
+            hasResult = true;
+            errorMessage = null;
+            // Mettre à jour le nom du repas avec le nom généré par l'IA
+            _mealNameController.text = result.mealName ?? 'Plat détecté par IA';
+          } else {
+            hasResult = false;
+            errorMessage = result.error?.contains('API') == true 
+                ? 'Le service IA est temporairement surchargé.\nMerci de réessayer dans quelques minutes.' 
+                : 'Aucun aliment détecté dans cette image';
+          }
+        });
+      }
+
+    } catch (e) {
+      print('❌ Erreur analyse image web avec note: $e');
       if (mounted) {
         setState(() {
           isAnalyzing = false;

@@ -7,7 +7,7 @@ import '../config/gemini_config.dart';
 import '../models/ai_analysis_models.dart';
 import 'location_service.dart';
 
-class GeminiAnalysisService {
+class GeminiAnalysisServiceV2 {
   
   /// Resize image to optimize for Gemini API (max 1024x1024)
   static Future<Uint8List> _resizeImage(Uint8List imageBytes) async {
@@ -73,9 +73,13 @@ class GeminiAnalysisService {
       final cultureContext = await LocationService.getFoodCultureContext();
       final countryName = await LocationService.getUserCountryName();
       
-      // Create detailed prompt for food analysis
+      // Create detailed prompt for food analysis with user note integration
+      final userNoteContext = userNote != null && userNote.trim().isNotEmpty 
+        ? "\n\nUser note: \"$userNote\"\nPlease take this user note into account for more accurate analysis of portion sizes and food identification."
+        : "";
+      
       final prompt = '''
-Analyze this food image taken in $countryName ($cultureContext region).
+Analyze this food image taken in $countryName ($cultureContext region).$userNoteContext
 
 Please provide a detailed JSON response with the following structure:
 
@@ -98,7 +102,7 @@ Please provide a detailed JSON response with the following structure:
 
 Requirements:
 1. Generate a creative, appetizing name for the overall meal/dish in the "meal_name" field
-2. Estimate portion sizes based on visual cues in the image (plate size, food volume, typical serving sizes you can observe)
+2. Estimate portion sizes based on visual cues in the image (plate size, food volume, typical serving sizes you can observe)${userNote != null && userNote.trim().isNotEmpty ? " and the user's note" : ""}
 3. Provide nutritional values in grams for the estimated portion size
 4. Use confidence scores from 0-100 based on how clearly you can identify each item
 5. Recognize local dishes common in $cultureContext if present
@@ -184,9 +188,13 @@ Be precise with your estimations and only include foods you can confidently iden
       final cultureContext = await LocationService.getFoodCultureContext();
       final countryName = await LocationService.getUserCountryName();
       
-      // Create detailed prompt for food analysis
+      // Create detailed prompt for food analysis with user note integration
+      final userNoteContext = userNote != null && userNote.trim().isNotEmpty 
+        ? "\n\nUser note: \"$userNote\"\nPlease take this user note into account for more accurate analysis of portion sizes and food identification."
+        : "";
+      
       final prompt = '''
-Analyze this food image taken in $countryName ($cultureContext region).
+Analyze this food image taken in $countryName ($cultureContext region).$userNoteContext
 
 Please provide a detailed JSON response with the following structure:
 
@@ -209,7 +217,7 @@ Please provide a detailed JSON response with the following structure:
 
 Requirements:
 1. Generate a creative, appetizing name for the overall meal/dish in the "meal_name" field
-2. Estimate portion sizes based on visual cues in the image (plate size, food volume, typical serving sizes you can observe)
+2. Estimate portion sizes based on visual cues in the image (plate size, food volume, typical serving sizes you can observe)${userNote != null && userNote.trim().isNotEmpty ? " and the user's note" : ""}
 3. Provide nutritional values in grams for the estimated portion size
 4. Use confidence scores from 0-100 based on how clearly you can identify each item
 5. Recognize local dishes common in $cultureContext if present
@@ -394,13 +402,15 @@ Be precise with your estimations and only include foods you can confidently iden
     return foods;
   }
 
-  /// Create mock analysis result for development/testing
-  static AIAnalysisResult createMockAnalysisResult() {
+  /// Create mock analysis result for development/testing with user note
+  static AIAnalysisResult createMockAnalysisResult({String? userNote}) {
     final List<DetectedFood> mockFoods = [
       DetectedFood.fromAIResponse(
-        name: 'Blanquette de veau',
+        name: userNote?.contains('riz') == true ? 'Riz basmati (${userNote?.replaceAll(RegExp(r'[^\d]'), '') ?? '200'}g)' : 'Blanquette de veau',
         confidence: 0.93,
-        portionGrams: 200.0,
+        portionGrams: userNote?.contains('g') == true 
+          ? double.tryParse(userNote!.replaceAll(RegExp(r'[^\d]'), '')) ?? 200.0 
+          : 200.0,
         proteins: 28.5,
         carbs: 8.2,
         fats: 15.8,
@@ -423,20 +433,25 @@ Be precise with your estimations and only include foods you can confidently iden
       ),
     ];
 
+    final String mealName = userNote?.isNotEmpty == true 
+      ? 'Plat personnalisé (avec note utilisateur)' 
+      : 'Plat détecté par IA';
+
     return AIAnalysisResult.success(
       detectedFoods: mockFoods,
+      mealName: mealName,
       processingTime: 2.5,
     );
   }
 
   /// Analyze image with fallback to mock data for development
-  static Future<AIAnalysisResult> analyzeImageWithFallback(File imageFile) async {
+  static Future<AIAnalysisResult> analyzeImageWithFallback(File imageFile, {String? userNote}) async {
     // Try real API first
-    final result = await analyzeImage(imageFile);
+    final result = await analyzeImage(imageFile, userNote: userNote);
     
-    // If API is not configured or fails, use mock data
+    // If API is not configured or fails, use mock data with user note
     if (!result.success && !GeminiConfig.isConfigured) {
-      return createMockAnalysisResult();
+      return createMockAnalysisResult(userNote: userNote);
     }
     
     return result;

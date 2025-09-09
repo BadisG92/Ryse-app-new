@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../bottom_sheets/editable_food_details_bottom_sheet.dart';
 import '../models/nutrition_models.dart';
+import '../services/gemini_analysis_service_v2.dart';
+import '../models/ai_analysis_models.dart';
+import 'dart:io';
 
 class AIScannerScreen extends StatefulWidget {
   const AIScannerScreen({super.key});
@@ -13,6 +16,17 @@ class AIScannerScreen extends StatefulWidget {
 class _AIScannerScreenState extends State<AIScannerScreen> {
   bool isAnalyzing = false;
   bool hasResult = false;
+  bool showNoteInput = false;
+  final TextEditingController _noteController = TextEditingController();
+  String _aiNote = '';
+  
+  static const int maxNoteLength = 140; // Limite de caractères
+
+  @override
+  void dispose() {
+    _noteController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -135,6 +149,10 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
           ),
         ),
         
+        // Interface de saisie de note (si activée)
+        if (showNoteInput)
+          _buildNoteInputOverlay(),
+        
         // Bouton de capture
         Positioned(
           bottom: 50,
@@ -142,12 +160,12 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
           right: 0,
           child: Center(
             child: GestureDetector(
-              onTap: _takePicture,
+              onTap: showNoteInput ? null : _takePicture, // Désactiver si saisie de note
               child: Container(
                 width: 80,
                 height: 80,
                 decoration: BoxDecoration(
-                  color: isAnalyzing ? Colors.grey : Colors.white,
+                  color: (isAnalyzing || showNoteInput) ? Colors.grey : Colors.white,
                   shape: BoxShape.circle,
                   border: Border.all(color: Colors.white, width: 4),
                 ),
@@ -512,17 +530,204 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
     );
   }
 
+  Widget _buildNoteInputOverlay() {
+    return Positioned.fill(
+      child: Container(
+        color: Colors.black.withOpacity(0.8),
+        child: Center(
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 24),
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Titre
+                const Text(
+                  'Ajouter une note pour l\'IA',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1A1A1A),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Décrivez votre plat pour améliorer la précision de l\'analyse',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF64748B),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+                
+                // Champ de saisie
+                TextField(
+                  controller: _noteController,
+                  maxLength: maxNoteLength,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    hintText: 'Ex: Assiette de saumon 150g avec quinoa et haricots verts',
+                    hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFF0B132B), width: 2),
+                    ),
+                    contentPadding: const EdgeInsets.all(16),
+                    counterStyle: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF64748B),
+                    ),
+                  ),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: Color(0xFF1A1A1A),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                
+                // Boutons
+                Row(
+                  children: [
+                    // Bouton Ignorer
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: _skipNote,
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          side: const BorderSide(color: Color(0xFFE2E8F0)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          'Ignorer',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF64748B),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Bouton Analyser
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: _analyzeWithNote,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF0B132B),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          'Analyser',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   void _takePicture() async {
+    setState(() {
+      showNoteInput = true;
+    });
+  }
+
+  void _skipNote() {
+    setState(() {
+      showNoteInput = false;
+      _aiNote = '';
+      _noteController.clear();
+    });
+    _analyzeImage();
+  }
+
+  void _analyzeWithNote() {
+    setState(() {
+      _aiNote = _noteController.text.trim();
+      showNoteInput = false;
+    });
+    _analyzeImage();
+  }
+
+  void _analyzeImage() async {
     setState(() {
       isAnalyzing = true;
     });
 
-    // Simulation de l'analyse
-    await Future.delayed(const Duration(seconds: 3));
+    try {
+      // Pour la simulation, on utilise un fichier fictif
+      // Dans une vraie implémentation, on passerait le fichier image réel
+      print('🤖 Analyse IA avec note: "$_aiNote"');
+      
+      // Utiliser le service d'analyse avec la note utilisateur
+      final result = await GeminiAnalysisServiceV2.createMockAnalysisResult(
+        userNote: _aiNote.isNotEmpty ? _aiNote : null,
+      );
+      
+      if (result.success && result.detectedFoods.isNotEmpty) {
+        // Traiter les résultats d'analyse
+        _processAnalysisResults(result.detectedFoods);
+      } else {
+        // Afficher erreur
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Erreur d\'analyse: ${result.error}'),
+              backgroundColor: Colors.red.shade600,
+            ),
+          );
+        }
+      }
+
+    } catch (e) {
+      print('❌ Erreur lors de l\'analyse: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Une erreur est survenue lors de l\'analyse'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
 
     setState(() {
       isAnalyzing = false;
       hasResult = true;
     });
+  }
+  
+  void _processAnalysisResults(List<DetectedFood> foods) {
+    // Convertir les DetectedFood en données affichables
+    // Pour l'instant on garde la logique mockée existante
+    print('📊 Aliments détectés avec note utilisateur:');
+    for (final food in foods) {
+      print('  - ${food.name}: ${food.quantity}g (${food.confidence.toStringAsFixed(0)}%)');
+    }
   }
 } 
