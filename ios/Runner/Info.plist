@@ -50,8 +50,55 @@
 	<string>Cette application utilise la caméra pour scanner les aliments et analyser les plats avec l'IA nutritionnelle.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Cette application accède à vos photos pour analyser les aliments et calculer leurs valeurs nutritionnelles.</string>
-	<!-- Permission pour la localisation -->
+	<!-- Permissions pour la localisation -->
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Cette application utilise votre localisation pour vous proposer des recommandations nutritionnelles adaptées à votre région et culture alimentaire.</string>
+	<string>Cette application utilise votre localisation pour vous proposer des recommandations nutritionnelles adaptées à votre région et pour suivre précisément vos activités cardio (distance, vitesse, parcours).</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Cette application utilise votre localisation pour un suivi GPS précis de vos séances de course, vélo et marche, même en arrière-plan.</string>
+	<!-- Permissions pour les activités physiques -->
+	<key>NSMotionUsageDescription</key>
+	<string>Cette application utilise les capteurs de mouvement pour compter vos pas lors des séances de marche et optimiser le suivi de vos activités.</string>
+	
+	<!-- Configuration background modes pour GPS fitness -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+		<string>background-processing</string>
+	</array>
+	
+	<!-- Capabilities et features requises -->
+	<key>UIRequiredDeviceCapabilities</key>
+	<array>
+		<string>armv7</string>
+		<string>gps</string>
+		<string>magnetometer</string>
+		<string>accelerometer</string>
+	</array>
+	
+	<!-- Privacy tracking usage (iOS 14.5+) -->
+	<key>NSUserTrackingUsageDescription</key>
+	<string>Cette app ne suit pas vos données personnelles. Le suivi GPS sert uniquement à mesurer vos performances sportives localement sur votre appareil.</string>
+	
+	<!-- Health Kit permissions (recommandé pour fitness apps) -->
+	<key>NSHealthShareUsageDescription</key>
+	<string>Cette application peut synchroniser vos données d'entraînement avec l'app Santé pour un suivi complet de votre activité physique.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Cette application peut ajouter vos séances de sport à l'app Santé pour améliorer votre suivi fitness global.</string>
+	
+	<!-- Location accuracy (iOS 14+) -->
+	<key>NSLocationTemporaryUsageDescriptionDictionary</key>
+	<dict>
+		<key>CardioWorkout</key>
+		<string>Localisation précise requise pour mesurer votre distance et vitesse pendant l'entraînement cardio.</string>
+	</dict>
+	
+	<!-- App Transport Security -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<false/>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 </dict>
 </plist>
