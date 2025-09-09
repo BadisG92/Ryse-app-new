@@ -17,6 +17,9 @@ class RyzeApp extends StatefulWidget {
 class _RyzeAppState extends State<RyzeApp> {
   bool _isOnboarded = false;
   bool _isLoading = true;
+  
+  // Option de debug pour forcer l'affichage de l'onboarding
+  static const bool _forceOnboarding = false; // Changez à true pour forcer l'onboarding
 
   @override
   void initState() {
@@ -44,7 +47,8 @@ class _RyzeAppState extends State<RyzeApp> {
         await prefs.setBool('is_onboarded', isOnboarded);
         
         setState(() {
-          _isOnboarded = isOnboarded;
+          // Forcer l'onboarding si _forceOnboarding est true
+          _isOnboarded = _forceOnboarding ? false : isOnboarded;
           _isLoading = false;
         });
         
@@ -57,7 +61,8 @@ class _RyzeAppState extends State<RyzeApp> {
         final isOnboarded = prefs.getBool('is_onboarded') ?? false;
         
         setState(() {
-          _isOnboarded = isOnboarded;
+          // Forcer l'onboarding si _forceOnboarding est true
+          _isOnboarded = _forceOnboarding ? false : isOnboarded;
           _isLoading = false;
         });
       }
@@ -76,6 +81,35 @@ class _RyzeAppState extends State<RyzeApp> {
     setState(() {
       _isOnboarded = true;
     });
+  }
+
+  /// Méthode utilitaire pour réinitialiser l'onboarding
+  /// Utile pour le développement et les tests
+  Future<void> resetOnboarding() async {
+    final supabase = Supabase.instance.client;
+    final user = supabase.auth.currentUser;
+    
+    if (user != null) {
+      try {
+        // Réinitialiser dans Supabase
+        await supabase.from('users').update({
+          'is_onboarded': false,
+        }).eq('id', user.id);
+        
+        // Réinitialiser dans SharedPreferences
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('is_onboarded', false);
+        
+        // Mettre à jour l'état local
+        setState(() {
+          _isOnboarded = false;
+        });
+        
+        print('✅ Onboarding réinitialisé avec succès');
+      } catch (e) {
+        print('❌ Erreur lors de la réinitialisation: $e');
+      }
+    }
   }
 
   @override

@@ -39,6 +39,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
     'isMetric': true,
     'activity': '',
     'goal': '',
+    'targetWeight': '', // Nouveau champ pour le poids objectif
     'obstacles': <String>[],
     'restrictions': <String>[],
   };
@@ -102,6 +103,9 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
     userData['height'] = '170'; // 170 cm
     userData['weight'] = '70'; // 70 kg
     userData['isMetric'] = true;
+    
+    // Initialiser le poids objectif au poids actuel par défaut
+    userData['targetWeight'] = userData['weight'];
   }
 
   @override
@@ -557,25 +561,113 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
       },
     ];
 
+    // Déterminer si on doit afficher le champ poids objectif
+    bool showTargetWeight = userData['goal'] == 'lose' || userData['goal'] == 'gain';
+
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const SizedBox(height: 80),
-          ...goals.map((goal) => 
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: SelectableCard(
-                title: goal['title'] as String,
-                description: goal['description'] as String,
-                icon: goal['icon'] as IconData,
-                isSelected: userData['goal'] == goal['key'],
-                onTap: () => setState(() => userData['goal'] = goal['key']),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const SizedBox(height: 80),
+            ...goals.map((goal) => 
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: SelectableCard(
+                  title: goal['title'] as String,
+                  description: goal['description'] as String,
+                  icon: goal['icon'] as IconData,
+                  isSelected: userData['goal'] == goal['key'],
+                  onTap: () => setState(() {
+                    userData['goal'] = goal['key'];
+                    // Reset target weight if switching to maintain
+                    if (goal['key'] == 'maintain') {
+                      userData['targetWeight'] = userData['weight'];
+                    }
+                  }),
+                ),
               ),
-            ),
-          ).toList(),
-          const SizedBox(height: 80),
-        ],
+            ).toList(),
+            
+            // Champ poids objectif conditionnel
+            if (showTargetWeight) ...[
+              const SizedBox(height: 24),
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 24),
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Poids objectif',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF1E293B),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      userData['goal'] == 'lose' 
+                        ? 'Quel est votre poids objectif ?'
+                        : 'Quel poids souhaitez-vous atteindre ?',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF64748B),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            initialValue: userData['targetWeight']?.toString() ?? '',
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            onChanged: (value) => userData['targetWeight'] = value,
+                            decoration: InputDecoration(
+                              hintText: 'Ex: 70',
+                              filled: true,
+                              fillColor: Colors.white,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(color: Color(0xFF0B132B), width: 2),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          userData['isMetric'] ? 'kg' : 'lbs',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF64748B),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            
+            const SizedBox(height: 80),
+          ],
+        ),
       ),
     );
   }
@@ -594,7 +686,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const SizedBox(height: 60),
+          const SizedBox(height: 20), // Réduit de 60 à 20
           ...obstacles.map((obstacle) => 
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
@@ -635,7 +727,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const SizedBox(height: 100),
+          const SizedBox(height: 20), // Réduit de 100 à 20
           ...restrictions.map((restriction) => 
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
@@ -741,6 +833,11 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
       // Construire la date de naissance
       final birthDate = '${userData['birthYear']}-${userData['birthMonth'].toString().padLeft(2, '0')}-${userData['birthDay'].toString().padLeft(2, '0')}';
       
+      // Déterminer le poids objectif
+      final targetWeight = userData['targetWeight']?.isNotEmpty == true
+          ? double.tryParse(userData['targetWeight']) ?? double.tryParse(userData['weight'] ?? '0')
+          : double.tryParse(userData['weight'] ?? '0');
+
       // Sauvegarder en base de données Supabase
       await supabase.from('users').update({
         'gender': userData['gender'],
@@ -748,6 +845,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
         'age': int.tryParse(userData['age'] ?? '0'),
         'height': double.tryParse(userData['height'] ?? '0'),
         'weight': double.tryParse(userData['weight'] ?? '0'),
+        'target_weight': targetWeight, // Nouveau champ
         'is_metric': userData['isMetric'] ?? true,
         'activity_level': userData['activity'],
         'fitness_goal': userData['goal'],
