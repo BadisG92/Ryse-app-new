@@ -18,40 +18,102 @@ class WeeklyStatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      height: 100,
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF0B132B).withOpacity(0.06),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF0B132B),
-            ),
+          Flexible(
+            child: _buildValueWithUnit(title),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 8),
           Text(
             subtitle,
             style: const TextStyle(
               fontSize: 12,
               color: Color(0xFF64748B),
+              fontWeight: FontWeight.w500,
             ),
+            textAlign: TextAlign.center,
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildValueWithUnit(String value) {
+    // Séparer la valeur de l'unité (ex: "150 kg" -> "150" + "kg")
+    final parts = value.split(' ');
+    if (parts.length >= 2) {
+      final mainValue = parts[0];
+      final unit = parts.sublist(1).join(' ');
+      
+      // Calculer la taille de police dynamiquement selon la longueur du nombre
+      double fontSize = 24;
+      if (mainValue.length >= 6) {
+        fontSize = 14; // Très grands nombres (6+ chiffres)
+      } else if (mainValue.length >= 5) {
+        fontSize = 16; // Grands nombres (5 chiffres)
+      } else if (mainValue.length >= 4) {
+        fontSize = 18; // Nombres moyens (4 chiffres)
+      }
+      
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Flexible(
+            child: Text(
+              mainValue,
+              style: TextStyle(
+                fontSize: fontSize,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF0B132B),
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          const SizedBox(width: 2),
+          Text(
+            unit,
+            style: const TextStyle(
+              fontSize: 12,
+              color: Color(0xFF64748B),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      );
+    } else {
+      // Pas d'unité, calculer la taille dynamiquement aussi
+      double fontSize = 24;
+      if (value.length >= 6) {
+        fontSize = 14;
+      } else if (value.length >= 5) {
+        fontSize = 16;
+      } else if (value.length >= 4) {
+        fontSize = 18;
+      }
+      
+      return Flexible(
+        child: Text(
+          value,
+          style: TextStyle(
+            fontSize: fontSize,
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF0B132B),
+          ),
+          textAlign: TextAlign.center,
+        ),
+      );
+    }
   }
 }
 
@@ -107,7 +169,7 @@ class WeeklyStatsCard extends StatelessWidget {
                 Expanded(
                   child: WeeklyStatCard(
                     title: stats.calories,
-                    subtitle: 'Kcal brûlées',
+                    subtitle: 'Brûlées',
                   ),
                 ),
               ],
@@ -152,26 +214,47 @@ class _WorkoutHistoryCardState extends State<WorkoutHistoryCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Titre séance
-          Text(
-            session.name,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF1A1A1A),
-            ),
-          ),
-          const SizedBox(height: 2),
-          // Jour
-          Text(
-            session.day,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Color(0xFF64748B),
-            ),
+          // Header avec titre et icône d'expansion
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      session.name,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF1A1A1A),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      session.day,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF64748B),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                onPressed: () => setState(() => _expanded = !_expanded),
+                icon: Icon(
+                  _expanded ? LucideIcons.chevronUp : LucideIcons.chevronDown,
+                  size: 18, 
+                  color: const Color(0xFF64748B),
+                ),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                splashRadius: 16,
+              ),
+            ],
           ),
           const SizedBox(height: 8),
-          // Ligne durée + volume + calories (bulle inchangée)
+          // Ligne durée + volume + calories
           Row(
             children: [
               Expanded(
@@ -208,18 +291,6 @@ class _WorkoutHistoryCardState extends State<WorkoutHistoryCard> {
                 ),
               ),
             ],
-          ),
-          // Toggle expand/collapse with icon only
-          const SizedBox(height: 8),
-          Center(
-            child: IconButton(
-              onPressed: () => setState(() => _expanded = !_expanded),
-              icon: Icon(_expanded ? LucideIcons.chevronUp : LucideIcons.chevronDown,
-                  size: 18, color: const Color(0xFF1A1A1A)),
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
-              splashRadius: 16,
-            ),
           ),
           if (_expanded) ...[
             const SizedBox(height: 8),

@@ -47,9 +47,22 @@ class WeightProgress {
     }).toList();
   }
 
-  // Plage Y pour le graphique
-  double get minY => entries.map((e) => e.weight).reduce((a, b) => a < b ? a : b) - 1.0;
-  double get maxY => entries.map((e) => e.weight).reduce((a, b) => a > b ? a : b) + 1.0;
+  // Plage Y pour le graphique (incluant l'objectif si défini)
+  double get minY {
+    final weights = entries.map((e) => e.weight).toList();
+    if (targetWeight > 0 && targetWeight != initialWeight) {
+      weights.add(targetWeight);
+    }
+    return weights.reduce((a, b) => a < b ? a : b) - 1.0;
+  }
+  
+  double get maxY {
+    final weights = entries.map((e) => e.weight).toList();
+    if (targetWeight > 0 && targetWeight != initialWeight) {
+      weights.add(targetWeight);
+    }
+    return weights.reduce((a, b) => a > b ? a : b) + 1.0;
+  }
 
   // Dates pour les axes
   List<String> get chartDates => entries.map((e) => e.formattedDate).toList();

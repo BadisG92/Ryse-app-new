@@ -15,6 +15,45 @@ class WeeklyCaloriesCard extends StatelessWidget {
     required this.animatedCalories,
   });
 
+  Widget _buildCaloriesWithUnit(int calories) {
+    final caloriesText = calories.toString();
+    
+    // Calculer la taille de police dynamiquement selon la longueur du nombre
+    double fontSize = 32;
+    if (caloriesText.length >= 5) {
+      fontSize = 22; // Très grands nombres (5+ chiffres)
+    } else if (caloriesText.length >= 4) {
+      fontSize = 26; // Grands nombres (4 chiffres)
+    }
+    
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          caloriesText,
+          style: TextStyle(
+            fontSize: fontSize,
+            fontWeight: FontWeight.w300,
+            color: Colors.white,
+          ),
+        ),
+        const SizedBox(width: 3),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 2),
+          child: Text(
+            'kcal',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.white.withOpacity(0.8),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return CustomCard(
@@ -71,18 +110,12 @@ class WeeklyCaloriesCard extends StatelessWidget {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
+                          _buildCaloriesWithUnit(animatedCalories),
+                          const SizedBox(height: 4),
                           Text(
-                            animatedCalories.toString(),
-                            style: const TextStyle(
-                              fontSize: 32,
-                              fontWeight: FontWeight.w300,
-                              color: Colors.white,
-                            ),
-                          ),
-                          Text(
-                            'kcal',
+                            'Brûlées',
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 11,
                               color: Colors.white.withOpacity(0.8),
                             ),
                           ),
@@ -582,53 +615,102 @@ class WeeklyStatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      height: 100,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: stat.accentColor.withOpacity(0.05),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          if (stat.icon != null)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  stat.icon,
-                  size: 16,
-                  color: stat.accentColor,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  stat.value,
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: stat.accentColor,
-                  ),
-                ),
-              ],
-            )
-          else
-            Text(
-              stat.value,
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: stat.accentColor,
-              ),
-            ),
+          Flexible(
+            child: _buildValueWithUnit(stat.value),
+          ),
+          const SizedBox(height: 8),
           Text(
             stat.label,
             style: const TextStyle(
-              fontSize: 11,
+              fontSize: 12,
               color: Color(0xFF64748B),
+              fontWeight: FontWeight.w500,
             ),
             textAlign: TextAlign.center,
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildValueWithUnit(String value) {
+    // Séparer la valeur de l'unité (ex: "3 séances" -> "3" + "séances")
+    final parts = value.split(' ');
+    if (parts.length >= 2) {
+      final mainValue = parts[0];
+      final unit = parts.sublist(1).join(' ');
+      
+      // Calculer la taille de police dynamiquement selon la longueur du nombre
+      double fontSize = 24;
+      if (mainValue.length >= 6) {
+        fontSize = 14; // Très grands nombres (6+ chiffres)
+      } else if (mainValue.length >= 5) {
+        fontSize = 16; // Grands nombres (5 chiffres)
+      } else if (mainValue.length >= 4) {
+        fontSize = 18; // Nombres moyens (4 chiffres)
+      }
+      
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Flexible(
+            child: Text(
+              mainValue,
+              style: TextStyle(
+                fontSize: fontSize,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF0B132B),
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          const SizedBox(width: 2),
+          Text(
+            unit,
+            style: const TextStyle(
+              fontSize: 12,
+              color: Color(0xFF64748B),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      );
+    } else {
+      // Pas d'unité, calculer la taille dynamiquement aussi
+      double fontSize = 24;
+      if (value.length >= 6) {
+        fontSize = 14;
+      } else if (value.length >= 5) {
+        fontSize = 16;
+      } else if (value.length >= 4) {
+        fontSize = 18;
+      }
+      
+      return Flexible(
+        child: Text(
+          value,
+          style: TextStyle(
+            fontSize: fontSize,
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF0B132B),
+          ),
+          textAlign: TextAlign.center,
+        ),
+      );
+    }
   }
 }
 

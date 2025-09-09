@@ -15,6 +15,45 @@ class MainCaloriesCard extends StatelessWidget {
     required this.animatedCalories,
   });
 
+  Widget _buildCaloriesWithUnit(int calories) {
+    final caloriesText = calories.toString();
+    
+    // Calculer la taille de police dynamiquement selon la longueur du nombre
+    double fontSize = 32;
+    if (caloriesText.length >= 5) {
+      fontSize = 22; // Très grands nombres (5+ chiffres)
+    } else if (caloriesText.length >= 4) {
+      fontSize = 26; // Grands nombres (4 chiffres)
+    }
+    
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          caloriesText,
+          style: TextStyle(
+            fontSize: fontSize,
+            fontWeight: FontWeight.w300,
+            color: Colors.white,
+          ),
+        ),
+        const SizedBox(width: 3),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 2),
+          child: Text(
+            'kcal',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.white.withOpacity(0.8),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return CustomCard(
@@ -71,18 +110,12 @@ class MainCaloriesCard extends StatelessWidget {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
+                          _buildCaloriesWithUnit(animatedCalories),
+                          const SizedBox(height: 4),
                           Text(
-                            animatedCalories.toString(),
-                            style: const TextStyle(
-                              fontSize: 32,
-                              fontWeight: FontWeight.w300,
-                              color: Colors.white,
-                            ),
-                          ),
-                          Text(
-                            'kcal',
+                            'Consommées',
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 11,
                               color: Colors.white.withOpacity(0.8),
                             ),
                           ),
@@ -175,27 +208,44 @@ class CaloriesStatItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12,
-            color: Color(0xFF888888),
+    // Calculer la taille de police dynamiquement selon la longueur du nombre
+    final valueText = value.toString();
+    double fontSize = 18;
+    if (valueText.length >= 6) {
+      fontSize = 12; // Très grands nombres (6+ chiffres)
+    } else if (valueText.length >= 5) {
+      fontSize = 14; // Grands nombres (5 chiffres)
+    } else if (valueText.length >= 4) {
+      fontSize = 16; // Nombres moyens (4 chiffres)
+    }
+
+    return SizedBox(
+      height: 50, // Hauteur fixe pour aligner tous les titres
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          Flexible(
+            child: Text(
+              valueText,
+              style: TextStyle(
+                fontSize: fontSize,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+              textAlign: TextAlign.center,
+            ),
           ),
-          textAlign: TextAlign.center, // Centrage du texte
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value.toString(),
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: color,
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              color: Color(0xFF888888),
+            ),
+            textAlign: TextAlign.center,
           ),
-          textAlign: TextAlign.center, // Centrage du texte
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

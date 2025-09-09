@@ -259,16 +259,30 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
   }
 
   Widget _buildExerciseTitle() {
+    final exerciseName = (exercise?['name'] ?? widget.exerciseName);
+    
+    // Calculer la taille de police dynamiquement pour limiter à 2 lignes
+    double fontSize = 24;
+    if (exerciseName.length > 40) {
+      fontSize = 18; // Très long nom
+    } else if (exerciseName.length > 25) {
+      fontSize = 20; // Long nom
+    } else if (exerciseName.length > 15) {
+      fontSize = 22; // Nom moyen
+    }
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          (exercise?['name'] ?? widget.exerciseName),
-          style: const TextStyle(
-            fontSize: 24,
+          exerciseName,
+          style: TextStyle(
+            fontSize: fontSize,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF1A1A1A),
+            color: const Color(0xFF1A1A1A),
           ),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
         ),
         const SizedBox(height: 4),
         Text(
@@ -283,42 +297,40 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
   }
 
   Widget _buildPeriodFilter() {
-    return Row(
-      children: [
-        _buildFilterButton('Ce mois-ci'),
-        const SizedBox(width: 12),
-        _buildFilterButton('6 derniers mois'),
-        const SizedBox(width: 12),
-        _buildFilterButton('1 an'),
-      ],
-    );
-  }
-
-  Widget _buildFilterButton(String period) {
-    final isSelected = selectedPeriod == period;
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          selectedPeriod = period;
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF0B132B) : const Color(0xFFF8FAFC),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: isSelected ? const Color(0xFF0B132B) : const Color(0xFFE2E8F0),
-          ),
-        ),
-        child: Text(
-          period,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: isSelected ? Colors.white : const Color(0xFF64748B),
-          ),
-        ),
+    final periods = ['Ce mois-ci', '3 mois', '6 mois'];
+    
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      padding: const EdgeInsets.all(4),
+      child: Row(
+        children: periods.map((period) {
+          final isSelected = period == selectedPeriod;
+          return Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => selectedPeriod = period),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: isSelected ? const Color(0xFF0B132B) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  period,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : const Color(0xFF64748B),
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
       ),
     );
   }
@@ -344,7 +356,7 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
     if (selectedPeriod == 'Ce mois-ci') {
       periodStart = DateTime(now.year, now.month, 1);
       periodEnd = DateTime(now.year, now.month + 1, 0);
-    } else if (selectedPeriod == '6 derniers mois') {
+    } else if (selectedPeriod == '3 mois') {
       periodStart = DateTime(now.year, now.month - 5, 1);
       periodEnd = DateTime(now.year, now.month + 1, 0);
     } else {
@@ -562,7 +574,7 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
     if (selectedPeriod == 'Ce mois-ci') {
       start = DateTime(now.year, now.month, 1);
       end = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
-    } else if (selectedPeriod == '6 derniers mois') {
+    } else if (selectedPeriod == '3 mois') {
       start = DateTime(now.year, now.month - 5, 1);
       end = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
     } else {
@@ -659,9 +671,10 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
 
   Widget _buildStatCard({required IconData icon, required String title, required String value}) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      height: 100,
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: const Color(0xFFE2E8F0),
@@ -669,20 +682,17 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
         ),
       ),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Icon(
-            icon,
-            size: 24,
-            color: const Color(0xFF0B132B),
-          ),
-          const SizedBox(height: 8),
           _buildValueWithDelta(value),
-          const SizedBox(height: 4),
+          const SizedBox(height: 8),
           Text(
             title,
             style: const TextStyle(
               fontSize: 12,
               color: Color(0xFF64748B),
+              fontWeight: FontWeight.w500,
             ),
             textAlign: TextAlign.center,
           ),
@@ -708,31 +718,79 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
       mainColor = const Color(0xFFDC2626); // rouge
     }
 
-    return RichText(
-      textAlign: TextAlign.center,
-      text: TextSpan(
+    // Séparer la valeur principale de l'unité (ex: "75 kg" -> "75" + "kg")
+    final parts = mainVal.split(' ');
+    if (parts.length >= 2) {
+      final valueOnly = parts[0];
+      final unit = parts.sublist(1).join(' ');
+      
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          TextSpan(
-            text: mainVal,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: mainColor,
+          RichText(
+            text: TextSpan(
+              children: [
+                TextSpan(
+                  text: valueOnly,
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                    color: mainColor,
+                  ),
+                ),
+                if (pct != null) ...[
+                  TextSpan(
+                    text: ' ($pct%)',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: mainColor.withOpacity(0.6),
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
-          if (pct != null) ...[
-            const WidgetSpan(child: SizedBox(width: 6)),
+          const SizedBox(width: 4),
+          Text(
+            unit,
+            style: const TextStyle(
+              fontSize: 14,
+              color: Color(0xFF64748B),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      );
+    } else {
+      // Pas d'unité, utiliser l'ancien format
+      return RichText(
+        textAlign: TextAlign.center,
+        text: TextSpan(
+          children: [
             TextSpan(
-              text: '(${pct}%)',
-              style: const TextStyle(
-                fontSize: 12,
-                color: Color(0xFF64748B),
+              text: mainVal,
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w700,
+                color: mainColor,
               ),
             ),
+            if (pct != null) ...[
+              const WidgetSpan(child: SizedBox(width: 6)),
+              TextSpan(
+                text: '(${pct}%)',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF64748B),
+                ),
+              ),
+            ],
           ],
-        ],
-      ),
-    );
+        ),
+      );
+    }
   }
 
   bool titleCaseEquals(String a, String b) => a.toLowerCase() == b.toLowerCase();

@@ -357,8 +357,19 @@ class MonthStats extends StatelessWidget {
   }
 
   Widget _buildKpi({required String value, required String label}) {
+    // Calculer la taille de police dynamiquement selon la longueur du nombre
+    double fontSize = 18;
+    if (value.length >= 6) {
+      fontSize = 12; // Très grands nombres (6+ chiffres)
+    } else if (value.length >= 5) {
+      fontSize = 14; // Grands nombres (5 chiffres)
+    } else if (value.length >= 4) {
+      fontSize = 16; // Nombres moyens (4 chiffres)
+    }
+
     return Expanded(
       child: Container(
+        height: 70, // Hauteur fixe pour aligner tous les KPI
         margin: const EdgeInsets.symmetric(horizontal: 4),
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
@@ -373,16 +384,19 @@ class MonthStats extends StatelessWidget {
           ],
         ),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.end,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF0B132B),
+            Flexible(
+              child: Text(
+                value,
+                style: TextStyle(
+                  fontSize: fontSize,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF0B132B),
+                ),
+                textAlign: TextAlign.center,
               ),
-              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 4),
             Text(

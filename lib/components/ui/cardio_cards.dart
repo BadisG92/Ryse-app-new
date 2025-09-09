@@ -27,40 +27,102 @@ class WeeklyStatCard extends StatelessWidget {
     }
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      height: 100,
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF0B132B).withOpacity(0.06),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Text(
-            displayTitle,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF0B132B),
-            ),
+          Flexible(
+            child: _buildValueWithUnit(displayTitle),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 8),
           Text(
             subtitle,
             style: const TextStyle(
               fontSize: 12,
               color: Color(0xFF64748B),
+              fontWeight: FontWeight.w500,
             ),
+            textAlign: TextAlign.center,
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildValueWithUnit(String value) {
+    // Séparer la valeur de l'unité (ex: "12.5 km" -> "12.5" + "km")
+    final parts = value.split(' ');
+    if (parts.length >= 2) {
+      final mainValue = parts[0];
+      final unit = parts.sublist(1).join(' ');
+      
+      // Calculer la taille de police dynamiquement selon la longueur du nombre
+      double fontSize = 24;
+      if (mainValue.length >= 6) {
+        fontSize = 14; // Très grands nombres (6+ chiffres)
+      } else if (mainValue.length >= 5) {
+        fontSize = 16; // Grands nombres (5 chiffres)
+      } else if (mainValue.length >= 4) {
+        fontSize = 18; // Nombres moyens (4 chiffres)
+      }
+      
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Flexible(
+            child: Text(
+              mainValue,
+              style: TextStyle(
+                fontSize: fontSize,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF0B132B),
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          const SizedBox(width: 2),
+          Text(
+            unit,
+            style: const TextStyle(
+              fontSize: 12,
+              color: Color(0xFF64748B),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      );
+    } else {
+      // Pas d'unité, calculer la taille dynamiquement aussi
+      double fontSize = 24;
+      if (value.length >= 6) {
+        fontSize = 14;
+      } else if (value.length >= 5) {
+        fontSize = 16;
+      } else if (value.length >= 4) {
+        fontSize = 18;
+      }
+      
+      return Flexible(
+        child: Text(
+          value,
+          style: TextStyle(
+            fontSize: fontSize,
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF0B132B),
+          ),
+          textAlign: TextAlign.center,
+        ),
+      );
+    }
   }
 }
 

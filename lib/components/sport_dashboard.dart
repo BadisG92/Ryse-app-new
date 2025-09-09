@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'dart:async';
 import 'ui/custom_card.dart';
 import '../screens/cardio_tracking_screen.dart';
 import '../screens/hiit_session_screen.dart';
@@ -21,10 +22,14 @@ class SportDashboard extends StatefulWidget {
   State<SportDashboard> createState() => _SportDashboardState();
 }
 
-class _SportDashboardState extends State<SportDashboard> {
+class _SportDashboardState extends State<SportDashboard> with TickerProviderStateMixin {
   bool showCalendar = false;
   SportDashboardData? _dashboardData;
   bool _loading = true;
+  
+  // Animation des calories
+  int animatedCalories = 0;
+  List<Timer> _timers = [];
 
   @override
   void initState() {
@@ -40,7 +45,7 @@ class _SportDashboardState extends State<SportDashboard> {
         _dashboardData = data;
         _loading = false;
       });
-
+      _startCaloriesAnimation();
 
     } catch (e) {
       setState(() {
@@ -50,16 +55,80 @@ class _SportDashboardState extends State<SportDashboard> {
     }
   }
 
+  void _startCaloriesAnimation() {
+    if (_dashboardData == null) return;
+    
+    // Animation des calories - 1000ms avec easeOutExpo
+    const duration = 1000; // 1 seconde
+    const tickTime = 20; // 20ms
+    
+    Timer caloriesTimer = Timer.periodic(const Duration(milliseconds: tickTime), (timer) {
+      final elapsed = timer.tick * tickTime;
+      final progress = (elapsed / duration).clamp(0.0, 1.0);
+      final easedProgress = Curves.easeOutExpo.transform(progress);
+      final targetValue = (_dashboardData!.totalCalories * easedProgress).round();
+      
+      setState(() => animatedCalories = targetValue);
+      
+      if (progress >= 1.0) {
+        timer.cancel();
+        setState(() => animatedCalories = _dashboardData!.totalCalories);
+      }
+    });
+    _timers.add(caloriesTimer);
+  }
+
 
 
 
 
   @override
   void dispose() {
+    for (var timer in _timers) {
+      timer.cancel();
+    }
+    _timers.clear();
     super.dispose();
   }
 
-
+  Widget _buildCaloriesWithUnit(int calories) {
+    final caloriesText = calories.toString();
+    
+    // Calculer la taille de police dynamiquement selon la longueur du nombre
+    double fontSize = 32;
+    if (caloriesText.length >= 5) {
+      fontSize = 22; // Très grands nombres (5+ chiffres)
+    } else if (caloriesText.length >= 4) {
+      fontSize = 26; // Grands nombres (4 chiffres)
+    }
+    
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          caloriesText,
+          style: TextStyle(
+            fontSize: fontSize,
+            fontWeight: FontWeight.w300,
+            color: Colors.white,
+          ),
+        ),
+        const SizedBox(width: 3),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 2),
+          child: Text(
+            'kcal',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.white.withOpacity(0.8),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -191,18 +260,12 @@ class _SportDashboardState extends State<SportDashboard> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
+                          _buildCaloriesWithUnit(animatedCalories),
+                          const SizedBox(height: 4),
                           Text(
-                            data.totalCalories.toString(),
-                            style: const TextStyle(
-                              fontSize: 32,
-                              fontWeight: FontWeight.w300,
-                              color: Colors.white,
-                            ),
-                          ),
-                          Text(
-                            'kcal',
+                            'Brûlées',
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 11,
                               color: Colors.white.withOpacity(0.8),
                             ),
                           ),

@@ -19,86 +19,72 @@ class WeightEvolutionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 400;
+    
     return CustomCard(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // En-tête avec bouton enregistrer
+            // En-tête avec actions subtiles
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Évolution du poids',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1A1A),
-                  ),
+                Icon(
+                  LucideIcons.trendingUp,
+                  size: 20,
+                  color: const Color(0xFF0B132B),
                 ),
-                ElevatedButton.icon(
-                  icon: const Icon(LucideIcons.plus, size: 16, color: Colors.white),
-                  label: const Text(
-                    'Enregistrer',
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Évolution du poids',
                     style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.white,
-                      fontWeight: FontWeight.w500,
+                      fontSize: isSmallScreen ? 16 : 18,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF1A1A1A),
                     ),
                   ),
-                  onPressed: onAddWeightTap,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0B132B),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                ),
+                // Bouton d'expansion style DA
+                GestureDetector(
+                  onTap: onGraphTap,
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0B132B),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      LucideIcons.expand,
+                      size: 20,
+                      color: Colors.white,
                     ),
                   ),
                 ),
               ],
             ),
             
-            const SizedBox(height: 8),
+            const SizedBox(height: 16),
             
-            // Badge de changement de poids
-            if (progress.weightChange != 0)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            // Graphique agrandi
+            Container(
+                height: isSmallScreen ? 160 : 180,
                 decoration: BoxDecoration(
-                  color: progress.changeBackgroundColor,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  progress.weightChangeText,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: progress.changeColor,
-                  ),
-                ),
-              ),
-            
-            const SizedBox(height: 24),
-            
-            // Graphique linéaire cliquable
-            GestureDetector(
-              onTap: onGraphTap,
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: Colors.grey.shade200,
+                    color: const Color(0xFF0B132B).withOpacity(0.08),
                     width: 1,
                   ),
                 ),
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(12),
                   child: Stack(
                     children: [
-                      SizedBox(
-                        height: 150,
+                      Padding(
+                        padding: const EdgeInsets.all(8),
                         child: LineChart(
                           LineChartData(
                             minY: progress.minY,
@@ -108,21 +94,28 @@ class WeightEvolutionCard extends StatelessWidget {
                               drawVerticalLine: false,
                               getDrawingHorizontalLine: (value) {
                                 return FlLine(
-                                  color: Colors.grey.shade300.withOpacity(0.5),
-                                  strokeWidth: 1,
+                                  color: const Color(0xFF0B132B).withOpacity(0.1),
+                                  strokeWidth: 0.5,
                                 );
                               },
                             ),
                             titlesData: FlTitlesData(
                               leftTitles: AxisTitles(
                                 sideTitles: SideTitles(
-                                  showTitles: true,
-                                  reservedSize: 35,
-                                  interval: 1,
+                                  showTitles: !isSmallScreen,
+                                  reservedSize: 30,
+                                  interval: (progress.maxY - progress.minY) > 10 ? 5 : 2,
                                   getTitlesWidget: (value, meta) {
+                                    if (value % ((progress.maxY - progress.minY) > 10 ? 5 : 2) != 0) {
+                                      return const SizedBox.shrink();
+                                    }
                                     return Text(
-                                      '${value.toInt()} kg',
-                                      style: const TextStyle(color: Color(0xFF64748B), fontSize: 10),
+                                      '${value.toInt()}',
+                                      style: const TextStyle(
+                                        color: Color(0xFF64748B),
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w500,
+                                      ),
                                     );
                                   },
                                 ),
@@ -132,14 +125,18 @@ class WeightEvolutionCard extends StatelessWidget {
                               bottomTitles: AxisTitles(
                                 sideTitles: SideTitles(
                                   showTitles: true,
-                                  reservedSize: 22,
-                                  interval: 1,
+                                  reservedSize: 18,
+                                  interval: isSmallScreen ? 2 : 1,
                                   getTitlesWidget: (value, meta) {
                                     int index = value.toInt();
                                     if (index >= 0 && index < progress.chartDates.length) {
                                       return Text(
                                         progress.chartDates[index],
-                                        style: const TextStyle(color: Color(0xFF64748B), fontSize: 10),
+                                        style: const TextStyle(
+                                          color: Color(0xFF64748B),
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w500,
+                                        ),
                                       );
                                     }
                                     return const Text('');
@@ -149,17 +146,18 @@ class WeightEvolutionCard extends StatelessWidget {
                             ),
                             borderData: FlBorderData(show: false),
                             lineBarsData: [
+                              // Ligne principale des données
                               LineChartBarData(
                                 spots: progress.chartSpots,
                                 isCurved: true,
                                 color: const Color(0xFF0B132B),
-                                barWidth: 3,
+                                barWidth: 2,
                                 isStrokeCapRound: true,
                                 dotData: FlDotData(
                                   show: true,
                                   getDotPainter: (spot, percent, barData, index) {
                                     return FlDotCirclePainter(
-                                      radius: 4,
+                                      radius: 3,
                                       color: const Color(0xFF0B132B),
                                       strokeWidth: 2,
                                       strokeColor: Colors.white,
@@ -168,34 +166,24 @@ class WeightEvolutionCard extends StatelessWidget {
                                 ),
                                 belowBarData: BarAreaData(
                                   show: true,
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                    colors: [
-                                      const Color(0xFF0B132B).withOpacity(0.1),
-                                      const Color(0xFF0B132B).withOpacity(0.0),
-                                    ],
-                                  ),
+                                  color: const Color(0xFF0B132B).withOpacity(0.1),
                                 ),
                               ),
+                              // Ligne d'objectif (si objectif défini et différent)
+                              if (progress.targetWeight > 0 && 
+                                  progress.targetWeight != progress.initialWeight)
+                                LineChartBarData(
+                                  spots: [
+                                    FlSpot(0, progress.targetWeight),
+                                    FlSpot((progress.chartSpots.length - 1).toDouble(), progress.targetWeight),
+                                  ],
+                                  isCurved: false,
+                                  color: const Color(0xFF64748B), // Gris pour l'objectif
+                                  barWidth: 2,
+                                  dotData: const FlDotData(show: false),
+                                  dashArray: [8, 4], // Ligne pointillée plus visible
+                                ),
                             ],
-                          ),
-                        ),
-                      ),
-                      // Overlay pour indiquer que c'est cliquable
-                      Positioned(
-                        top: 8,
-                        right: 8,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.6),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Icon(
-                            LucideIcons.expand,
-                            size: 12,
-                            color: Colors.white,
                           ),
                         ),
                       ),
@@ -203,29 +191,7 @@ class WeightEvolutionCard extends StatelessWidget {
                   ),
                 ),
               ),
-            ),
             
-            const SizedBox(height: 20),
-            
-            // Statistiques en bas
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _WeightStatItem(
-                  label: 'Poids initial',
-                  value: '${progress.initialWeight.toStringAsFixed(1)} kg',
-                ),
-                _WeightStatItem(
-                  label: 'Poids actuel',
-                  value: '${progress.currentWeight.toStringAsFixed(1)} kg',
-                  isCurrent: true,
-                ),
-                _WeightStatItem(
-                  label: 'Objectif',
-                  value: '${progress.targetWeight.toStringAsFixed(1)} kg',
-                ),
-              ],
-            ),
           ],
         ),
       ),
@@ -233,37 +199,80 @@ class WeightEvolutionCard extends StatelessWidget {
   }
 }
 
-// Widget de statistique de poids
-class _WeightStatItem extends StatelessWidget {
+// Widget moderne de statistique de poids
+class _ModernWeightStatItem extends StatelessWidget {
+  final IconData icon;
   final String label;
   final String value;
-  final bool isCurrent;
+  final bool isSmallScreen;
 
-  const _WeightStatItem({
+  const _ModernWeightStatItem({
+    required this.icon,
     required this.label,
     required this.value,
-    this.isCurrent = false,
+    this.isSmallScreen = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: isCurrent ? CrossAxisAlignment.center : 
-          (label == 'Poids initial' ? CrossAxisAlignment.start : CrossAxisAlignment.end),
-      children: [
-        Text(
-          label,
-          style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+    return Container(
+      padding: EdgeInsets.all(isSmallScreen ? 12 : 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: const Color(0xFF0B132B).withOpacity(0.08),
+          width: 1,
         ),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: isCurrent ? const Color(0xFF0B132B) : const Color(0xFF1A1A1A),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0B132B).withOpacity(0.04),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
           ),
-        ),
-      ],
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0B132B).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Icon(
+                  icon,
+                  size: isSmallScreen ? 12 : 14,
+                  color: const Color(0xFF0B132B),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: isSmallScreen ? 11 : 12,
+                    color: const Color(0xFF64748B),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: isSmallScreen ? 14 : 16,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF0B132B),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

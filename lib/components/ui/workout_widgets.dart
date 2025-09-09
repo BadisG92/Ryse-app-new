@@ -30,7 +30,7 @@ class _WeeklyStatsSectionState extends State<WeeklyStatsSection> {
       final userId = Supabase.instance.client.auth.currentUser?.id;
       if (userId == null) {
         setState(() {
-          _stats = const WeeklyStats(sessions: '0', weight: '0 kg', calories: '0');
+          _stats = const WeeklyStats(sessions: '0', weight: '0 kg', calories: '0 kcal');
           _loading = false;
         });
         return;
@@ -47,14 +47,14 @@ class _WeeklyStatsSectionState extends State<WeeklyStatsSection> {
         _stats = WeeklyStats(
           sessions: sessions,
           weight: '${totalVolume.toStringAsFixed(0)} kg',
-          calories: totalCalories,
+          calories: '$totalCalories kcal',
         );
         _loading = false;
       });
     } catch (e) {
       debugPrint('❌ WeeklyStats error: $e');
       setState(() {
-        _stats = const WeeklyStats(sessions: '0', weight: '0 kg', calories: '0');
+        _stats = const WeeklyStats(sessions: '0', weight: '0 kg', calories: '0 kcal');
         _loading = false;
       });
     }
