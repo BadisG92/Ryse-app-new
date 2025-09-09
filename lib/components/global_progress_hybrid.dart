@@ -5,7 +5,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'ui/global_progress_models.dart';
 import 'ui/global_progress_widgets.dart';
 import '../services/dashboard_service.dart';
-import '../services/progress_service.dart';
+import '../services/progress_service_v2.dart';
+import '../services/header_cache_service.dart';
 import '../providers/goals_notifier.dart';
 
 class GlobalProgress extends StatefulWidget {
@@ -21,7 +22,7 @@ class _GlobalProgressState extends State<GlobalProgress> {
   WeightProgress _weightProgress = GlobalProgressData.weightProgress;
   WeeklyBalance _weeklyBalance = GlobalProgressData.weeklyBalance;
   List<TrackingDay> _trackingDays = GlobalProgressData.weeklyTracking;
-  HeaderStats _headerStats = GlobalProgressData.headerStats;
+  HeaderStats? _headerStats; // Pas d'initialisation par défaut
   List<AIRecommendation> _aiRecommendations = GlobalProgressData.aiRecommendations;
   int _completedGoals = 0;
   int _totalGoals = 0;
@@ -32,10 +33,24 @@ class _GlobalProgressState extends State<GlobalProgress> {
   @override
   void initState() {
     super.initState();
+    
+    // Essayer de charger depuis le cache d'abord
+    _loadFromCache();
+    
     _loadObjectives();
     _loadProgressData();
     // Forcer la mise à jour du compteur d'objectifs
     DashboardService.refreshGoalsNotifier();
+  }
+  
+  void _loadFromCache() {
+    final cachedStats = HeaderCacheService.getCachedHeaderStats();
+    if (cachedStats != null) {
+      setState(() {
+        _headerStats = cachedStats;
+      });
+      print('⚡ Header chargé depuis le cache: ${cachedStats.dailyStreak}');
+    }
   }
 
   Future<void> _loadObjectives() async {
@@ -54,39 +69,43 @@ class _GlobalProgressState extends State<GlobalProgress> {
 
   Future<void> _loadProgressData() async {
     try {
-      print('🔄 Chargement des données de progression depuis ProgressService...');
+      print('🔄 Chargement des données de progression avec cache hebdomadaire...');
       
-      // Charger toutes les données en parallèle
+      // S'assurer que le cache est propre pour éviter les conflits de statut
+      ProgressServiceV2.forceRefresh();
+      
+      // Charger avec le nouveau service optimisé pour les bilans hebdo
       final results = await Future.wait([
-        ProgressService.getWeeklyBalance(),
-        ProgressService.getWeeklyTracking(),
-        ProgressService.getHeaderStats(),
-        ProgressService.getAIRecommendations(),
+        ProgressServiceV2.getWeeklyBalance(),
+        ProgressServiceV2.getWeeklyTracking(),
+        ProgressServiceV2.getHeaderStats(),
+        ProgressServiceV2.getAIRecommendations(),
       ]);
+      
+      final newHeaderStats = results[2] as HeaderStats;
       
       setState(() {
         _weeklyBalance = results[0] as WeeklyBalance;
         _trackingDays = results[1] as List<TrackingDay>;
-        _headerStats = results[2] as HeaderStats;
+        _headerStats = newHeaderStats;
         _aiRecommendations = results[3] as List<AIRecommendation>;
         _loadingProgress = false;
       });
       
-      print('✅ Données de progression chargées:');
+      // Mettre à jour le cache pour les autres pages
+      HeaderCacheService.updateCache(newHeaderStats);
+      
+      print('✅ Données de progression chargées avec cache hebdomadaire');
       print('   - Bilan hebdomadaire: ${_weeklyBalance.items.length} items');
       print('   - Tracking: ${_trackingDays.length} jours');
       print('   - Recommandations IA: ${_aiRecommendations.length} items');
-      
-      // Debug du bilan hebdomadaire
-      for (final item in _weeklyBalance.items) {
-        print('   - ${item.label}: ${item.achieved}/${item.target} ${item.unit}');
-      }
       
     } catch (e) {
       print('❌ Erreur lors du chargement des données de progression: $e');
       setState(() => _loadingProgress = false);
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -98,42 +117,47 @@ class _GlobalProgressState extends State<GlobalProgress> {
             // Header avec bandeau identique aux pages sport/nutrition
             _buildHeader(),
             
-            // Corps principal avec scroll
+            // Corps principal avec scroll et pull-to-refresh
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    // Section d'évolution du poids avec graphique
-                    GlobalProgressSectionBuilder.buildWeightSection(
-                      _weightProgress,
-                      _onEditWeight,
-                    ),
-                    
-                    const SizedBox(height: 16),
-                    
-                    // Section du bilan global hebdomadaire
-                    _loadingProgress 
-                      ? _buildLoadingSection() 
-                      : GlobalProgressSectionBuilder.buildBalanceSection(_weeklyBalance),
-                    
-                    const SizedBox(height: 16),
-                    
-                    // Section de tracking hebdomadaire (nutrition + sport)
-                    _loadingProgress 
-                      ? _buildLoadingSection() 
-                      : GlobalProgressSectionBuilder.buildTrackingSection(_trackingDays),
-                    
-                    const SizedBox(height: 16),
-                    
-                    // Section des recommandations IA
-                    _loadingProgress 
-                      ? _buildLoadingSection() 
-                      : GlobalProgressSectionBuilder.buildAISection(_aiRecommendations),
-                    
-                    // Espace en bas pour éviter que le contenu soit coupé
-                    const SizedBox(height: 100),
-                  ],
+              child: RefreshIndicator(
+                onRefresh: _onRefresh,
+                color: const Color(0xFF0B132B),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: Column(
+                    children: [
+                      // Section d'évolution du poids avec graphique
+                      GlobalProgressSectionBuilder.buildWeightSection(
+                        _weightProgress,
+                        _onEditWeight,
+                      ),
+                      
+                      const SizedBox(height: 16),
+                      
+                      // Section du bilan global hebdomadaire
+                      _loadingProgress 
+                        ? _buildLoadingSection() 
+                        : GlobalProgressSectionBuilder.buildBalanceSection(_weeklyBalance),
+                      
+                      const SizedBox(height: 16),
+                      
+                      // Section de tracking hebdomadaire (nutrition + sport)
+                      _loadingProgress 
+                        ? _buildLoadingSection() 
+                        : GlobalProgressSectionBuilder.buildTrackingSection(_trackingDays),
+                      
+                      const SizedBox(height: 16),
+                      
+                      // Section des recommandations IA
+                      _loadingProgress 
+                        ? _buildLoadingSection() 
+                        : GlobalProgressSectionBuilder.buildAISection(_aiRecommendations),
+                      
+                      // Espace en bas pour éviter que le contenu soit coupé
+                      const SizedBox(height: 100),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -141,6 +165,21 @@ class _GlobalProgressState extends State<GlobalProgress> {
         ),
       ),
     );
+  }
+
+  /// Méthode de rafraîchissement pour le pull-to-refresh
+  Future<void> _onRefresh() async {
+    try {
+      print('🔄 Rafraîchissement manuel des données de progression...');
+      
+      // Forcer le rafraîchissement du cache
+      ProgressServiceV2.forceRefresh();
+      
+      // Recharger toutes les données
+      await _loadProgressData();
+    } catch (e) {
+      print('❌ Erreur lors du rafraîchissement manuel: $e');
+    }
   }
 
   Widget _buildHeader() {
@@ -173,7 +212,7 @@ class _GlobalProgressState extends State<GlobalProgress> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    _buildBannerItem(LucideIcons.flame, _headerStats.dailyStreak),
+                    _buildBannerItem(LucideIcons.flame, _headerStats?.dailyStreak ?? '...'),
                     _buildBannerSeparator(),
                     ValueListenableBuilder<GoalsSummary>(
                       valueListenable: GoalsNotifier.instance,
@@ -182,7 +221,7 @@ class _GlobalProgressState extends State<GlobalProgress> {
                       },
                     ),
                     _buildBannerSeparator(),
-                    _buildBannerItemWithLogo(_headerStats.currentStatus),
+                    _buildBannerItemWithLogo(_headerStats?.currentStatus ?? 'Progression'),
                   ],
                 ),
                 // Icône settings alignée à droite

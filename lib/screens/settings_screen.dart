@@ -5,6 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/auth_service.dart';
+import '../services/streak_service.dart';
+import '../services/header_cache_service.dart';
 import 'package:provider/provider.dart';
 import '../providers/goals_notifier.dart';
 import '../components/ui/onboarding_models.dart';
@@ -56,6 +58,11 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   String _startWeekDay = 'Lundi';
   bool _darkMode = false;
   bool _soundEffects = true;
+  
+  // Streak
+  int _currentStreak = 0;
+  bool _loadingStreak = true;
+  String get _streakText => _loadingStreak ? '...' : '$_currentStreak jours';
   bool _hapticFeedback = true;
   
   // Restrictions alimentaires
@@ -65,6 +72,11 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   void initState() {
     super.initState();
     _loadSettings();
+    
+    // Essayer de charger depuis le cache d'abord
+    _loadFromCache();
+    
+    _loadStreak();
     // Toutes les sections sont fermées par défaut
     _expandedSections['profile'] = false;
     _expandedSections['objectives'] = false;
@@ -72,6 +84,31 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
     _expandedSections['preferences'] = false;
     _expandedSections['restrictions'] = false;
     _expandedSections['account'] = false;
+  }
+  
+  void _loadFromCache() {
+    final cachedStats = HeaderCacheService.getCachedHeaderStats();
+    if (cachedStats != null) {
+      setState(() {
+        _currentStreak = int.tryParse(cachedStats.dailyStreak.split(' ')[0]) ?? 0;
+        _loadingStreak = false;
+      });
+      print('⚡ Settings header chargé depuis le cache: ${cachedStats.dailyStreak}');
+    }
+  }
+  
+  Future<void> _loadStreak() async {
+    try {
+      final streak = await StreakService.getCurrentStreak();
+      setState(() {
+        _currentStreak = streak;
+        _loadingStreak = false;
+      });
+    } catch (e) {
+      setState(() {
+        _loadingStreak = false;
+      });
+    }
   }
   
   Future<void> _loadSettings() async {
@@ -1430,7 +1467,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    _buildBannerItem(LucideIcons.flame, '7 jours'),
+                    _buildBannerItem(LucideIcons.flame, _streakText),
                     _buildBannerSeparator(),
                     ValueListenableBuilder<GoalsSummary>(
                       valueListenable: GoalsNotifier.instance,

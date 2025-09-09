@@ -18,7 +18,7 @@ class DashboardHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.fromLTRB(24, 50, 24, 20),
       decoration: BoxDecoration(
         borderRadius: const BorderRadius.only(
           bottomLeft: Radius.circular(24),
@@ -80,7 +80,7 @@ class DashboardHeader extends StatelessWidget {
                       Text(
                         'PREMIUM',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 10,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                         ),
@@ -109,7 +109,7 @@ class DashboardHeader extends StatelessWidget {
                             Text(
                               profile.streak.toString(),
                               style: const TextStyle(
-                                fontSize: 24,
+                                fontSize: 20,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.white,
                               ),
@@ -118,7 +118,7 @@ class DashboardHeader extends StatelessWidget {
                             Text(
                               'jours',
                               style: TextStyle(
-                                fontSize: 14,
+                                fontSize: 12,
                                 color: Colors.white.withOpacity(0.8),
                               ),
                             ),
@@ -133,13 +133,13 @@ class DashboardHeader extends StatelessWidget {
                       ],
                     ),
                     
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     
                     // Greeting
                     Text(
                       profile.greetingMessage,
                       style: const TextStyle(
-                        fontSize: 20,
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
@@ -148,7 +148,7 @@ class DashboardHeader extends StatelessWidget {
                     Text(
                       profile.xpText,
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 12,
                         color: Colors.white.withOpacity(0.8),
                       ),
                     ),
@@ -157,7 +157,7 @@ class DashboardHeader extends StatelessWidget {
               ),
               
               // Score circulaire
-              CircularScoreWidget(score: profile.todayScore),
+              CircularScoreWidget(score: profile.todayScore, size: 70),
             ],
           ),
         ],
@@ -169,35 +169,37 @@ class DashboardHeader extends StatelessWidget {
 // Widget de score circulaire
 class CircularScoreWidget extends StatelessWidget {
   final int score;
+  final double size;
 
   const CircularScoreWidget({
     super.key,
     required this.score,
+    this.size = 80,
   });
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 80,
-      height: 80,
+      width: size,
+      height: size,
       child: Stack(
         children: [
           // Background circle
           CustomPaint(
-            size: const Size(80, 80),
+            size: Size(size, size),
             painter: CircularProgressPainter(
               progress: 0,
-              strokeWidth: 6,
+              strokeWidth: 5,
               backgroundColor: Colors.white.withOpacity(0.2),
               progressColor: Colors.transparent,
             ),
           ),
           // Progress circle
           CustomPaint(
-            size: const Size(80, 80),
+            size: Size(size, size),
             painter: CircularProgressPainter(
               progress: score / 100,
-              strokeWidth: 6,
+              strokeWidth: 5,
               backgroundColor: Colors.transparent,
               progressColor: Colors.white.withOpacity(0.9),
             ),
@@ -207,7 +209,7 @@ class CircularScoreWidget extends StatelessWidget {
             child: Text(
               score.toString(),
               style: const TextStyle(
-                fontSize: 18,
+                fontSize: 16,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
               ),

@@ -5,6 +5,8 @@ import 'sport_dashboard.dart';
 import 'sport_cardio_hybrid.dart';
 import 'sport_musculation_hybrid.dart';
 import '../services/dashboard_service.dart';
+import '../services/streak_service.dart';
+import '../services/header_cache_service.dart';
 import '../providers/goals_notifier.dart';
 
 class SportSection extends StatefulWidget {
@@ -22,7 +24,10 @@ class _SportSectionState extends State<SportSection>
   int _completedGoals = 0;
   int _totalGoals = 0;
   bool _loadingObjectives = true;
+  int _currentStreak = 0;
+  bool _loadingStreak = true;
   String get _objectivesText => _loadingObjectives ? '...' : '$_completedGoals/$_totalGoals objectifs';
+  String get _streakText => _loadingStreak ? '...' : '$_currentStreak jours';
 
   final List<String> _pageNames = ['Tableau de bord', 'Cardio', 'Musculation'];
   final List<IconData> _pageIcons = [
@@ -36,9 +41,25 @@ class _SportSectionState extends State<SportSection>
     super.initState();
     _pageController = PageController();
     _tabController = TabController(length: 3, vsync: this);
+    
+    // Essayer de charger depuis le cache d'abord
+    _loadFromCache();
+    
     _loadObjectives();
+    _loadStreak();
     // Forcer la mise à jour du compteur d'objectifs
     DashboardService.refreshGoalsNotifier();
+  }
+  
+  void _loadFromCache() {
+    final cachedStats = HeaderCacheService.getCachedHeaderStats();
+    if (cachedStats != null) {
+      setState(() {
+        _currentStreak = int.tryParse(cachedStats.dailyStreak.split(' ')[0]) ?? 0;
+        _loadingStreak = false;
+      });
+      print('⚡ Sport header chargé depuis le cache: ${cachedStats.dailyStreak}');
+    }
   }
 
   @override
@@ -74,6 +95,20 @@ class _SportSectionState extends State<SportSection>
       });
     } catch (e) {
       setState(() => _loadingObjectives = false);
+    }
+  }
+
+  Future<void> _loadStreak() async {
+    try {
+      final streak = await StreakService.getCurrentStreak();
+      setState(() {
+        _currentStreak = streak;
+        _loadingStreak = false;
+      });
+    } catch (e) {
+      setState(() {
+        _loadingStreak = false;
+      });
     }
   }
 
@@ -131,7 +166,7 @@ class _SportSectionState extends State<SportSection>
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _buildBannerItem(LucideIcons.flame, '7 jours'),
+                _buildBannerItem(LucideIcons.flame, _streakText),
                 _buildBannerSeparator(),
                 ValueListenableBuilder<GoalsSummary>(
                   valueListenable: GoalsNotifier.instance,

@@ -4,6 +4,8 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../config/supabase_config.dart';
 import '../components/ui/dashboard_models.dart';
 import '../providers/goals_notifier.dart';
+import 'progress_service_v2.dart';
+import 'streak_service.dart';
 import 'sport_dashboard_service.dart';
 
 class DashboardService {
@@ -44,9 +46,14 @@ class DashboardService {
         currentCalories += (entry['calories'] as num).toDouble();
       }
 
+      // Calculer la vraie streak avec le service optimisé
+      print('🔥 DashboardService: Calcul de la streak');
+      final realStreak = await StreakService.getCurrentStreak();
+      print('🏆 DashboardService: Streak calculée = $realStreak jours');
+
       return UserProfile(
         name: response['first_name'] ?? 'Utilisateur',
-        streak: 7, // TODO: Calculer le vrai streak
+        streak: realStreak, // Vraie streak calculée
         todayScore: 85, // TODO: Calculer le vrai score
         todayXP: 250, // TODO: Calculer les vrais XP
         isPremium: false, // TODO: Récupérer le statut premium
@@ -310,7 +317,7 @@ class DashboardService {
           icon: LucideIcons.dumbbell,
           stats: {
             'Calories': '0 kcal',
-            'Séances': '0 aujourd\'hui',
+            'Séances': '0 auj.',
           },
           gradientColors: [Color(0xFF0B132B), Color(0xFF1C2951)],
         );
@@ -364,7 +371,7 @@ class DashboardService {
         icon: LucideIcons.dumbbell,
         stats: {
           'Calories': '$totalCalories kcal',
-          'Séances': '$totalSessions aujourd\'hui',
+          'Séances': '$totalSessions auj.',
         },
         gradientColors: const [Color(0xFF0B132B), Color(0xFF1C2951)],
       );
@@ -375,7 +382,7 @@ class DashboardService {
         icon: LucideIcons.dumbbell,
         stats: {
           'Calories': '0 kcal',
-          'Séances': '0 aujourd\'hui',
+          'Séances': '0 auj.',
         },
         gradientColors: [Color(0xFF0B132B), Color(0xFF1C2951)],
       );

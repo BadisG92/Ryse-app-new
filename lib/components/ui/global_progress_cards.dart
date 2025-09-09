@@ -351,7 +351,7 @@ class _BalanceItemRow extends StatelessWidget {
         Container(
           width: 60,
           height: 8,
-          margin: const EdgeInsets.only(right: 8),
+          margin: const EdgeInsets.only(right: 2),
           decoration: BoxDecoration(
             color: const Color(0xFFF8F8F8),
             borderRadius: BorderRadius.circular(4),
@@ -623,11 +623,8 @@ class _TrackingDayIndicator extends StatelessWidget {
 
   Widget? _getIcon(TrackingDay day, bool isNutrition) {
     if (isNutrition) {
-      if (day.nutritionScore.hasIcon) {
-        return Center(
-          child: Icon(day.nutritionScore.icon, color: Colors.white, size: 14),
-        );
-      }
+      // Plus d'icône pour la nutrition, juste les couleurs
+      return null;
     } else {
       // Nouvelle logique pour les icônes sport basée sur sportActivities
       if (day.hasBothActivities) {

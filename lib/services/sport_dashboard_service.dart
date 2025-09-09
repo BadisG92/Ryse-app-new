@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'cardio_service.dart';
 import 'workout_cache_service.dart';
 import 'calorie_target_service.dart';
+import 'streak_service.dart';
 
 /// Service unifié pour les données du tableau de bord Sport
 /// Combine les données cardio et musculation
@@ -221,7 +222,7 @@ class SportDashboardService {
         'totalDurationMinutes': cardioStats.totalDuration.inMinutes + (musculationStats['total_duration_minutes'] ?? 0),
         'cardioSessions': cardioStats.sessionsCount,
         'musculationSessions': musculationStats['sessions'] ?? 0,
-        'streak': await _calculateStreak(userId),
+        'streak': await _calculateSportWeeklyStreak(userId),
       };
     } catch (e) {
       debugPrint('❌ Error loading weekly summary: $e');
@@ -236,51 +237,112 @@ class SportDashboardService {
     }
   }
 
-  /// Calcule la streak (semaines consécutives avec au moins 1 session)
-  static Future<int> _calculateStreak(String userId) async {
+  /// Calcule le nombre de semaines consécutives avec au moins 1 activité sportive
+  /// (différent de la streak globale qui compte les jours d'usage de l'app)
+  static Future<int> _calculateSportWeeklyStreak(String userId) async {
     try {
-      int streak = 0;
       final now = DateTime.now();
+      int consecutiveWeeks = 0;
       
-      for (int i = 0; i < 20; i++) { // Vérifier jusqu'à 20 semaines
-        // Calculer le début de la semaine (lundi)
-        final weekStart = now.subtract(Duration(days: now.weekday - 1 + (i * 7)));
-        final weekEnd = weekStart.add(const Duration(days: 6));
+      // D'abord vérifier la semaine actuelle
+      final currentWeekStart = _getStartOfWeek(now);
+      final currentWeekEnd = currentWeekStart.add(const Duration(days: 6, hours: 23, minutes: 59, seconds: 59));
+      
+      debugPrint('🔍 Vérification semaine ACTUELLE ${currentWeekStart.toIso8601String().split('T')[0]} -> ${currentWeekEnd.toIso8601String().split('T')[0]}');
+      
+      final hasCurrentActivity = await _hasAnyActivityInWeek(userId, currentWeekStart, currentWeekEnd);
+      
+      if (hasCurrentActivity) {
+        consecutiveWeeks = 1;
+        debugPrint('✅ Activité trouvée cette semaine - Streak commence à: $consecutiveWeeks');
         
-        final weekStartStr = weekStart.toIso8601String().split('T')[0];
-        final weekEndStr = weekEnd.toIso8601String().split('T')[0];
+        // Continuer avec les semaines précédentes
+        for (int i = 1; i <= 52; i++) {
+          final weekStart = _getStartOfWeek(now.subtract(Duration(days: i * 7)));
+          final weekEnd = weekStart.add(const Duration(days: 6, hours: 23, minutes: 59, seconds: 59));
+          
+          debugPrint('🔍 Vérification semaine ${weekStart.toIso8601String().split('T')[0]} -> ${weekEnd.toIso8601String().split('T')[0]}');
+          
+          final hasActivity = await _hasAnyActivityInWeek(userId, weekStart, weekEnd);
+          
+          if (hasActivity) {
+            consecutiveWeeks++;
+            debugPrint('✅ Activité trouvée - Streak: $consecutiveWeeks');
+          } else {
+            debugPrint('❌ Pas d\'activité - Arrêt de la streak');
+            break;
+          }
+        }
+      } else {
+        debugPrint('❌ Pas d\'activité cette semaine - Vérification des semaines précédentes');
         
-        // Vérifier s'il y a eu des sessions cette semaine
-        final cardioSessions = await _client
-            .from('cardio_sessions')
-            .select('id')
-            .eq('user_id', userId)
-            .gte('session_date', weekStartStr)
-            .lte('session_date', weekEndStr)
-            .eq('is_completed', true);
-            
-        final musculationSessions = await _client
-            .from('workout_session_summaries')
-            .select('id')
-            .eq('user_id', userId)
-            .gte('session_date', weekStartStr)
-            .lte('session_date', weekEndStr);
-        
-        final totalSessions = cardioSessions.length + musculationSessions.length;
-        
-        if (totalSessions > 0) {
-          streak++;
-        } else if (i > 0) { // Ne pas casser la streak la première semaine (semaine actuelle)
-          break;
+        // Pas d'activité cette semaine, vérifier les semaines précédentes
+        for (int i = 1; i <= 52; i++) {
+          final weekStart = _getStartOfWeek(now.subtract(Duration(days: i * 7)));
+          final weekEnd = weekStart.add(const Duration(days: 6, hours: 23, minutes: 59, seconds: 59));
+          
+          debugPrint('🔍 Vérification semaine ${weekStart.toIso8601String().split('T')[0]} -> ${weekEnd.toIso8601String().split('T')[0]}');
+          
+          final hasActivity = await _hasAnyActivityInWeek(userId, weekStart, weekEnd);
+          
+          if (hasActivity) {
+            consecutiveWeeks++;
+            debugPrint('✅ Activité trouvée - Streak: $consecutiveWeeks');
+          } else {
+            debugPrint('❌ Pas d\'activité - Arrêt de la streak');
+            break;
+          }
         }
       }
       
-      return streak;
+      debugPrint('🔥 Sport weekly streak: $consecutiveWeeks semaines consécutives avec activité');
+      return consecutiveWeeks;
     } catch (e) {
-      debugPrint('❌ Error calculating weekly streak: $e');
+      debugPrint('❌ Error calculating sport weekly streak: $e');
       return 0;
     }
   }
+
+  /// Vérifie s'il y a au moins une activité sportive dans la semaine donnée
+  static Future<bool> _hasAnyActivityInWeek(String userId, DateTime weekStart, DateTime weekEnd) async {
+    try {
+      // Vérifier les séances de musculation
+      final workoutResponse = await _client
+          .from('workout_session_summaries')
+          .select('id')
+          .eq('user_id', userId)
+          .gte('session_date', weekStart.toIso8601String().split('T')[0])
+          .lte('session_date', weekEnd.toIso8601String().split('T')[0])
+          .limit(1);
+      
+      if (workoutResponse.isNotEmpty) {
+        return true;
+      }
+
+      // Vérifier les séances de cardio
+      final cardioResponse = await _client
+          .from('cardio_sessions')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('is_completed', true)
+          .gte('session_date', weekStart.toIso8601String().split('T')[0])
+          .lte('session_date', weekEnd.toIso8601String().split('T')[0])
+          .limit(1);
+      
+      return cardioResponse.isNotEmpty;
+    } catch (e) {
+      debugPrint('❌ Error checking activity in week: $e');
+      return false;
+    }
+  }
+
+  /// Obtient le début de la semaine (lundi) pour une date donnée
+  static DateTime _getStartOfWeek(DateTime date) {
+    final daysFromMonday = date.weekday - 1;
+    return DateTime(date.year, date.month, date.day).subtract(Duration(days: daysFromMonday));
+  }
+
+  // Note: Cette streak sport (semaines consécutives avec activité) est différente de la streak globale StreakService (jours d'usage app)
 
   /// Invalide le cache
   static void invalidateCache() {

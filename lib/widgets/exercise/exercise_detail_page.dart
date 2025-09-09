@@ -596,16 +596,29 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
       }
     }
 
-    // Progression: dernière_best - première_best
+    // Progression: meilleure_dernière_best - meilleure_première_best (cohérent avec le graphique)
     String progressLabel = '—';
     if (period.length >= 2) {
-      final double first = period.first['best'] as double;
-      final double last = period.last['best'] as double;
-      final double diff = last - first;
-      final String diffStr = diff == 0
-          ? '0'
-          : (diff % 1 == 0 ? (diff > 0 ? '+${diff.toInt()}' : '${diff.toInt()}') : (diff > 0 ? '+${diff.toStringAsFixed(1)}' : diff.toStringAsFixed(1)));
-      progressLabel = diffStr + (usesWeight ? ' kg' : ' reps');
+      // Grouper par jour et prendre la meilleure valeur de chaque jour (comme le graphique)
+      final Map<String, double> bestByDay = {};
+      for (final p in period) {
+        final date = p['date'] as DateTime;
+        final dayKey = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+        final best = p['best'] as double;
+        bestByDay[dayKey] = math.max(bestByDay[dayKey] ?? 0, best);
+      }
+      
+      // Trier les jours et prendre le premier et le dernier
+      final sortedDays = bestByDay.keys.toList()..sort();
+      if (sortedDays.length >= 2) {
+        final double first = bestByDay[sortedDays.first]!;
+        final double last = bestByDay[sortedDays.last]!;
+        final double diff = last - first;
+        final String diffStr = diff == 0
+            ? '0'
+            : (diff % 1 == 0 ? (diff > 0 ? '+${diff.toInt()}' : '${diff.toInt()}') : (diff > 0 ? '+${diff.toStringAsFixed(1)}' : diff.toStringAsFixed(1)));
+        progressLabel = diffStr + (usesWeight ? ' kg' : ' reps');
+      }
     }
 
     return Row(
