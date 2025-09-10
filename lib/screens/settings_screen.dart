@@ -26,46 +26,46 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   
   // État local pour la V1 - sera migré vers Supabase plus tard
   
-  // Profil utilisateur
-  String _gender = 'Homme';
-  String _age = '25';
-  String _height = '175';
-  String _weight = '70';
+  // Profil utilisateur  
+  String _gender = '';
+  String _age = '';
+  String _height = '';
+  String _weight = '';
   
   // Objectifs
-  String _activityLevel = 'moderate'; // 'low', 'moderate', 'high'
-  String _mainGoal = 'maintain'; // 'lose', 'maintain', 'gain'
-  String _targetWeight = '70';
-  int _proteinTarget = 150;
-  int _carbsTarget = 200;
-  int _fatTarget = 80;
-  int _caloriesTarget = 2200;
+  String _activityLevel = ''; // 'low', 'moderate', 'high'
+  String _mainGoal = ''; // 'lose', 'maintain', 'gain'
+  String _targetWeight = '';
+  int _proteinTarget = 0;
+  int _carbsTarget = 0;
+  int _fatTarget = 0;
+  int _caloriesTarget = 0;
   
   // Macros personnalisées
   bool _hasCustomMacros = false;
-  double _proteinPercentage = 0.30;
-  double _carbsPercentage = 0.40;
-  double _fatPercentage = 0.30;
+  double _proteinPercentage = 0.0;
+  double _carbsPercentage = 0.0;
+  double _fatPercentage = 0.0;
   
   // Notifications
-  bool _dailyReminder = true;
-  bool _workoutReminder = true;
-  bool _mealReminder = true;
-  bool _progressNotifications = true;
-  String _reminderTime = '08:00';
+  bool _dailyReminder = false;
+  bool _workoutReminder = false;
+  bool _mealReminder = false;
+  bool _progressNotifications = false;
+  String _reminderTime = '';
   
   // Préférences
-  String _language = 'Français';
-  String _measurementUnit = 'Métrique';
-  String _startWeekDay = 'Lundi';
+  String _language = '';
+  String _measurementUnit = ''; // Utiliser clés de traduction
+  String _startWeekDay = '';
   bool _darkMode = false;
-  bool _soundEffects = true;
+  bool _soundEffects = false;
   
   // Streak
   int _currentStreak = 0;
   bool _loadingStreak = true;
-  String get _streakText => _loadingStreak ? '...' : '$_currentStreak jours';
-  bool _hapticFeedback = true;
+  String _getStreakText(String languageCode) => _loadingStreak ? '...' : '$_currentStreak ${'days'.tr(languageCode)}';
+  bool _hapticFeedback = false;
   
   // Restrictions alimentaires
   List<String> _dietaryRestrictions = [];
@@ -140,8 +140,9 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
           .maybeSingle();
       
       setState(() {
-        // Données du profil
-        _gender = response['gender'] ?? 'Homme';
+        // Données du profil - normaliser les valeurs de genre
+        final rawGender = response['gender'] ?? 'Homme';
+        _gender = _getGenderTranslationKey(rawGender); // Normaliser en clé de traduction
         _age = response['age']?.toString() ?? '25';
         _height = response['height']?.toString() ?? '175';
         _weight = response['weight']?.toString() ?? '70';
@@ -165,8 +166,9 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
           _fatPercentage = historyResponse['fat_percentage'] ?? 0.30;
         }
         
-        // Restrictions alimentaires
-        _dietaryRestrictions = List<String>.from(response['dietary_restrictions'] ?? []);
+        // Restrictions alimentaires - convertir les valeurs BDD en clés normalisées
+        final rawRestrictions = List<String>.from(response['dietary_restrictions'] ?? []);
+        _dietaryRestrictions = rawRestrictions.map((restriction) => _getDietaryRestrictionKey(restriction)).toList();
       });
       
       // Charger les préférences locales depuis SharedPreferences
@@ -193,7 +195,8 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
       
       // Synchroniser avec le service de localisation
       _language = locService.isFrench ? 'Français' : 'English';
-      _measurementUnit = prefs.getString('measurement_unit') ?? 'Métrique';
+      final rawMeasurement = prefs.getString('measurement_unit') ?? 'Métrique';
+      _measurementUnit = _getMeasurementTranslationKey(rawMeasurement);
       _startWeekDay = prefs.getString('start_week_day') ?? 'Lundi';
       _darkMode = prefs.getBool('dark_mode') ?? false;
       _soundEffects = prefs.getBool('sound_effects') ?? true;
@@ -206,7 +209,8 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
     
     setState(() {
       // Charger les données depuis SharedPreferences (fallback)
-      _gender = prefs.getString('user_gender') ?? 'Homme';
+      final rawGender = prefs.getString('user_gender') ?? 'Homme';
+      _gender = _getGenderTranslationKey(rawGender); // Normaliser en clé de traduction
       _age = prefs.getString('user_age') ?? '25';
       _height = prefs.getString('user_height') ?? '175';
       _weight = prefs.getString('user_weight') ?? '70';
@@ -231,13 +235,15 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
       _reminderTime = prefs.getString('reminder_time') ?? '08:00';
       
       _language = prefs.getString('language') ?? 'Français';
-      _measurementUnit = prefs.getString('measurement_unit') ?? 'Métrique';
+      final rawMeasurement = prefs.getString('measurement_unit') ?? 'Métrique';
+      _measurementUnit = _getMeasurementTranslationKey(rawMeasurement);
       _startWeekDay = prefs.getString('start_week_day') ?? 'Lundi';
       _darkMode = prefs.getBool('dark_mode') ?? false;
       _soundEffects = prefs.getBool('sound_effects') ?? true;
       _hapticFeedback = prefs.getBool('haptic_feedback') ?? true;
       
-      _dietaryRestrictions = prefs.getStringList('dietary_restrictions') ?? [];
+      final rawLocalRestrictions = prefs.getStringList('dietary_restrictions') ?? [];
+      _dietaryRestrictions = rawLocalRestrictions.map((restriction) => _getDietaryRestrictionKey(restriction)).toList();
     });
   }
   
@@ -410,15 +416,15 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
     };
   }
   
-  String _getCurrentPreset() {
+  String _getCurrentPreset(String languageCode) {
     if (_proteinPercentage == 0.35 && _carbsPercentage == 0.30 && _fatPercentage == 0.35) {
-      return 'Perte de poids';
+      return 'weight_loss_full'.tr(languageCode);
     } else if (_proteinPercentage == 0.25 && _carbsPercentage == 0.50 && _fatPercentage == 0.25) {
-      return 'Prise de masse';
+      return 'weight_gain_full'.tr(languageCode);
     } else if (_proteinPercentage == 0.30 && _carbsPercentage == 0.40 && _fatPercentage == 0.30) {
-      return 'Équilibré';
+      return 'balanced'.tr(languageCode);
     } else {
-      return 'Personnalisé';
+      return 'custom'.tr(languageCode);
     }
   }
   
@@ -465,8 +471,9 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setModalState) {
+      builder: (context) => Consumer<LocalizationService>(
+        builder: (context, locService, _) => StatefulBuilder(
+          builder: (context, setModalState) {
           // Calculer les grammes en temps réel
           Map<String, int> tempMacros = {
             'protein': ((tempCalories * tempProtein) / 4).round(),
@@ -502,9 +509,9 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Modifier les macronutriments',
-                        style: TextStyle(
+                      Text(
+                        'modify_macronutrients'.tr(locService.currentLanguageCode),
+                        style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF1A1A1A),
@@ -557,9 +564,9 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                     color: Color(0xFF0B132B),
                                   ),
                                   const SizedBox(width: 8),
-                                  const Text(
-                                    'Objectif calorique quotidien',
-                                    style: TextStyle(
+                                  Text(
+                                    'daily_calorie_goal'.tr(locService.currentLanguageCode),
+                                    style: const TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w600,
                                       color: Color(0xFF1A1A1A),
@@ -611,7 +618,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                'Recommandé: $baseCalories kcal',
+                                '${'recommended'.tr(locService.currentLanguageCode)}: $baseCalories kcal',
                                 style: const TextStyle(
                                   fontSize: 12,
                                   color: Color(0xFF64748B),
@@ -624,9 +631,9 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                         const SizedBox(height: 24),
 
                         // Section Répartition
-                        const Text(
-                          'Répartition des macronutriments',
-                          style: TextStyle(
+                        Text(
+                          'macronutrient_distribution'.tr(locService.currentLanguageCode),
+                          style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                             color: Color(0xFF1A1A1A),
@@ -637,7 +644,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
 
                         // Protéines
                         _buildMacroSliderOnboarding(
-                          name: 'Protéines',
+                          name: 'proteins'.tr(locService.currentLanguageCode),
                           icon: LucideIcons.zap,
                           color: const Color(0xFF0B132B),
                           percentage: tempProtein,
@@ -657,11 +664,11 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                           },
                         ),
 
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12),
 
                         // Glucides
                         _buildMacroSliderOnboarding(
-                          name: 'Glucides',
+                          name: 'carbohydrates'.tr(locService.currentLanguageCode),
                           icon: LucideIcons.wheat,
                           color: const Color(0xFF1C2951),
                           percentage: tempCarbs,
@@ -681,11 +688,11 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                           },
                         ),
 
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12),
 
                         // Lipides
                         _buildMacroSliderOnboarding(
-                          name: 'Lipides',
+                          name: 'fats'.tr(locService.currentLanguageCode),
                           icon: LucideIcons.droplets,
                           color: const Color(0xFF64748B),
                           percentage: tempFat,
@@ -708,9 +715,9 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                         const SizedBox(height: 24),
 
                         // Presets rapides
-                        const Text(
-                          'Répartitions prédéfinies',
-                          style: TextStyle(
+                        Text(
+                          'predefined_distributions'.tr(locService.currentLanguageCode),
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                             color: Color(0xFF1A1A1A),
@@ -723,7 +730,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                           children: [
                             Expanded(
                               child: _buildPresetButton(
-                                'Équilibré',
+                                'balanced'.tr(locService.currentLanguageCode),
                                 '30-40-30',
                                 () {
                                   setModalState(() {
@@ -739,7 +746,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                             const SizedBox(width: 8),
                             Expanded(
                               child: _buildPresetButton(
-                                'Perte',
+                                'weight_loss'.tr(locService.currentLanguageCode),
                                 '35-30-35',
                                 () {
                                   setModalState(() {
@@ -755,7 +762,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                             const SizedBox(width: 8),
                             Expanded(
                               child: _buildPresetButton(
-                                'Prise',
+                                'weight_gain'.tr(locService.currentLanguageCode),
                                 '25-50-25',
                                 () {
                                   setModalState(() {
@@ -803,9 +810,9 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          child: const Text(
-                            'Annuler',
-                            style: TextStyle(
+                          child: Text(
+                            'cancel'.tr(locService.currentLanguageCode),
+                            style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
                               color: Color(0xFF64748B),
@@ -845,9 +852,9 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                             ),
                             elevation: 0,
                           ),
-                          child: const Text(
-                            'Appliquer',
-                            style: TextStyle(
+                          child: Text(
+                            'apply'.tr(locService.currentLanguageCode),
+                            style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
                               color: Colors.white,
@@ -861,7 +868,8 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
               ],
             ),
           );
-        },
+          },
+        ),
       ),
     );
   }
@@ -875,7 +883,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
     required Function(double) onChanged,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(12),
@@ -1009,27 +1017,37 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                         key: 'profile',
                         icon: LucideIcons.user,
                         title: 'settings_profile'.tr(locService.currentLanguageCode),
-                        subtitle: '$_age ans, $_weight kg, $_height cm',
+                        subtitle: _getProfileSummary(locService.currentLanguageCode),
                       children: [
                         _buildSectionContent(
                           child: Column(
                             children: [
                               _buildInputRow(
-                                label: 'Genre',
+                                label: 'gender'.tr(locService.currentLanguageCode),
                                 child: _buildSegmentedControl(
-                                  value: _gender,
-                                  options: ['Homme', 'Femme', 'Autre'],
+                                  value: _getDisplayGender(locService.currentLanguageCode),
+                                  options: _getGenderOptions(locService.currentLanguageCode),
                                   onChanged: (value) {
-                                    setState(() => _gender = value);
+                                    // Retrouver la clé de traduction à partir de la valeur affichée
+                                    String key = 'male';
+                                    if (value == 'male'.tr(locService.currentLanguageCode)) {
+                                      key = 'male';
+                                    } else if (value == 'female'.tr(locService.currentLanguageCode)) {
+                                      key = 'female';
+                                    } else if (value == 'other'.tr(locService.currentLanguageCode)) {
+                                      key = 'other';
+                                    }
+                                    
+                                    setState(() => _gender = key);
                                     _saveSettings();
                                   },
                                 ),
                               ),
                               _buildInputRow(
-                                label: 'Âge',
+                                label: 'age'.tr(locService.currentLanguageCode),
                                 child: _buildNumberField(
                                   value: _age,
-                                  suffix: 'ans',
+                                  suffix: 'years'.tr(locService.currentLanguageCode),
                                   onChanged: (value) {
                                     _age = value;
                                     _saveSettings();
@@ -1037,7 +1055,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                 ),
                               ),
                               _buildInputRow(
-                                label: 'Taille',
+                                label: 'height'.tr(locService.currentLanguageCode),
                                 child: _buildNumberField(
                                   value: _height,
                                   suffix: 'cm',
@@ -1048,7 +1066,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                 ),
                               ),
                               _buildInputRow(
-                                label: 'Poids',
+                                label: 'weight'.tr(locService.currentLanguageCode),
                                 child: _buildNumberField(
                                   value: _weight,
                                   suffix: 'kg',
@@ -1072,7 +1090,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                         key: 'objectives',
                         icon: LucideIcons.target,
                         title: 'settings_objectives'.tr(locService.currentLanguageCode),
-                        subtitle: _getGoalSummary(),
+                        subtitle: _getGoalSummary(locService.currentLanguageCode),
                       children: [
                         _buildSectionContent(
                           child: Column(
@@ -1081,9 +1099,9 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  const Text(
-                                    'Objectif calorique quotidien',
-                                    style: TextStyle(
+                                  Text(
+                                    'daily_calorie_goal'.tr(locService.currentLanguageCode),
+                                    style: const TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w600,
                                       color: Color(0xFF1A1A1A),
@@ -1103,35 +1121,45 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                               const SizedBox(height: 16),
                               
                               // Bilan nutritionnel style onboarding
-                              _buildNutritionPlan(),
+                              Consumer<LocalizationService>(
+                                builder: (context, locService, _) => _buildNutritionPlan(locService.currentLanguageCode),
+                              ),
                               
                               const SizedBox(height: 20),
                               
                               // Bouton de recalcul
-                              _buildRecalculateButton(),
+                              Consumer<LocalizationService>(
+                                builder: (context, locService, _) => _buildRecalculateButton(locService.currentLanguageCode),
+                              ),
                               
                               const SizedBox(height: 20),
                               
                               // Niveau d'activité compact
-                              _buildCompactActivitySelector(),
+                              Consumer<LocalizationService>(
+                                builder: (context, locService, _) => _buildCompactActivitySelector(locService.currentLanguageCode),
+                              ),
                               
                               const SizedBox(height: 16),
                               
                               // Objectif principal compact
-                              _buildCompactGoalSelector(),
+                              Consumer<LocalizationService>(
+                                builder: (context, locService, _) => _buildCompactGoalSelector(locService.currentLanguageCode),
+                              ),
                               
                               if (_mainGoal != 'maintain') ...[
                                 const SizedBox(height: 16),
-                                _buildInputRow(
-                                  label: 'Poids cible',
-                                  child: _buildNumberField(
-                                    value: _targetWeight,
-                                    suffix: 'kg',
-                                    decimal: true,
-                                    onChanged: (value) {
-                                      _targetWeight = value;
-                                      _saveSettings();
-                                    },
+                                Consumer<LocalizationService>(
+                                  builder: (context, locService, _) => _buildInputRow(
+                                    label: 'target_weight'.tr(locService.currentLanguageCode),
+                                    child: _buildNumberField(
+                                      value: _targetWeight,
+                                      suffix: 'kg',
+                                      decimal: true,
+                                      onChanged: (value) {
+                                        _targetWeight = value;
+                                        _saveSettings();
+                                      },
+                                    ),
                                   ),
                                 ),
                               ],
@@ -1143,18 +1171,19 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                     ),
                     
                     // Section Notifications
-                    _buildExpandableSection(
-                      key: 'notifications',
-                      icon: LucideIcons.bell,
-                      title: 'Notifications',
-                      subtitle: _getNotificationSummary(),
-                      children: [
+                    Consumer<LocalizationService>(
+                      builder: (context, locService, child) => _buildExpandableSection(
+                        key: 'notifications',
+                        icon: LucideIcons.bell,
+                        title: 'settings_notifications'.tr(locService.currentLanguageCode),
+                        subtitle: _getNotificationSummary(locService.currentLanguageCode),
+                        children: [
                         _buildSectionContent(
                           child: Column(
                             children: [
                               _buildSwitchTile(
-                                title: 'Rappel quotidien',
-                                subtitle: 'Rappel pour vos objectifs du jour',
+                                title: 'daily_reminder'.tr(locService.currentLanguageCode),
+                                subtitle: 'daily_reminder_subtitle'.tr(locService.currentLanguageCode),
                                 value: _dailyReminder,
                                 onChanged: (value) {
                                   setState(() => _dailyReminder = value);
@@ -1162,8 +1191,8 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                 },
                               ),
                               _buildSwitchTile(
-                                title: 'Rappel entraînement',
-                                subtitle: 'Notification avant vos séances',
+                                title: 'workout_reminder'.tr(locService.currentLanguageCode),
+                                subtitle: 'workout_reminder_subtitle'.tr(locService.currentLanguageCode),
                                 value: _workoutReminder,
                                 onChanged: (value) {
                                   setState(() => _workoutReminder = value);
@@ -1171,8 +1200,8 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                 },
                               ),
                               _buildSwitchTile(
-                                title: 'Rappel repas',
-                                subtitle: 'Notification pour vos repas',
+                                title: 'meal_reminder'.tr(locService.currentLanguageCode),
+                                subtitle: 'meal_reminder_subtitle'.tr(locService.currentLanguageCode),
                                 value: _mealReminder,
                                 onChanged: (value) {
                                   setState(() => _mealReminder = value);
@@ -1180,8 +1209,8 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                 },
                               ),
                               _buildSwitchTile(
-                                title: 'Notifications de progrès',
-                                subtitle: 'Mises à jour hebdomadaires',
+                                title: 'progress_notifications'.tr(locService.currentLanguageCode),
+                                subtitle: 'progress_notifications_subtitle'.tr(locService.currentLanguageCode),
                                 value: _progressNotifications,
                                 onChanged: (value) {
                                   setState(() => _progressNotifications = value);
@@ -1192,20 +1221,22 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                           ),
                         ),
                       ],
+                      ),
                     ),
                     
                     // Section Préférences
-                    _buildExpandableSection(
-                      key: 'preferences',
-                      icon: LucideIcons.settings2,
-                      title: 'Préférences',
-                      subtitle: '$_language • $_measurementUnit',
-                      children: [
+                    Consumer<LocalizationService>(
+                      builder: (context, locService, child) => _buildExpandableSection(
+                        key: 'preferences',
+                        icon: LucideIcons.settings2,
+                        title: 'settings_preferences'.tr(locService.currentLanguageCode),
+                        subtitle: _getPreferencesSummary(locService.currentLanguageCode),
+                        children: [
                         _buildSectionContent(
                           child: Column(
                             children: [
                               _buildInputRow(
-                                label: 'Langue',
+                                label: 'language'.tr(locService.currentLanguageCode),
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
@@ -1278,20 +1309,28 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                 ),
                               ),
                               _buildInputRow(
-                                label: 'Système de mesure',
+                                label: 'measurement_system'.tr(locService.currentLanguageCode),
                                 child: _buildSegmentedControl(
-                                  value: _measurementUnit,
-                                  options: ['Métrique', 'Impérial'],
+                                  value: _getDisplayMeasurementUnit(locService.currentLanguageCode),
+                                  options: _getMeasurementOptions(locService.currentLanguageCode),
                                   onChanged: (value) {
-                                    setState(() => _measurementUnit = value);
+                                    // Retrouver la clé de traduction à partir de la valeur affichée
+                                    String key = 'metric';
+                                    if (value == 'metric'.tr(locService.currentLanguageCode)) {
+                                      key = 'metric';
+                                    } else if (value == 'imperial'.tr(locService.currentLanguageCode)) {
+                                      key = 'imperial';
+                                    }
+                                    
+                                    setState(() => _measurementUnit = key);
                                     _saveSettings();
                                   },
                                 ),
                               ),
                               const SizedBox(height: 16),
                               _buildSwitchTile(
-                                title: 'Effets sonores',
-                                subtitle: 'Sons dans l\'application',
+                                title: 'sound_effects'.tr(locService.currentLanguageCode),
+                                subtitle: 'sound_effects_subtitle'.tr(locService.currentLanguageCode),
                                 value: _soundEffects,
                                 onChanged: (value) {
                                   setState(() => _soundEffects = value);
@@ -1299,8 +1338,8 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                 },
                               ),
                               _buildSwitchTile(
-                                title: 'Retour haptique',
-                                subtitle: 'Vibrations lors des interactions',
+                                title: 'haptic_feedback'.tr(locService.currentLanguageCode),
+                                subtitle: 'haptic_feedback_subtitle'.tr(locService.currentLanguageCode),
                                 value: _hapticFeedback,
                                 onChanged: (value) {
                                   setState(() => _hapticFeedback = value);
@@ -1311,27 +1350,26 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                           ),
                         ),
                       ],
+                      ),
                     ),
                     
                     // Section Restrictions alimentaires
-                    _buildExpandableSection(
-                      key: 'restrictions',
-                      icon: LucideIcons.utensils,
-                      title: 'Restrictions alimentaires',
-                      subtitle: _dietaryRestrictions.isEmpty 
-                          ? 'Aucune restriction' 
-                          : '${_dietaryRestrictions.length} restriction(s)',
+                    Consumer<LocalizationService>(
+                      builder: (context, locService, child) => _buildExpandableSection(
+                        key: 'restrictions',
+                        icon: LucideIcons.utensils,
+                        title: 'dietary_restrictions'.tr(locService.currentLanguageCode),
+                        subtitle: _dietaryRestrictions.isEmpty 
+                            ? 'no_restrictions'.tr(locService.currentLanguageCode)
+                            : '${_dietaryRestrictions.length} ${'restrictions_count'.tr(locService.currentLanguageCode)}',
                       children: [
                         _buildSectionContent(
                           child: Column(
-                            children: [
-                              'Classique',
-                              'Végétarien',
-                              'Végétalien',
-                              'Pescetarien',
-                            ].map((restriction) {
+                            children: _getDietaryOptions(locService.currentLanguageCode).map((restrictionData) {
+                              final restriction = restrictionData['key']!;
+                              final displayName = restrictionData['display']!;
                               return _buildCheckboxTile(
-                                title: restriction,
+                                title: displayName,
                                 value: _dietaryRestrictions.contains(restriction),
                                 onChanged: (value) {
                                   setState(() {
@@ -1347,15 +1385,17 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                             }).toList(),
                           ),
                         ),
-                      ],
+                        ],
+                      ),
                     ),
                     
                     // Section Compte
-                    _buildExpandableSection(
-                      key: 'account',
-                      icon: LucideIcons.user,
-                      title: 'Compte',
-                      subtitle: 'Gestion du compte',
+                    Consumer<LocalizationService>(
+                      builder: (context, locService, child) => _buildExpandableSection(
+                        key: 'account',
+                        icon: LucideIcons.user,
+                        title: 'settings_account'.tr(locService.currentLanguageCode),
+                        subtitle: 'account_management'.tr(locService.currentLanguageCode),
                       children: [
                         _buildSectionContent(
                           padding: EdgeInsets.zero,
@@ -1363,55 +1403,62 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                             children: [
                               _buildListTile(
                                 icon: LucideIcons.mail,
-                                title: 'Email et mot de passe',
+                                title: 'email_password'.tr(locService.currentLanguageCode),
                                 onTap: () {
                                   // Navigation vers page compte
                                 },
                               ),
-                              _buildListTile(
-                                icon: LucideIcons.shield,
-                                title: 'Confidentialité',
-                                onTap: () {
-                                  // Navigation vers page confidentialité
-                                },
+                              Consumer<LocalizationService>(
+                                builder: (context, locService, _) => _buildListTile(
+                                  icon: LucideIcons.shield,
+                                  title: 'privacy'.tr(locService.currentLanguageCode),
+                                  onTap: () {
+                                    // Navigation vers page confidentialité
+                                  },
+                                ),
                               ),
-                              _buildListTile(
-                                icon: LucideIcons.circleHelp,
-                                title: 'Aide et support',
-                                onTap: () {
-                                  // Navigation vers page aide
-                                },
+                              Consumer<LocalizationService>(
+                                builder: (context, locService, _) => _buildListTile(
+                                  icon: LucideIcons.circleHelp,
+                                  title: 'help_support'.tr(locService.currentLanguageCode),
+                                  onTap: () {
+                                    // Navigation vers page aide
+                                  },
+                                ),
                               ),
-                              _buildListTile(
-                                icon: LucideIcons.info,
-                                title: 'À propos',
-                                onTap: () {
-                                  // Navigation vers page à propos
-                                },
+                              Consumer<LocalizationService>(
+                                builder: (context, locService, _) => _buildListTile(
+                                  icon: LucideIcons.info,
+                                  title: 'about'.tr(locService.currentLanguageCode),
+                                  onTap: () {
+                                    // Navigation vers page à propos
+                                  },
+                                ),
                               ),
-                              _buildListTile(
-                                icon: LucideIcons.logOut,
-                                title: 'Déconnexion',
-                                textColor: Colors.red,
-                                onTap: () async {
+                              Consumer<LocalizationService>(
+                                builder: (context, locService, _) => _buildListTile(
+                                  icon: LucideIcons.logOut,
+                                  title: 'logout'.tr(locService.currentLanguageCode),
+                                  textColor: Colors.red,
+                                  onTap: () async {
                                   if (_hapticFeedback) HapticFeedback.mediumImpact();
                                   
-                                  final confirm = await showDialog<bool>(
-                                    context: context,
-                                    builder: (context) => AlertDialog(
-                                      title: const Text('Déconnexion'),
-                                      content: const Text('Êtes-vous sûr de vouloir vous déconnecter ?'),
+                                    final confirm = await showDialog<bool>(
+                                      context: context,
+                                      builder: (context) => AlertDialog(
+                                        title: Text('logout'.tr(locService.currentLanguageCode)),
+                                        content: Text('logout_confirmation'.tr(locService.currentLanguageCode)),
                                       actions: [
-                                        TextButton(
-                                          onPressed: () => Navigator.pop(context, false),
-                                          child: const Text('Annuler'),
+                                          TextButton(
+                                            onPressed: () => Navigator.pop(context, false),
+                                            child: Text('cancel'.tr(locService.currentLanguageCode)),
                                         ),
-                                        TextButton(
-                                          onPressed: () => Navigator.pop(context, true),
-                                          style: TextButton.styleFrom(
-                                            foregroundColor: Colors.red,
-                                          ),
-                                          child: const Text('Déconnexion'),
+                                          TextButton(
+                                            onPressed: () => Navigator.pop(context, true),
+                                            style: TextButton.styleFrom(
+                                              foregroundColor: Colors.red,
+                                            ),
+                                            child: Text('logout'.tr(locService.currentLanguageCode)),
                                         ),
                                       ],
                                     ),
@@ -1426,14 +1473,16 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                         '/login',
                                         (route) => false,
                                       );
+                                      }
                                     }
-                                  }
-                                },
+                                  },
+                                ),
                               ),
                             ],
                           ),
                         ),
-                      ],
+                        ],
+                      ),
                     ),
                     
                     // Espace en bas
@@ -1477,16 +1526,26 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    _buildBannerItem(LucideIcons.flame, _streakText),
+                    Consumer<LocalizationService>(
+                      builder: (context, locService, _) => 
+                        _buildBannerItem(LucideIcons.flame, _getStreakText(locService.currentLanguageCode)),
+                    ),
                     _buildBannerSeparator(),
-                    ValueListenableBuilder<GoalsSummary>(
-                      valueListenable: GoalsNotifier.instance,
-                      builder: (context, summary, _) {
-                        return _buildBannerItem(LucideIcons.target, summary.toString());
+                    Consumer<LocalizationService>(
+                      builder: (context, localizationService, _) {
+                        return ValueListenableBuilder<GoalsSummary>(
+                          valueListenable: GoalsNotifier.instance,
+                          builder: (context, summary, _) {
+                            return _buildBannerItem(LucideIcons.target, '${summary.completed}/${summary.total} ${'objectives'.tr(localizationService.currentLanguageCode)}');
+                          },
+                        );
                       },
                     ),
                     _buildBannerSeparator(),
-                    _buildBannerItemWithLogo('Paramètres'),
+                    Consumer<LocalizationService>(
+                      builder: (context, locService, _) => 
+                        _buildBannerItemWithLogo('settings_header_title'.tr(locService.currentLanguageCode)),
+                    ),
                   ],
                 ),
                 Positioned(
@@ -1857,7 +1916,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   
   
   
-  Widget _buildNutritionPlan() {
+  Widget _buildNutritionPlan(String languageCode) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1889,9 +1948,9 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                 ),
               ),
               const SizedBox(width: 8),
-              const Text(
-                'Macronutriments',
-                style: TextStyle(
+              Text(
+                'macronutrients'.tr(languageCode),
+                style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
                   color: Color(0xFF1A1A1A),
@@ -1904,7 +1963,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
           
           // Protéines
           _buildMacroBar(
-            name: 'Protéines',
+            name: 'proteins'.tr(languageCode),
             value: _proteinTarget,
             unit: 'g',
             color: const Color(0xFF0B132B),
@@ -1915,7 +1974,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
           
           // Glucides
           _buildMacroBar(
-            name: 'Glucides',
+            name: 'carbohydrates'.tr(languageCode),
             value: _carbsTarget,
             unit: 'g',
             color: const Color(0xFF1C2951),
@@ -1926,7 +1985,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
           
           // Lipides
           _buildMacroBar(
-            name: 'Lipides',
+            name: 'fats'.tr(languageCode),
             value: _fatTarget,
             unit: 'g',
             color: const Color(0xFF64748B),
@@ -1997,13 +2056,13 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
     );
   }
   
-  Widget _buildCompactActivitySelector() {
+  Widget _buildCompactActivitySelector(String languageCode) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'NIVEAU D\'ACTIVITÉ',
-          style: TextStyle(
+        Text(
+          'activity_level'.tr(languageCode),
+          style: const TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
             color: Color(0xFF64748B),
@@ -2013,9 +2072,9 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
         const SizedBox(height: 12),
         Row(
           children: [
-            {'key': 'low', 'title': 'Peu actif'},
-            {'key': 'moderate', 'title': 'Modéré'},
-            {'key': 'high', 'title': 'Très actif'},
+            {'key': 'low', 'title': 'low_active'.tr(languageCode)},
+            {'key': 'moderate', 'title': 'moderate'.tr(languageCode)},
+            {'key': 'high', 'title': 'very_active'.tr(languageCode)},
           ].map((item) {
             final isSelected = _activityLevel == item['key'];
             return Expanded(
@@ -2052,13 +2111,13 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
     );
   }
   
-  Widget _buildCompactGoalSelector() {
+  Widget _buildCompactGoalSelector(String languageCode) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'OBJECTIF PRINCIPAL',
-          style: TextStyle(
+        Text(
+          'main_goal'.tr(languageCode),
+          style: const TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
             color: Color(0xFF64748B),
@@ -2068,9 +2127,9 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
         const SizedBox(height: 12),
         Row(
           children: [
-            {'key': 'lose', 'title': 'Perte'},
-            {'key': 'maintain', 'title': 'Maintien'},
-            {'key': 'gain', 'title': 'Prise'},
+            {'key': 'lose', 'title': 'weight_loss'.tr(languageCode)},
+            {'key': 'maintain', 'title': 'maintenance'.tr(languageCode)},
+            {'key': 'gain', 'title': 'weight_gain'.tr(languageCode)},
           ].map((item) {
             final isSelected = _mainGoal == item['key'];
             return Expanded(
@@ -2107,7 +2166,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
     );
   }
   
-  Widget _buildRecalculateButton() {
+  Widget _buildRecalculateButton(String languageCode) {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton.icon(
@@ -2124,9 +2183,9 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
           LucideIcons.calculator,
           size: 18,
         ),
-        label: const Text(
-          'Recalculer le plan nutritionnel',
-          style: TextStyle(
+        label: Text(
+          'recalculate_nutrition_plan'.tr(languageCode),
+          style: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
           ),
@@ -2136,35 +2195,35 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   }
   
   
-  String _getGoalSummary() {
+  String _getGoalSummary(String languageCode) {
     String activityText;
     switch (_activityLevel) {
       case 'low':
-        activityText = 'Peu actif';
+        activityText = 'low_active'.tr(languageCode);
         break;
       case 'high':
-        activityText = 'Très actif';
+        activityText = 'very_active'.tr(languageCode);
         break;
       default:
-        activityText = 'Modérément actif';
+        activityText = 'moderate'.tr(languageCode);
     }
     
     String goalText;
     switch (_mainGoal) {
       case 'lose':
-        goalText = 'Perte';
+        goalText = 'weight_loss'.tr(languageCode);
         break;
       case 'gain':
-        goalText = 'Prise de masse';
+        goalText = 'weight_gain'.tr(languageCode);
         break;
       default:
-        goalText = 'Maintien';
+        goalText = 'maintenance'.tr(languageCode);
     }
     
-    return '$goalText • $activityText • $_caloriesTarget kcal/jour';
+    return '$goalText • $activityText • $_caloriesTarget ${'kcal_per_day'.tr(languageCode)}';
   }
   
-  String _getNotificationSummary() {
+  String _getNotificationSummary(String languageCode) {
     int activeCount = 0;
     if (_dailyReminder) activeCount++;
     if (_workoutReminder) activeCount++;
@@ -2172,11 +2231,112 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
     if (_progressNotifications) activeCount++;
     
     if (activeCount == 0) {
-      return 'Toutes désactivées';
+      return 'all_notifications_disabled'.tr(languageCode);
     } else if (activeCount == 4) {
-      return 'Toutes activées';
+      return 'all_notifications_enabled'.tr(languageCode);
     } else {
-      return '$activeCount activée${activeCount > 1 ? 's' : ''}';
+      final enabledText = activeCount > 1 
+        ? 'notifications_enabled_plural'.tr(languageCode)
+        : 'notifications_enabled'.tr(languageCode);
+      return '$activeCount $enabledText';
     }
+  }
+  
+  String _getPreferencesSummary(String languageCode) {
+    final language = _language == 'Français' ? 'Français' : 'English';
+    final measurement = _measurementUnit.tr(languageCode); // _measurementUnit est maintenant une clé
+    return '$language • $measurement';
+  }
+  
+  List<String> _getMeasurementOptions(String languageCode) {
+    return [
+      'metric'.tr(languageCode),
+      'imperial'.tr(languageCode),
+    ];
+  }
+  
+  String _getProfileSummary(String languageCode) {
+    final ageText = 'age_years'.tr(languageCode);
+    return '$_age $ageText, $_weight kg, $_height cm';
+  }
+  
+  List<String> _getGenderOptions(String languageCode) {
+    return [
+      'male'.tr(languageCode),
+      'female'.tr(languageCode),
+      'other'.tr(languageCode),
+    ];
+  }
+  
+  List<Map<String, String>> _getDietaryOptions(String languageCode) {
+    return [
+      {'key': 'classic', 'display': 'classic'.tr(languageCode)},
+      {'key': 'vegetarian', 'display': 'vegetarian'.tr(languageCode)},
+      {'key': 'vegan', 'display': 'vegan'.tr(languageCode)},
+      {'key': 'pescetarian', 'display': 'pescetarian'.tr(languageCode)},
+    ];
+  }
+  
+  // Mapping pour les restrictions alimentaires entre valeurs BDD et clés de traduction
+  String _getDietaryRestrictionKey(String dbValue) {
+    switch (dbValue.toLowerCase()) {
+      case 'classique':
+      case 'classic':
+        return 'classic';
+      case 'végétarien':
+      case 'vegetarian':
+        return 'vegetarian';
+      case 'végétalien':
+      case 'vegan':
+        return 'vegan';
+      case 'pescetarian':
+      case 'pescétarien':
+        return 'pescetarian';
+      default:
+        return dbValue.toLowerCase();
+    }
+  }
+
+  // Mapping entre valeurs BDD et clés de traduction
+  String _getGenderTranslationKey(String dbValue) {
+    switch (dbValue.toLowerCase()) {
+      case 'homme':
+      case 'male':
+        return 'male';
+      case 'femme':
+      case 'female':
+        return 'female';
+      case 'autre':
+      case 'other':
+        return 'other';
+      default:
+        return 'male';
+    }
+  }
+  
+  // Obtenir la valeur affichée pour le genre
+  String _getDisplayGender(String languageCode) {
+    final key = _getGenderTranslationKey(_gender);
+    return key.tr(languageCode);
+  }
+  
+  // Mapping pour les unités de mesure
+  String _getMeasurementTranslationKey(String dbValue) {
+    switch (dbValue.toLowerCase()) {
+      case 'métrique':
+      case 'metric':
+        return 'metric';
+      case 'impérial':
+      case 'imperial':
+        return 'imperial';
+      default:
+        return 'metric';
+    }
+  }
+  
+  // Obtenir la valeur affichée pour l'unité de mesure
+  String _getDisplayMeasurementUnit(String languageCode) {
+    final key = _getMeasurementTranslationKey(_measurementUnit);
+    return key.tr(languageCode);
   }
 }

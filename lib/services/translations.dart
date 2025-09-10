@@ -234,6 +234,215 @@ class AppTranslations {
       'fr': 'Compte',
       'en': 'Account',
     },
+    // Settings content translations
+    'settings_header_title': {
+      'fr': 'Paramètres',
+      'en': 'Settings',
+    },
+    'age_years': {
+      'fr': 'ans',
+      'en': 'years old',
+    },
+    'gender': {
+      'fr': 'Genre',
+      'en': 'Gender',
+    },
+    'male': {
+      'fr': 'Homme',
+      'en': 'Male',
+    },
+    'female': {
+      'fr': 'Femme',
+      'en': 'Female',
+    },
+    'other': {
+      'fr': 'Autre',
+      'en': 'Other',
+    },
+    'target_weight': {
+      'fr': 'Poids cible',
+      'en': 'Target weight',
+    },
+    'macronutrients': {
+      'fr': 'Macronutriments',
+      'en': 'Macronutrients',
+    },
+    'recalculate_nutrition_plan': {
+      'fr': 'Recalculer le plan nutritionnel',
+      'en': 'Recalculate nutrition plan',
+    },
+    'weight_loss': {
+      'fr': 'Perte',
+      'en': 'Weight loss',
+    },
+    'maintenance': {
+      'fr': 'Maintien',
+      'en': 'Maintain',
+    },
+    'weight_gain': {
+      'fr': 'Prise de masse',
+      'en': 'Weight gain',
+    },
+    'weight_loss_full': {
+      'fr': 'Perte de poids',
+      'en': 'Weight loss',
+    },
+    'weight_gain_full': {
+      'fr': 'Prise de masse',
+      'en': 'Weight gain',
+    },
+    'main_goal': {
+      'fr': 'OBJECTIF PRINCIPAL',
+      'en': 'MAIN GOAL',
+    },
+    'age': {
+      'fr': 'Âge',
+      'en': 'Age',
+    },
+    'height': {
+      'fr': 'Taille',
+      'en': 'Height',
+    },
+    'years': {
+      'fr': 'ans',
+      'en': 'years',
+    },
+    'daily_calorie_goal': {
+      'fr': 'Objectif calorique quotidien',
+      'en': 'Daily calorie goal',
+    },
+    'activity_level': {
+      'fr': 'NIVEAU D\'ACTIVITÉ',
+      'en': 'ACTIVITY LEVEL',
+    },
+    'low_active': {
+      'fr': 'Peu actif',
+      'en': 'Low active',
+    },
+    'moderate': {
+      'fr': 'Modéré',
+      'en': 'Moderate',
+    },
+    'very_active': {
+      'fr': 'Très actif',
+      'en': 'Very active',
+    },
+    'kcal_per_day': {
+      'fr': 'kcal/jour',
+      'en': 'kcal/day',
+    },
+    'help_support': {
+      'fr': 'Aide et support',
+      'en': 'Help and support',
+    },
+    'about': {
+      'fr': 'À propos',
+      'en': 'About',
+    },
+    'logout': {
+      'fr': 'Déconnexion',
+      'en': 'Logout',
+    },
+    'logout_confirmation': {
+      'fr': 'Êtes-vous sûr de vouloir vous déconnecter ?',
+      'en': 'Are you sure you want to log out?',
+    },
+    'daily_reminder': {
+      'fr': 'Rappel quotidien',
+      'en': 'Daily reminder',
+    },
+    'daily_reminder_subtitle': {
+      'fr': 'Rappel pour vos objectifs du jour',
+      'en': 'Reminder for your daily goals',
+    },
+    'workout_reminder': {
+      'fr': 'Rappel entraînement',
+      'en': 'Workout reminder',
+    },
+    'workout_reminder_subtitle': {
+      'fr': 'Notification avant vos séances',
+      'en': 'Notification before your sessions',
+    },
+    'meal_reminder': {
+      'fr': 'Rappel repas',
+      'en': 'Meal reminder',
+    },
+    'meal_reminder_subtitle': {
+      'fr': 'Notification pour vos repas',
+      'en': 'Notification for your meals',
+    },
+    'progress_notifications': {
+      'fr': 'Notifications de progrès',
+      'en': 'Progress notifications',
+    },
+    'progress_notifications_subtitle': {
+      'fr': 'Mises à jour hebdomadaires',
+      'en': 'Weekly updates',
+    },
+    'language': {
+      'fr': 'Langue',
+      'en': 'Language',
+    },
+    'sound_effects_subtitle': {
+      'fr': 'Sons dans l\'application',
+      'en': 'Sounds in the app',
+    },
+    'haptic_feedback_subtitle': {
+      'fr': 'Vibrations lors des interactions',
+      'en': 'Vibrations during interactions',
+    },
+    'no_restrictions': {
+      'fr': 'Aucune restriction',
+      'en': 'No restrictions',
+    },
+    'restrictions_count': {
+      'fr': 'restriction(s)',
+      'en': 'restriction(s)',
+    },
+    'classic': {
+      'fr': 'Classique',
+      'en': 'Classic',
+    },
+    'vegetarian': {
+      'fr': 'Végétarien',
+      'en': 'Vegetarian',
+    },
+    'vegan': {
+      'fr': 'Végétalien',
+      'en': 'Vegan',
+    },
+    'pescetarian': {
+      'fr': 'Pescetarien',
+      'en': 'Pescetarian',
+    },
+    'account_management': {
+      'fr': 'Gestion du compte',
+      'en': 'Account management',
+    },
+    'email_password': {
+      'fr': 'Email et mot de passe',
+      'en': 'Email and password',
+    },
+    'privacy': {
+      'fr': 'Confidentialité',
+      'en': 'Privacy',
+    },
+    'all_notifications_disabled': {
+      'fr': 'Toutes désactivées',
+      'en': 'All disabled',
+    },
+    'all_notifications_enabled': {
+      'fr': 'Toutes activées',
+      'en': 'All enabled',
+    },
+    'notifications_enabled': {
+      'fr': 'activée',
+      'en': 'enabled',
+    },
+    'notifications_enabled_plural': {
+      'fr': 'activées',
+      'en': 'enabled',
+    },
     'language_selection': {
       'fr': 'Langue',
       'en': 'Language',
@@ -257,6 +466,30 @@ class AppTranslations {
     'english': {
       'fr': 'Anglais',
       'en': 'English',
+    },
+    'modify_macronutrients': {
+      'fr': 'Modifier les macronutriments',
+      'en': 'Modify macronutrients',
+    },
+    'recommended': {
+      'fr': 'Recommandé',
+      'en': 'Recommended',
+    },
+    'macronutrient_distribution': {
+      'fr': 'Répartition des macronutriments',
+      'en': 'Macronutrient distribution',
+    },
+    'apply': {
+      'fr': 'Appliquer',
+      'en': 'Apply',
+    },
+    'predefined_distributions': {
+      'fr': 'Répartitions prédéfinies',
+      'en': 'Predefined distributions',
+    },
+    'dietary_restrictions': {
+      'fr': 'Restrictions alimentaires',
+      'en': 'Dietary restrictions',
     },
     'metric': {
       'fr': 'Métrique',
@@ -647,10 +880,6 @@ class AppTranslations {
       'fr': 'Poids actuel',
       'en': 'Current weight',
     },
-    'target_weight': {
-      'fr': 'Objectif',
-      'en': 'Target weight',
-    },
     'this_month_short': {
       'fr': 'Ce mois',
       'en': 'This month',
@@ -734,14 +963,6 @@ class AppTranslations {
     'stable_weight': {
       'fr': 'Stable',
       'en': 'Stable',
-    },
-    'weight_loss': {
-      'fr': 'Perte',
-      'en': 'Loss',
-    },
-    'weight_gain': {
-      'fr': 'Gain',
-      'en': 'Gain',
     },
     'last_7_days': {
       'fr': '7 derniers jours',
@@ -1143,10 +1364,6 @@ class AppTranslations {
     'kcal_unit': {
       'fr': 'kcal',
       'en': 'kcal',
-    },
-    'macronutrients': {
-      'fr': 'Macronutriments',
-      'en': 'Macronutrients',
     },
     'carbohydrates': {
       'fr': 'Glucides',
