@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../components/ui/custom_card.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
+import 'package:provider/provider.dart';
+import '../../services/localization_service.dart';
+import '../../services/translations.dart';
 class CalendarView extends StatefulWidget {
   final VoidCallback onBack;
   final Function(DateTime)? onDateSelected;
@@ -199,13 +201,17 @@ class _CalendarViewState extends State<CalendarView> {
               ),
             ),
             const SizedBox(width: 16),
-                const Text(
-                  'Calendrier nutritionnel',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1A1A1A),
-                  ),
+                Consumer<LocalizationService>(
+                  builder: (context, localizationService, child) {
+                    return Text(
+                      'nutrition_calendar'.tr(localizationService.currentLanguageCode),
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1A1A1A),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
@@ -256,13 +262,17 @@ class _CalendarViewState extends State<CalendarView> {
             ),
                               
                               // Mois centré
-                              Text(
-                                '${_getMonthName(currentMonth.month)} ${currentMonth.year}',
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF1A1A1A),
-                                ),
+                              Consumer<LocalizationService>(
+                                builder: (context, localizationService, child) {
+                                  return Text(
+                                    _getMonthName(currentMonth, localizationService.currentLanguageCode),
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF1A1A1A),
+                                    ),
+                                  );
+                                },
                               ),
                               
                               // Flèche suivant
@@ -313,12 +323,14 @@ class _CalendarViewState extends State<CalendarView> {
     );
   }
 
-  String _getMonthName(int month) {
-    const List<String> monthNames = [
-      'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
-      'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
-    ];
-    return monthNames[month - 1];
+  String _getMonthName(DateTime date, String languageCode) {
+    final monthNames = languageCode == 'en' 
+        ? ['January', 'February', 'March', 'April', 'May', 'June',
+           'July', 'August', 'September', 'October', 'November', 'December']
+        : ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+           'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+    
+    return '${monthNames[date.month - 1]} ${date.year}';
   }
 }
 
@@ -335,28 +347,35 @@ class MonthStats extends StatelessWidget {
     return CustomCard(
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            _buildKpi(
-              value: '${monthStats['successRate']}%',
-              label: 'Objectifs\natteints',
-            ),
-            _buildKpi(
-              value: '${monthStats['achieved']}',
-              label: 'Jours\nréussis',
-            ),
-            _buildKpi(
-              value: '${monthStats['avgCalories']}',
-              label: 'Moy.\ncalories',
-            ),
-          ],
+        child: Consumer<LocalizationService>(
+          builder: (context, localizationService, child) {
+            return Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _buildKpi(
+                  value: '${monthStats['successRate']}%',
+                  label: 'goals_achieved'.tr(localizationService.currentLanguageCode).replaceAll(' ', '\n'),
+                  context: context,
+                ),
+                _buildKpi(
+                  value: '${monthStats['achieved']}',
+                  label: 'successful_days'.tr(localizationService.currentLanguageCode).replaceAll(' ', '\n'),
+                  context: context,
+                ),
+                _buildKpi(
+                  value: '${monthStats['avgCalories']}',
+                  label: 'average_calories'.tr(localizationService.currentLanguageCode).replaceAll(' ', '\n'),
+                  context: context,
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
   }
 
-  Widget _buildKpi({required String value, required String label}) {
+  Widget _buildKpi({required String value, required String label, required BuildContext context}) {
     // Calculer la taille de police dynamiquement selon la longueur du nombre
     double fontSize = 18;
     if (value.length >= 6) {
@@ -369,7 +388,7 @@ class MonthStats extends StatelessWidget {
 
     return Expanded(
       child: Container(
-        height: 70, // Hauteur fixe pour aligner tous les KPI
+        height: 80, // Hauteur fixe pour aligner tous les KPI
         margin: const EdgeInsets.symmetric(horizontal: 4),
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
@@ -422,14 +441,18 @@ class CalendarLegend extends StatelessWidget {
     return Column(
       children: [
         // Titre
-        const Text(
-          'Atteinte de l\'objectif calorique de la journée',
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: Color(0xFF374151),
-        ),
-          textAlign: TextAlign.center,
+        Consumer<LocalizationService>(
+          builder: (context, localizationService, child) {
+            return Text(
+              'daily_calorie_goal_reached'.tr(localizationService.currentLanguageCode),
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF374151),
+              ),
+              textAlign: TextAlign.center,
+            );
+          },
         ),
         
         const SizedBox(height: 12),
@@ -535,25 +558,37 @@ class CalendarGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final List<String> dayNames = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+    final List<String> dayNames = [
+      'mon_short',
+      'tue_short', 
+      'wed_short',
+      'thu_short',
+      'fri_short',
+      'sat_short',
+      'sun_short'
+    ];
     final days = _getDaysInMonth(currentMonth);
     
     return Column(
           children: [
             // Jours de la semaine
-            Row(
-              children: dayNames.map((day) => Expanded(
-                child: Center(
-                  child: Text(
-                    day,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF888888),
+            Consumer<LocalizationService>(
+              builder: (context, localizationService, child) {
+                return Row(
+                  children: dayNames.map((dayKey) => Expanded(
+                    child: Center(
+                      child: Text(
+                        dayKey.tr(localizationService.currentLanguageCode),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF888888),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              )).toList(),
+                  )).toList(),
+                );
+              },
             ),
             
             const SizedBox(height: 8),

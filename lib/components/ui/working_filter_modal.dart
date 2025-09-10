@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'recipe_models.dart';
+import '../../services/localization_service.dart';
+import '../../services/translations.dart';
 
 class WorkingFilterModal extends StatefulWidget {
   final Map<String, Set<String>> currentFilters;
@@ -17,6 +20,7 @@ class WorkingFilterModal extends StatefulWidget {
 
 class _WorkingFilterModalState extends State<WorkingFilterModal> {
   late Map<String, Set<String>> localFilters;
+
 
   @override
   void initState() {
@@ -81,12 +85,14 @@ class _WorkingFilterModalState extends State<WorkingFilterModal> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Filtres',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1A1A),
+                Consumer<LocalizationService>(
+                  builder: (context, locService, child) => Text(
+                    locService.currentLanguageCode == 'fr' ? 'Filtres' : 'Filters',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1A1A1A),
+                    ),
                   ),
                 ),
                 TextButton(
@@ -95,7 +101,11 @@ class _WorkingFilterModalState extends State<WorkingFilterModal> {
                       localFilters.forEach((key, value) => value.clear());
                     });
                   },
-                  child: const Text('Effacer tout'),
+                  child: Consumer<LocalizationService>(
+                    builder: (context, locService, child) => Text(
+                      locService.currentLanguageCode == 'fr' ? 'Effacer tout' : 'Clear all',
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -183,12 +193,16 @@ class _WorkingFilterModalState extends State<WorkingFilterModal> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: Text(
-                  'Valider (${localFilters.values.fold(0, (sum, set) => sum + set.length)})',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
+                child: Consumer<LocalizationService>(
+                  builder: (context, locService, child) => Text(
+                    locService.currentLanguageCode == 'fr' 
+                      ? 'Valider (${localFilters.values.fold(0, (sum, set) => sum + set.length)})'
+                      : 'Apply (${localFilters.values.fold(0, (sum, set) => sum + set.length)})',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),

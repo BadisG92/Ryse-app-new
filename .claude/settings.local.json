@@ -77,7 +77,15 @@
       "Bash(del /s /q \".dart_tool\")",
       "Bash(del /s /q \".flutter-plugins\")",
       "Bash(rd:*)",
-      "Bash(flutter:*)"
+      "Bash(flutter:*)",
+      "Read(//Users/badis/Documents/**)",
+      "Bash(git checkout:*)",
+      "Bash(cat:*)",
+      "Bash(for file in lib/components/global_progress_hybrid.dart lib/components/sport_section.dart lib/screens/settings_screen.dart)",
+      "Bash(do)",
+      "Bash(echo \"=== $file ===\")",
+      "Bash(grep:*)",
+      "Bash(done)"
     ],
     "deny": [],
     "ask": []

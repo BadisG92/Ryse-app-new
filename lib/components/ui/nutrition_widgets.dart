@@ -49,7 +49,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
             Consumer<LocalizationService>(
               builder: (context, locService, child) => Text(
                 'add_quickly'.tr(locService.currentLanguageCode),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: Color(0xFF1A1A1A),
@@ -208,7 +208,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
               Consumer<LocalizationService>(
                 builder: (context, locService, child) => Text(
                   'add_food'.tr(locService.currentLanguageCode),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
                   color: Color(0xFF1A1A1A),
@@ -221,7 +221,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
               Consumer<LocalizationService>(
                 builder: (context, locService, child) => Text(
                   'add_to_existing_or_new_meal'.tr(locService.currentLanguageCode),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     color: Color(0xFF64748B),
                   ),
@@ -272,7 +272,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
                               children: [
                                 Text(
                                   'add_to_existing_meal'.tr(locService.currentLanguageCode),
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
                                   color: Color(0xFF0B132B),
@@ -281,7 +281,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
                               Consumer<LocalizationService>(
                                 builder: (context, locService, child) => Text(
                                   'choose_from_todays_meals'.tr(locService.currentLanguageCode),
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 12,
                                     color: Color(0xFF64748B),
                                   ),
@@ -344,18 +344,20 @@ class NutritionQuickActionsSection extends StatelessWidget {
                             Consumer<LocalizationService>(
                               builder: (context, locService, child) => Text(
                                 'create_new_meal_title'.tr(locService.currentLanguageCode),
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
                                   color: Color(0xFF0B132B),
                                 ),
                               ),
                             ),
-                            Text(
-                              'Petit-déjeuner, déjeuner, dîner ou collation',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Color(0xFF64748B),
+                            Consumer<LocalizationService>(
+                              builder: (context, locService, child) => Text(
+                                'meal_type_options'.tr(locService.currentLanguageCode),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF64748B),
+                                ),
                               ),
                             ),
                           ],
@@ -429,7 +431,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
                 // Titre avec nom de l'aliment détecté
                 Text(
                   'Ajouter "${detectedFood.name}"',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
                     color: Color(0xFF1A1A1A),
@@ -438,7 +440,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
                 
                 const SizedBox(height: 16),
                 
-                const Text(
+                Text(
                   'À quel repas voulez-vous ajouter cet aliment ?',
                   style: TextStyle(
                     fontSize: 14,
@@ -490,7 +492,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
                                 children: [
                                   Text(
                                     'add_to_existing_meal'.tr(locService.currentLanguageCode),
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w600,
                                     color: Color(0xFF0B132B),
@@ -498,7 +500,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
                                 ),
                                 Text(
                                   'Choisir parmi vos repas d\'aujourd\'hui',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                     fontSize: 12,
                                     color: Color(0xFF64748B),
                                   ),
@@ -553,23 +555,27 @@ class NutritionQuickActionsSection extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 16),
-                        const Expanded(
+                        Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                'Créer un nouveau repas',
-                                  style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF0B132B),
+                              Consumer<LocalizationService>(
+                                builder: (context, locService, child) => Text(
+                                  'create_new_meal_title'.tr(locService.currentLanguageCode),
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF0B132B),
+                                  ),
                                 ),
                               ),
-                              Text(
-                                'Petit-déjeuner, déjeuner, dîner ou collation',
-                                  style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Color(0xFF64748B),
+                              Consumer<LocalizationService>(
+                                builder: (context, locService, child) => Text(
+                                  'meal_type_options'.tr(locService.currentLanguageCode),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF64748B),
+                                  ),
                                 ),
                               ),
                               ],
@@ -654,7 +660,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
                       child: Consumer<LocalizationService>(
                         builder: (context, locService, child) => Text(
                           'choose_meal'.tr(locService.currentLanguageCode),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
                             color: Color(0xFF1A1A1A),
@@ -708,7 +714,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
                               children: [
                                 Text(
                                   meal.name,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w600,
                                     color: Color(0xFF0B132B),
@@ -716,7 +722,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
                                 ),
                                 Text(
                                   '${meal.time} • ${meal.items.length} aliment(s)',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 12,
                                     color: Color(0xFF64748B),
                                   ),
@@ -820,7 +826,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
                       child: Consumer<LocalizationService>(
                         builder: (context, locService, child) => Text(
                           'choose_meal'.tr(locService.currentLanguageCode),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
                             color: Color(0xFF1A1A1A),
@@ -874,7 +880,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
                               children: [
                                 Text(
                                   meal.name,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w600,
                                     color: Color(0xFF0B132B),
@@ -882,7 +888,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
                                 ),
                                 Text(
                                   '${meal.time} • ${meal.items.length} aliment(s)',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 12,
                                     color: Color(0xFF64748B),
                                   ),
@@ -1050,9 +1056,9 @@ class NutritionQuickActionsSection extends StatelessWidget {
               const SizedBox(height: 20),
               
               // Titre
-              const Text(
+              Text(
                 'Scanner un code-barre',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
                   color: Color(0xFF1A1A1A),
@@ -1064,7 +1070,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
               Consumer<LocalizationService>(
                 builder: (context, locService, child) => Text(
                   'add_to_existing_or_new_meal'.tr(locService.currentLanguageCode),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     color: Color(0xFF64748B),
                   ),
@@ -1115,7 +1121,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
                               children: [
                                 Text(
                                   'add_to_existing_meal'.tr(locService.currentLanguageCode),
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
                                   color: Color(0xFF0B132B),
@@ -1124,7 +1130,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
                               Consumer<LocalizationService>(
                                 builder: (context, locService, child) => Text(
                                   'choose_from_todays_meals'.tr(locService.currentLanguageCode),
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 12,
                                     color: Color(0xFF64748B),
                                   ),
@@ -1187,18 +1193,20 @@ class NutritionQuickActionsSection extends StatelessWidget {
                             Consumer<LocalizationService>(
                               builder: (context, locService, child) => Text(
                                 'create_new_meal_title'.tr(locService.currentLanguageCode),
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
                                   color: Color(0xFF0B132B),
                                 ),
                               ),
                             ),
-                            Text(
-                              'Petit-déjeuner, déjeuner, dîner ou collation',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Color(0xFF64748B),
+                            Consumer<LocalizationService>(
+                              builder: (context, locService, child) => Text(
+                                'meal_type_options'.tr(locService.currentLanguageCode),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF64748B),
+                                ),
                               ),
                             ),
                           ],
@@ -1364,7 +1372,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
               Consumer<LocalizationService>(
                 builder: (context, locService, child) => Text(
                   'add_food'.tr(locService.currentLanguageCode),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
                   color: Color(0xFF1A1A1A),
@@ -1377,7 +1385,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
               Consumer<LocalizationService>(
                 builder: (context, locService, child) => Text(
                   'choose_how_to_add_food'.tr(locService.currentLanguageCode),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     color: Color(0xFF64748B),
                   ),
@@ -1516,7 +1524,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                       color: Color(0xFF1A1A1A),
@@ -1525,7 +1533,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     subtitle,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       color: Color(0xFF64748B),
                     ),
@@ -1623,7 +1631,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
               Consumer<LocalizationService>(
                 builder: (context, locService, child) => Text(
                   'add_food'.tr(locService.currentLanguageCode),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
                   color: Color(0xFF1A1A1A),
@@ -1636,7 +1644,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
               Consumer<LocalizationService>(
                 builder: (context, locService, child) => Text(
                   'choose_how_to_add_food'.tr(locService.currentLanguageCode),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     color: Color(0xFF64748B),
                   ),
@@ -2398,7 +2406,7 @@ class _WaterBottomSheetState extends State<WaterBottomSheet> {
                       const SizedBox(width: 12),
                       Text(
                         'add_water'.tr(localizationService.currentLanguageCode),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF1A1A1A),
@@ -2448,7 +2456,7 @@ class _WaterBottomSheetState extends State<WaterBottomSheet> {
           builder: (context, localizationService, _) {
             return Text(
               'custom_amount'.tr(localizationService.currentLanguageCode),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
                 color: Color(0xFF1A1A1A),
@@ -2641,7 +2649,7 @@ class MealBottomSheet extends StatelessWidget {
             Expanded(
               child: Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                   color: Color(0xFF1A1A1A),
@@ -2785,9 +2793,9 @@ class _AddFoodBottomSheetForQuickActionsState extends State<AddFoodBottomSheetFo
   Widget _buildMethodSelection() {
     return Column(
       children: [
-        const Text(
-          'Ajouter un aliment',
-          style: TextStyle(
+        Text(
+          'add_food_button'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
+          style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w600,
             color: Color(0xFF1A1A1A),
@@ -2796,9 +2804,9 @@ class _AddFoodBottomSheetForQuickActionsState extends State<AddFoodBottomSheetFo
         
         const SizedBox(height: 16),
         
-        const Text(
+        Text(
           'Choisissez comment vous souhaitez ajouter votre aliment',
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 14,
             color: Color(0xFF64748B),
           ),
@@ -2913,7 +2921,7 @@ class _AddFoodBottomSheetForQuickActionsState extends State<AddFoodBottomSheetFo
                   Consumer<LocalizationService>(
                     builder: (context, locService, child) => Text('proteins'.tr(locService.currentLanguageCode)),
                   ),
-                  const Text('0g'),
+                  Text('0g'),
                 ],
               ),
               const SizedBox(height: 8),
@@ -2923,7 +2931,7 @@ class _AddFoodBottomSheetForQuickActionsState extends State<AddFoodBottomSheetFo
                   Consumer<LocalizationService>(
                     builder: (context, locService, child) => Text('carbohydrates'.tr(locService.currentLanguageCode)),
                   ),
-                  const Text('0g'),
+                  Text('0g'),
                 ],
               ),
               const SizedBox(height: 8),
@@ -2933,7 +2941,7 @@ class _AddFoodBottomSheetForQuickActionsState extends State<AddFoodBottomSheetFo
                   Consumer<LocalizationService>(
                     builder: (context, locService, child) => Text('fats'.tr(locService.currentLanguageCode)),
                   ),
-                  const Text('0g'),
+                  Text('0g'),
                 ],
               ),
             ],
@@ -2981,9 +2989,9 @@ class _AddFoodBottomSheetForQuickActionsState extends State<AddFoodBottomSheetFo
 
     return Column(
       children: [
-        const Text(
+        Text(
           'À quel repas voulez-vous ajouter cet aliment ?',
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w600,
             color: Color(0xFF1A1A1A),
@@ -2993,9 +3001,9 @@ class _AddFoodBottomSheetForQuickActionsState extends State<AddFoodBottomSheetFo
         
         const SizedBox(height: 24),
         
-        const Text(
+        Text(
           'Repas existants',
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
             color: Color(0xFF64748B),
@@ -3022,9 +3030,9 @@ class _AddFoodBottomSheetForQuickActionsState extends State<AddFoodBottomSheetFo
         
         const SizedBox(height: 16),
         
-        const Text(
+        Text(
           'Ou créer un nouveau repas',
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
             color: Color(0xFF64748B),
@@ -3104,7 +3112,7 @@ class _AddFoodBottomSheetForQuickActionsState extends State<AddFoodBottomSheetFo
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                       color: Color(0xFF1A1A1A),
@@ -3112,7 +3120,7 @@ class _AddFoodBottomSheetForQuickActionsState extends State<AddFoodBottomSheetFo
                   ),
                   Text(
                     subtitle,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       color: Color(0xFF64748B),
                     ),
@@ -3162,7 +3170,7 @@ class _AddFoodBottomSheetForQuickActionsState extends State<AddFoodBottomSheetFo
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: Color(0xFF1A1A1A),
@@ -3170,7 +3178,7 @@ class _AddFoodBottomSheetForQuickActionsState extends State<AddFoodBottomSheetFo
                   ),
                   Text(
                     subtitle,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       color: Color(0xFF64748B),
                     ),

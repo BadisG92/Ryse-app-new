@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:provider/provider.dart';
+import '../services/localization_service.dart';
+import '../services/translations.dart';
 
 class BarcodeScannerScreen extends StatefulWidget {
   final bool isFromDashboard;
@@ -93,9 +96,10 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
       await Future.delayed(const Duration(milliseconds: 500));
       
       // Créer un objet simple avec le code-barres
+      final locService = Provider.of<LocalizationService>(context, listen: false);
       final scannedData = {
         'barcode': barcode,
-        'name': 'Produit scanné: $barcode',
+        'name': locService.currentLanguageCode == 'fr' ? 'Produit scanné: $barcode' : 'Scanned product: $barcode',
         'timestamp': DateTime.now().toIso8601String(),
       };
 
@@ -108,7 +112,8 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
         _showResultDialog(barcode);
       }
     } catch (e) {
-      _showErrorDialog('Erreur lors de la recherche du produit: $e');
+      final locService = Provider.of<LocalizationService>(context, listen: false);
+      _showErrorDialog(locService.currentLanguageCode == 'fr' ? 'Erreur lors de la recherche du produit: $e' : 'Error searching for product: $e');
     } finally {
       setState(() {
         isProcessing = false;
@@ -120,12 +125,20 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Code-barres scanné !'),
+        title: Consumer<LocalizationService>(
+          builder: (context, locService, child) => Text(
+            locService.currentLanguageCode == 'fr' ? 'Code-barres scanné !' : 'Barcode scanned!',
+          ),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Code-barres détecté :'),
+            Consumer<LocalizationService>(
+              builder: (context, locService, child) => Text(
+                locService.currentLanguageCode == 'fr' ? 'Code-barres détecté :' : 'Detected barcode:',
+              ),
+            ),
             const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.all(12),
@@ -142,9 +155,11 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            const Text(
-              'Vous pouvez maintenant intégrer cette fonctionnalité avec votre système de gestion des aliments.',
-              style: TextStyle(color: Colors.grey),
+            Consumer<LocalizationService>(
+              builder: (context, locService, child) => Text(
+                locService.currentLanguageCode == 'fr' ? 'Vous pouvez maintenant intégrer cette fonctionnalité avec votre système de gestion des aliments.' : 'You can now integrate this functionality with your food management system.',
+                style: const TextStyle(color: Colors.grey),
+              ),
             ),
           ],
         ),
@@ -164,7 +179,11 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                 scannedBarcode = null;
               });
             },
-            child: const Text('Scanner un autre'),
+            child: Consumer<LocalizationService>(
+              builder: (context, locService, child) => Text(
+                locService.currentLanguageCode == 'fr' ? 'Scanner un autre' : 'Scan another',
+              ),
+            ),
           ),
         ],
       ),
@@ -175,7 +194,11 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Erreur'),
+        title: Consumer<LocalizationService>(
+          builder: (context, locService, child) => Text(
+            locService.currentLanguageCode == 'fr' ? 'Erreur' : 'Error',
+          ),
+        ),
         content: Text(message),
         actions: [
           TextButton(
@@ -196,7 +219,11 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Scanner de codes-barres'),
+        title: Consumer<LocalizationService>(
+          builder: (context, locService, child) => Text(
+            locService.currentLanguageCode == 'fr' ? 'Scanner de codes-barres' : 'Barcode Scanner',
+          ),
+        ),
         backgroundColor: Colors.white,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black),
@@ -219,13 +246,17 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
 
   Widget _buildBody() {
     if (isLoading) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('Initialisation de la caméra...'),
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Consumer<LocalizationService>(
+              builder: (context, locService, child) => Text(
+                locService.currentLanguageCode == 'fr' ? 'Initialisation de la caméra...' : 'Initializing camera...',
+              ),
+            ),
           ],
         ),
       );
@@ -242,25 +273,33 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
               color: Colors.grey,
             ),
             const SizedBox(height: 16),
-            const Text(
-              'Permission caméra requise',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
+            Consumer<LocalizationService>(
+              builder: (context, locService, child) => Text(
+                locService.currentLanguageCode == 'fr' ? 'Permission caméra requise' : 'Camera permission required',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Autorisez l\'accès à la caméra pour scanner les codes-barres',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey),
+            Consumer<LocalizationService>(
+              builder: (context, locService, child) => Text(
+                locService.currentLanguageCode == 'fr' ? 'Autorisez l\'accès à la caméra pour scanner les codes-barres' : 'Allow camera access to scan barcodes',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.grey),
+              ),
             ),
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: () async {
                 await openAppSettings();
               },
-              child: const Text('Ouvrir les paramètres'),
+              child: Consumer<LocalizationService>(
+                builder: (context, locService, child) => Text(
+                  locService.currentLanguageCode == 'fr' ? 'Ouvrir les paramètres' : 'Open settings',
+                ),
+              ),
             ),
           ],
         ),
@@ -282,17 +321,19 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
         if (isProcessing)
           Container(
             color: Colors.black54,
-            child: const Center(
+            child: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  CircularProgressIndicator(color: Colors.white),
-                  SizedBox(height: 16),
-                  Text(
-                    'Recherche du produit...',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
+                  const CircularProgressIndicator(color: Colors.white),
+                  const SizedBox(height: 16),
+                  Consumer<LocalizationService>(
+                    builder: (context, locService, child) => Text(
+                      locService.currentLanguageCode == 'fr' ? 'Recherche du produit...' : 'Searching product...',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                      ),
                     ),
                   ),
                 ],
@@ -387,16 +428,18 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
           Expanded(
             child: Container(
               color: Colors.black54,
-              child: const Center(
+              child: Center(
                 child: Padding(
-                  padding: EdgeInsets.all(20),
-                  child: Text(
-                    'Placez le code-barres dans le cadre',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
+                  padding: const EdgeInsets.all(20),
+                  child: Consumer<LocalizationService>(
+                    builder: (context, locService, child) => Text(
+                      locService.currentLanguageCode == 'fr' ? 'Placez le code-barres dans le cadre' : 'Place the barcode within the frame',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
-                    textAlign: TextAlign.center,
                   ),
                 ),
               ),

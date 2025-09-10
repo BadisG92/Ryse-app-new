@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:provider/provider.dart';
+import '../services/localization_service.dart';
+import '../services/translations.dart';
 
 class NewMealTypeBottomSheet {
   static void show(
@@ -36,78 +39,92 @@ class NewMealTypeBottomSheet {
               const SizedBox(height: 20),
               
               // Title
-              const Text(
-                'Créer un nouveau repas',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF1A1A1A),
+              Consumer<LocalizationService>(
+                builder: (context, locService, child) => Text(
+                  'create_new_meal'.tr(locService.currentLanguageCode),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1A1A1A),
+                  ),
+                  textAlign: TextAlign.center,
                 ),
-                textAlign: TextAlign.center,
               ),
               
               const SizedBox(height: 8),
               
-              const Text(
-                'Choisissez le type de repas',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF64748B),
+              Consumer<LocalizationService>(
+                builder: (context, locService, child) => Text(
+                  'choose_meal_type_to_create'.tr(locService.currentLanguageCode),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF64748B),
+                  ),
+                  textAlign: TextAlign.center,
                 ),
-                textAlign: TextAlign.center,
               ),
               
               const SizedBox(height: 24),
               
               // Options de repas
-              _buildMealOption(
-                context,
-                title: 'Petit-déjeuner',
-                description: 'Repas du matin',
-                icon: LucideIcons.sunrise,
-                onTap: () {
-                  Navigator.pop(context);
-                  onMealTypeSelected('Petit-déjeuner', '08:00');
-                },
-              ),
-              
-              const SizedBox(height: 12),
-              
-              _buildMealOption(
-                context,
-                title: 'Déjeuner',
-                description: 'Repas du midi',
-                icon: LucideIcons.sun,
-                onTap: () {
-                  Navigator.pop(context);
-                  onMealTypeSelected('Déjeuner', '12:30');
-                },
-              ),
-              
-              const SizedBox(height: 12),
-              
-              _buildMealOption(
-                context,
-                title: 'Collation',
-                description: 'En-cas entre les repas',
-                icon: LucideIcons.milk,
-                onTap: () {
-                  Navigator.pop(context);
-                  onMealTypeSelected('Collation', '16:00');
-                },
-              ),
-              
-              const SizedBox(height: 12),
-              
-              _buildMealOption(
-                context,
-                title: 'Dîner',
-                description: 'Repas du soir',
-                icon: LucideIcons.sunset,
-                onTap: () {
-                  Navigator.pop(context);
-                  onMealTypeSelected('Dîner', '19:30');
-                },
+              Consumer<LocalizationService>(
+                builder: (context, locService, child) => Column(
+                  children: [
+                    _buildMealOption(
+                      context,
+                      locService,
+                      titleKey: 'breakfast',
+                      descriptionKey: 'breakfast_description',
+                      icon: LucideIcons.sunrise,
+                      onTap: () {
+                        Navigator.pop(context);
+                        onMealTypeSelected('breakfast'.tr(locService.currentLanguageCode), '08:00');
+                      },
+                    ),
+                    
+                    const SizedBox(height: 12),
+                    
+                    _buildMealOption(
+                      context,
+                      locService,
+                      titleKey: 'lunch',
+                      descriptionKey: 'lunch_description',
+                      icon: LucideIcons.sun,
+                      onTap: () {
+                        Navigator.pop(context);
+                        onMealTypeSelected('lunch'.tr(locService.currentLanguageCode), '12:30');
+                      },
+                    ),
+                    
+                    const SizedBox(height: 12),
+                    
+                    _buildMealOption(
+                      context,
+                      locService,
+                      titleKey: 'snack',
+                      descriptionKey: 'snack_description',
+                      icon: LucideIcons.milk,
+                      onTap: () {
+                        Navigator.pop(context);
+                        onMealTypeSelected('snack'.tr(locService.currentLanguageCode), '16:00');
+                      },
+                    ),
+                    
+                    const SizedBox(height: 12),
+                    
+                    _buildMealOption(
+                      context,
+                      locService,
+                      titleKey: 'dinner',
+                      descriptionKey: 'dinner_description',
+                      icon: LucideIcons.sunset,
+                      onTap: () {
+                        Navigator.pop(context);
+                        onMealTypeSelected('dinner'.tr(locService.currentLanguageCode), '19:30');
+                      },
+                    ),
+                  ],
+                ),
               ),
               
               const SizedBox(height: 24),
@@ -119,9 +136,10 @@ class NewMealTypeBottomSheet {
   }
 
   static Widget _buildMealOption(
-    BuildContext context, {
-    required String title,
-    required String description,
+    BuildContext context,
+    LocalizationService locService, {
+    required String titleKey,
+    required String descriptionKey,
     required IconData icon,
     required VoidCallback onTap,
   }) {
@@ -158,7 +176,7 @@ class NewMealTypeBottomSheet {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    title,
+                    titleKey.tr(locService.currentLanguageCode),
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -166,7 +184,7 @@ class NewMealTypeBottomSheet {
                     ),
                   ),
                   Text(
-                    description,
+                    descriptionKey.tr(locService.currentLanguageCode),
                     style: const TextStyle(
                       fontSize: 12,
                       color: Color(0xFF64748B),

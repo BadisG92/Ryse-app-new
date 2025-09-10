@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:provider/provider.dart';
+import '../../services/localization_service.dart';
+import '../../services/translations.dart';
 
 class FoodOptionWidget extends StatelessWidget {
   final IconData icon;
@@ -225,34 +228,34 @@ class FoodSuggestionWidget extends StatelessWidget {
   }
   
   // Méthode pour déterminer le texte selon les nouvelles règles
-  String _getTextBasedOnRules() {
+  String _getTextBasedOnRules(String languageCode) {
     // Règle 1: Aliment custom_foods avec origin = 'barcode' → "Scanné"
     if (isCustom && origin?.toLowerCase().trim() == 'barcode') {
-      return 'Scanné';
+      return 'scanned'.tr(languageCode);
     }
     
     // Règle 2: Aliment custom_foods avec origin = 'manual' → "Personnalisé"
     if (isCustom && origin?.toLowerCase().trim() == 'manual') {
-      return 'Personnalisé';
+      return 'custom'.tr(languageCode);
     }
     
     // Règle 3: Aliment de base avec macronutriments modifiés → "Modifié"
     if (!isCustom && hasModifiedMacros) {
-      return 'Modifié';
+      return 'modified'.tr(languageCode);
     }
     
     // Règle 4: Recette avec aliment modifié → "Modifié"
     if (isRecipe && hasModifiedMacros) {
-      return 'Modifié';
+      return 'modified'.tr(languageCode);
     }
     
     // Règle 5: Aliment custom par défaut → "Personnalisé"
     if (isCustom) {
-      return 'Personnalisé';
+      return 'custom'.tr(languageCode);
     }
     
     // Par défaut
-    return 'Personnalisé';
+    return 'custom'.tr(languageCode);
   }
 
   @override
@@ -265,7 +268,7 @@ class FoodSuggestionWidget extends StatelessWidget {
       print('   - hasModifiedMacros: $hasModifiedMacros');
       print('   - isRecipe: $isRecipe');
       print('   - Icône sélectionnée: ${_getIconBasedOnRules()}');
-      print('   - Texte sélectionné: ${_getTextBasedOnRules()}');
+      print('   - Texte sélectionné: ${_getTextBasedOnRules('fr')}');
     }
     
     return GestureDetector(
@@ -322,12 +325,14 @@ class FoodSuggestionWidget extends StatelessWidget {
                             color: const Color(0xFF059669).withOpacity(0.1),
                             borderRadius: BorderRadius.circular(4),
                           ),
-                          child: Text(
-                            _getTextBasedOnRules(),
-                            style: const TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500,
-                              color: const Color(0xFF059669),
+                          child: Consumer<LocalizationService>(
+                            builder: (context, locService, child) => Text(
+                              _getTextBasedOnRules(locService.currentLanguageCode),
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF059669),
+                              ),
                             ),
                           ),
                         ),

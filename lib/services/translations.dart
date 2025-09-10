@@ -696,7 +696,7 @@ class AppTranslations {
     },
     'journal': {
       'fr': 'Journal',
-      'en': 'Journal',
+      'en': 'Diary',
     },
     'recipes': {
       'fr': 'Recettes',
@@ -957,6 +957,180 @@ class AppTranslations {
     'create_new_meal_title': {
       'fr': 'Créer un nouveau repas',
       'en': 'Create new meal',
+    },
+    'manual_entry_title': {
+      'fr': 'Saisie manuelle',
+      'en': 'Manual entry',
+    },
+    'ai_scanner_title': {
+      'fr': 'Scanner avec l\'IA',
+      'en': 'AI Scanner',
+    },
+    // Meal descriptions
+    'breakfast_description': {
+      'fr': 'Repas du matin',
+      'en': 'Morning meal',
+    },
+    'lunch_description': {
+      'fr': 'Repas du midi',
+      'en': 'Midday meal',
+    },
+    'dinner_description': {
+      'fr': 'Repas du soir',
+      'en': 'Evening meal',
+    },
+    'snack_description': {
+      'fr': 'En-cas entre les repas',
+      'en': 'Snack between meals',
+    },
+    // Food status badges
+    'custom': {
+      'fr': 'Personnalisé',
+      'en': 'Custom',
+    },
+    'scanned': {
+      'fr': 'Scanné',
+      'en': 'Scanned',
+    },
+    'modified': {
+      'fr': 'Modifié',
+      'en': 'Modified',
+    },
+    // Food details screen
+    'quantity': {
+      'fr': 'Quantité',
+      'en': 'Quantity',
+    },
+    'confirm': {
+      'fr': 'Confirmer',
+      'en': 'Confirm',
+    },
+    // Recipe filters modal
+    'filters': {
+      'fr': 'Filtres',
+      'en': 'Filters',
+    },
+    'clear_all': {
+      'fr': 'Effacer tout',
+      'en': 'Clear all',
+    },
+    'apply_filters': {
+      'fr': 'Valider',
+      'en': 'Apply',
+    },
+    'recommended_recipes': {
+      'fr': 'Recettes recommandées',
+      'en': 'Recommended recipes',
+    },
+    'results': {
+      'fr': 'Résultats',
+      'en': 'Results',
+    },
+    'all_recipes': {
+      'fr': 'Toutes les recettes',
+      'en': 'All recipes',
+    },
+    'search_recipe_placeholder': {
+      'fr': 'Rechercher une recette...',
+      'en': 'Search for a recipe...',
+    },
+    'preparation_steps': {
+      'fr': 'Étapes de préparation',
+      'en': 'Preparation steps',
+    },
+    'nutrition_tab': {
+      'fr': 'Nutrition',
+      'en': 'Nutrition',
+    },
+    'home_tab': {
+      'fr': 'Accueil',
+      'en': 'Home',
+    },
+    'sport_tab': {
+      'fr': 'Sport',
+      'en': 'Sport',
+    },
+    'progress_tab': {
+      'fr': 'Progrès',
+      'en': 'Progress',
+    },
+    'objectives': {
+      'fr': 'Objectifs',
+      'en': 'Goals',
+    },
+    'must_be_connected_add_food': {
+      'fr': 'Vous devez être connecté pour ajouter un aliment',
+      'en': 'You must be logged in to add food',
+    },
+    'add_food_to_meal': {
+      'fr': 'Ajouter "%s" à un repas',
+      'en': 'Add "%s" to a meal',
+    },
+    'add_first_meal_message': {
+      'fr': 'Ajoutez votre premier repas pour commencer à suivre votre nutrition.',
+      'en': 'Add your first meal to start tracking your nutrition.',
+    },
+    'add_food_button': {
+      'fr': 'Ajouter un aliment',
+      'en': 'Add food',
+    },
+    'yesterday': {
+      'fr': 'Hier',
+      'en': 'Yesterday',
+    },
+    'tomorrow': {
+      'fr': 'Demain',
+      'en': 'Tomorrow',
+    },
+    'calorie_summary': {
+      'fr': 'Bilan calorique',
+      'en': 'Calorie summary',
+    },
+    // Page calendrier nutritionnel
+    'nutrition_calendar': {
+      'fr': 'Calendrier nutritionnel',
+      'en': 'Nutrition calendar',
+    },
+    'successful_days': {
+      'fr': 'Jours réussis',
+      'en': 'Successful days',
+    },
+    'average_calories': {
+      'fr': 'Moy. calories',
+      'en': 'Avg. calories',
+    },
+    'daily_calorie_goal_reached': {
+      'fr': 'Atteinte de l objectif calorique de la journée',
+      'en': 'Daily calorie goal achievement',
+    },
+    // Jours de la semaine abrégés
+    'mon_short': {
+      'fr': 'Lun',
+      'en': 'Mon',
+    },
+    'tue_short': {
+      'fr': 'Mar',
+      'en': 'Tue',
+    },
+    'wed_short': {
+      'fr': 'Mer',
+      'en': 'Wed',
+    },
+    'thu_short': {
+      'fr': 'Jeu',
+      'en': 'Thu',
+    },
+    'fri_short': {
+      'fr': 'Ven',
+      'en': 'Fri',
+    },
+    'sat_short': {
+      'fr': 'Sam',
+      'en': 'Sat',
+    },
+    'sun_short': {
+      'fr': 'Dim',
+      'en': 'Sun',
     },
   };
 

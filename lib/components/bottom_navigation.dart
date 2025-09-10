@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:provider/provider.dart';
 import 'dart:ui';
+import '../services/localization_service.dart';
+import '../services/translations.dart';
 
 class BottomNavigation extends StatelessWidget {
   final String activeTab;
@@ -14,12 +17,14 @@ class BottomNavigation extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tabs = [
-      {'id': 'home', 'label': 'Accueil', 'icon': LucideIcons.house},
-      {'id': 'nutrition', 'label': 'Nutrition', 'icon': LucideIcons.apple},
-      {'id': 'sport', 'label': 'Sport', 'icon': LucideIcons.dumbbell},
-      {'id': 'progress', 'label': 'Progrès', 'icon': LucideIcons.trendingUp},
-    ];
+    return Consumer<LocalizationService>(
+      builder: (context, locService, child) {
+        final tabs = [
+          {'id': 'home', 'label': 'home_tab'.tr(locService.currentLanguageCode), 'icon': LucideIcons.house},
+          {'id': 'nutrition', 'label': 'nutrition_tab'.tr(locService.currentLanguageCode), 'icon': LucideIcons.apple},
+          {'id': 'sport', 'label': 'sport_tab'.tr(locService.currentLanguageCode), 'icon': LucideIcons.dumbbell},
+          {'id': 'progress', 'label': 'progress_tab'.tr(locService.currentLanguageCode), 'icon': LucideIcons.trendingUp},
+        ];
 
     return Container(
       decoration: BoxDecoration(
@@ -82,6 +87,8 @@ class BottomNavigation extends StatelessWidget {
           ),
         ),
       ),
+    );
+      },
     );
   }
 } 

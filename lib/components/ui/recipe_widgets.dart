@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:provider/provider.dart';
+import '../../services/localization_service.dart';
+import '../../services/translations.dart';
 import 'recipe_models.dart';
 import 'recipe_cards.dart';
 
@@ -29,20 +32,22 @@ class RecipeSearchSection extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: const Color(0xFFCCCCCC)),
             ),
-            child: TextField(
-              controller: searchController,
-              decoration: const InputDecoration(
-                hintText: 'Rechercher une recette...',
-                hintStyle: TextStyle(color: Color(0xFF888888)),
-                prefixIcon: Icon(
-                  LucideIcons.search,
-                  size: 20,
-                  color: Color(0xFF888888),
+            child: Consumer<LocalizationService>(
+              builder: (context, locService, child) => TextField(
+                controller: searchController,
+                decoration: InputDecoration(
+                  hintText: 'search_recipe_placeholder'.tr(locService.currentLanguageCode),
+                  hintStyle: const TextStyle(color: Color(0xFF888888)),
+                  prefixIcon: const Icon(
+                    LucideIcons.search,
+                    size: 20,
+                    color: Color(0xFF888888),
+                  ),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.all(12),
                 ),
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.all(12),
+                onChanged: onSearchChanged,
               ),
-              onChanged: onSearchChanged,
             ),
           ),
         ),
@@ -86,7 +91,12 @@ class RecipeSearchSection extends StatelessWidget {
                       child: Column(
                         children: [
                           const SizedBox(height: 20),
-                          const Text('Filtres', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
+                          Consumer<LocalizationService>(
+                            builder: (context, locService, child) => Text(
+                              'filters'.tr(locService.currentLanguageCode),
+                              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+                            ),
+                          ),
                           const SizedBox(height: 20),
                           Expanded(
                             child: SingleChildScrollView(
@@ -194,12 +204,14 @@ class RecipeSearchSection extends StatelessWidget {
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                 ),
-                                child: Text(
-                                  'Valider (${selectedTags.values.where((v) => v).length})',
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.white,
+                                child: Consumer<LocalizationService>(
+                                  builder: (context, locService, child) => Text(
+                                    '${"apply_filters".tr(locService.currentLanguageCode)} (${selectedTags.values.where((v) => v).length})',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -287,14 +299,16 @@ class RecipeCarouselSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Titre de section
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 4),
-          child: Text(
-            'Recettes recommandées',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF1A1A1A),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Consumer<LocalizationService>(
+            builder: (context, locService, child) => Text(
+              'recommended_recipes'.tr(locService.currentLanguageCode),
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF1A1A1A),
+              ),
             ),
           ),
         ),
@@ -354,12 +368,16 @@ class RecipeListSection extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                hasActiveFilter ? 'Résultats' : 'Toutes les recettes',
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF1A1A1A),
+              Consumer<LocalizationService>(
+                builder: (context, locService, child) => Text(
+                  hasActiveFilter 
+                    ? 'results'.tr(locService.currentLanguageCode)
+                    : 'all_recipes'.tr(locService.currentLanguageCode),
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1A1A1A),
+                  ),
                 ),
               ),
               if (hasActiveFilter)
@@ -456,21 +474,25 @@ class FilterModalContent extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Filtres',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF1A1A1A),
+              Consumer<LocalizationService>(
+                builder: (context, locService, child) => Text(
+                  'filters'.tr(locService.currentLanguageCode),
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1A1A1A),
+                  ),
                 ),
               ),
               TextButton(
                 onPressed: onClearAll,
-                child: const Text(
-                  'Effacer tout',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF64748B),
+                child: Consumer<LocalizationService>(
+                  builder: (context, locService, child) => Text(
+                    'clear_all'.tr(locService.currentLanguageCode),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF64748B),
+                    ),
                   ),
                 ),
               ),
@@ -563,14 +585,16 @@ class FilterModalContent extends StatelessWidget {
                 ),
                 elevation: 0,
               ),
-              child: Text(
-                selectedCount > 0 
-                  ? 'Valider ($selectedCount)' 
-                  : 'Valider',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
+              child: Consumer<LocalizationService>(
+                builder: (context, locService, child) => Text(
+                  selectedCount > 0 
+                    ? '${"apply_filters".tr(locService.currentLanguageCode)} ($selectedCount)' 
+                    : 'apply_filters'.tr(locService.currentLanguageCode),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ),

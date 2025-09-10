@@ -71,3 +71,4 @@ class _SimpleScannerScreenState extends State<SimpleScannerScreen> {
     );
   }
 }
+

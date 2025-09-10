@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/database_service.dart';
+import '../services/localization_service.dart';
+import '../services/translations.dart';
 import '../models/nutrition_models.dart';
 import '../bottom_sheets/editable_food_details_bottom_sheet.dart';
 import '../components/ui/snackbar_utils.dart';
@@ -93,7 +96,8 @@ class _CreateCustomFoodBottomSheetState extends State<CreateCustomFoodBottomShee
 
   Future<void> _createCustomFood() async {
     if (_nameController.text.trim().isEmpty) {
-      _showError('Veuillez entrer un nom pour l\'aliment.');
+      final locService = Provider.of<LocalizationService>(context, listen: false);
+      _showError(locService.currentLanguageCode == 'fr' ? 'Veuillez entrer un nom pour l\'aliment.' : 'Please enter a name for the food.');
       return;
     }
 
@@ -103,7 +107,8 @@ class _CreateCustomFoodBottomSheetState extends State<CreateCustomFoodBottomShee
     final calories = _getCalculatedCalories();
 
     if (calories == 0 && proteins == 0 && carbs == 0 && fats == 0) {
-      _showError('Veuillez entrer au moins une valeur nutritionnelle.');
+      final locService = Provider.of<LocalizationService>(context, listen: false);
+      _showError(locService.currentLanguageCode == 'fr' ? 'Veuillez entrer au moins une valeur nutritionnelle.' : 'Please enter at least one nutritional value.');
       return;
     }
 
@@ -112,14 +117,16 @@ class _CreateCustomFoodBottomSheetState extends State<CreateCustomFoodBottomShee
     try {
       final user = AuthService().currentUser;
       if (user == null) {
-        _showError('Vous devez être connecté pour créer un aliment.');
+        final locService = Provider.of<LocalizationService>(context, listen: false);
+        _showError(locService.currentLanguageCode == 'fr' ? 'Vous devez être connecté pour créer un aliment.' : 'You must be logged in to create a food.');
         return;
       }
 
       // Vérifier si l'aliment existe déjà
       final exists = await DatabaseService.checkCustomFoodExists(user.id, _nameController.text.trim());
       if (exists) {
-        _showError('Un aliment avec ce nom existe déjà.');
+        final locService = Provider.of<LocalizationService>(context, listen: false);
+        _showError(locService.currentLanguageCode == 'fr' ? 'Un aliment avec ce nom existe déjà.' : 'A food with this name already exists.');
         return;
       }
 
@@ -137,7 +144,8 @@ class _CreateCustomFoodBottomSheetState extends State<CreateCustomFoodBottomShee
       );
       
       if (createdFood == null) {
-        _showError('Erreur lors de la sauvegarde en base de données.');
+        final locService = Provider.of<LocalizationService>(context, listen: false);
+        _showError(locService.currentLanguageCode == 'fr' ? 'Erreur lors de la sauvegarde en base de données.' : 'Error saving to database.');
         return;
       }
 
@@ -177,7 +185,8 @@ class _CreateCustomFoodBottomSheetState extends State<CreateCustomFoodBottomShee
       }
     } catch (e) {
       // Erreur lors de la création: $e
-      _showError('Erreur lors de la création de l\'aliment.');
+      final locService = Provider.of<LocalizationService>(context, listen: false);
+      _showError(locService.currentLanguageCode == 'fr' ? 'Erreur lors de la création de l\'aliment.' : 'Error creating the food.');
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -234,13 +243,15 @@ class _CreateCustomFoodBottomSheetState extends State<CreateCustomFoodBottomShee
                   ),
                 ),
                 const SizedBox(width: 16),
-                const Expanded(
-                  child: Text(
-                    'Créer un aliment',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF1A1A1A),
+                Expanded(
+                  child: Consumer<LocalizationService>(
+                    builder: (context, locService, child) => Text(
+                      'create_food'.tr(locService.currentLanguageCode),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF1A1A1A),
+                      ),
                     ),
                   ),
                 ),
@@ -256,40 +267,46 @@ class _CreateCustomFoodBottomSheetState extends State<CreateCustomFoodBottomShee
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Nom de l'aliment
-                  const Text(
-                    'Nom de l\'aliment',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF1A1A1A),
+                  Consumer<LocalizationService>(
+                    builder: (context, locService, child) => Text(
+                      'food_name'.tr(locService.currentLanguageCode),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF1A1A1A),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 8),
-                  TextField(
-                    controller: _nameController,
-                    decoration: const InputDecoration(
-                      hintText: 'Ex: Feta',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(8)),
-                        borderSide: BorderSide(color: Color(0xFFE5E7EB)),
+                  Consumer<LocalizationService>(
+                    builder: (context, locService, child) => TextField(
+                      controller: _nameController,
+                      decoration: InputDecoration(
+                        hintText: 'food_name_placeholder'.tr(locService.currentLanguageCode),
+                        border: const OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(8)),
+                          borderSide: BorderSide(color: Color(0xFFE5E7EB)),
+                        ),
+                        focusedBorder: const OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(8)),
+                          borderSide: BorderSide(color: Color(0xFF3B82F6)),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                       ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(8)),
-                        borderSide: BorderSide(color: Color(0xFF3B82F6)),
-                      ),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                     ),
                   ),
                   
                   const SizedBox(height: 32),
                   
                   // Quantité de référence
-                  const Text(
-                    'Quantité de référence',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF1A1A1A),
+                  Consumer<LocalizationService>(
+                    builder: (context, locService, child) => Text(
+                      locService.currentLanguageCode == 'fr' ? 'Quantité de référence' : 'Reference quantity',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF1A1A1A),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -342,11 +359,15 @@ class _CreateCustomFoodBottomSheetState extends State<CreateCustomFoodBottomShee
                   const SizedBox(height: 12),
                   
                   // Texte explicatif
-                  const Text(
-                    'Les valeurs nutritionnelles ci-dessous doivent correspondre à cette quantité.',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Color(0xFF64748B),
+                  Consumer<LocalizationService>(
+                    builder: (context, locService, child) => Text(
+                      locService.currentLanguageCode == 'fr' 
+                        ? 'Les valeurs nutritionnelles ci-dessous doivent correspondre à cette quantité.' 
+                        : 'The nutritional values below must correspond to this quantity.',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF64748B),
+                      ),
                     ),
                   ),
                   
@@ -370,12 +391,14 @@ class _CreateCustomFoodBottomSheetState extends State<CreateCustomFoodBottomShee
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text(
-                              'Calories',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
-                                color: Color(0xFF1A1A1A),
+                            Consumer<LocalizationService>(
+                              builder: (context, locService, child) => Text(
+                                'calories'.tr(locService.currentLanguageCode),
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF1A1A1A),
+                                ),
                               ),
                             ),
                                                           Text(
@@ -395,11 +418,13 @@ class _CreateCustomFoodBottomSheetState extends State<CreateCustomFoodBottomShee
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text(
-                              'Protéines',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Color(0xFF64748B),
+                            Consumer<LocalizationService>(
+                              builder: (context, locService, child) => Text(
+                                'proteins'.tr(locService.currentLanguageCode),
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Color(0xFF64748B),
+                                ),
                               ),
                             ),
                             SizedBox(
@@ -430,11 +455,13 @@ class _CreateCustomFoodBottomSheetState extends State<CreateCustomFoodBottomShee
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text(
-                              'Glucides',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Color(0xFF64748B),
+                            Consumer<LocalizationService>(
+                              builder: (context, locService, child) => Text(
+                                'carbs'.tr(locService.currentLanguageCode),
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Color(0xFF64748B),
+                                ),
                               ),
                             ),
                             SizedBox(
@@ -465,11 +492,13 @@ class _CreateCustomFoodBottomSheetState extends State<CreateCustomFoodBottomShee
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text(
-                              'Lipides',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Color(0xFF64748B),
+                            Consumer<LocalizationService>(
+                              builder: (context, locService, child) => Text(
+                                'fats'.tr(locService.currentLanguageCode),
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Color(0xFF64748B),
+                                ),
                               ),
                             ),
                             SizedBox(
@@ -520,14 +549,16 @@ class _CreateCustomFoodBottomSheetState extends State<CreateCustomFoodBottomShee
                         ),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Text(
-                        'Annuler',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                          color: Color(0xFF0B132B),
+                      child: Consumer<LocalizationService>(
+                        builder: (context, locService, child) => Text(
+                          'cancel'.tr(locService.currentLanguageCode),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF0B132B),
+                          ),
+                          textAlign: TextAlign.center,
                         ),
-                        textAlign: TextAlign.center,
                       ),
                     ),
                   ),
@@ -555,14 +586,16 @@ class _CreateCustomFoodBottomSheetState extends State<CreateCustomFoodBottomShee
                                 ),
                               ),
                             )
-                          : const Text(
-                              'Créer',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.white,
+                          : Consumer<LocalizationService>(
+                              builder: (context, locService, child) => Text(
+                                locService.currentLanguageCode == 'fr' ? 'Créer' : 'Create',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.white,
+                                ),
+                                textAlign: TextAlign.center,
                               ),
-                              textAlign: TextAlign.center,
                             ),
                     ),
                   ),

@@ -30,8 +30,8 @@ class _NutritionSectionState extends State<NutritionSection>
   bool _loadingObjectives = true;
   int _currentStreak = 0;
   bool _loadingStreak = true;
-  String get _objectivesText => _loadingObjectives ? '...' : '$_completedGoals/$_totalGoals objectifs';
-  String get _streakText => _loadingStreak ? '...' : '$_currentStreak jours';
+  String _objectivesText(String languageCode) => _loadingObjectives ? '...' : '$_completedGoals/$_totalGoals ${'objectives'.tr(languageCode)}';
+  String _streakText(String languageCode) => _loadingStreak ? '...' : '$_currentStreak ${'days'.tr(languageCode)}';
 
   List<String> _getPageNames(String languageCode) {
     return [
@@ -178,20 +178,22 @@ class _NutritionSectionState extends State<NutritionSection>
                 colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
               ),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _buildBannerItem(LucideIcons.flame, _streakText),
-                _buildBannerSeparator(),
-                ValueListenableBuilder<GoalsSummary>(
-                  valueListenable: GoalsNotifier.instance,
-                  builder: (context, summary, _) {
-                    return _buildBannerItem(LucideIcons.target, summary.toString());
-                  },
-                ),
-                _buildBannerSeparator(),
-                _buildBannerItemWithLogo('Nutrition'),
-              ],
+            child: Consumer<LocalizationService>(
+              builder: (context, locService, child) => Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _buildBannerItem(LucideIcons.flame, _streakText(locService.currentLanguageCode)),
+                  _buildBannerSeparator(),
+                  ValueListenableBuilder<GoalsSummary>(
+                    valueListenable: GoalsNotifier.instance,
+                    builder: (context, summary, _) {
+                      return _buildBannerItem(LucideIcons.target, '${summary.completed}/${summary.total} ${'objectives'.tr(locService.currentLanguageCode)}');
+                    },
+                  ),
+                  _buildBannerSeparator(),
+                  _buildBannerItemWithLogo('nutrition_tab'.tr(locService.currentLanguageCode)),
+                ],
+              ),
             ),
           ),
           

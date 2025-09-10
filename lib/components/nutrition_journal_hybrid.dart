@@ -109,8 +109,8 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
     final user = AuthService().currentUser;
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Vous devez être connecté pour ajouter un aliment'),
+        SnackBar(
+          content: Text('must_be_connected_add_food'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode)),
           backgroundColor: Colors.red,
         ),
       );
@@ -169,7 +169,7 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
     } else {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Erreur lors de l\'ajout de l\'aliment'),
             backgroundColor: Colors.red,
           ),
@@ -188,7 +188,7 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
     final user = AuthService().currentUser;
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('Vous devez être connecté pour ajouter un repas'),
           backgroundColor: Colors.red,
         ),
@@ -224,7 +224,7 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
       // Erreur lors de la génération de l'ID
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Erreur lors de la création du repas'),
             backgroundColor: Colors.red,
           ),
@@ -250,35 +250,36 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
   }
 
   // Formater la date pour l'affichage
-  String _formatDate(DateTime date) {
-    const List<String> daysOfWeek = [
-      'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'
-    ];
-    const List<String> months = [
-      'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
-      'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'
-    ];
-
-    final dayName = daysOfWeek[date.weekday - 1];
-    final monthName = months[date.month - 1];
+  String _formatDate(DateTime date, String languageCode) {
+    final weekDays = languageCode == 'en' 
+        ? ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+        : ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
     
-    return '$dayName ${date.day} $monthName ${date.year}';
+    final months = languageCode == 'en' 
+        ? ['January', 'February', 'March', 'April', 'May', 'June',
+           'July', 'August', 'September', 'October', 'November', 'December']
+        : ['janvier', 'février', 'mars', 'avril', 'mai', 'juin',
+           'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+    
+    final weekDay = weekDays[date.weekday - 1];
+    final month = months[date.month - 1];
+    
+    return '$weekDay ${date.day} $month ${date.year}';
   }
-
   // Obtenir le titre de la date (Aujourd'hui, Hier, ou la date)
-  String _getDateTitle(DateTime date) {
+  String _getDateTitle(DateTime date, String languageCode) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final selectedDay = DateTime(date.year, date.month, date.day);
     
     if (selectedDay == today) {
-      return 'Aujourd\'hui';
+      return 'today'.tr(languageCode);
     } else if (selectedDay == today.subtract(const Duration(days: 1))) {
-      return 'Hier';
+      return 'yesterday'.tr(languageCode);
     } else if (selectedDay == today.add(const Duration(days: 1))) {
-      return 'Demain';
+      return 'tomorrow'.tr(languageCode);
     } else {
-      return _formatDate(date);
+      return _formatDate(date, languageCode);
     }
   }
   
@@ -315,7 +316,7 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
               // Titre
               Text(
                 'Ajouter "${foodItem.name}" à un repas',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
                   color: Color(0xFF1A1A1A),
@@ -325,7 +326,7 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
               
               const SizedBox(height: 16),
               
-              const Text(
+              Text(
                 'Choisissez le repas auquel ajouter cet aliment',
                 style: TextStyle(
                   fontSize: 14,
@@ -374,7 +375,7 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
                         } else {
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
+                              SnackBar(
                                 content: Text('Erreur lors de l\'ajout'),
                                 backgroundColor: Colors.red,
                               ),
@@ -390,7 +391,7 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
               // Divider si il y a des repas existants
               if (meals.any((meal) => meal.items.isNotEmpty)) ...[
                 const Divider(height: 32),
-                const Text(
+                Text(
                   'Ou créer un nouveau repas',
                   style: TextStyle(
                     fontSize: 14,
@@ -459,7 +460,7 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
                           } else {
                             if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
+                                SnackBar(
                                   content: Text('Erreur lors de la création du repas'),
                                   backgroundColor: Colors.red,
                                 ),
@@ -469,7 +470,7 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
                         } else {
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
+                              SnackBar(
                                 content: Text('Erreur lors de la génération de l\'ID du repas'),
                                 backgroundColor: Colors.red,
                               ),
@@ -547,7 +548,7 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
                             color: Color(0xFF64748B),
                           ),
                           const SizedBox(height: 16),
-                          const Text(
+                          Text(
                             'Aucun repas enregistré',
                             style: TextStyle(
                               fontSize: 18,
@@ -556,7 +557,7 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
                             ),
                           ),
                           const SizedBox(height: 8),
-                          const Text(
+                          Text(
                             'Ajoutez votre premier repas pour commencer à suivre votre nutrition.',
                             textAlign: TextAlign.center,
                             style: TextStyle(
@@ -573,7 +574,7 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
                                 color: const Color(0xFF0B132B),
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              child: const Row(
+                              child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Icon(
@@ -583,7 +584,7 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
                                   ),
                                   SizedBox(width: 8),
                                   Text(
-                                    'Ajouter un repas',
+                                    'add_meal'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
                                     style: TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w500,
@@ -611,25 +612,29 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      _getDateTitle(selectedDate),
-                                      style: const TextStyle(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(0xFF1A1A1A),
-                                      ),
-                                    ),
-                                    Text(
-                                      _formatDate(selectedDate),
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: const Color(0xFF1A1A1A).withOpacity(0.6),
-                                      ),
-                                    ),
-                                  ],
+                                Consumer<LocalizationService>(
+                                  builder: (context, localizationService, child) {
+                                    return Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          _getDateTitle(selectedDate, localizationService.currentLanguageCode),
+                                          style: const TextStyle(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.bold,
+                                            color: Color(0xFF1A1A1A),
+                                          ),
+                                        ),
+                                        Text(
+                                          _formatDate(selectedDate, localizationService.currentLanguageCode),
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: const Color(0xFF1A1A1A).withOpacity(0.6),
+                                          ),
+                                        ),
+                                      ],
+                                    );
+                                  },
                                 ),
                                 GestureDetector(
                                   onTap: () => setState(() => showCalendar = true),
@@ -691,7 +696,7 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
                           ),
                         ],
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
@@ -701,7 +706,7 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
                           ),
                           SizedBox(width: 8),
                           Text(
-                            'Ajouter un repas',
+                            'add_meal'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w500,
@@ -756,13 +761,17 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
                   color: Color(0xFF0B132B),
                 ),
                 const SizedBox(width: 12),
-                const Text(
-                  'Bilan calorique',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1A1A),
-                  ),
+                Consumer<LocalizationService>(
+                  builder: (context, localizationService, child) {
+                    return Text(
+                      'calorie_summary'.tr(localizationService.currentLanguageCode),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF1A1A1A),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
@@ -776,7 +785,7 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
                   children: [
                     TextSpan(
                       text: '$totalCalories kcal',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
                         color: Color(0xFF0B132B),
@@ -784,7 +793,7 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
                     ),
                     TextSpan(
                       text: ' / $targetCalories ${"kcal_consumed".tr(locService.currentLanguageCode)}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w400,
                         color: Color(0xFF64748B),
@@ -864,7 +873,7 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
       children: [
         Text(
           value,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
             color: Color(0xFF0B132B),
@@ -873,7 +882,7 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
         const SizedBox(height: 4),
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 12,
             color: Color(0xFF666666),
           ),
@@ -917,18 +926,22 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
               const SizedBox(height: 20),
               
               // Titre
-              const Text(
-                'Ajouter un aliment',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF1A1A1A),
-                ),
+              Consumer<LocalizationService>(
+                builder: (context, localizationService, child) {
+                  return Text(
+                    'add_food'.tr(localizationService.currentLanguageCode),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1A1A1A),
+                    ),
+                  );
+                },
               ),
               
               const SizedBox(height: 16),
               
-              const Text(
+              Text(
                 'Choisissez comment vous souhaitez ajouter votre aliment',
                 style: TextStyle(
                   fontSize: 14,
@@ -942,8 +955,8 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
               // ✅ Utilise les widgets factorés
               FoodOptionWidget(
                 icon: LucideIcons.pencil,
-                title: 'Saisie manuelle',
-                subtitle: 'Rechercher et ajouter manuellement',
+                title: 'manual_entry'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
+                subtitle: 'search_add_manually'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
                 onTap: () {
                   Navigator.pop(context);
                   _showManualEntryBottomSheet();
@@ -955,7 +968,7 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
               FoodOptionWidget(
                 icon: LucideIcons.camera,
                 title: 'Scanner avec l\'IA',
-                subtitle: 'Prenez une photo de votre plat',
+                subtitle: 'take_photo_of_dish'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
                 onTap: () {
                   Navigator.pop(context);
                   // ✅ Navigation directe avec informations du repas sélectionné
@@ -985,8 +998,8 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
               
               FoodOptionWidget(
                 icon: LucideIcons.scan,
-                title: 'Code-barres',
-                subtitle: 'Scanner le code-barres du produit',
+                title: 'barcode'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
+                subtitle: 'scan_barcode_subtitle'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
                 onTap: () {
                   Navigator.pop(context);
                   Navigator.push(
@@ -1005,8 +1018,8 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
               
               FoodOptionWidget(
                 icon: LucideIcons.chefHat,
-                title: 'Mes recettes',
-                subtitle: 'Choisir parmi vos recettes sauvegardées',
+                title: 'my_recipes'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
+                subtitle: 'choose_saved_recipes'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
                 onTap: () {
                   Navigator.pop(context);
                   Navigator.push(

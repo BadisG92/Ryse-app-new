@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:provider/provider.dart';
 import '../models/nutrition_models.dart';
 import '../components/ui/snackbar_utils.dart';
+import '../services/localization_service.dart';
+import '../services/translations.dart';
 
 class EditableFoodDetailsBottomSheet {
   static Future<void> show(
@@ -351,12 +354,14 @@ class _EditableFoodDetailsContentState extends State<_EditableFoodDetailsContent
                     children: [
                       Row(
                         children: [
-                          const Text(
-                            'Calories',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                              color: Color(0xFF1A1A1A),
+                          Consumer<LocalizationService>(
+                            builder: (context, locService, child) => Text(
+                              'calories'.tr(locService.currentLanguageCode),
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF1A1A1A),
+                              ),
                             ),
                           ),
                           if (!_isEditing && !widget.isCustomFood)
@@ -404,11 +409,13 @@ class _EditableFoodDetailsContentState extends State<_EditableFoodDetailsContent
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Protéines',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF64748B),
+                      Consumer<LocalizationService>(
+                        builder: (context, locService, child) => Text(
+                          'proteins'.tr(locService.currentLanguageCode),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF64748B),
+                          ),
                         ),
                       ),
                       _isEditing
@@ -448,11 +455,13 @@ class _EditableFoodDetailsContentState extends State<_EditableFoodDetailsContent
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Glucides',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF64748B),
+                      Consumer<LocalizationService>(
+                        builder: (context, locService, child) => Text(
+                          'carbs'.tr(locService.currentLanguageCode),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF64748B),
+                          ),
                         ),
                       ),
                       _isEditing
@@ -492,11 +501,13 @@ class _EditableFoodDetailsContentState extends State<_EditableFoodDetailsContent
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Lipides',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF64748B),
+                      Consumer<LocalizationService>(
+                        builder: (context, locService, child) => Text(
+                          'fats'.tr(locService.currentLanguageCode),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF64748B),
+                          ),
                         ),
                       ),
                       _isEditing
@@ -550,12 +561,14 @@ class _EditableFoodDetailsContentState extends State<_EditableFoodDetailsContent
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Quantité',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF1A1A1A),
+                  Consumer<LocalizationService>(
+                    builder: (context, locService, child) => Text(
+                      'quantity'.tr(locService.currentLanguageCode),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF1A1A1A),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -576,11 +589,13 @@ class _EditableFoodDetailsContentState extends State<_EditableFoodDetailsContent
                         ),
                       ),
                       const SizedBox(width: 12),
-                      Text(
-                        widget.referenceUnit ?? 'grammes',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF64748B),
+                      Consumer<LocalizationService>(
+                        builder: (context, locService, child) => Text(
+                          widget.referenceUnit ?? (locService.currentLanguageCode == 'fr' ? 'grammes' : 'grams'),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF64748B),
+                          ),
                         ),
                       ),
                     ],
@@ -606,14 +621,16 @@ class _EditableFoodDetailsContentState extends State<_EditableFoodDetailsContent
                         ),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Text(
-                        'Annuler',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                          color: Color(0xFF0B132B),
+                      child: Consumer<LocalizationService>(
+                        builder: (context, locService, child) => Text(
+                          'cancel'.tr(locService.currentLanguageCode),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF0B132B),
+                          ),
+                          textAlign: TextAlign.center,
                         ),
-                        textAlign: TextAlign.center,
                       ),
                     ),
                   ),
@@ -650,11 +667,14 @@ class _EditableFoodDetailsContentState extends State<_EditableFoodDetailsContent
                       // Si c'est depuis le scanner IA (modification), utiliser onFoodSaved pour juste enregistrer
                       // Sinon, utiliser onFoodAdded pour ajouter directement (flux classique)
                       if (widget.onFoodSaved != null) {
+                        final locService = Provider.of<LocalizationService>(context, listen: false);
                         widget.onFoodSaved?.call(foodItem);
                         Navigator.pop(context);
                         SnackBarUtils.showSuccessSnackBar(
                           context,
-                          message: '${widget.name} enregistré${_isModified ? ' (modifié)' : ''}',
+                          message: locService.currentLanguageCode == 'fr' 
+                            ? '${widget.name} enregistré${_isModified ? ' (modifié)' : ''}' 
+                            : '${widget.name} saved${_isModified ? ' (modified)' : ''}',
                         );
                       } else {
                         // Flux classique - ajouter directement au repas
@@ -668,14 +688,16 @@ class _EditableFoodDetailsContentState extends State<_EditableFoodDetailsContent
                         color: const Color(0xFF0B132B),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Text(
-                        widget.onFoodSaved != null ? 'Enregistrer' : (_isModified ? 'Confirmer' : 'Ajouter'),
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.white,
+                      child: Consumer<LocalizationService>(
+                        builder: (context, locService, child) => Text(
+                          widget.onFoodSaved != null ? 'save'.tr(locService.currentLanguageCode) : (_isModified ? 'confirm'.tr(locService.currentLanguageCode) : 'add'.tr(locService.currentLanguageCode)),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white,
+                          ),
+                          textAlign: TextAlign.center,
                         ),
-                        textAlign: TextAlign.center,
                       ),
                     ),
                   ),
@@ -783,13 +805,15 @@ class _CreateFoodContentState extends State<_CreateFoodContent> {
                   ),
                 ),
                 const SizedBox(width: 16),
-                const Expanded(
-                  child: Text(
-                    'Créer un aliment',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF1A1A1A),
+                Expanded(
+                  child: Consumer<LocalizationService>(
+                    builder: (context, locService, child) => Text(
+                      'create_food'.tr(locService.currentLanguageCode),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF1A1A1A),
+                      ),
                     ),
                   ),
                 ),
@@ -813,23 +837,27 @@ class _CreateFoodContentState extends State<_CreateFoodContent> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Nom de l\'aliment',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF1A1A1A),
+                  Consumer<LocalizationService>(
+                    builder: (context, locService, child) => Text(
+                      'food_name'.tr(locService.currentLanguageCode),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF1A1A1A),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 12),
-                  TextField(
-                    controller: _nameController,
-                    decoration: const InputDecoration(
-                      hintText: 'Ex: Mon plat spécial',
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
+                  Consumer<LocalizationService>(
+                    builder: (context, locService, child) => TextField(
+                      controller: _nameController,
+                      decoration: InputDecoration(
+                        hintText: 'food_name_placeholder'.tr(locService.currentLanguageCode),
+                        border: const OutlineInputBorder(),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
                       ),
                     ),
                   ),
@@ -857,12 +885,14 @@ class _CreateFoodContentState extends State<_CreateFoodContent> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Calories (calculées auto)',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                          color: Color(0xFF1A1A1A),
+                      Consumer<LocalizationService>(
+                        builder: (context, locService, child) => Text(
+                          locService.currentLanguageCode == 'fr' ? 'Calories (calculées auto)' : 'Calories (auto calculated)',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF1A1A1A),
+                          ),
                         ),
                       ),
                       Container(
@@ -889,11 +919,13 @@ class _CreateFoodContentState extends State<_CreateFoodContent> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Protéines',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF64748B),
+                      Consumer<LocalizationService>(
+                        builder: (context, locService, child) => Text(
+                          'proteins'.tr(locService.currentLanguageCode),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF64748B),
+                          ),
                         ),
                       ),
                       Container(
@@ -926,11 +958,13 @@ class _CreateFoodContentState extends State<_CreateFoodContent> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Glucides',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF64748B),
+                      Consumer<LocalizationService>(
+                        builder: (context, locService, child) => Text(
+                          'carbs'.tr(locService.currentLanguageCode),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF64748B),
+                          ),
                         ),
                       ),
                       Container(
@@ -963,11 +997,13 @@ class _CreateFoodContentState extends State<_CreateFoodContent> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Lipides',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF64748B),
+                      Consumer<LocalizationService>(
+                        builder: (context, locService, child) => Text(
+                          'fats'.tr(locService.currentLanguageCode),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF64748B),
+                          ),
                         ),
                       ),
                       Container(
@@ -1014,14 +1050,16 @@ class _CreateFoodContentState extends State<_CreateFoodContent> {
                         ),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Text(
-                        'Annuler',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                          color: Color(0xFF0B132B),
+                      child: Consumer<LocalizationService>(
+                        builder: (context, locService, child) => Text(
+                          'cancel'.tr(locService.currentLanguageCode),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF0B132B),
+                          ),
+                          textAlign: TextAlign.center,
                         ),
-                        textAlign: TextAlign.center,
                       ),
                     ),
                   ),
@@ -1033,9 +1071,10 @@ class _CreateFoodContentState extends State<_CreateFoodContent> {
                   child: GestureDetector(
                     onTap: () async {
                       if (_nameController.text.trim().isEmpty) {
+                        final locService = Provider.of<LocalizationService>(context, listen: false);
                         SnackBarUtils.showErrorSnackBar(
                           context,
-                          message: 'Veuillez saisir un nom d\'aliment',
+                          message: locService.currentLanguageCode == 'fr' ? 'Veuillez saisir un nom d\'aliment' : 'Please enter a food name',
                         );
                         return;
                       }
@@ -1060,6 +1099,7 @@ class _CreateFoodContentState extends State<_CreateFoodContent> {
                       );
                       
                       final itemName = _nameController.text;
+                      final locService = Provider.of<LocalizationService>(context, listen: false);
                       
                       // Appeler le callback pour ajouter l'aliment
                       widget.onFoodCreated?.call(foodItem);
@@ -1070,7 +1110,7 @@ class _CreateFoodContentState extends State<_CreateFoodContent> {
                       // Afficher le message de confirmation
                       SnackBarUtils.showSuccessSnackBar(
                         context,
-                        message: '$itemName créé et ajouté au repas',
+                        message: locService.currentLanguageCode == 'fr' ? '$itemName créé et ajouté au repas' : '$itemName created and added to meal',
                       );
                     },
                     child: Container(
@@ -1079,14 +1119,16 @@ class _CreateFoodContentState extends State<_CreateFoodContent> {
                         color: const Color(0xFF0B132B),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Text(
-                        'Créer',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.white,
+                      child: Consumer<LocalizationService>(
+                        builder: (context, locService, child) => Text(
+                          locService.currentLanguageCode == 'fr' ? 'Créer' : 'Create',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white,
+                          ),
+                          textAlign: TextAlign.center,
                         ),
-                        textAlign: TextAlign.center,
                       ),
                     ),
                   ),

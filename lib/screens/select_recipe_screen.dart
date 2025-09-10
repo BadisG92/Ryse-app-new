@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:provider/provider.dart';
+import '../services/localization_service.dart';
+import '../services/translations.dart';
 import 'recipe_details_screen.dart';
 import 'test_filter_screen.dart';
 import '../components/ui/recipe_models.dart';
@@ -113,12 +116,14 @@ class _SelectRecipeScreenState extends State<SelectRecipeScreen> {
             ),
           ),
         ),
-        title: const Text(
-          'Choisir une recette',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF1A1A1A),
+        title: Consumer<LocalizationService>(
+          builder: (context, locService, child) => Text(
+            locService.currentLanguageCode == 'fr' ? 'Choisir une recette' : 'Choose a recipe',
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF1A1A1A),
+            ),
           ),
         ),
         centerTitle: true,
@@ -167,12 +172,16 @@ class _SelectRecipeScreenState extends State<SelectRecipeScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          hasActiveFilter ? 'Résultats' : 'Toutes les recettes',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF1A1A1A),
+                        Consumer<LocalizationService>(
+                          builder: (context, locService, child) => Text(
+                            hasActiveFilter ? 
+                              (locService.currentLanguageCode == 'fr' ? 'Résultats' : 'Results') : 
+                              (locService.currentLanguageCode == 'fr' ? 'Toutes les recettes' : 'All recipes'),
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF1A1A1A),
+                            ),
                           ),
                         ),
                         if (hasActiveFilter)
@@ -265,22 +274,30 @@ class _SelectRecipeScreenState extends State<SelectRecipeScreen> {
                   const SizedBox(height: 4),
                   
                   // Résumé (durée, portions, calories)
-                  Text(
-                    '${recipe.duration} min • ${recipe.servings} pers. • ${recipe.calories} kcal',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: Color(0xFF64748B),
+                  Consumer<LocalizationService>(
+                    builder: (context, locService, child) => Text(
+                      locService.currentLanguageCode == 'fr' 
+                        ? '${recipe.duration} min • ${recipe.servings} pers. • ${recipe.calories} kcal'
+                        : '${recipe.duration} min • ${recipe.servings} servings • ${recipe.calories} kcal',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF64748B),
+                      ),
                     ),
                   ),
                   
                   const SizedBox(height: 4),
                   
                   // Ligne macros
-                  Text(
-                    'P : ${recipe.proteins}g • G : ${recipe.carbs}g • L : ${recipe.fats}g',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF94A3B8),
+                  Consumer<LocalizationService>(
+                    builder: (context, locService, child) => Text(
+                      locService.currentLanguageCode == 'fr' 
+                        ? 'P : ${recipe.proteins}g • G : ${recipe.carbs}g • L : ${recipe.fats}g'
+                        : 'P: ${recipe.proteins}g • C: ${recipe.carbs}g • F: ${recipe.fats}g',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF94A3B8),
+                      ),
                     ),
                   ),
                 ],

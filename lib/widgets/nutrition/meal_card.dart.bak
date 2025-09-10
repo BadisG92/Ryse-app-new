@@ -122,28 +122,24 @@ class _MealCardState extends State<MealCard> {
                       borderRadius: BorderRadius.circular(8),
                       color: Colors.transparent,
                     ),
-                    child: Consumer<LocalizationService>(
-                      builder: (context, localizationService, child) {
-                        return Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(
-                              LucideIcons.plus,
-                              size: 16,
-                              color: Color(0xFF0B132B),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'add_food'.tr(localizationService.currentLanguageCode),
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: Color(0xFF0B132B),
-                              ),
-                            ),
-                          ],
-                        );
-                      },
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          LucideIcons.plus,
+                          size: 16,
+                          color: Color(0xFF0B132B),
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'add_food'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF0B132B),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:provider/provider.dart';
+import '../services/localization_service.dart';
+import '../services/translations.dart';
 import '../components/ui/recipe_models.dart';
 import '../bottom_sheets/editable_food_details_bottom_sheet.dart';
 import '../bottom_sheets/meal_selection_bottom_sheet.dart';
@@ -244,13 +247,15 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
               ),
             ),
             const SizedBox(width: 16),
-            const Expanded(
-              child: Text(
-                'Détails de la recette',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF1A1A1A),
+            Expanded(
+              child: Consumer<LocalizationService>(
+                builder: (context, locService, child) => Text(
+                  locService.currentLanguageCode == 'fr' ? 'Détails de la recette' : 'Recipe details',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1A1A1A),
+                  ),
                 ),
               ),
             ),
@@ -270,20 +275,22 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: const Color(0xFF16A34A)),
       ),
-      child: const Row(
+      child: Row(
         children: [
-          Icon(
+          const Icon(
             LucideIcons.check,
             size: 16,
             color: Color(0xFF16A34A),
           ),
-          SizedBox(width: 8),
-          Text(
-            'Macros mises à jour',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: Color(0xFF16A34A),
+          const SizedBox(width: 8),
+          Consumer<LocalizationService>(
+            builder: (context, locService, child) => Text(
+              locService.currentLanguageCode == 'fr' ? 'Macros mises à jour' : 'Macros updated',
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF16A34A),
+              ),
             ),
           ),
         ],
@@ -327,13 +334,17 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
           const SizedBox(height: 8),
           SizedBox(
             width: double.infinity,
-            child: Text(
-              '1 portion • ${widget.recipe.time} min',
-              style: const TextStyle(
-                fontSize: 14,
-                color: Color(0xFF64748B),
+            child: Consumer<LocalizationService>(
+              builder: (context, locService, child) => Text(
+                locService.currentLanguageCode == 'fr' 
+                  ? '1 portion • ${widget.recipe.time} min'
+                  : '1 serving • ${widget.recipe.time} min',
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF64748B),
+                ),
+                textAlign: TextAlign.start,
               ),
-              textAlign: TextAlign.start,
             ),
           ),
         ],
@@ -367,12 +378,14 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
           children: [
             Row(
           children: [
-            const Text(
-              'Bilan nutritionnel (par portion)',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF1A1A1A),
+            Consumer<LocalizationService>(
+              builder: (context, locService, child) => Text(
+                locService.currentLanguageCode == 'fr' ? 'Bilan nutritionnel (par portion)' : 'Nutritional facts (per serving)',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1A1A1A),
+                ),
               ),
             ),
                 if (hasModifications) ...[
@@ -424,11 +437,13 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Protéines',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF64748B),
+                Consumer<LocalizationService>(
+                  builder: (context, locService, child) => Text(
+                    'proteins'.tr(locService.currentLanguageCode),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF64748B),
+                    ),
                   ),
                 ),
                 Text(
@@ -446,11 +461,13 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Glucides',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF64748B),
+                Consumer<LocalizationService>(
+                  builder: (context, locService, child) => Text(
+                    'carbs'.tr(locService.currentLanguageCode),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF64748B),
+                    ),
                   ),
                 ),
                 Text(
@@ -468,11 +485,13 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Lipides',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF64748B),
+                Consumer<LocalizationService>(
+                  builder: (context, locService, child) => Text(
+                    'fats'.tr(locService.currentLanguageCode),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF64748B),
+                    ),
                   ),
                 ),
                 Text(
@@ -495,7 +514,7 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: _buildExpandableSection(
-        title: 'Ingrédients',
+        title: Provider.of<LocalizationService>(context, listen: false).currentLanguageCode == 'fr' ? 'Ingrédients' : 'Ingredients',
         isExpanded: isIngredientsExpanded,
         onTap: () => setState(() => isIngredientsExpanded = !isIngredientsExpanded),
         content: _buildIngredientsContent(),
@@ -508,7 +527,7 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: _buildExpandableSection(
-        title: 'Étapes de préparation',
+        title: 'preparation_steps'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
         isExpanded: isRecipeExpanded,
         onTap: () => setState(() => isRecipeExpanded = !isRecipeExpanded),
         content: _buildStepsContent(),
@@ -598,12 +617,14 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                 ),
               ),
               child: Center(
-                child: Text(
-                  'Toucher pour voir plus...',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: const Color(0xFF64748B).withOpacity(0.7),
-                    fontStyle: FontStyle.italic,
+                child: Consumer<LocalizationService>(
+                  builder: (context, locService, child) => Text(
+                    locService.currentLanguageCode == 'fr' ? 'Toucher pour voir plus...' : 'Tap to see more...',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: const Color(0xFF64748B).withOpacity(0.7),
+                      fontStyle: FontStyle.italic,
+                    ),
                   ),
                 ),
               ),
@@ -800,14 +821,18 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
           width: double.infinity,
                       child: ElevatedButton(
               onPressed: _handleAddRecipeToMeal,
-                            child: Text(
-                widget.isFromDashboard ? 'Ajouter au repas' : 'Ajouter à un repas',
-                style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: Colors.white,
+                            child: Consumer<LocalizationService>(
+                builder: (context, locService, child) => Text(
+                  widget.isFromDashboard 
+                    ? (locService.currentLanguageCode == 'fr' ? 'Ajouter au repas' : 'Add to meal')
+                    : (locService.currentLanguageCode == 'fr' ? 'Ajouter à un repas' : 'Add to a meal'),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white,
+                  ),
+                ),
               ),
-            ),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF0B132B),
               padding: const EdgeInsets.symmetric(vertical: 14),

@@ -4,6 +4,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:camera/camera.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:provider/provider.dart';
 import 'dart:io';
 import 'dart:typed_data';
 import '../bottom_sheets/editable_food_details_bottom_sheet.dart';
@@ -13,6 +14,8 @@ import '../models/nutrition_models.dart';
 import '../components/ui/nutrition_widgets.dart';
 import '../services/gemini_analysis_service.dart';
 import '../services/gemini_analysis_service_v2.dart';
+import '../services/localization_service.dart';
+import '../services/translations.dart';
 import '../models/ai_analysis_models.dart';
 import '../services/food_entries_service.dart';
 import '../services/auth_service.dart';
@@ -52,13 +55,22 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
   
   // Animation de chargement IA
   int _loadingPhase = 0;
-  List<String> _loadingPhases = [
-    'Traitement de l\'image...',
-    'Détection des aliments...',
-    'Analyse nutritionnelle...',
-    'Calcul des calories...',
-    'Finalisation...',
-  ];
+  
+  List<String> _getLoadingPhases(String languageCode) {
+    return languageCode == 'fr' ? [
+      'Traitement de l\'image...',
+      'Détection des aliments...',
+      'Analyse nutritionnelle...',
+      'Calcul des calories...',
+      'Finalisation...',
+    ] : [
+      'Processing image...',
+      'Detecting foods...',
+      'Nutritional analysis...',
+      'Calculating calories...',
+      'Finalizing...',
+    ];
+  }
   
   CameraController? _cameraController;
   List<CameraDescription>? _cameras;
@@ -100,8 +112,11 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
       // Vérifier les permissions
       final cameraPermission = await Permission.camera.request();
       if (cameraPermission != PermissionStatus.granted) {
+        final locService = Provider.of<LocalizationService>(context, listen: false);
         setState(() {
-          errorMessage = 'Permission caméra requise pour scanner les aliments';
+          errorMessage = locService.currentLanguageCode == 'fr' 
+            ? 'Permission caméra requise pour scanner les aliments'
+            : 'Camera permission required to scan foods';
         });
         return;
       }
@@ -109,8 +124,11 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
       // Obtenir les caméras disponibles
       _cameras = await availableCameras();
       if (_cameras == null || _cameras!.isEmpty) {
+        final locService = Provider.of<LocalizationService>(context, listen: false);
         setState(() {
-          errorMessage = 'Aucune caméra disponible sur cet appareil';
+          errorMessage = locService.currentLanguageCode == 'fr' 
+            ? 'Aucune caméra disponible sur cet appareil'
+            : 'No camera available on this device';
         });
         return;
       }
@@ -134,8 +152,11 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
         errorMessage = null;
       });
     } catch (e) {
+      final locService = Provider.of<LocalizationService>(context, listen: false);
       setState(() {
-        errorMessage = 'Erreur d\'initialisation de la caméra: $e';
+        errorMessage = locService.currentLanguageCode == 'fr' 
+          ? 'Erreur d\'initialisation de la caméra: $e'
+          : 'Camera initialization error: $e';
         isCameraInitialized = false;
       });
     }
@@ -240,31 +261,35 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
               color: Colors.black54,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Column(
+            child: Column(
               children: [
-                Icon(
+                const Icon(
                   LucideIcons.camera,
                   color: Colors.white,
                   size: 32,
                 ),
-                SizedBox(height: 8),
-                Text(
-                  'Prenez une photo de votre plat',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
+                const SizedBox(height: 8),
+                Consumer<LocalizationService>(
+                  builder: (context, locService, child) => Text(
+                    'take_photo'.tr(locService.currentLanguageCode),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                  textAlign: TextAlign.center,
                 ),
-                SizedBox(height: 4),
-                Text(
-                  'Assurez-vous que le plat soit bien visible et éclairé',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
+                const SizedBox(height: 4),
+                Consumer<LocalizationService>(
+                  builder: (context, locService, child) => Text(
+                    locService.currentLanguageCode == 'fr' ? 'Assurez-vous que le plat soit bien visible et éclairé' : 'Make sure the dish is well visible and lit',
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 14,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                  textAlign: TextAlign.center,
                 ),
               ],
             ),
@@ -418,9 +443,11 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
                     vertical: 12,
                   ),
                 ),
-                child: const Text(
-                  'Réessayer',
-                  style: TextStyle(color: Colors.white),
+                child: Consumer<LocalizationService>(
+                  builder: (context, locService, child) => Text(
+                    locService.currentLanguageCode == 'fr' ? 'Réessayer' : 'Try again',
+                    style: const TextStyle(color: Colors.white),
+                  ),
                 ),
               ),
             ],
@@ -682,16 +709,21 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
                 const SizedBox(height: 40),
                 
                 // Phase actuelle
-                Text(
-                  _loadingPhase < _loadingPhases.length 
-                      ? _loadingPhases[_loadingPhase]
-                      : 'Finalisation...',
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.white,
-                  ),
-                  textAlign: TextAlign.center,
+                Consumer<LocalizationService>(
+                  builder: (context, locService, child) {
+                    final loadingPhases = _getLoadingPhases(locService.currentLanguageCode);
+                    return Text(
+                      _loadingPhase < loadingPhases.length 
+                          ? loadingPhases[_loadingPhase]
+                          : (locService.currentLanguageCode == 'fr' ? 'Finalisation...' : 'Finalizing...'),
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white,
+                      ),
+                      textAlign: TextAlign.center,
+                    );
+                  },
                 ),
                 
                 const SizedBox(height: 32),
@@ -700,7 +732,7 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
                 Container(
                   width: 280,
                   child: Column(
-                    children: List.generate(_loadingPhases.length, (index) {
+                    children: List.generate(_getLoadingPhases(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode).length, (index) {
                       final isCompleted = index < _loadingPhase;
                       final isCurrent = index == _loadingPhase;
                       
@@ -741,17 +773,22 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
                             const SizedBox(width: 12),
                             // Texte de la phase
                             Expanded(
-                              child: Text(
-                                _loadingPhases[index],
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: isCompleted 
-                                      ? Colors.white
-                                      : isCurrent 
+                              child: Consumer<LocalizationService>(
+                                builder: (context, locService, child) {
+                                  final loadingPhases = _getLoadingPhases(locService.currentLanguageCode);
+                                  return Text(
+                                    loadingPhases[index],
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: isCompleted 
                                           ? Colors.white
-                                          : Colors.white54,
-                                  fontWeight: isCompleted || isCurrent ? FontWeight.w500 : FontWeight.normal,
-                                ),
+                                          : isCurrent 
+                                              ? Colors.white
+                                              : Colors.white54,
+                                      fontWeight: isCompleted || isCurrent ? FontWeight.w500 : FontWeight.normal,
+                                    ),
+                                  );
+                                },
                               ),
                             ),
                           ],
@@ -772,7 +809,7 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
                     borderRadius: BorderRadius.circular(2),
                   ),
                   child: FractionallySizedBox(
-                    widthFactor: (_loadingPhase + 1) / _loadingPhases.length,
+                    widthFactor: (_loadingPhase + 1) / _getLoadingPhases(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode).length,
                     child: Container(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
@@ -786,12 +823,14 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
                 
                 const SizedBox(height: 16),
                 
-                Text(
-                  '${((_loadingPhase + 1) / _loadingPhases.length * 100).round()}%',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.white70,
+                Consumer<LocalizationService>(
+                  builder: (context, locService, child) => Text(
+                    '${((_loadingPhase + 1) / _getLoadingPhases(locService.currentLanguageCode).length * 100).round()}%',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white70,
+                    ),
                   ),
                 ),
               ],
@@ -834,13 +873,15 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
                   ),
                 ),
                 const SizedBox(width: 16),
-                const Expanded(
-                  child: Text(
-                    'Aliments détectés',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF1A1A1A),
+                Expanded(
+                  child: Consumer<LocalizationService>(
+                    builder: (context, locService, child) => Text(
+                      locService.currentLanguageCode == 'fr' ? 'Aliments détectés' : 'Detected foods',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF1A1A1A),
+                      ),
                     ),
                   ),
                 ),
@@ -855,19 +896,23 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Nom du plat',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF374151),
+                  Consumer<LocalizationService>(
+                    builder: (context, locService, child) => Text(
+                      locService.currentLanguageCode == 'fr' ? 'Nom du plat' : 'Dish name',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF374151),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 8),
                   TextFormField(
                     controller: _mealNameController,
                     decoration: InputDecoration(
-                      hintText: 'Nom du plat détecté par l\'IA',
+                      hintText: Provider.of<LocalizationService>(context, listen: false).currentLanguageCode == 'fr' 
+                        ? 'Nom du plat détecté par l\'IA' 
+                        : 'AI-detected dish name',
                       filled: true,
                       fillColor: const Color(0xFFF9FAFB),
                       border: OutlineInputBorder(
@@ -955,12 +1000,14 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               children: [
-                const Text(
-                  'Aliments détectés :',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1A1A),
+                Consumer<LocalizationService>(
+                  builder: (context, locService, child) => Text(
+                    locService.currentLanguageCode == 'fr' ? 'Aliments détectés :' : 'Detected foods:',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1A1A1A),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -983,12 +1030,14 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
                     );
                   }).toList())
                 else
-                  const Center(
-                    child: Text(
-                      'Aucun aliment détecté',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Color(0xFF64748B),
+                  Center(
+                    child: Consumer<LocalizationService>(
+                      builder: (context, locService, child) => Text(
+                        locService.currentLanguageCode == 'fr' ? 'Aucun aliment détecté' : 'No food detected',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: Color(0xFF64748B),
+                        ),
                       ),
                     ),
                   ),
@@ -1034,12 +1083,14 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: const Text(
-                      'Ajouter tous les aliments',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.white,
+                    child: Consumer<LocalizationService>(
+                      builder: (context, locService, child) => Text(
+                        locService.currentLanguageCode == 'fr' ? 'Ajouter tous les aliments' : 'Add all foods',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                   ),
@@ -1074,12 +1125,14 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: const Text(
-                      'Reprendre une photo',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: Color(0xFF0B132B),
+                    child: Consumer<LocalizationService>(
+                      builder: (context, locService, child) => Text(
+                        locService.currentLanguageCode == 'fr' ? 'Reprendre une photo' : 'Take another photo',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF0B132B),
+                        ),
                       ),
                     ),
                   ),
@@ -1439,7 +1492,8 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
     });
     
     // Avancer les phases automatiquement
-    for (int i = 0; i < _loadingPhases.length; i++) {
+    final locService = Provider.of<LocalizationService>(context, listen: false);
+    for (int i = 0; i < _getLoadingPhases(locService.currentLanguageCode).length; i++) {
       if (mounted && isAnalyzing) {
         setState(() {
           _loadingPhase = i;

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'recipe_models.dart';
+import '../../services/localization_service.dart';
+import '../../services/translations.dart';
 
 class SimpleFilterModal extends StatefulWidget {
   final Map<String, Set<String>> initialFilters;
@@ -87,13 +90,18 @@ class _SimpleFilterModalState extends State<SimpleFilterModal> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Filtres',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1A1A),
-                  ),
+                Consumer<LocalizationService>(
+                  builder: (context, locService, child) {
+                    print('🔵 MODAL DEBUG: currentLanguageCode = ${locService.currentLanguageCode}');
+                    return Text(
+                      'filters'.tr(locService.currentLanguageCode),
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF1A1A1A),
+                      ),
+                    );
+                  },
                 ),
                 TextButton(
                   onPressed: () {
@@ -103,7 +111,7 @@ class _SimpleFilterModalState extends State<SimpleFilterModal> {
                       });
                     });
                   },
-                  child: const Text('Effacer tout'),
+                  child: const Text('Clear all'),
                 ),
               ],
             ),
@@ -205,12 +213,14 @@ class _SimpleFilterModalState extends State<SimpleFilterModal> {
                   ),
                   elevation: 0,
                 ),
-                child: Text(
-                  'Valider (${selectedFilters.values.fold(0, (sum, set) => sum + set.length)})',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
+                child: Consumer<LocalizationService>(
+                  builder: (context, locService, child) => Text(
+                    '${'apply_filters'.tr(locService.currentLanguageCode)} (${selectedFilters.values.fold(0, (sum, set) => sum + set.length)})',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),
