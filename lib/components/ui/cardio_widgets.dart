@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:provider/provider.dart';
 import 'custom_card.dart';
 import 'cardio_models.dart';
 import '../../services/cardio_service.dart';
+import '../../services/translations.dart';
+import '../../services/localization_service.dart';
 import 'cardio_cards.dart';
 
 // Section des statistiques hebdomadaires (connectée à Supabase)
@@ -47,67 +50,69 @@ class _WeeklyStatsSectionState extends State<WeeklyStatsSection> {
 
   @override
   Widget build(BuildContext context) {
-    return CustomCard(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(
-                  LucideIcons.calendar,
-                  size: 20,
-                  color: Color(0xFF0B132B),
-                ),
-                const SizedBox(width: 12),
-                const Text(
-                  'Cette semaine',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1A1A),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            
-            if (_loading)
-              const Center(child: CircularProgressIndicator())
-            else if (_stats != null)
+    return Consumer<LocalizationService>(
+      builder: (context, locService, _) => CustomCard(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               Row(
                 children: [
-                  Expanded(
-                    child: WeeklyStatCard(
-                      title: _stats!.distanceText,
-                      subtitle: 'Distance',
-                    ),
+                  const Icon(
+                    LucideIcons.calendar,
+                    size: 20,
+                    color: Color(0xFF0B132B),
                   ),
                   const SizedBox(width: 12),
-                  Expanded(
-                    child: WeeklyStatCard(
-                      title: _stats!.durationText,
-                      subtitle: 'Temps',
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: WeeklyStatCard(
-                      title: _stats!.caloriesText,
-                      subtitle: 'Calories',
+                  Text(
+                    'cardio_this_week'.tr(locService.currentLanguageCode),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1A1A1A),
                     ),
                   ),
                 ],
-              )
-            else
-              const Center(
-                child: Text(
-                  'Aucune donnée disponible',
-                  style: TextStyle(color: Color(0xFF64748B)),
-                ),
               ),
-          ],
+              const SizedBox(height: 16),
+              
+              if (_loading)
+                const Center(child: CircularProgressIndicator())
+              else if (_stats != null)
+                Row(
+                  children: [
+                    Expanded(
+                      child: WeeklyStatCard(
+                        title: _stats!.distanceText,
+                        subtitle: 'cardio_distance'.tr(locService.currentLanguageCode),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: WeeklyStatCard(
+                        title: _stats!.durationText,
+                        subtitle: 'cardio_time'.tr(locService.currentLanguageCode),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: WeeklyStatCard(
+                        title: _stats!.caloriesText,
+                        subtitle: 'cardio_calories'.tr(locService.currentLanguageCode),
+                      ),
+                    ),
+                  ],
+                )
+              else
+                Center(
+                  child: Text(
+                    'cardio_no_data_available'.tr(locService.currentLanguageCode),
+                    style: const TextStyle(color: Color(0xFF64748B)),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -139,7 +144,8 @@ class _ActivitySelectionSectionState extends State<ActivitySelectionSection> {
 
   Future<void> _loadActivities() async {
     try {
-      final activities = await CardioService.getCardioActivities(language: 'fr');
+      final locService = LocalizationService.instance;
+      final activities = await CardioService.getCardioActivities(language: locService.currentLanguageCode);
       setState(() {
         _activities = activities;
         _loading = false;
@@ -153,58 +159,60 @@ class _ActivitySelectionSectionState extends State<ActivitySelectionSection> {
 
   @override
   Widget build(BuildContext context) {
-    return CustomCard(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(
-                  LucideIcons.play,
-                  size: 20,
-                  color: Color(0xFF0B132B),
-                ),
-                const SizedBox(width: 12),
-                const Text(
-                  'Choisir une activité',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1A1A),
+    return Consumer<LocalizationService>(
+      builder: (context, locService, _) => CustomCard(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(
+                    LucideIcons.play,
+                    size: 20,
+                    color: Color(0xFF0B132B),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            
-            if (_loading)
-              const Center(child: CircularProgressIndicator())
-            else if (_activities.isEmpty)
-              const Center(
-                child: Text(
-                  'Aucune activité disponible',
-                  style: TextStyle(color: Color(0xFF64748B)),
-                ),
-              )
-            else
-              GridView.count(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: 2,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                childAspectRatio: 1.3,
-                children: _activities.map((activity) {
-                  return ActivityCard(
-                    icon: _getIconFromName(activity.iconName),
-                    title: activity.name,
-                    onTap: () => widget.onActivitySelected(activity.activityKey, activity.name),
-                  );
-                }).toList(),
+                  const SizedBox(width: 12),
+                  Text(
+                    'cardio_choose_activity'.tr(locService.currentLanguageCode),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1A1A1A),
+                    ),
+                  ),
+                ],
               ),
-          ],
+              const SizedBox(height: 16),
+              
+              if (_loading)
+                const Center(child: CircularProgressIndicator())
+              else if (_activities.isEmpty)
+                Center(
+                  child: Text(
+                    'cardio_no_activity_available'.tr(locService.currentLanguageCode),
+                    style: const TextStyle(color: Color(0xFF64748B)),
+                  ),
+                )
+              else
+                GridView.count(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  crossAxisCount: 2,
+                  mainAxisSpacing: 12,
+                  crossAxisSpacing: 12,
+                  childAspectRatio: 1.3,
+                  children: _activities.map((activity) {
+                    return ActivityCard(
+                      icon: _getIconFromName(activity.iconName),
+                      title: activity.name,
+                      onTap: () => widget.onActivitySelected(activity.activityKey, activity.name),
+                    );
+                  }).toList(),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -278,51 +286,53 @@ class _LastSessionSectionState extends State<LastSessionSection> {
 
   @override
   Widget build(BuildContext context) {
-    return CustomCard(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(
-                  LucideIcons.clock,
-                  size: 20,
-                  color: Color(0xFF0B132B),
-                ),
-                const SizedBox(width: 12),
-                const Text(
-                  'Dernière séance',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1A1A),
+    return Consumer<LocalizationService>(
+      builder: (context, locService, _) => CustomCard(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(
+                    LucideIcons.clock,
+                    size: 20,
+                    color: Color(0xFF0B132B),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'cardio_last_session'.tr(locService.currentLanguageCode),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1A1A1A),
+                    ),
+                  ),
+                ],
+              ),
+              
+              const SizedBox(height: 16),
+              
+              if (_loading)
+                const Center(child: CircularProgressIndicator())
+              else if (_lastSession != null)
+                _buildSessionContent(_lastSession!, locService)
+              else
+                Center(
+                  child: Text(
+                    'cardio_no_session_recorded'.tr(locService.currentLanguageCode),
+                    style: const TextStyle(color: Color(0xFF64748B)),
                   ),
                 ),
-              ],
-            ),
-            
-            const SizedBox(height: 16),
-            
-            if (_loading)
-              const Center(child: CircularProgressIndicator())
-            else if (_lastSession != null)
-              _buildSessionContent(_lastSession!)
-            else
-              const Center(
-                child: Text(
-                  'Aucune séance enregistrée',
-                  style: TextStyle(color: Color(0xFF64748B)),
-                ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildSessionContent(CompletedCardioSession session) {
+  Widget _buildSessionContent(CompletedCardioSession session, LocalizationService locService) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -367,12 +377,12 @@ class _LastSessionSectionState extends State<LastSessionSection> {
               Row(
                 children: [
                   Expanded(
-                    child: _buildMetric('Durée', session.durationText, LucideIcons.clock),
+                    child: _buildMetric('cardio_duration'.tr(locService.currentLanguageCode), session.durationText, LucideIcons.clock),
                   ),
                   if (session.distance != null && session.distance! > 0) ...[
                     const SizedBox(width: 16),
                     Expanded(
-                      child: _buildMetric('Distance', session.distanceText, LucideIcons.mapPin),
+                      child: _buildMetric('cardio_distance'.tr(locService.currentLanguageCode), session.distanceText, LucideIcons.mapPin),
                     ),
                   ],
                 ],
@@ -381,12 +391,12 @@ class _LastSessionSectionState extends State<LastSessionSection> {
               Row(
                 children: [
                   Expanded(
-                    child: _buildMetric('Calories', session.caloriesText, LucideIcons.flame),
+                    child: _buildMetric('cardio_calories'.tr(locService.currentLanguageCode), session.caloriesText, LucideIcons.flame),
                   ),
                   if (session.paceText.isNotEmpty) ...[
                     const SizedBox(width: 16),
                     Expanded(
-                      child: _buildMetric('Allure', session.paceText, LucideIcons.gauge),
+                      child: _buildMetric('cardio_pace'.tr(locService.currentLanguageCode), session.paceText, LucideIcons.gauge),
                     ),
                   ],
                 ],
@@ -457,72 +467,74 @@ class _WeekSessionsSectionState extends State<WeekSessionsSection> {
 
   @override
   Widget build(BuildContext context) {
-    return CustomCard(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(
-                  LucideIcons.activity,
-                  size: 20,
-                  color: Color(0xFF0B132B),
-                ),
-                const SizedBox(width: 12),
-                const Text(
-                  'Vos séances de la semaine',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1A1A),
+    return Consumer<LocalizationService>(
+      builder: (context, locService, _) => CustomCard(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(
+                    LucideIcons.activity,
+                    size: 20,
+                    color: Color(0xFF0B132B),
                   ),
-                ),
-              ],
-            ),
-            
-            const SizedBox(height: 16),
-            
-            if (_loading)
-              const Center(child: CircularProgressIndicator())
-            else if (_sessions.isEmpty)
-              const Text(
-                'Aucune séance cette semaine',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF64748B),
-                ),
-              )
-            else
-              // Liste des séances
-              ..._sessions.asMap().entries.map((entry) {
-                final index = entry.key;
-                final session = entry.value;
-                final isLast = index == _sessions.length - 1;
-                
-                return Column(
-                  children: [
-                    _buildWeekSessionItem(session),
-                    if (!isLast) ...[
-                      const SizedBox(height: 16),
-                      Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 16),
-                        height: 1,
-                        color: const Color(0xFFE2E8F0),
-                      ),
-                      const SizedBox(height: 16),
+                  const SizedBox(width: 12),
+                  Text(
+                    'cardio_week_sessions'.tr(locService.currentLanguageCode),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1A1A1A),
+                    ),
+                  ),
+                ],
+              ),
+              
+              const SizedBox(height: 16),
+              
+              if (_loading)
+                const Center(child: CircularProgressIndicator())
+              else if (_sessions.isEmpty)
+                Text(
+                  'cardio_no_session_this_week'.tr(locService.currentLanguageCode),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF64748B),
+                  ),
+                )
+              else
+                // Liste des séances
+                ..._sessions.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final session = entry.value;
+                  final isLast = index == _sessions.length - 1;
+                  
+                  return Column(
+                    children: [
+                      _buildWeekSessionItem(session, locService),
+                      if (!isLast) ...[
+                        const SizedBox(height: 16),
+                        Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 16),
+                          height: 1,
+                          color: const Color(0xFFE2E8F0),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
                     ],
-                  ],
-                );
-              }).toList(),
-          ],
+                  );
+                }).toList(),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildWeekSessionItem(CompletedCardioSession session) {
+  Widget _buildWeekSessionItem(CompletedCardioSession session, LocalizationService locService) {
     return Row(
       children: [
         // Petite icône simple sans encadré
@@ -564,7 +576,7 @@ class _WeekSessionsSectionState extends State<WeekSessionsSection> {
               const SizedBox(height: 4),
               // Jour de la semaine
               Text(
-                _getDayText(session.startTime),
+                _getDayText(session.startTime, locService),
                 style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
@@ -607,15 +619,15 @@ class _WeekSessionsSectionState extends State<WeekSessionsSection> {
     );
   }
 
-  String _getDayText(DateTime date) {
+  String _getDayText(DateTime date, LocalizationService locService) {
     final now = DateTime.now();
     final difference = now.difference(date).inDays;
     
-    if (difference == 0) return 'Aujourd\'hui';
-    if (difference == 1) return 'Hier';
+    if (difference == 0) return 'cardio_today'.tr(locService.currentLanguageCode);
+    if (difference == 1) return 'cardio_yesterday'.tr(locService.currentLanguageCode);
     
-    final weekDays = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
-    return weekDays[date.weekday - 1];
+    final weekDays = ['day_mon', 'day_tue', 'day_wed', 'day_thu', 'day_fri', 'day_sat', 'day_sun'];
+    return weekDays[date.weekday - 1].tr(locService.currentLanguageCode);
   }
 
   IconData _getActivityIcon(String activityType) {
@@ -649,64 +661,66 @@ class ActivityFormatsModal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(24),
-          topRight: Radius.circular(24),
+    return Consumer<LocalizationService>(
+      builder: (context, locService, _) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(24),
+            topRight: Radius.circular(24),
+          ),
         ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Handle
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE2E8F0),
-                  borderRadius: BorderRadius.circular(2),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Handle
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE2E8F0),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
-            ),
-            
-            const SizedBox(height: 24),
-            
-            const Text(
-              'Choisir un format de séance',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1A1A1A),
+              
+              const SizedBox(height: 24),
+              
+              Text(
+                'cardio_choose_session_format'.tr(locService.currentLanguageCode),
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1A1A1A),
+                ),
               ),
-            ),
-            
-            Text(
-              activityTitle,
-              style: const TextStyle(
-                fontSize: 16,
-                color: Color(0xFF64748B),
+              
+              Text(
+                activityTitle,
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: Color(0xFF64748B),
+                ),
               ),
-            ),
-            
-            const SizedBox(height: 24),
-            
-            // Formats pour cette activité
-            ...formats.map((format) => Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: ActivityFormatCard(
-                format: format,
-                onTap: () => onFormatSelected(format),
-              ),
-            )).toList(),
-            
-            const SizedBox(height: 24),
-          ],
+              
+              const SizedBox(height: 24),
+              
+              // Formats pour cette activité
+              ...formats.map((format) => Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: ActivityFormatCard(
+                  format: format,
+                  onTap: () => onFormatSelected(format),
+                ),
+              )).toList(),
+              
+              const SizedBox(height: 24),
+            ],
+          ),
         ),
       ),
     );
@@ -724,12 +738,51 @@ class ActivityConfigModal extends StatelessWidget {
     required this.onConfigSubmitted,
   });
 
+  String _getConfigTitle(String type, String languageCode) {
+    switch (type) {
+      case 'distance':
+        return 'cardio_distance_question'.tr(languageCode);
+      case 'duration':
+        return 'cardio_duration_question'.tr(languageCode);
+      case 'hiit':
+        return 'cardio_hiit_params'.tr(languageCode);
+      default:
+        return '';
+    }
+  }
+
+  String _getConfigHint(String type, String languageCode) {
+    switch (type) {
+      case 'distance':
+        return 'cardio_distance_hint'.tr(languageCode);
+      case 'duration':
+        return 'cardio_duration_hint'.tr(languageCode);
+      case 'hiit':
+        return 'cardio_hiit_hint'.tr(languageCode);
+      default:
+        return '';
+    }
+  }
+
+  String _getConfigUnit(String type, String languageCode) {
+    switch (type) {
+      case 'distance':
+        return 'cardio_km_unit'.tr(languageCode);
+      case 'duration':
+      case 'hiit':
+        return 'cardio_min_unit'.tr(languageCode);
+      default:
+        return '';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final TextEditingController controller = TextEditingController();
 
-    return Padding(
-      padding: EdgeInsets.only(
+    return Consumer<LocalizationService>(
+      builder: (context, locService, _) => Padding(
+        padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
       ),
       child: Container(
@@ -761,7 +814,7 @@ class ActivityConfigModal extends StatelessWidget {
               const SizedBox(height: 24),
               
               Text(
-                config.title,
+                _getConfigTitle(config.type, locService.currentLanguageCode),
                 style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -782,7 +835,7 @@ class ActivityConfigModal extends StatelessWidget {
                         FilteringTextInputFormatter.digitsOnly,
                       ],
                       decoration: InputDecoration(
-                        hintText: config.hint,
+                        hintText: _getConfigHint(config.type, locService.currentLanguageCode),
                         hintStyle: const TextStyle(color: Color(0xFF888888)),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -805,7 +858,7 @@ class ActivityConfigModal extends StatelessWidget {
                       border: Border.all(color: const Color(0xFFE2E8F0)),
                     ),
                     child: Text(
-                      config.unit,
+                      _getConfigUnit(config.type, locService.currentLanguageCode),
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
@@ -835,8 +888,8 @@ class ActivityConfigModal extends StatelessWidget {
                     ),
                     elevation: 0,
                   ),
-                  child: const Text(
-                    'Valider',
+                  child: Text(
+                    'cardio_validate'.tr(locService.currentLanguageCode),
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -851,6 +904,7 @@ class ActivityConfigModal extends StatelessWidget {
           ),
         ),
       ),
+    ),
     );
   }
 }
@@ -872,20 +926,21 @@ class RecordingChoiceModal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(24),
-          topRight: Radius.circular(24),
+    return Consumer<LocalizationService>(
+      builder: (context, locService, _) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(24),
+            topRight: Radius.circular(24),
+          ),
         ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
             // Handle
             Center(
               child: Container(
@@ -901,7 +956,7 @@ class RecordingChoiceModal extends StatelessWidget {
             const SizedBox(height: 24),
             
             Text(
-              'Comment veux-tu enregistrer\nta séance ?',
+              'cardio_how_record_session'.tr(locService.currentLanguageCode),
               style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -933,14 +988,14 @@ class RecordingChoiceModal extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(LucideIcons.play, size: 20, color: Colors.white),
                       SizedBox(width: 8),
                       Text(
-                        'Démarrer la séance',
-                        style: TextStyle(
+                        'cardio_start_session'.tr(locService.currentLanguageCode),
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
                           color: Colors.white,
@@ -966,13 +1021,13 @@ class RecordingChoiceModal extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: const Row(
+                child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(LucideIcons.pencil, size: 20),
                     SizedBox(width: 8),
                     Text(
-                      'Déclarer la séance',
+                      'cardio_declare_session'.tr(locService.currentLanguageCode),
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
@@ -987,6 +1042,7 @@ class RecordingChoiceModal extends StatelessWidget {
           ],
         ),
       ),
+    ),
     );
   }
 }
@@ -1002,27 +1058,29 @@ class HistoryAccessWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: TextButton(
-        onPressed: onTap,
-        child: const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              LucideIcons.calendar,
-              size: 16,
-              color: Color(0xFF0B132B),
-            ),
-            SizedBox(width: 8),
-            Text(
-              'Voir tout mon journal cardio',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
+    return Consumer<LocalizationService>(
+      builder: (context, locService, _) => Center(
+        child: TextButton(
+          onPressed: onTap,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                LucideIcons.calendar,
+                size: 16,
                 color: Color(0xFF0B132B),
               ),
-            ),
-          ],
+              const SizedBox(width: 8),
+              Text(
+                'cardio_view_journal'.tr(locService.currentLanguageCode),
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF0B132B),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

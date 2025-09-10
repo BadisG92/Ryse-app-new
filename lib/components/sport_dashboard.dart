@@ -14,6 +14,9 @@ import 'ui/cardio_models.dart';
 import 'ui/chunked_progress_bar.dart';
 import '../widgets/sport/sport_calendar_view.dart';
 import 'shared/workout_actions.dart';
+import '../services/translations.dart';
+import '../services/localization_service.dart';
+import 'package:provider/provider.dart';
 
 class SportDashboard extends StatefulWidget {
   const SportDashboard({super.key});
@@ -138,15 +141,16 @@ class _SportDashboardState extends State<SportDashboard> with TickerProviderStat
       );
     }
 
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFFF8FAFC), Color(0xFFF1F5F9)],
+    return Consumer<LocalizationService>(
+      builder: (context, locService, _) => Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFFF8FAFC), Color(0xFFF1F5F9)],
+          ),
         ),
-      ),
-      child: SingleChildScrollView(
+        child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [            
@@ -159,7 +163,7 @@ class _SportDashboardState extends State<SportDashboard> with TickerProviderStat
                 ),
               )
             else if (_dashboardData != null)
-              _buildWeeklyCalories(_dashboardData!)
+              _buildWeeklyCalories(_dashboardData!, locService)
             else
               const Center(
                 child: Padding(
@@ -171,32 +175,33 @@ class _SportDashboardState extends State<SportDashboard> with TickerProviderStat
             const SizedBox(height: 16),
             
             // 2. Bloc "Progression" (ex-Résumé de la semaine)
-            _buildWeeklySummary(),
+            _buildWeeklySummary(locService),
             
             const SizedBox(height: 16),
             
             // 3. Bloc "Activité du jour"
-            _buildDailyActivities(),
+            _buildDailyActivities(locService),
             
             const SizedBox(height: 16),
             
             // 4. Bloc "Séances récentes"
-            _buildRecentWorkouts(),
+            _buildRecentWorkouts(locService),
             
             const SizedBox(height: 16),
             
             // 5. Bloc "Démarrer une activité"
-            _buildQuickStart(),
+            _buildQuickStart(locService),
             
             // Padding bottom pour éviter la coupure
             const SizedBox(height: 100),
           ],
         ),
       ),
+    ),
     );
   }
 
-  Widget _buildWeeklyCalories(SportDashboardData data) {
+  Widget _buildWeeklyCalories(SportDashboardData data, LocalizationService locService) {
     // Calculs pour les nouveaux KPIs
     final now = DateTime.now();
     final dayOfWeek = now.weekday; // 1 = Lundi, 7 = Dimanche
@@ -263,7 +268,7 @@ class _SportDashboardState extends State<SportDashboard> with TickerProviderStat
                           _buildCaloriesWithUnit(animatedCalories),
                           const SizedBox(height: 4),
                           Text(
-                            'Brûlées',
+                            'sport_burned'.tr(locService.currentLanguageCode),
                             style: TextStyle(
                               fontSize: 11,
                               color: Colors.white.withOpacity(0.8),
@@ -281,15 +286,15 @@ class _SportDashboardState extends State<SportDashboard> with TickerProviderStat
                 children: [
                   // KPI gauche
                   Expanded(
-                    child: _buildCaloriesStat('Moyenne / jour', dailyAverage, const Color(0xFF0B132B)),
+                    child: _buildCaloriesStat('sport_average_per_day'.tr(locService.currentLanguageCode), dailyAverage, const Color(0xFF0B132B)),
                   ),
                   // KPI central (aligné avec le cercle)
                   Expanded(
-                    child: _buildCaloriesStat('Paliers franchis', completedChunks, const Color(0xFF1C2951)),
+                    child: _buildCaloriesStat('sport_milestones_reached'.tr(locService.currentLanguageCode), completedChunks, const Color(0xFF1C2951)),
                   ),
                   // KPI droite
                   Expanded(
-                    child: _buildCaloriesStat('Séances', data.totalSessions, const Color(0xFF888888)),
+                    child: _buildCaloriesStat('sport_sessions'.tr(locService.currentLanguageCode), data.totalSessions, const Color(0xFF888888)),
                   ),
                 ],
               ),
@@ -313,8 +318,8 @@ class _SportDashboardState extends State<SportDashboard> with TickerProviderStat
               // Texte sous la barre (même style)
               Text(
                 kcalToNext > 0 
-                    ? 'Encore $kcalToNext kcal pour atteindre ton prochain palier'
-                    : 'Palier atteint ! Félicitations 🎉',
+                    ? 'sport_kcal_to_next_milestone'.tr(locService.currentLanguageCode).replaceAll('{kcal}', kcalToNext.toString())
+                    : 'sport_milestone_reached'.tr(locService.currentLanguageCode),
                 style: const TextStyle(
                   fontSize: 12,
                   color: Color(0xFF888888),
@@ -330,13 +335,21 @@ class _SportDashboardState extends State<SportDashboard> with TickerProviderStat
   Widget _buildCaloriesStat(String label, int value, Color color) {
     return Column(
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12,
-            color: Color(0xFF888888),
+        // Container avec hauteur fixe pour aligner les valeurs
+        SizedBox(
+          height: 32, // Hauteur fixe pour 2 lignes de texte
+          child: Center(
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Color(0xFF888888),
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 2, // Permet 2 lignes maximum
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
-          textAlign: TextAlign.center, // Centrage du texte
         ),
         const SizedBox(height: 4),
         Text(
@@ -346,7 +359,7 @@ class _SportDashboardState extends State<SportDashboard> with TickerProviderStat
             fontWeight: FontWeight.bold,
             color: color,
           ),
-          textAlign: TextAlign.center, // Centrage du texte
+          textAlign: TextAlign.center,
         ),
       ],
     );
@@ -354,7 +367,7 @@ class _SportDashboardState extends State<SportDashboard> with TickerProviderStat
 
 
 
-  Widget _buildRecentWorkouts() {
+  Widget _buildRecentWorkouts(LocalizationService locService) {
     if (_dashboardData == null) {
       return CustomCard(
         child: Padding(
@@ -401,17 +414,17 @@ class _SportDashboardState extends State<SportDashboard> with TickerProviderStat
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Row(
+                Row(
                   children: [
-                    Icon(
+                    const Icon(
                       LucideIcons.activity,
                       size: 20,
                       color: Color(0xFF0B132B),
                     ),
-                    SizedBox(width: 12),
+                    const SizedBox(width: 12),
                     Text(
-                      'Séances récentes',
-                      style: TextStyle(
+                      'sport_recent_sessions'.tr(locService.currentLanguageCode),
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                         color: Color(0xFF1A1A1A),
@@ -494,10 +507,10 @@ class _SportDashboardState extends State<SportDashboard> with TickerProviderStat
                         ),
                       ),
                       const SizedBox(width: 6),
-                      const Flexible(
+                      Flexible(
                         child: Text(
-                          'Musculation',
-                          style: TextStyle(
+                          'sport_muscle_training'.tr(locService.currentLanguageCode),
+                          style: const TextStyle(
                             fontSize: 11,
                             color: Color(0xFF888888),
                           ),
@@ -531,10 +544,10 @@ class _SportDashboardState extends State<SportDashboard> with TickerProviderStat
                         ),
                       ),
                       const SizedBox(width: 6),
-                      const Flexible(
+                      Flexible(
                         child: Text(
-                          'Cardio',
-                          style: TextStyle(
+                          'sport_cardio'.tr(locService.currentLanguageCode),
+                          style: const TextStyle(
                             fontSize: 11,
                             color: Color(0xFF888888),
                           ),
@@ -559,10 +572,10 @@ class _SportDashboardState extends State<SportDashboard> with TickerProviderStat
                         ),
                       ),
                       const SizedBox(width: 6),
-                      const Flexible(
+                      Flexible(
                         child: Text(
-                          'Repos',
-                          style: TextStyle(
+                          'sport_rest_day'.tr(locService.currentLanguageCode),
+                          style: const TextStyle(
                             fontSize: 11,
                             color: Color(0xFF888888),
                           ),
@@ -580,7 +593,7 @@ class _SportDashboardState extends State<SportDashboard> with TickerProviderStat
     );
   }
 
-  Widget _buildWeeklySummary() {
+  Widget _buildWeeklySummary(LocalizationService locService) {
     if (_dashboardData == null) {
       return const CustomCard(
         child: Padding(
@@ -606,8 +619,8 @@ class _SportDashboardState extends State<SportDashboard> with TickerProviderStat
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Progression',
+            Text(
+              'sport_progress'.tr(locService.currentLanguageCode),
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -636,8 +649,8 @@ class _SportDashboardState extends State<SportDashboard> with TickerProviderStat
                             color: Color(0xFF0B132B),
                           ),
                         ),
-                        const Text(
-                          'Séances cette semaine',
+                        Text(
+                          'sport_sessions_this_week'.tr(locService.currentLanguageCode),
                           style: TextStyle(
                             fontSize: 11,
                             color: Color(0xFF64748B),
@@ -676,8 +689,8 @@ class _SportDashboardState extends State<SportDashboard> with TickerProviderStat
                             ),
                           ],
                         ),
-                        const Text(
-                          'Semaines consécutives',
+                        Text(
+                          'sport_consecutive_weeks'.tr(locService.currentLanguageCode),
                           style: TextStyle(
                             fontSize: 11,
                             color: Color(0xFF64748B),
@@ -701,8 +714,8 @@ class _SportDashboardState extends State<SportDashboard> with TickerProviderStat
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Temps total cette semaine',
+                  Text(
+                    'sport_total_time_week'.tr(locService.currentLanguageCode),
                     style: TextStyle(
                       fontSize: 14,
                       color: Color(0xFF64748B),
@@ -725,16 +738,16 @@ class _SportDashboardState extends State<SportDashboard> with TickerProviderStat
     );
   }
 
-  Widget _buildQuickStart() {
+  Widget _buildQuickStart(LocalizationService locService) {
     final List<Map<String, dynamic>> actions = [
       {
         'icon': LucideIcons.activity,
-        'label': 'Cardio',
+        'label': 'sport_cardio'.tr(locService.currentLanguageCode),
         'colors': [const Color(0xFF0B132B).withOpacity(0.8), const Color(0xFF1C2951).withOpacity(0.8)]
       },
       {
         'icon': LucideIcons.dumbbell,
-        'label': 'Musculation',
+        'label': 'sport_muscle_training'.tr(locService.currentLanguageCode),
         'colors': [const Color(0xFF0B132B), const Color(0xFF1C2951)]
       },
     ];
@@ -745,9 +758,9 @@ class _SportDashboardState extends State<SportDashboard> with TickerProviderStat
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Démarrer une activité',
-              style: TextStyle(
+            Text(
+              'sport_start_activity'.tr(locService.currentLanguageCode),
+              style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
                 color: Color(0xFF1A1A1A),
@@ -813,7 +826,7 @@ class _SportDashboardState extends State<SportDashboard> with TickerProviderStat
     );
   }
 
-  Widget _buildDailyActivities() {
+  Widget _buildDailyActivities(LocalizationService locService) {
     if (_dashboardData == null) {
     return CustomCard(
       child: Padding(
@@ -821,16 +834,16 @@ class _SportDashboardState extends State<SportDashboard> with TickerProviderStat
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Row(
+            Row(
               children: [
-                Icon(
+                const Icon(
                   LucideIcons.trendingUp,
                   size: 16,
                   color: Color(0xFF0B132B),
                 ),
-                SizedBox(width: 8),
+                const SizedBox(width: 8),
                 Text(
-                  'Activités du jour',
+                  'sport_todays_activities'.tr(locService.currentLanguageCode),
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
@@ -879,9 +892,9 @@ class _SportDashboardState extends State<SportDashboard> with TickerProviderStat
                       ],
                     ),
               const SizedBox(height: 16),
-              const Text(
-                'Aucune activité aujourd\'hui',
-                          style: TextStyle(
+              Text(
+                'sport_no_activity_today'.tr(locService.currentLanguageCode),
+                          style: const TextStyle(
                             fontSize: 14,
                   color: Color(0xFF64748B),
                           ),
@@ -898,16 +911,16 @@ class _SportDashboardState extends State<SportDashboard> with TickerProviderStat
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Row(
+            Row(
               children: [
-                Icon(
+                const Icon(
                   LucideIcons.trendingUp,
                   size: 16,
                   color: Color(0xFF0B132B),
                 ),
-                SizedBox(width: 8),
+                const SizedBox(width: 8),
                 Text(
-                  'Activités du jour',
+                  'sport_todays_activities'.tr(locService.currentLanguageCode),
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,

@@ -1132,6 +1132,422 @@ class AppTranslations {
       'fr': 'Dim',
       'en': 'Sun',
     },
+    // Sport section translations
+    'sport_dashboard_title': {
+      'fr': 'Tableau de bord',
+      'en': 'Dashboard',
+    },
+    'sport_objectives_text': {
+      'fr': 'objectifs',
+      'en': 'goals',
+    },
+    'sport_days_text': {
+      'fr': 'jours',
+      'en': 'days',
+    },
+    'sport_burned': {
+      'fr': 'Brûlées',
+      'en': 'Burned',
+    },
+    'sport_average_per_day': {
+      'fr': 'Moyenne / jour',
+      'en': 'Average / day',
+    },
+    'sport_milestones_reached': {
+      'fr': 'Paliers franchis',
+      'en': 'Milestones reached',
+    },
+    'sport_sessions': {
+      'fr': 'Séances',
+      'en': 'Sessions',
+    },
+    'sport_progress': {
+      'fr': 'Progression',
+      'en': 'Progress',
+    },
+    'sport_sessions_this_week': {
+      'fr': 'Séances cette semaine',
+      'en': 'Sessions this week',
+    },
+    'sport_consecutive_weeks': {
+      'fr': 'Semaines consécutives',
+      'en': 'Consecutive weeks',
+    },
+    'sport_total_time_week': {
+      'fr': 'Temps total cette semaine',
+      'en': 'Total time this week',
+    },
+    'sport_recent_sessions': {
+      'fr': 'Séances récentes',
+      'en': 'Recent sessions',
+    },
+    'sport_todays_activities': {
+      'fr': 'Activités du jour',
+      'en': 'Today\'s activities',
+    },
+    'sport_start_activity': {
+      'fr': 'Démarrer une activité',
+      'en': 'Start an activity',
+    },
+    'sport_no_activity_today': {
+      'fr': 'Aucune activité aujourd\'hui',
+      'en': 'No activity today',
+    },
+    'sport_rest_day': {
+      'fr': 'Repos',
+      'en': 'Rest',
+    },
+    'sport_kcal_to_next_milestone': {
+      'fr': 'Encore {kcal} kcal pour atteindre ton prochain palier',
+      'en': 'Still {kcal} kcal to reach your next milestone',
+    },
+    'sport_milestone_reached': {
+      'fr': 'Palier atteint ! Félicitations 🎉',
+      'en': 'Milestone reached! Congratulations 🎉',
+    },
+    'sport_muscle_training': {
+      'fr': 'Musculation',
+      'en': 'Workout',
+    },
+    'sport_cardio': {
+      'fr': 'Cardio',
+      'en': 'Cardio',
+    },
+    'sport_choose_activity': {
+      'fr': 'Choisissez votre activité cardio',
+      'en': 'Choose your cardio activity',
+    },
+    'sport_choose_objective': {
+      'fr': 'Choisissez votre objectif',
+      'en': 'Choose your objective',
+    },
+    'sport_free_session': {
+      'fr': 'Séance libre',
+      'en': 'Free session',
+    },
+    'sport_no_specific_goal': {
+      'fr': 'Pas d\'objectif spécifique',
+      'en': 'No specific goal',
+    },
+    'sport_time_objective': {
+      'fr': 'Objectif temps',
+      'en': 'Time objective',
+    },
+    'sport_30_minutes': {
+      'fr': '30 minutes',
+      'en': '30 minutes',
+    },
+    'sport_distance_objective': {
+      'fr': 'Objectif distance',
+      'en': 'Distance objective',
+    },
+    'sport_5_km': {
+      'fr': '5 km',
+      'en': '5 km',
+    },
+    'sport_choose_format': {
+      'fr': 'Choisissez votre format',
+      'en': 'Choose your format',
+    },
+    'sport_hiit': {
+      'fr': 'HIIT',
+      'en': 'HIIT',
+    },
+    'sport_choose_hiit_workout': {
+      'fr': 'Choisissez votre workout HIIT',
+      'en': 'Choose your HIIT workout',
+    },
+    'sport_track_session': {
+      'fr': 'Tracker ma séance',
+      'en': 'Track my session',
+    },
+    'sport_declare_session': {
+      'fr': 'Déclarer ma séance',
+      'en': 'Log my session',
+    },
+    'sport_beginner_hiit': {
+      'fr': 'HIIT débutant',
+      'en': 'Beginner HIIT',
+    },
+    'sport_intense_hiit': {
+      'fr': 'HIIT intense',
+      'en': 'Intense HIIT',
+    },
+    'sport_tabata': {
+      'fr': 'Tabata',
+      'en': 'Tabata',
+    },
+    'sport_15min_hiit_desc': {
+      'fr': '15 min - 30s effort / 30s repos',
+      'en': '15 min - 30s work / 30s rest',
+    },
+    'sport_20min_hiit_desc': {
+      'fr': '20 min - 45s effort / 15s repos',
+      'en': '20 min - 45s work / 15s rest',
+    },
+    'sport_4min_tabata_desc': {
+      'fr': '4 min - 20s effort / 10s repos',
+      'en': '4 min - 20s work / 10s rest',
+    },
+    'sport_loading_data_error': {
+      'fr': 'Erreur de chargement des données',
+      'en': 'Data loading error',
+    },
+    // Sport calendar translations
+    'sport_calendar_title': {
+      'fr': 'Calendrier sportif',
+      'en': 'Sports Calendar',
+    },
+    'sport_calendar_subtitle': {
+      'fr': 'Suivi de vos activités sportives',
+      'en': 'Track your sports activities',
+    },
+    'sport_active_days': {
+      'fr': 'Jours actifs',
+      'en': 'Active days',
+    },
+    'sport_legend': {
+      'fr': 'Légende',
+      'en': 'Legend',
+    },
+    'sport_rest': {
+      'fr': 'Repos',
+      'en': 'Rest',
+    },
+    // Months for calendar
+    'month_january': {
+      'fr': 'Janvier',
+      'en': 'January',
+    },
+    'month_february': {
+      'fr': 'Février',
+      'en': 'February',
+    },
+    'month_march': {
+      'fr': 'Mars',
+      'en': 'March',
+    },
+    'month_april': {
+      'fr': 'Avril',
+      'en': 'April',
+    },
+    'month_may': {
+      'fr': 'Mai',
+      'en': 'May',
+    },
+    'month_june': {
+      'fr': 'Juin',
+      'en': 'June',
+    },
+    'month_july': {
+      'fr': 'Juillet',
+      'en': 'July',
+    },
+    'month_august': {
+      'fr': 'Août',
+      'en': 'August',
+    },
+    'month_september': {
+      'fr': 'Septembre',
+      'en': 'September',
+    },
+    'month_october': {
+      'fr': 'Octobre',
+      'en': 'October',
+    },
+    'month_november': {
+      'fr': 'Novembre',
+      'en': 'November',
+    },
+    'month_december': {
+      'fr': 'Décembre',
+      'en': 'December',
+    },
+    // Days of week (full names)
+    'day_monday': {
+      'fr': 'Lundi',
+      'en': 'Monday',
+    },
+    'day_tuesday': {
+      'fr': 'Mardi',
+      'en': 'Tuesday',
+    },
+    'day_wednesday': {
+      'fr': 'Mercredi',
+      'en': 'Wednesday',
+    },
+    'day_thursday': {
+      'fr': 'Jeudi',
+      'en': 'Thursday',
+    },
+    'day_friday': {
+      'fr': 'Vendredi',
+      'en': 'Friday',
+    },
+    'day_saturday': {
+      'fr': 'Samedi',
+      'en': 'Saturday',
+    },
+    'day_sunday': {
+      'fr': 'Dimanche',
+      'en': 'Sunday',
+    },
+    // Short day abbreviations for calendar
+    'day_mon': {
+      'fr': 'Lun',
+      'en': 'Mon',
+    },
+    'day_tue': {
+      'fr': 'Mar',
+      'en': 'Tue',
+    },
+    'day_wed': {
+      'fr': 'Mer',
+      'en': 'Wed',
+    },
+    'day_thu': {
+      'fr': 'Jeu',
+      'en': 'Thu',
+    },
+    'day_fri': {
+      'fr': 'Ven',
+      'en': 'Fri',
+    },
+    'day_sat': {
+      'fr': 'Sam',
+      'en': 'Sat',
+    },
+    'day_sun': {
+      'fr': 'Dim',
+      'en': 'Sun',
+    },
+    // Cardio translations
+    'cardio_this_week': {
+      'fr': 'Cette semaine',
+      'en': 'This week',
+    },
+    'cardio_distance': {
+      'fr': 'Distance',
+      'en': 'Distance',
+    },
+    'cardio_time': {
+      'fr': 'Temps',
+      'en': 'Time',
+    },
+    'cardio_calories': {
+      'fr': 'Calories',
+      'en': 'Calories',
+    },
+    'cardio_no_data_available': {
+      'fr': 'Aucune donnée disponible',
+      'en': 'No data available',
+    },
+    'cardio_choose_activity': {
+      'fr': 'Choisir une activité',
+      'en': 'Choose an activity',
+    },
+    'cardio_no_activity_available': {
+      'fr': 'Aucune activité disponible',
+      'en': 'No activity available',
+    },
+    'cardio_last_session': {
+      'fr': 'Dernière séance',
+      'en': 'Last session',
+    },
+    'cardio_no_session_recorded': {
+      'fr': 'Aucune séance enregistrée',
+      'en': 'No session recorded',
+    },
+    'cardio_duration': {
+      'fr': 'Durée',
+      'en': 'Duration',
+    },
+    'cardio_pace': {
+      'fr': 'Allure',
+      'en': 'Pace',
+    },
+    'cardio_week_sessions': {
+      'fr': 'Vos séances de la semaine',
+      'en': 'Your sessions this week',
+    },
+    'cardio_no_session_this_week': {
+      'fr': 'Aucune séance cette semaine',
+      'en': 'No sessions this week',
+    },
+    'cardio_view_journal': {
+      'fr': 'Voir tout mon journal cardio',
+      'en': 'View my full cardio journal',
+    },
+    'cardio_today': {
+      'fr': 'Aujourd\'hui',
+      'en': 'Today',
+    },
+    'cardio_yesterday': {
+      'fr': 'Hier',
+      'en': 'Yesterday',
+    },
+    'cardio_days_ago': {
+      'fr': 'Il y a {count} jours',
+      'en': '{count} days ago',
+    },
+    'cardio_weeks_ago': {
+      'fr': 'Il y a {count} semaine{plural}',
+      'en': '{count} week{plural} ago',
+    },
+    // Cardio modals
+    'cardio_choose_session_format': {
+      'fr': 'Choisir un format de séance',
+      'en': 'Choose a session format',
+    },
+    'cardio_how_record_session': {
+      'fr': 'Comment veux-tu enregistrer\nta séance ?',
+      'en': 'How do you want to record\nyour session?',
+    },
+    'cardio_start_session': {
+      'fr': 'Démarrer la séance',
+      'en': 'Start session',
+    },
+    'cardio_declare_session': {
+      'fr': 'Déclarer la séance',
+      'en': 'Declare session',
+    },
+    'cardio_validate': {
+      'fr': 'Valider',
+      'en': 'Validate',
+    },
+    // Activity configs
+    'cardio_distance_question': {
+      'fr': 'Quelle distance veux-tu parcourir ?',
+      'en': 'What distance do you want to cover?',
+    },
+    'cardio_duration_question': {
+      'fr': 'Combien de temps veux-tu t\'entraîner ?',
+      'en': 'How long do you want to train?',
+    },
+    'cardio_hiit_params': {
+      'fr': 'Paramètres de ton HIIT',
+      'en': 'Your HIIT parameters',
+    },
+    'cardio_distance_hint': {
+      'fr': 'Ex: 5',
+      'en': 'Ex: 5',
+    },
+    'cardio_duration_hint': {
+      'fr': 'Ex: 30',
+      'en': 'Ex: 30',
+    },
+    'cardio_hiit_hint': {
+      'fr': 'Durée totale en minutes',
+      'en': 'Total duration in minutes',
+    },
+    'cardio_km_unit': {
+      'fr': 'km',
+      'en': 'km',
+    },
+    'cardio_min_unit': {
+      'fr': 'min',
+      'en': 'min',
+    },
   };
 
   static String get(String key, String languageCode) {
@@ -1139,6 +1555,7 @@ class AppTranslations {
     if (translations == null) {
       return key; // Retourne la clé si pas de traduction trouvée
     }
+    
     
     return translations[languageCode] ?? translations['fr'] ?? key;
   }

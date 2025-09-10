@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:provider/provider.dart';
 import 'ui/cardio_models.dart';
 import 'ui/cardio_cards.dart';
 import 'ui/cardio_widgets.dart';
@@ -9,6 +10,8 @@ import '../screens/hiit_session_screen.dart';
 import '../screens/hiit_config_screen.dart';
 import '../screens/cardio_tracking_screen.dart';
 import '../screens/manual_cardio_entry_screen.dart';
+import '../services/translations.dart';
+import '../services/localization_service.dart';
 
 class SportCardioHybrid extends StatelessWidget {
   const SportCardioHybrid({super.key});

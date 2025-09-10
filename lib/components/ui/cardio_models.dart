@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import '../../services/translations.dart';
+import '../../services/localization_service.dart';
 
 // Modèle de session cardio
 class CardioSession {
@@ -58,18 +60,26 @@ class CardioSession {
 
   // Calcule le temps écoulé depuis la session
   String get timeAgo {
+    final locService = LocalizationService.instance;
+    return getTimeAgo(locService.currentLanguageCode);
+  }
+
+  String getTimeAgo(String languageCode) {
     final now = DateTime.now();
     final difference = now.difference(date);
 
     if (difference.inDays == 0) {
-      return 'Aujourd\'hui';
+      return 'cardio_today'.tr(languageCode);
     } else if (difference.inDays == 1) {
-      return 'Hier';
+      return 'cardio_yesterday'.tr(languageCode);
     } else if (difference.inDays < 7) {
-      return 'Il y a ${difference.inDays} jours';
+      return 'cardio_days_ago'.tr(languageCode).replaceAll('{count}', '${difference.inDays}');
     } else {
       final weeks = (difference.inDays / 7).floor();
-      return 'Il y a $weeks semaine${weeks > 1 ? 's' : ''}';
+      final plural = weeks > 1 ? 's' : '';
+      return 'cardio_weeks_ago'.tr(languageCode)
+          .replaceAll('{count}', '$weeks')
+          .replaceAll('{plural}', plural);
     }
   }
 

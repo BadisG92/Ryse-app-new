@@ -9,6 +9,9 @@ import '../services/streak_service.dart';
 import '../services/header_cache_service.dart';
 import '../providers/goals_notifier.dart';
 import 'ui/language_switch_buttons.dart';
+import '../services/translations.dart';
+import '../services/localization_service.dart';
+import 'package:provider/provider.dart';
 
 class SportSection extends StatefulWidget {
   const SportSection({super.key});
@@ -27,10 +30,14 @@ class _SportSectionState extends State<SportSection>
   bool _loadingObjectives = true;
   int _currentStreak = 0;
   bool _loadingStreak = true;
-  String get _objectivesText => _loadingObjectives ? '...' : '$_completedGoals/$_totalGoals objectifs';
-  String get _streakText => _loadingStreak ? '...' : '$_currentStreak jours';
+  String _getObjectivesText(String languageCode) => _loadingObjectives ? '...' : '$_completedGoals/$_totalGoals ${'sport_objectives_text'.tr(languageCode)}';
+  String _getStreakText(String languageCode) => _loadingStreak ? '...' : '$_currentStreak ${'sport_days_text'.tr(languageCode)}';
 
-  final List<String> _pageNames = ['Tableau de bord', 'Cardio', 'Musculation'];
+  List<String> _getPageNames(String languageCode) => [
+    'sport_dashboard_title'.tr(languageCode),
+    'sport_cardio'.tr(languageCode),
+    'sport_muscle_training'.tr(languageCode)
+  ];
   final List<IconData> _pageIcons = [
     LucideIcons.activity,
     LucideIcons.activity,
@@ -172,7 +179,10 @@ class _SportSectionState extends State<SportSection>
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _buildBannerItem(LucideIcons.flame, _streakText),
+                Consumer<LocalizationService>(
+                  builder: (context, locService, _) => 
+                    _buildBannerItem(LucideIcons.flame, _getStreakText(locService.currentLanguageCode)),
+                ),
                 _buildBannerSeparator(),
                 ValueListenableBuilder<GoalsSummary>(
                   valueListenable: GoalsNotifier.instance,
@@ -221,17 +231,19 @@ class _SportSectionState extends State<SportSection>
                                 ),
                                 const SizedBox(width: 6),
                                 Flexible(
-                                  child: Text(
-                                    _pageNames[index],
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w500,
-                                      color: isSelected 
-                                          ? const Color(0xFF0B132B)
-                                          : const Color(0xFF888888),
+                                  child: Consumer<LocalizationService>(
+                                    builder: (context, locService, _) => Text(
+                                      _getPageNames(locService.currentLanguageCode)[index],
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                        color: isSelected 
+                                            ? const Color(0xFF0B132B)
+                                            : const Color(0xFF888888),
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                      textAlign: TextAlign.center,
                                     ),
-                                    overflow: TextOverflow.ellipsis,
-                                    textAlign: TextAlign.center,
                                   ),
                                 ),
                               ],
