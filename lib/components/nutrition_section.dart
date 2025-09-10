@@ -12,6 +12,7 @@ import '../services/localization_service.dart';
 import '../services/translations.dart';
 import '../providers/goals_notifier.dart';
 import 'ui/language_switch_buttons.dart';
+import 'ui/refresh_wrapper.dart';
 
 class NutritionSection extends StatefulWidget {
   const NutritionSection({super.key});
@@ -122,6 +123,22 @@ class _NutritionSectionState extends State<NutritionSection>
     );
   }
 
+  Future<void> _onRefresh() async {
+    try {
+      // Recharger les données de la section nutrition
+      await Future.wait([
+        _loadObjectives(),
+        _loadStreak(),
+      ]);
+      
+      // Vider le cache et forcer le rafraîchissement (méthodes void)
+      HeaderCacheService.clearCache();
+      DashboardService.refreshGoalsNotifier();
+    } catch (e) {
+      print('Erreur lors du rafraîchissement de la nutrition: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -134,16 +151,19 @@ class _NutritionSectionState extends State<NutritionSection>
                 // Header avec titre et indicateurs de page
                 _buildHeader(),
                 
-                // Contenu principal avec PageView
+                // Contenu principal avec PageView et RefreshIndicator
                 Expanded(
-                  child: PageView(
-                    controller: _pageController,
-                    onPageChanged: _onPageChanged,
-                    children: const [
-                      NutritionDashboardHybrid(),
-                      NutritionJournalHybrid(),
-                      NutritionRecipesHybrid(),
-                    ],
+                  child: RefreshWrapper(
+                    onRefresh: _onRefresh,
+                    child: PageView(
+                      controller: _pageController,
+                      onPageChanged: _onPageChanged,
+                      children: const [
+                        NutritionDashboardHybrid(),
+                        NutritionJournalHybrid(),
+                        NutritionRecipesHybrid(),
+                      ],
+                    ),
                   ),
                 ),
               ],

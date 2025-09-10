@@ -11,6 +11,7 @@ import '../services/header_cache_service.dart';
 import '../services/weight_service.dart';
 import '../screens/weight_evolution_screen.dart';
 import '../providers/goals_notifier.dart';
+import '../providers/weight_notifier.dart';
 import '../services/translations.dart';
 import '../services/localization_service.dart';
 
@@ -44,6 +45,21 @@ class _GlobalProgressState extends State<GlobalProgress> {
     _loadProgressData();
     // Forcer la mise à jour du compteur d'objectifs
     DashboardService.refreshGoalsNotifier();
+    
+    // Écouter les changements de poids
+    WeightNotifier.instance.addListener(_onWeightChanged);
+  }
+  
+  @override
+  void dispose() {
+    // Arrêter d'écouter les changements
+    WeightNotifier.instance.removeListener(_onWeightChanged);
+    super.dispose();
+  }
+  
+  void _onWeightChanged() {
+    print('🔄 GlobalProgress: Weight changed, reloading data');
+    _loadProgressData();
   }
   
   void _loadFromCache() {

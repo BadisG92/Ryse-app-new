@@ -12,6 +12,7 @@ import '../services/translations.dart';
 import 'package:provider/provider.dart';
 import '../providers/goals_notifier.dart';
 import '../components/ui/onboarding_models.dart';
+import '../components/ui/refresh_wrapper.dart';
 import '../pages/ryze_app.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -997,6 +998,21 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
     );
   }
 
+  Future<void> _onRefresh() async {
+    try {
+      // Recharger les données des paramètres
+      await Future.wait([
+        _loadStreak(),
+        _loadSettings(),
+      ]);
+      
+      // Vider le cache pour forcer un rechargement (méthode void)
+      HeaderCacheService.clearCache();
+    } catch (e) {
+      print('Erreur lors du rafraîchissement des paramètres: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1007,10 +1023,12 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
             // Header avec bandeau bleu comme les autres pages
             _buildHeader(),
             
-            // Contenu scrollable
+            // Contenu scrollable avec RefreshIndicator
             Expanded(
-              child: SingleChildScrollView(
-                child: Column(
+              child: RefreshWrapper(
+                onRefresh: _onRefresh,
+                child: SingleChildScrollView(
+                  child: Column(
                   children: [
                     // Section Profil
                     Consumer<LocalizationService>(
@@ -1489,6 +1507,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                     // Espace en bas
                     const SizedBox(height: 100),
                   ],
+                  ),
                 ),
               ),
             ),

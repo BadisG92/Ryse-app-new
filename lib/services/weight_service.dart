@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../components/ui/global_progress_models.dart';
+import '../providers/weight_notifier.dart';
 
 class WeightService {
   static final _supabase = Supabase.instance.client;
@@ -64,15 +65,20 @@ class WeightService {
           print('Impossible de créer une entrée initiale: $e');
         }
         
-        // Fallback: récupérer depuis la table users
+        // Fallback: récupérer depuis la table users avec la date de création
         final userResponse = await _supabase
             .from('users')
-            .select('weight, target_weight')
+            .select('weight, target_weight, created_at')
             .eq('id', user.id)
             .single();
         
         final currentWeight = (userResponse['weight'] as num?)?.toDouble() ?? 70.0;
         final targetWeight = (userResponse['target_weight'] as num?)?.toDouble() ?? currentWeight;
+        
+        // Utiliser la date de création du profil au lieu de DateTime.now()
+        final profileCreatedAt = userResponse['created_at'] != null 
+            ? DateTime.parse(userResponse['created_at'])
+            : DateTime.now();
         
         print('DEBUG WeightService FALLBACK - currentWeight: $currentWeight, targetWeight: $targetWeight');
         
@@ -83,7 +89,7 @@ class WeightService {
           targetWeight: targetWeight,
           entries: [
             WeightEntry(
-              date: DateTime.now(),
+              date: profileCreatedAt,
               weight: currentWeight,
             ),
           ],
@@ -186,6 +192,9 @@ class WeightService {
           .eq('id', user.id);
 
       print('Nouveau poids enregistré: ${weight}kg');
+      
+      // Notifier tous les écrans que les données de poids ont changé
+      WeightNotifier.instance.notifyWeightChanged();
     } catch (e) {
       print('Erreur lors de l\'enregistrement du poids: $e');
       rethrow;
@@ -282,10 +291,10 @@ class WeightService {
         return;
       }
 
-      // Récupérer le profil utilisateur actuel
+      // Récupérer le profil utilisateur actuel avec la date de création
       final userProfile = await _supabase
           .from('users')
-          .select('weight, target_weight, height, age, gender, activity_level, fitness_goal, daily_calories, daily_protein, daily_carbs, daily_fat, bmr, dietary_restrictions')
+          .select('weight, target_weight, height, age, gender, activity_level, fitness_goal, daily_calories, daily_protein, daily_carbs, daily_fat, bmr, dietary_restrictions, created_at')
           .eq('id', user.id)
           .single();
 
@@ -294,6 +303,11 @@ class WeightService {
         print('Aucun poids valide trouvé pour créer une entrée initiale');
         return;
       }
+
+      // Utiliser la date de création du profil utilisateur au lieu de DateTime.now()
+      final profileCreatedAt = userProfile['created_at'] != null 
+          ? DateTime.parse(userProfile['created_at'])
+          : DateTime.now();
 
       // Créer l'entrée initiale
       await _supabase
@@ -313,7 +327,7 @@ class WeightService {
         'daily_fat': userProfile['daily_fat'],
         'bmr': userProfile['bmr'],
         'dietary_restrictions': userProfile['dietary_restrictions'],
-        'valid_from': DateTime.now().toIso8601String(),
+        'valid_from': profileCreatedAt.toIso8601String(),
         'is_current': true,
         'change_source': 'initial_migration',
         'weight_modified': true,

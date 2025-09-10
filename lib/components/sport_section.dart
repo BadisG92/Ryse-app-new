@@ -12,6 +12,7 @@ import 'ui/language_switch_buttons.dart';
 import '../services/translations.dart';
 import '../services/localization_service.dart';
 import 'package:provider/provider.dart';
+import 'ui/refresh_wrapper.dart';
 
 class SportSection extends StatefulWidget {
   const SportSection({super.key});
@@ -92,6 +93,22 @@ class _SportSectionState extends State<SportSection>
     );
   }
 
+  Future<void> _onRefresh() async {
+    try {
+      // Recharger les données de la section sport
+      await Future.wait([
+        _loadObjectives(),
+        _loadStreak(),
+      ]);
+      
+      // Vider le cache et forcer le rafraîchissement (méthodes void)
+      HeaderCacheService.clearCache();
+      DashboardService.refreshGoalsNotifier();
+    } catch (e) {
+      print('Erreur lors du rafraîchissement du sport: $e');
+    }
+  }
+
   Future<void> _loadObjectives() async {
     try {
       final goals = await DashboardService.getDailyGoals();
@@ -132,16 +149,19 @@ class _SportSectionState extends State<SportSection>
                 // Header avec titre et indicateurs de page
                 _buildHeader(),
                 
-                // Contenu principal avec PageView
+                // Contenu principal avec PageView et RefreshIndicator
                 Expanded(
-                  child: PageView(
-                    controller: _pageController,
-                    onPageChanged: _onPageChanged,
-                    children: const [
-                      SportDashboard(),
-                      SportCardioHybrid(),
-                      SportMusculationHybrid(),
-                    ],
+                  child: RefreshWrapper(
+                    onRefresh: _onRefresh,
+                    child: PageView(
+                      controller: _pageController,
+                      onPageChanged: _onPageChanged,
+                      children: const [
+                        SportDashboard(),
+                        SportCardioHybrid(),
+                        SportMusculationHybrid(),
+                      ],
+                    ),
                   ),
                 ),
               ],
