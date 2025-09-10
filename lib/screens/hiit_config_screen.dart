@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:provider/provider.dart';
 import '../models/hiit_models.dart';
 import 'hiit_session_screen.dart';
+import '../services/translations.dart';
+import '../services/localization_service.dart';
 
 class HiitConfigScreen extends StatefulWidget {
   const HiitConfigScreen({super.key});
@@ -24,6 +27,7 @@ class _HiitConfigScreenState extends State<HiitConfigScreen> {
   }
 
   void _startCustomHiit() {
+    final locService = LocalizationService.instance;
     final workDuration = int.tryParse(_workController.text) ?? 30;
     final restDuration = int.tryParse(_restController.text) ?? 30;
     final totalDuration = int.tryParse(_durationController.text) ?? 15;
@@ -34,8 +38,8 @@ class _HiitConfigScreenState extends State<HiitConfigScreen> {
 
     final customWorkout = HiitWorkout(
       id: 'custom',
-      title: 'HIIT personnalisé',
-      description: '$totalDuration min - ${workDuration}s effort / ${restDuration}s repos',
+      title: 'hiit_custom_title'.tr(locService.currentLanguageCode),
+      description: '$totalDuration ${'hiit_unit_min'.tr(locService.currentLanguageCode)} - ${workDuration}${'hiit_unit_sec'.tr(locService.currentLanguageCode)} effort / ${restDuration}${'hiit_unit_sec'.tr(locService.currentLanguageCode)} repos',
       workDuration: workDuration,
       restDuration: restDuration,
       totalDuration: totalDuration,
@@ -55,7 +59,8 @@ class _HiitConfigScreenState extends State<HiitConfigScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return Consumer<LocalizationService>(
+      builder: (context, locService, _) => Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -67,9 +72,9 @@ class _HiitConfigScreenState extends State<HiitConfigScreen> {
             color: Color(0xFF1A1A1A),
           ),
         ),
-        title: const Text(
-          'HIIT personnalisé',
-          style: TextStyle(
+        title: Text(
+          'hiit_custom_title'.tr(locService.currentLanguageCode),
+          style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w600,
             color: Color(0xFF1A1A1A),
@@ -82,9 +87,9 @@ class _HiitConfigScreenState extends State<HiitConfigScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-            const Text(
-              'Configure ton entraînement',
-              style: TextStyle(
+            Text(
+              'hiit_config_title'.tr(locService.currentLanguageCode),
+              style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
                 color: Color(0xFF1A1A1A),
@@ -93,9 +98,9 @@ class _HiitConfigScreenState extends State<HiitConfigScreen> {
             
             const SizedBox(height: 8),
             
-            const Text(
-              'Définis les paramètres de ton HIIT personnalisé',
-              style: TextStyle(
+            Text(
+              'hiit_config_subtitle'.tr(locService.currentLanguageCode),
+              style: const TextStyle(
                 fontSize: 16,
                 color: Color(0xFF64748B),
               ),
@@ -106,10 +111,10 @@ class _HiitConfigScreenState extends State<HiitConfigScreen> {
             // Durée totale
             _buildConfigSection(
               icon: LucideIcons.clock,
-              title: 'Durée totale',
-              subtitle: 'Combien de temps veux-tu t\'entraîner ?',
+              title: 'hiit_total_duration'.tr(locService.currentLanguageCode),
+              subtitle: 'hiit_total_duration_desc'.tr(locService.currentLanguageCode),
               controller: _durationController,
-              unit: 'min',
+              unit: 'hiit_unit_min'.tr(locService.currentLanguageCode),
             ),
 
             const SizedBox(height: 24),
@@ -117,10 +122,10 @@ class _HiitConfigScreenState extends State<HiitConfigScreen> {
             // Temps d'effort
             _buildConfigSection(
               icon: LucideIcons.flame,
-              title: 'Temps d\'effort',
-              subtitle: 'Durée de la phase d\'effort',
+              title: 'hiit_work_time'.tr(locService.currentLanguageCode),
+              subtitle: 'hiit_work_time_desc'.tr(locService.currentLanguageCode),
               controller: _workController,
-              unit: 'sec',
+              unit: 'hiit_unit_sec'.tr(locService.currentLanguageCode),
             ),
 
             const SizedBox(height: 24),
@@ -128,10 +133,10 @@ class _HiitConfigScreenState extends State<HiitConfigScreen> {
             // Temps de repos
             _buildConfigSection(
               icon: LucideIcons.coffee,
-              title: 'Temps de repos',
-              subtitle: 'Durée de la phase de récupération',
+              title: 'hiit_rest_time'.tr(locService.currentLanguageCode),
+              subtitle: 'hiit_rest_time_desc'.tr(locService.currentLanguageCode),
               controller: _restController,
-              unit: 'sec',
+              unit: 'hiit_unit_sec'.tr(locService.currentLanguageCode),
             ),
 
             const SizedBox(height: 32),
@@ -149,9 +154,9 @@ class _HiitConfigScreenState extends State<HiitConfigScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Aperçu de ta séance',
-                    style: TextStyle(
+                  Text(
+                    'hiit_preview'.tr(locService.currentLanguageCode),
+                    style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                       color: Color(0xFF1A1A1A),
@@ -159,16 +164,19 @@ class _HiitConfigScreenState extends State<HiitConfigScreen> {
                   ),
                   const SizedBox(height: 12),
                   _buildPreviewItem(
-                    'Durée totale',
-                    '${_durationController.text} minutes',
+                    'hiit_total_duration'.tr(locService.currentLanguageCode),
+                    '${_durationController.text} ${'hiit_unit_min'.tr(locService.currentLanguageCode)}',
+                    locService,
                   ),
                   _buildPreviewItem(
-                    'Cycles',
+                    'hiit_preview_rounds'.tr(locService.currentLanguageCode),
                     _getEstimatedCycles(),
+                    locService,
                   ),
                   _buildPreviewItem(
-                    'Format',
-                    '${_workController.text}s effort / ${_restController.text}s repos',
+                    'hiit_preview_cycle'.tr(locService.currentLanguageCode),
+                    '${_workController.text}${'hiit_unit_sec'.tr(locService.currentLanguageCode)} effort / ${_restController.text}${'hiit_unit_sec'.tr(locService.currentLanguageCode)} repos',
+                    locService,
                   ),
                 ],
               ),
@@ -190,14 +198,14 @@ class _HiitConfigScreenState extends State<HiitConfigScreen> {
                   ),
                   elevation: 0,
                 ),
-                child: const Row(
+                child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(LucideIcons.play, size: 20),
-                    SizedBox(width: 8),
+                    const Icon(LucideIcons.play, size: 20),
+                    const SizedBox(width: 8),
                     Text(
-                      'Commencer l\'entraînement',
-                      style: TextStyle(
+                      'hiit_start_workout'.tr(locService.currentLanguageCode),
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),
@@ -213,6 +221,7 @@ class _HiitConfigScreenState extends State<HiitConfigScreen> {
         ),
       ),
       ),
+    ),
     );
   }
 
@@ -324,7 +333,7 @@ class _HiitConfigScreenState extends State<HiitConfigScreen> {
     );
   }
 
-  Widget _buildPreviewItem(String label, String value) {
+  Widget _buildPreviewItem(String label, String value, LocalizationService locService) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
@@ -357,7 +366,8 @@ class _HiitConfigScreenState extends State<HiitConfigScreen> {
     
     final cycleTime = workDuration + restDuration;
     final cycles = (totalDuration * 60 / cycleTime).floor();
+    final locService = LocalizationService.instance;
     
-    return '$cycles cycles';
+    return '$cycles ${'hiit_cycles_count'.tr(locService.currentLanguageCode)}';
   }
 } 

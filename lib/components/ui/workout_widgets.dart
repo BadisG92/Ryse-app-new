@@ -6,6 +6,9 @@ import 'sport_models.dart';
 import 'sport_cards.dart';
 import '../../widgets/exercise/exercise_list_bottom_sheet.dart';
 import '../../services/workout_cache_service.dart';
+import '../../services/translations.dart';
+import '../../services/localization_service.dart';
+import 'package:provider/provider.dart';
 
 // Section principale des statistiques de la semaine
 class WeeklyStatsSection extends StatefulWidget {
@@ -145,31 +148,33 @@ class _WeekHistorySectionState extends State<WeekHistorySection> {
   }
 
   static String _dayLabel(int weekday) {
+    final locService = LocalizationService.instance;
     switch (weekday) {
       case DateTime.monday:
-        return 'Lundi';
+        return 'workout_monday'.tr(locService.currentLanguageCode);
       case DateTime.tuesday:
-        return 'Mardi';
+        return 'workout_tuesday'.tr(locService.currentLanguageCode);
       case DateTime.wednesday:
-        return 'Mercredi';
+        return 'workout_wednesday'.tr(locService.currentLanguageCode);
       case DateTime.thursday:
-        return 'Jeudi';
+        return 'workout_thursday'.tr(locService.currentLanguageCode);
       case DateTime.friday:
-        return 'Vendredi';
+        return 'workout_friday'.tr(locService.currentLanguageCode);
       case DateTime.saturday:
-        return 'Samedi';
+        return 'workout_saturday'.tr(locService.currentLanguageCode);
       case DateTime.sunday:
       default:
-        return 'Dimanche';
+        return 'workout_sunday'.tr(locService.currentLanguageCode);
     }
   }
 
   static String _relativeDays(DateTime date) {
     final now = DateTime.now();
     final diff = now.difference(date).inDays;
-    if (diff <= 0) return "Aujourd'hui";
-    if (diff == 1) return 'Il y a 1 jour';
-    return 'Il y a $diff jours';
+    final locService = LocalizationService.instance;
+    if (diff <= 0) return 'workout_today'.tr(locService.currentLanguageCode);
+    if (diff == 1) return 'workout_one_day_ago'.tr(locService.currentLanguageCode);
+    return 'workout_days_ago'.tr(locService.currentLanguageCode).replaceAll('{count}', '$diff');
   }
 
   @override
@@ -188,12 +193,14 @@ class _WeekHistorySectionState extends State<WeekHistorySection> {
                   color: Color(0xFF0B132B),
                 ),
                 const SizedBox(width: 12),
-                const Text(
-                  'Historique de la semaine',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1A1A),
+                Consumer<LocalizationService>(
+                  builder: (context, locService, _) => Text(
+                    'workout_week_history'.tr(locService.currentLanguageCode),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1A1A1A),
+                    ),
                   ),
                 ),
               ],
@@ -202,7 +209,12 @@ class _WeekHistorySectionState extends State<WeekHistorySection> {
             if (_loading)
               const Center(child: CircularProgressIndicator())
             else if (_sessions.isEmpty)
-              const Text('Aucune séance cette semaine', style: TextStyle(color: Color(0xFF64748B)))
+              Consumer<LocalizationService>(
+                builder: (context, locService, _) => Text(
+                  'workout_no_session_this_week'.tr(locService.currentLanguageCode),
+                  style: const TextStyle(color: Color(0xFF64748B)),
+                ),
+              )
             else ..._sessions.map((s) => WorkoutHistoryCard(session: s)).toList(),
           ],
         ),
@@ -287,12 +299,14 @@ class _ExerciseProgressSectionState extends State<ExerciseProgressSection> {
                       color: Color(0xFF0B132B),
                     ),
                     const SizedBox(width: 12),
-                    const Text(
-                      'Progression par exercice',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF1A1A1A),
+                    Consumer<LocalizationService>(
+                      builder: (context, locService, _) => Text(
+                        'workout_exercise_progression'.tr(locService.currentLanguageCode),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1A1A1A),
+                        ),
                       ),
                     ),
                   ],
@@ -304,9 +318,11 @@ class _ExerciseProgressSectionState extends State<ExerciseProgressSection> {
                   style: TextButton.styleFrom(
                     foregroundColor: const Color(0xFF0B132B),
                   ),
-                  child: const Text(
-                    'Voir tout',
-                    style: TextStyle(fontSize: 14),
+                  child: Consumer<LocalizationService>(
+                    builder: (context, locService, _) => Text(
+                      'workout_see_all'.tr(locService.currentLanguageCode),
+                      style: const TextStyle(fontSize: 14),
+                    ),
                   ),
                 ),
               ],
@@ -317,7 +333,12 @@ class _ExerciseProgressSectionState extends State<ExerciseProgressSection> {
             if (_loading)
               const Center(child: CircularProgressIndicator())
             else if (_exercises.isEmpty)
-              const Text('Aucun exercice trouvé', style: TextStyle(color: Color(0xFF64748B)))
+              Consumer<LocalizationService>(
+                builder: (context, locService, _) => Text(
+                  'workout_no_exercise_found'.tr(locService.currentLanguageCode),
+                  style: const TextStyle(color: Color(0xFF64748B)),
+                ),
+              )
             else
               ...displayedExercises.map((progress) => ExerciseProgressCard(progress: progress)).toList(),
           ],
@@ -424,12 +445,12 @@ class SessionTrackingCard extends StatelessWidget {
                     const SizedBox(width: 16),
                     SessionStat(
                       icon: LucideIcons.dumbbell,
-                      value: '${currentExercises.length} exercices',
+                      value: '${currentExercises.length} ${'workout_exercises'.tr(LocalizationService.instance.currentLanguageCode)}',
                     ),
                     const SizedBox(width: 16),
                     SessionStat(
                       icon: LucideIcons.check,
-                      value: '$completedSets/$totalSets séries',
+                      value: '$completedSets/$totalSets ${'workout_sets'.tr(LocalizationService.instance.currentLanguageCode)}',
                     ),
                   ],
                 ),
@@ -446,9 +467,11 @@ class SessionTrackingCard extends StatelessWidget {
               ),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             ),
-            child: const Text(
-              'Terminer',
-              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+            child: Consumer<LocalizationService>(
+              builder: (context, locService, _) => Text(
+                'workout_finish'.tr(locService.currentLanguageCode),
+                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+              ),
             ),
           ),
         ],
@@ -471,12 +494,14 @@ class StartSessionButton extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Commencer une séance',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF1A1A1A),
+            Consumer<LocalizationService>(
+              builder: (context, locService, _) => Text(
+                'workout_start_session_button'.tr(locService.currentLanguageCode),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1A1A1A),
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -492,16 +517,18 @@ class StartSessionButton extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: const Row(
+                child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(LucideIcons.play, size: 20),
-                    SizedBox(width: 8),
-                    Text(
-                      'Commencer une séance',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
+                    const Icon(LucideIcons.play, size: 20),
+                    const SizedBox(width: 8),
+                    Consumer<LocalizationService>(
+                      builder: (context, locService, _) => Text(
+                        'workout_start_session_button'.tr(locService.currentLanguageCode),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ],

@@ -2,23 +2,25 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import '../models/cardio_session_models.dart';
+import 'translations.dart';
+import 'localization_service.dart';
 
 /// Service pour gérer les activités cardio depuis Supabase
 class CardioService {
   static final SupabaseClient _client = Supabase.instance.client;
   
-  // Cache en mémoire pour les activités cardio
-  static List<CardioActivityType>? _cachedActivities;
-  static DateTime? _cacheTimestamp;
+  // Cache en mémoire pour les activités cardio (par langue)
+  static Map<String, List<CardioActivityType>> _cachedActivities = {};
+  static Map<String, DateTime> _cacheTimestamp = {};
   static const Duration _cacheDuration = Duration(hours: 1);
 
   /// Récupère toutes les activités cardio avec leurs formats
   static Future<List<CardioActivityType>> getCardioActivities({String language = 'fr'}) async {
-    // Vérifier le cache
-    if (_cachedActivities != null && 
-        _cacheTimestamp != null && 
-        DateTime.now().difference(_cacheTimestamp!) < _cacheDuration) {
-      return _cachedActivities!;
+    // Vérifier le cache pour cette langue
+    if (_cachedActivities.containsKey(language) && 
+        _cacheTimestamp.containsKey(language) && 
+        DateTime.now().difference(_cacheTimestamp[language]!) < _cacheDuration) {
+      return _cachedActivities[language]!;
     }
 
     try {
@@ -31,9 +33,9 @@ class CardioService {
         return CardioActivityType.fromJson(json);
       }).toList();
 
-      // Mettre en cache
-      _cachedActivities = activities;
-      _cacheTimestamp = DateTime.now();
+      // Mettre en cache pour cette langue
+      _cachedActivities[language] = activities;
+      _cacheTimestamp[language] = DateTime.now();
       
       return activities;
     } catch (e) {
@@ -61,8 +63,8 @@ class CardioService {
 
   /// Invalide le cache (à appeler lors de modifications)
   static void invalidateCache() {
-    _cachedActivities = null;
-    _cacheTimestamp = null;
+    _cachedActivities.clear();
+    _cacheTimestamp.clear();
   }
 
   /// Sauvegarde une séance cardio terminée
@@ -406,17 +408,26 @@ class CompletedCardioSession {
 
   /// Calcule le temps écoulé depuis la session
   String get timeAgo {
+    final locService = LocalizationService.instance;
+    return getTimeAgo(locService.currentLanguageCode);
+  }
+
+  String getTimeAgo(String languageCode) {
     final now = DateTime.now();
     final difference = now.difference(startTime);
 
     if (difference.inDays == 0) {
-      return 'Aujourd\'hui';
+      return 'cardio_today'.tr(languageCode);
     } else if (difference.inDays == 1) {
-      return 'Hier';
+      return 'cardio_yesterday'.tr(languageCode);
     } else if (difference.inDays < 7) {
-      return 'Il y a ${difference.inDays} jours';
+      return 'cardio_days_ago'.tr(languageCode).replaceAll('{count}', '${difference.inDays}');
     } else {
-      return 'Il y a ${(difference.inDays / 7).floor()} semaine${(difference.inDays / 7).floor() > 1 ? 's' : ''}';
+      final weeks = (difference.inDays / 7).floor();
+      final plural = weeks > 1 ? 's' : '';
+      return 'cardio_weeks_ago'.tr(languageCode)
+          .replaceAll('{count}', '$weeks')
+          .replaceAll('{plural}', plural);
     }
   }
 }

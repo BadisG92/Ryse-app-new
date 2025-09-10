@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:provider/provider.dart';
 import '../models/cardio_session_models.dart';
 import '../services/cardio_service.dart';
+import '../services/translations.dart';
+import '../services/localization_service.dart';
 
 class ManualCardioEntryScreen extends StatefulWidget {
   final String activityType;
@@ -39,6 +42,7 @@ class _ManualCardioEntryScreenState extends State<ManualCardioEntryScreen> {
   }
 
   void _saveEntry() {
+    final locService = LocalizationService.instance;
     final hours = int.tryParse(_durationHoursController.text) ?? 0;
     final minutes = int.tryParse(_durationMinutesController.text) ?? 0;
     final distance = double.tryParse(_distanceController.text) ?? 0.0;
@@ -46,8 +50,8 @@ class _ManualCardioEntryScreenState extends State<ManualCardioEntryScreen> {
 
     if (minutes == 0 && hours == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Veuillez entrer une durée valide'),
+        SnackBar(
+          content: Text('error_duration_required'.tr(locService.currentLanguageCode)),
           backgroundColor: Colors.red,
         ),
       );
@@ -56,8 +60,8 @@ class _ManualCardioEntryScreenState extends State<ManualCardioEntryScreen> {
 
     if (distance <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Veuillez entrer une distance valide'),
+        SnackBar(
+          content: Text('error_distance_required'.tr(locService.currentLanguageCode)),
           backgroundColor: Colors.red,
         ),
       );
@@ -67,8 +71,8 @@ class _ManualCardioEntryScreenState extends State<ManualCardioEntryScreen> {
     // Pour la marche, vérifier aussi les pas
     if (widget.activityType == 'walking' && steps <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Veuillez entrer un nombre de pas valide'),
+        SnackBar(
+          content: Text('error_steps_required'.tr(locService.currentLanguageCode)),
           backgroundColor: Colors.red,
         ),
       );
@@ -91,33 +95,34 @@ class _ManualCardioEntryScreenState extends State<ManualCardioEntryScreen> {
   }
 
   void _showEntrySummary(ManualCardioEntry entry) {
+    final locService = LocalizationService.instance;
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Row(
+        title: Row(
           children: [
-            Icon(LucideIcons.check, color: Color(0xFF10B981)),
-            SizedBox(width: 8),
-            Text('Séance enregistrée'),
+            const Icon(LucideIcons.check, color: Color(0xFF10B981)),
+            const SizedBox(width: 8),
+            Text('manual_session_saved'.tr(locService.currentLanguageCode)),
           ],
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Activité: ${entry.activityTitle}'),
-            Text('Format: ${entry.formatTitle}'),
-            Text('Durée: ${_formatDuration(entry.duration)}'),
-            Text('Distance: ${entry.distance.toStringAsFixed(2)} km'),
+            Text('${'manual_activity_label'.tr(locService.currentLanguageCode)}: ${entry.activityTitle}'),
+            Text('${'manual_format_label'.tr(locService.currentLanguageCode)}: ${entry.formatTitle}'),
+            Text('${'manual_duration_label'.tr(locService.currentLanguageCode)}: ${_formatDuration(entry.duration)}'),
+            Text('${'manual_distance_label'.tr(locService.currentLanguageCode)}: ${entry.distance.toStringAsFixed(2)} km'),
             if (widget.activityType == 'walking') ...[
-              Text('Pas: ${entry.steps}'),
+              Text('${'manual_steps_label_result'.tr(locService.currentLanguageCode)}: ${entry.steps}'),
               if (entry.duration.inMinutes > 0)
-                Text('Pas par minute: ${(entry.steps / entry.duration.inMinutes).toStringAsFixed(0)}'),
+                Text('${'manual_steps_per_minute'.tr(locService.currentLanguageCode)}: ${(entry.steps / entry.duration.inMinutes).toStringAsFixed(0)}'),
             ] else
-              Text('Vitesse moyenne: ${entry.calculateAverageSpeed().toStringAsFixed(1)} km/h'),
-            Text('Calories estimées: ${entry.calculateCalories()} kcal'),
-            if (entry.notes != null) Text('Notes: ${entry.notes}'),
+              Text('${'manual_avg_speed'.tr(locService.currentLanguageCode)}: ${entry.calculateAverageSpeed().toStringAsFixed(1)} km/h'),
+            Text('${'manual_estimated_calories'.tr(locService.currentLanguageCode)}: ${entry.calculateCalories()} kcal'),
+            if (entry.notes != null) Text('${'manual_notes_label'.tr(locService.currentLanguageCode)}: ${entry.notes}'),
           ],
         ),
         actions: [
@@ -138,7 +143,7 @@ class _ManualCardioEntryScreenState extends State<ManualCardioEntryScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF0B132B),
             ),
-            child: const Text('Terminer', style: TextStyle(color: Colors.white)),
+            child: Text('manual_finish'.tr(locService.currentLanguageCode), style: const TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -177,9 +182,10 @@ class _ManualCardioEntryScreenState extends State<ManualCardioEntryScreen> {
         currentSpeed: entry.calculateAverageSpeed(),
       );
       
+      final locService = LocalizationService.instance;
       await CardioService.saveCompletedCardioSession(
         sessionData: sessionData,
-        intensity: 'Modéré', // Valeur par défaut
+        intensity: 'manual_intensity_moderate'.tr(locService.currentLanguageCode), // Valeur par défaut
         notes: entry.notes,
       );
       
@@ -216,7 +222,8 @@ class _ManualCardioEntryScreenState extends State<ManualCardioEntryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return Consumer<LocalizationService>(
+      builder: (context, locService, _) => Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -229,7 +236,7 @@ class _ManualCardioEntryScreenState extends State<ManualCardioEntryScreen> {
           ),
         ),
         title: Text(
-          'Saisir ${widget.activityTitle.toLowerCase()}',
+          '${'manual_entry_title'.tr(locService.currentLanguageCode)} ${widget.activityTitle.toLowerCase()}',
           style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w600,
@@ -299,7 +306,7 @@ class _ManualCardioEntryScreenState extends State<ManualCardioEntryScreen> {
 
               // Date
               _buildSection(
-                title: 'Date de la séance',
+                title: 'manual_session_date'.tr(locService.currentLanguageCode),
                 child: GestureDetector(
                   onTap: _selectDate,
                   child: Container(
@@ -343,20 +350,20 @@ class _ManualCardioEntryScreenState extends State<ManualCardioEntryScreen> {
 
               // Durée
               _buildSection(
-                title: 'Durée de la séance',
+                title: 'manual_session_duration'.tr(locService.currentLanguageCode),
                 child: Row(
                   children: [
                     Expanded(
                       child: _buildTimeField(
                         controller: _durationHoursController,
-                        label: 'Heures',
+                        label: 'manual_hours'.tr(locService.currentLanguageCode),
                       ),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
                       child: _buildTimeField(
                         controller: _durationMinutesController,
-                        label: 'Minutes',
+                        label: 'manual_minutes'.tr(locService.currentLanguageCode),
                       ),
                     ),
                   ],
@@ -367,10 +374,10 @@ class _ManualCardioEntryScreenState extends State<ManualCardioEntryScreen> {
 
               // Distance
               _buildSection(
-                title: 'Distance parcourue',
+                title: 'manual_distance_covered'.tr(locService.currentLanguageCode),
                 child: _buildTextField(
                   controller: _distanceController,
-                  label: 'Distance (km)',
+                  label: 'manual_distance_km'.tr(locService.currentLanguageCode),
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   suffix: 'km',
                 ),
@@ -381,12 +388,12 @@ class _ManualCardioEntryScreenState extends State<ManualCardioEntryScreen> {
               // Nombre de pas (pour la marche uniquement)
               if (widget.activityType == 'walking') ...[
                 _buildSection(
-                  title: 'Nombre de pas',
+                  title: 'manual_steps_count'.tr(locService.currentLanguageCode),
                   child: _buildTextField(
                     controller: _stepsController,
-                    label: 'Nombre de pas',
+                    label: 'manual_steps_label'.tr(locService.currentLanguageCode),
                     keyboardType: TextInputType.number,
-                    suffix: 'pas',
+                    suffix: 'manual_unit_steps'.tr(locService.currentLanguageCode),
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -394,10 +401,10 @@ class _ManualCardioEntryScreenState extends State<ManualCardioEntryScreen> {
 
               // Notes (optionnel)
               _buildSection(
-                title: 'Notes (optionnel)',
+                title: 'manual_notes_optional'.tr(locService.currentLanguageCode),
                 child: _buildTextField(
                   controller: _notesController,
-                  label: 'Commentaires sur la séance...',
+                  label: 'manual_notes_placeholder'.tr(locService.currentLanguageCode),
                   maxLines: 3,
                 ),
               ),
@@ -418,14 +425,14 @@ class _ManualCardioEntryScreenState extends State<ManualCardioEntryScreen> {
                     ),
                     elevation: 0,
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(LucideIcons.save, size: 20),
-                      SizedBox(width: 8),
+                      const Icon(LucideIcons.save, size: 20),
+                      const SizedBox(width: 8),
                       Text(
-                        'Enregistrer la séance',
-                        style: TextStyle(
+                        'manual_save_session'.tr(locService.currentLanguageCode),
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
                         ),
@@ -440,6 +447,7 @@ class _ManualCardioEntryScreenState extends State<ManualCardioEntryScreen> {
           ),
         ),
       ),
+    ),
     );
   }
 

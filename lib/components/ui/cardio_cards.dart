@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:provider/provider.dart';
 import 'cardio_models.dart';
 import 'custom_card.dart';
+import '../../services/translations.dart';
+import '../../services/localization_service.dart';
 
 // Card de statistique hebdomadaire
 class WeeklyStatCard extends StatelessWidget {
@@ -220,12 +223,14 @@ class SessionCard extends StatelessWidget {
                   color: Color(0xFF0B132B),
                 ),
                 const SizedBox(width: 12),
-                const Text(
-                  'Dernière séance',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1A1A),
+                Consumer<LocalizationService>(
+                  builder: (context, locService, _) => Text(
+                    'session_last_session'.tr(locService.currentLanguageCode),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1A1A1A),
+                    ),
                   ),
                 ),
               ],
@@ -274,18 +279,22 @@ class SessionCard extends StatelessWidget {
                   Row(
                     children: [
                       Expanded(
-                        child: SessionStatItem(
-                          icon: LucideIcons.clock,
-                          label: 'Durée',
-                          value: session.durationText,
+                        child: Consumer<LocalizationService>(
+                          builder: (context, locService, _) => SessionStatItem(
+                            icon: LucideIcons.clock,
+                            label: 'session_stat_duration'.tr(locService.currentLanguageCode),
+                            value: session.durationText,
+                          ),
                         ),
                       ),
                       if (session.distance != null)
                         Expanded(
-                          child: SessionStatItem(
-                            icon: LucideIcons.mapPin,
-                            label: 'Distance',
-                            value: session.distanceText,
+                          child: Consumer<LocalizationService>(
+                            builder: (context, locService, _) => SessionStatItem(
+                              icon: LucideIcons.mapPin,
+                              label: 'session_stat_distance'.tr(locService.currentLanguageCode),
+                              value: session.distanceText,
+                            ),
                           ),
                         ),
                     ],
@@ -295,17 +304,21 @@ class SessionCard extends StatelessWidget {
                     children: [
                       if (session.pace != null)
                         Expanded(
-                          child: SessionStatItem(
-                            icon: LucideIcons.activity,
-                            label: 'Allure',
-                            value: session.paceText,
+                          child: Consumer<LocalizationService>(
+                            builder: (context, locService, _) => SessionStatItem(
+                              icon: LucideIcons.activity,
+                              label: 'session_stat_pace'.tr(locService.currentLanguageCode),
+                              value: session.paceText,
+                            ),
                           ),
                         ),
                       Expanded(
-                        child: SessionStatItem(
-                          icon: LucideIcons.flame,
-                          label: 'Calories',
-                          value: session.caloriesText,
+                        child: Consumer<LocalizationService>(
+                          builder: (context, locService, _) => SessionStatItem(
+                            icon: LucideIcons.flame,
+                            label: 'session_stat_calories'.tr(locService.currentLanguageCode),
+                            value: session.caloriesText,
+                          ),
                         ),
                       ),
                     ],

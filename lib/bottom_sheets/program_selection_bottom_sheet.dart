@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../models/sport_models.dart';
 import '../services/database_service.dart';
+import '../services/translations.dart';
+import '../services/localization_service.dart';
+import 'package:provider/provider.dart';
 
 class ProgramSelectionBottomSheet extends StatefulWidget {
   final Function(WorkoutProgram program) onProgramSelected;
@@ -45,7 +48,7 @@ class _ProgramSelectionBottomSheetState extends State<ProgramSelectionBottomShee
       print('❌ Erreur lors du chargement des programmes: $e');
       if (!mounted) return;
       setState(() {
-        _error = 'Erreur de chargement des programmes';
+        _error = 'workout_programs_loading_error'.tr(LocalizationService.instance.currentLanguageCode);
         _isLoading = false;
         // Utiliser des programmes de démonstration en cas d'erreur
         _fetchedPrograms = [];
@@ -83,24 +86,28 @@ class _ProgramSelectionBottomSheetState extends State<ProgramSelectionBottomShee
             
             const SizedBox(height: 24),
             
-            const Text(
-              'Choisir un programme',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1A1A1A),
+            Consumer<LocalizationService>(
+              builder: (context, locService, _) => Text(
+                'workout_choose_program_title'.tr(locService.currentLanguageCode),
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1A1A1A),
+                ),
               ),
             ),
             
             const SizedBox(height: 8),
             
-            Text(
-              widget.customPrograms.isNotEmpty 
-                  ? 'Vos programmes personnalisés et programmes prédéfinis'
-                  : 'Sélectionnez un programme avec exercices prédéfinis',
-              style: const TextStyle(
-                fontSize: 14,
-                color: Color(0xFF64748B),
+            Consumer<LocalizationService>(
+              builder: (context, locService, _) => Text(
+                widget.customPrograms.isNotEmpty 
+                    ? 'workout_custom_and_predefined_programs'.tr(locService.currentLanguageCode)
+                    : 'workout_select_predefined_program'.tr(locService.currentLanguageCode),
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF64748B),
+                ),
               ),
             ),
             

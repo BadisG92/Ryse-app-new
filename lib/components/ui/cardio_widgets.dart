@@ -20,11 +20,23 @@ class WeeklyStatsSection extends StatefulWidget {
 class _WeeklyStatsSectionState extends State<WeeklyStatsSection> {
   CardioWeeklyStats? _stats;
   bool _loading = true;
+  String? _currentLanguage;
 
   @override
   void initState() {
     super.initState();
     _loadWeeklyStats();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final locService = LocalizationService.instance;
+    if (_currentLanguage != locService.currentLanguageCode) {
+      _currentLanguage = locService.currentLanguageCode;
+      // Recharger les données pour la nouvelle langue
+      _loadWeeklyStats();
+    }
   }
 
   Future<void> _loadWeeklyStats() async {
@@ -121,7 +133,7 @@ class _WeeklyStatsSectionState extends State<WeeklyStatsSection> {
 
 // Section de sélection d'activités (connectée à Supabase)
 class ActivitySelectionSection extends StatefulWidget {
-  final Function(String activityType, String activityTitle) onActivitySelected;
+  final Function(CardioActivityType activity) onActivitySelected;
 
   const ActivitySelectionSection({
     super.key,
@@ -135,11 +147,24 @@ class ActivitySelectionSection extends StatefulWidget {
 class _ActivitySelectionSectionState extends State<ActivitySelectionSection> {
   List<CardioActivityType> _activities = [];
   bool _loading = true;
+  String? _currentLanguage;
 
   @override
   void initState() {
     super.initState();
     _loadActivities();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final locService = LocalizationService.instance;
+    if (_currentLanguage != locService.currentLanguageCode) {
+      _currentLanguage = locService.currentLanguageCode;
+      // Invalider le cache et recharger les activités
+      CardioService.invalidateCache();
+      _loadActivities();
+    }
   }
 
   Future<void> _loadActivities() async {
@@ -207,7 +232,7 @@ class _ActivitySelectionSectionState extends State<ActivitySelectionSection> {
                     return ActivityCard(
                       icon: _getIconFromName(activity.iconName),
                       title: activity.name,
-                      onTap: () => widget.onActivitySelected(activity.activityKey, activity.name),
+                      onTap: () => widget.onActivitySelected(activity),
                     );
                   }).toList(),
                 ),
@@ -263,11 +288,23 @@ class LastSessionSection extends StatefulWidget {
 class _LastSessionSectionState extends State<LastSessionSection> {
   CompletedCardioSession? _lastSession;
   bool _loading = true;
+  String? _currentLanguage;
 
   @override
   void initState() {
     super.initState();
     _loadLastSession();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final locService = LocalizationService.instance;
+    if (_currentLanguage != locService.currentLanguageCode) {
+      _currentLanguage = locService.currentLanguageCode;
+      // Recharger les données pour la nouvelle langue
+      _loadLastSession();
+    }
   }
 
   Future<void> _loadLastSession() async {
@@ -444,11 +481,23 @@ class WeekSessionsSection extends StatefulWidget {
 class _WeekSessionsSectionState extends State<WeekSessionsSection> {
   List<CompletedCardioSession> _sessions = [];
   bool _loading = true;
+  String? _currentLanguage;
 
   @override
   void initState() {
     super.initState();
     _loadWeekSessions();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final locService = LocalizationService.instance;
+    if (_currentLanguage != locService.currentLanguageCode) {
+      _currentLanguage = locService.currentLanguageCode;
+      // Recharger les données pour la nouvelle langue
+      _loadWeekSessions();
+    }
   }
 
   Future<void> _loadWeekSessions() async {
@@ -739,41 +788,18 @@ class ActivityConfigModal extends StatelessWidget {
   });
 
   String _getConfigTitle(String type, String languageCode) {
-    switch (type) {
-      case 'distance':
-        return 'cardio_distance_question'.tr(languageCode);
-      case 'duration':
-        return 'cardio_duration_question'.tr(languageCode);
-      case 'hiit':
-        return 'cardio_hiit_params'.tr(languageCode);
-      default:
-        return '';
-    }
+    final configs = CardioData.getLocalizedActivityConfigs(languageCode);
+    return configs[type]?.title ?? '';
   }
 
   String _getConfigHint(String type, String languageCode) {
-    switch (type) {
-      case 'distance':
-        return 'cardio_distance_hint'.tr(languageCode);
-      case 'duration':
-        return 'cardio_duration_hint'.tr(languageCode);
-      case 'hiit':
-        return 'cardio_hiit_hint'.tr(languageCode);
-      default:
-        return '';
-    }
+    final configs = CardioData.getLocalizedActivityConfigs(languageCode);
+    return configs[type]?.hint ?? '';
   }
 
   String _getConfigUnit(String type, String languageCode) {
-    switch (type) {
-      case 'distance':
-        return 'cardio_km_unit'.tr(languageCode);
-      case 'duration':
-      case 'hiit':
-        return 'cardio_min_unit'.tr(languageCode);
-      default:
-        return '';
-    }
+    final configs = CardioData.getLocalizedActivityConfigs(languageCode);
+    return configs[type]?.unit ?? '';
   }
 
   @override

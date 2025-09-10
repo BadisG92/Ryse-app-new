@@ -8,6 +8,9 @@ import '../bottom_sheets/exercise_selection_bottom_sheet.dart';
 import '../bottom_sheets/program_selection_bottom_sheet.dart';
 import '../screens/workout_session_screen.dart';
 import '../services/workout_service.dart';
+import '../services/translations.dart';
+import '../services/localization_service.dart';
+import 'package:provider/provider.dart';
 
 class SportMusculationHybrid extends StatefulWidget {
   const SportMusculationHybrid({super.key});
@@ -25,53 +28,61 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
   
   final WorkoutService _workoutService = WorkoutService();
 
-  final List<String> _sessionTypes = ['Haut du corps', 'Bas du corps', 'Full body'];
+  List<String> _getSessionTypes(String languageCode) {
+    return [
+      'workout_upper_body'.tr(languageCode),
+      'workout_lower_body'.tr(languageCode),
+      'workout_full_body'.tr(languageCode),
+    ];
+  }
 
   Widget _buildSessionTypeButtons() {
-    return CustomCard(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Type de séance',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF1A1A1A),
+    return Consumer<LocalizationService>(
+      builder: (context, locService, _) => CustomCard(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'workout_session_type'.tr(locService.currentLanguageCode),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1A1A1A),
+                ),
               ),
-            ),
-            
-            const SizedBox(height: 16),
-            
-            // Grille 1x2 avec les 2 boutons
-            Row(
-              children: [
-                // Bouton séance manuelle
-                Expanded(
-                  child: _buildSessionTypeButton(
-                    icon: LucideIcons.pencil,
-                    title: 'Séance manuelle',
-                    subtitle: '',
-                    onTap: _showManualSessionFlow,
+              
+              const SizedBox(height: 16),
+              
+              // Grille 1x2 avec les 2 boutons
+              Row(
+                children: [
+                  // Bouton séance manuelle
+                  Expanded(
+                    child: _buildSessionTypeButton(
+                      icon: LucideIcons.pencil,
+                      title: 'workout_manual_session'.tr(locService.currentLanguageCode),
+                      subtitle: '',
+                      onTap: _showManualSessionFlow,
+                    ),
                   ),
-                ),
-                
-                const SizedBox(width: 12),
-                
-                // Bouton séance guidée
-                Expanded(
-                  child: _buildSessionTypeButton(
-                    icon: LucideIcons.bookOpen,
-                    title: 'Séance guidée',
-                    subtitle: '',
-                    onTap: _showProgramsModal,
+                  
+                  const SizedBox(width: 12),
+                  
+                  // Bouton séance guidée
+                  Expanded(
+                    child: _buildSessionTypeButton(
+                      icon: LucideIcons.bookOpen,
+                      title: 'workout_guided_session'.tr(locService.currentLanguageCode),
+                      subtitle: '',
+                      onTap: _showProgramsModal,
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -184,70 +195,72 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(24),
-            topRight: Radius.circular(24),
+      builder: (context) => Consumer<LocalizationService>(
+        builder: (context, locService, _) => Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(24),
+              topRight: Radius.circular(24),
+            ),
           ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Handle
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE2E8F0),
-                    borderRadius: BorderRadius.circular(2),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Handle
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE2E8F0),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
-              ),
-              
-              const SizedBox(height: 24),
-              
-              const Text(
-                'Nouvelle séance',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1A1A1A),
+                
+                const SizedBox(height: 24),
+                
+                Text(
+                  'workout_new_session'.tr(locService.currentLanguageCode),
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1A1A1A),
+                  ),
                 ),
-              ),
-              
-              const SizedBox(height: 24),
-              
-              // Options
-              _buildSessionChoiceButton(
-                icon: LucideIcons.pencil,
-                title: 'Créer une séance manuellement',
-                subtitle: 'Construire sa séance étape par étape',
-                onTap: () {
-                  Navigator.pop(context);
-                  _showManualSessionFlow();
-                },
-              ),
-              
-              const SizedBox(height: 12),
-              
-              _buildSessionChoiceButton(
-                icon: LucideIcons.bookOpen,
-                title: 'Choisir un programme enregistré',
-                subtitle: 'Utiliser un programme existant',
-                onTap: () {
-                  Navigator.pop(context);
-                  _showProgramsModal();
-                },
-              ),
-              
-              const SizedBox(height: 24),
-            ],
+                
+                const SizedBox(height: 24),
+                
+                // Options
+                _buildSessionChoiceButton(
+                  icon: LucideIcons.pencil,
+                  title: 'workout_create_manually'.tr(locService.currentLanguageCode),
+                  subtitle: 'workout_create_manually_desc'.tr(locService.currentLanguageCode),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showManualSessionFlow();
+                  },
+                ),
+                
+                const SizedBox(height: 12),
+                
+                _buildSessionChoiceButton(
+                  icon: LucideIcons.bookOpen,
+                  title: 'workout_choose_program'.tr(locService.currentLanguageCode),
+                  subtitle: 'workout_choose_program_desc'.tr(locService.currentLanguageCode),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showProgramsModal();
+                  },
+                ),
+                
+                const SizedBox(height: 24),
+              ],
+            ),
           ),
         ),
       ),
@@ -322,7 +335,10 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
 
   void _showSessionNameModal() {
     final TextEditingController nameController = TextEditingController();
-    nameController.text = 'Séance du ${DateTime.now().day}/${DateTime.now().month}';
+    final locService = LocalizationService.instance;
+    nameController.text = 'workout_default_session_name'.tr(locService.currentLanguageCode)
+        .replaceAll('{day}', '${DateTime.now().day}')
+        .replaceAll('{month}', '${DateTime.now().month}');
 
     showModalBottomSheet(
       context: context,
@@ -359,26 +375,30 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
                 
                 const SizedBox(height: 24),
                 
-                const Text(
-                  'Nom de la séance',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1A1A1A),
+                Consumer<LocalizationService>(
+                  builder: (context, locService, _) => Text(
+                    'workout_session_name'.tr(locService.currentLanguageCode),
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1A1A1A),
+                    ),
                   ),
                 ),
                 
                 const SizedBox(height: 16),
                 
-                TextField(
-                  controller: nameController,
-                  decoration: InputDecoration(
-                    hintText: 'Nom de la séance',
-                    filled: true,
-                    fillColor: const Color(0xFFF8FAFC),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
+                Consumer<LocalizationService>(
+                  builder: (context, locService, _) => TextField(
+                    controller: nameController,
+                    decoration: InputDecoration(
+                      hintText: 'workout_session_name_hint'.tr(locService.currentLanguageCode),
+                      filled: true,
+                      fillColor: const Color(0xFFF8FAFC),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
                     ),
                   ),
                 ),
@@ -400,11 +420,13 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: const Text(
-                      'Commencer la séance',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
+                    child: Consumer<LocalizationService>(
+                      builder: (context, locService, _) => Text(
+                        'workout_start_session'.tr(locService.currentLanguageCode),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ),
@@ -500,24 +522,28 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Exercices de la séance',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF1A1A1A),
+            Consumer<LocalizationService>(
+              builder: (context, locService, _) => Text(
+                'workout_session_exercises'.tr(locService.currentLanguageCode),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1A1A1A),
+                ),
               ),
             ),
             
             const SizedBox(height: 16),
             
             if (_currentExercises.isEmpty)
-              const Center(
-                child: Text(
-                  'Aucun exercice ajouté',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF64748B),
+              Center(
+                child: Consumer<LocalizationService>(
+                  builder: (context, locService, _) => Text(
+                    'workout_no_exercises_added'.tr(locService.currentLanguageCode),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF64748B),
+                    ),
                   ),
                 ),
               )
@@ -542,7 +568,11 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
               child: TextButton.icon(
                 onPressed: _showExerciseSelection,
                 icon: const Icon(LucideIcons.plus, size: 16),
-                label: const Text('Ajouter un exercice'),
+                label: Consumer<LocalizationService>(
+                  builder: (context, locService, _) => Text(
+                    'workout_add_exercise'.tr(locService.currentLanguageCode),
+                  ),
+                ),
                 style: TextButton.styleFrom(
                   foregroundColor: const Color(0xFF0B132B),
                 ),
@@ -581,7 +611,7 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
     final customExercise = Exercise(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       name: name,
-      muscleGroup: 'Personnalisé',
+      muscleGroup: 'workout_custom_group'.tr(LocalizationService.instance.currentLanguageCode),
       isCustom: true,
     );
     
@@ -636,19 +666,23 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: const Text(
-            'Sauvegarder cette séance',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF1A1A1A),
+          title: Consumer<LocalizationService>(
+            builder: (context, locService, _) => Text(
+              'workout_save_session_title'.tr(locService.currentLanguageCode),
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF1A1A1A),
+              ),
             ),
           ),
-          content: const Text(
-            'Souhaitez-vous ajouter cette séance aux séances guidées ?',
-            style: TextStyle(
-              fontSize: 14,
-              color: Color(0xFF64748B),
+          content: Consumer<LocalizationService>(
+            builder: (context, locService, _) => Text(
+              'workout_save_session_message'.tr(locService.currentLanguageCode),
+              style: const TextStyle(
+                fontSize: 14,
+                color: Color(0xFF64748B),
+              ),
             ),
           ),
           actions: [
@@ -659,7 +693,11 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
               style: TextButton.styleFrom(
                 foregroundColor: const Color(0xFF64748B),
               ),
-              child: const Text('Non'),
+              child: Consumer<LocalizationService>(
+                builder: (context, locService, _) => Text(
+                  'workout_no'.tr(locService.currentLanguageCode),
+                ),
+              ),
             ),
             ElevatedButton(
               onPressed: () {
@@ -673,7 +711,11 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              child: const Text('Oui'),
+              child: Consumer<LocalizationService>(
+                builder: (context, locService, _) => Text(
+                  'workout_yes'.tr(locService.currentLanguageCode),
+                ),
+              ),
             ),
           ],
         );
@@ -688,8 +730,8 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
     final newProgram = WorkoutProgram(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       name: _currentSession!.name,
-      description: 'Programme créé à partir de votre séance',
-      type: 'Personnalisé',
+      description: 'workout_program_from_session_desc'.tr(LocalizationService.instance.currentLanguageCode),
+      type: 'workout_custom_type'.tr(LocalizationService.instance.currentLanguageCode),
       estimatedDuration: duration.inMinutes,
       exercises: _currentExercises.map((workoutExercise) {
         return ProgramExercise(
@@ -704,9 +746,9 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
 
     // Afficher un message de confirmation
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Séance ajoutée aux programmes guidés !'),
-        backgroundColor: Color(0xFF059669),
+      SnackBar(
+        content: Text('workout_session_saved_message'.tr(LocalizationService.instance.currentLanguageCode)),
+        backgroundColor: const Color(0xFF059669),
       ),
     );
   }
@@ -757,12 +799,14 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Séance terminée !',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF1A1A1A),
+            Consumer<LocalizationService>(
+              builder: (context, locService, _) => Text(
+                'workout_session_completed'.tr(locService.currentLanguageCode),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1A1A1A),
+                ),
               ),
             ),
             
@@ -771,21 +815,27 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
             Row(
               children: [
                 Expanded(
-                  child: _buildSummaryItem(
-                    'Durée',
-                    '${duration.inMinutes} min',
+                  child: Consumer<LocalizationService>(
+                    builder: (context, locService, _) => _buildSummaryItem(
+                      'workout_duration'.tr(locService.currentLanguageCode),
+                      '${duration.inMinutes} min',
+                    ),
                   ),
                 ),
                 Expanded(
-                  child: _buildSummaryItem(
-                    'Exercices',
-                    '${_currentExercises.length}',
+                  child: Consumer<LocalizationService>(
+                    builder: (context, locService, _) => _buildSummaryItem(
+                      'workout_exercises'.tr(locService.currentLanguageCode),
+                      '${_currentExercises.length}',
+                    ),
                   ),
                 ),
                 Expanded(
-                  child: _buildSummaryItem(
-                    'Séries',
-                    '$completedSets/$totalSets',
+                  child: Consumer<LocalizationService>(
+                    builder: (context, locService, _) => _buildSummaryItem(
+                      'workout_sets'.tr(locService.currentLanguageCode),
+                      '$completedSets/$totalSets',
+                    ),
                   ),
                 ),
               ],
@@ -797,15 +847,19 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
             Row(
               children: [
                 Expanded(
-                  child: _buildSummaryItem(
-                    'Kilos soulevés',
-                    '${totalWeight.toInt()} kg',
+                  child: Consumer<LocalizationService>(
+                    builder: (context, locService, _) => _buildSummaryItem(
+                      'workout_weight_lifted'.tr(locService.currentLanguageCode),
+                      '${totalWeight.toInt()} kg',
+                    ),
                   ),
                 ),
                 Expanded(
-                  child: _buildSummaryItem(
-                    'Calories dépensées',
-                    '$caloriesInt kcal',
+                  child: Consumer<LocalizationService>(
+                    builder: (context, locService, _) => _buildSummaryItem(
+                      'workout_calories_burned'.tr(locService.currentLanguageCode),
+                      '$caloriesInt kcal',
+                    ),
                   ),
                 ),
               ],
@@ -830,7 +884,11 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
                       side: const BorderSide(color: Color(0xFF0B132B)),
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
-                    child: const Text('Nouvelle séance'),
+                    child: Consumer<LocalizationService>(
+                      builder: (context, locService, _) => Text(
+                        'workout_new_session_btn'.tr(locService.currentLanguageCode),
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -838,7 +896,9 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
                   child: ElevatedButton(
                     onPressed: () {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Séance enregistrée !')),
+                        SnackBar(
+                          content: Text('workout_session_recorded'.tr(LocalizationService.instance.currentLanguageCode)),
+                        ),
                       );
                       setState(() {
                         _isSessionCompleted = false;
@@ -852,7 +912,11 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
-                    child: const Text('Enregistrer'),
+                    child: Consumer<LocalizationService>(
+                      builder: (context, locService, _) => Text(
+                        'workout_save'.tr(locService.currentLanguageCode),
+                      ),
+                    ),
                   ),
                 ),
               ],

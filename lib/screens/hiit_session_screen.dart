@@ -1,9 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:provider/provider.dart';
 import '../models/hiit_models.dart';
 import '../models/cardio_session_models.dart';
 import '../services/cardio_service.dart';
+import '../services/translations.dart';
+import '../services/localization_service.dart';
 
 class HiitSessionScreen extends StatefulWidget {
   final HiitWorkout workout;
@@ -152,7 +155,7 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
                 
                 // Titre selon le résultat
                 Text(
-                  completionPercentage >= 50 ? 'Bonne séance !' : 'Séance interrompue',
+                  completionPercentage >= 50 ? 'hiit_good_session'.tr(LocalizationService.instance.currentLanguageCode) : 'hiit_session_interrupted'.tr(LocalizationService.instance.currentLanguageCode),
                   style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -164,8 +167,8 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
                 
                 Text(
                   completionPercentage >= 50 
-                      ? 'Vous avez réalisé une bonne partie de l\'objectif !'
-                      : 'Pas de problème, chaque effort compte !',
+                      ? 'hiit_good_objective'.tr(LocalizationService.instance.currentLanguageCode)
+                      : 'hiit_effort_counts'.tr(LocalizationService.instance.currentLanguageCode),
                   style: const TextStyle(
                     fontSize: 14,
                     color: Color(0xFF64748B),
@@ -190,7 +193,7 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
                         children: [
                           Expanded(
                             child: _buildSummaryMetric(
-                              'Temps réalisé',
+                              'hiit_time_completed'.tr(LocalizationService.instance.currentLanguageCode),
                               _formatTime(actualDuration),
                               LucideIcons.clock,
                             ),
@@ -202,7 +205,7 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
                           ),
                           Expanded(
                             child: _buildSummaryMetric(
-                              'Objectif',
+                              'hiit_objective'.tr(LocalizationService.instance.currentLanguageCode),
                               _formatTime(workoutDurationObjective),
                               LucideIcons.target,
                             ),
@@ -219,7 +222,7 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
                         children: [
                           Expanded(
                             child: _buildSummaryMetric(
-                              'Séries complètes',
+                              'hiit_complete_sets'.tr(LocalizationService.instance.currentLanguageCode),
                               '$roundsCompleted/$totalRoundsObjective',
                               LucideIcons.repeat,
                             ),
@@ -231,7 +234,7 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
                           ),
                                                      Expanded(
                              child: _buildSummaryMetric(
-                               'Calories',
+                               'hiit_calories'.tr(LocalizationService.instance.currentLanguageCode),
                                '$caloriesBurned kcal',
                                LucideIcons.flame,
                              ),
@@ -273,9 +276,9 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
                        ),
                        elevation: 0,
                      ),
-                     child: const Text(
-                       'Terminer',
-                       style: TextStyle(
+                     child: Text(
+                       'hiit_finish'.tr(LocalizationService.instance.currentLanguageCode),
+                       style: const TextStyle(
                          fontSize: 16,
                          fontWeight: FontWeight.w600,
                          color: Colors.white,
@@ -372,13 +375,14 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
   }
 
   String _getPhaseText() {
+    final locService = LocalizationService.instance;
     switch (_session.currentPhase) {
       case HiitPhase.work:
-        return 'EFFORT';
+        return 'hiit_session_effort'.tr(locService.currentLanguageCode);
       case HiitPhase.rest:
-        return 'REPOS';
+        return 'hiit_session_rest'.tr(locService.currentLanguageCode);
       case HiitPhase.finished:
-        return 'TERMINÉ';
+        return 'hiit_session_finished'.tr(locService.currentLanguageCode);
       default:
         return '';
     }
@@ -466,39 +470,53 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
                 child: Column(
                   children: [
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        _buildInfoItem(
-                          'Série',
-                          '${_session.currentRound}/${_session.workout.totalRounds}',
+                        Expanded(
+                          child: Consumer<LocalizationService>(
+                            builder: (context, locService, _) => _buildInfoItem(
+                              'hiit_session_round'.tr(locService.currentLanguageCode),
+                              '${_session.currentRound}/${_session.workout.totalRounds}',
+                            ),
+                          ),
                         ),
                         Container(
                           width: 1,
                           height: 40,
                           color: Colors.white.withValues(alpha: 0.3),
                         ),
-                        _buildInfoItem(
-                          'Temps total',
-                          _formatTime(_session.totalTimeRemaining),
+                        Expanded(
+                          child: Consumer<LocalizationService>(
+                            builder: (context, locService, _) => _buildInfoItem(
+                              'hiit_session_total_time'.tr(locService.currentLanguageCode),
+                              _formatTime(_session.totalTimeRemaining),
+                            ),
+                          ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 16),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        _buildInfoItem(
-                          'Effort',
-                          '${_session.workout.workDuration}s',
+                        Expanded(
+                          child: Consumer<LocalizationService>(
+                            builder: (context, locService, _) => _buildInfoItem(
+                              'hiit_session_work_duration'.tr(locService.currentLanguageCode),
+                              '${_session.workout.workDuration}s',
+                            ),
+                          ),
                         ),
                         Container(
                           width: 1,
                           height: 40,
                           color: Colors.white.withValues(alpha: 0.3),
                         ),
-                        _buildInfoItem(
-                          'Repos',
-                          '${_session.workout.restDuration}s',
+                        Expanded(
+                          child: Consumer<LocalizationService>(
+                            builder: (context, locService, _) => _buildInfoItem(
+                              'hiit_session_rest_duration'.tr(locService.currentLanguageCode),
+                              '${_session.workout.restDuration}s',
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -596,9 +614,9 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: const Text(
-                        'Terminer',
-                        style: TextStyle(
+                      child: Text(
+                        'hiit_finish'.tr(LocalizationService.instance.currentLanguageCode),
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
                         ),
@@ -638,8 +656,8 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
       
       await CardioService.saveCompletedCardioSession(
         sessionData: sessionData,
-        intensity: 'Élevé', // HIIT est toujours intense
-        notes: 'Séries complètes: $roundsCompleted/${_session.workout.totalRounds}',
+        intensity: 'hiit_session_intensity'.tr(LocalizationService.instance.currentLanguageCode), // HIIT est toujours intense
+        notes: '${'hiit_session_completed_rounds'.tr(LocalizationService.instance.currentLanguageCode)}: $roundsCompleted/${_session.workout.totalRounds}',
       );
       
       // Invalider le cache pour rafraîchir les données
@@ -652,6 +670,8 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
 
   Widget _buildInfoItem(String label, String value) {
     return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Text(
           value,
@@ -660,6 +680,7 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
             fontWeight: FontWeight.bold,
             color: Colors.white,
           ),
+          textAlign: TextAlign.center,
         ),
         const SizedBox(height: 4),
         Text(
@@ -668,6 +689,7 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
             fontSize: 12,
             color: Colors.white.withValues(alpha: 0.7),
           ),
+          textAlign: TextAlign.center,
         ),
       ],
     );

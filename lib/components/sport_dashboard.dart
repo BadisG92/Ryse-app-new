@@ -1787,7 +1787,8 @@ class _CardioSelectionBottomSheetState extends State<_CardioSelectionBottomSheet
   }
 
   List<ActivityFormat> _getActivityFormats(String activityType) {
-    return CardioData.activityFormats[activityType] ?? [];
+    final locService = LocalizationService.instance;
+    return CardioData.getLocalizedActivityFormats(locService.currentLanguageCode)[activityType] ?? [];
   }
 }
 

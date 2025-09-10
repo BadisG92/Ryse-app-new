@@ -11,6 +11,9 @@ import '../services/dashboard_service.dart';
 import '../services/offline_workout_service.dart';
 import '../services/workout_cache_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../services/translations.dart';
+import '../services/localization_service.dart';
+import 'package:provider/provider.dart';
 
 class WorkoutSessionScreen extends StatefulWidget {
   final String sessionName;
@@ -1735,22 +1738,26 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                   color: Colors.white30,
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  'Aucun exercice ajouté',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white70,
+                Consumer<LocalizationService>(
+                  builder: (context, locService, _) => Text(
+                    'workout_no_exercises_added'.tr(locService.currentLanguageCode),
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white70,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 8),
-                                 Text(
-                   'Commencez par ajouter un exercice',
-                   style: TextStyle(
-                     fontSize: 14,
-              color: Colors.white.withOpacity(0.5),
-                   ),
-                 ),
+                Consumer<LocalizationService>(
+                  builder: (context, locService, _) => Text(
+                    'workout_start_by_adding_exercise'.tr(locService.currentLanguageCode),
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.white.withOpacity(0.5),
+                    ),
+                  ),
+                ),
                 const Spacer(),
           
           // Boutons en bas pour état vide
@@ -1768,12 +1775,14 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                         size: 16,
                         color: Colors.white30,
                       ),
-                      label: const Text(
-                        'Série',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.white30,
+                      label: Consumer<LocalizationService>(
+                        builder: (context, locService, _) => Text(
+                          'workout_set'.tr(locService.currentLanguageCode),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white30,
+                          ),
                         ),
                       ),
                       style: OutlinedButton.styleFrom(
@@ -1798,12 +1807,14 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                         size: 16,
                         color: _addExercisePressed ? Colors.white : Colors.white,
                       ),
-                      label: Text(
-                        'Exercice',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: _addExercisePressed ? Colors.white : Colors.white,
+                      label: Consumer<LocalizationService>(
+                        builder: (context, locService, _) => Text(
+                          'workout_exercise'.tr(locService.currentLanguageCode),
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: _addExercisePressed ? Colors.white : Colors.white,
+                          ),
                         ),
                       ),
                       style: OutlinedButton.styleFrom(
@@ -2307,30 +2318,36 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
         ),
-        title: const Text(
-          'Confirmer la fin de la séance',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF1A1A1A),
+        title: Consumer<LocalizationService>(
+          builder: (context, locService, _) => Text(
+            'workout_confirm_end_session'.tr(locService.currentLanguageCode),
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF1A1A1A),
+            ),
           ),
         ),
-        content: const Text(
-          'Êtes-vous sûr de vouloir terminer la séance ?',
-          style: TextStyle(
-            fontSize: 14,
-            color: Color(0xFF64748B),
+        content: Consumer<LocalizationService>(
+          builder: (context, locService, _) => Text(
+            'workout_confirm_end_session_message'.tr(locService.currentLanguageCode),
+            style: const TextStyle(
+              fontSize: 14,
+              color: Color(0xFF64748B),
+            ),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'Annuler',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF64748B),
+            child: Consumer<LocalizationService>(
+              builder: (context, locService, _) => Text(
+                'workout_cancel'.tr(locService.currentLanguageCode),
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF64748B),
+                ),
               ),
             ),
           ),

@@ -2,11 +2,14 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:provider/provider.dart';
 import '../models/cardio_session_models.dart';
 import '../services/cardio_service.dart';
 import '../services/location_service.dart';
 import '../services/cardio_calculator.dart';
 import '../services/cardio_session_manager.dart';
+import '../services/translations.dart';
+import '../services/localization_service.dart';
 
 class CardioTrackingScreen extends StatefulWidget {
   final String activityType;
@@ -81,21 +84,20 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.location_on, color: Color(0xFFFFB000)),
-            SizedBox(width: 8),
-            Text('Géolocalisation'),
+            const Icon(Icons.location_on, color: Color(0xFFFFB000)),
+            const SizedBox(width: 8),
+            Text('tracking_gps_title'.tr(LocalizationService.instance.currentLanguageCode)),
           ],
         ),
-        content: const Text(
-          'Pour un suivi précis de votre distance et vitesse, autorisez l\'accès à votre position. '
-          'Vous pouvez toujours utiliser le mode manuel dans les réglages.',
+        content: Text(
+          'tracking_gps_description'.tr(LocalizationService.instance.currentLanguageCode),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Plus tard'),
+            child: Text('tracking_later'.tr(LocalizationService.instance.currentLanguageCode)),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -105,7 +107,7 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF0B132B),
             ),
-            child: const Text('Autoriser', style: TextStyle(color: Colors.white)),
+            child: Text('tracking_allow'.tr(LocalizationService.instance.currentLanguageCode), style: const TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -254,11 +256,11 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Row(
+        title: Row(
           children: [
-            Icon(LucideIcons.trophy, color: Color(0xFFFFB000)),
-            SizedBox(width: 8),
-            Text('Objectif atteint !'),
+            const Icon(LucideIcons.trophy, color: Color(0xFFFFB000)),
+            const SizedBox(width: 8),
+            Text('tracking_objective_reached'.tr(LocalizationService.instance.currentLanguageCode)),
           ],
         ),
         content: const Text('Félicitations ! Tu as atteint ton objectif. Veux-tu continuer ou terminer la séance ?'),
@@ -326,24 +328,28 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
                 const SizedBox(height: 16),
                 
                 // Titre
-                Text(
-                  'Séance terminée !',
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1A1A1A),
+                Consumer<LocalizationService>(
+                  builder: (context, locService, _) => Text(
+                    'tracking_session_finished'.tr(locService.currentLanguageCode),
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1A1A1A),
+                    ),
                   ),
                 ),
                 
                 const SizedBox(height: 8),
                 
-                Text(
-                  'Excellent travail ! Voici le résumé de votre séance.',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF64748B),
+                Consumer<LocalizationService>(
+                  builder: (context, locService, _) => Text(
+                    'tracking_session_finished_subtitle'.tr(locService.currentLanguageCode),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF64748B),
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                  textAlign: TextAlign.center,
                 ),
                 
                 const SizedBox(height: 24),
@@ -362,10 +368,12 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
                       Row(
                         children: [
                           Expanded(
-                            child: _buildSummaryMetric(
-                              'Durée',
-                              _formatDuration(_session.duration),
-                              LucideIcons.clock,
+                            child: Consumer<LocalizationService>(
+                              builder: (context, locService, _) => _buildSummaryMetric(
+                                'tracking_summary_duration'.tr(locService.currentLanguageCode),
+                                _formatDuration(_session.duration),
+                                LucideIcons.clock,
+                              ),
                             ),
                           ),
                           Container(
@@ -374,10 +382,12 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
                             color: const Color(0xFFE2E8F0),
                           ),
                           Expanded(
-                            child: _buildSummaryMetric(
-                              'Distance',
-                              '${_session.distance.toStringAsFixed(2)} km',
-                              LucideIcons.mapPin,
+                            child: Consumer<LocalizationService>(
+                              builder: (context, locService, _) => _buildSummaryMetric(
+                                'tracking_summary_distance'.tr(locService.currentLanguageCode),
+                                '${_session.distance.toStringAsFixed(2)} km',
+                                LucideIcons.mapPin,
+                              ),
                             ),
                           ),
                         ],
@@ -392,15 +402,19 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
                         children: [
                           Expanded(
                             child: widget.activityType == 'walking'
-                                ? _buildSummaryMetric(
-                                    'Pas',
-                                    '${_session.steps}',
-                                    LucideIcons.footprints,
+                                ? Consumer<LocalizationService>(
+                                    builder: (context, locService, _) => _buildSummaryMetric(
+                                      'tracking_summary_steps'.tr(locService.currentLanguageCode),
+                                      '${_session.steps}',
+                                      LucideIcons.footprints,
+                                    ),
                                   )
-                                : _buildSummaryMetric(
-                                    'Vitesse moy.',
-                                    '${_session.averageSpeed.toStringAsFixed(1)} km/h',
-                                    LucideIcons.gauge,
+                                : Consumer<LocalizationService>(
+                                    builder: (context, locService, _) => _buildSummaryMetric(
+                                      'tracking_summary_average_speed'.tr(locService.currentLanguageCode),
+                                      '${_session.averageSpeed.toStringAsFixed(1)} km/h',
+                                      LucideIcons.gauge,
+                                    ),
                                   ),
                           ),
                           Container(
@@ -409,10 +423,12 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
                             color: const Color(0xFFE2E8F0),
                           ),
                           Expanded(
-                            child: _buildSummaryMetric(
-                              'Calories',
-                              '${_session.calories} kcal',
-                              LucideIcons.flame,
+                            child: Consumer<LocalizationService>(
+                              builder: (context, locService, _) => _buildSummaryMetric(
+                                'tracking_summary_calories'.tr(locService.currentLanguageCode),
+                                '${_session.calories} kcal',
+                                LucideIcons.flame,
+                              ),
                             ),
                           ),
                         ],
@@ -423,10 +439,12 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
                         const SizedBox(height: 16),
                         const Divider(height: 1, color: Color(0xFFE2E8F0)),
                         const SizedBox(height: 16),
-                        _buildSummaryMetric(
-                          'Pas par minute',
-                          '${_session.calculateStepsPerMinute().toStringAsFixed(0)}',
-                          LucideIcons.activity,
+                        Consumer<LocalizationService>(
+                          builder: (context, locService, _) => _buildSummaryMetric(
+                            'tracking_steps_per_minute'.tr(locService.currentLanguageCode),
+                            '${_session.calculateStepsPerMinute().toStringAsFixed(0)}',
+                            LucideIcons.activity,
+                          ),
                         ),
                       ],
                     ],
@@ -468,12 +486,14 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
                       ),
                       elevation: 0,
                     ),
-                    child: const Text(
-                      'Terminer la séance',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
+                    child: Consumer<LocalizationService>(
+                      builder: (context, locService, _) => Text(
+                        'session_end_session'.tr(locService.currentLanguageCode),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                   ),
@@ -501,6 +521,8 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
 
   Widget _buildSummaryMetric(String label, String value, IconData icon) {
     return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Icon(
           icon,
@@ -515,6 +537,7 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
             fontWeight: FontWeight.bold,
             color: Color(0xFF1A1A1A),
           ),
+          textAlign: TextAlign.center,
         ),
         const SizedBox(height: 2),
         Text(
@@ -523,6 +546,7 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
             fontSize: 12,
             color: Color(0xFF64748B),
           ),
+          textAlign: TextAlign.center,
         ),
       ],
     );
@@ -666,12 +690,14 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
                                 color: Colors.white,
                               ),
                             ),
-                            const Text(
-                              'DURÉE',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.white70,
-                                letterSpacing: 1,
+                            Consumer<LocalizationService>(
+                              builder: (context, locService, _) => Text(
+                                'tracking_duration'.tr(locService.currentLanguageCode),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.white70,
+                                  letterSpacing: 1,
+                                ),
                               ),
                             ),
                           ],
@@ -691,51 +717,67 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
                       child: Column(
                         children: [
                           Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                             children: [
-                              _buildMetric(
-                                'Distance',
-                                '${_session.distance.toStringAsFixed(2)} km',
+                              Expanded(
+                                child: Consumer<LocalizationService>(
+                                  builder: (context, locService, _) => _buildMetric(
+                                    'tracking_distance'.tr(locService.currentLanguageCode),
+                                    '${_session.distance.toStringAsFixed(2)} km',
+                                  ),
+                                ),
                               ),
                               Container(
                                 width: 1,
                                 height: 40,
                                 color: Colors.white.withValues(alpha: 0.3),
                               ),
-                              // Affichage différent selon l'activité
-                              widget.activityType == 'walking'
-                                  ? _buildMetric(
-                                      'Pas',
-                                      '${_session.steps}',
-                                    )
-                                  : _buildMetric(
-                                      'Vitesse',
-                                      '${_session.currentSpeed.toStringAsFixed(1)} km/h',
-                                    ),
+                              Expanded(
+                                child: widget.activityType == 'walking'
+                                    ? Consumer<LocalizationService>(
+                                        builder: (context, locService, _) => _buildMetric(
+                                          'tracking_steps'.tr(locService.currentLanguageCode),
+                                          '${_session.steps}',
+                                        ),
+                                      )
+                                    : Consumer<LocalizationService>(
+                                        builder: (context, locService, _) => _buildMetric(
+                                          'tracking_speed'.tr(locService.currentLanguageCode),
+                                          '${_session.currentSpeed.toStringAsFixed(1)} km/h',
+                                        ),
+                                      ),
+                              ),
                             ],
                           ),
                           const SizedBox(height: 16),
                           Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                             children: [
-                              // Affichage différent selon l'activité
-                              widget.activityType == 'walking'
-                                  ? _buildMetric(
-                                      'Pas/min',
-                                      '${_session.calculateStepsPerMinute().toStringAsFixed(0)}',
-                                    )
-                                  : _buildMetric(
-                                      'Moy.',
-                                      '${_session.averageSpeed.toStringAsFixed(1)} km/h',
-                                    ),
+                              Expanded(
+                                child: widget.activityType == 'walking'
+                                    ? Consumer<LocalizationService>(
+                                        builder: (context, locService, _) => _buildMetric(
+                                          'tracking_steps_per_minute'.tr(locService.currentLanguageCode),
+                                          '${_session.calculateStepsPerMinute().toStringAsFixed(0)}',
+                                        ),
+                                      )
+                                    : Consumer<LocalizationService>(
+                                        builder: (context, locService, _) => _buildMetric(
+                                          'tracking_average'.tr(locService.currentLanguageCode),
+                                          '${_session.averageSpeed.toStringAsFixed(1)} km/h',
+                                        ),
+                                      ),
+                              ),
                               Container(
                                 width: 1,
                                 height: 40,
                                 color: Colors.white.withValues(alpha: 0.3),
                               ),
-                              _buildMetric(
-                                'Calories',
-                                '${_session.calories} kcal',
+                              Expanded(
+                                child: Consumer<LocalizationService>(
+                                  builder: (context, locService, _) => _buildMetric(
+                                    'tracking_calories'.tr(locService.currentLanguageCode),
+                                    '${_session.calories} kcal',
+                                  ),
+                                ),
                               ),
                             ],
                           ),
@@ -817,6 +859,8 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
 
   Widget _buildMetric(String label, String value) {
     return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Text(
           value,
@@ -825,6 +869,7 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
             fontWeight: FontWeight.bold,
             color: Colors.white,
           ),
+          textAlign: TextAlign.center,
         ),
         const SizedBox(height: 4),
         Text(
@@ -833,6 +878,7 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
             fontSize: 12,
             color: Colors.white.withValues(alpha: 0.7),
           ),
+          textAlign: TextAlign.center,
         ),
       ],
     );
@@ -883,19 +929,20 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
   }
 
   String _getObjectiveText() {
+    final locService = LocalizationService.instance;
     if (widget.objective?.targetDistance != null) {
       final remaining = widget.objective!.targetDistance! - _session.distance;
       if (remaining > 0) {
-        return 'Objectif: ${remaining.toStringAsFixed(2)} km restants';
+        return '${'tracking_objective_distance_remaining'.tr(locService.currentLanguageCode)}: ${remaining.toStringAsFixed(2)} ${'tracking_distance_remaining'.tr(locService.currentLanguageCode)}';
       } else {
-        return 'Objectif atteint !';
+        return 'tracking_objective_reached'.tr(locService.currentLanguageCode);
       }
     } else if (widget.objective?.targetDuration != null) {
       final remaining = widget.objective!.targetDuration!.inSeconds - _session.duration.inSeconds;
       if (remaining > 0) {
-        return 'Objectif: ${_formatDuration(Duration(seconds: remaining))} restants';
+        return '${'tracking_objective_time_remaining'.tr(locService.currentLanguageCode)}: ${_formatDuration(Duration(seconds: remaining))} ${'tracking_time_remaining'.tr(locService.currentLanguageCode)}';
       } else {
-        return 'Objectif atteint !';
+        return 'tracking_objective_reached'.tr(locService.currentLanguageCode);
       }
     }
     return '';

@@ -958,10 +958,6 @@ class AppTranslations {
       'fr': 'Créer un nouveau repas',
       'en': 'Create new meal',
     },
-    'manual_entry_title': {
-      'fr': 'Saisie manuelle',
-      'en': 'Manual entry',
-    },
     'ai_scanner_title': {
       'fr': 'Scanner avec l\'IA',
       'en': 'AI Scanner',
@@ -1547,6 +1543,937 @@ class AppTranslations {
     'cardio_min_unit': {
       'fr': 'min',
       'en': 'min',
+    },
+    // Cardio activity formats
+    'cardio_free_session': {
+      'fr': 'Course libre',
+      'en': 'Free running',
+    },
+    'cardio_free_session_desc': {
+      'fr': 'Séance libre sans contrainte',
+      'en': 'Free session without constraint',
+    },
+    'cardio_distance_goal': {
+      'fr': 'Objectif distance',
+      'en': 'Distance goal',
+    },
+    'cardio_distance_goal_desc': {
+      'fr': 'Atteindre une distance que tu définis',
+      'en': 'Reach a distance you set',
+    },
+    'cardio_duration_goal': {
+      'fr': 'Objectif durée',
+      'en': 'Duration goal',
+    },
+    'cardio_duration_goal_desc': {
+      'fr': 'Courir pendant une durée que tu choisis',
+      'en': 'Run for a duration you choose',
+    },
+    'cardio_interval_beginner': {
+      'fr': 'Fractionné débutant',
+      'en': 'Beginner intervals',
+    },
+    'cardio_interval_beginner_desc': {
+      'fr': '4x 1min rapide / 2min récup',
+      'en': '4x 1min fast / 2min recovery',
+    },
+    'cardio_interval_advanced': {
+      'fr': 'Fractionné avancé',
+      'en': 'Advanced intervals',
+    },
+    'cardio_interval_advanced_desc': {
+      'fr': '6x 2min rapide / 1min récup',
+      'en': '6x 2min fast / 1min recovery',
+    },
+    'cardio_bike_free': {
+      'fr': 'Vélo libre',
+      'en': 'Free cycling',
+    },
+    'cardio_bike_free_desc': {
+      'fr': 'Sortie vélo libre',
+      'en': 'Free cycling session',
+    },
+    'cardio_bike_distance': {
+      'fr': 'Objectif distance',
+      'en': 'Distance goal',
+    },
+    'cardio_bike_distance_desc': {
+      'fr': 'Distance à atteindre que tu définis',
+      'en': 'Distance to reach that you set',
+    },
+    'cardio_bike_duration': {
+      'fr': 'Objectif durée',
+      'en': 'Duration goal',
+    },
+    'cardio_bike_duration_desc': {
+      'fr': 'Durée que tu choisis',
+      'en': 'Duration you choose',
+    },
+    'cardio_hills': {
+      'fr': 'Côtes',
+      'en': 'Hills',
+    },
+    'cardio_hills_desc': {
+      'fr': 'Entraînement en dénivelé',
+      'en': 'Elevation training',
+    },
+    'cardio_walking_free': {
+      'fr': 'Marche libre',
+      'en': 'Free walking',
+    },
+    'cardio_walking_free_desc': {
+      'fr': 'Promenade libre',
+      'en': 'Free walk',
+    },
+    'cardio_walking_distance': {
+      'fr': 'Objectif distance',
+      'en': 'Distance goal',
+    },
+    'cardio_walking_distance_desc': {
+      'fr': 'Distance à parcourir que tu définis',
+      'en': 'Distance to cover that you set',
+    },
+    'cardio_walking_duration': {
+      'fr': 'Objectif durée',
+      'en': 'Duration goal',
+    },
+    'cardio_walking_duration_desc': {
+      'fr': 'Durée que tu choisis',
+      'en': 'Duration you choose',
+    },
+    'cardio_fast_walking': {
+      'fr': 'Marche rapide',
+      'en': 'Fast walking',
+    },
+    'cardio_fast_walking_desc': {
+      'fr': 'Allure soutenue',
+      'en': 'Sustained pace',
+    },
+    'cardio_hiit_beginner': {
+      'fr': 'HIIT débutant',
+      'en': 'Beginner HIIT',
+    },
+    'cardio_hiit_beginner_desc': {
+      'fr': '15 min - 30s effort / 30s repos',
+      'en': '15 min - 30s work / 30s rest',
+    },
+    'cardio_hiit_intense': {
+      'fr': 'HIIT intense',
+      'en': 'Intense HIIT',
+    },
+    'cardio_hiit_intense_desc': {
+      'fr': '20 min - 45s effort / 15s repos',
+      'en': '20 min - 45s work / 15s rest',
+    },
+    'cardio_tabata': {
+      'fr': 'Tabata',
+      'en': 'Tabata',
+    },
+    'cardio_tabata_desc': {
+      'fr': '4 min - 20s effort / 10s repos',
+      'en': '4 min - 20s work / 10s rest',
+    },
+    'cardio_hiit_custom': {
+      'fr': 'HIIT personnalisé',
+      'en': 'Custom HIIT',
+    },
+    'cardio_hiit_custom_desc': {
+      'fr': 'Créer son propre timing',
+      'en': 'Create your own timing',
+    },
+    // Activity types
+    'activity_running': {
+      'fr': 'Course à pied',
+      'en': 'Running',
+    },
+    'activity_bike': {
+      'fr': 'Vélo',
+      'en': 'Cycling',
+    },
+    'activity_walking': {
+      'fr': 'Marche',
+      'en': 'Walking',
+    },
+    'activity_hiit': {
+      'fr': 'HIIT',
+      'en': 'HIIT',
+    },
+    // Session details
+    'session_details_display': {
+      'fr': 'Affichage des détails de la session',
+      'en': 'Displaying session details',
+    },
+    'cardio_journal_opening': {
+      'fr': 'Ouverture du journal cardio',
+      'en': 'Opening cardio journal',
+    },
+    // Manual entry screen
+    'manual_entry_title': {
+      'fr': 'Saisir',
+      'en': 'Enter',
+    },
+    'manual_session_date': {
+      'fr': 'Date de la séance',
+      'en': 'Session date',
+    },
+    'manual_session_duration': {
+      'fr': 'Durée de la séance',
+      'en': 'Session duration',
+    },
+    'manual_distance_covered': {
+      'fr': 'Distance parcourue',
+      'en': 'Distance covered',
+    },
+    'manual_steps_count': {
+      'fr': 'Nombre de pas',
+      'en': 'Number of steps',
+    },
+    'manual_notes_optional': {
+      'fr': 'Notes (optionnel)',
+      'en': 'Notes (optional)',
+    },
+    'manual_hours': {
+      'fr': 'Heures',
+      'en': 'Hours',
+    },
+    'manual_minutes': {
+      'fr': 'Minutes',
+      'en': 'Minutes',
+    },
+    'manual_distance_km': {
+      'fr': 'Distance (km)',
+      'en': 'Distance (km)',
+    },
+    'manual_steps_label': {
+      'fr': 'Nombre de pas',
+      'en': 'Number of steps',
+    },
+    'manual_notes_placeholder': {
+      'fr': 'Commentaires sur la séance...',
+      'en': 'Comments about the session...',
+    },
+    'manual_save_session': {
+      'fr': 'Enregistrer la séance',
+      'en': 'Save session',
+    },
+    'manual_unit_steps': {
+      'fr': 'pas',
+      'en': 'steps',
+    },
+    'manual_session_saved': {
+      'fr': 'Séance enregistrée',
+      'en': 'Session saved',
+    },
+    'manual_activity_label': {
+      'fr': 'Activité',
+      'en': 'Activity',
+    },
+    'manual_format_label': {
+      'fr': 'Format',
+      'en': 'Format',
+    },
+    'manual_duration_label': {
+      'fr': 'Durée',
+      'en': 'Duration',
+    },
+    'manual_distance_label': {
+      'fr': 'Distance',
+      'en': 'Distance',
+    },
+    'manual_steps_label_result': {
+      'fr': 'Pas',
+      'en': 'Steps',
+    },
+    'manual_steps_per_minute': {
+      'fr': 'Pas par minute',
+      'en': 'Steps per minute',
+    },
+    'manual_avg_speed': {
+      'fr': 'Vitesse moyenne',
+      'en': 'Average speed',
+    },
+    'manual_estimated_calories': {
+      'fr': 'Calories estimées',
+      'en': 'Estimated calories',
+    },
+    'manual_notes_label': {
+      'fr': 'Notes',
+      'en': 'Notes',
+    },
+    'manual_finish': {
+      'fr': 'Terminer',
+      'en': 'Finish',
+    },
+    'manual_intensity_moderate': {
+      'fr': 'Modéré',
+      'en': 'Moderate',
+    },
+    // Validation errors
+    'error_duration_required': {
+      'fr': 'Veuillez entrer une durée valide',
+      'en': 'Please enter a valid duration',
+    },
+    'error_distance_required': {
+      'fr': 'Veuillez entrer une distance valide',
+      'en': 'Please enter a valid distance',
+    },
+    'error_steps_required': {
+      'fr': 'Veuillez entrer un nombre de pas valide',
+      'en': 'Please enter a valid number of steps',
+    },
+    // HIIT Config Screen
+    'hiit_custom_title': {
+      'fr': 'HIIT personnalisé',
+      'en': 'Custom HIIT',
+    },
+    'hiit_config_title': {
+      'fr': 'Configure ton entraînement',
+      'en': 'Configure your workout',
+    },
+    'hiit_config_subtitle': {
+      'fr': 'Définis les paramètres de ton HIIT personnalisé',
+      'en': 'Set your custom HIIT parameters',
+    },
+    'hiit_total_duration': {
+      'fr': 'Durée totale',
+      'en': 'Total duration',
+    },
+    'hiit_total_duration_desc': {
+      'fr': 'Combien de temps veux-tu t\'entraîner ?',
+      'en': 'How long do you want to work out?',
+    },
+    'hiit_work_time': {
+      'fr': 'Temps d\'effort',
+      'en': 'Work time',
+    },
+    'hiit_work_time_desc': {
+      'fr': 'Durée de la phase d\'effort',
+      'en': 'Duration of the work phase',
+    },
+    'hiit_rest_time': {
+      'fr': 'Temps de repos',
+      'en': 'Rest time',
+    },
+    'hiit_rest_time_desc': {
+      'fr': 'Durée de la phase de récupération',
+      'en': 'Duration of the recovery phase',
+    },
+    'hiit_preview': {
+      'fr': 'Aperçu de ton entraînement',
+      'en': 'Workout preview',
+    },
+    'hiit_preview_rounds': {
+      'fr': 'Nombre de rounds',
+      'en': 'Number of rounds',
+    },
+    'hiit_preview_cycle': {
+      'fr': 'Cycle complet',
+      'en': 'Complete cycle',
+    },
+    'hiit_preview_total': {
+      'fr': 'Durée totale estimée',
+      'en': 'Estimated total duration',
+    },
+    'hiit_start_workout': {
+      'fr': 'Commencer l\'entraînement',
+      'en': 'Start workout',
+    },
+    'hiit_unit_min': {
+      'fr': 'min',
+      'en': 'min',
+    },
+    'hiit_unit_sec': {
+      'fr': 'sec',
+      'en': 'sec',
+    },
+    'hiit_cycles_count': {
+      'fr': 'cycles',
+      'en': 'cycles',
+    },
+    // Tracking screens
+    'tracking_gps_title': {
+      'fr': 'Géolocalisation',
+      'en': 'GPS Location',
+    },
+    'tracking_gps_description': {
+      'fr': 'Pour un suivi précis de votre distance et vitesse, autorisez l\'accès à votre position. Vous pouvez toujours utiliser le mode manuel dans les réglages.',
+      'en': 'For precise tracking of your distance and speed, allow access to your location. You can always use manual mode in settings.',
+    },
+    'tracking_later': {
+      'fr': 'Plus tard',
+      'en': 'Later',
+    },
+    'tracking_allow': {
+      'fr': 'Autoriser',
+      'en': 'Allow',
+    },
+    'tracking_objective_reached': {
+      'fr': 'Objectif atteint !',
+      'en': 'Objective reached!',
+    },
+    // HIIT Session
+    'hiit_good_session': {
+      'fr': 'Bonne séance !',
+      'en': 'Good session!',
+    },
+    'hiit_session_interrupted': {
+      'fr': 'Séance interrompue',
+      'en': 'Session interrupted',
+    },
+    'hiit_good_objective': {
+      'fr': 'Vous avez réalisé une bonne partie de l\'objectif !',
+      'en': 'You achieved a good part of the objective!',
+    },
+    'hiit_effort_counts': {
+      'fr': 'Pas de problème, chaque effort compte !',
+      'en': 'No problem, every effort counts!',
+    },
+    'hiit_time_completed': {
+      'fr': 'Temps réalisé',
+      'en': 'Time completed',
+    },
+    'hiit_objective': {
+      'fr': 'Objectif',
+      'en': 'Objective',
+    },
+    'hiit_complete_sets': {
+      'fr': 'Séries complètes',
+      'en': 'Complete sets',
+    },
+    'hiit_calories': {
+      'fr': 'Calories',
+      'en': 'Calories',
+    },
+    'hiit_finish': {
+      'fr': 'Terminer la séance',
+      'en': 'End session',
+    },
+    // Cardio Tracking Screen
+    'tracking_duration': {
+      'fr': 'DURÉE',
+      'en': 'DURATION',
+    },
+    'tracking_distance': {
+      'fr': 'Distance',
+      'en': 'Distance',
+    },
+    'tracking_steps': {
+      'fr': 'Pas',
+      'en': 'Steps',
+    },
+    'tracking_speed': {
+      'fr': 'Vitesse',
+      'en': 'Speed',
+    },
+    'tracking_average': {
+      'fr': 'Moy.',
+      'en': 'Avg.',
+    },
+    'tracking_calories': {
+      'fr': 'Calories',
+      'en': 'Calories',
+    },
+    'tracking_session_finished': {
+      'fr': 'Séance terminée !',
+      'en': 'Session completed!',
+    },
+    'tracking_session_finished_subtitle': {
+      'fr': 'Excellent travail ! Voici le résumé de votre séance.',
+      'en': 'Excellent work! Here\'s your session summary.',
+    },
+    'tracking_summary_duration': {
+      'fr': 'Durée',
+      'en': 'Duration',
+    },
+    'tracking_summary_distance': {
+      'fr': 'Distance',
+      'en': 'Distance',
+    },
+    'tracking_summary_steps': {
+      'fr': 'Pas',
+      'en': 'Steps',
+    },
+    'tracking_summary_average_speed': {
+      'fr': 'Vitesse moy.',
+      'en': 'Avg. speed',
+    },
+    'tracking_summary_calories': {
+      'fr': 'Calories',
+      'en': 'Calories',
+    },
+    'tracking_steps_per_minute': {
+      'fr': 'Pas par minute',
+      'en': 'Steps per minute',
+    },
+    'tracking_steps_short': {
+      'fr': 'Pas/min',
+      'en': 'Steps/min',
+    },
+    // HIIT Session Screen
+    'hiit_session_effort': {
+      'fr': 'EFFORT',
+      'en': 'WORK',
+    },
+    'hiit_session_rest': {
+      'fr': 'REPOS',
+      'en': 'REST',
+    },
+    'hiit_session_finished': {
+      'fr': 'TERMINÉ',
+      'en': 'FINISHED',
+    },
+    'hiit_session_round': {
+      'fr': 'Série',
+      'en': 'Round',
+    },
+    'hiit_session_total_time': {
+      'fr': 'Temps total',
+      'en': 'Total time',
+    },
+    'hiit_session_intensity': {
+      'fr': 'Élevé',
+      'en': 'High',
+    },
+    'hiit_session_completed_rounds': {
+      'fr': 'Séries complètes',
+      'en': 'Completed rounds',
+    },
+    'hiit_session_work_duration': {
+      'fr': 'Effort',
+      'en': 'Work',
+    },
+    'hiit_session_rest_duration': {
+      'fr': 'Repos',
+      'en': 'Rest',
+    },
+    // Cardio objectives and misc
+    'tracking_objective_distance_remaining': {
+      'fr': 'Objectif',
+      'en': 'Goal',
+    },
+    'tracking_distance_remaining': {
+      'fr': 'km restants',
+      'en': 'km remaining',
+    },
+    'tracking_objective_time_remaining': {
+      'fr': 'Objectif',
+      'en': 'Goal',
+    },
+    'tracking_time_remaining': {
+      'fr': 'restants',
+      'en': 'remaining',
+    },
+    // Session stats labels  
+    'session_stat_duration': {
+      'fr': 'Durée',
+      'en': 'Duration',
+    },
+    'session_stat_distance': {
+      'fr': 'Distance',
+      'en': 'Distance',
+    },
+    'session_stat_pace': {
+      'fr': 'Allure',
+      'en': 'Pace',
+    },
+    'session_stat_calories': {
+      'fr': 'Calories',
+      'en': 'Calories',
+    },
+    'session_last_session': {
+      'fr': 'Dernière séance',
+      'en': 'Last session',
+    },
+    'session_end_session': {
+      'fr': 'Terminer la séance',
+      'en': 'End session',
+    },
+    // Workout/Musculation page
+    'workout_session_type': {
+      'fr': 'Type de séance',
+      'en': 'Session type',
+    },
+    'workout_upper_body': {
+      'fr': 'Haut du corps',
+      'en': 'Upper body',
+    },
+    'workout_lower_body': {
+      'fr': 'Bas du corps',
+      'en': 'Lower body',
+    },
+    'workout_full_body': {
+      'fr': 'Full body',
+      'en': 'Full body',
+    },
+    'workout_manual_session': {
+      'fr': 'Séance manuelle',
+      'en': 'Manual session',
+    },
+    'workout_guided_session': {
+      'fr': 'Séance guidée',
+      'en': 'Guided session',
+    },
+    'workout_new_session': {
+      'fr': 'Nouvelle séance',
+      'en': 'New session',
+    },
+    'workout_create_manual_title': {
+      'fr': 'Créer une séance manuellement',
+      'en': 'Create a manual session',
+    },
+    'workout_create_manual_subtitle': {
+      'fr': 'Construire sa séance étape par étape',
+      'en': 'Build your session step by step',
+    },
+    'workout_choose_program_menu_title': {
+      'fr': 'Choisir un programme enregistré',
+      'en': 'Choose a saved program',
+    },
+    'workout_choose_program_subtitle': {
+      'fr': 'Utiliser un programme existant',
+      'en': 'Use an existing program',
+    },
+    'workout_session_name': {
+      'fr': 'Nom de la séance',
+      'en': 'Session name',
+    },
+    'workout_session_of': {
+      'fr': 'Séance du',
+      'en': 'Session of',
+    },
+    'workout_start_session': {
+      'fr': 'Commencer la séance',
+      'en': 'Start session',
+    },
+    'workout_session_exercises': {
+      'fr': 'Exercices de la séance',
+      'en': 'Session exercises',
+    },
+    'workout_no_exercise_added': {
+      'fr': 'Aucun exercice ajouté',
+      'en': 'No exercise added',
+    },
+    'workout_add_exercise': {
+      'fr': 'Ajouter un exercice',
+      'en': 'Add exercise',
+    },
+    'workout_custom': {
+      'fr': 'Personnalisé',
+      'en': 'Custom',
+    },
+    'workout_save_session': {
+      'fr': 'Sauvegarder cette séance',
+      'en': 'Save this session',
+    },
+    'workout_save_session_question': {
+      'fr': 'Souhaitez-vous ajouter cette séance aux séances guidées ?',
+      'en': 'Do you want to add this session to guided sessions?',
+    },
+    'workout_no': {
+      'fr': 'Non',
+      'en': 'No',
+    },
+    'workout_yes': {
+      'fr': 'Oui',
+      'en': 'Yes',
+    },
+    'workout_program_created_desc': {
+      'fr': 'Programme créé à partir de votre séance',
+      'en': 'Program created from your session',
+    },
+    'workout_session_added_programs': {
+      'fr': 'Séance ajoutée aux programmes guidés !',
+      'en': 'Session added to guided programs!',
+    },
+    'workout_session_finished': {
+      'fr': 'Séance terminée !',
+      'en': 'Session completed!',
+    },
+    'workout_duration': {
+      'fr': 'Durée',
+      'en': 'Duration',
+    },
+    'workout_exercises_count': {
+      'fr': 'Exercices',
+      'en': 'Exercises',
+    },
+    'workout_sets_count': {
+      'fr': 'Séries',
+      'en': 'Sets',
+    },
+    'workout_kilos_lifted': {
+      'fr': 'Kilos soulevés',
+      'en': 'Kilos lifted',
+    },
+    'workout_calories_burned': {
+      'fr': 'Calories dépensées',
+      'en': 'Calories burned',
+    },
+    'workout_new_session_button': {
+      'fr': 'Nouvelle séance',
+      'en': 'New session',
+    },
+    'workout_session_saved': {
+      'fr': 'Séance enregistrée !',
+      'en': 'Session saved!',
+    },
+    'workout_save': {
+      'fr': 'Enregistrer',
+      'en': 'Save',
+    },
+    // Workout widgets
+    'workout_monday': {
+      'fr': 'Lundi',
+      'en': 'Monday',
+    },
+    'workout_tuesday': {
+      'fr': 'Mardi',
+      'en': 'Tuesday',
+    },
+    'workout_wednesday': {
+      'fr': 'Mercredi',
+      'en': 'Wednesday',
+    },
+    'workout_thursday': {
+      'fr': 'Jeudi',
+      'en': 'Thursday',
+    },
+    'workout_friday': {
+      'fr': 'Vendredi',
+      'en': 'Friday',
+    },
+    'workout_saturday': {
+      'fr': 'Samedi',
+      'en': 'Saturday',
+    },
+    'workout_sunday': {
+      'fr': 'Dimanche',
+      'en': 'Sunday',
+    },
+    'workout_today': {
+      'fr': 'Aujourd\'hui',
+      'en': 'Today',
+    },
+    'workout_one_day_ago': {
+      'fr': 'Il y a 1 jour',
+      'en': '1 day ago',
+    },
+    'workout_days_ago': {
+      'fr': 'Il y a {0} jours',
+      'en': '{0} days ago',
+    },
+    'workout_week_history': {
+      'fr': 'Historique de la semaine',
+      'en': 'Week history',
+    },
+    'workout_no_session_this_week': {
+      'fr': 'Aucune séance cette semaine',
+      'en': 'No session this week',
+    },
+    'workout_exercise_progression': {
+      'fr': 'Progression par exercice',
+      'en': 'Progress by exercise',
+    },
+    'workout_see_all': {
+      'fr': 'Voir tout',
+      'en': 'See all',
+    },
+    'workout_no_exercise_found': {
+      'fr': 'Aucun exercice trouvé',
+      'en': 'No exercise found',
+    },
+    'workout_finish': {
+      'fr': 'Terminer',
+      'en': 'Finish',
+    },
+    'workout_start_session_button': {
+      'fr': 'Commencer une séance',
+      'en': 'Start a session',
+    },
+    // Workout session screen
+    'workout_intensity_low': {
+      'fr': 'Faible',
+      'en': 'Low',
+    },
+    'workout_intensity_moderate': {
+      'fr': 'Modéré',
+      'en': 'Moderate',
+    },
+    'workout_intensity_high': {
+      'fr': 'Élevé',
+      'en': 'High',
+    },
+    'workout_validate_set_first': {
+      'fr': 'Validez d\'abord la série {0} !',
+      'en': 'Validate set {0} first!',
+    },
+    'workout_set_validated': {
+      'fr': 'Série {0} validée !',
+      'en': 'Set {0} validated!',
+    },
+    'workout_enter_weight_reps': {
+      'fr': 'Veuillez saisir le poids et les répétitions',
+      'en': 'Please enter weight and repetitions',
+    },
+    'workout_how_many_sets': {
+      'fr': 'Combien de séries ?',
+      'en': 'How many sets?',
+    },
+    'workout_for_exercise': {
+      'fr': 'Pour l\'exercice "{0}"',
+      'en': 'For exercise "{0}"',
+    },
+    'workout_cancel': {
+      'fr': 'Annuler',
+      'en': 'Cancel',
+    },
+    'workout_create': {
+      'fr': 'Créer',
+      'en': 'Create',
+    },
+    'workout_no_exercise_offline': {
+      'fr': 'Aucun exercice disponible hors ligne. Connectez-vous au moins une fois pour télécharger les exercices.',
+      'en': 'No exercises available offline. Connect at least once to download exercises.',
+    },
+    'workout_search_create_exercise': {
+      'fr': 'Rechercher ou créer un exercice...',
+      'en': 'Search or create an exercise...',
+    },
+    'workout_create_new_exercise': {
+      'fr': 'Créer un nouvel exercice',
+      'en': 'Create new exercise',
+    },
+    'workout_personal': {
+      'fr': 'Perso',
+      'en': 'Personal',
+    },
+    'workout_hide': {
+      'fr': 'Masquer',
+      'en': 'Hide',
+    },
+    'workout_exercise_hidden': {
+      'fr': 'Exercice masqué de la liste',
+      'en': 'Exercise hidden from list',
+    },
+    'workout_save_session_question_detail': {
+      'fr': 'Souhaitez-vous ajouter la séance "{0}" à votre liste de séances guidées ?',
+      'en': 'Do you want to add session "{0}" to your guided sessions list?',
+    },
+    'workout_create_manually': {
+      'fr': 'Créer une séance manuellement',
+      'en': 'Create session manually',
+    },
+    'workout_create_manually_desc': {
+      'fr': 'Construire sa séance étape par étape',
+      'en': 'Build your session step by step',
+    },
+    'workout_choose_program': {
+      'fr': 'Choisir un programme enregistré',
+      'en': 'Choose saved program',
+    },
+    'workout_choose_program_desc': {
+      'fr': 'Utiliser un programme existant',
+      'en': 'Use existing program',
+    },
+    'workout_default_session_name': {
+      'fr': 'Séance du {day}/{month}',
+      'en': 'Session of {day}/{month}',
+    },
+    'workout_session_name_hint': {
+      'fr': 'Nom de la séance',
+      'en': 'Session name',
+    },
+    'workout_no_exercises_added': {
+      'fr': 'Aucun exercice ajouté',
+      'en': 'No exercises added',
+    },
+    'workout_custom_group': {
+      'fr': 'Personnalisé',
+      'en': 'Custom',
+    },
+    'workout_save_session_title': {
+      'fr': 'Sauvegarder cette séance',
+      'en': 'Save this session',
+    },
+    'workout_save_session_message': {
+      'fr': 'Souhaitez-vous ajouter cette séance aux séances guidées ?',
+      'en': 'Do you want to add this session to guided sessions?',
+    },
+    'workout_program_from_session_desc': {
+      'fr': 'Programme créé à partir de votre séance',
+      'en': 'Program created from your session',
+    },
+    'workout_custom_type': {
+      'fr': 'Personnalisé',
+      'en': 'Custom',
+    },
+    'workout_session_saved_message': {
+      'fr': 'Séance ajoutée aux programmes guidés !',
+      'en': 'Session added to guided programs!',
+    },
+    'workout_session_completed': {
+      'fr': 'Séance terminée !',
+      'en': 'Session completed!',
+    },
+    'workout_weight_lifted': {
+      'fr': 'Kilos soulevés',
+      'en': 'Weight lifted',
+    },
+    'workout_new_session_btn': {
+      'fr': 'Nouvelle séance',
+      'en': 'New session',
+    },
+    'workout_session_recorded': {
+      'fr': 'Séance enregistrée !',
+      'en': 'Session recorded!',
+    },
+    'workout_this_week': {
+      'fr': 'Cette semaine',
+      'en': 'This week',
+    },
+    'workout_sessions_short': {
+      'fr': 'Séances',
+      'en': 'Sessions',
+    },
+    'workout_lifted_short': {
+      'fr': 'Soulevés',
+      'en': 'Lifted',
+    },
+    'workout_burned_short': {
+      'fr': 'Brûlées',
+      'en': 'Burned',
+    },
+    'workout_start_by_adding_exercise': {
+      'fr': 'Commencez par ajouter un exercice',
+      'en': 'Start by adding an exercise',
+    },
+    'workout_set': {
+      'fr': 'Série',
+      'en': 'Set',
+    },
+    'workout_confirm_end_session': {
+      'fr': 'Confirmer la fin de la séance',
+      'en': 'Confirm end of session',
+    },
+    'workout_confirm_end_session_message': {
+      'fr': 'Êtes-vous sûr de vouloir terminer la séance ?',
+      'en': 'Are you sure you want to end the session?',
+    },
+    'workout_programs_loading_error': {
+      'fr': 'Erreur de chargement des programmes',
+      'en': 'Error loading programs',
+    },
+    'workout_choose_program_title': {
+      'fr': 'Choisir un programme',
+      'en': 'Choose a program',
+    },
+    'workout_custom_and_predefined_programs': {
+      'fr': 'Vos programmes personnalisés et programmes prédéfinis',
+      'en': 'Your custom programs and predefined programs',
+    },
+    'workout_select_predefined_program': {
+      'fr': 'Sélectionnez un programme avec exercices prédéfinis',
+      'en': 'Select a program with predefined exercises',
     },
   };
 

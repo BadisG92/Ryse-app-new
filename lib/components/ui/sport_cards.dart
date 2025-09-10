@@ -3,6 +3,9 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'custom_card.dart';
 import 'sport_models.dart';
 import '../../widgets/exercise/exercise_detail_page.dart';
+import '../../services/translations.dart';
+import '../../services/localization_service.dart';
+import 'package:provider/provider.dart';
 
 // Card pour les statistiques hebdomadaires individuelles
 class WeeklyStatCard extends StatelessWidget {
@@ -139,12 +142,14 @@ class WeeklyStatsCard extends StatelessWidget {
                   color: Color(0xFF0B132B),
                 ),
                 const SizedBox(width: 12),
-                const Text(
-                  'Cette semaine',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1A1A),
+                Consumer<LocalizationService>(
+                  builder: (context, locService, _) => Text(
+                    'workout_this_week'.tr(locService.currentLanguageCode),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1A1A1A),
+                    ),
                   ),
                 ),
               ],
@@ -153,23 +158,29 @@ class WeeklyStatsCard extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: WeeklyStatCard(
-                    title: stats.sessions,
-                    subtitle: 'Séances',
+                  child: Consumer<LocalizationService>(
+                    builder: (context, locService, _) => WeeklyStatCard(
+                      title: stats.sessions,
+                      subtitle: 'workout_sessions_short'.tr(locService.currentLanguageCode),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: WeeklyStatCard(
-                    title: stats.weight,
-                    subtitle: 'Soulevés',
+                  child: Consumer<LocalizationService>(
+                    builder: (context, locService, _) => WeeklyStatCard(
+                      title: stats.weight,
+                      subtitle: 'workout_lifted_short'.tr(locService.currentLanguageCode),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: WeeklyStatCard(
-                    title: stats.calories,
-                    subtitle: 'Brûlées',
+                  child: Consumer<LocalizationService>(
+                    builder: (context, locService, _) => WeeklyStatCard(
+                      title: stats.calories,
+                      subtitle: 'workout_burned_short'.tr(locService.currentLanguageCode),
+                    ),
                   ),
                 ),
               ],
