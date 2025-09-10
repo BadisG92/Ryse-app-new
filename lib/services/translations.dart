@@ -263,6 +263,150 @@ class AppTranslations {
       'fr': 'Poids cible',
       'en': 'Target weight',
     },
+    'target_weight_question_lose': {
+      'fr': 'Quel est votre poids objectif ?',
+      'en': 'What is your target weight?',
+    },
+    'target_weight_question_gain': {
+      'fr': 'Quel poids souhaitez-vous atteindre ?',
+      'en': 'What weight would you like to reach?',
+    },
+    'loading_personalized_coaching': {
+      'fr': 'Préparation de votre coaching personnalisé...',
+      'en': 'Preparing your personalized coaching...',
+    },
+    'loading_activity_level': {
+      'fr': 'Prise en compte de votre niveau d\'activité...',
+      'en': 'Taking into account your activity level...',
+    },
+    'loading_metabolism': {
+      'fr': 'Calcul de votre métabolisme de base...',
+      'en': 'Calculating your base metabolism...',
+    },
+    'loading_adjustment': {
+      'fr': 'Ajustement selon votre objectif principal...',
+      'en': 'Adjusting according to your main goal...',
+    },
+    'loading_nutritional_analysis': {
+      'fr': 'Analyse de vos besoins nutritionnels...',
+      'en': 'Analyzing your nutritional needs...',
+    },
+    'loading_macronutrients': {
+      'fr': 'Personnalisation de vos apports en macronutriments...',
+      'en': 'Customizing your macronutrient intake...',
+    },
+    'loading_preferences': {
+      'fr': 'Vérification de vos préférences et restrictions...',
+      'en': 'Checking your preferences and restrictions...',
+    },
+    'loading_plan_ready': {
+      'fr': 'Votre plan est presque prêt !',
+      'en': 'Your plan is almost ready!',
+    },
+    'activity_level_question': {
+      'fr': 'Quel est votre niveau d\'activité ?',
+      'en': 'What is your activity level?',
+    },
+    'goal_question': {
+      'fr': 'Quel est votre objectif ?',
+      'en': 'What is your goal?',
+    },
+    'obstacles_question': {
+      'fr': 'Qu\'est-ce qui vous empêche de garder une routine ?',
+      'en': 'What prevents you from keeping a routine?',
+    },
+    'dietary_restrictions_question': {
+      'fr': 'Avez-vous des restrictions alimentaires ?',
+      'en': 'Do you have any dietary restrictions?',
+    },
+    'congratulations': {
+      'fr': 'Félicitations !',
+      'en': 'Congratulations!',
+    },
+    'your_plan_ready': {
+      'fr': 'Votre plan est prêt',
+      'en': 'Your plan is ready',
+    },
+    'daily_goal': {
+      'fr': 'Votre objectif quotidien',
+      'en': 'Your daily goal',
+    },
+    'calculated_specially': {
+      'fr': 'Calculé spécialement pour vous',
+      'en': 'Calculated specially for you',
+    },
+    'start_journey': {
+      'fr': 'Commencer mon parcours',
+      'en': 'Start my journey',
+    },
+    'calculation_details': {
+      'fr': 'Détail du calcul',
+      'en': 'Calculation details',
+    },
+    'base_metabolism': {
+      'fr': 'Métabolisme de base (BMR)',
+      'en': 'Base metabolism (BMR)',
+    },
+    'physical_activity': {
+      'fr': 'Activité physique',
+      'en': 'Physical activity',
+    },
+    'goal_surplus': {
+      'fr': 'Objectif (surplus)',
+      'en': 'Goal (surplus)',
+    },
+    'goal_deficit': {
+      'fr': 'Objectif (déficit)',
+      'en': 'Goal (deficit)',
+    },
+    'final_result': {
+      'fr': 'Résultat final :',
+      'en': 'Final result:',
+    },
+    'kcal_per_day': {
+      'fr': 'kcal/jour',
+      'en': 'kcal/day',
+    },
+    'modify_macronutrients': {
+      'fr': 'Modifier les macronutriments',
+      'en': 'Modify macronutrients',
+    },
+    'daily_calorie_goal': {
+      'fr': 'Objectif calorique quotidien',
+      'en': 'Daily calorie goal',
+    },
+    'recommended': {
+      'fr': 'Recommandé:',
+      'en': 'Recommended:',
+    },
+    'macronutrient_distribution': {
+      'fr': 'Répartition des macronutriments',
+      'en': 'Macronutrient distribution',
+    },
+    'proteins': {
+      'fr': 'Protéines',
+      'en': 'Proteins',
+    },
+    'apply': {
+      'fr': 'Appliquer',
+      'en': 'Apply',
+    },
+    'personalization_in_progress': {
+      'fr': 'Personnalisation en cours...',
+      'en': 'Personalization in progress...',
+    },
+    'ryze_preparing_plan': {
+      'fr': '🧠 Ryze prépare votre plan...',
+      'en': '🧠 Ryze is preparing your plan...',
+    },
+    'predefined_distributions': {
+      'fr': 'Répartitions prédéfinies',
+      'en': 'Predefined distributions',
+    },
+    'balanced': {
+      'fr': 'Équilibré',
+      'en': 'Balanced',
+    },
     'macronutrients': {
       'fr': 'Macronutriments',
       'en': 'Macronutrients',
@@ -307,10 +451,6 @@ class AppTranslations {
       'fr': 'ans',
       'en': 'years',
     },
-    'daily_calorie_goal': {
-      'fr': 'Objectif calorique quotidien',
-      'en': 'Daily calorie goal',
-    },
     'activity_level': {
       'fr': 'NIVEAU D\'ACTIVITÉ',
       'en': 'ACTIVITY LEVEL',
@@ -327,10 +467,6 @@ class AppTranslations {
       'fr': 'Très actif',
       'en': 'Very active',
     },
-    'kcal_per_day': {
-      'fr': 'kcal/jour',
-      'en': 'kcal/day',
-    },
     'help_support': {
       'fr': 'Aide et support',
       'en': 'Help and support',
@@ -338,6 +474,18 @@ class AppTranslations {
     'about': {
       'fr': 'À propos',
       'en': 'About',
+    },
+    'test_onboarding': {
+      'fr': 'Tester l\'onboarding',
+      'en': 'Test onboarding',
+    },
+    'test_onboarding_translations': {
+      'fr': 'Tester traductions onboarding',
+      'en': 'Test onboarding translations',
+    },
+    'test_onboarding_confirmation': {
+      'fr': 'Voulez-vous vraiment relancer l\'onboarding ?',
+      'en': 'Do you really want to restart the onboarding?',
     },
     'logout': {
       'fr': 'Déconnexion',
@@ -467,26 +615,6 @@ class AppTranslations {
       'fr': 'Anglais',
       'en': 'English',
     },
-    'modify_macronutrients': {
-      'fr': 'Modifier les macronutriments',
-      'en': 'Modify macronutrients',
-    },
-    'recommended': {
-      'fr': 'Recommandé',
-      'en': 'Recommended',
-    },
-    'macronutrient_distribution': {
-      'fr': 'Répartition des macronutriments',
-      'en': 'Macronutrient distribution',
-    },
-    'apply': {
-      'fr': 'Appliquer',
-      'en': 'Apply',
-    },
-    'predefined_distributions': {
-      'fr': 'Répartitions prédéfinies',
-      'en': 'Predefined distributions',
-    },
     'dietary_restrictions': {
       'fr': 'Restrictions alimentaires',
       'en': 'Dietary restrictions',
@@ -612,10 +740,6 @@ class AppTranslations {
     'error_loading_profile': {
       'fr': 'Erreur lors du chargement du profil',
       'en': 'Error loading profile',
-    },
-    'welcome_back': {
-      'fr': 'Bon retour',
-      'en': 'Welcome back',
     },
     'hello': {
       'fr': 'Salut',
@@ -1548,10 +1672,6 @@ class AppTranslations {
     'per_unit': {
       'fr': 'par unité',
       'en': 'per unit',
-    },
-    'proteins': {
-      'fr': 'Protéines',
-      'en': 'Proteins',
     },
     'calculated_calories': {
       'fr': 'Calories calculées : {calories} kcal',
@@ -3158,9 +3278,82 @@ class AppTranslations {
       'fr': 'Série',
       'en': 'Set',
     },
+    'step': {
+      'fr': 'Étape',
+      'en': 'Step',
+    },
+    'on': {
+      'fr': 'sur',
+      'en': 'of',
+    },
     'finish': {
       'fr': 'Terminer',
       'en': 'Finish',
+    },
+    // Login page
+    'welcome': {
+      'fr': 'Bienvenue !',
+      'en': 'Welcome!',
+    },
+    'welcome_back': {
+      'fr': 'Bon retour !',
+      'en': 'Welcome Back!',
+    },
+    'sign_in_subtitle': {
+      'fr': 'Connectez-vous pour continuer votre parcours fitness',
+      'en': 'Sign in to continue your fitness journey',
+    },
+    'email': {
+      'fr': 'Email',
+      'en': 'Email',
+    },
+    'password': {
+      'fr': 'Mot de passe',
+      'en': 'Password',
+    },
+    'sign_in': {
+      'fr': 'Se connecter',
+      'en': 'Sign In',
+    },
+    'forgot_password': {
+      'fr': 'Mot de passe oublié ?',
+      'en': 'Forgot Password?',
+    },
+    'or_continue_with': {
+      'fr': 'Ou continuez avec',
+      'en': 'Or continue with',
+    },
+    'dont_have_account': {
+      'fr': 'Pas encore de compte ?',
+      'en': 'Don\'t have an account?',
+    },
+    'sign_up': {
+      'fr': 'S\'inscrire',
+      'en': 'Sign Up',
+    },
+    'login_failed': {
+      'fr': 'Échec de la connexion',
+      'en': 'Login failed',
+    },
+    'google_login_failed': {
+      'fr': 'Échec de la connexion Google',
+      'en': 'Google login failed',
+    },
+    'apple_login_failed': {
+      'fr': 'Échec de la connexion Apple',
+      'en': 'Apple login failed',
+    },
+    'enter_email': {
+      'fr': 'Veuillez saisir votre email',
+      'en': 'Please enter your email',
+    },
+    'enter_valid_email': {
+      'fr': 'Veuillez saisir un email valide',
+      'en': 'Please enter a valid email',
+    },
+    'enter_password': {
+      'fr': 'Veuillez saisir votre mot de passe',
+      'en': 'Please enter your password',
     },
     'programs': {
       'fr': 'Programmes',
@@ -3297,6 +3490,172 @@ class AppTranslations {
     'workout_add_exercise_not_in_list': {
       'fr': 'Ajouter un exercice qui ne figure pas dans la liste',
       'en': 'Add an exercise that is not in the list',
+    },
+
+    // Onboarding
+    'onboarding_welcome': {
+      'fr': 'Bienvenue',
+      'en': 'Welcome',
+    },
+    'onboarding_personal_profile': {
+      'fr': 'Profil personnel',
+      'en': 'Personal profile',
+    },
+    'onboarding_choose_gender': {
+      'fr': 'Choisissez votre genre',
+      'en': 'Choose your gender',
+    },
+    'onboarding_calibrate_plan': {
+      'fr': 'Cela sera utilisé pour calibrer votre plan personnalisé',
+      'en': 'This will be used to calibrate your personalized plan',
+    },
+    'onboarding_when_born': {
+      'fr': 'Quand êtes-vous né',
+      'en': 'When were you born',
+    },
+    'onboarding_height_weight': {
+      'fr': 'Quelle est votre Taille & Poids',
+      'en': 'What is your Height & Weight',
+    },
+    'onboarding_adjust_energy': {
+      'fr': 'Pour ajuster vos besoins énergétiques',
+      'en': 'To adjust your energy needs',
+    },
+    'onboarding_height_label': {
+      'fr': 'Taille',
+      'en': 'Height',
+    },
+    'onboarding_weight_label': {
+      'fr': 'Poids',
+      'en': 'Weight',
+    },
+    'onboarding_activity_level': {
+      'fr': 'Quel est votre niveau d\'activité ?',
+      'en': 'What is your activity level?',
+    },
+    'onboarding_goal': {
+      'fr': 'Quel est votre objectif ?',
+      'en': 'What is your goal?',
+    },
+    'onboarding_obstacles': {
+      'fr': 'Qu\'est-ce qui vous empêche de garder une routine ?',
+      'en': 'What prevents you from keeping a routine?',
+    },
+    'onboarding_dietary_restrictions': {
+      'fr': 'Avez-vous des restrictions alimentaires ?',
+      'en': 'Do you have any dietary restrictions?',
+    },
+    'onboarding_results': {
+      'fr': 'Résultats',
+      'en': 'Results',
+    },
+    'onboarding_low_activity': {
+      'fr': 'Peu actif',
+      'en': 'Low activity',
+    },
+    'onboarding_moderate_activity': {
+      'fr': 'Modérément actif',
+      'en': 'Moderate activity',
+    },
+    'onboarding_high_activity': {
+      'fr': 'Très actif',
+      'en': 'High activity',
+    },
+    'onboarding_low_activity_desc': {
+      'fr': '0-2 jours par semaine',
+      'en': '0-2 days per week',
+    },
+    'onboarding_moderate_activity_desc': {
+      'fr': '3-5 jours par semaine',
+      'en': '3-5 days per week',
+    },
+    'onboarding_high_activity_desc': {
+      'fr': '6+ jours par semaine',
+      'en': '6+ days per week',
+    },
+    'onboarding_lose_weight': {
+      'fr': 'Perdre du poids',
+      'en': 'Lose weight',
+    },
+    'onboarding_maintain_weight': {
+      'fr': 'Maintenir mon poids',
+      'en': 'Maintain my weight',
+    },
+    'onboarding_gain_weight': {
+      'fr': 'Prendre du poids',
+      'en': 'Gain weight',
+    },
+    'onboarding_lose_weight_desc': {
+      'fr': 'Déficit calorique contrôlé',
+      'en': 'Controlled caloric deficit',
+    },
+    'onboarding_maintain_weight_desc': {
+      'fr': 'Équilibre énergétique',
+      'en': 'Energy balance',
+    },
+    'onboarding_gain_weight_desc': {
+      'fr': 'Surplus calorique sain',
+      'en': 'Healthy caloric surplus',
+    },
+    'onboarding_lack_of_time': {
+      'fr': 'Manque de temps',
+      'en': 'Lack of time',
+    },
+    'onboarding_lack_of_motivation': {
+      'fr': 'Manque de motivation',
+      'en': 'Lack of motivation',
+    },
+    'onboarding_fatigue': {
+      'fr': 'Fatigue',
+      'en': 'Fatigue',
+    },
+    'onboarding_lack_of_knowledge': {
+      'fr': 'Manque de connaissances',
+      'en': 'Lack of knowledge',
+    },
+    'onboarding_other_priorities': {
+      'fr': 'Autres priorités',
+      'en': 'Other priorities',
+    },
+    'onboarding_next': {
+      'fr': 'Suivant',
+      'en': 'Next',
+    },
+    'onboarding_previous': {
+      'fr': 'Précédent',
+      'en': 'Previous',
+    },
+    'onboarding_profile_ready': {
+      'fr': 'Votre profil est prêt !',
+      'en': 'Your profile is ready!',
+    },
+    'onboarding_personalize_experience': {
+      'fr': 'Cela nous permettra de personnaliser votre expérience',
+      'en': 'This will allow us to personalize your experience',
+    },
+    'onboarding_welcome_title': {
+      'fr': 'Bienvenue dans Ryze',
+      'en': 'Welcome to Ryze',
+    },
+    'onboarding_welcome_tagline': {
+      'fr': 'Votre partenaire bien-être',
+      'en': 'Your wellness partner',
+    },
+    'onboarding_welcome_subtitle': {
+      'fr': 'Créez votre plan nutrition personnalisé en 5 minutes',
+      'en': 'Create your personalized nutrition plan in 5 minutes',
+    },
+    'onboarding_stats_success': {
+      'fr': 'ont atteint leurs objectifs',
+      'en': 'reached their goals',
+    },
+    'onboarding_stats_users': {
+      'fr': 'Utilisateurs',
+      'en': 'Users',
+    },
+    'onboarding_stats_rating': {
+      'fr': 'Note App',
+      'en': 'App Rating',
     },
   };
 

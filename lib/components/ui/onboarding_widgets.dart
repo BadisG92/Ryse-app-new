@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:provider/provider.dart';
 import 'onboarding_models.dart';
+import '../../services/localization_service.dart';
+import '../../services/translations.dart';
 
 // Carte sélectionnable moderne avec animations fluides
 class SelectableCard extends StatefulWidget {
@@ -236,12 +239,16 @@ class OnboardingStatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      width: 100,
+      height: 80,
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
       decoration: BoxDecoration(
         color: const Color(0xFF0B132B).withOpacity(0.05),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(
             value,
@@ -250,13 +257,23 @@ class OnboardingStatCard extends StatelessWidget {
               fontWeight: FontWeight.bold,
               color: Color(0xFF0B132B),
             ),
+            textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Color(0xFF64748B),
+          const SizedBox(height: 2),
+          Expanded(
+            child: Center(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 9,
+                  color: Color(0xFF64748B),
+                  fontWeight: FontWeight.w600,
+                  height: 1.0,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ),
         ],
@@ -553,90 +570,354 @@ class _MobileNumberInputState extends State<MobileNumberInput>
   }
 }
 
-// Écran de bienvenue avec stats
-class WelcomeStep extends StatelessWidget {
+// Écran de bienvenue avec stats et animations
+class WelcomeStep extends StatefulWidget {
   const WelcomeStep({super.key});
 
-  static const List<StatCard> _stats = [
-    StatCard(value: '94%', label: 'Succès'),
-    StatCard(value: '2.1M', label: 'Utilisateurs'),
-    StatCard(value: '4.9★', label: 'Note App'),
-  ];
+  @override
+  State<WelcomeStep> createState() => _WelcomeStepState();
+}
+
+class _WelcomeStepState extends State<WelcomeStep> 
+    with TickerProviderStateMixin {
+  late AnimationController _titleController;
+  late AnimationController _logoController;
+  late AnimationController _statsController;
+  late Animation<double> _titleAnimation;
+  late Animation<double> _logoAnimation;
+  late Animation<double> _statsAnimation;
+  late Animation<Offset> _titleSlideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    
+    _titleController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    
+    _logoController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+    
+    _statsController = AnimationController(
+      duration: const Duration(milliseconds: 1000),
+      vsync: this,
+    );
+    
+    _titleAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _titleController,
+      curve: Curves.easeOut,
+    ));
+    
+    _titleSlideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _titleController,
+      curve: Curves.easeOut,
+    ));
+    
+    _logoAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _logoController,
+      curve: Curves.elasticOut,
+    ));
+    
+    _statsAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _statsController,
+      curve: Curves.easeOut,
+    ));
+    
+    // Démarrer les animations en cascade
+    Future.delayed(const Duration(milliseconds: 200), () {
+      _logoController.forward();
+    });
+    
+    Future.delayed(const Duration(milliseconds: 400), () {
+      _titleController.forward();
+    });
+    
+    Future.delayed(const Duration(milliseconds: 800), () {
+      _statsController.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _logoController.dispose();
+    _statsController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        // Logo Ryze propre et centré
-        Container(
-          width: 150, // Augmentation de 10% (136 → 150px)
-          height: 150,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: const Color(0xFF0B132B), // Bleu principal de l'app
-            boxShadow: [
-              // Ombre principale plus douce
-              BoxShadow(
-                color: const Color(0xFF0B132B).withOpacity(0.15),
-                blurRadius: 24,
-                spreadRadius: 0,
-                offset: const Offset(0, 8),
-              ),
-              // Ombre secondaire pour plus de profondeur
-              BoxShadow(
-                color: const Color(0xFF0B132B).withOpacity(0.08),
-                blurRadius: 12,
-                spreadRadius: -2,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(26), // Légèrement ajusté pour la nouvelle taille
-              child: SvgPicture.asset(
-                'assets/images/logo_solo.svg',
-                colorFilter: const ColorFilter.mode(
-                  Colors.white,
-                  BlendMode.srcIn,
-                ),
-              ),
+    return Consumer<LocalizationService>(
+      builder: (context, locService, _) {
+        final languageCode = locService.currentLanguageCode;
+        
+        final stats = [
+          StatCard(value: '94%', label: 'onboarding_stats_success'.tr(languageCode)),
+          StatCard(value: '2.1M', label: 'onboarding_stats_users'.tr(languageCode)),
+          StatCard(value: '4.9★', label: 'onboarding_stats_rating'.tr(languageCode)),
+        ];
+        
+        return Column(
+          children: [
+            // Logo Ryze avec animation
+            AnimatedBuilder(
+              animation: _logoAnimation,
+              builder: (context, child) {
+                return Transform.scale(
+                  scale: _logoAnimation.value,
+                  child: Container(
+                    width: 150,
+                    height: 150,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: const Color(0xFF0B132B),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF0B132B).withOpacity(0.15 * _logoAnimation.value),
+                          blurRadius: 24 * _logoAnimation.value,
+                          spreadRadius: 0,
+                          offset: const Offset(0, 8),
+                        ),
+                        BoxShadow(
+                          color: const Color(0xFF0B132B).withOpacity(0.08 * _logoAnimation.value),
+                          blurRadius: 12 * _logoAnimation.value,
+                          spreadRadius: -2,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(26),
+                        child: SvgPicture.asset(
+                          'assets/images/logo_solo.svg',
+                          colorFilter: const ColorFilter.mode(
+                            Colors.white,
+                            BlendMode.srcIn,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
-          ),
-        ),
-        
-        const SizedBox(height: 40), // Légèrement plus d'espace pour équilibrer le logo plus grand
-        
-        // Stats grid
-        Row(
-          children: _stats.map((stat) => 
-            Expanded(
-              child: Padding(
-                padding: EdgeInsets.only(
-                  left: stat == _stats.first ? 0 : 6,
-                  right: stat == _stats.last ? 0 : 6,
-                ),
-                child: OnboardingStatCard(
-                  value: stat.value,
-                  label: stat.label,
-                ),
-              ),
+            
+            const SizedBox(height: 32),
+            
+            const SizedBox(height: 16),
+            
+            // Titre et tagline avec animation
+            AnimatedBuilder(
+              animation: _titleAnimation,
+              builder: (context, child) {
+                return FadeTransition(
+                  opacity: _titleAnimation,
+                  child: SlideTransition(
+                    position: _titleSlideAnimation,
+                    child: Column(
+                      children: [
+                        Text(
+                          'onboarding_welcome_title'.tr(languageCode),
+                          style: TextStyle(
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF0B132B),
+                            shadows: [
+                              Shadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'onboarding_welcome_tagline'.tr(languageCode),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF64748B),
+                            height: 1.3,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
             ),
-          ).toList(),
-        ),
-        
-        const SizedBox(height: 24),
-        
-        const Text(
-          'En 5 minutes, créons votre plan nutrition personnalisé basé sur vos besoins réels',
-          style: TextStyle(
-            fontSize: 16,
-            color: Color(0xFF64748B),
-            height: 1.5,
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ],
+            
+            const SizedBox(height: 32),
+            
+            // Stats grid avec animation
+            AnimatedBuilder(
+              animation: _statsAnimation,
+              builder: (context, child) {
+                return FadeTransition(
+                  opacity: _statsAnimation,
+                  child: Transform.translate(
+                    offset: Offset(0, 20 * (1 - _statsAnimation.value)),
+                    child: Row(
+                      children: [
+                        // Boîte 1: 94%
+                        Expanded(
+                          child: Container(
+                            height: 80,
+                            margin: const EdgeInsets.only(right: 8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0B132B).withOpacity(0.05),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  '94%',
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF0B132B),
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'onboarding_stats_success'.tr(languageCode),
+                                  style: const TextStyle(
+                                    fontSize: 10,
+                                    color: Color(0xFF64748B),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                  maxLines: 2,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        // Boîte 2: 2.1M
+                        Expanded(
+                          child: Container(
+                            height: 80,
+                            margin: const EdgeInsets.symmetric(horizontal: 4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0B132B).withOpacity(0.05),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  '2.1M',
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF0B132B),
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'onboarding_stats_users'.tr(languageCode),
+                                  style: const TextStyle(
+                                    fontSize: 10,
+                                    color: Color(0xFF64748B),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                  maxLines: 2,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        // Boîte 3: 4.9★
+                        Expanded(
+                          child: Container(
+                            height: 80,
+                            margin: const EdgeInsets.only(left: 8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0B132B).withOpacity(0.05),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  '4.9★',
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF0B132B),
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'onboarding_stats_rating'.tr(languageCode),
+                                  style: const TextStyle(
+                                    fontSize: 10,
+                                    color: Color(0xFF64748B),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                  maxLines: 2,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+            
+            const SizedBox(height: 32),
+            
+            // Sous-titre en bas avec animation
+            AnimatedBuilder(
+              animation: _titleAnimation,
+              builder: (context, child) {
+                return FadeTransition(
+                  opacity: _titleAnimation,
+                  child: SlideTransition(
+                    position: _titleSlideAnimation,
+                    child: Text(
+                      'onboarding_welcome_subtitle'.tr(languageCode),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF0B132B),
+                        height: 1.4,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -702,9 +983,9 @@ class _LoadingStepState extends State<LoadingStep> {
                 ),
               ),
               const SizedBox(height: 40),
-              const Text(
-                '🧠 Ryze prépare votre plan...',
-                style: TextStyle(
+              Text(
+                'ryze_preparing_plan'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
+                style: const TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
                   color: Color(0xFF1A1A1A),
@@ -736,8 +1017,8 @@ class _LoadingStepState extends State<LoadingStep> {
                 borderRadius: BorderRadius.circular(3),
               ),
               const SizedBox(height: 16),
-              const Text(
-                'Personnalisation en cours...',
+              Text(
+                'personalization_in_progress'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
                 style: TextStyle(
                   fontSize: 14,
                   color: Color(0xFF64748B),

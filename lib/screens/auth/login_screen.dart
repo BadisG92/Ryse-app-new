@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../widgets/social_login_button.dart';
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
+import '../../services/translations.dart';
+import '../../services/localization_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -20,12 +23,28 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _isReturningUser = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkIfReturningUser();
+  }
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _checkIfReturningUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    // Vérifier s'il y a une indication qu'un utilisateur s'est déjà connecté
+    final hasLoggedInBefore = prefs.getBool('has_logged_in_before') ?? false;
+    setState(() {
+      _isReturningUser = hasLoggedInBefore;
+    });
   }
 
   Future<void> _handleLogin() async {
@@ -38,11 +57,15 @@ class _LoginScreenState extends State<LoginScreen> {
     );
 
     if (success && mounted) {
+      // Marquer que l'utilisateur s'est connecté
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('has_logged_in_before', true);
+      
       Navigator.of(context).pushReplacementNamed('/main');
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(authService.errorMessage ?? 'Login failed'),
+          content: Text(authService.errorMessage ?? 'login_failed'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode)),
           backgroundColor: Colors.red,
         ),
       );
@@ -58,7 +81,7 @@ class _LoginScreenState extends State<LoginScreen> {
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(authService.errorMessage ?? 'Google login failed'),
+          content: Text(authService.errorMessage ?? 'google_login_failed'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode)),
           backgroundColor: Colors.red,
         ),
       );
@@ -74,7 +97,7 @@ class _LoginScreenState extends State<LoginScreen> {
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(authService.errorMessage ?? 'Apple login failed'),
+          content: Text(authService.errorMessage ?? 'apple_login_failed'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode)),
           backgroundColor: Colors.red,
         ),
       );
@@ -136,20 +159,24 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                       const SizedBox(height: 24),
-                      const Text(
-                        'Welcome Back!',
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF0B132B),
+                      Consumer<LocalizationService>(
+                        builder: (context, locService, _) => Text(
+                          (_isReturningUser ? 'welcome_back' : 'welcome').tr(locService.currentLanguageCode),
+                          style: const TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF0B132B),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 8),
-                      Text(
-                        'Sign in to continue your fitness journey',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.grey[600],
+                      Consumer<LocalizationService>(
+                        builder: (context, locService, _) => Text(
+                          'sign_in_subtitle'.tr(locService.currentLanguageCode),
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey[600],
+                          ),
                         ),
                       ),
                     ],
@@ -162,25 +189,28 @@ class _LoginScreenState extends State<LoginScreen> {
                     key: _formKey,
                     child: Column(
                       children: [
-                        CustomTextField(
-                          controller: _emailController,
-                          label: 'Email',
+                        Consumer<LocalizationService>(
+                          builder: (context, locService, _) => CustomTextField(
+                            controller: _emailController,
+                            label: 'email'.tr(locService.currentLanguageCode),
                           keyboardType: TextInputType.emailAddress,
                           prefixIcon: Icons.email_outlined,
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter your email';
-                            }
-                            if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                              return 'Please enter a valid email';
-                            }
-                            return null;
-                          },
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'enter_email'.tr(locService.currentLanguageCode);
+                              }
+                              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                                return 'enter_valid_email'.tr(locService.currentLanguageCode);
+                              }
+                              return null;
+                            },
+                          ),
                         ),
                         const SizedBox(height: 16),
-                        CustomTextField(
-                          controller: _passwordController,
-                          label: 'Password',
+                        Consumer<LocalizationService>(
+                          builder: (context, locService, _) => CustomTextField(
+                            controller: _passwordController,
+                            label: 'password'.tr(locService.currentLanguageCode),
                           obscureText: _obscurePassword,
                           prefixIcon: Icons.lock_outline,
                           suffixIcon: IconButton(
@@ -193,12 +223,13 @@ class _LoginScreenState extends State<LoginScreen> {
                               });
                             },
                           ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter your password';
-                            }
-                            return null;
-                          },
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'enter_password'.tr(locService.currentLanguageCode);
+                              }
+                              return null;
+                            },
+                          ),
                         ),
                         const SizedBox(height: 8),
                         
@@ -214,11 +245,13 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                               );
                             },
-                            child: const Text(
-                              'Forgot Password?',
-                              style: TextStyle(
-                                color: Color(0xFF0B132B),
-                                fontWeight: FontWeight.w500,
+                            child: Consumer<LocalizationService>(
+                              builder: (context, locService, _) => Text(
+                                'forgot_password'.tr(locService.currentLanguageCode),
+                                style: const TextStyle(
+                                  color: Color(0xFF0B132B),
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
                             ),
                           ),
@@ -227,10 +260,12 @@ class _LoginScreenState extends State<LoginScreen> {
                         const SizedBox(height: 24),
                         
                         // Login Button
-                        CustomButton(
-                          text: 'Sign In',
-                          onPressed: authService.isLoading ? null : _handleLogin,
-                          isLoading: authService.isLoading,
+                        Consumer<LocalizationService>(
+                          builder: (context, locService, _) => CustomButton(
+                            text: 'sign_in'.tr(locService.currentLanguageCode),
+                            onPressed: authService.isLoading ? null : _handleLogin,
+                            isLoading: authService.isLoading,
+                          ),
                         ),
                       ],
                     ),
@@ -244,11 +279,13 @@ class _LoginScreenState extends State<LoginScreen> {
                       Expanded(child: Divider(color: Colors.grey[300])),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Text(
-                          'Or continue with',
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 14,
+                        child: Consumer<LocalizationService>(
+                          builder: (context, locService, _) => Text(
+                            'or_continue_with'.tr(locService.currentLanguageCode),
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontSize: 14,
+                            ),
                           ),
                         ),
                       ),
@@ -285,11 +322,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(
-                        "Don't have an account? ",
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 14,
+                      Consumer<LocalizationService>(
+                        builder: (context, locService, _) => Text(
+                          'dont_have_account'.tr(locService.currentLanguageCode),
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 14,
+                          ),
                         ),
                       ),
                       GestureDetector(
@@ -301,12 +340,14 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           );
                         },
-                        child: const Text(
-                          'Sign Up',
-                          style: TextStyle(
-                            color: Color(0xFF0B132B),
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
+                        child: Consumer<LocalizationService>(
+                          builder: (context, locService, _) => Text(
+                            'sign_up'.tr(locService.currentLanguageCode),
+                            style: const TextStyle(
+                              color: Color(0xFF0B132B),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ),

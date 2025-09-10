@@ -4,10 +4,14 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:async';
+import 'package:intl/intl.dart';
 import 'ui/custom_button.dart';
 import 'ui/onboarding_widgets.dart';
 import 'ui/onboarding_models.dart';
 import 'caloric_breakdown_bottom_sheet.dart';
+import '../services/translations.dart';
+import '../services/localization_service.dart';
+import 'package:provider/provider.dart';
 
 class OnboardingGamifiedHybrid extends StatefulWidget {
   final VoidCallback onComplete;
@@ -52,16 +56,19 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
   // INTÉGRÉ - Logique de chargement spécifique
   Timer? _loadingTextTimer;
   int _loadingTextIndex = 0;
-  final List<String> _loadingMessages = [
-    'Analyse de vos besoins nutritionnels...',
-    'Prise en compte de votre niveau d\'activité...',
-    'Calcul de votre métabolisme de base...',
-    'Ajustement selon votre objectif principal...',
-    'Personnalisation de vos apports en macronutriments...',
-    'Vérification de vos préférences et restrictions...',
-    'Votre plan est presque prêt !'
-  ];
-  String _currentLoadingMessage = 'Préparation de votre coaching personnalisé...';
+  List<String> get _loadingMessages {
+    final languageCode = Provider.of<LocalizationService>(context, listen: false).currentLanguageCode;
+    return [
+      'loading_nutritional_analysis'.tr(languageCode),
+      'loading_activity_level'.tr(languageCode),
+      'loading_metabolism'.tr(languageCode),
+      'loading_adjustment'.tr(languageCode),
+      'loading_macronutrients'.tr(languageCode),
+      'loading_preferences'.tr(languageCode),
+      'loading_plan_ready'.tr(languageCode)
+    ];
+  }
+  String _currentLoadingMessage = '';
 
   // Ajout des variables pour les macronutriments modifiables
   double proteinPercentage = 0.30; // 30% par défaut
@@ -89,7 +96,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
     _initializeDefaultValues();
     
     _animationController.forward();
-    _currentLoadingMessage = _loadingMessages[0];
+    _currentLoadingMessage = _loadingMessages.isNotEmpty ? _loadingMessages[0] : '';
   }
 
   void _initializeDefaultValues() {
@@ -119,7 +126,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
   // INTÉGRÉ - Logique de navigation spécifique
   void _startLoadingAnimation() {
     _loadingTextIndex = 0;
-    _currentLoadingMessage = _loadingMessages[0];
+    _currentLoadingMessage = _loadingMessages.isNotEmpty ? _loadingMessages[0] : '';
     _loadingTextTimer?.cancel();
     _loadingTextTimer = Timer.periodic(const Duration(milliseconds: 2500), (timer) {
       if (mounted) {
@@ -137,48 +144,51 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
   // FACTORISÉ - Utilisations des modèles pour les calculs
   UserProfile get userProfile => UserProfile.fromMap(userData);
 
-  List<Map<String, dynamic>> get steps => [
-    {
-      'title': 'Bienvenue dans Ryze',
-      'subtitle': 'Votre coach nutrition personnalisé',
-      'content': const WelcomeStep(), // FACTORISÉ
-    },
-    {
-      'title': 'Choisissez votre genre',
-      'subtitle': 'Cela sera utilisé pour calibrer votre plan personnalisé',
-      'content': _buildGenderStep(), // NOUVEAU
-    },
-    {
-      'title': 'Quand êtes-vous né',
-      'subtitle': 'Cela sera utilisé pour calibrer votre plan personnalisé',
-      'content': _buildBirthDateStep(), // NOUVEAU
-    },
-    {
-      'title': 'Taille & poids',
-      'subtitle': 'Cela sera utilisé pour calibrer votre plan personnalisé',
-      'content': _buildHeightWeightStep(), // NOUVEAU
-    },
-    {
-      'title': 'Votre niveau d\'activité',
-      'subtitle': 'Pour ajuster vos besoins énergétiques',
-      'content': _buildActivityStep(), // INTÉGRÉ
-    },
-    {
-      'title': 'Votre objectif',
-      'subtitle': 'Pour personnaliser votre plan',
-      'content': _buildGoalStep(), // INTÉGRÉ
-    },
-    {
-      'title': 'Qu\'est-ce qui t\'empêche de garder une routine ?',
-      'subtitle': 'Identifions tes défis pour mieux t\'accompagner',
-      'content': _buildObstaclesStep(), // INTÉGRÉ
-    },
-    {
-      'title': 'Vos restrictions alimentaires',
-      'subtitle': 'Pour adapter votre plan nutrition',
-      'content': _buildRestrictionsStep(), // INTÉGRÉ
-    },
-  ];
+  List<Map<String, dynamic>> getSteps(BuildContext context) {
+    final languageCode = Provider.of<LocalizationService>(context, listen: false).currentLanguageCode;
+    return [
+      {
+        'title': '',
+        'subtitle': '',
+        'content': const WelcomeStep(), // FACTORISÉ
+      },
+      {
+        'title': 'onboarding_choose_gender'.tr(languageCode),
+        'subtitle': 'onboarding_calibrate_plan'.tr(languageCode),
+        'content': _buildGenderStep(), // NOUVEAU
+      },
+      {
+        'title': 'onboarding_when_born'.tr(languageCode),
+        'subtitle': 'onboarding_calibrate_plan'.tr(languageCode),
+        'content': _buildBirthDateStep(), // NOUVEAU
+      },
+      {
+        'title': 'onboarding_height_weight'.tr(languageCode),
+        'subtitle': 'onboarding_calibrate_plan'.tr(languageCode),
+        'content': _buildHeightWeightStep(), // NOUVEAU
+      },
+      {
+        'title': 'onboarding_activity_level'.tr(languageCode),
+        'subtitle': 'onboarding_adjust_energy'.tr(languageCode),
+        'content': _buildActivityStep(), // INTÉGRÉ
+      },
+      {
+        'title': 'onboarding_goal'.tr(languageCode),
+        'subtitle': 'onboarding_personalize_experience'.tr(languageCode),
+        'content': _buildGoalStep(), // INTÉGRÉ
+      },
+      {
+        'title': 'onboarding_obstacles'.tr(languageCode),
+        'subtitle': 'onboarding_personalize_experience'.tr(languageCode),
+        'content': _buildObstaclesStep(), // INTÉGRÉ
+      },
+      {
+        'title': 'onboarding_dietary_restrictions'.tr(languageCode),
+        'subtitle': 'onboarding_personalize_experience'.tr(languageCode),
+        'content': _buildRestrictionsStep(), // INTÉGRÉ
+      },
+    ];
+  }
 
   // Page Genre - Style moderne unifié avec SelectableCard
   Widget _buildGenderStep() {
@@ -192,7 +202,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: SelectableCard(
-              title: 'Homme',
+              title: 'male'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
               icon: LucideIcons.mars,
               isSelected: userData['gender'] == 'Homme',
               onTap: () => setState(() => userData['gender'] = 'Homme'),
@@ -203,7 +213,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: SelectableCard(
-              title: 'Femme',
+              title: 'female'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
               icon: LucideIcons.venus,
               isSelected: userData['gender'] == 'Femme',
               onTap: () => setState(() => userData['gender'] = 'Femme'),
@@ -214,7 +224,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: SelectableCard(
-              title: 'Autre',
+              title: 'other'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
               icon: LucideIcons.users,
               isSelected: userData['gender'] == 'Autre',
               onTap: () => setState(() => userData['gender'] = 'Autre'),
@@ -240,10 +250,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
               // Sélecteur de mois
               Expanded(
                 child: _buildWheelPicker(
-                  items: [
-                    'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
-                    'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
-                  ],
+                  items: _getMonthsList(),
                   selectedIndex: userData['birthMonth'].isNotEmpty 
                       ? int.parse(userData['birthMonth']) - 1 
                       : 0,
@@ -377,7 +384,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                 child: Column(
                   children: [
                     Text(
-                      'Hauteur',
+                      'onboarding_height_label'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
@@ -399,7 +406,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                 child: Column(
                   children: [
                     Text(
-                      'Poids',
+                      'onboarding_weight_label'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
@@ -423,6 +430,22 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
   }
 
   // Méthodes utilitaires pour les wheel pickers
+  List<String> _getMonthsList() {
+    final languageCode = Provider.of<LocalizationService>(context, listen: false).currentLanguageCode;
+    
+    if (languageCode == 'fr') {
+      return [
+        'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+        'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+      ];
+    } else {
+      return [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+      ];
+    }
+  }
+
   Widget _buildWheelPicker({
     required List<String> items,
     required int selectedIndex,
@@ -494,23 +517,24 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
 
   // INTÉGRÉ - Logique spécifique pour les activités
   Widget _buildActivityStep() {
+    final languageCode = Provider.of<LocalizationService>(context, listen: false).currentLanguageCode;
     final activities = [
       {
         'key': 'low',
-        'title': 'Peu actif',
-        'description': '0-2 jours par semaine',
+        'title': 'onboarding_low_activity'.tr(languageCode),
+        'description': 'onboarding_low_activity_desc'.tr(languageCode),
         'icon': LucideIcons.house,
       },
       {
         'key': 'moderate',
-        'title': 'Modérément actif',
-        'description': '3-5 jours par semaine',
+        'title': 'onboarding_moderate_activity'.tr(languageCode),
+        'description': 'onboarding_moderate_activity_desc'.tr(languageCode),
         'icon': LucideIcons.bike,
       },
       {
         'key': 'high',
-        'title': 'Très actif',
-        'description': '6+ jours par semaine',
+        'title': 'onboarding_high_activity'.tr(languageCode),
+        'description': 'onboarding_high_activity_desc'.tr(languageCode),
         'icon': LucideIcons.dumbbell,
       },
     ];
@@ -540,23 +564,24 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
 
   // INTÉGRÉ - Logique spécifique pour les objectifs
   Widget _buildGoalStep() {
+    final languageCode = Provider.of<LocalizationService>(context, listen: false).currentLanguageCode;
     final goals = [
       {
         'key': 'lose',
-        'title': 'Perdre du poids',
-        'description': 'Déficit calorique contrôlé',
+        'title': 'onboarding_lose_weight'.tr(languageCode),
+        'description': 'onboarding_lose_weight_desc'.tr(languageCode),
         'icon': LucideIcons.trendingDown,
       },
       {
         'key': 'maintain',
-        'title': 'Maintenir mon poids',
-        'description': 'Équilibre énergétique',
+        'title': 'onboarding_maintain_weight'.tr(languageCode),
+        'description': 'onboarding_maintain_weight_desc'.tr(languageCode),
         'icon': LucideIcons.target,
       },
       {
         'key': 'gain',
-        'title': 'Prendre du poids',
-        'description': 'Surplus calorique maîtrisé',
+        'title': 'onboarding_gain_weight'.tr(languageCode),
+        'description': 'onboarding_gain_weight_desc'.tr(languageCode),
         'icon': LucideIcons.trendingUp,
       },
     ];
@@ -604,7 +629,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Poids objectif',
+                      'target_weight'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
@@ -614,8 +639,8 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                     const SizedBox(height: 8),
                     Text(
                       userData['goal'] == 'lose' 
-                        ? 'Quel est votre poids objectif ?'
-                        : 'Quel poids souhaitez-vous atteindre ?',
+                        ? 'target_weight_question_lose'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode)
+                        : 'target_weight_question_gain'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
                       style: const TextStyle(
                         fontSize: 14,
                         color: Color(0xFF64748B),
@@ -674,12 +699,13 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
 
   // INTÉGRÉ - Logique multi-sélection pour obstacles
   Widget _buildObstaclesStep() {
+    final languageCode = Provider.of<LocalizationService>(context, listen: false).currentLanguageCode;
     final obstacles = [
-      {'title': 'Manque de temps', 'icon': LucideIcons.clock},
-      {'title': 'Manque de motivation', 'icon': LucideIcons.battery},
-      {'title': 'Fatigue', 'icon': LucideIcons.moon},
-      {'title': 'Manque de connaissances', 'icon': LucideIcons.bookOpen},
-      {'title': 'Autres priorités', 'icon': LucideIcons.calendar},
+      {'title': 'onboarding_lack_of_time'.tr(languageCode), 'icon': LucideIcons.clock},
+      {'title': 'onboarding_lack_of_motivation'.tr(languageCode), 'icon': LucideIcons.battery},
+      {'title': 'onboarding_fatigue'.tr(languageCode), 'icon': LucideIcons.moon},
+      {'title': 'onboarding_lack_of_knowledge'.tr(languageCode), 'icon': LucideIcons.bookOpen},
+      {'title': 'onboarding_other_priorities'.tr(languageCode), 'icon': LucideIcons.calendar},
     ];
 
     return Center(
@@ -716,11 +742,12 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
 
   // INTÉGRÉ - Logique multi-sélection pour restrictions
   Widget _buildRestrictionsStep() {
+    final languageCode = Provider.of<LocalizationService>(context, listen: false).currentLanguageCode;
     final restrictions = [
-      {'title': 'Classique', 'icon': LucideIcons.utensils},
-      {'title': 'Végétarien', 'icon': LucideIcons.leaf},
-      {'title': 'Végétalien', 'icon': LucideIcons.sprout},
-      {'title': 'Pescetarien', 'icon': LucideIcons.fish},
+      {'title': 'classic'.tr(languageCode), 'icon': LucideIcons.utensils},
+      {'title': 'vegetarian'.tr(languageCode), 'icon': LucideIcons.leaf},
+      {'title': 'vegan'.tr(languageCode), 'icon': LucideIcons.sprout},
+      {'title': 'pescetarian'.tr(languageCode), 'icon': LucideIcons.fish},
     ];
 
     return Center(
@@ -781,7 +808,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
 
   // INTÉGRÉ - Navigation et workflow spécifique
   void nextStep() {
-    if (currentStep < steps.length - 1) {
+    if (currentStep < 7) { // 8 étapes au total (0-7)
       setState(() {
         currentStep++;
       });
@@ -921,6 +948,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
 
   // INTÉGRÉ - Logique de navigation complexe
   Widget _buildStepScreen() {
+    final steps = getSteps(context);
     final currentStepData = steps[currentStep];
     
     return Scaffold(
@@ -939,15 +967,67 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                 },
               )
             : null,
-        title: Text(
-          'Étape ${currentStep + 1} sur ${steps.length}',
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: Color(0xFF64748B),
+        title: Consumer<LocalizationService>(
+          builder: (context, locService, _) => Text(
+            '${'step'.tr(locService.currentLanguageCode)} ${currentStep + 1} ${'on'.tr(locService.currentLanguageCode)} ${steps.length}',
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF64748B),
+            ),
           ),
         ),
         centerTitle: true,
+        actions: [
+          // Boutons de changement de langue
+          Consumer<LocalizationService>(
+            builder: (context, locService, _) => Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                GestureDetector(
+                  onTap: () => locService.setLanguage('fr'),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: locService.isFrench ? const Color(0xFF0B132B) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFF0B132B)),
+                    ),
+                    child: Text(
+                      'FR',
+                      style: TextStyle(
+                        color: locService.isFrench ? Colors.white : const Color(0xFF0B132B),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 10,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                GestureDetector(
+                  onTap: () => locService.setLanguage('en'),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: locService.isEnglish ? const Color(0xFF0B132B) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFF0B132B)),
+                    ),
+                    child: Text(
+                      'EN',
+                      style: TextStyle(
+                        color: locService.isEnglish ? Colors.white : const Color(0xFF0B132B),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 10,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
+            ),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
@@ -983,7 +1063,9 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
       bottomNavigationBar: Padding(
         padding: const EdgeInsets.all(24.0),
         child: CustomButton(
-          text: currentStep == steps.length - 1 ? 'Créer mon plan personnalisé' : 'Continuer',
+          text: currentStep == steps.length - 1 
+            ? 'finish'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode)
+            : 'continue'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
           onPressed: canProceed() ? nextStep : null,
           icon: currentStep == steps.length - 1 
             ? const Icon(LucideIcons.check, color: Colors.white) 
@@ -1064,23 +1146,27 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                         size: 24,
                       ),
                       const SizedBox(width: 12),
-                      const Expanded(
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'Félicitations !',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
+                            Consumer<LocalizationService>(
+                              builder: (context, locService, _) => Text(
+                                'congratulations'.tr(locService.currentLanguageCode),
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
                               ),
                             ),
-                            Text(
-                              'Votre plan est prêt',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.white70,
+                            Consumer<LocalizationService>(
+                              builder: (context, locService, _) => Text(
+                                'your_plan_ready'.tr(locService.currentLanguageCode),
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.white70,
+                                ),
                               ),
                             ),
                           ],
@@ -1127,21 +1213,23 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                         widget.onComplete();
                       },
                       borderRadius: BorderRadius.circular(20),
-                      child: const Row(
+                      child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(
+                          const Icon(
                             LucideIcons.rocket,
                             size: 24,
                             color: Colors.white,
                           ),
-                          SizedBox(width: 12),
-                          Text(
-                            'Commencer mon parcours',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                          const SizedBox(width: 12),
+                          Consumer<LocalizationService>(
+                            builder: (context, locService, _) => Text(
+                              'start_journey'.tr(locService.currentLanguageCode),
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
                             ),
                           ),
                         ],
@@ -1248,8 +1336,8 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
             ),
           ),
           
-          const Text(
-            'Votre objectif quotidien',
+          Text(
+            'daily_goal'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
@@ -1262,8 +1350,8 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text(
-                'Calculé spécialement pour vous',
+              Text(
+                'calculated_specially'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
                 style: TextStyle(
                   fontSize: 14,
                   color: Color(0xFF64748B),
@@ -1389,7 +1477,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
           
           // Protéines
           _buildAnimatedMacroRow(
-            name: 'Protéines',
+            name: 'proteins'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
             value: macros['protein']!,
             unit: 'g',
             color: const Color(0xFF0B132B),
@@ -1400,7 +1488,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
           
           // Glucides
           _buildAnimatedMacroRow(
-            name: 'Glucides',
+            name: 'carbs'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
             value: macros['carbs']!,
             unit: 'g',
             color: const Color(0xFF1C2951),
@@ -1411,7 +1499,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
           
           // Lipides
           _buildAnimatedMacroRow(
-            name: 'Lipides',
+            name: 'fats'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
             value: macros['fat']!,
             unit: 'g',
             color: const Color(0xFF64748B),
@@ -1701,8 +1789,8 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                                      color: Color(0xFF0B132B),
                                    ),
                                   const SizedBox(width: 8),
-                                  const Text(
-                                    'Objectif calorique quotidien',
+                                  Text(
+                                    'daily_calorie_goal'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
                                     style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w600,
@@ -1757,7 +1845,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                'Recommandé: $baseCalories kcal',
+                                '${'recommended'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode)} $baseCalories kcal',
                                 style: const TextStyle(
                                   fontSize: 12,
                                   color: Color(0xFF64748B),
@@ -1770,8 +1858,8 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                         const SizedBox(height: 24),
 
                         // Section Répartition
-                        const Text(
-                          'Répartition des macronutriments',
+                        Text(
+                          'macronutrient_distribution'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -1783,7 +1871,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
 
                                                  // Protéines
                          _buildMacroSlider(
-                           name: 'Protéines',
+                           name: 'proteins'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
                            icon: LucideIcons.zap,
                            color: const Color(0xFF0B132B),
                            percentage: tempProtein,
@@ -1807,7 +1895,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
 
                         // Glucides
                         _buildMacroSlider(
-                          name: 'Glucides',
+                          name: 'carbs'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
                           icon: LucideIcons.wheat,
                           color: const Color(0xFF1C2951),
                           percentage: tempCarbs,
@@ -1831,7 +1919,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
 
                         // Lipides
                         _buildMacroSlider(
-                          name: 'Lipides',
+                          name: 'fats'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
                           icon: LucideIcons.droplets,
                           color: const Color(0xFF64748B),
                           percentage: tempFat,
@@ -1854,9 +1942,9 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                         const SizedBox(height: 24),
 
                         // Presets rapides
-                        const Text(
-                          'Répartitions prédéfinies',
-                          style: TextStyle(
+                        Text(
+                          'predefined_distributions'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                             color: Color(0xFF1A1A1A),
@@ -1869,7 +1957,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                           children: [
                             Expanded(
                               child: _buildPresetButton(
-                                'Équilibré',
+                                'balanced'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
                                 '30-40-30',
                                 () {
                                   setModalState(() {
@@ -1885,7 +1973,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                             const SizedBox(width: 8),
                             Expanded(
                               child: _buildPresetButton(
-                                'Perte',
+                                'weight_loss'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
                                 '35-30-35',
                                 () {
                                   setModalState(() {
@@ -1901,7 +1989,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                             const SizedBox(width: 8),
                             Expanded(
                               child: _buildPresetButton(
-                                'Prise',
+                                'weight_gain'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
                                 '25-50-25',
                                 () {
                                   setModalState(() {
@@ -1949,8 +2037,8 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          child: const Text(
-                            'Annuler',
+                          child: Text(
+                            'cancel'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
@@ -1980,8 +2068,8 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                             ),
                             elevation: 0,
                           ),
-                          child: const Text(
-                            'Appliquer',
+                          child: Text(
+                            'apply'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,

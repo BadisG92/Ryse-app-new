@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:provider/provider.dart';
+import '../services/localization_service.dart';
+import '../services/translations.dart';
 
 class CaloricBreakdownBottomSheet extends StatefulWidget {
   final double bmr;
@@ -89,8 +92,8 @@ class _CaloricBreakdownBottomSheetState extends State<CaloricBreakdownBottomShee
                         ),
                       ),
                       const SizedBox(width: 12),
-                      const Text(
-                        'Détail du calcul',
+                      Text(
+                        'calculation_details'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w700,
@@ -118,7 +121,7 @@ class _CaloricBreakdownBottomSheetState extends State<CaloricBreakdownBottomShee
                         _buildCalculationLine(
                           icon: LucideIcons.heart,
                           value: widget.bmr.round(),
-                          label: 'Métabolisme de base (BMR)',
+                          label: 'base_metabolism'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
                           isFirst: true,
                         ),
                         
@@ -128,7 +131,7 @@ class _CaloricBreakdownBottomSheetState extends State<CaloricBreakdownBottomShee
                         _buildCalculationLine(
                           icon: LucideIcons.activity,
                           value: activityCalories.round(),
-                          label: 'Activité physique (×${widget.activityFactor.toStringAsFixed(1)})',
+                          label: '${'physical_activity'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode)} (×${widget.activityFactor.toStringAsFixed(1)})',
                           isAddition: true,
                         ),
                         
@@ -141,8 +144,8 @@ class _CaloricBreakdownBottomSheetState extends State<CaloricBreakdownBottomShee
                               : LucideIcons.trendingDown,
                           value: widget.objectiveDelta.abs().round(),
                           label: widget.objectiveDelta >= 0 
-                              ? 'Objectif (surplus)'
-                              : 'Objectif (déficit)',
+                              ? 'goal_surplus'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode)
+                              : 'goal_deficit'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
                           isAddition: widget.objectiveDelta >= 0,
                           isSubtraction: widget.objectiveDelta < 0,
                         ),
@@ -176,8 +179,8 @@ class _CaloricBreakdownBottomSheetState extends State<CaloricBreakdownBottomShee
                               ),
                             ),
                             const SizedBox(width: 12),
-                            const Text(
-                              'Résultat final :',
+                            Text(
+                              'final_result'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w600,
@@ -186,7 +189,7 @@ class _CaloricBreakdownBottomSheetState extends State<CaloricBreakdownBottomShee
                             ),
                             const Spacer(),
                             Text(
-                              '${finalCalories.round()} kcal/jour',
+                              '${finalCalories.round()} ${'kcal_per_day'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode)}',
                               style: const TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.w700,

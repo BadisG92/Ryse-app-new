@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:ui' as ui;
 import 'dashboard_service.dart';
 
 class LocalizationService extends ChangeNotifier {
@@ -22,7 +23,24 @@ class LocalizationService extends ChangeNotifier {
   
   Future<void> initialize() async {
     final prefs = await SharedPreferences.getInstance();
-    final savedLanguage = prefs.getString(_languageKey) ?? 'fr';
+    
+    // Si l'utilisateur a déjà fait un choix de langue, l'utiliser
+    String? savedLanguage = prefs.getString(_languageKey);
+    
+    if (savedLanguage == null) {
+      // Première fois : détecter la langue du système
+      final systemLocales = ui.PlatformDispatcher.instance.locales;
+      final systemLanguage = systemLocales.isNotEmpty ? systemLocales.first.languageCode : 'en';
+      
+      // Si le système est en français, utiliser français, sinon anglais par défaut
+      savedLanguage = systemLanguage == 'fr' ? 'fr' : 'en';
+      
+      // Sauvegarder ce choix
+      await prefs.setString(_languageKey, savedLanguage);
+      
+      print('🌍 Langue système détectée: $systemLanguage -> Application configurée en: $savedLanguage');
+    }
+    
     _currentLocale = Locale(savedLanguage);
     notifyListeners();
   }

@@ -12,6 +12,7 @@ import '../services/translations.dart';
 import 'package:provider/provider.dart';
 import '../providers/goals_notifier.dart';
 import '../components/ui/onboarding_models.dart';
+import '../pages/ryze_app.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
