@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../models/sport_models.dart';
+import '../services/translations.dart';
+import '../services/localization_service.dart';
+import 'package:provider/provider.dart';
 
 class ExerciseSelectionBottomSheet extends StatefulWidget {
   final Function(Exercise exercise, int sets) onExerciseSelected;
@@ -204,12 +207,14 @@ class _ExerciseSelectionBottomSheetState extends State<ExerciseSelectionBottomSh
                 
                 const SizedBox(height: 24),
                 
-                const Text(
-                  'Nombre de séries',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1A1A),
+                Consumer<LocalizationService>(
+                  builder: (context, locService, _) => Text(
+                    'sets_count_placeholder'.tr(locService.currentLanguageCode),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1A1A1A),
+                    ),
                   ),
                 ),
                 
@@ -219,7 +224,7 @@ class _ExerciseSelectionBottomSheetState extends State<ExerciseSelectionBottomSh
                   controller: setsController,
                   keyboardType: TextInputType.number,
                   decoration: InputDecoration(
-                    hintText: 'Nombre de séries',
+                    hintText: 'sets_count_placeholder'.tr(context.read<LocalizationService>().currentLanguageCode),
                     filled: true,
                     fillColor: const Color(0xFFF8FAFC),
                     border: OutlineInputBorder(
@@ -332,31 +337,35 @@ class _ExerciseSelectionBottomSheetState extends State<ExerciseSelectionBottomSh
                 
                 const SizedBox(height: 8),
                 
-                TextField(
-                  controller: nameController,
-                  decoration: InputDecoration(
-                    hintText: 'Nom de l\'exercice',
-                    filled: true,
-                    fillColor: const Color(0xFFF8FAFC),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 14,
+                Consumer<LocalizationService>(
+                  builder: (context, locService, _) => TextField(
+                    controller: nameController,
+                    decoration: InputDecoration(
+                      hintText: 'exercise_name_placeholder'.tr(locService.currentLanguageCode),
+                      filled: true,
+                      fillColor: const Color(0xFFF8FAFC),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
                     ),
                   ),
                 ),
                 
                 const SizedBox(height: 16),
                 
-                const Text(
-                  'Nombre de séries',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1A1A),
+                Consumer<LocalizationService>(
+                  builder: (context, locService, _) => Text(
+                    'sets_count_placeholder'.tr(locService.currentLanguageCode),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1A1A1A),
+                    ),
                   ),
                 ),
                 
@@ -366,7 +375,7 @@ class _ExerciseSelectionBottomSheetState extends State<ExerciseSelectionBottomSh
                   controller: setsController,
                   keyboardType: TextInputType.number,
                   decoration: InputDecoration(
-                    hintText: 'Nombre de séries',
+                    hintText: 'sets_count_placeholder'.tr(context.read<LocalizationService>().currentLanguageCode),
                     filled: true,
                     fillColor: const Color(0xFFF8FAFC),
                     border: OutlineInputBorder(
@@ -447,32 +456,36 @@ class _ExerciseSelectionBottomSheetState extends State<ExerciseSelectionBottomSh
             
             const SizedBox(height: 24),
             
-            const Text(
-              'Ajouter un exercice',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1A1A1A),
+            Consumer<LocalizationService>(
+              builder: (context, locService, _) => Text(
+                'workout_add_exercise'.tr(locService.currentLanguageCode),
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1A1A1A),
+                ),
               ),
             ),
             
             const SizedBox(height: 24),
             
             // Barre de recherche
-            TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Rechercher un exercice...',
-                prefixIcon: const Icon(LucideIcons.search, size: 20),
-                filled: true,
-                fillColor: const Color(0xFFF8FAFC),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+            Consumer<LocalizationService>(
+              builder: (context, locService, _) => TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: 'workout_search_exercise'.tr(locService.currentLanguageCode),
+                  prefixIcon: const Icon(LucideIcons.search, size: 20),
+                  filled: true,
+                  fillColor: const Color(0xFFF8FAFC),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
                 ),
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 14,
+                ),
                 ),
               ),
             ),
@@ -565,23 +578,27 @@ class _ExerciseSelectionBottomSheetState extends State<ExerciseSelectionBottomSh
               child: const Icon(LucideIcons.plus, color: Colors.white, size: 20),
             ),
             const SizedBox(width: 16),
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Créer un exercice personnalisé',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF1A1A1A),
+                  Consumer<LocalizationService>(
+                    builder: (context, locService, _) => Text(
+                      'workout_create_new_exercise'.tr(locService.currentLanguageCode),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF1A1A1A),
+                      ),
                     ),
                   ),
-                  Text(
-                    'Ajouter un exercice qui ne figure pas dans la liste',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF64748B),
+                  Consumer<LocalizationService>(
+                    builder: (context, locService, _) => Text(
+                      'workout_add_exercise_not_in_list'.tr(locService.currentLanguageCode),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF64748B),
+                      ),
                     ),
                   ),
                 ],

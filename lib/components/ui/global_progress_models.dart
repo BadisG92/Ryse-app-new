@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:fl_chart/fl_chart.dart';
+import '../../services/translations.dart';
+import '../../services/localization_service.dart';
 
 // Modèle de progression de poids
 class WeightProgress {
@@ -33,7 +35,7 @@ class WeightProgress {
   String get weightChangeText {
     final change = weightChange;
     final sign = change > 0 ? "+" : "";
-    return "${sign}${change.toStringAsFixed(1)} kg ce mois";
+    return "${sign}${change.toStringAsFixed(1)} ${'kg'.tr(LocalizationService.instance.currentLanguageCode)} ${'this_month_short'.tr(LocalizationService.instance.currentLanguageCode)}";
   }
 
   // Couleur selon le changement (vert = perte, rouge = gain)
@@ -91,9 +93,9 @@ class WeightEntry {
   }
 
   String _getMonthName(int month) {
-    const months = ['', 'Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 
-                   'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
-    return months[month];
+    const months = ['', 'jan', 'feb', 'mar', 'apr', 'may', 'jun', 
+                   'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+    return months[month].tr(LocalizationService.instance.currentLanguageCode);
   }
 }
 
@@ -112,10 +114,11 @@ class WeeklyBalance {
 
   // Message motivationnel selon le score
   String get motivationalMessage {
-    if (globalScore >= 0.9) return 'Semaine parfaite !';
-    if (globalScore >= 0.7) return 'Excellent travail !';
-    if (globalScore >= 0.5) return 'Bon rythme !';
-    return 'Continue tes efforts !';
+    final locService = LocalizationService.instance;
+    if (globalScore >= 0.9) return 'perfect_week'.tr(locService.currentLanguageCode);
+    if (globalScore >= 0.7) return 'excellent_work'.tr(locService.currentLanguageCode);
+    if (globalScore >= 0.5) return 'good_rhythm'.tr(locService.currentLanguageCode);
+    return 'keep_going'.tr(locService.currentLanguageCode);
   }
 
   // Couleur selon le score
@@ -148,7 +151,7 @@ class BalanceItem {
   // Texte de valeur affiché
   String get valueText {
     // Cas spécial pour les séances de sport : n'afficher que le nombre achieved
-    if (label == 'Séances de sport') {
+    if (label == 'sport_sessions'.tr(LocalizationService.instance.currentLanguageCode)) {
       return '$achieved $unit';
     }
     return '$achieved / $target $unit';
@@ -300,11 +303,11 @@ extension SportActivityExtension on SportActivity {
   String get label {
     switch (this) {
       case SportActivity.musculation:
-        return 'Musculation';
+        return 'weightlifting'.tr(LocalizationService.instance.currentLanguageCode);
       case SportActivity.cardio:
-        return 'Cardio';
+        return 'cardio'.tr(LocalizationService.instance.currentLanguageCode);
       case SportActivity.none:
-        return 'Repos';
+        return 'rest'.tr(LocalizationService.instance.currentLanguageCode);
     }
   }
 
@@ -314,11 +317,13 @@ extension SportActivityExtension on SportActivity {
 // Modèle de légende pour le tracking
 class TrackingLegend {
   final Color color;
+  final List<Color>? gradientColors;
   final IconData? icon;
   final String label;
 
   const TrackingLegend({
     required this.color,
+    this.gradientColors,
     this.icon,
     required this.label,
   });
@@ -368,13 +373,13 @@ class AIRecommendation {
   String get title {
     switch (type) {
       case RecommendationType.nutrition:
-        return 'Conseil nutrition 🍎';
+        return 'nutrition_advice'.tr(LocalizationService.instance.currentLanguageCode);
       case RecommendationType.sport:
-        return 'Conseil sport 💪';
+        return 'sport_advice'.tr(LocalizationService.instance.currentLanguageCode);
       case RecommendationType.recovery:
-        return 'Conseil récupération 😴';
+        return 'recovery_advice'.tr(LocalizationService.instance.currentLanguageCode);
       case RecommendationType.general:
-        return 'Recommandation intelligente 🧠';
+        return 'smart_recommendation'.tr(LocalizationService.instance.currentLanguageCode);
     }
   }
 }
@@ -438,146 +443,159 @@ class HeaderStatItem {
 class GlobalProgressData {
 
   // Bilan hebdomadaire
-  static const WeeklyBalance weeklyBalance = WeeklyBalance(
+  static WeeklyBalance get weeklyBalance => WeeklyBalance(
     items: [
       BalanceItem(
         icon: LucideIcons.flame,
-        label: 'Calories cibles atteintes',
+        label: 'calorie_target_reached'.tr(LocalizationService.instance.currentLanguageCode),
         achieved: 5,
         target: 7,
-        unit: 'jours',
+        unit: 'days'.tr(LocalizationService.instance.currentLanguageCode),
       ),
       BalanceItem(
         icon: LucideIcons.droplet,
-        label: 'Hydratation validée',
+        label: 'hydration_validated'.tr(LocalizationService.instance.currentLanguageCode),
         achieved: 5,
         target: 7,
-        unit: 'jours',
+        unit: 'days'.tr(LocalizationService.instance.currentLanguageCode),
       ),
       BalanceItem(
         icon: LucideIcons.utensils,
-        label: 'Repas enregistrés',
+        label: 'meals_recorded'.tr(LocalizationService.instance.currentLanguageCode),
         achieved: 17,
         target: 21,
-        unit: 'repas',
+        unit: 'meals'.tr(LocalizationService.instance.currentLanguageCode),
       ),
       BalanceItem(
         icon: LucideIcons.dumbbell,
-        label: 'Séances de sport',
+        label: 'sport_sessions'.tr(LocalizationService.instance.currentLanguageCode),
         achieved: 3,
         target: 4,
-        unit: 'prévues',
+        unit: 'sessions'.tr(LocalizationService.instance.currentLanguageCode),
       ),
     ],
   );
 
+  // Helper function to get day label by weekday
+  static String _getDayLabel(int weekday) {
+    const translationKeys = ['day_l', 'day_m', 'day_m2', 'day_j', 'day_v', 'day_s', 'day_d'];
+    return translationKeys[weekday - 1].tr(LocalizationService.instance.currentLanguageCode);
+  }
+
   // Tracking hebdomadaire
-  static final List<TrackingDay> weeklyTracking = [
-    TrackingDay(
-      dayLabel: 'L',
-      date: DateTime.now().subtract(const Duration(days: 6)),
-      nutritionScore: TrackingScore.achieved,
-      sportActivities: ['musculation'],
-    ),
-    TrackingDay(
-      dayLabel: 'M',
-      date: DateTime.now().subtract(const Duration(days: 5)),
-      nutritionScore: TrackingScore.partial,
-      sportActivities: [],
-    ),
-    TrackingDay(
-      dayLabel: 'M',
-      date: DateTime.now().subtract(const Duration(days: 4)),
-      nutritionScore: TrackingScore.achieved,
-      sportActivities: ['cardio'],
-    ),
-    TrackingDay(
-      dayLabel: 'J',
-      date: DateTime.now().subtract(const Duration(days: 3)),
-      nutritionScore: TrackingScore.achieved,
-      sportActivities: [],
-    ),
-    TrackingDay(
-      dayLabel: 'V',
-      date: DateTime.now().subtract(const Duration(days: 2)),
-      nutritionScore: TrackingScore.partial,
-      sportActivities: ['musculation'],
-    ),
-    TrackingDay(
-      dayLabel: 'S',
-      date: DateTime.now().subtract(const Duration(days: 1)),
-      nutritionScore: TrackingScore.missed,
-      sportActivities: ['cardio'],
-    ),
-    TrackingDay(
-      dayLabel: 'D',
-      date: DateTime.now(),
-      nutritionScore: TrackingScore.missed,
-      sportActivities: ['musculation', 'cardio'], // Exemple d'une journée avec les deux
-    ),
-  ];
+  static List<TrackingDay> get weeklyTracking {
+    final now = DateTime.now();
+    return [
+      TrackingDay(
+        dayLabel: _getDayLabel((now.subtract(const Duration(days: 6))).weekday),
+        date: now.subtract(const Duration(days: 6)),
+        nutritionScore: TrackingScore.achieved,
+        sportActivities: ['musculation'],
+      ),
+      TrackingDay(
+        dayLabel: _getDayLabel((now.subtract(const Duration(days: 5))).weekday),
+        date: now.subtract(const Duration(days: 5)),
+        nutritionScore: TrackingScore.partial,
+        sportActivities: [],
+      ),
+      TrackingDay(
+        dayLabel: _getDayLabel((now.subtract(const Duration(days: 4))).weekday),
+        date: now.subtract(const Duration(days: 4)),
+        nutritionScore: TrackingScore.achieved,
+        sportActivities: ['cardio'],
+      ),
+      TrackingDay(
+        dayLabel: _getDayLabel((now.subtract(const Duration(days: 3))).weekday),
+        date: now.subtract(const Duration(days: 3)),
+        nutritionScore: TrackingScore.achieved,
+        sportActivities: [],
+      ),
+      TrackingDay(
+        dayLabel: _getDayLabel((now.subtract(const Duration(days: 2))).weekday),
+        date: now.subtract(const Duration(days: 2)),
+        nutritionScore: TrackingScore.partial,
+        sportActivities: ['musculation'],
+      ),
+      TrackingDay(
+        dayLabel: _getDayLabel((now.subtract(const Duration(days: 1))).weekday),
+        date: now.subtract(const Duration(days: 1)),
+        nutritionScore: TrackingScore.missed,
+        sportActivities: ['cardio'],
+      ),
+      TrackingDay(
+        dayLabel: _getDayLabel(now.weekday),
+        date: now,
+        nutritionScore: TrackingScore.missed,
+        sportActivities: ['musculation', 'cardio'], // Exemple d'une journée avec les deux
+      ),
+    ];
+  }
 
   // Statistiques d'en-tête
-  static const HeaderStats headerStats = HeaderStats(
-    dailyStreak: '7 jours',
-    weeklyObjectives: '3/4 objectifs',
-    currentStatus: 'Progression',
+  static HeaderStats get headerStats => HeaderStats(
+    dailyStreak: '7 ${'days'.tr(LocalizationService.instance.currentLanguageCode)}',
+    weeklyObjectives: '3/4 ${'objectives'.tr(LocalizationService.instance.currentLanguageCode)}',
+    currentStatus: 'progression'.tr(LocalizationService.instance.currentLanguageCode),
   );
 
   // Recommandations IA
-  static const List<AIRecommendation> aiRecommendations = [
+  static List<AIRecommendation> get aiRecommendations => [
     AIRecommendation(
-      message: "Tu es très régulier, mais ton apport en protéines est trop faible pour soutenir tes objectifs de tonification.",
+      message: 'increase_protein_intake'.tr(LocalizationService.instance.currentLanguageCode),
       type: RecommendationType.nutrition,
       priority: 4,
     ),
     AIRecommendation(
-      message: "Ton activité physique est en hausse 📈, continue comme ça pour booster ton métabolisme.",
+      message: 'excellent_rhythm_continue'.tr(LocalizationService.instance.currentLanguageCode),
       type: RecommendationType.sport,
       priority: 3,
     ),
     AIRecommendation(
-      message: "Pense à varier tes sources de glucides pour un apport énergétique plus stable.",
+      message: 'distribute_meals_advice'.tr(LocalizationService.instance.currentLanguageCode),
       type: RecommendationType.nutrition,
       priority: 2,
     ),
     AIRecommendation(
-      message: "N'oublie pas tes jours de repos, ils sont cruciaux pour la récupération et la progression !",
+      message: 'sleep_recovery_importance'.tr(LocalizationService.instance.currentLanguageCode),
       type: RecommendationType.recovery,
       priority: 5,
     ),
   ];
 
   // Légendes pour le tracking
-  static final List<TrackingLegend> nutritionLegends = [
-    const TrackingLegend(
-      color: Color(0xFF0B132B),
-      label: 'Atteint',
+  static List<TrackingLegend> get nutritionLegends => [
+    TrackingLegend(
+      color: const Color(0xFF0B132B),
+      label: 'achieved'.tr(LocalizationService.instance.currentLanguageCode),
     ),
-    const TrackingLegend(
-      color: Color(0xFF64748B),
-      label: 'Partiel',
+    TrackingLegend(
+      color: const Color(0xFF64748B),
+      label: 'partial'.tr(LocalizationService.instance.currentLanguageCode),
     ),
-    const TrackingLegend(
-      color: Color(0xFFE5E7EB),
-      label: 'Manqué',
+    TrackingLegend(
+      color: const Color(0xFFE5E7EB),
+      label: 'missed'.tr(LocalizationService.instance.currentLanguageCode),
     ),
   ];
 
-  static final List<TrackingLegend> sportLegends = [
-    const TrackingLegend(
-      color: Color(0xFF0B132B),
+  static List<TrackingLegend> get sportLegends => [
+    TrackingLegend(
+      color: const Color(0xFF0B132B),
       icon: LucideIcons.dumbbell,
-      label: 'Musculation',
+      label: 'weightlifting'.tr(LocalizationService.instance.currentLanguageCode),
     ),
-    const TrackingLegend(
-      color: Color(0xFF0B132B), // Même couleur de base que le gradient cardio
+    TrackingLegend(
+      color: const Color(0xFF1C2951), // Couleur cardio du dashboard sport
+      gradientColors: [
+        const Color(0xFF0B132B).withOpacity(0.7),
+        const Color(0xFF1C2951).withOpacity(0.7),
+      ],
       icon: LucideIcons.activity,
-      label: 'Cardio',
+      label: 'cardio'.tr(LocalizationService.instance.currentLanguageCode),
     ),
-    const TrackingLegend(
-      color: Color(0xFFE5E7EB),
-      label: 'Repos',
+    TrackingLegend(
+      color: const Color(0xFFE5E7EB),
+      label: 'rest'.tr(LocalizationService.instance.currentLanguageCode),
     ),
   ];
 } 

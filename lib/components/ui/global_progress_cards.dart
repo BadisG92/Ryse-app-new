@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:provider/provider.dart';
 import 'custom_card.dart';
 import 'global_progress_models.dart';
+import '../../services/translations.dart';
+import '../../services/localization_service.dart';
 
 // Carte d'évolution du poids avec graphique
 class WeightEvolutionCard extends StatelessWidget {
@@ -38,13 +41,17 @@ class WeightEvolutionCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(
-                    'Évolution du poids',
-                    style: TextStyle(
-                      fontSize: isSmallScreen ? 16 : 18,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF1A1A1A),
-                    ),
+                  child: Consumer<LocalizationService>(
+                    builder: (context, localizationService, child) {
+                      return Text(
+                        'evolution_poids'.tr(localizationService.currentLanguageCode),
+                        style: TextStyle(
+                          fontSize: isSmallScreen ? 16 : 18,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF1A1A1A),
+                        ),
+                      );
+                    },
                   ),
                 ),
                 // Bouton d'expansion style DA
@@ -329,16 +336,22 @@ class WeeklyBalanceCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // En-tête sans score global
-            const Row(
+            Row(
               children: [
-                Icon(LucideIcons.check, size: 20, color: Color(0xFF0B132B)),
-                SizedBox(width: 8),
-                Text(
-                  'Bilan Global de la Semaine',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1A1A),
+                const Icon(LucideIcons.check, size: 20, color: Color(0xFF0B132B)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Consumer<LocalizationService>(
+                    builder: (context, localizationService, child) {
+                      return Text(
+                        'weekly_global_summary'.tr(localizationService.currentLanguageCode),
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1A1A1A),
+                        ),
+                      );
+                    },
                   ),
                 ),
               ],
@@ -448,16 +461,22 @@ class WeeklyTrackingCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // En-tête
-            const Row(
+            Row(
               children: [
-                Icon(LucideIcons.calendarDays, size: 20, color: Color(0xFF0B132B)),
-                SizedBox(width: 8),
-                Text(
-                  'Cette semaine',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1A1A),
+                const Icon(LucideIcons.calendarDays, size: 20, color: Color(0xFF0B132B)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Consumer<LocalizationService>(
+                    builder: (context, localizationService, child) {
+                      return Text(
+                        'this_week'.tr(localizationService.currentLanguageCode),
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1A1A1A),
+                        ),
+                      );
+                    },
                   ),
                 ),
               ],
@@ -466,32 +485,48 @@ class WeeklyTrackingCard extends StatelessWidget {
             const SizedBox(height: 24),
             
             // Section Nutrition
-            _TrackingSection(
-              icon: LucideIcons.apple,
-              title: 'Nutrition',
-              days: days,
-              isNutrition: true,
+            Consumer<LocalizationService>(
+              builder: (context, localizationService, child) {
+                return _TrackingSection(
+                  icon: LucideIcons.apple,
+                  title: 'nutrition'.tr(localizationService.currentLanguageCode),
+                  days: days,
+                  isNutrition: true,
+                );
+              },
             ),
             
             const SizedBox(height: 12),
             
             // Légende nutrition
-            _TrackingLegendRow(legends: nutritionLegends),
+            Consumer<LocalizationService>(
+              builder: (context, localizationService, child) {
+                return _TrackingLegendRow(legends: GlobalProgressData.nutritionLegends);
+              },
+            ),
             
             const SizedBox(height: 24),
             
             // Section Sport
-            _TrackingSection(
-              icon: LucideIcons.dumbbell,
-              title: 'Séances sport',
-              days: days,
-              isNutrition: false,
+            Consumer<LocalizationService>(
+              builder: (context, localizationService, child) {
+                return _TrackingSection(
+                  icon: LucideIcons.dumbbell,
+                  title: 'sport_sessions'.tr(localizationService.currentLanguageCode),
+                  days: days,
+                  isNutrition: false,
+                );
+              },
             ),
             
             const SizedBox(height: 12),
             
             // Légende sport
-            _TrackingLegendRow(legends: sportLegends),
+            Consumer<LocalizationService>(
+              builder: (context, localizationService, child) {
+                return _TrackingLegendRow(legends: GlobalProgressData.sportLegends);
+              },
+            ),
           ],
         ),
       ),
@@ -611,8 +646,8 @@ class _TrackingDayIndicator extends StatelessWidget {
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: [
-          const Color(0xFF0B132B).withOpacity(0.7), 
-          const Color(0xFF1C2951).withOpacity(0.7)
+          const Color(0xFF1C2951).withOpacity(0.7), 
+          const Color(0xFF1C2951).withOpacity(0.9)
         ],
       );
     } else if (day.hasMusculation) {
@@ -706,8 +741,8 @@ class _TrackingDayIndicator extends StatelessWidget {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      const Color(0xFF0B132B).withOpacity(0.7), 
-                      const Color(0xFF1C2951).withOpacity(0.7)
+                      const Color(0xFF1C2951).withOpacity(0.7), 
+                      const Color(0xFF1C2951).withOpacity(0.9)
                     ],
                   ),
                 ),
@@ -775,7 +810,14 @@ class _TrackingLegendItem extends StatelessWidget {
             width: 16,
             height: 16,
             decoration: BoxDecoration(
-              color: legend.color,
+              color: legend.gradientColors == null ? legend.color : null,
+              gradient: legend.gradientColors != null 
+                ? LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: legend.gradientColors!,
+                  )
+                : null,
               borderRadius: BorderRadius.circular(4),
             ),
             child: Icon(legend.icon, color: Colors.white, size: 8),
@@ -785,7 +827,14 @@ class _TrackingLegendItem extends StatelessWidget {
             width: 12,
             height: 12,
             decoration: BoxDecoration(
-              color: legend.color,
+              color: legend.gradientColors == null ? legend.color : null,
+              gradient: legend.gradientColors != null 
+                ? LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: legend.gradientColors!,
+                  )
+                : null,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -814,6 +863,7 @@ class AIRecommendationCard extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Icône sans fond pour les recommandations
             Icon(
@@ -828,22 +878,30 @@ class AIRecommendationCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Conseil intelligent',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF1A1A1A),
-                    ),
+                  Consumer<LocalizationService>(
+                    builder: (context, localizationService, child) {
+                      return Text(
+                        'smart_recommendation'.tr(localizationService.currentLanguageCode),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1A1A1A),
+                        ),
+                      );
+                    },
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    recommendation.message,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey.shade700,
-                      fontStyle: FontStyle.italic,
-                    ),
+                  Consumer<LocalizationService>(
+                    builder: (context, localizationService, child) {
+                      return Text(
+                        recommendation.message,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade700,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),

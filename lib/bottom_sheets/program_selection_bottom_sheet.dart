@@ -45,7 +45,7 @@ class _ProgramSelectionBottomSheetState extends State<ProgramSelectionBottomShee
         _isLoading = false;
       });
     } catch (e) {
-      print('❌ Erreur lors du chargement des programmes: $e');
+      debugPrint('❌ Erreur lors du chargement des programmes: $e');
       if (!mounted) return;
       setState(() {
         _error = 'workout_programs_loading_error'.tr(LocalizationService.instance.currentLanguageCode);
@@ -139,14 +139,16 @@ class _ProgramSelectionBottomSheetState extends State<ProgramSelectionBottomShee
                       child: Row(
                         children: [
                           Expanded(child: Divider(color: const Color(0xFFE2E8F0))),
-                          const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 16),
-                            child: Text(
-                                        'Programmes',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Color(0xFF64748B),
-                                fontWeight: FontWeight.w500,
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Consumer<LocalizationService>(
+                              builder: (context, locService, _) => Text(
+                                'programs'.tr(locService.currentLanguageCode),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF64748B),
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
                             ),
                           ),
@@ -220,12 +222,14 @@ class _ProgramSelectionBottomSheetState extends State<ProgramSelectionBottomShee
                             color: const Color(0xFF0B132B),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: const Text(
-                            'Créé par toi',
-                            style: TextStyle(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
+                          child: Consumer<LocalizationService>(
+                            builder: (context, locService, _) => Text(
+                              'created_by_you'.tr(locService.currentLanguageCode),
+                              style: TextStyle(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
                             ),
                           ),
                         ),
@@ -248,7 +252,7 @@ class _ProgramSelectionBottomSheetState extends State<ProgramSelectionBottomShee
                 ],
                 _buildProgramInfo(
                         LucideIcons.listChecks,
-                        '${program.exercises.length} exercice${program.exercises.length > 1 ? 's' : ''}',
+                        _getExerciseCountText(program.exercises.length),
                       ),
                     ],
                   ),
@@ -336,5 +340,13 @@ class _ProgramSelectionBottomSheetState extends State<ProgramSelectionBottomShee
         ),
       ],
     );
+  }
+
+  String _getExerciseCountText(int count) {
+    final locService = LocalizationService.instance;
+    String plural = count > 1 ? 's' : '';
+    return 'exercise_count_plural'.tr(locService.currentLanguageCode)
+        .replaceAll('{0}', count.toString())
+        .replaceAll('{1}', plural);
   }
 }

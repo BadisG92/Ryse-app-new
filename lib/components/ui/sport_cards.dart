@@ -305,13 +305,21 @@ class _WorkoutHistoryCardState extends State<WorkoutHistoryCard> {
           ),
           if (_expanded) ...[
             const SizedBox(height: 8),
-            Row(
-              children: const [
-                Expanded(
-                  child: Text('Exercice', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF1A1A1A))),
-                ),
-                Text('Best set', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF1A1A1A))),
-              ],
+            Consumer<LocalizationService>(
+              builder: (context, locService, _) => Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'exercise'.tr(locService.currentLanguageCode),
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF1A1A1A))
+                    ),
+                  ),
+                  Text(
+                    'workout_best_set'.tr(locService.currentLanguageCode),
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF1A1A1A))
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 6),
             ...session.items.map((it) {
@@ -525,12 +533,15 @@ class ExerciseProgressCard extends StatelessWidget {
                           color: Color(0xFF1A1A1A),
                         ),
                       ),
-                      Text(
-                        '${progress.sessions} séance${progress.sessions > 1 ? 's' : ''}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: Color(0xFF0B132B),
+                      Consumer<LocalizationService>(
+                        builder: (context, locService, _) => Text(
+                          'sessions_count'.tr(locService.currentLanguageCode)
+                              .replaceAll('{count}', progress.sessions.toString()),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF0B132B),
+                          ),
                         ),
                       ),
                     ],

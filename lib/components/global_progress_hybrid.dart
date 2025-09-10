@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:provider/provider.dart';
 import 'ui/global_progress_models.dart';
 import 'ui/global_progress_widgets.dart';
 import '../services/dashboard_service.dart';
@@ -10,6 +11,8 @@ import '../services/header_cache_service.dart';
 import '../services/weight_service.dart';
 import '../screens/weight_evolution_screen.dart';
 import '../providers/goals_notifier.dart';
+import '../services/translations.dart';
+import '../services/localization_service.dart';
 
 class GlobalProgress extends StatefulWidget {
   const GlobalProgress({super.key});
@@ -25,12 +28,10 @@ class _GlobalProgressState extends State<GlobalProgress> {
   WeeklyBalance _weeklyBalance = GlobalProgressData.weeklyBalance;
   List<TrackingDay> _trackingDays = GlobalProgressData.weeklyTracking;
   HeaderStats? _headerStats; // Pas d'initialisation par défaut
-  List<AIRecommendation> _aiRecommendations = GlobalProgressData.aiRecommendations;
   int _completedGoals = 0;
   int _totalGoals = 0;
   bool _loadingObjectives = true;
   bool _loadingProgress = true;
-  String get _objectivesText => _loadingObjectives ? '...' : '$_completedGoals/$_totalGoals objectifs';
 
   @override
   void initState() {
@@ -82,7 +83,6 @@ class _GlobalProgressState extends State<GlobalProgress> {
         ProgressServiceV2.getWeeklyBalance(),
         ProgressServiceV2.getWeeklyTracking(),
         ProgressServiceV2.getHeaderStats(),
-        ProgressServiceV2.getAIRecommendations(),
       ]);
       
       final newHeaderStats = results[3] as HeaderStats;
@@ -92,7 +92,6 @@ class _GlobalProgressState extends State<GlobalProgress> {
         _weeklyBalance = results[1] as WeeklyBalance;
         _trackingDays = results[2] as List<TrackingDay>;
         _headerStats = newHeaderStats;
-        _aiRecommendations = results[4] as List<AIRecommendation>;
         _loadingProgress = false;
       });
       
@@ -102,7 +101,6 @@ class _GlobalProgressState extends State<GlobalProgress> {
       print('✅ Données de progression chargées avec cache hebdomadaire');
       print('   - Bilan hebdomadaire: ${_weeklyBalance.items.length} items');
       print('   - Tracking: ${_trackingDays.length} jours');
-      print('   - Recommandations IA: ${_aiRecommendations.length} items');
       
     } catch (e) {
       print('❌ Erreur lors du chargement des données de progression: $e');
@@ -152,13 +150,6 @@ class _GlobalProgressState extends State<GlobalProgress> {
                       _loadingProgress 
                         ? _buildLoadingSection() 
                         : GlobalProgressSectionBuilder.buildTrackingSection(_trackingDays),
-                      
-                      const SizedBox(height: 16),
-                      
-                      // Section des recommandations IA
-                      _loadingProgress 
-                        ? _buildLoadingSection() 
-                        : GlobalProgressSectionBuilder.buildAISection(_aiRecommendations),
                       
                       // Espace en bas pour éviter que le contenu soit coupé
                       const SizedBox(height: 100),
@@ -220,10 +211,14 @@ class _GlobalProgressState extends State<GlobalProgress> {
                   children: [
                     _buildBannerItem(LucideIcons.flame, _headerStats?.dailyStreak ?? '...'),
                     _buildBannerSeparator(),
-                    ValueListenableBuilder<GoalsSummary>(
-                      valueListenable: GoalsNotifier.instance,
-                      builder: (context, summary, _) {
-                        return _buildBannerItem(LucideIcons.target, summary.toString());
+                    Consumer<LocalizationService>(
+                      builder: (context, localizationService, _) {
+                        return ValueListenableBuilder<GoalsSummary>(
+                          valueListenable: GoalsNotifier.instance,
+                          builder: (context, summary, _) {
+                            return _buildBannerItem(LucideIcons.target, '${summary.completed}/${summary.total} ${'objectives'.tr(localizationService.currentLanguageCode)}');
+                          },
+                        );
                       },
                     ),
                     _buildBannerSeparator(),
@@ -331,11 +326,13 @@ class _GlobalProgressState extends State<GlobalProgress> {
             strokeWidth: 2,
           ),
           const SizedBox(height: 16),
-          Text(
-            'Chargement des données...',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[600],
+          Consumer<LocalizationService>(
+            builder: (context, locService, _) => Text(
+              'loading_weight_data'.tr(locService.currentLanguageCode),
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[600],
+              ),
             ),
           ),
         ],

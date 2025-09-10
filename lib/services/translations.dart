@@ -283,6 +283,10 @@ class AppTranslations {
       'fr': 'Exercices',
       'en': 'Exercises',
     },
+    'exercise': {
+      'fr': 'Exercice',
+      'en': 'Exercise',
+    },
     'foods': {
       'fr': 'Aliments',
       'en': 'Foods',
@@ -566,6 +570,472 @@ class AppTranslations {
       'fr': 'Séances',
       'en': 'Sessions',
     },
+    'session': {
+      'fr': 'Séance',
+      'en': 'Session',
+    },
+    'sessions_count': {
+      'fr': '{count} séances',
+      'en': '{count} sessions',
+    },
+    'no_sessions_in_period': {
+      'fr': 'Pas de séances sur la période',
+      'en': 'No sessions in period',
+    },
+    'recent_sessions': {
+      'fr': 'Dernières séances',
+      'en': 'Recent sessions',
+    },
+    'tracked_exercises': {
+      'fr': 'Exercices suivis',
+      'en': 'Tracked exercises',
+    },
+    'select_exercise_to_view_progress': {
+      'fr': 'Sélectionnez un exercice pour voir sa progression',
+      'en': 'Select an exercise to view its progress',
+    },
+    'exercise_details': {
+      'fr': 'Détails de l\'exercice',
+      'en': 'Exercise details',
+    },
+    'this_month': {
+      'fr': 'Ce mois-ci',
+      'en': 'This month',
+    },
+    'three_months': {
+      'fr': '3 mois',
+      'en': '3 months',
+    },
+    'six_months': {
+      'fr': '6 mois',
+      'en': '6 months',
+    },
+    'progression': {
+      'fr': 'Progression',
+      'en': 'Progression',
+    },
+    'best_set': {
+      'fr': 'Meilleure série',
+      'en': 'Best set',
+    },
+    'max_weight': {
+      'fr': 'Charge Max',
+      'en': 'Max Weight',
+    },
+    'set_number': {
+      'fr': 'Série {number}',
+      'en': 'Set {number}',
+    },
+    'no_sessions_found': {
+      'fr': 'Aucune séance trouvée',
+      'en': 'No sessions found',
+    },
+    // Progress/Weight Evolution translations
+    'evolution_poids': {
+      'fr': 'Évolution du poids',
+      'en': 'Weight Evolution',
+    },
+    'select_weight_period': {
+      'fr': 'Sélectionnez une période',
+      'en': 'Select a period',
+    },
+    'enter_weight': {
+      'fr': 'Saisir le poids',
+      'en': 'Enter weight',
+    },
+    'current_weight': {
+      'fr': 'Poids actuel',
+      'en': 'Current weight',
+    },
+    'target_weight': {
+      'fr': 'Objectif',
+      'en': 'Target weight',
+    },
+    'this_month_short': {
+      'fr': 'Ce mois',
+      'en': 'This month',
+    },
+    '3_months': {
+      'fr': '3 mois',
+      'en': '3 months',
+    },
+    '6_months': {
+      'fr': '6 mois',
+      'en': '6 months',
+    },
+    'evolution': {
+      'fr': 'Evolution',
+      'en': 'Evolution',
+    },
+    'weight_history': {
+      'fr': 'Historique des pesées',
+      'en': 'Weight history',
+    },
+    'add_first_weight': {
+      'fr': 'Ajoutez votre première pesée pour voir l\'évolution',
+      'en': 'Add your first weight entry to see evolution',
+    },
+    'no_weight_recorded': {
+      'fr': 'Aucune pesée enregistrée',
+      'en': 'No weight recorded',
+    },
+    'add_weight': {
+      'fr': 'Ajouter une pesée',
+      'en': 'Add weight',
+    },
+    'weight_example': {
+      'fr': 'Ex: 70.5',
+      'en': 'e.g. 70.5',
+    },
+    'weight_added_success': {
+      'fr': 'Pesée ajoutée avec succès',
+      'en': 'Weight added successfully',
+    },
+    'weight_loading_error': {
+      'fr': 'Erreur lors du chargement: {error}',
+      'en': 'Loading error: {error}',
+    },
+    'start': {
+      'fr': 'Début',
+      'en': 'Start',
+    },
+    'target': {
+      'fr': 'Objectif',
+      'en': 'Target',
+    },
+    'period': {
+      'fr': 'Période',
+      'en': 'Period',
+    },
+    'weight_kg': {
+      'fr': 'Poids (kg)',
+      'en': 'Weight (kg)',
+    },
+    'save_weight': {
+      'fr': 'Enregistrer',
+      'en': 'Save',
+    },
+    'weight_saved': {
+      'fr': 'Poids enregistré avec succès',
+      'en': 'Weight saved successfully',
+    },
+    'error_saving_weight': {
+      'fr': 'Erreur lors de l\'enregistrement',
+      'en': 'Error saving weight',
+    },
+    'no_weight_data': {
+      'fr': 'Aucune donnée de poids disponible',
+      'en': 'No weight data available',
+    },
+    'weight_trend': {
+      'fr': 'Tendance',
+      'en': 'Trend',
+    },
+    'stable_weight': {
+      'fr': 'Stable',
+      'en': 'Stable',
+    },
+    'weight_loss': {
+      'fr': 'Perte',
+      'en': 'Loss',
+    },
+    'weight_gain': {
+      'fr': 'Gain',
+      'en': 'Gain',
+    },
+    'last_7_days': {
+      'fr': '7 derniers jours',
+      'en': 'Last 7 days',
+    },
+    'last_30_days': {
+      'fr': '30 derniers jours',
+      'en': 'Last 30 days',
+    },
+    'last_90_days': {
+      'fr': '90 derniers jours',
+      'en': 'Last 90 days',
+    },
+    'all_time': {
+      'fr': 'Depuis le début',
+      'en': 'All time',
+    },
+    'weight_difference': {
+      'fr': 'Différence: {diff} kg',
+      'en': 'Difference: {diff} kg',
+    },
+    'average_weight': {
+      'fr': 'Poids moyen: {avg} kg',
+      'en': 'Average weight: {avg} kg',
+    },
+    'add_weight_entry': {
+      'fr': 'Ajouter une pesée',
+      'en': 'Add weight entry',
+    },
+    'edit_weight_entry': {
+      'fr': 'Modifier la pesée',
+      'en': 'Edit weight entry',
+    },
+    'delete_weight_entry': {
+      'fr': 'Supprimer la pesée',
+      'en': 'Delete weight entry',
+    },
+    'confirm_delete_weight': {
+      'fr': 'Êtes-vous sûr de vouloir supprimer cette pesée ?',
+      'en': 'Are you sure you want to delete this weight entry?',
+    },
+    'weight_chart_title': {
+      'fr': 'Évolution du poids',
+      'en': 'Weight progression',
+    },
+    'loading_weight_data': {
+      'fr': 'Chargement des données...',
+      'en': 'Loading data...',
+    },
+    'error_loading_weight': {
+      'fr': 'Erreur lors du chargement des données',
+      'en': 'Error loading data',
+    },
+    'retry': {
+      'fr': 'Réessayer',
+      'en': 'Retry',
+    },
+    // Progress KPI translations
+    'progress_overview': {
+      'fr': 'Aperçu des progrès',
+      'en': 'Progress overview',
+    },
+    'this_week_progress': {
+      'fr': 'Cette semaine',
+      'en': 'This week',
+    },
+    'this_month_progress': {
+      'fr': 'Ce mois-ci',
+      'en': 'This month',
+    },
+    'weight_goal': {
+      'fr': 'Objectif de poids',
+      'en': 'Weight goal',
+    },
+    'calories_burned': {
+      'fr': 'Calories brûlées',
+      'en': 'Calories burned',
+    },
+    'workouts_completed': {
+      'fr': 'Séances terminées',
+      'en': 'Workouts completed',
+    },
+    'steps_taken': {
+      'fr': 'Pas effectués',
+      'en': 'Steps taken',
+    },
+    'water_consumed': {
+      'fr': 'Eau consommée',
+      'en': 'Water consumed',
+    },
+    'progress_percentage': {
+      'fr': '{percent}% de l\'objectif',
+      'en': '{percent}% of goal',
+    },
+    'goal_achieved': {
+      'fr': 'Objectif atteint !',
+      'en': 'Goal achieved!',
+    },
+    'goal_exceeded': {
+      'fr': 'Objectif dépassé !',
+      'en': 'Goal exceeded!',
+    },
+    // Month abbreviations for charts
+    'jan': {
+      'fr': 'Jan',
+      'en': 'Jan',
+    },
+    'feb': {
+      'fr': 'Fév',
+      'en': 'Feb',
+    },
+    'mar': {
+      'fr': 'Mar',
+      'en': 'Mar',
+    },
+    'apr': {
+      'fr': 'Avr',
+      'en': 'Apr',
+    },
+    'may': {
+      'fr': 'Mai',
+      'en': 'May',
+    },
+    'jun': {
+      'fr': 'Jun',
+      'en': 'Jun',
+    },
+    'jul': {
+      'fr': 'Jul',
+      'en': 'Jul',
+    },
+    'aug': {
+      'fr': 'Aoû',
+      'en': 'Aug',
+    },
+    'sep': {
+      'fr': 'Sep',
+      'en': 'Sep',
+    },
+    'oct': {
+      'fr': 'Oct',
+      'en': 'Oct',
+    },
+    'nov': {
+      'fr': 'Nov',
+      'en': 'Nov',
+    },
+    'dec': {
+      'fr': 'Déc',
+      'en': 'Dec',
+    },
+    // AI Recommendations
+    'ai_recommendations': {
+      'fr': 'Recommandations IA',
+      'en': 'AI Recommendations',
+    },
+    'smart_recommendation': {
+      'fr': 'Conseil intelligent',
+      'en': 'Smart recommendation',
+    },
+    'no_recommendations': {
+      'fr': 'Aucune recommandation disponible',
+      'en': 'No recommendations available',
+    },
+    'recommendation_loading': {
+      'fr': 'Génération de recommandations...',
+      'en': 'Generating recommendations...',
+    },
+    'recommendation_error': {
+      'fr': 'Erreur lors de la génération des recommandations',
+      'en': 'Error generating recommendations',
+    },
+    'excellent_rhythm_message': {
+      'fr': 'Excellent rythme ! Maintenez cette cadence sportive.',
+      'en': 'Excellent rhythm! Maintain this sports pace.',
+    },
+    'excellent_rhythm_continue': {
+      'fr': 'Excellent rythme ! Continuez comme ça pour maintenir votre progression.',
+      'en': 'Excellent rhythm! Keep it up to maintain your progress.',
+    },
+    'increase_protein_intake': {
+      'fr': 'Augmentez votre apport en protéines pour atteindre vos objectifs plus facilement.',
+      'en': 'Increase your protein intake to reach your goals more easily.',
+    },
+    'distribute_meals_advice': {
+      'fr': 'Pensez à bien répartir vos repas tout au long de la journée.',
+      'en': 'Remember to distribute your meals well throughout the day.',
+    },
+    'sleep_recovery_importance': {
+      'fr': 'N\'oubliez pas l\'importance du sommeil dans votre récupération.',
+      'en': 'Don\'t forget the importance of sleep in your recovery.',
+    },
+    'continue_nutrition_efforts': {
+      'fr': 'Continuez vos efforts en nutrition, vous êtes sur la bonne voie !',
+      'en': 'Continue your nutrition efforts, you\'re on the right track!',
+    },
+    'good_hydration_continue': {
+      'fr': 'Bonne hydratation, continuez à boire régulièrement.',
+      'en': 'Good hydration, keep drinking regularly.',
+    },
+    'maintain_good_balance': {
+      'fr': 'Maintenez ce bon équilibre entre nutrition et sport.',
+      'en': 'Maintain this good balance between nutrition and sport.',
+    },
+    'start_recording_meals': {
+      'fr': 'Commencez par enregistrer vos repas pour un meilleur suivi.',
+      'en': 'Start by recording your meals for better tracking.',
+    },
+    'stay_hydrated_daily': {
+      'fr': 'N\'oubliez pas de rester hydraté tout au long de la journée.',
+      'en': 'Don\'t forget to stay hydrated throughout the day.',
+    },
+    // Missing translations for progress cards
+    'perfect_week': {
+      'fr': 'Semaine parfaite',
+      'en': 'Perfect week',
+    },
+    'calorie_target_reached': {
+      'fr': 'Objectifs calories atteints',
+      'en': 'Calorie targets reached',
+    },
+    'hydration_validated': {
+      'fr': 'Hydratation validée',
+      'en': 'Hydration validated',
+    },
+    'meals_recorded': {
+      'fr': 'Repas enregistrés',
+      'en': 'Meals recorded',
+    },
+    'sport_sessions': {
+      'fr': 'Séances sport',
+      'en': 'Sport sessions',
+    },
+    'achieved': {
+      'fr': 'Atteint',
+      'en': 'Achieved',
+    },
+    'partial': {
+      'fr': 'Partiel',
+      'en': 'Partial',
+    },
+    'missed': {
+      'fr': 'Manqué',
+      'en': 'Missed',
+    },
+    'weightlifting': {
+      'fr': 'Musculation',
+      'en': 'Workout',
+    },
+    'rest': {
+      'fr': 'Repos',
+      'en': 'Rest',
+    },
+    'meals': {
+      'fr': 'repas',
+      'en': 'meals',
+    },
+    'weekly_global_summary': {
+      'fr': 'Bilan global hebdomadaire',
+      'en': 'Weekly global summary',
+    },
+    'this_week': {
+      'fr': 'Cette semaine',
+      'en': 'This week',
+    },
+    // Days of week abbreviations for calendar
+    'day_l': {
+      'fr': 'L',
+      'en': 'M',
+    },
+    'day_m': {
+      'fr': 'M',
+      'en': 'T',
+    },
+    'day_m2': {
+      'fr': 'M',
+      'en': 'W',
+    },
+    'day_j': {
+      'fr': 'J',
+      'en': 'T',
+    },
+    'day_v': {
+      'fr': 'V',
+      'en': 'F',
+    },
+    'day_s': {
+      'fr': 'S',
+      'en': 'S',
+    },
+    'day_d': {
+      'fr': 'D',
+      'en': 'S',
+    },
     'take_photo': {
       'fr': 'Prendre une photo',
       'en': 'Take photo',
@@ -733,10 +1203,6 @@ class AppTranslations {
     'ai_tip': {
       'fr': 'Astuce IA',
       'en': 'AI Tip',
-    },
-    'meals': {
-      'fr': 'Repas',
-      'en': 'Meals',
     },
     'ai_tip_hydration': {
       'fr': '💡 Astuce : Buvez un verre d\'eau avant chaque repas pour une meilleure digestion et satiété.',
@@ -1051,8 +1517,8 @@ class AppTranslations {
       'en': 'Progress',
     },
     'objectives': {
-      'fr': 'Objectifs',
-      'en': 'Goals',
+      'fr': 'objectifs',
+      'en': 'goals',
     },
     'must_be_connected_add_food': {
       'fr': 'Vous devez être connecté pour ajouter un aliment',
@@ -1152,10 +1618,6 @@ class AppTranslations {
     'sport_milestones_reached': {
       'fr': 'Paliers franchis',
       'en': 'Milestones reached',
-    },
-    'sport_sessions': {
-      'fr': 'Séances',
-      'en': 'Sessions',
     },
     'sport_progress': {
       'fr': 'Progression',
@@ -2408,12 +2870,92 @@ class AppTranslations {
       'en': 'Custom',
     },
     'workout_session_saved_message': {
-      'fr': 'Séance ajoutée aux programmes guidés !',
-      'en': 'Session added to guided programs!',
+      'fr': 'Séance "{0}" ajoutée aux programmes guidés !',
+      'en': '"{0}" session added to guided programs!',
     },
     'workout_session_completed': {
       'fr': 'Séance terminée !',
       'en': 'Session completed!',
+    },
+    'workout_session_summary': {
+      'fr': 'Excellent travail ! Voici le résumé de votre séance.',
+      'en': 'Excellent work! Here\'s your session summary.',
+    },
+    'no': {
+      'fr': 'Non',
+      'en': 'No',
+    },
+    'yes': {
+      'fr': 'Oui',
+      'en': 'Yes',
+    },
+    'workout_no_history': {
+      'fr': 'Aucun historique',
+      'en': 'No history',
+    },
+    'workout_no_history_description': {
+      'fr': 'C\'est votre première fois avec cet exercice !\nVos performances seront enregistrées pour vous guider lors des prochaines séances.',
+      'en': 'This is your first time with this exercise!\nYour performance will be recorded to guide you in future sessions.',
+    },
+    'workout_custom_badge': {
+      'fr': 'Perso',
+      'en': 'Custom',
+    },
+    'workout_weight_kg': {
+      'fr': 'Poids (kg)',
+      'en': 'Weight (kg)',
+    },
+    'workout_reps': {
+      'fr': 'Répétitions',
+      'en': 'Reps',
+    },
+    'workout_no_offline_exercises': {
+      'fr': 'Aucun exercice disponible hors ligne. Connectez-vous au moins une fois pour télécharger les exercices.',
+      'en': 'No exercises available offline. Connect at least once to download exercises.',
+    },
+    'hide': {
+      'fr': 'Masquer',
+      'en': 'Hide',
+    },
+    'workout_session_saved_locally': {
+      'fr': 'Séance sauvegardée localement',
+      'en': 'Session saved locally',
+    },
+    'workout_sync_on_reconnect': {
+      'fr': 'Elle sera synchronisée dès le retour du réseau',
+      'en': 'It will be synchronized when network returns',
+    },
+    'workout_program_from_manual': {
+      'fr': 'Programme créé à partir d\'une séance manuelle',
+      'en': 'Program created from manual session',
+    },
+    'minutes': {
+      'fr': 'Minutes',
+      'en': 'Minutes',
+    },
+    'offline': {
+      'fr': 'Hors ligne',
+      'en': 'Offline',
+    },
+    'set': {
+      'fr': 'Série',
+      'en': 'Set',
+    },
+    'finish': {
+      'fr': 'Terminer',
+      'en': 'Finish',
+    },
+    'programs': {
+      'fr': 'Programmes',
+      'en': 'Programs',
+    },
+    'created_by_you': {
+      'fr': 'Créé par toi',
+      'en': 'Created by you',
+    },
+    'exercise_count_plural': {
+      'fr': '{0} exercice{1}',
+      'en': '{0} exercise{1}',
     },
     'workout_weight_lifted': {
       'fr': 'Kilos soulevés',
@@ -2474,6 +3016,70 @@ class AppTranslations {
     'workout_select_predefined_program': {
       'fr': 'Sélectionnez un programme avec exercices prédéfinis',
       'en': 'Select a program with predefined exercises',
+    },
+    'validate': {
+      'fr': 'Valider',
+      'en': 'Validate',
+    },
+    'workout_exercise_counter': {
+      'fr': 'Exercice {current}/{total}',
+      'en': 'Exercise {current}/{total}',
+    },
+    'workout_volume': {
+      'fr': 'Volume',
+      'en': 'Volume',
+    },
+    'workout_intensity': {
+      'fr': 'Intensité',
+      'en': 'Intensity',
+    },
+    'workout_intensity_duration_title': {
+      'fr': 'Intensité et durée',
+      'en': 'Intensity and duration',
+    },
+    'workout_effective_duration': {
+      'fr': 'Durée effective (minutes)',
+      'en': 'Effective duration (minutes)',
+    },
+    'workout_session_history': {
+      'fr': 'Historique des séances',
+      'en': 'Session History',
+    },
+    'workout_max': {
+      'fr': 'Max',
+      'en': 'Max',
+    },
+    'workout_best_set': {
+      'fr': 'Meilleur set',
+      'en': 'Best set',
+    },
+    'workout_set_number': {
+      'fr': 'S{number}',
+      'en': 'S{number}',
+    },
+    'date': {
+      'fr': 'Date',
+      'en': 'Date',
+    },
+    'workout_intensity_question': {
+      'fr': 'Comment était l\'intensité de la séance ?',
+      'en': 'How was the session intensity?',
+    },
+    'exercise_name_placeholder': {
+      'fr': 'Nom de l\'exercice',
+      'en': 'Exercise name',
+    },
+    'sets_count_placeholder': {
+      'fr': 'Nombre de séries',
+      'en': 'Number of sets',
+    },
+    'workout_search_exercise': {
+      'fr': 'Rechercher un exercice...',
+      'en': 'Search exercise...',
+    },
+    'workout_add_exercise_not_in_list': {
+      'fr': 'Ajouter un exercice qui ne figure pas dans la liste',
+      'en': 'Add an exercise that is not in the list',
     },
   };
 

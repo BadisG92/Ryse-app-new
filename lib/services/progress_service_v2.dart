@@ -7,6 +7,8 @@ import 'workout_cache_service.dart';
 import 'cardio_service.dart';
 import 'auth_service.dart';
 import 'streak_service.dart';
+import 'translations.dart';
+import 'localization_service.dart';
 
 /// Service optimisé pour les données de progression avec cache hebdomadaire intelligent
 class ProgressServiceV2 {
@@ -176,31 +178,31 @@ class ProgressServiceV2 {
       final items = <BalanceItem>[
         BalanceItem(
           icon: LucideIcons.flame,
-          label: 'Objectifs calories atteints',
+          label: 'calorie_target_reached'.tr(LocalizationService.instance.currentLanguageCode),
           achieved: nutritionData['calorieTargetDays'] ?? 0,
           target: 7,
-          unit: 'jours',
+          unit: 'days'.tr(LocalizationService.instance.currentLanguageCode),
         ),
         BalanceItem(
           icon: LucideIcons.droplet,
-          label: 'Hydratation validée',
+          label: 'hydration_validated'.tr(LocalizationService.instance.currentLanguageCode),
           achieved: hydrationData['validatedDays'] ?? 0,
           target: 7,
-          unit: 'jours',
+          unit: 'days'.tr(LocalizationService.instance.currentLanguageCode),
         ),
         BalanceItem(
           icon: LucideIcons.utensils,
-          label: 'Repas enregistrés',
+          label: 'meals_recorded'.tr(LocalizationService.instance.currentLanguageCode),
           achieved: nutritionData['totalMeals'] ?? 0,
           target: 21, // 3 repas par jour * 7 jours
-          unit: 'repas',
+          unit: 'meals'.tr(LocalizationService.instance.currentLanguageCode),
         ),
         BalanceItem(
           icon: LucideIcons.dumbbell,
-          label: 'Séances de sport',
+          label: 'sport_sessions'.tr(LocalizationService.instance.currentLanguageCode),
           achieved: sportData['completedSessions'] ?? 0,
           target: sportData['plannedSessions'] ?? 4,
-          unit: 'séances',
+          unit: 'sessions'.tr(LocalizationService.instance.currentLanguageCode),
         ),
       ];
 
@@ -326,10 +328,10 @@ class ProgressServiceV2 {
   static Future<HeaderStats> getHeaderStats() async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) {
-      return const HeaderStats(
-        dailyStreak: '0 jours',
-        weeklyObjectives: '0/0 objectifs',
-        currentStatus: 'Progression',
+      return HeaderStats(
+        dailyStreak: '0 ${'days'.tr(LocalizationService.instance.currentLanguageCode)}',
+        weeklyObjectives: '0/0 ${'objectives'.tr(LocalizationService.instance.currentLanguageCode)}',
+        currentStatus: 'progression'.tr(LocalizationService.instance.currentLanguageCode),
       );
     }
 
@@ -349,9 +351,9 @@ class ProgressServiceV2 {
       final objectives = await _getWeeklyObjectives(userId);
 
       final stats = HeaderStats(
-        dailyStreak: '$streak jour${streak > 1 ? 's' : ''}',
-        weeklyObjectives: '${objectives['completed']}/${objectives['total']} objectifs',
-        currentStatus: 'Progression', // Nom fixe de la page
+        dailyStreak: '$streak ${'day'.tr(LocalizationService.instance.currentLanguageCode)}${streak > 1 ? 's' : ''}',
+        weeklyObjectives: '${objectives['completed']}/${objectives['total']} ${'objectives'.tr(LocalizationService.instance.currentLanguageCode)}',
+        currentStatus: 'progression'.tr(LocalizationService.instance.currentLanguageCode), // Nom fixe de la page
       );
       
       _weeklyCache[cacheKey] = stats;
@@ -360,10 +362,10 @@ class ProgressServiceV2 {
       return stats;
     } catch (e) {
       print('❌ Erreur récupération statistiques header: $e');
-      return const HeaderStats(
-        dailyStreak: '0 jours',
-        weeklyObjectives: '0/0 objectifs',
-        currentStatus: 'Progression',
+      return HeaderStats(
+        dailyStreak: '0 ${'days'.tr(LocalizationService.instance.currentLanguageCode)}',
+        weeklyObjectives: '0/0 ${'objectives'.tr(LocalizationService.instance.currentLanguageCode)}',
+        currentStatus: 'progression'.tr(LocalizationService.instance.currentLanguageCode),
       );
     }
   }
@@ -428,8 +430,8 @@ class ProgressServiceV2 {
   }
 
   static String _getDayLabel(int weekday) {
-    const labels = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
-    return labels[weekday - 1];
+    const translationKeys = ['day_l', 'day_m', 'day_m2', 'day_j', 'day_v', 'day_s', 'day_d'];
+    return translationKeys[weekday - 1].tr(LocalizationService.instance.currentLanguageCode);
   }
 
   // Reprendre toutes les méthodes privées de l'ancien service (simplifiées)
@@ -652,9 +654,9 @@ class ProgressServiceV2 {
 
   // Méthodes de génération de recommandations simplifiées
   static List<AIRecommendation> _generateNutritionRecommendations(Map<String, dynamic> analysis) {
-    return const [
+    return [
       AIRecommendation(
-        message: "Continue tes efforts en nutrition ! Pense à équilibrer tes macronutriments.",
+        message: 'continue_nutrition_efforts'.tr(LocalizationService.instance.currentLanguageCode),
         type: RecommendationType.nutrition,
         priority: 3,
       ),
@@ -662,9 +664,9 @@ class ProgressServiceV2 {
   }
 
   static List<AIRecommendation> _generateSportRecommendations(Map<String, dynamic> analysis) {
-    return const [
+    return [
       AIRecommendation(
-        message: "Excellent rythme sportif cette semaine ! Maintiens cette cadence. 💪",
+        message: 'excellent_rhythm_message'.tr(LocalizationService.instance.currentLanguageCode),
         type: RecommendationType.sport,
         priority: 4,
       ),
@@ -672,9 +674,9 @@ class ProgressServiceV2 {
   }
 
   static List<AIRecommendation> _generateHydrationRecommendations(Map<String, dynamic> analysis) {
-    return const [
+    return [
       AIRecommendation(
-        message: "Bonne hydratation ! Continue à boire régulièrement tout au long de la journée. 💧",
+        message: 'good_hydration_continue'.tr(LocalizationService.instance.currentLanguageCode),
         type: RecommendationType.general,
         priority: 2,
       ),
@@ -682,9 +684,9 @@ class ProgressServiceV2 {
   }
 
   static List<AIRecommendation> _generateGeneralRecommendations(Map<String, dynamic> nutritionAnalysis, Map<String, dynamic> sportAnalysis) {
-    return const [
+    return [
       AIRecommendation(
-        message: "Tu maintiens un bon équilibre général. Continue sur cette lancée ! 🎯",
+        message: 'maintain_good_balance'.tr(LocalizationService.instance.currentLanguageCode),
         type: RecommendationType.general,
         priority: 3,
       ),
@@ -693,34 +695,34 @@ class ProgressServiceV2 {
 
   // Méthodes de fallback
   static WeeklyBalance _getEmptyBalance() {
-    return const WeeklyBalance(items: [
+    return WeeklyBalance(items: [
       BalanceItem(
         icon: LucideIcons.flame,
-        label: 'Objectifs calories',
+        label: 'calorie_target_reached'.tr(LocalizationService.instance.currentLanguageCode),
         achieved: 0,
         target: 7,
-        unit: 'jours',
+        unit: 'days'.tr(LocalizationService.instance.currentLanguageCode),
       ),
       BalanceItem(
         icon: LucideIcons.droplet,
-        label: 'Hydratation',
+        label: 'hydration_validated'.tr(LocalizationService.instance.currentLanguageCode),
         achieved: 0,
         target: 7,
-        unit: 'jours',
+        unit: 'days'.tr(LocalizationService.instance.currentLanguageCode),
       ),
       BalanceItem(
         icon: LucideIcons.utensils,
-        label: 'Repas enregistrés',
+        label: 'meals_recorded'.tr(LocalizationService.instance.currentLanguageCode),
         achieved: 0,
         target: 21,
-        unit: 'repas',
+        unit: 'meals'.tr(LocalizationService.instance.currentLanguageCode),
       ),
       BalanceItem(
         icon: LucideIcons.dumbbell,
-        label: 'Séances sport',
+        label: 'sport_sessions'.tr(LocalizationService.instance.currentLanguageCode),
         achieved: 0,
         target: 4,
-        unit: 'séances',
+        unit: 'sessions'.tr(LocalizationService.instance.currentLanguageCode),
       ),
     ]);
   }
@@ -740,14 +742,14 @@ class ProgressServiceV2 {
   }
 
   static List<AIRecommendation> _getFallbackRecommendations() {
-    return const [
+    return [
       AIRecommendation(
-        message: "Commence par enregistrer tes repas pour que je puisse t'aider à optimiser ta nutrition !",
+        message: 'start_recording_meals'.tr(LocalizationService.instance.currentLanguageCode),
         type: RecommendationType.general,
         priority: 3,
       ),
       AIRecommendation(
-        message: "N'oublie pas de rester hydraté ! 2 litres d'eau par jour pour une forme optimale. 💧",
+        message: 'stay_hydrated_daily'.tr(LocalizationService.instance.currentLanguageCode),
         type: RecommendationType.general,
         priority: 2,
       ),

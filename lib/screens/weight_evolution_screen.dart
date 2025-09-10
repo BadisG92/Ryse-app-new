@@ -3,8 +3,11 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'dart:math' as math;
+import 'package:provider/provider.dart';
 import '../components/ui/global_progress_models.dart';
 import '../services/weight_service.dart';
+import '../services/translations.dart';
+import '../services/localization_service.dart';
 
 class WeightEvolutionScreen extends StatefulWidget {
   const WeightEvolutionScreen({
@@ -16,7 +19,7 @@ class WeightEvolutionScreen extends StatefulWidget {
 }
 
 class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
-  String selectedPeriod = 'Ce mois-ci';
+  String selectedPeriod = 'this_month';
   bool showAddWeight = false;
   final TextEditingController _weightController = TextEditingController();
   
@@ -38,13 +41,13 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
     final entries = _weightProgress!.entries;
     
     switch (selectedPeriod) {
-      case 'Ce mois-ci':
+      case 'this_month':
         final monthAgo = DateTime(now.year, now.month - 1, now.day);
         return entries.where((entry) => entry.date.isAfter(monthAgo)).toList();
-      case '3 mois':
+      case '3_months':
         final threeMonthsAgo = DateTime(now.year, now.month - 3, now.day);
         return entries.where((entry) => entry.date.isAfter(threeMonthsAgo)).toList();
-      case '6 mois':
+      case '6_months':
         final sixMonthsAgo = DateTime(now.year, now.month - 6, now.day);
         return entries.where((entry) => entry.date.isAfter(sixMonthsAgo)).toList();
       default:
@@ -89,7 +92,7 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
       });
     } catch (e) {
       setState(() {
-        _errorMessage = 'Erreur lors du chargement des données: $e';
+        _errorMessage = 'weight_loading_error'.tr(LocalizationService.instance.currentLanguageCode).replaceAll('{error}', e.toString());
         _isLoading = false;
       });
     }
@@ -97,7 +100,8 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return Consumer<LocalizationService>(
+      builder: (context, locService, child) => Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         backgroundColor: const Color(0xFFF8FAFC),
@@ -106,11 +110,11 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
           icon: const Icon(LucideIcons.chevronLeft, color: Color(0xFF0B132B)),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Align(
+        title: Align(
           alignment: Alignment.centerLeft,
           child: Text(
-            'Évolution du poids',
-            style: TextStyle(
+            'evolution_poids'.tr(locService.currentLanguageCode),
+            style: const TextStyle(
               color: Color(0xFF0B132B),
               fontWeight: FontWeight.w600,
             ),
@@ -118,9 +122,16 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
         ),
         centerTitle: false,
         actions: [
-          IconButton(
-            icon: const Icon(LucideIcons.plus, color: Color(0xFF0B132B)),
-            onPressed: () => setState(() => showAddWeight = !showAddWeight),
+          Container(
+            margin: const EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0B132B),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: IconButton(
+              icon: const Icon(LucideIcons.plus, color: Colors.white, size: 20),
+              onPressed: () => setState(() => showAddWeight = !showAddWeight),
+            ),
           ),
         ],
       ),
@@ -156,7 +167,7 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
                           backgroundColor: const Color(0xFF0B132B),
                           foregroundColor: Colors.white,
                         ),
-                        child: const Text('Réessayer'),
+                        child: Text('retry'.tr(locService.currentLanguageCode)),
                       ),
                     ],
                   ),
@@ -196,6 +207,7 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
                     ),
                   ),
                 ),
+      ),
     );
   }
 
@@ -205,7 +217,7 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
       children: [
         Expanded(
           child: _buildKPICard(
-            "Actuel",
+            'current_weight'.tr(LocalizationService.instance.currentLanguageCode),
             "${_filteredWeightProgress?.currentWeight.toStringAsFixed(1) ?? '0.0'}",
             "kg",
           ),
@@ -213,7 +225,7 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
         const SizedBox(width: 12),
         Expanded(
           child: _buildKPICard(
-            "Objectif", 
+            'target_weight'.tr(LocalizationService.instance.currentLanguageCode), 
             "${_filteredWeightProgress?.targetWeight.toStringAsFixed(1) ?? '0.0'}",
             "kg",
           ),
@@ -231,15 +243,16 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
   }
 
   String _getPeriodLabel() {
+    final locService = LocalizationService.instance;
     switch (selectedPeriod) {
-      case 'Ce mois-ci':
-        return 'Ce mois';
-      case '3 mois':
-        return '3 mois';
-      case '6 mois':
-        return '6 mois';
+      case 'this_month':
+        return 'this_month_short'.tr(locService.currentLanguageCode);
+      case '3_months':
+        return '3_months'.tr(locService.currentLanguageCode);
+      case '6_months':
+        return '6_months'.tr(locService.currentLanguageCode);
       default:
-        return 'Période';
+        return 'period'.tr(locService.currentLanguageCode);
     }
   }
 
@@ -296,7 +309,13 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
 
   // Sélecteur de période (identique à ExerciseDetailPage)
   Widget _buildPeriodSelector() {
-    final periods = ['Ce mois-ci', '3 mois', '6 mois'];
+    final locService = LocalizationService.instance;
+    final periods = ['this_month', '3_months', '6_months'];
+    final periodLabels = {
+      'this_month': 'this_month'.tr(locService.currentLanguageCode),
+      '3_months': '3_months'.tr(locService.currentLanguageCode),
+      '6_months': '6_months'.tr(locService.currentLanguageCode),
+    };
     
     return Container(
       decoration: BoxDecoration(
@@ -318,7 +337,7 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  period,
+                  periodLabels[period] ?? period,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: isSelected ? Colors.white : const Color(0xFF64748B),
@@ -349,10 +368,10 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
             border: Border.all(color: const Color(0xFFE2E8F0)),
           ),
           padding: const EdgeInsets.all(16),
-          child: const Column(
+          child: Column(
             children: [
               Text(
-                'Évolution',
+                'evolution'.tr(LocalizationService.instance.currentLanguageCode),
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -364,7 +383,7 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
                 height: 250,
                 child: Center(
                   child: Text(
-                    'Ajoutez votre première pesée pour voir votre progression',
+                    'add_first_weight'.tr(LocalizationService.instance.currentLanguageCode),
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Color(0xFF64748B),
@@ -389,9 +408,9 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Évolution',
-              style: TextStyle(
+            Text(
+              'evolution'.tr(LocalizationService.instance.currentLanguageCode),
+              style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
                 color: Color(0xFF0B132B),
@@ -419,9 +438,9 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Évolution',
-            style: TextStyle(
+          Text(
+            'evolution'.tr(LocalizationService.instance.currentLanguageCode),
+            style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
               color: Color(0xFF0B132B),
@@ -472,8 +491,8 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
             showTitles: true,
             reservedSize: 30,
             getTitlesWidget: (value, meta) {
-              if (value == 0) return const Text('Début', style: TextStyle(color: Color(0xFF64748B), fontSize: 10));
-              if (value == 1) return const Text('Objectif', style: TextStyle(color: Color(0xFF64748B), fontSize: 10));
+              if (value == 0) return Text('start'.tr(LocalizationService.instance.currentLanguageCode), style: const TextStyle(color: Color(0xFF64748B), fontSize: 10));
+              if (value == 1) return Text('target'.tr(LocalizationService.instance.currentLanguageCode), style: const TextStyle(color: Color(0xFF64748B), fontSize: 10));
               return const SizedBox.shrink();
             },
           ),
@@ -608,7 +627,7 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
               if (barSpot.barIndex == 0 && barSpot.x.toInt() < weightProgress.entries.length) {
                 final entry = weightProgress.entries[barSpot.x.toInt()];
                 return LineTooltipItem(
-                  '${barSpot.y.toStringAsFixed(1)} kg',
+                  '${barSpot.y.toStringAsFixed(1)} ${'kg'.tr(LocalizationService.instance.currentLanguageCode)}',
                   const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w600,
@@ -686,8 +705,8 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Historique des pesées',
+          Text(
+            'weight_history'.tr(LocalizationService.instance.currentLanguageCode),
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -696,8 +715,8 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
           ),
           const SizedBox(height: 16),
           if (lastEntries.isEmpty)
-            const Text(
-              'Aucune pesée enregistrée',
+            Text(
+              'no_weight_recorded'.tr(LocalizationService.instance.currentLanguageCode),
               style: TextStyle(
                 fontSize: 14,
                 color: Color(0xFF64748B),
@@ -723,7 +742,7 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
                       ),
                     ),
                     Text(
-                      '${entry.weight.toStringAsFixed(1)} kg',
+                      '${entry.weight.toStringAsFixed(1)} ${'kg'.tr(LocalizationService.instance.currentLanguageCode)}',
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
@@ -752,8 +771,8 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Ajouter une pesée',
+            Text(
+              'add_weight'.tr(LocalizationService.instance.currentLanguageCode),
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -765,8 +784,8 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
               controller: _weightController,
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
-                labelText: 'Poids (kg)',
-                hintText: 'Ex: 70.5',
+                labelText: 'weight_kg'.tr(LocalizationService.instance.currentLanguageCode),
+                hintText: 'weight_example'.tr(LocalizationService.instance.currentLanguageCode),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
@@ -789,8 +808,8 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
                     style: OutlinedButton.styleFrom(
                       side: const BorderSide(color: Color(0xFFE2E8F0)),
                     ),
-                    child: const Text(
-                      'Annuler',
+                    child: Text(
+                      'cancel'.tr(LocalizationService.instance.currentLanguageCode),
                       style: TextStyle(color: Color(0xFF64748B)),
                     ),
                   ),
@@ -803,7 +822,7 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
                       backgroundColor: const Color(0xFF0B132B),
                       foregroundColor: Colors.white,
                     ),
-                    child: const Text('Enregistrer'),
+                    child: Text('save_weight'.tr(LocalizationService.instance.currentLanguageCode)),
                   ),
                 ),
               ],
@@ -824,7 +843,7 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
         await _loadWeightData();
         
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Pesée ajoutée avec succès')),
+          SnackBar(content: Text('weight_added_success'.tr(LocalizationService.instance.currentLanguageCode))),
         );
         setState(() {
           showAddWeight = false;
@@ -832,7 +851,7 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
         });
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur: $e')),
+          SnackBar(content: Text('error'.tr(LocalizationService.instance.currentLanguageCode).replaceAll('{error}', e.toString()))),
         );
       }
     }

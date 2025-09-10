@@ -45,7 +45,22 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
   Duration _currentDuration = Duration.zero;
   bool _addSeriePressed = false;
   bool _addExercisePressed = false;
-  String? _selectedIntensity; // 'Faible' | 'Modéré' | 'Élevé'
+  String? _selectedIntensity;
+
+  // Mapper les intensités anglaises vers les valeurs françaises de la DB
+  String _mapIntensityToDbValue(String intensity) {
+    final locService = LocalizationService.instance;
+    switch (intensity) {
+      case 'low':
+        return 'workout_intensity_low'.tr(locService.currentLanguageCode);
+      case 'moderate':
+        return 'workout_intensity_moderate'.tr(locService.currentLanguageCode);
+      case 'high':
+        return 'workout_intensity_high'.tr(locService.currentLanguageCode);
+      default:
+        return 'workout_intensity_moderate'.tr(locService.currentLanguageCode); // fallback
+    }
+  }
   int? _effectiveDurationMinutes; // permet d'éditer la durée réelle
   
   // Mode offline
@@ -183,7 +198,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
         ? user.weight!
         : 75.0; // fallback
     final minutes = _displayedDuration.inMinutes > 0 ? _displayedDuration.inMinutes : 1;
-    final intensity = _selectedIntensity ?? 'Modéré';
+    final intensity = _selectedIntensity ?? 'moderate';
     return CalorieBurnService.calculateKcal(
       'musculation',
       assumedWeightKg,
@@ -269,7 +284,11 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
       if (!previousSet.isCompleted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Validez d\'abord la série ${setIndex} !'),
+            content: Consumer<LocalizationService>(
+              builder: (context, locService, _) => Text(
+                'workout_validate_set_first'.tr(locService.currentLanguageCode).replaceAll('{0}', setIndex.toString()),
+              ),
+            ),
             backgroundColor: Colors.orange,
             duration: const Duration(seconds: 2),
           ),
@@ -291,15 +310,23 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
       
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Série ${setIndex + 1} validée !'),
+          content: Consumer<LocalizationService>(
+            builder: (context, locService, _) => Text(
+              'workout_set_validated'.tr(locService.currentLanguageCode).replaceAll('{0}', '${setIndex + 1}'),
+            ),
+          ),
           backgroundColor: const Color(0xFF10B981),
           duration: const Duration(seconds: 1),
         ),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Veuillez saisir le poids et les répétitions'),
+        SnackBar(
+          content: Consumer<LocalizationService>(
+            builder: (context, locService, _) => Text(
+              'workout_enter_weight_reps'.tr(locService.currentLanguageCode),
+            ),
+          ),
           backgroundColor: Colors.red,
         ),
       );
@@ -555,22 +582,26 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: const Text(
-            'Combien de séries ?',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF1A1A1A),
+          title: Consumer<LocalizationService>(
+            builder: (context, locService, _) => Text(
+              'workout_how_many_sets'.tr(locService.currentLanguageCode),
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF1A1A1A),
+              ),
             ),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                'Pour l\'exercice "$exerciseName"',
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF64748B),
+              Consumer<LocalizationService>(
+                builder: (context, locService, _) => Text(
+                  'workout_for_exercise'.tr(locService.currentLanguageCode).replaceAll('{0}', exerciseName),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF64748B),
+                  ),
                 ),
               ),
               const SizedBox(height: 20),
@@ -619,12 +650,14 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text(
-                'Annuler',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF64748B),
+              child: Consumer<LocalizationService>(
+                builder: (context, locService, _) => Text(
+                  'cancel'.tr(locService.currentLanguageCode),
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF64748B),
+                  ),
                 ),
               ),
             ),
@@ -642,11 +675,13 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                 ),
                 elevation: 0,
               ),
-              child: const Text(
-                'Créer',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
+              child: Consumer<LocalizationService>(
+                builder: (context, locService, _) => Text(
+                  'workout_create'.tr(locService.currentLanguageCode),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),
@@ -675,9 +710,9 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
               children: [
                 const Icon(LucideIcons.wifiOff, color: Colors.white, size: 20),
                 const SizedBox(width: 12),
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'Aucun exercice disponible hors ligne. Connectez-vous au moins une fois pour télécharger les exercices.',
+                    'workout_no_offline_exercises'.tr(LocalizationService.instance.currentLanguageCode),
                     style: TextStyle(fontSize: 14),
                   ),
                 ),
@@ -753,12 +788,14 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                     
                     const SizedBox(height: 24),
                     
-                    const Text(
-                      'Ajouter un exercice',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF1A1A1A),
+                    Consumer<LocalizationService>(
+                      builder: (context, locService, _) => Text(
+                        'workout_add_exercise'.tr(locService.currentLanguageCode),
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1A1A1A),
+                        ),
                       ),
                     ),
                     
@@ -768,7 +805,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                     TextField(
                       controller: searchController,
                       decoration: InputDecoration(
-                        hintText: 'Rechercher ou créer un exercice...',
+                        hintText: 'workout_search_create_exercise'.tr(LocalizationService.instance.currentLanguageCode),
                         prefixIcon: const Icon(LucideIcons.search, size: 20),
                         filled: true,
                         fillColor: const Color(0xFFF8FAFC),
@@ -792,11 +829,11 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                           final tempName = searchController.text.trim();
                           Navigator.pop(context);
                           // Ajouter immédiatement en local (custom) sans attendre l'UUID
-                          _showSetsCountDialog(tempName, 'Personnalisé', exerciseId: null, isCustom: true);
+                          _showSetsCountDialog(tempName, 'workout_custom_type'.tr(LocalizationService.instance.currentLanguageCode), exerciseId: null, isCustom: true);
                           // Création en arrière-plan puis synchronisation de l'UUID
                           final created = await db.DatabaseService.createCustomExercise(
                             name: tempName,
-                            muscleGroup: 'Personnalisé',
+                            muscleGroup: 'workout_custom_type'.tr(LocalizationService.instance.currentLanguageCode),
                           );
                           if (created != null && mounted) {
                             setState(() {
@@ -837,12 +874,14 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text(
-                                      'Créer un nouvel exercice',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.white,
+                                    Consumer<LocalizationService>(
+                                      builder: (context, locService, _) => Text(
+                                        'workout_create_new_exercise'.tr(locService.currentLanguageCode),
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.white,
+                                        ),
                                       ),
                                     ),
                                     Text(
@@ -919,9 +958,11 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                                                   borderRadius: BorderRadius.circular(8),
                                                   border: Border.all(color: const Color(0xFF0B132B).withOpacity(0.2)),
                                                 ),
-                                                child: const Text(
-                                                  'Perso',
-                                                  style: TextStyle(fontSize: 10, color: Color(0xFF0B132B), fontWeight: FontWeight.w600),
+                                                child: Consumer<LocalizationService>(
+                                                  builder: (context, locService, _) => Text(
+                                                    'workout_custom_badge'.tr(locService.currentLanguageCode),
+                                                    style: TextStyle(fontSize: 10, color: Color(0xFF0B132B), fontWeight: FontWeight.w600),
+                                                  ),
                                                 ),
                                               ),
                                             ],
@@ -940,7 +981,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                                   if (exercise.isCustom)
                                     IconButton(
                                       icon: const Icon(LucideIcons.eyeOff, size: 16, color: Color(0xFF64748B)),
-                                      tooltip: 'Masquer',
+                                      tooltip: 'hide'.tr(LocalizationService.instance.currentLanguageCode),
                                       onPressed: () async {
                                         final ok = await db.DatabaseService.hideCustomExercise(exercise.id);
                                         if (ok) {
@@ -949,7 +990,12 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                                           });
                                           if (context.mounted) {
                                             ScaffoldMessenger.of(context).showSnackBar(
-                                              const SnackBar(content: Text('Exercice masqué de la liste'), duration: Duration(seconds: 2)),
+                                              SnackBar(
+                                                content: Consumer<LocalizationService>(
+                                                  builder: (context, locService, _) => Text('workout_exercise_hidden'.tr(locService.currentLanguageCode)),
+                                                ),
+                                                duration: const Duration(seconds: 2)
+                                              ),
                                             );
                                           }
                                         }
@@ -1017,24 +1063,28 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                 
                 const SizedBox(height: 16),
                 
-                const Text(
-                  'Sauvegarder la séance ?',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1A1A1A),
+                Consumer<LocalizationService>(
+                  builder: (context, locService, _) => Text(
+                    'workout_save_session_title'.tr(locService.currentLanguageCode),
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1A1A1A),
+                    ),
                   ),
                 ),
                 
                 const SizedBox(height: 8),
                 
-                Text(
-                  'Souhaitez-vous ajouter la séance "${widget.sessionName}" à votre liste de séances guidées ?',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF64748B),
+                Consumer<LocalizationService>(
+                  builder: (context, locService, _) => Text(
+                    'workout_save_session_question_detail'.tr(locService.currentLanguageCode).replaceAll('{0}', widget.sessionName),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF64748B),
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                  textAlign: TextAlign.center,
                 ),
                 
                 const SizedBox(height: 24),
@@ -1055,12 +1105,14 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        child: const Text(
-                          'Non',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF64748B),
+                        child: Consumer<LocalizationService>(
+                          builder: (context, locService, _) => Text(
+                            'no'.tr(locService.currentLanguageCode),
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF64748B),
+                            ),
                           ),
                         ),
                       ),
@@ -1078,7 +1130,11 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                           // Afficher confirmation
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text('Séance "${widget.sessionName}" ajoutée aux programmes guidés !'),
+                              content: Consumer<LocalizationService>(
+                                builder: (context, locService, _) => Text(
+                                  'workout_session_saved_message'.tr(locService.currentLanguageCode).replaceAll('{0}', widget.sessionName),
+                                ),
+                              ),
                               backgroundColor: const Color(0xFF10B981),
                               duration: const Duration(seconds: 3),
                             ),
@@ -1091,12 +1147,14 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        child: const Text(
-                          'Oui',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
+                        child: Consumer<LocalizationService>(
+                          builder: (context, locService, _) => Text(
+                            'yes'.tr(locService.currentLanguageCode),
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
                       ),
@@ -1137,7 +1195,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     db.DatabaseService.persistCompletedWorkoutAsHistory(
       session: completedSession,
       guidedTemplateId: widget.isFromProgram ? (widget.guidedTemplateId ?? _inferGuidedTemplateId()) : null,
-      intensity: _selectedIntensity,
+      intensity: _selectedIntensity != null ? _mapIntensityToDbValue(_selectedIntensity!) : null,
       durationMinutes: _displayedDuration.inMinutes,
       caloriesBurned: _estimatedCalories,
     ).then((_) {
@@ -1162,13 +1220,17 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text(
-                        'Séance sauvegardée localement',
-                        style: TextStyle(fontWeight: FontWeight.w600),
+                      Consumer<LocalizationService>(
+                        builder: (context, locService, _) => Text(
+                          'workout_session_saved_locally'.tr(locService.currentLanguageCode),
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
                       ),
-                      Text(
-                        'Elle sera synchronisée dès le retour du réseau',
-                        style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.9)),
+                      Consumer<LocalizationService>(
+                        builder: (context, locService, _) => Text(
+                          'workout_sync_on_reconnect'.tr(locService.currentLanguageCode),
+                          style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.9)),
+                        ),
                       ),
                     ],
                   ),
@@ -1240,8 +1302,8 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
       final workoutProgram = WorkoutProgram(
         id: templateId,
         name: sessionName,
-        description: 'Programme créé à partir d\'une séance manuelle',
-        type: 'Personnalisé',
+        description: 'workout_program_from_manual'.tr(LocalizationService.instance.currentLanguageCode),
+        type: 'workout_custom_type'.tr(LocalizationService.instance.currentLanguageCode),
         estimatedDuration: durationInMinutes,
         exercises: programExercises,
       );
@@ -1322,25 +1384,29 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                 
                 const SizedBox(height: 16),
                 
-                    const Text(
-                  'Séance terminée !',
-                      style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1A1A1A),
-                  ),
-                ),
+                    Consumer<LocalizationService>(
+                      builder: (context, locService, _) => Text(
+                        'workout_session_completed'.tr(locService.currentLanguageCode),
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1A1A1A),
+                        ),
+                      ),
+                    ),
                 
                 const SizedBox(height: 8),
                 
-                    const Text(
-                  'Excellent travail ! Voici le résumé de votre séance.',
-                      style: TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF64748B),
-                  ),
-                  textAlign: TextAlign.center,
-                ),
+                    Consumer<LocalizationService>(
+                      builder: (context, locService, _) => Text(
+                        'workout_session_summary'.tr(locService.currentLanguageCode),
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF64748B),
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
                 
                 const SizedBox(height: 24),
                 
@@ -1357,10 +1423,12 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                       Row(
                         children: [
                           Expanded(
-                            child: _buildSummaryMetric(
-                              'Durée',
-                              _formatDuration(_displayedDuration),
-                              LucideIcons.clock,
+                            child: Consumer<LocalizationService>(
+                              builder: (context, locService, _) => _buildSummaryMetric(
+                                'workout_duration'.tr(locService.currentLanguageCode),
+                                _formatDuration(_displayedDuration),
+                                LucideIcons.clock,
+                              ),
                             ),
                           ),
                           Container(
@@ -1369,10 +1437,12 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                             color: const Color(0xFFE2E8F0),
                           ),
                           Expanded(
-                            child: _buildSummaryMetric(
-                              'Exercices',
-                              '${_exercises.length}',
-                              LucideIcons.dumbbell,
+                            child: Consumer<LocalizationService>(
+                              builder: (context, locService, _) => _buildSummaryMetric(
+                                'exercises'.tr(locService.currentLanguageCode),
+                                '${_exercises.length}',
+                                LucideIcons.dumbbell,
+                              ),
                             ),
                           ),
                         ],
@@ -1385,10 +1455,12 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                       Row(
                         children: [
                           Expanded(
-                            child: _buildSummaryMetric(
-                              'Séries',
-                              '$_completedSets/$_totalSets',
-                              LucideIcons.repeat,
+                            child: Consumer<LocalizationService>(
+                              builder: (context, locService, _) => _buildSummaryMetric(
+                                'workout_sets_count'.tr(locService.currentLanguageCode),
+                                '$_completedSets/$_totalSets',
+                                LucideIcons.repeat,
+                              ),
                             ),
                           ),
                           Container(
@@ -1397,10 +1469,12 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                             color: const Color(0xFFE2E8F0),
                           ),
                           Expanded(
-                            child: _buildSummaryMetric(
-                              'Volume',
-                              '${_totalWeight.toStringAsFixed(0)} kg',
-                              LucideIcons.activity,
+                            child: Consumer<LocalizationService>(
+                              builder: (context, locService, _) => _buildSummaryMetric(
+                                'workout_volume'.tr(locService.currentLanguageCode),
+                                '${_totalWeight.toStringAsFixed(0)} kg',
+                                LucideIcons.activity,
+                              ),
                             ),
                           ),
                         ],
@@ -1413,18 +1487,24 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                       Row(
                         children: [
                           Expanded(
-                            child: _buildSummaryMetric(
-                              'Calories',
-                              '$_estimatedCalories kcal',
-                              LucideIcons.flame,
+                            child: Consumer<LocalizationService>(
+                              builder: (context, locService, _) => _buildSummaryMetric(
+                                'calories'.tr(locService.currentLanguageCode),
+                                '$_estimatedCalories kcal',
+                                LucideIcons.flame,
+                              ),
                             ),
                           ),
                           Container(width: 1, height: 40, color: const Color(0xFFE2E8F0)),
                           Expanded(
-                            child: _buildSummaryMetric(
-                              'Intensité',
-                              _selectedIntensity ?? '—',
-                              _selectedIntensity == 'Élevé' ? LucideIcons.zap : _selectedIntensity == 'Modéré' ? LucideIcons.activity : LucideIcons.wind,
+                            child: Consumer<LocalizationService>(
+                              builder: (context, locService, _) => _buildSummaryMetric(
+                                'workout_intensity'.tr(locService.currentLanguageCode),
+                                _selectedIntensity != null 
+                                  ? 'workout_intensity_${_selectedIntensity}'.tr(locService.currentLanguageCode) 
+                                  : '—',
+                                _selectedIntensity == 'high' ? LucideIcons.zap : _selectedIntensity == 'moderate' ? LucideIcons.activity : LucideIcons.wind,
+                              ),
                             ),
                           ),
                         ],
@@ -1459,12 +1539,14 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                       ),
                       elevation: 0,
                     ),
-                    child: const Text(
-                      'Terminer la séance',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
+                    child: Consumer<LocalizationService>(
+                      builder: (context, locService, _) => Text(
+                        'session_end_session'.tr(locService.currentLanguageCode),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                   ),
@@ -1529,7 +1611,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     final TextEditingController minutesController = TextEditingController(
       text: (_effectiveDurationMinutes ?? (_sessionDuration.inMinutes > 0 ? _sessionDuration.inMinutes : 1)).toString(),
     );
-    String? selected = _selectedIntensity ?? 'Modéré';
+    String? selected = _selectedIntensity ?? 'moderate';
 
     showDialog(
       context: context,
@@ -1537,27 +1619,53 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
       builder: (context) => StatefulBuilder(
         builder: (context, setStateDialog) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text(
-            'Intensité et durée',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF1A1A1A)),
+          title: Consumer<LocalizationService>(
+            builder: (context, locService, _) => Text(
+              'workout_intensity_duration_title'.tr(locService.currentLanguageCode),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF1A1A1A)),
+            ),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Comment était l\'intensité de la séance ?', style: TextStyle(fontSize: 14, color: Color(0xFF64748B))),
+              Consumer<LocalizationService>(
+                builder: (context, locService, _) => Text(
+                  'workout_intensity_question'.tr(locService.currentLanguageCode),
+                  style: const TextStyle(fontSize: 14, color: Color(0xFF64748B)),
+                ),
+              ),
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  _buildIntensityChip('Faible', selected == 'Faible', () => setStateDialog(() => selected = 'Faible')),
-                  const SizedBox(width: 8),
-                  _buildIntensityChip('Modéré', selected == 'Modéré', () => setStateDialog(() => selected = 'Modéré')),
-                  const SizedBox(width: 8),
-                  _buildIntensityChip('Élevé', selected == 'Élevé', () => setStateDialog(() => selected = 'Élevé')),
-                ],
+              Consumer<LocalizationService>(
+                builder: (context, locService, _) => Row(
+                  children: [
+                    _buildIntensityChip(
+                      'workout_intensity_low'.tr(locService.currentLanguageCode), 
+                      selected == 'low', 
+                      () => setStateDialog(() => selected = 'low')
+                    ),
+                    const SizedBox(width: 8),
+                    _buildIntensityChip(
+                      'workout_intensity_moderate'.tr(locService.currentLanguageCode), 
+                      selected == 'moderate', 
+                      () => setStateDialog(() => selected = 'moderate')
+                    ),
+                    const SizedBox(width: 8),
+                    _buildIntensityChip(
+                      'workout_intensity_high'.tr(locService.currentLanguageCode), 
+                      selected == 'high', 
+                      () => setStateDialog(() => selected = 'high')
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 20),
-              const Text('Durée effective (minutes)', style: TextStyle(fontSize: 14, color: Color(0xFF64748B))),
+              Consumer<LocalizationService>(
+                builder: (context, locService, _) => Text(
+                  'workout_effective_duration'.tr(locService.currentLanguageCode), 
+                  style: const TextStyle(fontSize: 14, color: Color(0xFF64748B))
+                ),
+              ),
               const SizedBox(height: 8),
               TextField(
                 controller: minutesController,
@@ -1568,7 +1676,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                   fillColor: const Color(0xFFF8FAFC),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                  hintText: 'Minutes',
+                  hintText: 'minutes'.tr(LocalizationService.instance.currentLanguageCode),
                 ),
               ),
             ],
@@ -1576,7 +1684,12 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Annuler', style: TextStyle(color: Color(0xFF64748B))),
+              child: Consumer<LocalizationService>(
+                builder: (context, locService, _) => Text(
+                  'cancel'.tr(locService.currentLanguageCode), 
+                  style: const TextStyle(color: Color(0xFF64748B))
+                ),
+              ),
             ),
             ElevatedButton(
               onPressed: () {
@@ -1589,7 +1702,12 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                 _showSessionSummary();
               },
               style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0B132B)),
-              child: const Text('Valider', style: TextStyle(color: Colors.white)),
+              child: Consumer<LocalizationService>(
+                builder: (context, locService, _) => Text(
+                  'validate'.tr(locService.currentLanguageCode), 
+                  style: const TextStyle(color: Colors.white)
+                ),
+              ),
             )
           ],
         ),
@@ -1679,7 +1797,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                'Hors ligne',
+                                'offline'.tr(LocalizationService.instance.currentLanguageCode),
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
@@ -1809,7 +1927,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                       ),
                       label: Consumer<LocalizationService>(
                         builder: (context, locService, _) => Text(
-                          'workout_exercise'.tr(locService.currentLanguageCode),
+                          'workout_add_exercise'.tr(locService.currentLanguageCode),
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
@@ -1854,11 +1972,13 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                     ),
                     elevation: 0,
                   ),
-                  child: const Text(
-                    'Terminer la séance',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                  child: Consumer<LocalizationService>(
+                    builder: (context, locService, _) => Text(
+                      'session_end_session'.tr(locService.currentLanguageCode),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ),
@@ -1948,13 +2068,17 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                 const SizedBox(height: 8),
 
                                  // Indicateur d'exercice
-                 Text(
-                   'Exercice ${_currentExerciseIndex + 1}/${_exercises.length}',
-                   style: TextStyle(
-                     fontSize: 12,
-                  color: Colors.white.withOpacity(0.5),
-                ),
-              ),
+                 Consumer<LocalizationService>(
+                   builder: (context, locService, _) => Text(
+                     'workout_exercise_counter'.tr(locService.currentLanguageCode)
+                       .replaceAll('{current}', '${_currentExerciseIndex + 1}')
+                       .replaceAll('{total}', '${_exercises.length}'),
+                     style: TextStyle(
+                       fontSize: 12,
+                       color: Colors.white.withOpacity(0.5),
+                     ),
+                   ),
+                 ),
 
               const SizedBox(height: 16),
 
@@ -1964,23 +2088,27 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                         child: Row(
                           children: [
                             Expanded(
-                              child: Text(
-                                'Poids (kg)',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                          color: Colors.white.withOpacity(0.7),
+                              child: Consumer<LocalizationService>(
+                                builder: (context, locService, _) => Text(
+                                  'workout_weight_kg'.tr(locService.currentLanguageCode),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white.withOpacity(0.7),
+                                  ),
                                 ),
                               ),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
-                              child: Text(
-                                'Répétitions',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                          color: Colors.white.withOpacity(0.7),
+                              child: Consumer<LocalizationService>(
+                                builder: (context, locService, _) => Text(
+                                  'workout_reps'.tr(locService.currentLanguageCode),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white.withOpacity(0.7),
+                                  ),
                                 ),
                               ),
                             ),
@@ -2035,7 +2163,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                                     : Colors.white,
                               ),
                               label: Text(
-                                'Série',
+                                'set'.tr(LocalizationService.instance.currentLanguageCode),
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
@@ -2073,14 +2201,16 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                                 size: 16,
                                 color: _addExercisePressed ? Colors.white : Colors.white,
                   ),
-                              label: Text(
-                                'Exercice',
-                    style: TextStyle(
-                                  fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                                  color: _addExercisePressed ? Colors.white : Colors.white,
-                    ),
-                  ),
+                              label: Consumer<LocalizationService>(
+                                builder: (context, locService, _) => Text(
+                                  'workout_add_exercise'.tr(locService.currentLanguageCode),
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                    color: _addExercisePressed ? Colors.white : Colors.white,
+                                  ),
+                                ),
+                              ),
                   style: OutlinedButton.styleFrom(
                                 backgroundColor: _addExercisePressed 
                                     ? const Color(0xFF0B132B) 
@@ -2117,11 +2247,13 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                     ),
                             elevation: 0,
                   ),
-                  child: const Text(
-                    'Terminer la séance',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                  child: Consumer<LocalizationService>(
+                    builder: (context, locService, _) => Text(
+                      'session_end_session'.tr(locService.currentLanguageCode),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ),
@@ -2366,11 +2498,13 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
               ),
               elevation: 0,
             ),
-            child: const Text(
-              'Terminer',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
+            child: Consumer<LocalizationService>(
+              builder: (context, locService, _) => Text(
+                'finish'.tr(locService.currentLanguageCode),
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),
@@ -2450,13 +2584,15 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: Text(
-                            'Historique des séances',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white.withOpacity(0.9),
-                              decoration: TextDecoration.none,
+                          child: Consumer<LocalizationService>(
+                            builder: (context, locService, _) => Text(
+                              'workout_session_history'.tr(locService.currentLanguageCode),
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white.withOpacity(0.9),
+                                decoration: TextDecoration.none,
+                              ),
                             ),
                           ),
                         ),
@@ -2506,25 +2642,29 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
             color: Colors.white.withOpacity(0.3),
           ),
           const SizedBox(height: 16),
-          Text(
-            'Aucun historique',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Colors.white.withOpacity(0.9),
-              decoration: TextDecoration.none,
+          Consumer<LocalizationService>(
+            builder: (context, locService, _) => Text(
+              'workout_no_history'.tr(locService.currentLanguageCode),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Colors.white.withOpacity(0.9),
+                decoration: TextDecoration.none,
+              ),
             ),
           ),
           const SizedBox(height: 12),
-          Text(
-            'C\'est votre première fois avec cet exercice !\nVos performances seront enregistrées pour vous guider lors des prochaines séances.',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.white.withOpacity(0.6),
-              height: 1.4,
-              decoration: TextDecoration.none,
+          Consumer<LocalizationService>(
+            builder: (context, locService, _) => Text(
+              'workout_no_history_description'.tr(locService.currentLanguageCode),
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.white.withOpacity(0.6),
+                height: 1.4,
+                decoration: TextDecoration.none,
+              ),
+              textAlign: TextAlign.center,
             ),
-            textAlign: TextAlign.center,
           ),
         ],
       ),
@@ -2536,67 +2676,74 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
       child: SingleChildScrollView(
         child: Column(
           children: [
-            // Header du tableau
-            Row(
-              children: [
-                // Header Date fixe
-                Container(
-                  width: 70,
-                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    'Date',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white.withOpacity(0.8),
-                      decoration: TextDecoration.none,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 4),
-                // Header scrollable (Max + Séries)
-                Expanded(
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 80,
-                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-                          child: Text(
-                            'Max',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white.withOpacity(0.8),
-                              decoration: TextDecoration.none,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
+            // Header du tableau avec fond unique
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  // Header Date fixe
+                  Container(
+                    width: 70,
+                    child: Consumer<LocalizationService>(
+                      builder: (context, locService, _) => Text(
+                        'date'.tr(locService.currentLanguageCode),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white.withOpacity(0.8),
+                          decoration: TextDecoration.none,
                         ),
-                        ...List.generate(maxSets, (index) => Container(
-                          width: 70,
-                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-                          child: Text(
-                            'S${index + 1}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white.withOpacity(0.8),
-                              decoration: TextDecoration.none,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        )),
-                      ],
+                        textAlign: TextAlign.center,
+                      ),
                     ),
                   ),
-                ),
-              ],
+                  // Header scrollable (Max + Séries)
+                  Expanded(
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 80,
+                            child: Consumer<LocalizationService>(
+                              builder: (context, locService, _) => Text(
+                                'workout_max'.tr(locService.currentLanguageCode),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white.withOpacity(0.8),
+                                  decoration: TextDecoration.none,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ),
+                          ...List.generate(maxSets, (index) => Container(
+                            width: 70,
+                            child: Consumer<LocalizationService>(
+                              builder: (context, locService, _) => Text(
+                                'workout_set_number'.tr(locService.currentLanguageCode).replaceAll('{number}', '${index + 1}'),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white.withOpacity(0.8),
+                                  decoration: TextDecoration.none,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          )),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
             
             const SizedBox(height: 8),
@@ -2618,6 +2765,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
                       child: Text(
                         _formatBubbleDate(session['date']),
+                        textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w500,

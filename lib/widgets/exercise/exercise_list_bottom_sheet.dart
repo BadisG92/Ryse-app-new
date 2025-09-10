@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:provider/provider.dart';
+import '../../services/translations.dart';
+import '../../services/localization_service.dart';
 import 'exercise_detail_page.dart';
 
 class ExerciseListBottomSheet extends StatefulWidget {
@@ -385,26 +388,28 @@ class _ExerciseListBottomSheetState extends State<ExerciseListBottomSheet> {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Exercices suivis',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF1A1A1A),
+                Expanded(
+                  child: Consumer<LocalizationService>(
+                    builder: (context, locService, _) => Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'tracked_exercises'.tr(locService.currentLanguageCode),
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF1A1A1A),
+                          ),
                         ),
-                      ),
-                      Text(
-                        'Sélectionnez un exercice pour voir sa progression',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF888888),
+                        Text(
+                          'select_exercise_to_view_progress'.tr(locService.currentLanguageCode),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF888888),
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
                 GestureDetector(
@@ -480,11 +485,14 @@ class _ExerciseListBottomSheetState extends State<ExerciseListBottomSheet> {
                           color: Color(0xFF1A1A1A),
                         ),
                       ),
-                      Text(
-                        '${exercise['sessions']} séances',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF64748B),
+                      Consumer<LocalizationService>(
+                        builder: (context, locService, _) => Text(
+                          'sessions_count'.tr(locService.currentLanguageCode)
+                              .replaceAll('{count}', exercise['sessions'].toString()),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF64748B),
+                          ),
                         ),
                       ),
                     ],

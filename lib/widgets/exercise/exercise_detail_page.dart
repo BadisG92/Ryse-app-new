@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:provider/provider.dart';
 import 'dart:math' as math;
 import '../../services/workout_cache_service.dart';
+import '../../services/translations.dart';
+import '../../services/localization_service.dart';
 
 class ExerciseDetailPage extends StatefulWidget {
   final String exerciseName;
@@ -18,7 +21,7 @@ class ExerciseDetailPage extends StatefulWidget {
 }
 
 class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
-  String selectedPeriod = 'Ce mois-ci';
+  String selectedPeriod = 'this_month';
   Map<String, dynamic>? exercise; // données dynamiques
   final ScrollController _tableScrollController = ScrollController();
 
@@ -242,13 +245,15 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
             ),
           ),
           const SizedBox(width: 16),
-          const Expanded(
-            child: Text(
-              'Détails de l\'exercice',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF1A1A1A),
+          Expanded(
+            child: Consumer<LocalizationService>(
+              builder: (context, locService, _) => Text(
+                'exercise_details'.tr(locService.currentLanguageCode),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1A1A1A),
+                ),
               ),
             ),
           ),
@@ -297,7 +302,7 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
   }
 
   Widget _buildPeriodFilter() {
-    final periods = ['Ce mois-ci', '3 mois', '6 mois'];
+    final periodKeys = ['this_month', 'three_months', 'six_months'];
     
     return Container(
       decoration: BoxDecoration(
@@ -306,31 +311,33 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
         border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
       padding: const EdgeInsets.all(4),
-      child: Row(
-        children: periods.map((period) {
-          final isSelected = period == selectedPeriod;
-          return Expanded(
-            child: GestureDetector(
-              onTap: () => setState(() => selectedPeriod = period),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(
-                  color: isSelected ? const Color(0xFF0B132B) : Colors.transparent,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  period,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: isSelected ? Colors.white : const Color(0xFF64748B),
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                    fontSize: 13,
+      child: Consumer<LocalizationService>(
+        builder: (context, locService, _) => Row(
+          children: periodKeys.map((periodKey) {
+            final isSelected = periodKey == selectedPeriod;
+            return Expanded(
+              child: GestureDetector(
+                onTap: () => setState(() => selectedPeriod = periodKey),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isSelected ? const Color(0xFF0B132B) : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    periodKey.tr(locService.currentLanguageCode),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: isSelected ? Colors.white : const Color(0xFF64748B),
+                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                      fontSize: 13,
+                    ),
                   ),
                 ),
               ),
-            ),
-          );
-        }).toList(),
+            );
+          }).toList(),
+        ),
       ),
     );
   }
@@ -353,7 +360,7 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
     final now = DateTime.now();
     late DateTime periodStart;
     late DateTime periodEnd;
-    if (selectedPeriod == 'Ce mois-ci') {
+    if (selectedPeriod == 'this_month') {
       periodStart = DateTime(now.year, now.month, 1);
       periodEnd = DateTime(now.year, now.month + 1, 0);
     } else if (selectedPeriod == '3 mois') {
@@ -377,7 +384,12 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
         ),
-        child: const Text('Pas de séances sur la période', style: TextStyle(color: Color(0xFF64748B))),
+        child: Consumer<LocalizationService>(
+          builder: (context, locService, _) => Text(
+            'no_sessions_in_period'.tr(locService.currentLanguageCode),
+            style: const TextStyle(color: Color(0xFF64748B))
+          ),
+        ),
       );
     }
     points.sort((a, b) => (a['date'] as DateTime).compareTo(b['date'] as DateTime));
@@ -458,7 +470,12 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Progression', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF1A1A1A))),
+          Consumer<LocalizationService>(
+            builder: (context, locService, _) => Text(
+              'progression'.tr(locService.currentLanguageCode),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF1A1A1A))
+            ),
+          ),
           const SizedBox(height: 20),
           SizedBox(
             height: 220,
@@ -559,11 +576,29 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
     if (raw.isEmpty) {
       return Row(
         children: [
-          Expanded(child: _buildStatCard(icon: LucideIcons.calendar, title: 'Séances', value: '0')),
+          Consumer<LocalizationService>(
+            builder: (context, locService, _) => Expanded(child: _buildStatCard(
+              icon: LucideIcons.calendar, 
+              title: 'sessions'.tr(locService.currentLanguageCode), 
+              value: '0'
+            )),
+          ),
           const SizedBox(width: 12),
-          Expanded(child: _buildStatCard(icon: LucideIcons.trendingUp, title: 'Progression', value: '—')),
+          Consumer<LocalizationService>(
+            builder: (context, locService, _) => Expanded(child: _buildStatCard(
+              icon: LucideIcons.trendingUp, 
+              title: 'progression'.tr(locService.currentLanguageCode), 
+              value: '—'
+            )),
+          ),
           const SizedBox(width: 12),
-          Expanded(child: _buildStatCard(icon: LucideIcons.award, title: 'Meilleure série', value: 'N/A')),
+          Consumer<LocalizationService>(
+            builder: (context, locService, _) => Expanded(child: _buildStatCard(
+              icon: LucideIcons.award, 
+              title: 'best_set'.tr(locService.currentLanguageCode), 
+              value: 'N/A'
+            )),
+          ),
         ],
       );
     }
@@ -571,7 +606,7 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
     DateTime now = DateTime.now();
     late DateTime start;
     late DateTime end;
-    if (selectedPeriod == 'Ce mois-ci') {
+    if (selectedPeriod == 'this_month') {
       start = DateTime(now.year, now.month, 1);
       end = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
     } else if (selectedPeriod == '3 mois') {
@@ -642,27 +677,33 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
 
     return Row(
       children: [
-        Expanded(
-          child: _buildStatCard(
-            icon: LucideIcons.calendar,
-            title: 'Séances',
-            value: sessionsCount.toString(),
+        Consumer<LocalizationService>(
+          builder: (context, locService, _) => Expanded(
+            child: _buildStatCard(
+              icon: LucideIcons.calendar,
+              title: 'sessions'.tr(locService.currentLanguageCode),
+              value: sessionsCount.toString(),
+            ),
           ),
         ),
         const SizedBox(width: 12),
-        Expanded(
-          child: _buildStatCard(
-            icon: LucideIcons.trendingUp,
-            title: 'Progression',
-            value: progressLabel,
+        Consumer<LocalizationService>(
+          builder: (context, locService, _) => Expanded(
+            child: _buildStatCard(
+              icon: LucideIcons.trendingUp,
+              title: 'progression'.tr(locService.currentLanguageCode),
+              value: progressLabel,
+            ),
           ),
         ),
         const SizedBox(width: 12),
-        Expanded(
-          child: _buildStatCard(
-            icon: LucideIcons.award,
-            title: 'Meilleure série',
-            value: bestLabel,
+        Consumer<LocalizationService>(
+          builder: (context, locService, _) => Expanded(
+            child: _buildStatCard(
+              icon: LucideIcons.award,
+              title: 'best_set'.tr(locService.currentLanguageCode),
+              value: bestLabel,
+            ),
           ),
         ),
       ],
@@ -801,12 +842,14 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Dernières séances',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF1A1A1A),
+        Consumer<LocalizationService>(
+          builder: (context, locService, _) => Text(
+            'recent_sessions'.tr(locService.currentLanguageCode),
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF1A1A1A),
+            ),
           ),
         ),
         const SizedBox(height: 16),
@@ -820,11 +863,13 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
     final sessionHistory = (exercise?['sessionHistory'] as List?) ?? [];
     
     if (maxSets == 0 || sessionHistory.isEmpty) {
-      return const Text(
-        'Aucune séance trouvée',
-        style: TextStyle(
-          fontSize: 14,
-          color: Color(0xFF64748B),
+      return Consumer<LocalizationService>(
+        builder: (context, locService, _) => Text(
+          'no_sessions_found'.tr(locService.currentLanguageCode),
+          style: const TextStyle(
+            fontSize: 14,
+            color: Color(0xFF64748B),
+          ),
         ),
       );
     }
@@ -848,12 +893,14 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
                   ),
                 ),
               ),
-              child: const Text(
-                'Date',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF64748B),
+              child: Consumer<LocalizationService>(
+                builder: (context, locService, _) => Text(
+                  'date'.tr(locService.currentLanguageCode),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF64748B),
+                  ),
                 ),
               ),
             ),
@@ -904,14 +951,16 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
                           ),
                         ),
                       ),
-                      child: const Text(
-                        'Charge Max',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF64748B),
+                      child: Consumer<LocalizationService>(
+                        builder: (context, locService, _) => Text(
+                          'max_weight'.tr(locService.currentLanguageCode),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF64748B),
+                          ),
+                          textAlign: TextAlign.center,
                         ),
-                        textAlign: TextAlign.center,
                       ),
                     ),
                     // Headers des séries
@@ -927,14 +976,17 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
                             ),
                           ),
                         ),
-                        child: Text(
-                          'Série ${index + 1}',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF64748B),
+                        child: Consumer<LocalizationService>(
+                          builder: (context, locService, _) => Text(
+                            'set_number'.tr(locService.currentLanguageCode)
+                                .replaceAll('{number}', '${index + 1}'),
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF64748B),
+                            ),
+                            textAlign: TextAlign.center,
                           ),
-                          textAlign: TextAlign.center,
                         ),
                       );
                     }),

@@ -184,10 +184,14 @@ class _SportSectionState extends State<SportSection>
                     _buildBannerItem(LucideIcons.flame, _getStreakText(locService.currentLanguageCode)),
                 ),
                 _buildBannerSeparator(),
-                ValueListenableBuilder<GoalsSummary>(
-                  valueListenable: GoalsNotifier.instance,
-                  builder: (context, summary, _) {
-                    return _buildBannerItem(LucideIcons.target, summary.toString());
+                Consumer<LocalizationService>(
+                  builder: (context, localizationService, _) {
+                    return ValueListenableBuilder<GoalsSummary>(
+                      valueListenable: GoalsNotifier.instance,
+                      builder: (context, summary, _) {
+                        return _buildBannerItem(LucideIcons.target, '${summary.completed}/${summary.total} ${'objectives'.tr(localizationService.currentLanguageCode)}');
+                      },
+                    );
                   },
                 ),
                 _buildBannerSeparator(),
