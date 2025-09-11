@@ -104,11 +104,12 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
     final totalRoundsObjective = _session.workout.totalRounds;
     final roundsCompleted = _session.currentRound - 1; // Rounds complètement terminés
     final workoutDurationObjective = _session.workout.totalDuration;
-    final actualDuration = workoutDurationObjective - _session.totalTimeRemaining;
-    final completionPercentage = (actualDuration / workoutDurationObjective * 100).round();
+    final workoutDurationObjectiveDuration = Duration(minutes: workoutDurationObjective);
+    final actualDuration = workoutDurationObjectiveDuration - Duration(seconds: _session.totalTimeRemaining);
+    final completionPercentage = (actualDuration.inSeconds / workoutDurationObjectiveDuration.inSeconds * 100).round();
     
     // Calculer les calories dépensées (environ 12 calories par minute d'effort HIIT)
-    final caloriesBurned = (actualDuration / 60 * 12).round();
+    final caloriesBurned = (actualDuration.inMinutes * 12).round();
     
     showDialog(
       context: context,
@@ -194,7 +195,7 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
                           Expanded(
                             child: _buildSummaryMetric(
                               'hiit_time_completed'.tr(LocalizationService.instance.currentLanguageCode),
-                              _formatTime(actualDuration),
+                              _formatTime(actualDuration.inSeconds),
                               LucideIcons.clock,
                             ),
                           ),
@@ -255,7 +256,7 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
                        // Historiser la session HIIT dans Supabase
                        try {
                          await _saveHiitSessionToSupabase(
-                           actualDuration: actualDuration,
+                           actualDuration: actualDuration.inMinutes,
                            caloriesBurned: caloriesBurned,
                            roundsCompleted: roundsCompleted,
                          );
@@ -591,8 +592,8 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
                         // Historiser la session HIIT complète dans Supabase
                         try {
                           await _saveHiitSessionToSupabase(
-                            actualDuration: _session.workout.totalDuration,
-                            caloriesBurned: (_session.workout.totalDuration / 60 * 12).round(),
+                            actualDuration: _session.workout.totalDuration ~/ 60, // Convertir en minutes
+                            caloriesBurned: (_session.workout.totalDuration ~/ 60 * 12).round(), // Calcul basé sur minutes
                             roundsCompleted: _session.workout.totalRounds,
                           );
                           debugPrint('✅ Session HIIT complète sauvegardée');
@@ -656,7 +657,7 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
       
       await CardioService.saveCompletedCardioSession(
         sessionData: sessionData,
-        intensity: 'hiit_session_intensity'.tr(LocalizationService.instance.currentLanguageCode), // HIIT est toujours intense
+        intensity: 'Élevé', // HIIT est toujours à intensité élevée (valeur française pour la base de données)
         notes: '${'hiit_session_completed_rounds'.tr(LocalizationService.instance.currentLanguageCode)}: $roundsCompleted/${_session.workout.totalRounds}',
       );
       

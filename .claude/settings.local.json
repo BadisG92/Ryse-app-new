@@ -94,7 +94,8 @@
       "Bash(copy:*)",
       "Bash(timeout:*)",
       "Bash(/dev/null)",
-      "Bash(nc:*)"
+      "Bash(nc:*)",
+      "Bash(start:*)"
     ],
     "deny": [],
     "ask": []

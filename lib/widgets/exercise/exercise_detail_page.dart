@@ -23,6 +23,7 @@ class ExerciseDetailPage extends StatefulWidget {
 class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
   String selectedPeriod = 'this_month';
   Map<String, dynamic>? exercise; // données dynamiques
+  String? localizedExerciseName; // nom localisé de l'exercice
   final ScrollController _tableScrollController = ScrollController();
 
   @override
@@ -50,12 +51,16 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
           'data': <double>[],
           'sessionHistory': <Map<String, dynamic>>[],
         };
+        localizedExerciseName = widget.exerciseName;
       });
       return;
     }
 
     // Utilise le service de cache optimisé
     final exerciseData = await WorkoutCacheService.getExerciseDetails(userId, widget.exerciseName);
+
+    // Récupérer le nom localisé de façon optimisée
+    localizedExerciseName = await WorkoutCacheService.getLocalizedExerciseName(widget.exerciseName);
 
     setState(() {
       exercise = exerciseData;
@@ -263,8 +268,9 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
     );
   }
 
+
   Widget _buildExerciseTitle() {
-    final exerciseName = (exercise?['name'] ?? widget.exerciseName);
+    final exerciseName = localizedExerciseName ?? (exercise?['name'] ?? widget.exerciseName);
     
     // Calculer la taille de police dynamiquement pour limiter à 2 lignes
     double fontSize = 24;
@@ -862,7 +868,10 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
     final maxSets = (exercise?['maxSets'] as int?) ?? 0;
     final sessionHistory = (exercise?['sessionHistory'] as List?) ?? [];
     
-    if (maxSets == 0 || sessionHistory.isEmpty) {
+    // S'assurer qu'il y a toujours au moins une colonne même si maxSets = 0
+    final displayMaxSets = math.max(maxSets, 1);
+    
+    if (sessionHistory.isEmpty) {
       return Consumer<LocalizationService>(
         builder: (context, locService, _) => Text(
           'no_sessions_found'.tr(locService.currentLanguageCode),
@@ -964,7 +973,7 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
                       ),
                     ),
                     // Headers des séries
-                    ...List.generate(maxSets, (index) {
+                    ...List.generate(displayMaxSets, (index) {
                       return Container(
                         width: 100,
                         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
@@ -1021,7 +1030,7 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
                           ),
                         ),
                         // Toutes les séries
-                        ...List.generate(maxSets, (seriesIndex) {
+                        ...List.generate(displayMaxSets, (seriesIndex) {
                           return Container(
                             width: 100,
                             padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),

@@ -119,11 +119,28 @@ class CardioService {
         final formatResult = await _client
             .from('cardio_activity_formats')
             .select('id')
-            .or('name_fr.eq.${sessionData.formatTitle},name_en.eq.${sessionData.formatTitle}')
+            .or('name_fr.ilike.%${sessionData.formatTitle}%,name_en.ilike.%${sessionData.formatTitle}%')
             .eq('activity_type', sessionData.activityType)
             .maybeSingle();
         
         activityFormatId = formatResult?['id'];
+        
+        // Si pas trouvé avec le titre complet, essayer de trouver par type d'activité seulement
+        if (activityFormatId == null && sessionData.activityType == 'hiit') {
+          // Essayer plusieurs stratégies pour HIIT
+          final fallbackResults = await _client
+              .from('cardio_activity_formats')
+              .select('id, name_fr, name_en')
+              .eq('activity_type', 'hiit')
+              .limit(5);
+          
+          if (fallbackResults.isNotEmpty) {
+            // Prendre le premier format HIIT disponible
+            activityFormatId = fallbackResults.first['id'];
+            debugPrint('📍 Format HIIT trouvé par fallback: $activityFormatId (${fallbackResults.first['name_fr']} / ${fallbackResults.first['name_en']})');
+            debugPrint('📍 Formats HIIT disponibles: ${fallbackResults.map((f) => '${f['name_fr']}/${f['name_en']}').join(', ')}');
+          }
+        }
       } catch (e) {
         debugPrint('⚠️ Format non trouvé pour: ${sessionData.formatTitle} (${sessionData.activityType})');
       }

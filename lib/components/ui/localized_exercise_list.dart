@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../services/localized_exercise_service.dart';
 import '../../services/localization_service.dart';
 import '../../services/translations.dart';
+import '../../services/workout_cache_service.dart';
 
 /// Widget d'exemple montrant l'utilisation complète du système de localisation
 /// avec les vraies données d'exercices depuis Supabase
@@ -24,11 +26,14 @@ class _LocalizedExerciseListState extends State<LocalizedExerciseList> {
   List<Map<String, dynamic>> cardioActivities = [];
   bool isLoading = true;
   String selectedTab = 'exercises'; // 'exercises' ou 'cardio'
+  Map<String, int> _exerciseSessionCounts = {}; // Nombre de sessions par exercice
+  bool _isLoadingStats = false;
 
   @override
   void initState() {
     super.initState();
     _loadData();
+    _loadExerciseStats();
     
     // Écouter les changements de langue pour recharger les données
     LocalizationService.instance.addListener(_onLanguageChanged);
@@ -62,10 +67,79 @@ class _LocalizedExerciseListState extends State<LocalizedExerciseList> {
         cardioActivities = results[1];
         isLoading = false;
       });
+      
+      // Trier les exercices avec les stats existantes (s'il y en a)
+      if (_exerciseSessionCounts.isNotEmpty) {
+        _sortExercisesByFrequency();
+      }
     } catch (e) {
       print('Erreur lors du chargement des données: $e');
       setState(() => isLoading = false);
     }
+  }
+
+  Future<void> _loadExerciseStats() async {
+    setState(() {
+      _isLoadingStats = true;
+    });
+
+    try {
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId == null) return;
+
+      // Récupérer les statistiques des exercices les plus fréquents
+      final topExercises = await WorkoutCacheService.getTopExercises(userId);
+      
+      final Map<String, int> sessionCounts = {};
+      for (final exercise in topExercises) {
+        final exerciseName = exercise['localized_name']?.toString() ?? exercise['name']?.toString();
+        final sessions = exercise['sessions'] as int? ?? 0;
+        if (exerciseName != null && exerciseName.isNotEmpty) {
+          sessionCounts[exerciseName] = sessions;
+        }
+      }
+
+      setState(() {
+        _exerciseSessionCounts = sessionCounts;
+        _isLoadingStats = false;
+        // Re-trier les exercices avec les nouvelles stats
+        _sortExercisesByFrequency();
+      });
+    } catch (e) {
+      print('❌ Erreur lors du chargement des stats d\'exercices: $e');
+      setState(() {
+        _isLoadingStats = false;
+      });
+    }
+  }
+
+  void _sortExercisesByFrequency() {
+    setState(() {
+      final locService = LocalizationService.instance;
+      final suffix = locService.getColumnSuffix();
+      
+      exercises.sort((a, b) {
+        final aName = a['name$suffix']?.toString() ?? '';
+        final bName = b['name$suffix']?.toString() ?? '';
+        final aSessionCount = _exerciseSessionCounts[aName] ?? 0;
+        final bSessionCount = _exerciseSessionCounts[bName] ?? 0;
+        
+        // Si les deux ont des sessions, trier par nombre de sessions décroissant
+        if (aSessionCount > 0 && bSessionCount > 0) {
+          return bSessionCount.compareTo(aSessionCount);
+        }
+        // Si seulement a a des sessions, a vient en premier
+        if (aSessionCount > 0 && bSessionCount == 0) {
+          return -1;
+        }
+        // Si seulement b a des sessions, b vient en premier
+        if (aSessionCount == 0 && bSessionCount > 0) {
+          return 1;
+        }
+        // Si aucun n'a de sessions, trier alphabétiquement
+        return aName.toLowerCase().compareTo(bName.toLowerCase());
+      });
+    });
   }
 
   @override
@@ -258,6 +332,7 @@ class _LocalizedExerciseListState extends State<LocalizedExerciseList> {
     final suffix = locService.getColumnSuffix();
     final name = exercise['name$suffix'] ?? 'Nom non disponible';
     final instructions = exercise['instructions$suffix'] ?? '';
+    final sessionCount = _exerciseSessionCounts[name] ?? 0;
     
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -275,12 +350,20 @@ class _LocalizedExerciseListState extends State<LocalizedExerciseList> {
             color: Color(0xFF0B132B),
           ),
         ),
-        title: Text(
-          name,
-          style: const TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 14,
-          ),
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(
+                name,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+            // Tag de fréquence
+            _buildFrequencyTag(sessionCount, locService),
+          ],
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -356,6 +439,49 @@ class _LocalizedExerciseListState extends State<LocalizedExerciseList> {
         onTap: () => _showExerciseDetails(exercise, locService),
       ),
     );
+  }
+
+  Widget _buildFrequencyTag(int sessionCount, LocalizationService locService) {
+    if (sessionCount == 0) {
+      // Tag "New" / "Nouveau" pour les exercices jamais utilisés
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: Colors.green.shade100,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.green.shade300, width: 1),
+        ),
+        child: Text(
+          locService.isFrench ? 'Nouveau' : 'New',
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            color: Colors.green.shade700,
+          ),
+        ),
+      );
+    } else if (sessionCount >= 3) {
+      // Tag avec le nombre de sessions pour les exercices fréquents
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0B132B).withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFF0B132B).withOpacity(0.3), width: 1),
+        ),
+        child: Text(
+          locService.isFrench ? '$sessionCount séances' : '$sessionCount sessions',
+          style: const TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF0B132B),
+          ),
+        ),
+      );
+    } else {
+      // Pas de tag pour les exercices avec 1-2 sessions
+      return const SizedBox.shrink();
+    }
   }
 
   Widget _buildCardioList(LocalizationService locService) {

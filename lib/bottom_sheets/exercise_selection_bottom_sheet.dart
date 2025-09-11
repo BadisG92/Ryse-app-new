@@ -3,7 +3,9 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../models/sport_models.dart';
 import '../services/translations.dart';
 import '../services/localization_service.dart';
+import '../services/workout_cache_service.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ExerciseSelectionBottomSheet extends StatefulWidget {
   final Function(Exercise exercise, int sets) onExerciseSelected;
@@ -23,6 +25,8 @@ class _ExerciseSelectionBottomSheetState extends State<ExerciseSelectionBottomSh
   final TextEditingController _searchController = TextEditingController();
   String _selectedMuscleFilter = 'Tous';
   List<Exercise> _filteredExercises = [];
+  Map<String, int> _exerciseSessionCounts = {}; // Nombre de sessions par exercice
+  bool _isLoadingStats = false;
   
   // Base de données d'exercices prédéfinis
   final List<Exercise> _predefinedExercises = [
@@ -89,6 +93,7 @@ class _ExerciseSelectionBottomSheetState extends State<ExerciseSelectionBottomSh
     super.initState();
     _filteredExercises = _predefinedExercises;
     _searchController.addListener(_filterExercises);
+    _loadExerciseStats();
   }
 
   @override
@@ -97,7 +102,46 @@ class _ExerciseSelectionBottomSheetState extends State<ExerciseSelectionBottomSh
     super.dispose();
   }
 
+  Future<void> _loadExerciseStats() async {
+    setState(() {
+      _isLoadingStats = true;
+    });
+
+    try {
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId == null) return;
+
+      // Récupérer les statistiques des exercices les plus fréquents
+      final topExercises = await WorkoutCacheService.getTopExercises(userId);
+      
+      final Map<String, int> sessionCounts = {};
+      for (final exercise in topExercises) {
+        final exerciseName = exercise['localized_name']?.toString() ?? exercise['name']?.toString();
+        final sessions = exercise['sessions'] as int? ?? 0;
+        if (exerciseName != null && exerciseName.isNotEmpty) {
+          sessionCounts[exerciseName] = sessions;
+        }
+      }
+
+      setState(() {
+        _exerciseSessionCounts = sessionCounts;
+        _isLoadingStats = false;
+        // Re-trier les exercices avec les nouvelles stats
+        _sortAndFilterExercises();
+      });
+    } catch (e) {
+      print('❌ Erreur lors du chargement des stats d\'exercices: $e');
+      setState(() {
+        _isLoadingStats = false;
+      });
+    }
+  }
+
   void _filterExercises() {
+    _sortAndFilterExercises();
+  }
+
+  void _sortAndFilterExercises() {
     setState(() {
       _filteredExercises = _predefinedExercises.where((exercise) {
         final matchesSearch = exercise.name
@@ -107,6 +151,27 @@ class _ExerciseSelectionBottomSheetState extends State<ExerciseSelectionBottomSh
             exercise.muscleGroup == _selectedMuscleFilter;
         return matchesSearch && matchesMuscle;
       }).toList();
+
+      // Trier par fréquence d'utilisation puis alphabétiquement
+      _filteredExercises.sort((a, b) {
+        final aSessionCount = _exerciseSessionCounts[a.name] ?? 0;
+        final bSessionCount = _exerciseSessionCounts[b.name] ?? 0;
+        
+        // Si les deux ont des sessions, trier par nombre de sessions décroissant
+        if (aSessionCount > 0 && bSessionCount > 0) {
+          return bSessionCount.compareTo(aSessionCount);
+        }
+        // Si seulement a a des sessions, a vient en premier
+        if (aSessionCount > 0 && bSessionCount == 0) {
+          return -1;
+        }
+        // Si seulement b a des sessions, b vient en premier
+        if (aSessionCount == 0 && bSessionCount > 0) {
+          return 1;
+        }
+        // Si aucun n'a de sessions, trier alphabétiquement
+        return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+      });
     });
   }
 
@@ -689,17 +754,86 @@ class _ExerciseSelectionBottomSheetState extends State<ExerciseSelectionBottomSh
                       ],
                     ],
                   ),
+                  // Ajouter les tags ici si besoin
+                  const SizedBox(height: 4),
+                  _buildExerciseTags(exercise),
                 ],
               ),
             ),
-            const Icon(
-              LucideIcons.chevronRight,
-              size: 16,
-              color: Color(0xFF64748B),
+            Column(
+              children: [
+                const Icon(
+                  LucideIcons.chevronRight,
+                  size: 16,
+                  color: Color(0xFF64748B),
+                ),
+              ],
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildExerciseTags(Exercise exercise) {
+    final sessionCount = _exerciseSessionCounts[exercise.name] ?? 0;
+    final locService = LocalizationService.instance;
+
+    // Si on n'a pas encore chargé les stats, ne pas afficher de tags
+    if (_isLoadingStats) {
+      return const SizedBox.shrink();
+    }
+
+    List<Widget> tags = [];
+
+    if (sessionCount == 0) {
+      // Tag "Nouveau" pour les exercices jamais fait
+      tags.add(
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: const Color(0xFF10B981),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text(
+            locService.isFrench ? 'Nouveau' : 'New',
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
+              color: Colors.white,
+            ),
+          ),
+        ),
+      );
+    } else if (sessionCount >= 3) {
+      // Tag avec nombre de sessions pour les exercices fréquents (≥3 sessions)
+      tags.add(
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: const Color(0xFF3B82F6),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text(
+            locService.isFrench ? '$sessionCount séances' : '$sessionCount sessions',
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
+              color: Colors.white,
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (tags.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Wrap(
+      spacing: 4,
+      runSpacing: 2,
+      children: tags,
     );
   }
 }

@@ -101,13 +101,15 @@ class LocalizedDatabaseService {
           id,
           name$suffix,
           instructions$suffix,
-          muscle_group,
+          muscle_group_fr,
+          muscle_group_en,
           difficulty_level,
           equipment_needed
         ''');
     
     if (muscleGroup != null) {
-      query = query.eq('muscle_group', muscleGroup);
+      // Filtrer par le groupe musculaire dans la langue appropriée
+      query = query.eq('muscle_group$suffix', muscleGroup);
     }
     
     if (limit != null) {

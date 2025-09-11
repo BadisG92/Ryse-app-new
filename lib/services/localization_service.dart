@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:ui' as ui;
 import 'dashboard_service.dart';
+import 'workout_cache_service.dart';
 
 class LocalizationService extends ChangeNotifier {
   static const String _languageKey = 'selected_language';
@@ -50,8 +51,9 @@ class LocalizationService extends ChangeNotifier {
       _currentLocale = Locale(languageCode);
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_languageKey, languageCode);
-      // Vider le cache des objectifs pour forcer le rechargement avec la nouvelle langue
+      // Vider les caches pour forcer le rechargement avec la nouvelle langue
       DashboardService.clearGoalsCache();
+      WorkoutCacheService.clearCache();
       notifyListeners();
     }
   }

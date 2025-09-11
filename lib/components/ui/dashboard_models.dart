@@ -301,12 +301,12 @@ class DashboardData {
     DailyGoal(
       id: 'calories',
       label: 'Atteindre mes calories',
-      progress: 0, // 0/0 cal
+      progress: 0, // 0/0 kcal
       xp: 25,
       completed: false,
       currentValue: 0,
       targetValue: 0,
-      unit: 'cal',
+      unit: 'kcal',
     ),
     DailyGoal(
       id: 'workout',

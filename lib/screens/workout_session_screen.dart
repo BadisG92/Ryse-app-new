@@ -698,8 +698,48 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     
     final TextEditingController searchController = TextEditingController();
     List<Exercise> filteredExercises = [];
+    Map<String, int> exerciseSessionCounts = {};
+    
     // Charger depuis Supabase ou cache offline
     final List<Exercise> allExercises = await db.DatabaseService.getSystemExercises();
+    
+    // Charger les statistiques des exercices pour les tags de fréquence
+    try {
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId != null) {
+        final topExercises = await WorkoutCacheService.getTopExercises(userId);
+        for (final exercise in topExercises) {
+          final exerciseName = exercise['localized_name']?.toString() ?? exercise['name']?.toString();
+          final sessions = exercise['sessions'] as int? ?? 0;
+          if (exerciseName != null && exerciseName.isNotEmpty) {
+            exerciseSessionCounts[exerciseName] = sessions;
+          }
+        }
+      }
+    } catch (e) {
+      print('❌ Erreur lors du chargement des stats d\'exercices: $e');
+    }
+    
+    // Trier les exercices par fréquence
+    allExercises.sort((a, b) {
+      final aSessionCount = exerciseSessionCounts[a.name] ?? 0;
+      final bSessionCount = exerciseSessionCounts[b.name] ?? 0;
+      
+      // Si les deux ont des sessions, trier par nombre de sessions décroissant
+      if (aSessionCount > 0 && bSessionCount > 0) {
+        return bSessionCount.compareTo(aSessionCount);
+      }
+      // Si seulement a a des sessions, a vient en premier
+      if (aSessionCount > 0 && bSessionCount == 0) {
+        return -1;
+      }
+      // Si seulement b a des sessions, b vient en premier
+      if (aSessionCount == 0 && bSessionCount > 0) {
+        return 1;
+      }
+      // Si aucun n'a de sessions, trier alphabétiquement
+      return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+    });
     
     // Si aucun exercice et mode hors ligne, afficher un message
     if (allExercises.isEmpty && _offlineStatus != null && !_offlineStatus!.isOnline) {
@@ -748,6 +788,23 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                     .toLowerCase()
                     .contains(searchController.text.toLowerCase());
               }).toList();
+              
+              // Re-trier par fréquence après le filtrage
+              filteredExercises.sort((a, b) {
+                final aSessionCount = exerciseSessionCounts[a.name] ?? 0;
+                final bSessionCount = exerciseSessionCounts[b.name] ?? 0;
+                
+                if (aSessionCount > 0 && bSessionCount > 0) {
+                  return bSessionCount.compareTo(aSessionCount);
+                }
+                if (aSessionCount > 0 && bSessionCount == 0) {
+                  return -1;
+                }
+                if (aSessionCount == 0 && bSessionCount > 0) {
+                  return 1;
+                }
+                return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+              });
             });
           }
           
@@ -966,6 +1023,59 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                                                 ),
                                               ),
                                             ],
+                                            // Tag de fréquence
+                                            () {
+                                              final sessionCount = exerciseSessionCounts[exercise.name] ?? 0;
+                                              
+                                              if (sessionCount == 0) {
+                                                // Nouveau - Style comme les kcal dans week history (bleu foncé avec lettres blanches)
+                                                return Row(
+                                                  children: [
+                                                    const SizedBox(width: 8),
+                                                    Container(
+                                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                                      decoration: BoxDecoration(
+                                                        color: const Color(0xFF0B132B),
+                                                        borderRadius: BorderRadius.circular(8),
+                                                      ),
+                                                      child: Text(
+                                                        LocalizationService.instance.isFrench ? 'Nouveau' : 'New',
+                                                        style: const TextStyle(
+                                                          fontSize: 10,
+                                                          fontWeight: FontWeight.w600,
+                                                          color: Colors.white,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                );
+                                              } else {
+                                                // Déjà utilisé - Couleur principale de l'app
+                                                return Row(
+                                                  children: [
+                                                    const SizedBox(width: 8),
+                                                    Container(
+                                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                                      decoration: BoxDecoration(
+                                                        color: const Color(0xFF0B132B).withOpacity(0.1),
+                                                        borderRadius: BorderRadius.circular(8),
+                                                        border: Border.all(color: const Color(0xFF0B132B).withOpacity(0.3), width: 1),
+                                                      ),
+                                                      child: Text(
+                                                        LocalizationService.instance.isFrench 
+                                                            ? '$sessionCount ${sessionCount == 1 ? 'fois' : 'fois'}'
+                                                            : '$sessionCount ${sessionCount == 1 ? 'time' : 'times'}',
+                                                        style: const TextStyle(
+                                                          fontSize: 10,
+                                                          fontWeight: FontWeight.w600,
+                                                          color: Color(0xFF0B132B),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                );
+                                              }
+                                            }(),
                                           ],
                                         ),
                                         Text(

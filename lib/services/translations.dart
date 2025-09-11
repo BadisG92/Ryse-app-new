@@ -3551,6 +3551,52 @@ class AppTranslations {
       'fr': 'Ajouter un exercice qui ne figure pas dans la liste',
       'en': 'Add an exercise that is not in the list',
     },
+    
+    // Muscle Groups
+    'muscle_group_chest': {
+      'fr': 'Pectoraux',
+      'en': 'Chest',
+    },
+    'muscle_group_back': {
+      'fr': 'Dos',
+      'en': 'Back',
+    },
+    'muscle_group_shoulders': {
+      'fr': 'Épaules',
+      'en': 'Shoulders',
+    },
+    'muscle_group_biceps': {
+      'fr': 'Biceps',
+      'en': 'Biceps',
+    },
+    'muscle_group_triceps': {
+      'fr': 'Triceps',
+      'en': 'Triceps',
+    },
+    'muscle_group_legs': {
+      'fr': 'Jambes',
+      'en': 'Legs',
+    },
+    'muscle_group_glutes': {
+      'fr': 'Fessiers',
+      'en': 'Glutes',
+    },
+    'muscle_group_abs': {
+      'fr': 'Abdominaux',
+      'en': 'Abs',
+    },
+    'muscle_group_calves': {
+      'fr': 'Mollets',
+      'en': 'Calves',
+    },
+    'muscle_group_forearms': {
+      'fr': 'Avant-bras',
+      'en': 'Forearms',
+    },
+    'muscle_group_custom': {
+      'fr': 'Personnalisé',
+      'en': 'Custom',
+    },
 
     // Onboarding
     'onboarding_welcome': {

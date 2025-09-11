@@ -122,7 +122,7 @@ class _WeekHistorySectionState extends State<WeekHistorySection> {
           final setsCount = (e['sets_count'] as int?) ?? 0;
           
           return SessionExerciseBest(
-            name: e['exercise_name']?.toString() ?? '',
+            name: e['localized_exercise_name']?.toString() ?? e['exercise_name']?.toString() ?? '',
             setsCount: setsCount,
             reps: bestReps,
             weightKg: bestWeight,
@@ -258,7 +258,7 @@ class _ExerciseProgressSectionState extends State<ExerciseProgressSection> {
 
       final allExercises = exercisesData.map<ExerciseProgress>((e) {
         return ExerciseProgress(
-          name: e['name']?.toString() ?? '',
+          name: e['localized_name']?.toString() ?? e['name']?.toString() ?? '',
           current: e['current']?.toString() ?? 'N/A',
           progress: '', // Pas de calcul de progression pour l'instant
           sessions: (e['sessions'] as int?) ?? 0,

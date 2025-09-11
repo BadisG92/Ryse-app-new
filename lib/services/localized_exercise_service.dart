@@ -24,7 +24,8 @@ class LocalizedExerciseService {
             id,
             name$suffix,
             instructions$suffix,
-            muscle_group,
+            muscle_group_fr,
+            muscle_group_en,
             equipment,
             difficulty_level,
             video_url,
@@ -32,7 +33,8 @@ class LocalizedExerciseService {
           ''');
       
       if (muscleGroup != null) {
-        query = query.eq('muscle_group', muscleGroup);
+        // Filtrer par le groupe musculaire dans la langue appropriée
+        query = query.eq('muscle_group$suffix', muscleGroup);
       }
       
       if (limit != null) {
@@ -163,7 +165,8 @@ class LocalizedExerciseService {
             exercises!workout_template_exercises_exercise_id_fkey(
               id,
               name$suffix,
-              muscle_group,
+              muscle_group_fr,
+              muscle_group_en,
               equipment,
               difficulty_level
             )
@@ -243,7 +246,8 @@ class LocalizedExerciseService {
             id,
             name$suffix,
             instructions$suffix,
-            muscle_group,
+            muscle_group_fr,
+            muscle_group_en,
             equipment,
             description,
             difficulty_level,

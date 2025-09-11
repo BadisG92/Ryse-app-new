@@ -66,23 +66,24 @@ class DatabaseService {
       return null;
     }
     try {
+      final locService = LocalizationService.instance;
+      
       final row = await _client
           .from('custom_exercises')
           .insert({
             'user_id': userId,
             'name': name.trim(),
-            'muscle_group': muscleGroup,
             'equipment': equipment,
             'description': description,
             'visible_list': true,
           })
-          .select('id, name, muscle_group, equipment, description')
+          .select('id, name, muscle_group_fr, muscle_group_en, equipment, description')
           .single();
 
       return models.Exercise(
         id: row['id']?.toString() ?? '',
         name: row['name'] as String? ?? name,
-        muscleGroup: row['muscle_group'] as String? ?? muscleGroup,
+        muscleGroup: locService.getTextFromColumns(row['muscle_group_fr'], row['muscle_group_en']) ?? muscleGroup,
         equipment: row['equipment'] as String? ?? equipment,
         description: row['description'] as String? ?? description,
         isCustom: true,

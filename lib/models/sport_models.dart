@@ -224,6 +224,20 @@ class WorkoutSession {
 
 // Groupes musculaires disponibles
 class MuscleGroups {
+  // Clés de traduction pour les groupes musculaires
+  static const String chestKey = 'muscle_group_chest';
+  static const String backKey = 'muscle_group_back';
+  static const String shouldersKey = 'muscle_group_shoulders';
+  static const String bicepsKey = 'muscle_group_biceps';
+  static const String tricepsKey = 'muscle_group_triceps';
+  static const String legsKey = 'muscle_group_legs';
+  static const String glutesKey = 'muscle_group_glutes';
+  static const String absKey = 'muscle_group_abs';
+  static const String calvesKey = 'muscle_group_calves';
+  static const String forearmsKey = 'muscle_group_forearms';
+  static const String customKey = 'muscle_group_custom';
+
+  // Valeurs par défaut (français) pour compatibilité
   static const String chest = 'Pectoraux';
   static const String back = 'Dos';
   static const String shoulders = 'Épaules';
@@ -234,6 +248,7 @@ class MuscleGroups {
   static const String abs = 'Abdominaux';
   static const String calves = 'Mollets';
   static const String forearms = 'Avant-bras';
+  static const String custom = 'Personnalisé';
 
   static List<String> get all => [
     chest,
@@ -247,6 +262,80 @@ class MuscleGroups {
     calves,
     forearms,
   ];
+
+  static List<String> get allKeys => [
+    chestKey,
+    backKey,
+    shouldersKey,
+    bicepsKey,
+    tricepsKey,
+    legsKey,
+    glutesKey,
+    absKey,
+    calvesKey,
+    forearmsKey,
+  ];
+
+  /// Traduit un nom de groupe musculaire français vers la clé de traduction
+  static String getKeyFromFrenchName(String frenchName) {
+    switch (frenchName) {
+      case chest:
+        return chestKey;
+      case back:
+        return backKey;
+      case shoulders:
+        return shouldersKey;
+      case biceps:
+        return bicepsKey;
+      case triceps:
+        return tricepsKey;
+      case legs:
+        return legsKey;
+      case glutes:
+        return glutesKey;
+      case abs:
+        return absKey;
+      case calves:
+        return calvesKey;
+      case forearms:
+        return forearmsKey;
+      case custom:
+      case 'Custom':
+        return customKey;
+      default:
+        return customKey; // Par défaut
+    }
+  }
+
+  /// Traduit une clé vers le nom français (pour compatibilité)
+  static String getFrenchNameFromKey(String key) {
+    switch (key) {
+      case chestKey:
+        return chest;
+      case backKey:
+        return back;
+      case shouldersKey:
+        return shoulders;
+      case bicepsKey:
+        return biceps;
+      case tricepsKey:
+        return triceps;
+      case legsKey:
+        return legs;
+      case glutesKey:
+        return glutes;
+      case absKey:
+        return abs;
+      case calvesKey:
+        return calves;
+      case forearmsKey:
+        return forearms;
+      case customKey:
+        return custom;
+      default:
+        return custom; // Par défaut
+    }
+  }
 }
 
 // Modèle pour un exercice prédéfini dans un programme

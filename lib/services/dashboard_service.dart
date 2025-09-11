@@ -198,7 +198,7 @@ class DashboardService {
           completed: currentCalories >= dailyCaloriesGoal * 0.9, // 90% = complété
           currentValue: currentCalories,
           targetValue: dailyCaloriesGoal.toDouble(),
-          unit: 'cal',
+          unit: 'kcal',
         ),
         workoutGoal,
       ];
