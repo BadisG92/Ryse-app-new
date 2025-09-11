@@ -89,7 +89,7 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
       final recipesResponse = await SupabaseConfig.client
           .from('recipes_database')
           .select('id')
-          .eq('name_fr', widget.recipe.name)
+          .or('name_fr.eq.${widget.recipe.name},name_en.eq.${widget.recipe.name}')
           .limit(1);
       
       if (recipesResponse.isEmpty) {
@@ -110,7 +110,7 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
       // Récupérer les ingrédients avec les données nutritionnelles
       final ingredientsResponse = await SupabaseConfig.client
           .from('recipe_ingredient_database')
-          .select('*, food_database!inner(*)')
+          .select('id, recipe_id, food_id, quantity, display_order, unite_fr, unite_en, food_database!inner(*)')
           .eq('recipe_id', recipeId)
           .order('display_order');
 
@@ -129,9 +129,11 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
         
         ingredients.add(DetailedIngredient(
           id: ing['id'].toString(),
-          name: food['name_fr'] ?? food['name_en'] ?? 'Aliment inconnu',
+          name: LocalizationService.instance.getTextFromColumns(food['name_fr'], food['name_en']).isEmpty 
+              ? 'Aliment inconnu' 
+              : LocalizationService.instance.getTextFromColumns(food['name_fr'], food['name_en']),
           baseQuantity: double.parse(ing['quantity'].toString()),
-          unit: ing['unite'] ?? '',
+          unit: LocalizationService.instance.getTextFromColumns(ing['unite_fr'], ing['unite_en']) ?? '',
           caloriesPer100g: double.parse((food['calories'] ?? 0).toString()),
           proteinsPer100g: double.parse((food['proteins'] ?? 0).toString()),
           carbsPer100g: double.parse((food['carbs'] ?? 0).toString()),
@@ -736,12 +738,14 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
               size: 16,
               color: Color(0xFF0B132B),
             ),
-            label: const Text(
-              'Modifier les aliments',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF0B132B),
+            label: Consumer<LocalizationService>(
+              builder: (context, locService, child) => Text(
+                locService.currentLanguageCode == 'fr' ? 'Modifier les aliments' : 'Modify ingredients',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF0B132B),
+                ),
               ),
             ),
             style: OutlinedButton.styleFrom(
@@ -1113,12 +1117,14 @@ class _EditIngredientsScreenState extends State<EditIngredientsScreen> {
             ),
           ),
         ),
-        title: const Text(
-          'Modifier les aliments',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF1A1A1A),
+        title: Consumer<LocalizationService>(
+          builder: (context, locService, child) => Text(
+            locService.currentLanguageCode == 'fr' ? 'Modifier les aliments' : 'Modify ingredients',
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF1A1A1A),
+            ),
           ),
         ),
         centerTitle: true,
@@ -1128,12 +1134,14 @@ class _EditIngredientsScreenState extends State<EditIngredientsScreen> {
               widget.onIngredientsUpdated(tempCustomizedIngredients);
               Navigator.pop(context);
             },
-            child: const Text(
-              'Terminer',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF0B132B),
+            child: Consumer<LocalizationService>(
+              builder: (context, locService, child) => Text(
+                locService.currentLanguageCode == 'fr' ? 'Terminer' : 'Done',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF0B132B),
+                ),
               ),
             ),
           ),

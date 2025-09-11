@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/localization_service.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'dart:async';
 import 'ui/custom_card.dart';
@@ -1591,7 +1592,7 @@ class _CardioSelectionBottomSheetState extends State<_CardioSelectionBottomSheet
 
   Future<void> _loadActivities() async {
     try {
-      final activities = await CardioService.getCardioActivities(language: 'fr');
+      final activities = await CardioService.getCardioActivities(language: LocalizationService.instance.currentLanguageCode);
       setState(() {
         _activities = activities;
         _loading = false;

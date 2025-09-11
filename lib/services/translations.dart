@@ -1865,6 +1865,10 @@ class AppTranslations {
       'fr': 'Ajouter "%s" à un repas',
       'en': 'Add "%s" to a meal',
     },
+    'no_meals_recorded': {
+      'fr': 'Aucun repas enregistré',
+      'en': 'No meals recorded',
+    },
     'add_first_meal_message': {
       'fr': 'Ajoutez votre premier repas pour commencer à suivre votre nutrition.',
       'en': 'Add your first meal to start tracking your nutrition.',

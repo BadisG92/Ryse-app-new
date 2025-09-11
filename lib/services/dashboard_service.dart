@@ -27,6 +27,12 @@ class DashboardService {
     _cachedGoalsDate = null;
     _cachedModules = null;
     _cachedModulesDate = null;
+    print('🧹 Cache dashboard vidé');
+  }
+
+  /// Forcer la suppression complète du cache
+  static void clearAllCache() {
+    clearGoalsCache();
   }
 
   /// Récupérer le profil utilisateur pour le dashboard

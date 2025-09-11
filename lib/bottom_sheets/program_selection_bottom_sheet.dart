@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/localization_service.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../models/sport_models.dart';
 import '../services/database_service.dart';
@@ -38,7 +39,7 @@ class _ProgramSelectionBottomSheetState extends State<ProgramSelectionBottomShee
   Future<void> _loadPrograms() async {
     try {
       // Charger directement les programmes depuis la base de données
-      final programs = await DatabaseService.getWorkoutTemplates(language: 'fr', includePublic: true);
+      final programs = await DatabaseService.getWorkoutTemplates(language: LocalizationService.instance.currentLanguageCode, includePublic: true);
       if (!mounted) return;
       setState(() {
         _fetchedPrograms = programs;

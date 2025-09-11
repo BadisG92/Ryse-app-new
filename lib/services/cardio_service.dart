@@ -87,7 +87,7 @@ class CardioService {
         final formatResult = await _client
             .from('cardio_activity_formats')
             .select('id')
-            .eq('name_fr', sessionData.formatTitle)
+            .or('name_fr.eq.${sessionData.formatTitle},name_en.eq.${sessionData.formatTitle}')
             .eq('activity_type', sessionData.activityType)
             .maybeSingle();
         

@@ -75,14 +75,16 @@ class _ManualFoodSearchBottomSheetState extends State<ManualFoodSearchBottomShee
 
   Future<void> _loadFoods() async {
     try {
-      // Charger les aliments normaux
-      final foods = await DatabaseService.getFoods(language: 'fr');
+      // Charger les aliments normaux avec la langue actuelle
+      final locService = LocalizationService.instance;
+      final currentLanguage = locService.currentLanguageCode;
+      final foods = await DatabaseService.getFoods(language: currentLanguage);
       
       // Charger les aliments personnalisés de l'utilisateur
       List<Food> customFoods = [];
       final user = AuthService().currentUser;
       if (user != null) {
-        customFoods = await DatabaseService.getCustomFoods(user.id, language: 'fr');
+        customFoods = await DatabaseService.getCustomFoods(user.id, language: currentLanguage);
       }
       
       // Combiner les deux listes (aliments personnalisés en premier)
@@ -115,15 +117,16 @@ class _ManualFoodSearchBottomSheetState extends State<ManualFoodSearchBottomShee
       if (user == null) return [];
       
       // Utiliser la nouvelle méthode du DatabaseService pour récupérer les aliments fréquents
+      final locService = LocalizationService.instance;
       final frequentFoods = await DatabaseService.getFrequentlyUsedFoods(
         user.id, 
-        language: 'fr', 
+        language: locService.currentLanguageCode, 
         limit: 20
       );
       
       print('🔄 Aliments fréquents récupérés: ${frequentFoods.length}');
       for (final food in frequentFoods) {
-        print('   - ${food.getLocalizedName('fr')} (isCustom: ${food.isCustom}, origin: ${food.origin})');
+        print('   - ${food.getLocalizedName(locService.currentLanguageCode)} (isCustom: ${food.isCustom}, origin: ${food.origin})');
       }
       
       return frequentFoods;
@@ -146,7 +149,8 @@ class _ManualFoodSearchBottomSheetState extends State<ManualFoodSearchBottomShee
         // Mode recherche : filtrer tous les aliments
         _showingFrequentFoods = false;
         _filteredFoods = _allFoods.where((food) {
-          final name = food.getLocalizedName('fr').toLowerCase();
+          final locService = LocalizationService.instance;
+          final name = food.getLocalizedName(locService.currentLanguageCode).toLowerCase();
           return name.contains(query);
         }).take(100).toList(); // Limiter à 100 résultats pour la performance
       }
@@ -443,19 +447,13 @@ class _ManualFoodSearchBottomSheetState extends State<ManualFoodSearchBottomShee
                         child: Column(
                           children: [
                             ...displayFoods.map((food) {
-                              // Debug: Afficher les informations de l'aliment (focus sur Nutella)
-                              if (food.isCustom && food.getLocalizedName('fr').toLowerCase().contains('nutella')) {
-                                print('🎯 DEBUG - Nutella trouvé dans la liste:');
-                                print('   - isCustom: ${food.isCustom}');
-                                print('   - origin: ${food.origin}');
-                                print('   - barcode: ${food.barcode}');
-                              }
+                              final locService = LocalizationService.instance;
                               
                               return FoodSuggestionWidget(
-                                name: food.getLocalizedName('fr'),
+                                name: food.getLocalizedName(locService.currentLanguageCode),
                                 calories: food.calories,
-                                per: food.getLocalizedUnit('fr') != null && food.referenceQuantity != null 
-                                    ? '${food.referenceQuantity!.toStringAsFixed(food.referenceQuantity!.truncateToDouble() == food.referenceQuantity ? 0 : 1)} ${food.getLocalizedUnit('fr')}'
+                                per: food.getLocalizedUnit(locService.currentLanguageCode) != null && food.referenceQuantity != null 
+                                    ? '${food.referenceQuantity!.toStringAsFixed(food.referenceQuantity!.truncateToDouble() == food.referenceQuantity ? 0 : 1)} ${food.getLocalizedUnit(locService.currentLanguageCode)}'
                                     : '100 g',
                                 isCustom: food.isCustom,
                                 origin: food.origin, // Transmettre l'origine pour l'affichage
@@ -481,10 +479,11 @@ class _ManualFoodSearchBottomSheetState extends State<ManualFoodSearchBottomShee
     // Utiliser la quantité de référence de l'aliment si disponible
     final defaultQuantity = food.referenceQuantity ?? 100.0;
     
+    final locService = LocalizationService.instance;
     EditableFoodDetailsBottomSheet.show(
       context,
       id: food.id,
-      name: food.getLocalizedName('fr'),
+      name: food.getLocalizedName(locService.currentLanguageCode),
       calories: food.calories,
       proteins: food.proteins,
       glucides: food.carbs,
@@ -509,7 +508,7 @@ class _ManualFoodSearchBottomSheetState extends State<ManualFoodSearchBottomShee
         );
         
         // Debug: Vérifier les propriétés pour Nutella
-        if (food.getLocalizedName('fr').toLowerCase().contains('nutella')) {
+        if (food.getLocalizedName(LocalizationService.instance.currentLanguageCode).toLowerCase().contains('nutella')) {
           print('🎯 DEBUG - Nutella ajouté au journal:');
           print('   - food.isCustom: ${food.isCustom}');
           print('   - food.origin: "${food.origin}"');

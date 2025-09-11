@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/sport_models.dart';
 import 'database_service.dart' as db;
 import 'package:uuid/uuid.dart';
+import 'localization_service.dart';
 
 /// Service de gestion du mode hors ligne pour les séances de musculation
 class OfflineWorkoutService {
@@ -219,10 +220,12 @@ class OfflineWorkoutService {
     
     try {
       // Exercices système
+      final locService = LocalizationService.instance;
+      final suffix = locService.getColumnSuffix();
       final rows = await _client
           .from('exercises')
           .select('id, name_en, name_fr, muscle_group, equipment, description, is_custom')
-          .order('name_fr', ascending: true)
+          .order('name$suffix', ascending: true)
           .limit(500);
           
       if (rows is List && rows.isNotEmpty) {
@@ -230,7 +233,7 @@ class OfflineWorkoutService {
           final map = json as Map<String, dynamic>;
           return Exercise(
             id: map['id']?.toString() ?? '',
-            name: map['name_fr'] as String? ?? '',
+            name: locService.getTextFromColumns(map['name_fr'], map['name_en']),
             muscleGroup: (map['muscle_group'] as String?) ?? '',
             equipment: (map['equipment'] as String?) ?? '',
             description: (map['description'] as String?) ?? '',

@@ -89,7 +89,9 @@
       "Bash(for key in about custom help_support logout macronutrients maintenance target_weight weight_gain weight_loss)",
       "Bash(do echo \"=== $key ===\")",
       "Bash(for key in account_management classic email_password restrictions_count vegan vegetarian)",
-      "Bash(awk:*)"
+      "Bash(awk:*)",
+      "Bash(netcat:*)",
+      "Bash(copy:*)"
     ],
     "deny": [],
     "ask": []

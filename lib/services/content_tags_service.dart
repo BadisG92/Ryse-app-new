@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
 import '../config/app_config.dart';
 import 'recipe_service.dart';
+import 'localization_service.dart';
 
 class ContentTagsService {
   static final SupabaseClient _supabase = SupabaseConfig.client;
@@ -225,12 +226,14 @@ class ContentTagsService {
   /// Récupère tous les tags organisés depuis content_tags pour les filtres
   static Future<Map<String, List<String>>> getOrganizedTagsForFilters() async {
     try {
-      final language = AppConfig.currentLanguage;
+      final locService = LocalizationService.instance;
+      final language = locService.currentLanguageCode;
       print('🔍 Récupération des tags depuis content_tags (langue: $language)...');
       
       // Sélectionner les colonnes selon la langue
-      final nameColumn = language == 'fr' ? 'name_fr' : 'name_en';
-      final categoryColumn = language == 'fr' ? 'category_fr' : 'category_en';
+      final suffix = locService.getColumnSuffix();
+      final nameColumn = 'name$suffix';
+      final categoryColumn = 'category$suffix';
       
       final response = await _supabase
           .from('content_tags')
@@ -245,23 +248,9 @@ class ContentTagsService {
       Map<String, List<String>> organizedTags = {};
       
       for (var tagData in response) {
-        // Récupérer le nom et la catégorie selon la langue
-        String? tagName;
-        String? categoryName;
-        
-        if (language == 'fr') {
-          tagName = tagData['name_fr'] as String?;
-          categoryName = tagData['category_fr'] as String?;
-          // Fallback vers l'anglais si pas de traduction française
-          tagName ??= tagData['name_en'] as String?;
-          categoryName ??= tagData['category_en'] as String?;
-        } else {
-          tagName = tagData['name_en'] as String?;
-          categoryName = tagData['category_en'] as String?;
-          // Fallback vers le français si pas de traduction anglaise
-          tagName ??= tagData['name_fr'] as String?;
-          categoryName ??= tagData['category_fr'] as String?;
-        }
+        // Récupérer le nom et la catégorie selon la langue avec fallback automatique
+        final tagName = locService.getTextFromColumns(tagData['name_fr'], tagData['name_en']);
+        final categoryName = locService.getTextFromColumns(tagData['category_fr'], tagData['category_en']);
         
         // Ajouter le tag à sa catégorie
         if (tagName != null && tagName.isNotEmpty && categoryName != null && categoryName.isNotEmpty) {

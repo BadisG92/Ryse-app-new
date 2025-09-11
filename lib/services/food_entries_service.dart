@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/nutrition_models.dart';
 import '../models/ai_analysis_models.dart';
 import 'dashboard_service.dart';
+import 'localization_service.dart';
 
 class FoodEntriesService {
   static final _supabase = Supabase.instance.client;
@@ -117,7 +118,10 @@ class FoodEntriesService {
         } else if (entry['recipes_database'] != null) {
           // Recette
           final recipe = entry['recipes_database'];
-          foodName = recipe['name_fr'] ?? recipe['name_en'] ?? 'Recette';
+          final locService = LocalizationService.instance;
+          foodName = locService.getTextFromColumns(recipe['name_fr'], recipe['name_en']).isEmpty 
+              ? 'Recette' 
+              : locService.getTextFromColumns(recipe['name_fr'], recipe['name_en']);
           isCustom = false;
           isRecipe = true;
           isScanned = false;
@@ -128,7 +132,10 @@ class FoodEntriesService {
           isScanned = customFood['origin'] == 'barcode';
         } else if (entry['food_database'] != null) {
           final food = entry['food_database'];
-          foodName = food['name_fr'] ?? food['name_en'] ?? 'Aliment';
+          final locService = LocalizationService.instance;
+          foodName = locService.getTextFromColumns(food['name_fr'], food['name_en']).isEmpty 
+              ? 'Aliment' 
+              : locService.getTextFromColumns(food['name_fr'], food['name_en']);
           isCustom = false;
           isScanned = false;
         } else {

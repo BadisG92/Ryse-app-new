@@ -60,7 +60,7 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
       final userId = Supabase.instance.client.auth.currentUser?.id;
       debugPrint('🔧 Dashboard: userId = $userId');
       if (userId == null) {
-        debugPrint('⚠️ Dashboard: Aucun utilisateur connecté, utilisation des données par défaut');
+        debugPrint('⚠️ Dashboard: Aucun utilisateur connecté, utilisation des données par défaut (0 kcal)');
         setState(() {
           nutritionProfile = NutritionData.profile;
           isLoading = false;

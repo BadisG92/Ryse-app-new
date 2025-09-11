@@ -2,6 +2,7 @@
 import '../../services/recipe_service.dart';
 import '../../services/content_tags_service.dart';
 import '../../config/app_config.dart';
+import '../../services/localization_service.dart';
 
 // Modèle pour un ingrédient dans une recette
 class RecipeIngredient {
@@ -145,7 +146,7 @@ class Recipe {
   factory Recipe.fromJson(Map<String, dynamic> json) {
     try {
       final id = json['id'] is int ? json['id'] : int.tryParse(json['id'].toString()) ?? 0;
-      final name = json['name_fr'] ?? json['name_en'] ?? '';
+      final name = LocalizationService.instance.getTextFromColumns(json['name_fr'], json['name_en']);
       final calories = json['calories per portion'] ?? 0;
       final tags = _parseTagsFromJson(json);
       final steps = _parseStepsFromJson(json);
@@ -174,24 +175,13 @@ class Recipe {
   // Helper pour parser les tags depuis JSON
   static List<String> _parseTagsFromJson(Map<String, dynamic> json) {
     try {
-      // Gérer les tags français en priorité
-      if (json['tags_fr'] != null) {
-        if (json['tags_fr'] is String && json['tags_fr'].toString().isNotEmpty) {
-          final tagsList = json['tags_fr'].toString().split(',').map((tag) => tag.trim()).toList();
-          return tagsList.where((tag) => tag.isNotEmpty).toList();
-        } else if (json['tags_fr'] is List) {
-          return List<String>.from(json['tags_fr']);
-        }
-      }
+      // Utiliser LocalizationService pour sélectionner la bonne langue
+      final locService = LocalizationService.instance;
+      final tagsText = locService.getTextFromColumns(json['tags_fr'], json['tags_en']);
       
-      // Sinon utiliser les tags anglais
-      if (json['tags_en'] != null) {
-        if (json['tags_en'] is String && json['tags_en'].toString().isNotEmpty) {
-          final tagsList = json['tags_en'].toString().split(',').map((tag) => tag.trim()).toList();
-          return tagsList.where((tag) => tag.isNotEmpty).toList();
-        } else if (json['tags_en'] is List) {
-          return List<String>.from(json['tags_en']);
-        }
+      if (tagsText.isNotEmpty) {
+        final tagsList = tagsText.split(',').map((tag) => tag.trim()).toList();
+        return tagsList.where((tag) => tag.isNotEmpty).toList();
       }
       
       return [];
@@ -203,25 +193,19 @@ class Recipe {
   // Helper pour parser les étapes depuis JSON
   static List<String> _parseStepsFromJson(Map<String, dynamic> json) {
     try {
-      // Gérer les étapes françaises en priorité
-      if (json['steps_fr'] != null) {
-        if (json['steps_fr'] is String && json['steps_fr'].toString().isNotEmpty) {
-          // D'après les logs, les étapes sont séparées par des "|", pas des points
-          final stepsList = json['steps_fr'].toString().split('|').map((step) => step.trim()).toList();
-          return stepsList.where((step) => step.isNotEmpty).toList();
-        } else if (json['steps_fr'] is List) {
-          return List<String>.from(json['steps_fr']);
-        }
-      }
+      // Utiliser LocalizationService pour sélectionner la bonne langue
+      final locService = LocalizationService.instance;
+      final stepsText = locService.getTextFromColumns(json['steps_fr'], json['steps_en']);
       
-      // Sinon utiliser les étapes anglaises
-      if (json['steps_en'] != null) {
-        if (json['steps_en'] is String && json['steps_en'].toString().isNotEmpty) {
-          final stepsList = json['steps_en'].toString().split('|').map((step) => step.trim()).toList();
-          return stepsList.where((step) => step.isNotEmpty).toList();
-        } else if (json['steps_en'] is List) {
-          return List<String>.from(json['steps_en']);
-        }
+      if (stepsText.isNotEmpty) {
+        // D'après les logs, les étapes sont séparées par des "|", pas des points
+        final stepsList = stepsText.split('|').map((step) {
+          String cleanedStep = step.trim();
+          // Enlever la numérotation au début (ex: "1. ", "2. ") car il y a déjà les icônes numérotées
+          cleanedStep = cleanedStep.replaceFirst(RegExp(r'^\d+\.\s*'), '');
+          return cleanedStep;
+        }).toList();
+        return stepsList.where((step) => step.isNotEmpty).toList();
       }
       
       return [];
@@ -393,6 +377,36 @@ class RecipeFilters {
   static Map<String, Map<String, List<String>>> _advancedFilters = {};
   static Map<String, List<String>> _regimeFilterMapping = {};
   static bool _isLoaded = false;
+  static String _lastLanguage = '';
+  static bool _isListenerSetup = false;
+  
+  // Listener pour les changements de langue
+  static void _setupLanguageListener() {
+    if (!_isListenerSetup) {
+      LocalizationService.instance.addListener(_onLanguageChanged);
+      _isListenerSetup = true;
+      _lastLanguage = LocalizationService.instance.currentLanguageCode;
+      print('✅ RecipeFilters: Language listener configuré');
+    }
+  }
+  
+  // Callback appelé lors du changement de langue
+  static void _onLanguageChanged() {
+    final currentLanguage = LocalizationService.instance.currentLanguageCode;
+    if (currentLanguage != _lastLanguage) {
+      print('🔄 RecipeFilters: Changement de langue détecté ($currentLanguage)');
+      _lastLanguage = currentLanguage;
+      _resetAndReload();
+    }
+  }
+  
+  // Réinitialise et recharge les filtres
+  static void _resetAndReload() {
+    _advancedFilters = {};
+    _regimeFilterMapping = {};
+    _isLoaded = false;
+    _loadFiltersFromSupabase();
+  }
 
   // Interface publique - retourne les filtres (vides au début, chargés dynamiquement)
   static Map<String, Map<String, List<String>>> get advancedFilters => _advancedFilters;
@@ -402,6 +416,10 @@ class RecipeFilters {
   static void initialize() {
     print('🟡 RecipeFilters.initialize() called');
     print('🟡 _isLoaded = $_isLoaded');
+    
+    // Configurer le listener une seule fois
+    _setupLanguageListener();
+    
     if (!_isLoaded) {
       print('🟡 Starting _loadFiltersFromSupabase()...');
       _loadFiltersFromSupabase();
@@ -625,13 +643,44 @@ class RecipeData {
   
   static List<Recipe> _allRecipes = _featuredRecipes;
   static bool _isLoaded = false;
+  static String _lastLanguage = '';
+  static bool _isListenerSetup = false;
 
   // INTERFACE PUBLIQUE IDENTIQUE - getters synchrones
   static List<Recipe> get featuredRecipes => _featuredRecipes;
   static List<Recipe> get allRecipes => _allRecipes;
 
+  // Listener pour les changements de langue
+  static void _setupLanguageListener() {
+    if (!_isListenerSetup) {
+      LocalizationService.instance.addListener(_onLanguageChanged);
+      _isListenerSetup = true;
+      _lastLanguage = LocalizationService.instance.currentLanguageCode;
+      print('✅ RecipeData: Language listener configuré');
+    }
+  }
+  
+  // Callback appelé lors du changement de langue
+  static void _onLanguageChanged() {
+    final currentLanguage = LocalizationService.instance.currentLanguageCode;
+    if (currentLanguage != _lastLanguage) {
+      print('🔄 RecipeData: Changement de langue détecté ($currentLanguage)');
+      _lastLanguage = currentLanguage;
+      _resetAndReload();
+    }
+  }
+  
+  // Réinitialise et recharge les données
+  static void _resetAndReload() {
+    _isLoaded = false;
+    _loadRecipesFromSupabase();
+  }
+
   // Initialisation - charge les données Supabase en arrière-plan
   static void initialize() {
+    // Configurer le listener une seule fois
+    _setupLanguageListener();
+    
     _loadRecipesFromSupabase();
     // Aussi initialiser les filtres dynamiques
     RecipeFilters.initialize();

@@ -281,41 +281,41 @@ class DashboardData {
     DailyGoal(
       id: 'meals',
       label: 'Suivre mes repas aujourd\'hui',
-      progress: 67, // 2/3 repas
+      progress: 0, // No meals
       xp: 25,
       completed: false,
-      currentValue: 2,
-      targetValue: 3,
+      currentValue: 0,
+      targetValue: 0,
       unit: '',
     ),
     DailyGoal(
       id: 'water',
       label: 'Boire 2L d\'eau',
-      progress: 75, // 1.5L/2L
+      progress: 0, // 0L/0L
       xp: 15,
       completed: false,
-      currentValue: 1.5,
-      targetValue: 2.0,
+      currentValue: 0.0,
+      targetValue: 0.0,
       unit: 'L',
     ),
     DailyGoal(
       id: 'calories',
       label: 'Atteindre mes calories',
-      progress: 80, // 1600/2000 cal
+      progress: 0, // 0/0 cal
       xp: 25,
       completed: false,
-      currentValue: 1600,
-      targetValue: 2000,
+      currentValue: 0,
+      targetValue: 0,
       unit: 'cal',
     ),
     DailyGoal(
       id: 'workout',
       label: 'Faire une séance aujourd\'hui',
-      progress: 100, // 1/1 séance
+      progress: 0, // 0/0 séance
       xp: 30,
-      completed: true,
-      currentValue: 1,
-      targetValue: 1,
+      completed: false,
+      currentValue: 0,
+      targetValue: 0,
       unit: '',
     ),
   ];
@@ -473,8 +473,8 @@ class DashboardData {
         title: 'sport'.tr(languageCode),
         icon: LucideIcons.dumbbell,
         stats: {
-          'calories'.tr(languageCode): '342 kcal',
-          'sessions'.tr(languageCode): '1 / 3',
+          'calories'.tr(languageCode): '0 kcal',
+          'sessions'.tr(languageCode): '0 / 0',
         },
         gradientColors: const [Color(0xFF0B132B), Color(0xFF1C2951)],
       ),
@@ -496,8 +496,8 @@ class DashboardData {
       title: 'Sport',
       icon: LucideIcons.dumbbell,
       stats: {
-        'Calories': '342 kcal',
-        'Séances': '1 / 3',
+        'Calories': '0 kcal',
+        'Séances': '0 / 0',
       },
       gradientColors: [Color(0xFF0B132B), Color(0xFF1C2951)],
     ),

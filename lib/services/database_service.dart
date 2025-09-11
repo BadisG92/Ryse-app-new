@@ -9,6 +9,7 @@ import 'package:flutter/foundation.dart';
 import 'workout_cache_service.dart';
 import 'sport_dashboard_service.dart';
 import 'offline_workout_service.dart';
+import 'localization_service.dart';
 
 class DatabaseService {
   static final SupabaseClient _client = Supabase.instance.client;
@@ -22,8 +23,7 @@ class DatabaseService {
 
   // Get current user language preference (default to 'en')
   static String _getUserLanguage() {
-    // TODO: Get from user preferences or device locale
-    return 'fr'; // Default to French for now
+    return LocalizationService.instance.currentLanguageCode;
   }
 
   static Future<bool> hideCustomExercise(String exerciseId) async {

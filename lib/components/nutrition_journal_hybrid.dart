@@ -549,7 +549,7 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
                           ),
                           const SizedBox(height: 16),
                           Text(
-                            'Aucun repas enregistré',
+                            'no_meals_recorded'.tr(LocalizationService.instance.currentLanguageCode),
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w600,
@@ -558,7 +558,7 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Ajoutez votre premier repas pour commencer à suivre votre nutrition.',
+                            'add_first_meal_message'.tr(LocalizationService.instance.currentLanguageCode),
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: 14,
