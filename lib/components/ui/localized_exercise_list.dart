@@ -207,26 +207,6 @@ class _LocalizedExerciseListState extends State<LocalizedExerciseList> {
                 ),
               ),
               const Spacer(),
-              // Bouton pour changer de langue (test)
-              GestureDetector(
-                onTap: () {
-                  final newLang = locService.isFrench ? 'en' : 'fr';
-                  locService.setLanguage(newLang);
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.grey.shade300),
-                  ),
-                  child: const Icon(
-                    LucideIcons.languages,
-                    size: 16,
-                    color: Color(0xFF64748B),
-                  ),
-                ),
-              ),
             ],
           ),
           

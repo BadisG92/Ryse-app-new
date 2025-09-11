@@ -11,7 +11,6 @@ import '../services/header_cache_service.dart';
 import '../services/localization_service.dart';
 import '../services/translations.dart';
 import '../providers/goals_notifier.dart';
-import 'ui/language_switch_buttons.dart';
 import 'ui/refresh_wrapper.dart';
 
 class NutritionSection extends StatefulWidget {
@@ -168,7 +167,6 @@ class _NutritionSectionState extends State<NutritionSection>
                 ),
               ],
             ),
-            const LanguageSwitchButtons(),
           ],
         ),
       ),
