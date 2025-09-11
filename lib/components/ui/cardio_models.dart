@@ -202,8 +202,57 @@ class ActivityConfig {
 
 // Données statiques pour les activités cardio
 class CardioData {
+  // Variables pour le cache et le listener de langue
+  static Map<String, Map<String, List<ActivityFormat>>> _cachedActivityFormats = {};
+  static Map<String, List<ActivityType>> _cachedActivityTypes = {};
+  static Map<String, Map<String, ActivityConfig>> _cachedActivityConfigs = {};
+  static String _lastLanguage = '';
+  static bool _isListenerSetup = false;
+
+  // Listener pour les changements de langue
+  static void _setupLanguageListener() {
+    if (!_isListenerSetup) {
+      LocalizationService.instance.addListener(_onLanguageChanged);
+      _isListenerSetup = true;
+      _lastLanguage = LocalizationService.instance.currentLanguageCode;
+      print('✅ CardioData: Language listener configuré');
+    }
+  }
+  
+  // Callback appelé lors du changement de langue
+  static void _onLanguageChanged() {
+    final currentLanguage = LocalizationService.instance.currentLanguageCode;
+    if (currentLanguage != _lastLanguage) {
+      print('🔄 CardioData: Changement de langue détecté ($currentLanguage)');
+      _lastLanguage = currentLanguage;
+      _invalidateCache();
+    }
+  }
+  
+  // Invalide le cache
+  static void _invalidateCache() {
+    _cachedActivityFormats.clear();
+    _cachedActivityTypes.clear();
+    _cachedActivityConfigs.clear();
+  }
+
   // Méthode pour obtenir les formats d'activités localisés
-  static Map<String, List<ActivityFormat>> getLocalizedActivityFormats(String languageCode) {
+  static Map<String, List<ActivityFormat>> getLocalizedActivityFormats([String? languageCode]) {
+    _setupLanguageListener();
+    final targetLanguage = languageCode ?? LocalizationService.instance.currentLanguageCode;
+    
+    // Vérifier le cache
+    if (_cachedActivityFormats.containsKey(targetLanguage)) {
+      return _cachedActivityFormats[targetLanguage]!;
+    }
+    
+    // Générer les données localisées
+    final result = _generateLocalizedActivityFormats(targetLanguage);
+    _cachedActivityFormats[targetLanguage] = result;
+    return result;
+  }
+  
+  static Map<String, List<ActivityFormat>> _generateLocalizedActivityFormats(String languageCode) {
     return {
       'running': [
         ActivityFormat(
@@ -343,7 +392,22 @@ class CardioData {
   }
 
   // Méthode pour obtenir les types d'activités localisés
-  static List<ActivityType> getLocalizedActivityTypes(String languageCode) {
+  static List<ActivityType> getLocalizedActivityTypes([String? languageCode]) {
+    _setupLanguageListener();
+    final targetLanguage = languageCode ?? LocalizationService.instance.currentLanguageCode;
+    
+    // Vérifier le cache
+    if (_cachedActivityTypes.containsKey(targetLanguage)) {
+      return _cachedActivityTypes[targetLanguage]!;
+    }
+    
+    // Générer les données localisées
+    final result = _generateLocalizedActivityTypes(targetLanguage);
+    _cachedActivityTypes[targetLanguage] = result;
+    return result;
+  }
+  
+  static List<ActivityType> _generateLocalizedActivityTypes(String languageCode) {
     return [
       ActivityType(
         id: 'running',
@@ -479,7 +543,22 @@ class CardioData {
 
 
   // Méthode pour obtenir les configurations d'activités localisées
-  static Map<String, ActivityConfig> getLocalizedActivityConfigs(String languageCode) {
+  static Map<String, ActivityConfig> getLocalizedActivityConfigs([String? languageCode]) {
+    _setupLanguageListener();
+    final targetLanguage = languageCode ?? LocalizationService.instance.currentLanguageCode;
+    
+    // Vérifier le cache
+    if (_cachedActivityConfigs.containsKey(targetLanguage)) {
+      return _cachedActivityConfigs[targetLanguage]!;
+    }
+    
+    // Générer les données localisées
+    final result = _generateLocalizedActivityConfigs(targetLanguage);
+    _cachedActivityConfigs[targetLanguage] = result;
+    return result;
+  }
+
+  static Map<String, ActivityConfig> _generateLocalizedActivityConfigs(String languageCode) {
     return {
       'distance': ActivityConfig(
         type: 'distance',

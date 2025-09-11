@@ -25,6 +25,15 @@ import '../../models/nutrition_models.dart' as nutrition_models;
 import '../../services/water_service.dart';
 import '../../services/localization_service.dart';
 import '../../services/translations.dart';
+import '../../services/cardio_service.dart';
+import 'cardio_models.dart';
+import 'cardio_widgets.dart';
+import '../../models/hiit_models.dart';
+import '../../models/cardio_session_models.dart';
+import '../../screens/hiit_session_screen.dart';
+import '../../screens/hiit_config_screen.dart';
+import '../../screens/cardio_tracking_screen.dart';
+import '../../screens/manual_cardio_entry_screen.dart';
 
 // Section des actions rapides
 class QuickActionsSection extends StatefulWidget {
@@ -280,45 +289,49 @@ class _QuickActionsSectionState extends State<QuickActionsSection> {
               
               const SizedBox(height: 8),
               
-              const Text(
-                'Choisissez votre type d\'entraînement',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF64748B),
+              Consumer<LocalizationService>(
+                builder: (context, locService, child) => Text(
+                  'training_choose_type'.tr(locService.currentLanguageCode),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF64748B),
+                  ),
                 ),
               ),
               
               const SizedBox(height: 24),
               
               // 2 boutons côte à côte pour cardio et musculation
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildWorkoutTypeOption(
-                      context,
-                      icon: LucideIcons.activity,
-                      title: 'Cardio',
-                      subtitle: 'Course, vélo, HIIT...',
-                      onTap: () {
-                        Navigator.pop(context);
-                        _showCardioOptions(context);
-                      },
+              Consumer<LocalizationService>(
+                builder: (context, locService, child) => Row(
+                  children: [
+                    Expanded(
+                      child: _buildWorkoutTypeOption(
+                        context,
+                        icon: LucideIcons.activity,
+                        title: 'training_cardio'.tr(locService.currentLanguageCode),
+                        subtitle: 'training_cardio_subtitle'.tr(locService.currentLanguageCode),
+                        onTap: () {
+                          Navigator.pop(context);
+                          _showCardioOptions(context);
+                        },
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: _buildWorkoutTypeOption(
-                      context,
-                      icon: LucideIcons.dumbbell,
-                      title: 'Musculation',
-                      subtitle: 'Force, résistance...',
-                      onTap: () {
-                        Navigator.pop(context);
-                        _showMusculationOptions(context);
-                      },
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _buildWorkoutTypeOption(
+                        context,
+                        icon: LucideIcons.dumbbell,
+                        title: 'training_musculation'.tr(locService.currentLanguageCode),
+                        subtitle: 'training_musculation_subtitle'.tr(locService.currentLanguageCode),
+                        onTap: () {
+                          Navigator.pop(context);
+                          _showMusculationOptions(context);
+                        },
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
               
               const SizedBox(height: 24),
@@ -434,75 +447,33 @@ class _QuickActionsSectionState extends State<QuickActionsSection> {
               
               const SizedBox(height: 24),
               
-              const Text(
-                'Cardio',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1A1A1A),
+              Consumer<LocalizationService>(
+                builder: (context, locService, child) => Text(
+                  'training_cardio'.tr(locService.currentLanguageCode),
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1A1A1A),
+                  ),
                 ),
               ),
               
               const SizedBox(height: 8),
               
-              const Text(
-                'Choisissez votre activité cardio',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF64748B),
+              Consumer<LocalizationService>(
+                builder: (context, locService, child) => Text(
+                  'cardio_choose_activity'.tr(locService.currentLanguageCode),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF64748B),
+                  ),
                 ),
               ),
               
               const SizedBox(height: 24),
               
-              // Grille 2x2 avec les 4 options cardio
-              Column(
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildCardioOption(
-                          context,
-                          icon: LucideIcons.bike,
-                          title: 'Vélo',
-                          onTap: () => _handleCardioSelection(context, 'Vélo'),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildCardioOption(
-                          context,
-                          icon: LucideIcons.footprints,
-                          title: 'Marche',
-                          onTap: () => _handleCardioSelection(context, 'Marche'),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildCardioOption(
-                          context,
-                          icon: LucideIcons.zap,
-                          title: 'Course',
-                          onTap: () => _handleCardioSelection(context, 'Course'),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildCardioOption(
-                          context,
-                          icon: LucideIcons.timer,
-                          title: 'HIIT',
-                          onTap: () => _handleCardioSelection(context, 'HIIT'),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+              // Utiliser les vraies activités cardio depuis Supabase
+              _buildCardioActivitiesFromSupabase(context),
               
               const SizedBox(height: 24),
             ],
@@ -528,6 +499,7 @@ class _QuickActionsSectionState extends State<QuickActionsSection> {
           border: Border.all(color: const Color(0xFFE2E8F0)),
         ),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Container(
               width: 48,
@@ -539,14 +511,18 @@ class _QuickActionsSectionState extends State<QuickActionsSection> {
               child: Icon(icon, color: Colors.white, size: 24),
             ),
             const SizedBox(height: 12),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF1A1A1A),
+            Flexible(
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1A1A1A),
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
-              textAlign: TextAlign.center,
             ),
           ],
         ),
@@ -554,12 +530,313 @@ class _QuickActionsSectionState extends State<QuickActionsSection> {
     );
   }
 
-  void _handleCardioSelection(BuildContext context, String cardioType) {
-    Navigator.pop(context); // Fermer le bottom sheet
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${'starting_session'.tr(context.read<LocalizationService>().currentLanguageCode)} $cardioType'),
-        backgroundColor: const Color(0xFF0B132B),
+  Widget _buildCardioActivitiesFromSupabase(BuildContext context) {
+    return FutureBuilder<List<CardioActivityType>>(
+      future: CardioService.getCardioActivities(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        
+        if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+          return Consumer<LocalizationService>(
+            builder: (context, locService, child) => Center(
+              child: Text(
+                'cardio_no_activities_available'.tr(locService.currentLanguageCode),
+                style: const TextStyle(color: Color(0xFF64748B)),
+              ),
+            ),
+          );
+        }
+        
+        final activities = snapshot.data!;
+        
+        return Wrap(
+          spacing: 16,
+          runSpacing: 16,
+          children: activities.map((activity) {
+            return SizedBox(
+              width: (MediaQuery.of(context).size.width - 48 - 16) / 2, // (container width - padding - spacing) / 2
+              child: _buildCardioOption(
+                context,
+                icon: _getIconFromName(activity.iconName),
+                title: activity.name,
+                onTap: () => _handleActivitySelection(context, activity),
+              ),
+            );
+          }).toList(),
+        );
+      },
+    );
+  }
+
+  IconData _getIconFromName(String iconName) {
+    switch (iconName) {
+      case 'activity':
+        return LucideIcons.activity;
+      case 'bike':
+        return LucideIcons.bike;
+      case 'footprints':
+        return LucideIcons.footprints;
+      case 'flame':
+        return LucideIcons.flame;
+      case 'zap':
+        return LucideIcons.zap;
+      case 'target':
+        return LucideIcons.target;
+      case 'clock':
+        return LucideIcons.clock;
+      case 'mountain':
+        return LucideIcons.mountain;
+      case 'trending-up':
+        return LucideIcons.trendingUp;
+      case 'timer':
+        return LucideIcons.timer;
+      default:
+        return LucideIcons.activity;
+    }
+  }
+
+  void _handleActivitySelection(BuildContext context, CardioActivityType activity) {
+    Navigator.pop(context); // Fermer le bottom sheet cardio
+    _showActivityFormatsModal(context, activity);
+  }
+
+  void _showActivityFormatsModal(BuildContext context, CardioActivityType activity) {
+    final formats = activity.formats.map((supabaseFormat) {
+      return ActivityFormat(
+        icon: _getIconFromName(supabaseFormat.iconName),
+        title: supabaseFormat.name,
+        description: supabaseFormat.description ?? '',
+        trackable: supabaseFormat.isTrackable,
+        configurable: supabaseFormat.isConfigurable,
+        configType: supabaseFormat.configType ?? '',
+        supabaseFormat: supabaseFormat,
+      );
+    }).toList();
+    
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => ActivityFormatsModal(
+        activityTitle: activity.name,
+        formats: formats,
+        onFormatSelected: (format) {
+          Navigator.pop(context);
+          
+          if (activity.activityKey == 'hiit') {
+            _handleHiitSelection(context, format);
+          } else if (format.configurable) {
+            _showConfigurationModal(context, format, activity);
+          } else {
+            _showRecordingChoiceModal(context, format.title, format.trackable, activity: activity);
+          }
+        },
+      ),
+    );
+  }
+
+  void _handleHiitSelection(BuildContext context, ActivityFormat format) {
+    if (format.configurable && format.configType == 'hiit') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const HiitConfigScreen(),
+        ),
+      );
+    } else {
+      HiitWorkout? workout;
+      
+      final supabaseFormat = format.supabaseFormat;
+      if (supabaseFormat != null && supabaseFormat.isHiit) {
+        workout = HiitWorkout(
+          id: supabaseFormat.id,
+          title: format.title,
+          description: format.description,
+          workDuration: supabaseFormat.hiitWorkSeconds ?? 30,
+          restDuration: supabaseFormat.hiitRestSeconds ?? 30,
+          totalDuration: supabaseFormat.defaultDurationMinutes ?? 15,
+          totalRounds: supabaseFormat.hiitRounds ?? 15,
+        );
+      }
+      
+      if (workout != null) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => HiitSessionScreen(workout: workout!),
+          ),
+        );
+      }
+    }
+  }
+
+  void _showConfigurationModal(BuildContext context, ActivityFormat format, CardioActivityType activity) {
+    final locService = LocalizationService.instance;
+    final config = CardioData.getLocalizedActivityConfigs(locService.currentLanguageCode)[format.configType];
+    if (config == null) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => ActivityConfigModal(
+        config: config,
+        onConfigSubmitted: (value) {
+          Navigator.pop(context);
+          
+          CardioObjective? objective;
+          if (config.type == 'distance') {
+            objective = CardioObjective(
+              type: 'distance',
+              targetDistance: double.tryParse(value) ?? 0.0,
+              activityType: format.title.toLowerCase(),
+              formatTitle: '${format.title} ($value ${config.unit})',
+            );
+          } else if (config.type == 'duration') {
+            objective = CardioObjective(
+              type: 'duration',
+              targetDuration: Duration(minutes: int.tryParse(value) ?? 0),
+              activityType: format.title.toLowerCase(),
+              formatTitle: '${format.title} ($value ${config.unit})',
+            );
+          }
+          
+          if (objective != null) {
+            _showRecordingChoiceModal(context, objective.formatTitle, format.trackable, 
+                objective: objective, activity: activity);
+          }
+        },
+      ),
+    );
+  }
+
+  void _showRecordingChoiceModal(BuildContext context, String formatTitle, bool isTrackable, 
+      {CardioObjective? objective, required CardioActivityType activity}) {
+    final locService = LocalizationService.instance;
+    
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(24),
+            topRight: Radius.circular(24),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE2E8F0),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              
+              const SizedBox(height: 24),
+              
+              Text(
+                formatTitle,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1A1A1A),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              
+              const SizedBox(height: 8),
+              
+              Text(
+                'cardio_choose_recording_method'.tr(locService.currentLanguageCode),
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF64748B),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              
+              const SizedBox(height: 24),
+              
+              if (isTrackable) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => CardioTrackingScreen(
+                            activityType: activity.activityKey,
+                            activityTitle: activity.name,
+                            formatTitle: formatTitle,
+                            objective: objective,
+                          ),
+                        ),
+                      );
+                    },
+                    icon: const Icon(LucideIcons.play, color: Colors.white),
+                    label: Text(
+                      'cardio_track_my_session'.tr(locService.currentLanguageCode),
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF0B132B),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+                
+                const SizedBox(height: 12),
+              ],
+              
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ManualCardioEntryScreen(
+                          activityType: activity.activityKey,
+                          activityTitle: activity.name,
+                          formatTitle: formatTitle,
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(LucideIcons.pencil, color: Color(0xFF0B132B)),
+                  label: Text(
+                    'cardio_declare_my_session'.tr(locService.currentLanguageCode),
+                    style: const TextStyle(color: Color(0xFF0B132B), fontWeight: FontWeight.w600),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Color(0xFFE2E8F0)),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 24),
+            ],
+          ),
+        ),
       ),
     );
   }

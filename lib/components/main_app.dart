@@ -26,7 +26,7 @@ class _MainAppState extends State<MainApp> {
   Widget _renderContent() {
     switch (_activeTab) {
       case 'home':
-        return const MainDashboardHybrid();
+        return MainDashboardHybrid(onTabChange: _onTabChange);
       case 'nutrition':
         return const NutritionSection();
       case 'sport':
@@ -34,7 +34,7 @@ class _MainAppState extends State<MainApp> {
       case 'progress':
         return const GlobalProgress();
       default:
-        return const MainDashboardHybrid();
+        return MainDashboardHybrid(onTabChange: _onTabChange);
     }
   }
 

@@ -1849,6 +1849,10 @@ class AppTranslations {
       'fr': 'Sport',
       'en': 'Sport',
     },
+    'sport': {
+      'fr': 'Sport',
+      'en': 'Sport',
+    },
     'progress_tab': {
       'fr': 'Progrès',
       'en': 'Progress',
@@ -2245,6 +2249,14 @@ class AppTranslations {
       'fr': 'Choisir une activité',
       'en': 'Choose an activity',
     },
+    'cardio_choose_recording_method': {
+      'fr': 'Choisissez votre méthode d\'enregistrement',
+      'en': 'Choose your recording method',
+    },
+    'cardio_no_activities_available': {
+      'fr': 'Aucune activité disponible', 
+      'en': 'No activities available',
+    },
     'cardio_no_activity_available': {
       'fr': 'Aucune activité disponible',
       'en': 'No activity available',
@@ -2310,9 +2322,53 @@ class AppTranslations {
       'fr': 'Déclarer la séance',
       'en': 'Declare session',
     },
+    'cardio_track_my_session': {
+      'fr': 'Tracker ma séance',
+      'en': 'Track my session',
+    },
+    'cardio_declare_my_session': {
+      'fr': 'Déclarer ma séance',
+      'en': 'Declare my session',
+    },
     'cardio_validate': {
       'fr': 'Valider',
       'en': 'Validate',
+    },
+    'tracking_web_limitation_title': {
+      'fr': 'Suivi GPS limité sur web',
+      'en': 'Limited GPS tracking on web',
+    },
+    'tracking_web_limitation_description': {
+      'fr': 'Le suivi GPS en temps réel fonctionne mieux sur mobile. Sur web, l\'app utilise un mode simulation pour demo.',
+      'en': 'Real-time GPS tracking works better on mobile. On web, the app uses simulation mode for demo.',
+    },
+    'tracking_web_recommendation': {
+      'fr': 'Pour un suivi précis, utilisez l\'app mobile ou la saisie manuelle après votre séance.',
+      'en': 'For accurate tracking, use the mobile app or manual entry after your session.',
+    },
+    'tracking_understood': {
+      'fr': 'Compris',
+      'en': 'Understood',
+    },
+    'training_choose_type': {
+      'fr': 'Choisissez votre type d\'entraînement',
+      'en': 'Choose your training type',
+    },
+    'training_cardio': {
+      'fr': 'Cardio',
+      'en': 'Cardio',
+    },
+    'training_cardio_subtitle': {
+      'fr': 'Course, vélo, HIIT...',
+      'en': 'Running, biking, HIIT...',
+    },
+    'training_musculation': {
+      'fr': 'Musculation',
+      'en': 'Weight Training',
+    },
+    'training_musculation_subtitle': {
+      'fr': 'Force, résistance...',
+      'en': 'Strength, resistance...',
     },
     // Activity configs
     'cardio_distance_question': {

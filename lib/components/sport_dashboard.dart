@@ -2098,12 +2098,14 @@ class _ActivityFormatsModal extends StatelessWidget {
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: const Text(
-                      'Tracker ma séance',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
+                    child: Consumer<LocalizationService>(
+                      builder: (context, locService, _) => Text(
+                        'cardio_track_my_session'.tr(locService.currentLanguageCode),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                   ),
@@ -2127,12 +2129,14 @@ class _ActivityFormatsModal extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: const Text(
-                    'Déclarer ma séance',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF0B132B),
+                  child: Consumer<LocalizationService>(
+                    builder: (context, locService, _) => Text(
+                      'cardio_declare_my_session'.tr(locService.currentLanguageCode),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF0B132B),
+                      ),
                     ),
                   ),
                 ),

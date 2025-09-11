@@ -643,7 +643,7 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
       final sessionData = CardioSessionData(
         activityType: 'hiit',
         activityTitle: 'HIIT',
-        formatTitle: widget.workout.title,
+        formatTitle: widget.workout.title, // Titre déjà traduit depuis Supabase
         startTime: _session.startTime,
         endTime: DateTime.now(),
         duration: Duration(minutes: actualDuration),

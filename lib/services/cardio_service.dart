@@ -13,19 +13,46 @@ class CardioService {
   static Map<String, List<CardioActivityType>> _cachedActivities = {};
   static Map<String, DateTime> _cacheTimestamp = {};
   static const Duration _cacheDuration = Duration(hours: 1);
+  static String _lastLanguage = '';
+  static bool _isListenerSetup = false;
+
+  // Listener pour les changements de langue
+  static void _setupLanguageListener() {
+    if (!_isListenerSetup) {
+      LocalizationService.instance.addListener(_onLanguageChanged);
+      _isListenerSetup = true;
+      _lastLanguage = LocalizationService.instance.currentLanguageCode;
+      debugPrint('✅ CardioService: Language listener configuré');
+    }
+  }
+  
+  // Callback appelé lors du changement de langue
+  static void _onLanguageChanged() {
+    final currentLanguage = LocalizationService.instance.currentLanguageCode;
+    if (currentLanguage != _lastLanguage) {
+      debugPrint('🔄 CardioService: Changement de langue détecté ($currentLanguage)');
+      _lastLanguage = currentLanguage;
+      invalidateCache();
+    }
+  }
 
   /// Récupère toutes les activités cardio avec leurs formats
-  static Future<List<CardioActivityType>> getCardioActivities({String language = 'fr'}) async {
+  static Future<List<CardioActivityType>> getCardioActivities({String? language}) async {
+    // Configurer le listener une seule fois
+    _setupLanguageListener();
+    
+    // Utiliser la langue courante si aucune n'est spécifiée
+    final targetLanguage = language ?? LocalizationService.instance.currentLanguageCode;
     // Vérifier le cache pour cette langue
-    if (_cachedActivities.containsKey(language) && 
-        _cacheTimestamp.containsKey(language) && 
-        DateTime.now().difference(_cacheTimestamp[language]!) < _cacheDuration) {
-      return _cachedActivities[language]!;
+    if (_cachedActivities.containsKey(targetLanguage) && 
+        _cacheTimestamp.containsKey(targetLanguage) && 
+        DateTime.now().difference(_cacheTimestamp[targetLanguage]!) < _cacheDuration) {
+      return _cachedActivities[targetLanguage]!;
     }
 
     try {
       final result = await _client.rpc('get_cardio_activities', 
-        params: {'language': language});
+        params: {'language': targetLanguage});
       
       final activitiesJson = result as List<dynamic>;
       
@@ -34,8 +61,8 @@ class CardioService {
       }).toList();
 
       // Mettre en cache pour cette langue
-      _cachedActivities[language] = activities;
-      _cacheTimestamp[language] = DateTime.now();
+      _cachedActivities[targetLanguage] = activities;
+      _cacheTimestamp[targetLanguage] = DateTime.now();
       
       return activities;
     } catch (e) {
@@ -45,10 +72,15 @@ class CardioService {
   }
 
   /// Récupère les formats d'une activité spécifique
-  static Future<List<CardioActivityFormat>> getActivityFormats(String activityKey, {String language = 'fr'}) async {
+  static Future<List<CardioActivityFormat>> getActivityFormats(String activityKey, {String? language}) async {
+    // Configurer le listener une seule fois
+    _setupLanguageListener();
+    
+    // Utiliser la langue courante si aucune n'est spécifiée
+    final targetLanguage = language ?? LocalizationService.instance.currentLanguageCode;
     try {
       final result = await _client.rpc('get_cardio_activity_formats', 
-        params: {'activity_key': activityKey, 'language': language});
+        params: {'activity_key': activityKey, 'language': targetLanguage});
       
       final formatsJson = result as List<dynamic>;
       

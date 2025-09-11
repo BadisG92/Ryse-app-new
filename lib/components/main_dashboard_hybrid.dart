@@ -14,7 +14,9 @@ import '../services/localization_service.dart';
 import '../services/translations.dart';
 
 class MainDashboardHybrid extends StatefulWidget {
-  const MainDashboardHybrid({super.key});
+  final Function(String)? onTabChange;
+  
+  const MainDashboardHybrid({super.key, this.onTabChange});
 
   @override
   State<MainDashboardHybrid> createState() => _MainDashboardHybridState();
@@ -260,11 +262,24 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
   }
 
   void _onModuleTap(String moduleTitle) {
-    // TODO: Navigation vers les modules spécifiques
     final locService = LocalizationService.instance;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${'navigate_to'.tr(locService.currentLanguageCode)} $moduleTitle')),
-    );
+    final nutritionTitle = 'nutrition'.tr(locService.currentLanguageCode);
+    final sportTitle = 'sport'.tr(locService.currentLanguageCode);
+    
+    if (widget.onTabChange != null) {
+      if (moduleTitle == nutritionTitle) {
+        // Changer vers l'onglet nutrition
+        widget.onTabChange!('nutrition');
+      } else if (moduleTitle == sportTitle) {
+        // Changer vers l'onglet sport
+        widget.onTabChange!('sport');
+      }
+    } else {
+      // Fallback si pas de callback disponible
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${'navigate_to'.tr(locService.currentLanguageCode)} $moduleTitle')),
+      );
+    }
   }
 
   void _onViewAnalytics() {

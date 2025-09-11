@@ -95,81 +95,14 @@ class SportCardioHybrid extends StatelessWidget {
     }
   }
 
-  /// Mapper le format Supabase vers une clé de traduction
-  String _getFormatTranslationKey(String activityKey, CardioActivityFormat format) {
-    // Map activity keys and format names to translation keys
-    switch (activityKey) {
-      case 'running':
-        switch (format.name) {
-          case 'free_session':
-            return 'cardio_free_session';
-          case 'distance_goal':
-            return 'cardio_distance_goal';
-          case 'duration_goal':
-            return 'cardio_duration_goal';
-          case 'interval_beginner':
-            return 'cardio_interval_beginner';
-          case 'interval_advanced':
-            return 'cardio_interval_advanced';
-          default:
-            return 'cardio_free_session';
-        }
-      case 'bike':
-        switch (format.name) {
-          case 'free_session':
-            return 'cardio_bike_free';
-          case 'distance_goal':
-            return 'cardio_bike_distance';
-          case 'duration_goal':
-            return 'cardio_bike_duration';
-          case 'hills':
-            return 'cardio_hills';
-          default:
-            return 'cardio_bike_free';
-        }
-      case 'walking':
-        switch (format.name) {
-          case 'free_session':
-            return 'cardio_walking_free';
-          case 'distance_goal':
-            return 'cardio_walking_distance';
-          case 'duration_goal':
-            return 'cardio_walking_duration';
-          case 'fast_walking':
-            return 'cardio_fast_walking';
-          default:
-            return 'cardio_walking_free';
-        }
-      case 'hiit':
-        switch (format.name) {
-          case 'hiit_beginner':
-            return 'cardio_hiit_beginner';
-          case 'hiit_intense':
-            return 'cardio_hiit_intense';
-          case 'tabata':
-            return 'cardio_tabata';
-          case 'hiit_custom':
-            return 'cardio_hiit_custom';
-          default:
-            return 'cardio_hiit_beginner';
-        }
-      default:
-        return 'cardio_free_session';
-    }
-  }
 
   void _showActivityFormatsModal(BuildContext context, CardioActivityType activity) {
-    final locService = LocalizationService.instance;
-    
-    // Utiliser les formats Supabase mais avec les traductions pour les textes
+    // Utiliser directement les formats Supabase qui ont déjà les traductions
     final formats = activity.formats.map((supabaseFormat) {
-      // Mapper le format Supabase vers une clé de traduction
-      final translationKey = _getFormatTranslationKey(activity.activityKey, supabaseFormat);
-      
       return ActivityFormat(
         icon: _getIconFromName(supabaseFormat.iconName),
-        title: '${translationKey}_title'.tr(locService.currentLanguageCode),
-        description: '${translationKey}_desc'.tr(locService.currentLanguageCode),
+        title: supabaseFormat.name, // Utiliser directement le nom traduit depuis Supabase
+        description: supabaseFormat.description ?? '', // Utiliser directement la description traduite
         trackable: supabaseFormat.isTrackable,
         configurable: supabaseFormat.isConfigurable,
         configType: supabaseFormat.configType ?? '',
@@ -210,20 +143,21 @@ class SportCardioHybrid extends StatelessWidget {
         ),
       );
     } else {
-      // HIIT prédéfini
+      // HIIT prédéfini - Créer le workout depuis les données Supabase
       HiitWorkout? workout;
       
-      final locService = LocalizationService.instance;
-      final hiitBeginner = 'cardio_hiit_beginner'.tr(locService.currentLanguageCode);
-      final hiitIntense = 'cardio_hiit_intense'.tr(locService.currentLanguageCode);
-      final tabata = 'cardio_tabata'.tr(locService.currentLanguageCode);
-      
-      if (format.title == hiitBeginner) {
-        workout = HiitWorkouts.getWorkoutById('hiit_beginner');
-      } else if (format.title == hiitIntense) {
-        workout = HiitWorkouts.getWorkoutById('hiit_intense');
-      } else if (format.title == tabata) {
-        workout = HiitWorkouts.getWorkoutById('tabata');
+      // Utiliser les données du format Supabase pour créer le HiitWorkout
+      final supabaseFormat = format.supabaseFormat;
+      if (supabaseFormat != null && supabaseFormat.isHiit) {
+        workout = HiitWorkout(
+          id: supabaseFormat.id,
+          title: format.title, // Titre déjà traduit depuis Supabase
+          description: format.description, // Description déjà traduite depuis Supabase
+          workDuration: supabaseFormat.hiitWorkSeconds ?? 30,
+          restDuration: supabaseFormat.hiitRestSeconds ?? 30,
+          totalDuration: supabaseFormat.defaultDurationMinutes ?? 15,
+          totalRounds: supabaseFormat.hiitRounds ?? 15,
+        );
       }
       
       if (workout != null) {

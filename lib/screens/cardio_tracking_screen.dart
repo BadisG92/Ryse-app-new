@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
@@ -66,6 +67,16 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
 
   /// Vérifie les permissions GPS au démarrage
   Future<void> _checkGPSPermissions() async {
+    // Sur web, le GPS est moins fiable pour le tracking sportif
+    if (kIsWeb) {
+      _showWebTrackingLimitation();
+      setState(() {
+        _gpsPermissionGranted = false;
+        _useGPS = false;
+      });
+      return;
+    }
+
     final hasPermission = await LocationService.checkAndRequestPermissions();
     setState(() {
       _gpsPermissionGranted = hasPermission;
@@ -77,6 +88,42 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
     if (!hasPermission) {
       _showGPSPermissionDialog();
     }
+  }
+
+  /// Affiche un dialog pour expliquer les limitations web
+  void _showWebTrackingLimitation() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.info, color: Color(0xFFFFB000)),
+            const SizedBox(width: 8),
+            Text('tracking_web_limitation_title'.tr(LocalizationService.instance.currentLanguageCode)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'tracking_web_limitation_description'.tr(LocalizationService.instance.currentLanguageCode),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'tracking_web_recommendation'.tr(LocalizationService.instance.currentLanguageCode),
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('tracking_understood'.tr(LocalizationService.instance.currentLanguageCode)),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Affiche un dialog pour expliquer les permissions GPS
@@ -133,9 +180,11 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
 
         if (_useGPS && _gpsPermissionGranted) {
           // Utiliser les données GPS réelles
+          debugPrint('🌍 Utilisation GPS réel - route points: ${LocationService.currentRoute.length}');
           _updateFromGPS();
         } else {
           // Mode simulation (fallback)
+          debugPrint('⚠️ Mode simulation - GPS: $_useGPS, Permission: $_gpsPermissionGranted, Platform: ${kIsWeb ? "Web" : "Mobile"}');
           _updateWithSimulation();
         }
 
@@ -157,6 +206,8 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
     final averageSpeed = LocationService.calculateAverageSpeed();
     final currentSpeed = LocationService.calculateCurrentSpeed();
     final route = LocationService.currentRoute;
+    
+    debugPrint('📊 GPS Data - Distance: ${distance.toStringAsFixed(2)}km, Speed: ${currentSpeed.toStringAsFixed(1)}km/h, Points: ${route.length}');
     
     // Calculer les calories avec les vraies données
     final calories = CardioCalculator.calculateCalories(
