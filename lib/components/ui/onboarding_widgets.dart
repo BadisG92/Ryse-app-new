@@ -4,6 +4,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 import 'onboarding_models.dart';
+import 'numeric_text_field.dart';
 import '../../services/localization_service.dart';
 import '../../services/translations.dart';
 
@@ -478,13 +479,10 @@ class _MobileNumberInputState extends State<MobileNumberInput>
                       ),
                   ],
                 ),
-                child: TextField(
+                child: NumericTextField(
                   controller: _controller,
                   focusNode: _focusNode,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly,
-                  ],
+                  allowDecimals: false,
                   onChanged: (value) {
                     _validateInput(value);
                     widget.onChanged(value);

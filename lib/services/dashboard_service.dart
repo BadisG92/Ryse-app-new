@@ -11,7 +11,7 @@ import 'localization_service.dart';
 import 'translations.dart';
 
 class DashboardService {
-  static final SupabaseClient _supabase = SupabaseConfig.client;
+  static SupabaseClient get _supabase => SupabaseConfig.client;
 
   // ==== CACHE DES OBJECTIFS JOURNALIERS ====
   static List<DailyGoal>? _cachedGoals;

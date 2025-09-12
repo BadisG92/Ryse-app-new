@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../models/sport_models.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../components/ui/custom_scrollbar.dart';
+import '../components/ui/numeric_text_field.dart';
 import '../services/database_service.dart' as db;
 import '../services/calorie_burn_service.dart';
 import '../services/auth_service.dart';
@@ -1777,10 +1778,9 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              TextField(
+              NumericTextField(
                 controller: minutesController,
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                allowDecimals: false,
                 decoration: InputDecoration(
                   filled: true,
                   fillColor: const Color(0xFFF8FAFC),

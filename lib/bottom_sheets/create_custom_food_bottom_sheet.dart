@@ -8,6 +8,7 @@ import '../services/translations.dart';
 import '../models/nutrition_models.dart';
 import '../bottom_sheets/editable_food_details_bottom_sheet.dart';
 import '../components/ui/snackbar_utils.dart';
+import '../components/ui/numeric_text_field.dart';
 
 class CreateCustomFoodBottomSheet extends StatefulWidget {
   final Function(FoodItem) onFoodSelected;
@@ -430,9 +431,8 @@ class _CreateCustomFoodBottomSheetState extends State<CreateCustomFoodBottomShee
                             SizedBox(
                               width: 60,
                               height: 32,
-                              child: TextField(
+                              child: NumericTextField(
                                 controller: _proteinsController,
-                                keyboardType: TextInputType.number,
                                 textAlign: TextAlign.right,
                                 style: const TextStyle(
                                   fontSize: 14,
@@ -467,9 +467,8 @@ class _CreateCustomFoodBottomSheetState extends State<CreateCustomFoodBottomShee
                             SizedBox(
                               width: 60,
                               height: 32,
-                              child: TextField(
+                              child: NumericTextField(
                                 controller: _carbsController,
-                                keyboardType: TextInputType.number,
                                 textAlign: TextAlign.right,
                                 style: const TextStyle(
                                   fontSize: 14,
@@ -504,9 +503,8 @@ class _CreateCustomFoodBottomSheetState extends State<CreateCustomFoodBottomShee
                             SizedBox(
                               width: 60,
                               height: 32,
-                              child: TextField(
+                              child: NumericTextField(
                                 controller: _fatsController,
-                                keyboardType: TextInputType.number,
                                 textAlign: TextAlign.right,
                                 style: const TextStyle(
                                   fontSize: 14,

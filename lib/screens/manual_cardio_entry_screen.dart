@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../models/cardio_session_models.dart';
+import '../components/ui/numeric_text_field.dart';
 import '../services/cardio_service.dart';
 import '../services/translations.dart';
 import '../services/localization_service.dart';
@@ -524,6 +525,51 @@ class _ManualCardioEntryScreenState extends State<ManualCardioEntryScreen> {
     String? suffix,
     int maxLines = 1,
   }) {
+    // Utiliser NumericTextField si c'est un type numérique
+    if (keyboardType != null && 
+        (keyboardType == TextInputType.number || 
+         keyboardType.toString().contains('number'))) {
+      
+      final isDecimal = keyboardType.toString().contains('decimal: true');
+      
+      return NumericTextField(
+        controller: controller,
+        allowDecimals: isDecimal,
+        style: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+          color: Color(0xFF1A1A1A),
+        ),
+        decoration: InputDecoration(
+          hintText: label,
+          hintStyle: const TextStyle(
+            color: Color(0xFF94A3B8),
+          ),
+          filled: true,
+          fillColor: Colors.white,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: _getActivityColor()),
+          ),
+          contentPadding: const EdgeInsets.all(16),
+          suffixText: suffix,
+          suffixStyle: const TextStyle(
+            color: Color(0xFF64748B),
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      );
+    }
+    
+    // TextField normal pour les autres cas
     return TextField(
       controller: controller,
       keyboardType: keyboardType,

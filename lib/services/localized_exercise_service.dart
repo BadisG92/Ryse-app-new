@@ -7,7 +7,7 @@ import 'localization_service.dart';
 /// Exemple concret d'utilisation du système de localisation 
 /// avec les vraies colonnes de la base de données
 class LocalizedExerciseService {
-  static final SupabaseClient _supabase = SupabaseConfig.client;
+  static SupabaseClient get _supabase => SupabaseConfig.client;
 
   /// Récupère les exercices avec nom et instructions localisés
   static Future<List<Map<String, dynamic>>> getExercises({

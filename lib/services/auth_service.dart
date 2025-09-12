@@ -7,13 +7,14 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:crypto/crypto.dart';
 import '../models/user_model.dart';
+import '../config/supabase_config.dart';
 
 class AuthService extends ChangeNotifier {
   static final AuthService _instance = AuthService._internal();
   factory AuthService() => _instance;
   AuthService._internal();
 
-  final SupabaseClient _supabase = Supabase.instance.client;
+  SupabaseClient get _supabase => SupabaseConfig.client;
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: ['email', 'profile'],
@@ -28,6 +29,21 @@ class AuthService extends ChangeNotifier {
   UserModel? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  bool get isOnline => _supabase != null;
+  
+  /// Safe wrapper pour les opérations Supabase
+  T? _safeSupabaseCall<T>(T Function(SupabaseClient) operation) {
+    try {
+      if (_supabase != null) {
+        return operation(_supabase!);
+      }
+      debugPrint('⚠️ Supabase not available (offline mode)');
+      return null;
+    } catch (e) {
+      debugPrint('⚠️ Supabase operation failed: $e');
+      return null;
+    }
+  }
   bool get isAuthenticated => _currentUser != null;
 
   /// Initialize the authentication service

@@ -5,7 +5,7 @@ import 'recipe_service.dart';
 import 'localization_service.dart';
 
 class ContentTagsService {
-  static final SupabaseClient _supabase = SupabaseConfig.client;
+  static SupabaseClient get _supabase => SupabaseConfig.client;
 
   /// Vérifie que content_tags contient des tags de recettes
   static Future<bool> checkRecipeTagsExist() async {

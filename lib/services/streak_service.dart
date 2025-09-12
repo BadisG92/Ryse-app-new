@@ -4,7 +4,7 @@ import '../config/supabase_config.dart';
 /// Service optimisé pour la gestion de la streak utilisateur
 /// Utilise un cache en base de données pour éviter les recalculs
 class StreakService {
-  static final SupabaseClient _client = SupabaseConfig.client;
+  static SupabaseClient get _supabase => SupabaseConfig.client;
   
   /// Nombre de jours de tolérance avant reset de la streak
   static const int _toleranceDays = 7;
@@ -16,7 +16,7 @@ class StreakService {
   /// - Utilisation hors tolérance : reset à 1
   static Future<int> getCurrentStreak() async {
     try {
-      final user = _client.auth.currentUser;
+      final user = _supabase.auth.currentUser;
       if (user == null) {
         print('❌ StreakService: Utilisateur non connecté');
         return 0;
@@ -28,7 +28,7 @@ class StreakService {
       print('🔥 StreakService: Calcul streak pour ${user.id} le $todayString');
       
       // Récupérer les données de streak actuelles
-      final response = await _client
+      final response = await _supabase
           .from('users')
           .select('streak_count, streak_last_date')
           .eq('id', user.id)
@@ -81,7 +81,7 @@ class StreakService {
   /// Initialise la streak à 1 pour une première utilisation
   static Future<int> _initializeStreak(String userId, String date) async {
     try {
-      await _client
+      await _supabase
           .from('users')
           .update({
             'streak_count': 1,
@@ -102,7 +102,7 @@ class StreakService {
     try {
       final newStreak = currentStreak + 1;
       
-      await _client
+      await _supabase
           .from('users')
           .update({
             'streak_count': newStreak,
@@ -121,7 +121,7 @@ class StreakService {
   /// Reset la streak à 1
   static Future<int> _resetStreak(String userId, String date) async {
     try {
-      await _client
+      await _supabase
           .from('users')
           .update({
             'streak_count': 1,
@@ -141,7 +141,7 @@ class StreakService {
   /// Utile quand l'utilisateur fait une activité dans la journée
   static Future<void> notifyActivity() async {
     try {
-      final user = _client.auth.currentUser;
+      final user = _supabase.auth.currentUser;
       if (user == null) return;
       
       final today = DateTime.now();
@@ -150,7 +150,7 @@ class StreakService {
       print('🎯 StreakService: Notification d\'activité pour $todayString');
       
       // Mettre à jour la dernière date d'activité si pas déjà fait aujourd'hui
-      final response = await _client
+      final response = await _supabase
           .from('users')
           .select('streak_last_date')
           .eq('id', user.id)
@@ -172,10 +172,10 @@ class StreakService {
   /// Utile pour l'affichage rapide
   static Future<int> getStreakValue() async {
     try {
-      final user = _client.auth.currentUser;
+      final user = _supabase.auth.currentUser;
       if (user == null) return 0;
       
-      final response = await _client
+      final response = await _supabase
           .from('users')
           .select('streak_count')
           .eq('id', user.id)
@@ -203,13 +203,13 @@ class StreakService {
   /// Debug: Affiche l'état actuel de la streak
   static Future<void> debugStreakState() async {
     try {
-      final user = _client.auth.currentUser;
+      final user = _supabase.auth.currentUser;
       if (user == null) {
         print('🐛 Debug Streak: Utilisateur non connecté');
         return;
       }
       
-      final response = await _client
+      final response = await _supabase
           .from('users')
           .select('streak_count, streak_last_date')
           .eq('id', user.id)

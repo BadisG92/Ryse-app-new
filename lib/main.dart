@@ -13,19 +13,32 @@ import 'screens/settings_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Initialize Supabase
-  await SupabaseConfig.initialize();
-  
-  // Initialize Recipe Data from Supabase (en arrière-plan)
-  RecipeData.initialize();
-  
-  // Initialize Offline Service pour la musculation
-  final offlineService = OfflineWorkoutService();
-  await SharedPreferencesSync().init(); // Pour les vérifications rapides
-  await offlineService.initialize();
-  
-  // Initialize Localization Service
-  await LocalizationService.instance.initialize();
+  try {
+    // Initialize Localization Service first (no network needed)
+    await LocalizationService.instance.initialize();
+    
+    // Initialize Supabase (non-blocking)
+    await SupabaseConfig.initialize();
+    
+    // Initialize Recipe Data from Supabase (en arrière-plan, non-blocking)
+    try {
+      RecipeData.initialize();
+      print('✅ Recipe data initialization started');
+    } catch (e) {
+      print('⚠️ Recipe data initialization failed (offline): $e');
+    }
+    
+    // Initialize Offline Service pour la musculation
+    final offlineService = OfflineWorkoutService();
+    await SharedPreferencesSync().init(); // Pour les vérifications rapides
+    await offlineService.initialize().catchError((e) {
+      print('⚠️ Offline service initialization failed: $e');
+    });
+    
+  } catch (e) {
+    print('⚠️ Main initialization error: $e');
+    // Continue même si certaines initialisations échouent
+  }
   
   runApp(const MyApp());
 }

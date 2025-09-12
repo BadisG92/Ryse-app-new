@@ -12,6 +12,7 @@ import '../services/translations.dart';
 import 'package:provider/provider.dart';
 import '../providers/goals_notifier.dart';
 import '../components/ui/onboarding_models.dart';
+import '../components/ui/numeric_text_field.dart';
 import '../components/ui/refresh_wrapper.dart';
 import '../pages/ryze_app.dart';
 
@@ -577,9 +578,10 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                 ],
                               ),
                               const SizedBox(height: 12),
-                              TextFormField(
+                              NumericTextField(
                                 controller: caloriesController,
-                                keyboardType: TextInputType.number,
+                                allowDecimals: false,
+                                minValue: 1,
                                 style: const TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
@@ -1809,9 +1811,9 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
       child: Row(
         children: [
           Expanded(
-            child: TextField(
+            child: NumericTextField(
               controller: TextEditingController(text: value),
-              keyboardType: TextInputType.numberWithOptions(decimal: decimal),
+              allowDecimals: decimal,
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 14,

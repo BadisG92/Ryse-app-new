@@ -3,6 +3,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../models/nutrition_models.dart';
 import '../components/ui/snackbar_utils.dart';
+import '../components/ui/numeric_text_field.dart';
 import '../services/localization_service.dart';
 import '../services/translations.dart';
 
@@ -422,9 +423,8 @@ class _EditableFoodDetailsContentState extends State<_EditableFoodDetailsContent
                           ? Container(
                               width: 60,
                               height: 32,
-                              child: TextField(
+                              child: NumericTextField(
                                 controller: _proteinsController,
-                                keyboardType: TextInputType.number,
                                 textAlign: TextAlign.right,
                                 style: const TextStyle(
                                   fontSize: 14,
@@ -468,9 +468,8 @@ class _EditableFoodDetailsContentState extends State<_EditableFoodDetailsContent
                           ? Container(
                               width: 60,
                               height: 32,
-                              child: TextField(
+                              child: NumericTextField(
                                 controller: _glucidesController,
-                                keyboardType: TextInputType.number,
                                 textAlign: TextAlign.right,
                                 style: const TextStyle(
                                   fontSize: 14,
@@ -514,9 +513,8 @@ class _EditableFoodDetailsContentState extends State<_EditableFoodDetailsContent
                           ? Container(
                               width: 60,
                               height: 32,
-                              child: TextField(
+                              child: NumericTextField(
                                 controller: _lipidesController,
-                                keyboardType: TextInputType.number,
                                 textAlign: TextAlign.right,
                                 style: const TextStyle(
                                   fontSize: 14,
@@ -575,7 +573,7 @@ class _EditableFoodDetailsContentState extends State<_EditableFoodDetailsContent
                   Row(
                     children: [
                       Expanded(
-                        child:                         TextField(
+                        child: NumericTextField(
                           controller: _quantityController,
                           decoration: const InputDecoration(
                             hintText: '0',
@@ -585,7 +583,6 @@ class _EditableFoodDetailsContentState extends State<_EditableFoodDetailsContent
                               vertical: 8,
                             ),
                           ),
-                          keyboardType: TextInputType.number,
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -931,9 +928,8 @@ class _CreateFoodContentState extends State<_CreateFoodContent> {
                       Container(
                         width: 80,
                         height: 32,
-                        child: TextField(
+                        child: NumericTextField(
                           controller: _proteinsController,
-                          keyboardType: TextInputType.number,
                           textAlign: TextAlign.right,
                           style: const TextStyle(
                             fontSize: 14,
@@ -970,9 +966,8 @@ class _CreateFoodContentState extends State<_CreateFoodContent> {
                       Container(
                         width: 80,
                         height: 32,
-                        child: TextField(
+                        child: NumericTextField(
                           controller: _glucidesController,
-                          keyboardType: TextInputType.number,
                           textAlign: TextAlign.right,
                           style: const TextStyle(
                             fontSize: 14,
@@ -1009,9 +1004,8 @@ class _CreateFoodContentState extends State<_CreateFoodContent> {
                       Container(
                         width: 80,
                         height: 32,
-                        child: TextField(
+                        child: NumericTextField(
                           controller: _lipidesController,
-                          keyboardType: TextInputType.number,
                           textAlign: TextAlign.right,
                           style: const TextStyle(
                             fontSize: 14,

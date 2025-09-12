@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../models/hiit_models.dart';
+import '../components/ui/numeric_text_field.dart';
 import 'hiit_session_screen.dart';
 import '../services/translations.dart';
 import '../services/localization_service.dart';
@@ -294,9 +295,10 @@ class _HiitConfigScreenState extends State<HiitConfigScreen> {
           Row(
             children: [
               Expanded(
-                child: TextField(
+                child: NumericTextField(
                   controller: controller,
-                  keyboardType: TextInputType.number,
+                  allowDecimals: false,
+                  minValue: 1,
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,

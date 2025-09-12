@@ -12,7 +12,7 @@ import 'localization_service.dart';
 
 /// Service optimisé pour les données de progression avec cache hebdomadaire intelligent
 class ProgressServiceV2 {
-  static final SupabaseClient _client = Supabase.instance.client;
+  static SupabaseClient get _client => Supabase.instance.client;
   
   // Cache hebdomadaire intelligent
   static final Map<String, dynamic> _weeklyCache = {};

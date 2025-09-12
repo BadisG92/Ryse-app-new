@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/sport_models.dart';
+import '../config/supabase_config.dart';
 import 'database_service.dart' as db;
 import 'package:uuid/uuid.dart';
 import 'localization_service.dart';
@@ -15,7 +16,7 @@ class OfflineWorkoutService {
   factory OfflineWorkoutService() => _instance;
   OfflineWorkoutService._internal();
 
-  static final SupabaseClient _client = Supabase.instance.client;
+  static SupabaseClient get _client => SupabaseConfig.client;
 
   static const String _exercisesCacheKey = 'offline_exercises_cache';
   static const String _customExercisesCacheKey = 'offline_custom_exercises';

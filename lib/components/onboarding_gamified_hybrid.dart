@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import 'ui/custom_button.dart';
 import 'ui/onboarding_widgets.dart';
 import 'ui/onboarding_models.dart';
+import 'ui/numeric_text_field.dart';
 import 'caloric_breakdown_bottom_sheet.dart';
 import '../services/translations.dart';
 import '../services/localization_service.dart';
@@ -650,9 +651,9 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                     Row(
                       children: [
                         Expanded(
-                          child: TextFormField(
-                            initialValue: userData['targetWeight']?.toString() ?? '',
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          child: NumericTextField(
+                            controller: TextEditingController(text: userData['targetWeight']?.toString() ?? ''),
+                            allowDecimals: true,
                             onChanged: (value) => userData['targetWeight'] = value,
                             decoration: InputDecoration(
                               hintText: 'Ex: 70',
@@ -1800,9 +1801,10 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                                 ],
                               ),
                               const SizedBox(height: 12),
-                              TextFormField(
+                              NumericTextField(
                                 controller: caloriesController,
-                                keyboardType: TextInputType.number,
+                                allowDecimals: false,
+                                minValue: 1,
                                 style: const TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,

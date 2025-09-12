@@ -4,6 +4,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'custom_card.dart';
 import 'cardio_models.dart';
+import 'numeric_text_field.dart';
 import '../../services/cardio_service.dart';
 import '../../services/translations.dart';
 import '../../services/localization_service.dart';
@@ -854,12 +855,9 @@ class ActivityConfigModal extends StatelessWidget {
               Row(
                 children: [
                   Expanded(
-                    child: TextField(
+                    child: NumericTextField(
                       controller: controller,
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly,
-                      ],
+                      allowDecimals: false,
                       decoration: InputDecoration(
                         hintText: _getConfigHint(config.type, locService.currentLanguageCode),
                         hintStyle: const TextStyle(color: Color(0xFF888888)),

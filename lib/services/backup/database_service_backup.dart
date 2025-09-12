@@ -7,7 +7,7 @@ import '../models/cardio_session_models.dart';
 import 'package:flutter/foundation.dart';
 
 class DatabaseService {
-  static final SupabaseClient _client = Supabase.instance.client;
+  static SupabaseClient get _client => Supabase.instance.client;
 
   // Get current user language preference (default to 'en')
   static String _getUserLanguage() {

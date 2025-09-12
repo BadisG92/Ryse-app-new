@@ -4,7 +4,7 @@ import '../components/ui/recipe_models.dart';
 import 'localization_service.dart';
 
 class RecipeService {
-  static final SupabaseClient _supabase = SupabaseConfig.client;
+  static SupabaseClient get _supabase => SupabaseConfig.client;
 
   /// Récupère toutes les recettes depuis Supabase
   static Future<List<Recipe>> getAllRecipes() async {
@@ -179,8 +179,16 @@ class RecipeService {
   static List<String> _getStepsFromData(Map<String, dynamic> recipeData) {
     final locService = LocalizationService.instance;
     final stepsString = locService.getTextFromColumns(recipeData['steps_fr'], recipeData['steps_en']);
+    
     if (stepsString.isNotEmpty) {
-      return [stepsString]; // Les étapes sont stockées comme chaîne, pas comme liste
+      // Les étapes sont séparées par des "|" - utiliser la même logique que recipe_models.dart
+      final stepsList = stepsString.split('|').map((step) {
+        String cleanedStep = step.trim();
+        // Enlever la numérotation au début (ex: "1. ", "2. ") car il y a déjà les icônes numérotées
+        cleanedStep = cleanedStep.replaceFirst(RegExp(r'^\d+\.\s*'), '');
+        return cleanedStep;
+      }).toList();
+      return stepsList.where((step) => step.isNotEmpty).toList();
     }
     return [];
   }

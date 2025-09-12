@@ -7,7 +7,7 @@ import 'localization_service.dart';
 /// Ce service fournit des méthodes pour récupérer des données depuis la base 
 /// en utilisant les colonnes appropriées selon la langue sélectionnée (_fr ou _en)
 class LocalizedDatabaseService {
-  static final SupabaseClient _supabase = SupabaseConfig.client;
+  static SupabaseClient get _supabase => SupabaseConfig.client;
 
   /// Récupère des données avec colonnes localisées
   /// 

@@ -4,7 +4,7 @@ import 'dashboard_service.dart';
 
 /// Service pour gérer le suivi d'hydratation
 class WaterService {
-  static final SupabaseClient _supabase = SupabaseConfig.client;
+  static SupabaseClient get _supabase => SupabaseConfig.client;
 
   /// Types de contenants disponibles avec leurs volumes par défaut
   static const Map<String, int> sourceTypeVolumes = {

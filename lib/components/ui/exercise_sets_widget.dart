@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../models/sport_models.dart';
+import 'numeric_text_field.dart';
 
 class ExerciseSetsWidget extends StatefulWidget {
   final WorkoutExercise workoutExercise;
@@ -240,9 +241,8 @@ class _ExerciseSetsWidgetState extends State<ExerciseSetsWidget> {
           
           // Champ poids
           Expanded(
-            child: TextField(
+            child: NumericTextField(
               controller: weightController,
-              keyboardType: TextInputType.number,
               textAlign: TextAlign.center,
               decoration: InputDecoration(
                 hintText: '0',
@@ -269,9 +269,9 @@ class _ExerciseSetsWidgetState extends State<ExerciseSetsWidget> {
           
           // Champ répétitions
           Expanded(
-            child: TextField(
+            child: NumericTextField(
               controller: repsController,
-              keyboardType: TextInputType.number,
+              allowDecimals: false,
               textAlign: TextAlign.center,
               decoration: InputDecoration(
                 hintText: '0',

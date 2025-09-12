@@ -6,7 +6,7 @@ import 'localization_service.dart';
 /// 
 /// Utilise les colonnes name_fr/name_en de la table food_database
 class LocalizedFoodService {
-  static final SupabaseClient _supabase = SupabaseConfig.client;
+  static SupabaseClient get _supabase => SupabaseConfig.client;
 
   /// Recherche d'aliments avec nom localisé
   static Future<List<Map<String, dynamic>>> searchFoods({

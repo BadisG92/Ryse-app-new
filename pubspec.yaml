@@ -59,8 +59,11 @@ dependencies:
   # Country detection
   geocoding: ^3.0.0
   
+  # Internationalization
+  intl: ^0.19.0
+  
   # Health & Fitness Integration
-  health: ^10.2.0  # HealthKit integration pour iOS
+  # health: ^10.2.0  # HealthKit integration pour iOS - temporarily commented due to build issues
   
   # Authentication & Supabase
   supabase_flutter: ^2.3.4

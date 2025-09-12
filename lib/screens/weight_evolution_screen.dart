@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'dart:math' as math;
 import 'package:provider/provider.dart';
 import '../components/ui/global_progress_models.dart';
+import '../components/ui/numeric_text_field.dart';
 import '../services/weight_service.dart';
 import '../services/translations.dart';
 import '../services/localization_service.dart';
@@ -780,9 +781,8 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            TextField(
+            NumericTextField(
               controller: _weightController,
-              keyboardType: TextInputType.number,
               decoration: InputDecoration(
                 labelText: 'weight_kg'.tr(LocalizationService.instance.currentLanguageCode),
                 hintText: 'weight_example'.tr(LocalizationService.instance.currentLanguageCode),
