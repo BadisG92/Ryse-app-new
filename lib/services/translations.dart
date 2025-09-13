@@ -3763,6 +3763,158 @@ class AppTranslations {
       'fr': 'Note App',
       'en': 'App Rating',
     },
+
+    // AI Scanner translations
+    'ai_analysis_in_progress': {
+      'fr': 'Analyse IA en cours...',
+      'en': 'AI analysis in progress...',
+    },
+    'ai_detected_dish': {
+      'fr': 'Plat détecté par IA',
+      'en': 'AI-detected dish',
+    },
+    'ai_dish': {
+      'fr': 'Plat IA',
+      'en': 'AI dish',
+    },
+    'ai_service_overloaded': {
+      'fr': 'Le service IA est temporairement surchargé.\nMerci de réessayer dans quelques minutes.',
+      'en': 'The AI service is temporarily overloaded.\nPlease try again in a few minutes.',
+    },
+    'add_note_for_ai': {
+      'fr': 'Ajouter une note pour l\'IA',
+      'en': 'Add a note for AI',
+    },
+    'describe_dish_for_accuracy': {
+      'fr': 'Décrivez votre plat pour améliorer la précision de l\'analyse',
+      'en': 'Describe your dish to improve analysis accuracy',
+    },
+    'analyzed_photo': {
+      'fr': 'Photo analysée',
+      'en': 'Analyzed photo',
+    },
+    'ai_detected_dish_name': {
+      'fr': 'Nom du plat détecté par l\'IA',
+      'en': 'AI-detected dish name',
+    },
+    'skip': {
+      'fr': 'Ignorer',
+      'en': 'Skip',
+    },
+    'analyze': {
+      'fr': 'Analyser',
+      'en': 'Analyze',
+    },
+    'camera_initialization': {
+      'fr': 'Initialisation de la caméra...',
+      'en': 'Initializing camera...',
+    },
+    'make_sure_dish_visible': {
+      'fr': 'Assurez-vous que le plat soit bien visible et éclairé',
+      'en': 'Make sure the dish is well visible and lit',
+    },
+    'ai_analysis_phases_0': {
+      'fr': 'Traitement de l\'image...',
+      'en': 'Processing image...',
+    },
+    'ai_analysis_phases_1': {
+      'fr': 'Détection des aliments...',
+      'en': 'Detecting foods...',
+    },
+    'ai_analysis_phases_2': {
+      'fr': 'Analyse nutritionnelle...',
+      'en': 'Nutritional analysis...',
+    },
+    'ai_analysis_phases_3': {
+      'fr': 'Calcul des calories...',
+      'en': 'Calculating calories...',
+    },
+    'ai_analysis_phases_4': {
+      'fr': 'Finalisation...',
+      'en': 'Finalizing...',
+    },
+    'dish_name': {
+      'fr': 'Nom du plat',
+      'en': 'Dish name',
+    },
+    'detected_foods': {
+      'fr': 'Aliments détectés',
+      'en': 'Detected foods',
+    },
+    'no_food_detected': {
+      'fr': 'Aucun aliment détecté',
+      'en': 'No food detected',
+    },
+    'add_all_foods': {
+      'fr': 'Ajouter tous les aliments',
+      'en': 'Add all foods',
+    },
+    'take_another_photo': {
+      'fr': 'Reprendre une photo',
+      'en': 'Take another photo',
+    },
+
+    // Barcode Scanner translations
+    'scanned_product': {
+      'fr': 'Produit scanné',
+      'en': 'Scanned product',
+    },
+    'product_search_error': {
+      'fr': 'Erreur lors de la recherche du produit',
+      'en': 'Error searching for product',
+    },
+    'barcode_scanned': {
+      'fr': 'Code-barres scanné !',
+      'en': 'Barcode scanned!',
+    },
+    'detected_barcode': {
+      'fr': 'Code-barres détecté :',
+      'en': 'Detected barcode:',
+    },
+    'integrate_functionality': {
+      'fr': 'Vous pouvez maintenant intégrer cette fonctionnalité avec votre système de gestion des aliments.',
+      'en': 'You can now integrate this functionality with your food management system.',
+    },
+    'scan_another': {
+      'fr': 'Scanner un autre',
+      'en': 'Scan another',
+    },
+    'barcode_scanner': {
+      'fr': 'Scanner de codes-barres',
+      'en': 'Barcode Scanner',
+    },
+    'camera_permission_required': {
+      'fr': 'Permission caméra requise',
+      'en': 'Camera permission required',
+    },
+    'allow_camera_access_barcode': {
+      'fr': 'Autorisez l\'accès à la caméra pour scanner les codes-barres',
+      'en': 'Allow camera access to scan barcodes',
+    },
+    'open_settings': {
+      'fr': 'Ouvrir les paramètres',
+      'en': 'Open settings',
+    },
+    'searching_product': {
+      'fr': 'Recherche du produit...',
+      'en': 'Searching product...',
+    },
+    'place_barcode_in_frame': {
+      'fr': 'Placez le code-barres dans le cadre',
+      'en': 'Place the barcode within the frame',
+    },
+    'camera_permission_food_scan': {
+      'fr': 'Permission caméra requise pour scanner les aliments',
+      'en': 'Camera permission required to scan foods',
+    },
+    'no_camera_available': {
+      'fr': 'Aucune caméra disponible sur cet appareil',
+      'en': 'No camera available on this device',
+    },
+    'camera_initialization_error': {
+      'fr': 'Erreur d\'initialisation de la caméra',
+      'en': 'Camera initialization error',
+    },
   };
 
   static String get(String key, String languageCode) {

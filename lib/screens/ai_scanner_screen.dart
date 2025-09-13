@@ -6,12 +6,10 @@ import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'dart:io';
-import 'dart:typed_data';
 import '../bottom_sheets/editable_food_details_bottom_sheet.dart';
 import '../bottom_sheets/meal_selection_bottom_sheet.dart';
 import '../bottom_sheets/new_meal_type_bottom_sheet.dart';
 import '../models/nutrition_models.dart';
-import '../components/ui/nutrition_widgets.dart';
 import '../services/gemini_analysis_service.dart';
 import '../services/gemini_analysis_service_v2.dart';
 import '../services/localization_service.dart';
@@ -57,18 +55,12 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
   int _loadingPhase = 0;
   
   List<String> _getLoadingPhases(String languageCode) {
-    return languageCode == 'fr' ? [
-      'Traitement de l\'image...',
-      'Détection des aliments...',
-      'Analyse nutritionnelle...',
-      'Calcul des calories...',
-      'Finalisation...',
-    ] : [
-      'Processing image...',
-      'Detecting foods...',
-      'Nutritional analysis...',
-      'Calculating calories...',
-      'Finalizing...',
+    return [
+      'ai_analysis_phases_0'.tr(languageCode),
+      'ai_analysis_phases_1'.tr(languageCode),
+      'ai_analysis_phases_2'.tr(languageCode),
+      'ai_analysis_phases_3'.tr(languageCode),
+      'ai_analysis_phases_4'.tr(languageCode),
     ];
   }
   
@@ -114,9 +106,7 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
       if (cameraPermission != PermissionStatus.granted) {
         final locService = Provider.of<LocalizationService>(context, listen: false);
         setState(() {
-          errorMessage = locService.currentLanguageCode == 'fr' 
-            ? 'Permission caméra requise pour scanner les aliments'
-            : 'Camera permission required to scan foods';
+          errorMessage = 'camera_permission_food_scan'.tr(locService.currentLanguageCode);
         });
         return;
       }
@@ -126,9 +116,7 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
       if (_cameras == null || _cameras!.isEmpty) {
         final locService = Provider.of<LocalizationService>(context, listen: false);
         setState(() {
-          errorMessage = locService.currentLanguageCode == 'fr' 
-            ? 'Aucune caméra disponible sur cet appareil'
-            : 'No camera available on this device';
+          errorMessage = 'no_camera_available'.tr(locService.currentLanguageCode);
         });
         return;
       }
@@ -154,9 +142,7 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
     } catch (e) {
       final locService = Provider.of<LocalizationService>(context, listen: false);
       setState(() {
-        errorMessage = locService.currentLanguageCode == 'fr' 
-          ? 'Erreur d\'initialisation de la caméra: $e'
-          : 'Camera initialization error: $e';
+        errorMessage = 'camera_initialization_error'.tr(locService.currentLanguageCode) + ': $e';
         isCameraInitialized = false;
       });
     }
@@ -283,7 +269,7 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
                 const SizedBox(height: 4),
                 Consumer<LocalizationService>(
                   builder: (context, locService, child) => Text(
-                    locService.currentLanguageCode == 'fr' ? 'Assurez-vous que le plat soit bien visible et éclairé' : 'Make sure the dish is well visible and lit',
+                    'make_sure_dish_visible'.tr(locService.currentLanguageCode),
                     style: const TextStyle(
                       color: Colors.white70,
                       fontSize: 14,
@@ -607,11 +593,12 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
             hasResult = true;
             errorMessage = null;
             // Mettre à jour le nom du repas avec le nom généré par l'IA
-            _mealNameController.text = result.mealName ?? 'Plat détecté par IA';
+            final locService = Provider.of<LocalizationService>(context, listen: false);
+            _mealNameController.text = result.mealName ?? 'ai_detected_dish'.tr(locService.currentLanguageCode);
           } else {
             hasResult = false;
             errorMessage = result.error?.contains('API') == true 
-                ? 'Le service IA est temporairement surchargé.\nMerci de réessayer dans quelques minutes.' 
+                ? 'ai_service_overloaded'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode)
                 : 'Aucun aliment détecté dans cette image';
           }
         });
@@ -660,13 +647,15 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
                   ),
                 ),
                 const SizedBox(width: 16),
-                const Expanded(
-                  child: Text(
-                    'Analyse IA en cours...',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
+                Expanded(
+                  child: Consumer<LocalizationService>(
+                    builder: (context, locService, child) => Text(
+                      'ai_analysis_in_progress'.tr(locService.currentLanguageCode),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ),
@@ -910,9 +899,7 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
                   TextFormField(
                     controller: _mealNameController,
                     decoration: InputDecoration(
-                      hintText: Provider.of<LocalizationService>(context, listen: false).currentLanguageCode == 'fr' 
-                        ? 'Nom du plat détecté par l\'IA' 
-                        : 'AI-detected dish name',
+                      hintText: 'ai_detected_dish_name'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
                       filled: true,
                       fillColor: const Color(0xFFF9FAFB),
                       border: OutlineInputBorder(
@@ -973,21 +960,23 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
                               )
                             : const SizedBox(),
                   )
-                : const Center(
+                : Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
+                        const Icon(
                           LucideIcons.image,
                           size: 48,
                           color: Color(0xFF64748B),
                         ),
-                        SizedBox(height: 8),
-                        Text(
-                          'Photo analysée',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Color(0xFF64748B),
+                        const SizedBox(height: 8),
+                        Consumer<LocalizationService>(
+                          builder: (context, locService, child) => Text(
+                            'analyzed_photo'.tr(locService.currentLanguageCode),
+                            style: const TextStyle(
+                              fontSize: 16,
+                              color: Color(0xFF64748B),
+                            ),
                           ),
                         ),
                       ],
@@ -1305,9 +1294,10 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
         Navigator.pop(context);
         
         if (success) {
+          final locService = Provider.of<LocalizationService>(context, listen: false);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('${_analysisResult!.mealName ?? "Plat IA"} ajouté au $mealName'),
+              content: Text('${_analysisResult!.mealName ?? "ai_dish".tr(locService.currentLanguageCode)} ajouté au $mealName'),
               backgroundColor: const Color(0xFF0B132B),
             ),
           );
@@ -1411,9 +1401,10 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
         Navigator.pop(context);
         
         if (success) {
+          final locService = Provider.of<LocalizationService>(context, listen: false);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('${_analysisResult!.mealName ?? "Plat IA"} ajouté au ${selectedMeal.name}'),
+              content: Text('${_analysisResult!.mealName ?? "ai_dish".tr(locService.currentLanguageCode)} ajouté au ${selectedMeal.name}'),
               backgroundColor: const Color(0xFF0B132B),
             ),
           );
@@ -1455,9 +1446,10 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
         Navigator.pop(context);
         
         if (success) {
+          final locService = Provider.of<LocalizationService>(context, listen: false);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('${_analysisResult!.mealName ?? "Plat IA"} ajouté au $mealType'),
+              content: Text('${_analysisResult!.mealName ?? "ai_dish".tr(locService.currentLanguageCode)} ajouté au $mealType'),
               backgroundColor: const Color(0xFF0B132B),
             ),
           );
@@ -1537,11 +1529,12 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
             hasResult = true;
             errorMessage = null;
             // Mettre à jour le nom du repas avec le nom généré par l'IA
-            _mealNameController.text = result.mealName ?? 'Plat détecté par IA';
+            final locService = Provider.of<LocalizationService>(context, listen: false);
+            _mealNameController.text = result.mealName ?? 'ai_detected_dish'.tr(locService.currentLanguageCode);
           } else {
             hasResult = false;
             errorMessage = result.error?.contains('API') == true 
-                ? 'Le service IA est temporairement surchargé.\nMerci de réessayer dans quelques minutes.' 
+                ? 'ai_service_overloaded'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode)
                 : 'Aucun aliment détecté dans cette image';
           }
         });
@@ -1583,23 +1576,27 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
               mainAxisSize: MainAxisSize.min,
               children: [
                 // Titre
-                const Text(
-                  'Ajouter une note pour l\'IA',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1A1A),
+                Consumer<LocalizationService>(
+                  builder: (context, locService, child) => Text(
+                    'add_note_for_ai'.tr(locService.currentLanguageCode),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1A1A1A),
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                  textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'Décrivez votre plat pour améliorer la précision de l\'analyse',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF64748B),
+                Consumer<LocalizationService>(
+                  builder: (context, locService, child) => Text(
+                    'describe_dish_for_accuracy'.tr(locService.currentLanguageCode),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF64748B),
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                  textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 20),
                 
@@ -1646,12 +1643,14 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        child: const Text(
-                          'Ignorer',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF64748B),
+                        child: Consumer<LocalizationService>(
+                          builder: (context, locService, child) => Text(
+                            'skip'.tr(locService.currentLanguageCode),
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF64748B),
+                            ),
                           ),
                         ),
                       ),
@@ -1668,12 +1667,14 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        child: const Text(
-                          'Analyser',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white,
+                        child: Consumer<LocalizationService>(
+                          builder: (context, locService, child) => Text(
+                            'analyze'.tr(locService.currentLanguageCode),
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
                       ),
@@ -1761,11 +1762,12 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
             hasResult = true;
             errorMessage = null;
             // Mettre à jour le nom du repas avec le nom généré par l'IA
-            _mealNameController.text = result.mealName ?? 'Plat détecté par IA';
+            final locService = Provider.of<LocalizationService>(context, listen: false);
+            _mealNameController.text = result.mealName ?? 'ai_detected_dish'.tr(locService.currentLanguageCode);
           } else {
             hasResult = false;
             errorMessage = result.error?.contains('API') == true 
-                ? 'Le service IA est temporairement surchargé.\nMerci de réessayer dans quelques minutes.' 
+                ? 'ai_service_overloaded'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode)
                 : 'Aucun aliment détecté dans cette image';
           }
         });
@@ -1817,11 +1819,12 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
             hasResult = true;
             errorMessage = null;
             // Mettre à jour le nom du repas avec le nom généré par l'IA
-            _mealNameController.text = result.mealName ?? 'Plat détecté par IA';
+            final locService = Provider.of<LocalizationService>(context, listen: false);
+            _mealNameController.text = result.mealName ?? 'ai_detected_dish'.tr(locService.currentLanguageCode);
           } else {
             hasResult = false;
             errorMessage = result.error?.contains('API') == true 
-                ? 'Le service IA est temporairement surchargé.\nMerci de réessayer dans quelques minutes.' 
+                ? 'ai_service_overloaded'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode)
                 : 'Aucun aliment détecté dans cette image';
           }
         });
