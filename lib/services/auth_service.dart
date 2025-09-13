@@ -16,14 +16,13 @@ class AuthService extends ChangeNotifier {
 
   SupabaseClient get _supabase => SupabaseConfig.client;
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
-  final GoogleSignIn _googleSignIn = GoogleSignIn(
-    scopes: ['email', 'profile'],
-  );
+  GoogleSignIn? _googleSignIn;
 
   UserModel? _currentUser;
   bool _isLoading = false;
   String? _errorMessage;
   bool _disposed = false;
+  bool _isNotifying = false;
 
   // Getters
   UserModel? get currentUser => _currentUser;
@@ -50,13 +49,22 @@ class AuthService extends ChangeNotifier {
   Future<void> initialize() async {
     _setLoading(true);
     try {
+      debugPrint('🚀 Initializing AuthService...');
+      
       // Check if user is already logged in
       final session = _supabase.auth.currentSession;
       if (session != null) {
-        await _loadUserProfile(session.user.id);
+        debugPrint('🔍 Found existing session, loading profile...');
+        // CORRECTION: Timeout global pour toute l'initialisation
+        await _loadUserProfile(session.user.id).timeout(const Duration(seconds: 10));
+      } else {
+        debugPrint('📱 No existing session found');
       }
+      debugPrint('✅ AuthService initialized successfully');
     } catch (e) {
+      debugPrint('❌ AuthService initialization failed: $e');
       _setError('Failed to initialize auth service: $e');
+      // Ne pas bloquer l'app même si l'auth échoue
     } finally {
       _setLoading(false);
     }
@@ -128,13 +136,43 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  /// Sign in with Google
+  /// Initialize Google Sign-In safely (lazy loading)
+  GoogleSignIn _getGoogleSignIn() {
+    if (_googleSignIn == null) {
+      try {
+        // Only initialize if not on web or if properly configured
+        if (kIsWeb) {
+          // Check if Google Client ID is configured for web
+          _googleSignIn = GoogleSignIn(
+            scopes: ['email', 'profile'],
+            // Web will use meta tag configuration
+          );
+        } else {
+          _googleSignIn = GoogleSignIn(
+            scopes: ['email', 'profile'],
+          );
+        }
+      } catch (e) {
+        debugPrint('⚠️ GoogleSignIn init failed: $e');
+        rethrow;
+      }
+    }
+    return _googleSignIn!;
+  }
+
+  /// Sign in with Google (with web protection)
   Future<bool> signInWithGoogle() async {
     _setLoading(true);
     _clearError();
 
     try {
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      // Skip Google Sign-In on web if not properly configured
+      if (kIsWeb) {
+        _setError('Google Sign-In not configured for web');
+        return false;
+      }
+
+      final GoogleSignInAccount? googleUser = await _getGoogleSignIn().signIn();
       if (googleUser == null) return false;
 
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
@@ -201,7 +239,10 @@ class AuthService extends ChangeNotifier {
     _setLoading(true);
     try {
       await _supabase.auth.signOut();
-      await _googleSignIn.signOut();
+      // Only sign out from Google if initialized
+      if (_googleSignIn != null) {
+        await _googleSignIn!.signOut();
+      }
       await _secureStorage.delete(key: 'access_token');
       _currentUser = null;
       _safeNotifyListeners();
@@ -318,10 +359,20 @@ class AuthService extends ChangeNotifier {
   }
 
   void _safeNotifyListeners() {
-    // Ensure notification happens after the current build cycle
+    // Prevent recursive notifications and build-time notifications
+    if (_disposed || _isNotifying) return;
+    
+    _isNotifying = true;
+    
+    // Always schedule for later to avoid "setState during build" errors
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_disposed) {
-        notifyListeners();
+        try {
+          notifyListeners();
+        } catch (e) {
+          debugPrint('⚠️ Failed to notify listeners: $e');
+        }
+        _isNotifying = false;
       }
     });
   }
@@ -333,14 +384,33 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<void> _loadUserProfile(String userId) async {
-    final response = await _supabase
-        .from('users')
-        .select()
-        .eq('id', userId)
-        .single();
+    try {
+      debugPrint('🔄 Loading user profile for: $userId');
+      
+      // CORRECTION: Ajouter timeout de 5 secondes
+      final response = await _supabase
+          .from('users')
+          .select()
+          .eq('id', userId)
+          .single()
+          .timeout(const Duration(seconds: 5));
 
-    _currentUser = UserModel.fromJson(response);
-    _safeNotifyListeners();
+      _currentUser = UserModel.fromJson(response);
+      _safeNotifyListeners();
+      debugPrint('✅ User profile loaded successfully');
+    } catch (e) {
+      debugPrint('❌ Failed to load user profile: $e');
+      // Ne pas bloquer l'app, continuer avec un profil minimal
+      _currentUser = UserModel(
+        id: userId,
+        email: _supabase.auth.currentUser?.email ?? 'unknown',
+        firstName: 'User',
+        lastName: '',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+      _safeNotifyListeners();
+    }
   }
 
   Future<void> _storeTokenSecurely(String? token) async {

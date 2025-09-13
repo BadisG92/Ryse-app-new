@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
 import 'dashboard_service.dart';
+import 'optimistic_update_service.dart';
 
 /// Service pour gérer le suivi d'hydratation
 class WaterService {
@@ -15,7 +16,7 @@ class WaterService {
     'manual': 0,         // Saisie manuelle
   };
 
-  /// Ajouter une entrée d'eau
+  /// Ajouter une entrée d'eau avec mise à jour optimiste
   static Future<bool> addWaterEntry({
     required int amount,
     String sourceType = 'manual',
@@ -26,16 +27,25 @@ class WaterService {
       final user = _supabase.auth.currentUser;
       if (user == null) throw Exception('Utilisateur non connecté');
 
-      await _supabase.from('water_entries').insert({
+      // OPTIMISATION: Mise à jour optimiste immédiate de l'UI
+      await OptimisticUpdateService.updateWaterOptimistic(amount);
+
+      // Insertion en base (non-bloquant pour l'UI)
+      _supabase.from('water_entries').insert({
         'user_id': user.id,
         'amount': amount,
         'source_type': sourceType,
         'notes': notes,
         'consumed_at': (consumedAt ?? DateTime.now()).toIso8601String(),
+      }).then((_) {
+        // Synchronisation ultra-rapide après succès
+        print('✅ Eau ajoutée en base - sync rapide');
+        DashboardService.invalidateAndRefreshGoals();
+      }).catchError((error) {
+        print('❌ Erreur ajout eau: $error');
+        // Rollback si erreur
+        OptimisticUpdateService.rollback();
       });
-
-      // Mettre à jour les objectifs en temps réel
-      await DashboardService.invalidateAndRefreshGoals();
 
       return true;
     } catch (e) {
@@ -133,13 +143,23 @@ class WaterService {
     }
   }
 
-  /// Supprimer une entrée d'eau
-  static Future<bool> deleteWaterEntry(String entryId) async {
+  /// Supprimer une entrée d'eau avec mise à jour optimiste
+  static Future<bool> deleteWaterEntry(String entryId, {int? amountToRemove}) async {
     try {
-      await _supabase.from('water_entries').delete().eq('id', entryId);
+      // Si on connait la quantité, mise à jour optimiste
+      if (amountToRemove != null) {
+        await OptimisticUpdateService.updateWaterOptimistic(-amountToRemove);
+      }
       
-      // Mettre à jour les objectifs en temps réel
-      await DashboardService.invalidateAndRefreshGoals();
+      // Suppression en base (non-bloquant)
+      _supabase.from('water_entries').delete().eq('id', entryId).then((_) {
+        print('✅ Eau supprimée de la base');
+        // Sync complète après succès
+        DashboardService.invalidateAndRefreshGoals();
+      }).catchError((error) {
+        print('❌ Erreur suppression eau: $error');
+        OptimisticUpdateService.rollback();
+      });
       
       return true;
     } catch (e) {

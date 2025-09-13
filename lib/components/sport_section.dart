@@ -11,8 +11,11 @@ import '../providers/goals_notifier.dart';
 import 'ui/language_switch_buttons.dart';
 import '../services/translations.dart';
 import '../services/localization_service.dart';
+import 'ui/custom_snackbar.dart';
 import 'package:provider/provider.dart';
 import 'ui/refresh_wrapper.dart';
+import '../services/fast_cache_service.dart';
+import '../services/sport_dashboard_service.dart';
 
 class SportSection extends StatefulWidget {
   const SportSection({super.key});
@@ -95,15 +98,30 @@ class _SportSectionState extends State<SportSection>
 
   Future<void> _onRefresh() async {
     try {
-      // Recharger les données de la section sport
+      // OPTIMISATION: Vider le cache rapide et le cache sport
+      FastCacheService.invalidateDashboard();
+      SportDashboardService.invalidateCache();
+      
+      // Recharger les données de la section sport en parallèle
       await Future.wait([
         _loadObjectives(),
         _loadStreak(),
+        DashboardService.invalidateAndRefreshAfterWorkout(), // Refresh spécifique sport
+        SportDashboardService.getDashboardData(), // Recharge les données sport
       ]);
       
-      // Vider le cache et forcer le rafraîchissement (méthodes void)
+      // Vider le cache et forcer le rafraîchissement
       HeaderCacheService.clearCache();
       DashboardService.refreshGoalsNotifier();
+      
+      // Feedback visuel
+      if (mounted) {
+        final locService = Provider.of<LocalizationService>(context, listen: false);
+        CustomSnackbarService.showSuccess(
+          context,
+          locService.currentLanguageCode == 'fr' ? 'Données sportives mises à jour' : 'Sport data updated',
+        );
+      }
     } catch (e) {
       print('Erreur lors du rafraîchissement du sport: $e');
     }

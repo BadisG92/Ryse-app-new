@@ -15,6 +15,7 @@ import '../components/ui/onboarding_models.dart';
 import '../components/ui/numeric_text_field.dart';
 import '../components/ui/refresh_wrapper.dart';
 import '../pages/ryze_app.dart';
+import '../core/infrastructure/migration/migration_controller.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -1452,7 +1453,8 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                   icon: LucideIcons.info,
                                   title: 'about'.tr(locService.currentLanguageCode),
                                   onTap: () {
-                                    // Navigation vers page à propos
+                                    // Test discret de la nouvelle architecture
+                                    _showArchitectureTestDialog(context);
                                   },
                                 ),
                               ),
@@ -2297,6 +2299,128 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
       {'key': 'vegan', 'display': 'vegan'.tr(languageCode)},
       {'key': 'pescetarian', 'display': 'pescetarian'.tr(languageCode)},
     ];
+  }
+  
+  // Dialog de test pour la nouvelle architecture
+  Future<void> _showArchitectureTestDialog(BuildContext context) async {
+    final locService = LocalizationService.instance;
+    final languageCode = locService.currentLanguageCode;
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('🔧 Test Architecture'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              languageCode == 'fr' 
+                ? 'Nouvelle architecture disponible pour test'
+                : 'New architecture available for testing',
+              style: const TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              languageCode == 'fr'
+                ? '• Repository Pattern\n• Cache unifié\n• Optimisations performances'
+                : '• Repository Pattern\n• Unified cache\n• Performance optimizations',
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(languageCode == 'fr' ? 'Annuler' : 'Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _testNewArchitecture(context);
+            },
+            child: Text(languageCode == 'fr' ? 'Tester' : 'Test'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _activateNewArchitecture(context);
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.green),
+            child: Text(languageCode == 'fr' ? 'Activer' : 'Activate'),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  // Test de la nouvelle architecture
+  Future<void> _testNewArchitecture(BuildContext context) async {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    
+    try {
+      // Import du controller de migration
+      final migrationController = MigrationController.instance;
+      
+      // Lancer les tests
+      scaffoldMessenger.showSnackBar(
+        const SnackBar(content: Text('🧪 Tests en cours...')),
+      );
+      
+      final success = await migrationController.testNewArchitecture();
+      
+      if (success) {
+        scaffoldMessenger.showSnackBar(
+          const SnackBar(
+            content: Text('✅ Tests réussis! Architecture prête'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        scaffoldMessenger.showSnackBar(
+          const SnackBar(
+            content: Text('❌ Échec des tests'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      scaffoldMessenger.showSnackBar(
+        SnackBar(
+          content: Text('❌ Erreur: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+  
+  // Activer la nouvelle architecture
+  Future<void> _activateNewArchitecture(BuildContext context) async {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    
+    try {
+      final migrationController = MigrationController.instance;
+      
+      // Activer toutes les nouvelles fonctionnalités
+      migrationController.enableAllNewFeatures();
+      
+      scaffoldMessenger.showSnackBar(
+        const SnackBar(
+          content: Text('🎉 Nouvelle architecture activée!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      
+      // Recharger les données avec le nouveau système
+      setState(() {});
+    } catch (e) {
+      scaffoldMessenger.showSnackBar(
+        SnackBar(
+          content: Text('❌ Erreur activation: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
   
   // Mapping pour les restrictions alimentaires entre valeurs BDD et clés de traduction

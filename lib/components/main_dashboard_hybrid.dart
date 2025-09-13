@@ -12,6 +12,7 @@ import 'ui/custom_badge.dart';
 import '../services/dashboard_service.dart';
 import '../services/localization_service.dart';
 import '../services/translations.dart';
+import '../providers/goals_notifier.dart';
 
 class MainDashboardHybrid extends StatefulWidget {
   final Function(String)? onTabChange;
@@ -42,19 +43,49 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
     
     // Listen to language changes
     LocalizationService.instance.addListener(_onLanguageChanged);
+    
+    // Listen to goals changes for instant updates
+    GoalsNotifier.instance.addListener(_onGoalsChanged);
   }
 
   @override
   void dispose() {
     _scoreAnimationController.dispose();
-    _scoreTimer.cancel();
+    // S'assurer que les timers sont vraiment cancellés
+    if (_scoreTimer.isActive) {
+      _scoreTimer.cancel();
+    }
     LocalizationService.instance.removeListener(_onLanguageChanged);
+    GoalsNotifier.instance.removeListener(_onGoalsChanged);
     super.dispose();
   }
 
   void _onLanguageChanged() {
     // Reload dashboard data when language changes
     _loadDashboardData();
+  }
+  
+  void _onGoalsChanged() {
+    // Recharger seulement les objectifs pour une mise à jour instantanée
+    _reloadGoalsOnly();
+  }
+  
+  Future<void> _reloadGoalsOnly() async {
+    if (!mounted) return;
+    
+    try {
+      // Recharger seulement les objectifs (plus rapide)
+      final newGoals = await DashboardService.getDailyGoals();
+      
+      if (mounted) {
+        setState(() {
+          dailyGoals = newGoals;
+        });
+        print('🔄 Objectifs dashboard principal rechargés instantanément');
+      }
+    } catch (e) {
+      print('❌ Erreur rechargement objectifs: $e');
+    }
   }
 
   void _initializeAnimations() {
@@ -67,6 +98,11 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
   void _startScoreAnimation() {
     final targetScore = userProfile?.todayScore ?? 85;
     _scoreTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      
       if (animatedScore < targetScore) {
         setState(() {
           animatedScore = min(animatedScore + 1, targetScore);
@@ -94,12 +130,14 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
       final loadedGoals = futures[1] as List<DailyGoal>;
       final loadedPreviews = futures[2] as List<ModulePreview>;
 
-      setState(() {
-        userProfile = loadedProfile;
-        dailyGoals = loadedGoals;
-        modulePreviews = loadedPreviews;
-        isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          userProfile = loadedProfile;
+          dailyGoals = loadedGoals;
+          modulePreviews = loadedPreviews;
+          isLoading = false;
+        });
+      }
 
       // Démarrer l'animation du score après chargement
       if (userProfile != null) {
@@ -107,13 +145,15 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
       }
     } catch (e) {
       print('Erreur lors du chargement des données: $e');
-      setState(() {
-        isLoading = false;
-        // Ne pas utiliser de données statiques - rester vide
-        userProfile = null;
-        dailyGoals = [];
-        modulePreviews = [];
-      });
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+          // Ne pas utiliser de données statiques - rester vide
+          userProfile = null;
+          dailyGoals = [];
+          modulePreviews = [];
+        });
+      }
     }
   }
 
@@ -240,7 +280,7 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
 
   // Event handlers - restaurés du design original
   void _onPremiumTap() {
-    if (userProfile != null) {
+    if (mounted && userProfile != null) {
       setState(() {
         userProfile = userProfile!.copyWith(isPremium: true);
       });
@@ -248,7 +288,7 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
   }
 
   void _onPremiumUpgrade() {
-    if (userProfile != null) {
+    if (mounted && userProfile != null) {
       setState(() {
         userProfile = userProfile!.copyWith(isPremium: true);
       });
@@ -257,7 +297,14 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
     // TODO: Intégrer avec la logique de paiement
     final locService = LocalizationService.instance;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('welcome_premium'.tr(locService.currentLanguageCode))),
+      SnackBar(
+        content: Text('welcome_premium'.tr(locService.currentLanguageCode)),
+        duration: const Duration(seconds: 2),
+        backgroundColor: const Color(0xFF0B132B).withOpacity(0.9),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
     );
   }
 
@@ -277,7 +324,14 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
     } else {
       // Fallback si pas de callback disponible
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${'navigate_to'.tr(locService.currentLanguageCode)} $moduleTitle')),
+        SnackBar(
+          content: Text('${'navigate_to'.tr(locService.currentLanguageCode)} $moduleTitle'),
+          duration: const Duration(seconds: 2),
+          backgroundColor: const Color(0xFF0B132B).withOpacity(0.9),
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
       );
     }
   }
@@ -286,7 +340,14 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
     // TODO: Ouvrir les analytics avancés
     final locService = LocalizationService.instance;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('open_advanced_analytics'.tr(locService.currentLanguageCode))),
+      SnackBar(
+        content: Text('open_advanced_analytics'.tr(locService.currentLanguageCode)),
+        duration: const Duration(seconds: 2),
+        backgroundColor: const Color(0xFF0B132B).withOpacity(0.9),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
     );
   }
 
@@ -370,6 +431,11 @@ class _EnhancedDailyGoalsSectionState extends State<EnhancedDailyGoalsSection>
     final totalTicks = duration ~/ tickTime;
     
     _progressTimer = Timer.periodic(const Duration(milliseconds: tickTime), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      
       final elapsed = timer.tick * tickTime;
       final progress = (elapsed / duration).clamp(0.0, 1.0);
       final easedProgress = Curves.easeOutExpo.transform(progress);
@@ -379,7 +445,9 @@ class _EnhancedDailyGoalsSectionState extends State<EnhancedDailyGoalsSection>
       
       if (progress >= 1.0) {
         timer.cancel();
-        setState(() => animatedProgress = targetProgress);
+        if (mounted) {
+          setState(() => animatedProgress = targetProgress);
+        }
       }
     });
   }
@@ -790,7 +858,11 @@ class GamifiedActionsSection extends StatelessWidget {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('feature_premium_only'.tr(locService.currentLanguageCode)),
-          backgroundColor: const Color(0xFF0B132B),
+          duration: const Duration(seconds: 2),
+          backgroundColor: const Color(0xFF0B132B).withOpacity(0.9),
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       );
       return;
@@ -803,7 +875,11 @@ class GamifiedActionsSection extends StatelessWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('adding_meal'.tr(locService.currentLanguageCode)),
-            backgroundColor: const Color(0xFF0B132B),
+            duration: const Duration(seconds: 2),
+            backgroundColor: const Color(0xFF0B132B).withOpacity(0.9),
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
         break;
@@ -813,7 +889,11 @@ class GamifiedActionsSection extends StatelessWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('adding_hydration'.tr(locService.currentLanguageCode)),
-            backgroundColor: const Color(0xFF0B132B),
+            duration: const Duration(seconds: 2),
+            backgroundColor: const Color(0xFF0B132B).withOpacity(0.9),
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
         break;
@@ -823,7 +903,11 @@ class GamifiedActionsSection extends StatelessWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('food_scanner'.tr(locService.currentLanguageCode)),
-            backgroundColor: const Color(0xFF0B132B),
+            duration: const Duration(seconds: 2),
+            backgroundColor: const Color(0xFF0B132B).withOpacity(0.9),
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
         break;
@@ -833,16 +917,24 @@ class GamifiedActionsSection extends StatelessWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('starting_workout'.tr(locService.currentLanguageCode)),
-            backgroundColor: const Color(0xFF0B132B),
+            duration: const Duration(seconds: 2),
+            backgroundColor: const Color(0xFF0B132B).withOpacity(0.9),
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
         break;
       case 'weight_tracking':
         // TODO: Ouvrir saisie de poids
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Enregistrement du poids'),
-            backgroundColor: Color(0xFF0B132B),
+          SnackBar(
+            content: const Text('Enregistrement du poids'),
+            duration: const Duration(seconds: 2),
+            backgroundColor: const Color(0xFF0B132B).withOpacity(0.9),
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
         break;

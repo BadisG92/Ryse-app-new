@@ -8,11 +8,13 @@ class LocalizationService extends ChangeNotifier {
   static const String _languageKey = 'selected_language';
   
   Locale _currentLocale = const Locale('fr');
+  bool _isInitialized = false;
   
   Locale get currentLocale => _currentLocale;
   String get currentLanguageCode => _currentLocale.languageCode;
   bool get isFrench => _currentLocale.languageCode == 'fr';
   bool get isEnglish => _currentLocale.languageCode == 'en';
+  bool get isInitialized => _isInitialized;
   
   static LocalizationService? _instance;
   static LocalizationService get instance {
@@ -43,6 +45,7 @@ class LocalizationService extends ChangeNotifier {
     }
     
     _currentLocale = Locale(savedLanguage);
+    _isInitialized = true;
     notifyListeners();
   }
   

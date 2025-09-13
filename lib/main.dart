@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'dart:async';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'config/supabase_config.dart';
@@ -9,37 +11,25 @@ import 'pages/ryze_app.dart';
 import 'services/offline_workout_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/settings_screen.dart';
+import 'services/preload_service.dart';
+import 'services/fast_cache_service.dart';
+import 'core/infrastructure/migration/migration_controller.dart';
+import 'core/infrastructure/startup/priority_service_initializer.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  try {
-    // Initialize Localization Service first (no network needed)
-    await LocalizationService.instance.initialize();
-    
-    // Initialize Supabase (non-blocking)
-    await SupabaseConfig.initialize();
-    
-    // Initialize Recipe Data from Supabase (en arrière-plan, non-blocking)
-    try {
-      RecipeData.initialize();
-      print('✅ Recipe data initialization started');
-    } catch (e) {
-      print('⚠️ Recipe data initialization failed (offline): $e');
-    }
-    
-    // Initialize Offline Service pour la musculation
-    final offlineService = OfflineWorkoutService();
-    await SharedPreferencesSync().init(); // Pour les vérifications rapides
-    await offlineService.initialize().catchError((e) {
-      print('⚠️ Offline service initialization failed: $e');
-    });
-    
-  } catch (e) {
-    print('⚠️ Main initialization error: $e');
-    // Continue même si certaines initialisations échouent
-  }
+  // OPTIMISATION: Initialisation par priorités pour performance maximale
+  final initializer = PriorityServiceInitializer.instance;
   
+  // Phase 1: Services critiques SEULEMENT (2s max, bloquant)
+  await initializer.initializeCriticalServices();
+  
+  // Phases 2 & 3: Non-bloquantes, en arrière-plan
+  unawaited(initializer.initializeImportantServices());
+  unawaited(initializer.initializeOptionalServices());
+  
+  // Lancer l'app immédiatement après les services critiques
   runApp(const MyApp());
 }
 
@@ -88,8 +78,36 @@ class _AppInitializerState extends State<AppInitializer> {
   }
 
   Future<void> _initializeAuth() async {
+    // SOLUTION: Délayer l'auth pour éviter le freeze pendant build
+    await Future.delayed(const Duration(milliseconds: 100));
+    
+    if (!mounted) return;
+    
     final authService = Provider.of<AuthService>(context, listen: false);
-    await authService.initialize();
+    
+    try {
+      debugPrint('🔄 AppInitializer: Starting auth initialization...');
+      
+      // Exécuter auth complètement hors du build cycle
+      unawaited(_performAuthInitialization(authService));
+      
+      debugPrint('✅ AppInitializer: Auth initialization scheduled');
+    } catch (e) {
+      debugPrint('❌ AppInitializer: Auth scheduling error: $e');
+    }
+  }
+  
+  Future<void> _performAuthInitialization(AuthService authService) async {
+    try {
+      // Délai supplémentaire pour s'assurer qu'on est hors du build
+      await Future.delayed(const Duration(milliseconds: 200));
+      
+      await authService.initialize().timeout(const Duration(seconds: 15));
+      
+      debugPrint('✅ Auth really initialized');
+    } catch (e) {
+      debugPrint('❌ Auth initialization failed: $e');
+    }
   }
 
   @override

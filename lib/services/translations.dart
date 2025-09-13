@@ -1341,8 +1341,8 @@ class AppTranslations {
       'en': 'Rest',
     },
     'meals': {
-      'fr': 'repas',
-      'en': 'meals',
+      'fr': 'Repas',
+      'en': 'Meals',
     },
     'weekly_global_summary': {
       'fr': 'Bilan global hebdomadaire',

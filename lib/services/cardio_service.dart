@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 import '../models/cardio_session_models.dart';
 import 'translations.dart';
 import 'localization_service.dart';
+import 'dashboard_service.dart';
 
 /// Service pour gérer les activités cardio depuis Supabase
 class CardioService {
@@ -168,6 +169,10 @@ class CardioService {
       });
 
       debugPrint('✅ Cardio session saved: $sessionId (format_id: $activityFormatId)');
+      
+      // Mettre à jour les objectifs dashboard en temps réel
+      DashboardService.invalidateAndRefreshGoals();
+      
       return sessionId;
     } catch (e) {
       debugPrint('❌ Error saving cardio session: $e');

@@ -13,6 +13,7 @@ import '../screens/select_recipe_screen.dart';
 import '../bottom_sheets/manual_food_search_bottom_sheet.dart';
 import '../bottom_sheets/new_meal_type_bottom_sheet.dart';
 import '../services/database_service.dart';
+import '../services/dashboard_service.dart';
 import '../services/water_service.dart';
 import '../services/food_entries_service.dart';
 import '../services/auth_service.dart';
@@ -379,6 +380,16 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
       debugPrint('Erreur lors du rafraîchissement des données d\'hydratation: $e');
     }
   }
+  
+  /// Force la mise à jour des objectifs du dashboard principal
+  Future<void> _refreshMainDashboardGoals() async {
+    try {
+      // Importer le service dashboard et forcer un refresh des objectifs
+      await DashboardService.invalidateAndRefreshGoals();
+    } catch (e) {
+      debugPrint('Erreur lors du rafraîchissement des objectifs du dashboard principal: $e');
+    }
+  }
 
   void _addWaterAmount(int milliliters) async {
     final userId = Supabase.instance.client.auth.currentUser?.id;
@@ -388,6 +399,10 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
         SnackBar(
           content: Text('must_be_logged_in_water'.tr(locService.currentLanguageCode)),
           duration: const Duration(seconds: 2),
+          backgroundColor: Colors.red.withOpacity(0.9),
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       );
       return;
@@ -406,14 +421,20 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
 
       // Rafraîchir les données pour obtenir le nouveau niveau d'hydratation
       await _refreshHydrationDataOnly();
+      
+      // IMPORTANT: Forcer la mise à jour du dashboard principal
+      await _refreshMainDashboardGoals();
 
-      // Feedback visuel
+      // Feedback visuel avec style app
       final locService = Provider.of<LocalizationService>(context, listen: false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('water_added_success'.tr(locService.currentLanguageCode).replaceAll('{amount}', milliliters.toString())),
           duration: const Duration(seconds: 2),
-          backgroundColor: const Color(0xFF0B132B),
+          backgroundColor: const Color(0xFF0B132B).withOpacity(0.9),
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       );
     } catch (e) {
@@ -423,7 +444,10 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
         SnackBar(
           content: Text('error_adding_water'.tr(locService.currentLanguageCode)),
           duration: const Duration(seconds: 2),
-          backgroundColor: Colors.red,
+          backgroundColor: Colors.red.withOpacity(0.9),
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       );
     }

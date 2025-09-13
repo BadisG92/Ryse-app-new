@@ -24,14 +24,13 @@ class RecipeService {
           final recipe = Recipe.fromJson(recipeData);
           recipes.add(recipe);
         } catch (e) {
-          print('❌ Erreur pour recette $i: $e');
+          print('❌ Erreur pour recette $i (${recipeData['name_fr'] ?? recipeData['name_en'] ?? 'Nom inconnu'}): $e');
         }
       }
       
-      
       return recipes;
     } catch (e) {
-      print('Erreur lors de la récupération des recettes: $e');
+      print('❌ RecipeService: Erreur lors de la récupération des recettes: $e');
       return [];
     }
   }

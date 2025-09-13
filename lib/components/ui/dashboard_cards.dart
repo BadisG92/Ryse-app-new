@@ -21,7 +21,7 @@ class DashboardHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 50, 24, 20),
+      padding: const EdgeInsets.fromLTRB(24, 42, 24, 20),
       decoration: BoxDecoration(
         borderRadius: const BorderRadius.only(
           bottomLeft: Radius.circular(24),

@@ -13,8 +13,10 @@ import '../screens/select_recipe_screen.dart';
 import '../bottom_sheets/manual_food_search_bottom_sheet.dart';
 import '../services/food_entries_service.dart';
 import '../services/auth_service.dart';
+import '../services/optimistic_update_service.dart';
 import '../services/localization_service.dart';
 import '../services/translations.dart';
+import 'ui/custom_snackbar.dart';
 import '../bottom_sheets/add_meal_bottom_sheet.dart';
 
 class NutritionJournalHybrid extends StatefulWidget {
@@ -108,73 +110,89 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
   void _addFoodToSelectedMeal(FoodItem foodItem) async {
     final user = AuthService().currentUser;
     if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('must_be_connected_add_food'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode)),
-          backgroundColor: Colors.red,
-        ),
+      final locService = Provider.of<LocalizationService>(context, listen: false);
+      CustomSnackbarService.showError(
+        context,
+        'must_be_connected_add_food'.tr(locService.currentLanguageCode),
       );
       return;
     }
 
     String? targetMealName;
-    bool success = false;
+    
+    // OPTIMISATION: Mise à jour optimiste immédiate
+    await OptimisticUpdateService.updateCaloriesOptimistic(foodItem.calories.toDouble());
+    
+    // Fermer le bottom sheet immédiatement pour feedback instantané
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context);
+    }
     
     if (_selectedMealIndex != null && _selectedMealIndex! < meals.length) {
       // Cas normal : ajouter à un repas existant avec son meal_id
       final selectedMeal = meals[_selectedMealIndex!];
       targetMealName = selectedMeal.name;
-      success = await FoodEntriesService.addFoodEntry(
+      
+      // Feedback visuel instantané
+      CustomSnackbarService.showSuccess(
+        context,
+        '${foodItem.name} ajouté au $targetMealName',
+      );
+      
+      // Ajout en base (non-bloquant)
+      FoodEntriesService.addFoodEntry(
         userId: user.id,
         mealName: selectedMeal.name,
         foodItem: foodItem,
         consumedAt: selectedDate,
-        mealId: selectedMeal.id, // Utiliser l'ID du repas existant
-      );
+        mealId: selectedMeal.id,
+      ).then((success) {
+        if (success) {
+          // Recharger les données après succès
+          _loadMealsForDate(selectedDate);
+        } else {
+          // Rollback si erreur
+          OptimisticUpdateService.rollback();
+          if (mounted) {
+            CustomSnackbarService.showError(context, 'Erreur lors de l\'ajout de l\'aliment');
+          }
+        }
+      });
+      
     } else if (_pendingMealType != null && _pendingMealId != null) {
       // Cas nouveau repas : utiliser l'ID pré-généré
       targetMealName = _pendingMealId;
-      success = await FoodEntriesService.addFoodEntry(
+      
+      // Feedback visuel instantané
+      CustomSnackbarService.showSuccess(
+        context,
+        '${foodItem.name} ajouté au $targetMealName',
+      );
+      
+      // Ajout en base (non-bloquant)
+      FoodEntriesService.addFoodEntry(
         userId: user.id,
         mealName: _pendingMealType!,
         foodItem: foodItem,
         consumedAt: selectedDate,
-        mealId: _pendingMealId, // Utiliser l'ID pré-généré
-      );
+        mealId: _pendingMealId!,
+      ).then((success) {
+        if (success) {
+          // Recharger les données après succès
+          _loadMealsForDate(selectedDate);
+        } else {
+          // Rollback si erreur
+          OptimisticUpdateService.rollback();
+          if (mounted) {
+            CustomSnackbarService.showError(context, 'Erreur lors de l\'ajout de l\'aliment');
+          }
+        }
+      });
+      
     } else {
       // Cas où aucun repas n'est sélectionné (ex: ajout direct de recette)
       _showMealSelectionForFood(foodItem);
       return;
-    }
-
-    if (success) {
-      // Recharger les données depuis Supabase pour avoir les vrais IDs
-      await _loadMealsForDate(selectedDate);
-      
-      // Fermer le bottom sheet s'il y en a un
-      if (Navigator.canPop(context)) {
-        Navigator.pop(context);
-      }
-      
-      // Afficher le message de confirmation
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${foodItem.name} ajouté au $targetMealName'),
-            backgroundColor: const Color(0xFF0B132B),
-            duration: const Duration(seconds: 2),
-          ),
-        );
-      }
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur lors de l\'ajout de l\'aliment'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
     }
     
     // Réinitialiser les sélections

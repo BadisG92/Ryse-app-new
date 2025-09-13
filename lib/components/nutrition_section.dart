@@ -13,6 +13,8 @@ import '../services/translations.dart';
 import '../providers/goals_notifier.dart';
 import 'ui/language_switch_buttons.dart';
 import 'ui/refresh_wrapper.dart';
+import 'ui/custom_snackbar.dart';
+import '../services/fast_cache_service.dart';
 
 class NutritionSection extends StatefulWidget {
   const NutritionSection({super.key});
@@ -125,15 +127,28 @@ class _NutritionSectionState extends State<NutritionSection>
 
   Future<void> _onRefresh() async {
     try {
-      // Recharger les données de la section nutrition
+      // OPTIMISATION: Vider le cache rapide pour forcer une vraie mise à jour
+      FastCacheService.invalidateDashboard();
+      
+      // Recharger les données de la section nutrition en parallèle
       await Future.wait([
         _loadObjectives(),
         _loadStreak(),
+        DashboardService.invalidateAndRefreshGoals(), // Force le refresh complet
       ]);
       
-      // Vider le cache et forcer le rafraîchissement (méthodes void)
+      // Vider le cache et forcer le rafraîchissement
       HeaderCacheService.clearCache();
       DashboardService.refreshGoalsNotifier();
+      
+      // Feedback visuel
+      if (mounted) {
+        final locService = Provider.of<LocalizationService>(context, listen: false);
+        CustomSnackbarService.showSuccess(
+          context,
+          locService.currentLanguageCode == 'fr' ? 'Données mises à jour' : 'Data updated',
+        );
+      }
     } catch (e) {
       print('Erreur lors du rafraîchissement de la nutrition: $e');
     }

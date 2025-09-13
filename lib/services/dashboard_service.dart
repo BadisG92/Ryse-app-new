@@ -9,6 +9,7 @@ import 'streak_service.dart';
 import 'sport_dashboard_service.dart';
 import 'localization_service.dart';
 import 'translations.dart';
+import 'fast_cache_service.dart';
 
 class DashboardService {
   static SupabaseClient get _supabase => SupabaseConfig.client;
@@ -38,6 +39,13 @@ class DashboardService {
   /// Récupérer le profil utilisateur pour le dashboard
   static Future<UserProfile?> getUserProfile() async {
     try {
+      // OPTIMISATION: Cache rapide d'abord
+      final cached = FastCacheService.getCachedUserProfile();
+      if (cached != null) {
+        print('⚡ Profil depuis cache rapide');
+        return cached;
+      }
+      
       final user = _supabase.auth.currentUser;
       if (user == null) return null;
 
@@ -71,7 +79,7 @@ class DashboardService {
       final realStreak = await StreakService.getCurrentStreak();
       print('🏆 DashboardService: Streak calculée = $realStreak jours');
 
-      return UserProfile(
+      final profile = UserProfile(
         name: response['first_name'] ?? 'Utilisateur',
         streak: realStreak, // Vraie streak calculée
         todayScore: 85, // TODO: Calculer le vrai score
@@ -81,6 +89,11 @@ class DashboardService {
         dailyCalories: response['daily_calories'] ?? 2000,
         currentCalories: currentCalories.round(),
       );
+      
+      // OPTIMISATION: Mettre en cache
+      FastCacheService.cacheUserProfile(profile);
+      
+      return profile;
     } catch (e) {
       print('Erreur lors de la récupération du profil: $e');
       return null;
@@ -90,6 +103,17 @@ class DashboardService {
   /// Récupérer les objectifs journaliers avec données dynamiques
   static Future<List<DailyGoal>> getDailyGoals() async {
     try {
+      // OPTIMISATION: D'abord vérifier le cache ultra-rapide
+      final fastCached = FastCacheService.getCachedGoals();
+      if (fastCached != null) {
+        GoalsNotifier.instance.update(fastCached);
+        print('⚡ Goals depuis cache rapide');
+        
+        // Lancer une mise à jour en arrière-plan si le cache a plus de 10s
+        _refreshInBackground();
+        return fastCached;
+      }
+      
       final today = DateTime.now();
       // Utiliser le cache du même jour s'il existe
       if (_cachedGoals != null && _cachedGoalsDate != null) {
@@ -99,6 +123,7 @@ class DashboardService {
         if (isSameDay) {
           // Mettre à jour le notifier avec les données en cache
           GoalsNotifier.instance.update(_cachedGoals!);
+          FastCacheService.cacheGoals(_cachedGoals!); // Mettre dans le cache rapide
           return _cachedGoals!;
         }
       }
@@ -113,26 +138,32 @@ class DashboardService {
       final startOfDay = DateTime(today.year, today.month, today.day);
       final endOfDay = startOfDay.add(const Duration(days: 1));
 
-      // Récupérer les données réelles pour calculer les objectifs
-      final foodEntriesResponse = await _supabase
-          .from('food_entries')
-          .select('calories, meal_id')
-          .eq('user_id', user.id)
-          .gte('consumed_at', startOfDay.toIso8601String())
-          .lt('consumed_at', endOfDay.toIso8601String());
+      // OPTIMISATION: Paralléliser toutes les requêtes Supabase
+      final futures = await Future.wait<dynamic>([
+        _supabase
+            .from('food_entries')
+            .select('calories, meal_id')
+            .eq('user_id', user.id)
+            .gte('consumed_at', startOfDay.toIso8601String())
+            .lt('consumed_at', endOfDay.toIso8601String()),
         
-      final waterEntries = await _supabase
-          .from('water_entries')
-          .select('amount')
-          .eq('user_id', user.id)
-          .gte('consumed_at', startOfDay.toIso8601String())
-          .lt('consumed_at', endOfDay.toIso8601String());
+        _supabase
+            .from('water_entries')
+            .select('amount')
+            .eq('user_id', user.id)
+            .gte('consumed_at', startOfDay.toIso8601String())
+            .lt('consumed_at', endOfDay.toIso8601String()),
         
-      final userProfile = await _supabase
-          .from('users')
-          .select('daily_calories, daily_water_goal')
-          .eq('id', user.id)
-          .maybeSingle();
+        _supabase
+            .from('users')
+            .select('daily_calories, daily_water_goal')
+            .eq('id', user.id)
+            .maybeSingle(),
+      ]);
+      
+      final foodEntriesResponse = futures[0] as List;
+      final waterEntries = futures[1] as List;
+      final userProfile = futures[2] as Map<String, dynamic>?;
 
       // Calculer les totaux du jour
       double currentCalories = 0;
@@ -206,6 +237,9 @@ class DashboardService {
       // Mettre en cache
       _cachedGoals = result;
       _cachedGoalsDate = today;
+      
+      // OPTIMISATION: Mettre dans le cache rapide aussi
+      FastCacheService.cacheGoals(result);
 
       // Mettre à jour le notifier avec la liste finale
       GoalsNotifier.instance.update(result);
@@ -447,23 +481,150 @@ class DashboardService {
     }
   }
 
+  /// Récupérer les objectifs directement depuis Supabase (sans cache)
+  /// Utilisé pour la sync backend optimiste
+  static Future<List<DailyGoal>> getDailyGoalsFromSource() async {
+    try {
+      final user = _supabase.auth.currentUser;
+      if (user == null) throw Exception('Utilisateur non connecté');
+
+      // Requête directe Supabase sans cache
+      final futures = await Future.wait<dynamic>([
+        _supabase.from('food_entries')
+            .select('calories, meal_id')
+            .eq('user_id', user.id)
+            .gte('created_at', DateTime.now().toIso8601String().substring(0, 10)),
+        
+        _supabase.from('water_entries')
+            .select('amount')
+            .eq('user_id', user.id)
+            .gte('consumed_at', DateTime.now().toIso8601String().substring(0, 10)),
+        
+        _supabase.from('users')
+            .select('daily_calories, daily_water_goal')
+            .eq('id', user.id)
+            .single(),
+        
+        _supabase.from('workout_sessions')
+            .select('id')
+            .eq('user_id', user.id)
+            .gte('created_at', DateTime.now().toIso8601String().substring(0, 10))
+            .limit(1)
+      ]);
+
+      // Traitement des données
+      final foodEntries = futures[0] as List;
+      final waterEntries = futures[1] as List;  
+      final userProfile = futures[2] as Map<String, dynamic>;
+      final workoutSessions = futures[3] as List;
+
+      final totalCalories = foodEntries.fold<double>(0, (sum, entry) => sum + (entry['calories'] ?? 0));
+      final totalWaterMl = waterEntries.fold<int>(0, (sum, entry) => sum + ((entry['amount'] ?? 0) as int));
+      final uniqueMeals = foodEntries.map((e) => e['meal_id']).toSet().length;
+      final hasWorkout = workoutSessions.isNotEmpty;
+
+      final targetCalories = (userProfile['daily_calories'] ?? 2000).toDouble();
+      final targetWaterL = ((userProfile['daily_water_goal'] ?? 2000) / 1000.0);
+
+      // Obtenir le code langue actuel
+      final locService = LocalizationService.instance;
+      final languageCode = locService.currentLanguageCode;
+      
+      // Construire la liste des objectifs directement
+      final goals = <DailyGoal>[
+        // Objectif calories
+        DailyGoal(
+          id: 'calories',
+          label: 'reach_calorie_goal'.tr(languageCode),
+          progress: ((totalCalories / targetCalories) * 100).round().clamp(0, 100),
+          xp: 25,
+          completed: totalCalories >= targetCalories * 0.9,
+          currentValue: totalCalories,
+          targetValue: targetCalories,
+          unit: 'kcal',
+        ),
+        // Objectif eau
+        DailyGoal(
+          id: 'water',
+          label: 'drink_water_goal'.tr(languageCode),
+          progress: ((totalWaterMl / 1000.0 / targetWaterL) * 100).round().clamp(0, 100),
+          xp: 25,
+          completed: totalWaterMl / 1000.0 >= targetWaterL,
+          currentValue: totalWaterMl / 1000.0,
+          targetValue: targetWaterL,
+          unit: 'L',
+        ),
+        // Objectif repas
+        DailyGoal(
+          id: 'meals',
+          label: 'track_meals_today'.tr(languageCode),
+          progress: ((uniqueMeals / 3) * 100).round().clamp(0, 100),
+          xp: 25,
+          completed: uniqueMeals >= 3,
+          currentValue: uniqueMeals.toDouble(),
+          targetValue: 3,
+          unit: 'repas',
+        ),
+        // Objectif workout
+        DailyGoal(
+          id: 'workout',
+          label: 'complete_workout'.tr(languageCode),
+          progress: hasWorkout ? 100 : 0,
+          xp: 25,
+          completed: hasWorkout,
+          currentValue: hasWorkout ? 1 : 0,
+          targetValue: 1,
+          unit: 'séance',
+        ),
+      ];
+
+      return goals;
+      
+    } catch (e) {
+      print('❌ Erreur récupération directe objectifs: $e');
+      return [];
+    }
+  }
+
   /// Invalider le cache et mettre à jour les objectifs en temps réel
-  /// Appelé après ajout/suppression de nourriture ou d'eau
+  /// Appelé après ajout/suppression de nourriture ou d'eau  
   static Future<void> invalidateAndRefreshGoals() async {
     print('🔄 Invalidation du cache et mise à jour des objectifs...');
     
-    // Vider le cache pour forcer une nouvelle récupération
+    // Vider les caches pour forcer une nouvelle récupération
     _cachedGoals = null;
     _cachedGoalsDate = null;
+    FastCacheService.invalidateDashboard();
     
-    // Récupérer les nouvelles données (qui mettra à jour le notifier)
-    final goals = await getDailyGoals();
+    // Récupérer directement depuis Supabase (plus rapide que getDailyGoals avec cache)
+    final goals = await getDailyGoalsFromSource();
+    
+    // Mettre à jour immédiatement le notifier
+    GoalsNotifier.instance.update(goals);
+    
     print('✅ Objectifs mis à jour en temps réel avec ${goals.length} objectifs');
     
     // Afficher le détail pour debug
     for (var goal in goals) {
       print('   - ${goal.label}: ${goal.currentValue}/${goal.targetValue} ${goal.unit} (${goal.progress}%)');
     }
+  }
+  
+  /// Rafraîchissement en arrière-plan (non-bloquant)
+  static void _refreshInBackground() {
+    Future.delayed(const Duration(milliseconds: 100), () async {
+      try {
+        // Vider uniquement le cache du jour
+        _cachedGoals = null;
+        _cachedGoalsDate = null;
+        
+        // Recharger en arrière-plan
+        final newGoals = await getDailyGoals();
+        print('🔄 Données rafraîchies en arrière-plan');
+      } catch (e) {
+        print('⚠️ Erreur refresh background: $e');
+      }
+    });
   }
   
   /// Invalider le cache après une séance sport
@@ -486,6 +647,9 @@ class DashboardService {
     // Récupérer les nouvelles données
     final goals = await getDailyGoals();
     print('✅ Dashboard mis à jour après séance avec ${goals.length} objectifs');
+    
+    // IMPORTANT: Mettre à jour immédiatement le notifier pour la mise à jour visuelle
+    GoalsNotifier.instance.update(goals);
     
     // Afficher le détail pour debug
     for (var goal in goals) {

@@ -31,6 +31,7 @@ import 'cardio_widgets.dart';
 import '../../models/hiit_models.dart';
 import '../../models/cardio_session_models.dart';
 import '../../screens/hiit_session_screen.dart';
+import 'custom_snackbar.dart';
 import '../../screens/hiit_config_screen.dart';
 import '../../screens/cardio_tracking_screen.dart';
 import '../../screens/manual_cardio_entry_screen.dart';
@@ -122,11 +123,9 @@ class _QuickActionsSectionState extends State<QuickActionsSection> {
   void _handleQuickAction(BuildContext context, QuickAction action) {
     if (action.isDisabled || action.isPremiumRequired) {
       final locService = context.read<LocalizationService>();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('premium_feature'.tr(locService.currentLanguageCode)),
-          backgroundColor: const Color(0xFF0B132B),
-        ),
+      CustomSnackbarService.showInfo(
+        context,
+        'premium_feature'.tr(locService.currentLanguageCode),
       );
       return;
     }
@@ -165,11 +164,9 @@ class _QuickActionsSectionState extends State<QuickActionsSection> {
     final userId = Supabase.instance.client.auth.currentUser?.id;
     if (userId == null) {
       final locService = context.read<LocalizationService>();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('must_be_connected'.tr(locService.currentLanguageCode)),
-          duration: const Duration(seconds: 2),
-        ),
+      CustomSnackbarService.showError(
+        context,
+        'must_be_connected'.tr(locService.currentLanguageCode),
       );
       return;
     }
@@ -185,24 +182,18 @@ class _QuickActionsSectionState extends State<QuickActionsSection> {
         throw Exception('Échec de l\'ajout d\'eau');
       }
 
-      // Feedback visuel (même style que le dashboard nutrition)
+      // Feedback visuel instantané
       final locService = context.read<LocalizationService>();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('$milliliters ${'water_added'.tr(locService.currentLanguageCode)}'),
-          duration: const Duration(seconds: 2),
-          backgroundColor: const Color(0xFF0B132B),
-        ),
+      CustomSnackbarService.showSuccess(
+        context,
+        '$milliliters ${'water_added'.tr(locService.currentLanguageCode)}',
       );
     } catch (e) {
       debugPrint('Erreur lors de l\'ajout d\'eau: $e');
       final locService = context.read<LocalizationService>();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('water_add_error'.tr(locService.currentLanguageCode)),
-          duration: const Duration(seconds: 2),
-          backgroundColor: Colors.red,
-        ),
+      CustomSnackbarService.showError(
+        context,
+        'water_add_error'.tr(locService.currentLanguageCode),
       );
     }
   }

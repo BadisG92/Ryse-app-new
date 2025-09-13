@@ -28,17 +28,23 @@ class _RyzeAppState extends State<RyzeApp> {
   }
 
   Future<void> _checkOnboardingStatus() async {
+    // DÉLAYER pour éviter freeze pendant build
+    await Future.delayed(const Duration(milliseconds: 100));
+    
+    if (!mounted) return;
+    
     final supabase = Supabase.instance.client;
     final user = supabase.auth.currentUser;
     
     if (user != null) {
       try {
-        // Vérifier le statut d'onboarding depuis Supabase
+        // CORRECTION: Ajouter timeout pour éviter blocage
         final response = await supabase
             .from('users')
             .select('is_onboarded')
             .eq('id', user.id)
-            .single();
+            .single()
+            .timeout(const Duration(seconds: 5));
         
         final isOnboarded = response['is_onboarded'] ?? false;
         
@@ -46,11 +52,13 @@ class _RyzeAppState extends State<RyzeApp> {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool('is_onboarded', isOnboarded);
         
-        setState(() {
-          // Forcer l'onboarding si _forceOnboarding est true
-          _isOnboarded = _forceOnboarding ? false : isOnboarded;
-          _isLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            // Forcer l'onboarding si _forceOnboarding est true
+            _isOnboarded = _forceOnboarding ? false : isOnboarded;
+            _isLoading = false;
+          });
+        }
         
         print('✅ Statut onboarding: $isOnboarded');
       } catch (e) {
@@ -60,11 +68,13 @@ class _RyzeAppState extends State<RyzeApp> {
         final prefs = await SharedPreferences.getInstance();
         final isOnboarded = prefs.getBool('is_onboarded') ?? false;
         
-        setState(() {
-          // Forcer l'onboarding si _forceOnboarding est true
-          _isOnboarded = _forceOnboarding ? false : isOnboarded;
-          _isLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            // Forcer l'onboarding si _forceOnboarding est true
+            _isOnboarded = _forceOnboarding ? false : isOnboarded;
+            _isLoading = false;
+          });
+        }
       }
     } else {
       // Pas d'utilisateur connecté

@@ -94,6 +94,24 @@ class FoodItem {
     return language == 'fr' ? referenceUnitFr : referenceUnitEn;
   }
   
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'calories': calories,
+    'proteins': proteins,
+    'carbs': carbs,
+    'fats': fats,
+    'portion': portion,
+    'isModified': isModified,
+    'hasModifiedMacros': hasModifiedMacros,
+    'isCustom': isCustom,
+    'isRecipe': isRecipe,
+    'isScanned': isScanned,
+    'referenceUnitFr': referenceUnitFr,
+    'referenceUnitEn': referenceUnitEn,
+    'referenceQuantity': referenceQuantity,
+  };
+  
   // Détermine si une icône doit être affichée selon les nouvelles règles
   bool get shouldShowCustomIcon {
     // Règle 1: Aliment scanné (dans custom_foods ou non) → icône scan
