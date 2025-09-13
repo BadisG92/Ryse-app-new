@@ -39,7 +39,7 @@ class MainCaloriesCard extends StatelessWidget {
           style: TextStyle(
             fontSize: fontSize,
             fontWeight: FontWeight.w300,
-            color: Colors.white,
+            color: const Color(0xFFB87333),
           ),
         ),
         const SizedBox(width: 3),
@@ -50,7 +50,7 @@ class MainCaloriesCard extends StatelessWidget {
               'kcal_unit'.tr(locService.currentLanguageCode),
               style: TextStyle(
                 fontSize: 12,
-                color: Colors.white.withOpacity(0.8),
+                color: const Color(0xFFB87333).withOpacity(0.8),
               ),
             ),
           ),
@@ -122,7 +122,7 @@ class MainCaloriesCard extends StatelessWidget {
                               'consumed'.tr(locService.currentLanguageCode),
                               style: TextStyle(
                                 fontSize: 11,
-                                color: Colors.white.withOpacity(0.8),
+                                color: const Color(0xFFB87333).withOpacity(0.8),
                               ),
                             ),
                           ),
@@ -290,7 +290,7 @@ class MacronutrientsCard extends StatelessWidget {
                 const Icon(
                   LucideIcons.trendingUp,
                   size: 16,
-                  color: Color(0xFF0B132B),
+                  color: Color(0xFFB87333),
                 ),
                 const SizedBox(width: 8),
                 Consumer<LocalizationService>(
@@ -299,7 +299,7 @@ class MacronutrientsCard extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF1A1A1A),
+                      color: Color(0xFFB87333),
                     ),
                   ),
                 ),

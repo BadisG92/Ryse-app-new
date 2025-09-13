@@ -241,12 +241,12 @@ class _SportDashboardState extends State<SportDashboard> with TickerProviderStat
                       height: 120,
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
-                          colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+                          colors: [Color(0xFFB87333), Color(0xFF8B5A1F)],
                         ),
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF0B132B).withOpacity(0.2),
+                            color: const Color(0xFFB87333).withOpacity(0.2),
                             blurRadius: 20,
                             spreadRadius: 5,
                           ),
@@ -259,7 +259,7 @@ class _SportDashboardState extends State<SportDashboard> with TickerProviderStat
                       height: 100,
                       decoration: const BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+                          colors: [Color(0xFFB87333), Color(0xFF8B5A1F)],
                         ),
                         shape: BoxShape.circle,
                       ),

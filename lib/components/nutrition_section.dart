@@ -261,8 +261,8 @@ class _NutritionSectionState extends State<NutritionSection>
                                 Icon(
                                   _pageIcons[index],
                                   size: 16,
-                                  color: isSelected 
-                                      ? const Color(0xFF0B132B)
+                                  color: isSelected
+                                      ? const Color(0xFFB87333)
                                       : const Color(0xFF888888),
                                 ),
                                 const SizedBox(width: 6),
@@ -275,8 +275,8 @@ class _NutritionSectionState extends State<NutritionSection>
                                         style: TextStyle(
                                           fontSize: 13,
                                           fontWeight: FontWeight.w500,
-                                          color: isSelected 
-                                              ? const Color(0xFF0B132B)
+                                          color: isSelected
+                                              ? const Color(0xFFB87333)
                                               : const Color(0xFF888888),
                                         ),
                                         overflow: TextOverflow.ellipsis,
@@ -292,8 +292,8 @@ class _NutritionSectionState extends State<NutritionSection>
                           Container(
                             height: 2,
                             decoration: BoxDecoration(
-                              color: isSelected 
-                                  ? const Color(0xFF0B132B) 
+                              color: isSelected
+                                  ? const Color(0xFFB87333)
                                   : Colors.transparent,
                               borderRadius: BorderRadius.circular(1),
                             ),

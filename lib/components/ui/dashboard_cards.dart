@@ -254,22 +254,22 @@ class QuickActionButton extends StatelessWidget {
               width: 72,
               height: 72,
               decoration: BoxDecoration(
-                gradient: action.isDisabled 
+                gradient: action.isDisabled
                     ? LinearGradient(
                         colors: [
                           const Color(0xFFE2E8F0),
                           const Color(0xFFE2E8F0),
                         ],
                       )
-                    : const LinearGradient(
-                        colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+                    : LinearGradient(
+                        colors: action.colors,
                       ),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
                 action.icon,
                 size: 28,
-                color: action.isDisabled ? const Color(0xFF64748B) : Colors.white,
+                color: action.isDisabled ? const Color(0xFF64748B) : action.iconColor,
               ),
             ),
             

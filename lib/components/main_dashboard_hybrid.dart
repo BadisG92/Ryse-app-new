@@ -807,10 +807,10 @@ class GamifiedActionsSection extends StatelessWidget {
         height: 80, // Taille fixe pour uniformité
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          gradient: action.isDisabled 
+          gradient: action.isDisabled
               ? null
-              : const LinearGradient(
-                  colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+              : LinearGradient(
+                  colors: action.colors,
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -818,7 +818,7 @@ class GamifiedActionsSection extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           boxShadow: action.isDisabled ? null : [
             BoxShadow(
-              color: const Color(0xFF0B132B).withOpacity(0.2),
+              color: action.colors.first.withOpacity(0.2),
               blurRadius: 8,
               offset: const Offset(0, 3),
             ),
@@ -830,7 +830,7 @@ class GamifiedActionsSection extends StatelessWidget {
             Icon(
               action.icon,
               size: 24,
-              color: action.isDisabled ? const Color(0xFF64748B) : Colors.white,
+              color: action.isDisabled ? const Color(0xFF64748B) : action.iconColor,
             ),
             const SizedBox(height: 6),
             Flexible(
@@ -839,7 +839,7 @@ class GamifiedActionsSection extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
-                  color: action.isDisabled ? const Color(0xFF64748B) : Colors.white,
+                  color: action.isDisabled ? const Color(0xFF64748B) : action.textColor,
                 ),
                 textAlign: TextAlign.center,
                 maxLines: 2,

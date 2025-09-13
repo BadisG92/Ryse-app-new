@@ -94,13 +94,13 @@ class DailyGoal {
   // Couleur de la barre de progression
   List<Color> get progressColors {
     if (completed) {
-      return [const Color(0xFF0B132B), const Color(0xFF1C2951)];
+      return [const Color(0xFFB87333), const Color(0xFF8B5A1F)]; // Dégradé prononcé
     } else if (isPremium) {
       return [const Color(0xFFE2E8F0), const Color(0xFFCBD5E1)];
     } else {
       return [
-        const Color(0xFF0B132B).withOpacity(0.8), 
-        const Color(0xFF1C2951).withOpacity(0.8)
+        const Color(0xFFB87333).withOpacity(0.8),
+        const Color(0xFF8B5A1F).withOpacity(0.8) // Dégradé prononcé même en transparence
       ];
     }
   }
@@ -161,20 +161,56 @@ class QuickAction {
     this.onTap,
   });
 
-  // Couleurs selon l'état
+  // Couleurs selon l'état et l'action spécifique
   List<Color> get colors {
     if (isDisabled || isPremiumRequired) {
       return [const Color(0xFFE2E8F0), const Color(0xFFCBD5E1)];
     }
-    return [const Color(0xFF0B132B), const Color(0xFF1C2951)];
+
+    // Couleurs spécifiques par action avec dégradés prononcés
+    switch (id) {
+      case 'add_water':
+        return [const Color(0xFFB87333), const Color(0xFF8B5A1F)]; // Bronze dégradé plus prononcé
+      case 'take_photo':
+        return [const Color(0xFF0B132B), const Color(0xFF1C2951)]; // Bleu original avec dégradé
+      case 'workout':
+        return [const Color(0xFFB87333), const Color(0xFF8B5A1F)]; // Bronze dégradé plus prononcé
+      case 'weight_tracking':
+        return [const Color(0xFFF8F9FA), const Color(0xFFE2E8F0)]; // Gris clair avec dégradé subtil
+      default:
+        return [const Color(0xFF0B132B), const Color(0xFF1C2951)]; // Défaut (add_meal)
+    }
   }
 
-  // Couleur du texte
+  // Couleur du texte selon l'action
   Color get textColor {
     if (isDisabled || isPremiumRequired) {
       return const Color(0xFF94A3B8);
     }
-    return Colors.white;
+
+    // Couleur texte spécifique par action
+    switch (id) {
+      case 'weight_tracking':
+        return const Color(0xFF64748B); // Texte gris pour fond clair
+      default:
+        return Colors.white;
+    }
+  }
+
+  // Couleur de l'icône selon l'action
+  Color get iconColor {
+    if (isDisabled || isPremiumRequired) {
+      return const Color(0xFF94A3B8);
+    }
+
+    switch (id) {
+      case 'take_photo':
+        return const Color(0xFFB87333); // Icône bronze sur fond bleu
+      case 'weight_tracking':
+        return const Color(0xFFB87333); // Icône bronze sur fond clair
+      default:
+        return Colors.white; // Icône blanche par défaut
+    }
   }
 }
 
