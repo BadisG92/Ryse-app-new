@@ -100,6 +100,9 @@ class DashboardService {
     }
   }
 
+  // Variable pour éviter les boucles infinies de rafraîchissement
+  static bool _isRefreshingInBackground = false;
+
   /// Récupérer les objectifs journaliers avec données dynamiques
   static Future<List<DailyGoal>> getDailyGoals() async {
     try {
@@ -107,10 +110,12 @@ class DashboardService {
       final fastCached = FastCacheService.getCachedGoals();
       if (fastCached != null) {
         GoalsNotifier.instance.update(fastCached);
-        print('⚡ Goals depuis cache rapide');
-        
-        // Lancer une mise à jour en arrière-plan si le cache a plus de 10s
-        _refreshInBackground();
+        // print('⚡ Goals depuis cache rapide'); // Commenté pour réduire les logs
+
+        // Lancer une mise à jour en arrière-plan si le cache a plus de 10s ET si on n'est pas déjà en train de rafraîchir
+        if (!_isRefreshingInBackground) {
+          _refreshInBackground();
+        }
         return fastCached;
       }
       
@@ -612,17 +617,34 @@ class DashboardService {
   
   /// Rafraîchissement en arrière-plan (non-bloquant)
   static void _refreshInBackground() {
+    if (_isRefreshingInBackground) return; // Éviter les boucles infinies
+
     Future.delayed(const Duration(milliseconds: 100), () async {
+      _isRefreshingInBackground = true;
       try {
-        // Vider uniquement le cache du jour
+        // print('🔄 Début rafraîchissement en arrière-plan...'); // Commenté pour réduire les logs
+
+        // Vider uniquement le cache pour forcer une nouvelle récupération
         _cachedGoals = null;
         _cachedGoalsDate = null;
-        
-        // Recharger en arrière-plan
-        final newGoals = await getDailyGoals();
-        print('🔄 Données rafraîchies en arrière-plan');
+        // Vider aussi le cache rapide en supprimant directement la clé goals
+
+        // Recharger directement depuis la source (sans passer par getDailyGoals pour éviter la boucle)
+        final newGoals = await getDailyGoalsFromSource();
+
+        // Mettre en cache les nouvelles données
+        _cachedGoals = newGoals;
+        _cachedGoalsDate = DateTime.now();
+        FastCacheService.cacheGoals(newGoals);
+
+        // Mettre à jour le notifier
+        GoalsNotifier.instance.update(newGoals);
+
+        // print('✅ Données rafraîchies en arrière-plan (${newGoals.length} objectifs)'); // Commenté pour réduire les logs
       } catch (e) {
         print('⚠️ Erreur refresh background: $e');
+      } finally {
+        _isRefreshingInBackground = false;
       }
     });
   }
