@@ -3,28 +3,25 @@ import 'package:flutter/foundation.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:camera/camera.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
-import 'dart:io';
-import 'dart:typed_data';
+import '../services/localization_service.dart';
+import '../services/gemini_analysis_service_v2.dart';
+import '../models/ai_analysis_models.dart';
 import '../bottom_sheets/editable_food_details_bottom_sheet.dart';
 import '../bottom_sheets/meal_selection_bottom_sheet.dart';
 import '../bottom_sheets/new_meal_type_bottom_sheet.dart';
 import '../models/nutrition_models.dart';
-import '../components/ui/nutrition_widgets.dart';
-import '../services/gemini_analysis_service.dart';
-import '../services/gemini_analysis_service_v2.dart';
-import '../services/localization_service.dart';
-import '../services/translations.dart';
-import '../models/ai_analysis_models.dart';
 import '../services/food_entries_service.dart';
 import '../services/auth_service.dart';
+import '../services/translations.dart';
+import 'dart:io';
+import 'dart:typed_data';
 
 class AIScannerScreen extends StatefulWidget {
   final bool isFromDashboard;
-  final String? mealName; // Pour flux depuis journal
-  final String? mealId;   // Pour flux depuis journal
-  
+  final String? mealName;
+  final String? mealId;
+
   const AIScannerScreen({
     super.key,
     this.isFromDashboard = false,
@@ -36,370 +33,177 @@ class AIScannerScreen extends StatefulWidget {
   State<AIScannerScreen> createState() => _AIScannerScreenState();
 }
 
-class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingObserver {
-  bool isAnalyzing = false;
-  bool hasResult = false;
-  bool isCameraInitialized = false;
-  bool isFlashOn = false;
-  bool showNoteInput = false;
-  String? errorMessage;
-  AIAnalysisResult? _analysisResult;
-  String _aiNote = '';
-  
-  // Contrôleur pour le nom de l'aliment modifiable
-  final TextEditingController _mealNameController = TextEditingController();
-  // Contrôleur pour la note IA
-  final TextEditingController _noteController = TextEditingController();
-  
-  static const int maxNoteLength = 140;
-  
-  // Animation de chargement IA
-  int _loadingPhase = 0;
-  
-  List<String> _getLoadingPhases(String languageCode) {
-    return languageCode == 'fr' ? [
-      'Traitement de l\'image...',
-      'Détection des aliments...',
-      'Analyse nutritionnelle...',
-      'Calcul des calories...',
-      'Finalisation...',
-    ] : [
-      'Processing image...',
-      'Detecting foods...',
-      'Nutritional analysis...',
-      'Calculating calories...',
-      'Finalizing...',
-    ];
-  }
-  
+class _AIScannerScreenState extends State<AIScannerScreen> {
   CameraController? _cameraController;
-  List<CameraDescription>? _cameras;
-  final ImagePicker _imagePicker = ImagePicker();
-  File? _capturedImage;
-  Uint8List? _capturedImageBytes; // Pour l'affichage web
+  bool _isCameraInitialized = false;
+  bool _isFlashOn = false;
+  String? _errorMessage;
+  bool _isLoading = true;
+  final ImagePicker _picker = ImagePicker();
+
+  // Variables pour le zoom
+  double _currentZoomLevel = 1.0;
+  double _minZoomLevel = 1.0;
+  double _maxZoomLevel = 1.0;
+  double _baseZoomLevel = 1.0;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
+    print('🔥 [FLUX AI] 📸 ===== VERSION AVEC ZOOM ET NOTE =====');
+    print('🔥 [FLUX AI] 📸 PAS d\'écran de choix - Caméra DIRECTE !');
     _initializeCamera();
   }
 
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    _cameraController?.dispose();
-    _mealNameController.dispose();
-    _noteController.dispose();
-    super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (_cameraController == null || !_cameraController!.value.isInitialized) {
-      return;
-    }
-
-    if (state == AppLifecycleState.inactive) {
-      _cameraController?.dispose();
-    } else if (state == AppLifecycleState.resumed) {
-      _initializeCamera();
-    }
-  }
-
   Future<void> _initializeCamera() async {
+    print('🔥 [FLUX AI] 📹 Initialisation caméra native');
     try {
-      // Vérifier les permissions
-      final cameraPermission = await Permission.camera.request();
-      if (cameraPermission != PermissionStatus.granted) {
-        final locService = Provider.of<LocalizationService>(context, listen: false);
+      final cameras = await availableCameras();
+      if (cameras.isEmpty) {
         setState(() {
-          errorMessage = locService.currentLanguageCode == 'fr' 
-            ? 'Permission caméra requise pour scanner les aliments'
-            : 'Camera permission required to scan foods';
+          _errorMessage = 'Aucune caméra disponible';
+          _isLoading = false;
         });
         return;
       }
-
-      // Obtenir les caméras disponibles
-      _cameras = await availableCameras();
-      if (_cameras == null || _cameras!.isEmpty) {
-        final locService = Provider.of<LocalizationService>(context, listen: false);
-        setState(() {
-          errorMessage = locService.currentLanguageCode == 'fr' 
-            ? 'Aucune caméra disponible sur cet appareil'
-            : 'No camera available on this device';
-        });
-        return;
-      }
-
-      // Initialiser le contrôleur de caméra avec la caméra arrière
-      final backCamera = _cameras!.firstWhere(
-        (camera) => camera.lensDirection == CameraLensDirection.back,
-        orElse: () => _cameras!.first,
-      );
 
       _cameraController = CameraController(
-        backCamera,
+        cameras.first,
         ResolutionPreset.high,
         enableAudio: false,
       );
 
       await _cameraController!.initialize();
-      
-      setState(() {
-        isCameraInitialized = true;
-        errorMessage = null;
-      });
+
+      // Récupérer les niveaux de zoom min/max
+      _minZoomLevel = await _cameraController!.getMinZoomLevel();
+      _maxZoomLevel = await _cameraController!.getMaxZoomLevel();
+      _currentZoomLevel = _minZoomLevel;
+      _baseZoomLevel = _minZoomLevel;
+      print('🔥 [FLUX AI] ✅ Caméra initialisée - Zoom: ${_minZoomLevel}x - ${_maxZoomLevel}x');
+
+      if (mounted) {
+        setState(() {
+          _isCameraInitialized = true;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      final locService = Provider.of<LocalizationService>(context, listen: false);
+      print('🔥 [FLUX AI] ❌ Erreur caméra: $e');
       setState(() {
-        errorMessage = locService.currentLanguageCode == 'fr' 
-          ? 'Erreur d\'initialisation de la caméra: $e'
-          : 'Camera initialization error: $e';
-        isCameraInitialized = false;
+        _errorMessage = 'Erreur caméra: $e';
+        _isLoading = false;
       });
     }
   }
 
-  Future<void> _toggleFlash() async {
-    if (_cameraController == null) return;
-    
+  @override
+  void dispose() {
+    _cameraController?.dispose();
+    super.dispose();
+  }
+
+  String _getLocalizedHint(BuildContext context) {
+    final localizationService = Provider.of<LocalizationService>(context, listen: false);
+    return localizationService.currentLanguageCode == 'fr'
+        ? 'Nom du plat détecté par l\'IA'
+        : 'AI-detected dish name';
+  }
+
+  Future<void> _takePicture() async {
+    print('🔥 [FLUX AI] 📸 Prise de photo');
+    if (_cameraController == null || !_cameraController!.value.isInitialized) {
+      return;
+    }
+
     try {
-      setState(() {
-        isFlashOn = !isFlashOn;
-      });
-      
-      await _cameraController!.setFlashMode(
-        isFlashOn ? FlashMode.torch : FlashMode.off,
+      final image = await _cameraController!.takePicture();
+      print('🔥 [FLUX AI] ✅ Photo prise: ${image.path}');
+
+      // Aller au preview screen avec note
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => AIPreviewScreen(
+            imagePath: image.path,
+            isFromDashboard: widget.isFromDashboard,
+            mealName: widget.mealName,
+            mealId: widget.mealId,
+          ),
+        ),
       );
     } catch (e) {
-      print('Erreur toggle flash: $e');
+      print('🔥 [FLUX AI] ❌ Erreur photo: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erreur: $e')),
+      );
+    }
+  }
+
+  Future<void> _pickFromGallery() async {
+    print('🔥 [FLUX AI] 🖼️ Ouverture galerie');
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+      );
+
+      if (image != null) {
+        print('🔥 [FLUX AI] ✅ Image depuis galerie: ${image.path}');
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => AIPreviewScreen(
+              imagePath: image.path,
+              isFromDashboard: widget.isFromDashboard,
+              mealName: widget.mealName,
+              mealId: widget.mealId,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      print('🔥 [FLUX AI] ❌ Erreur galerie: $e');
+    }
+  }
+
+  void _toggleFlash() {
+    if (_cameraController != null) {
+      _cameraController!.setFlashMode(
+        _isFlashOn ? FlashMode.off : FlashMode.torch
+      );
+      setState(() {
+        _isFlashOn = !_isFlashOn;
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return _buildLoadingScreen();
+    }
+
+    if (_errorMessage != null) {
+      return _buildErrorScreen();
+    }
+
+    return _buildCameraScreen();
+  }
+
+  Widget _buildLoadingScreen() {
     return Scaffold(
       backgroundColor: Colors.black,
-      body: SafeArea(
-        child: hasResult 
-            ? _buildResultScreen() 
-            : isAnalyzing 
-                ? _buildAILoadingScreen() 
-                : Stack(
-                    children: [
-                      _buildCameraScreen(),
-                      if (showNoteInput) _buildNoteInputOverlay(),
-                    ],
-                  ),
-      ),
-    );
-  }
-
-  Widget _buildCameraScreen() {
-    return Stack(
-      children: [
-        // Vue caméra ou message d'erreur
-        if (errorMessage != null)
-          _buildErrorView()
-        else if (isCameraInitialized && _cameraController != null)
-          _buildCameraPreview()
-        else
-          _buildLoadingView(),
-        
-        // Header
-        Positioned(
-          top: 16,
-          left: 16,
-          right: 16,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              GestureDetector(
-                onTap: () => Navigator.pop(context),
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.black54,
-                    borderRadius: BorderRadius.circular(25),
-                  ),
-                  child: const Icon(
-                    LucideIcons.chevronLeft,
-                    color: Colors.white,
-                    size: 24,
-                  ),
-                ),
-              ),
-              GestureDetector(
-                onTap: _toggleFlash,
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.black54,
-                    borderRadius: BorderRadius.circular(25),
-                  ),
-                  child: Icon(
-                    isFlashOn ? LucideIcons.flashlight : LucideIcons.flashlightOff,
-                    color: isFlashOn ? Colors.yellow : Colors.white,
-                    size: 24,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        
-        // Instructions
-        Positioned(
-          top: 100,
-          left: 24,
-          right: 24,
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.black54,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              children: [
-                const Icon(
-                  LucideIcons.camera,
-                  color: Colors.white,
-                  size: 32,
-                ),
-                const SizedBox(height: 8),
-                Consumer<LocalizationService>(
-                  builder: (context, locService, child) => Text(
-                    'take_photo'.tr(locService.currentLanguageCode),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Consumer<LocalizationService>(
-                  builder: (context, locService, child) => Text(
-                    locService.currentLanguageCode == 'fr' ? 'Assurez-vous que le plat soit bien visible et éclairé' : 'Make sure the dish is well visible and lit',
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 14,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        
-        // Boutons de capture
-        Positioned(
-          bottom: 50,
-          left: 0,
-          right: 0,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              // Bouton galerie
-              GestureDetector(
-                onTap: _pickImageFromGallery,
-                child: Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    color: Colors.black54,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
-                  ),
-                  child: const Icon(
-                    LucideIcons.image,
-                    color: Colors.white,
-                    size: 24,
-                  ),
-                ),
-              ),
-              
-              // Bouton capture principal
-              GestureDetector(
-                onTap: isCameraInitialized && !isAnalyzing ? _takePicture : null,
-                child: Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    color: isAnalyzing ? Colors.grey : Colors.white,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 4),
-                  ),
-                  child: isAnalyzing
-                      ? const Center(
-                          child: CircularProgressIndicator(
-                            color: Color(0xFF0B132B),
-                            strokeWidth: 3,
-                          ),
-                        )
-                      : const Icon(
-                          LucideIcons.camera,
-                          color: Colors.black,
-                          size: 32,
-                        ),
-                ),
-              ),
-              
-              // Bouton switch caméra
-              GestureDetector(
-                onTap: _switchCamera,
-                child: Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    color: Colors.black54,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
-                  ),
-                  child: const Icon(
-                    LucideIcons.rotateCw,
-                    color: Colors.white,
-                    size: 24,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCameraPreview() {
-    return SizedBox(
-      width: double.infinity,
-      height: double.infinity,
-      child: CameraPreview(_cameraController!),
-    );
-  }
-
-  Widget _buildLoadingView() {
-    return Container(
-      width: double.infinity,
-      height: double.infinity,
-      color: Colors.black,
-      child: const Center(
+      body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(
-              color: Colors.white,
-            ),
-            SizedBox(height: 16),
-            Text(
-              'Initialisation de la caméra...',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
+            const CircularProgressIndicator(color: Colors.white),
+            const SizedBox(height: 20),
+            Consumer<LocalizationService>(
+              builder: (context, locService, child) => Text(
+                locService.currentLanguageCode == 'fr'
+                    ? 'Initialisation de la caméra...'
+                    : 'Initializing camera...',
+                style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             ),
           ],
@@ -408,45 +212,651 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
     );
   }
 
-  Widget _buildErrorView() {
-    return Container(
-      width: double.infinity,
-      height: double.infinity,
-      color: Colors.black,
-      child: Center(
+  Widget _buildErrorScreen() {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        leading: IconButton(
+          icon: const Icon(LucideIcons.arrowLeft, color: Colors.white),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(LucideIcons.cameraOff, color: Colors.white, size: 64),
+            const SizedBox(height: 20),
+            Text(
+              _errorMessage!,
+              style: const TextStyle(color: Colors.white, fontSize: 16),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCameraScreen() {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(LucideIcons.arrowLeft, color: Colors.white),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Consumer<LocalizationService>(
+          builder: (context, locService, child) => Text(
+            locService.currentLanguageCode == 'fr' ? 'Scanner IA' : 'AI Scanner',
+            style: const TextStyle(color: Colors.white),
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: Icon(
+              _isFlashOn ? LucideIcons.flashlight : LucideIcons.flashlightOff,
+              color: Colors.white,
+            ),
+            onPressed: _toggleFlash,
+          ),
+        ],
+      ),
+      body: Stack(
+        children: [
+          // Caméra preview plein écran avec zoom
+          if (_isCameraInitialized)
+            Positioned.fill(
+              child: GestureDetector(
+                onScaleStart: (ScaleStartDetails details) {
+                  _baseZoomLevel = _currentZoomLevel;
+                },
+                onScaleUpdate: (ScaleUpdateDetails details) {
+                  final double newZoom = (_baseZoomLevel * details.scale).clamp(_minZoomLevel, _maxZoomLevel);
+                  _cameraController!.setZoomLevel(newZoom);
+                  setState(() {
+                    _currentZoomLevel = newZoom;
+                  });
+                },
+                onScaleEnd: (ScaleEndDetails details) {
+                  print('🔥 [FLUX AI] 🔍 Zoom final: ${_currentZoomLevel.toStringAsFixed(1)}x');
+                },
+                child: CameraPreview(_cameraController!),
+              ),
+            ),
+
+          // Interface style iPhone
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              padding: const EdgeInsets.only(bottom: 40, top: 30),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    Colors.black.withOpacity(0.3),
+                    Colors.black.withOpacity(0.6),
+                  ],
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  // Bouton galerie
+                  GestureDetector(
+                    onTap: _pickFromGallery,
+                    child: Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        LucideIcons.image,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                  ),
+
+                  // Bouton capture principal (style iPhone)
+                  GestureDetector(
+                    onTap: _takePicture,
+                    child: Container(
+                      width: 72,
+                      height: 72,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 4),
+                      ),
+                      child: Container(
+                        margin: const EdgeInsets.all(3),
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // Espace vide pour garder la symétrie (plus de 3ème bouton)
+                  const SizedBox(width: 50, height: 50),
+                ],
+              ),
+            ),
+          ),
+
+          // Indicateur de zoom
+          if (_currentZoomLevel > _minZoomLevel)
+            Positioned(
+              bottom: 140,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.6),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '${_currentZoomLevel.toStringAsFixed(1)}x',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// Écran de preview avec note
+class AIPreviewScreen extends StatefulWidget {
+  final String imagePath;
+  final bool isFromDashboard;
+  final String? mealName;
+  final String? mealId;
+
+  const AIPreviewScreen({
+    super.key,
+    required this.imagePath,
+    this.isFromDashboard = false,
+    this.mealName,
+    this.mealId,
+  });
+
+  @override
+  State<AIPreviewScreen> createState() => _AIPreviewScreenState();
+}
+
+class _AIPreviewScreenState extends State<AIPreviewScreen> {
+  final TextEditingController _noteController = TextEditingController();
+  static const int _maxNoteLength = 500;
+
+  void _retakePicture() {
+    Navigator.of(context).pop();
+  }
+
+  void _analyzePhoto() {
+    print('🔥 [FLUX AI] 📝 Note: ${_noteController.text}');
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => AIAnalysisScreen(
+          imagePath: widget.imagePath,
+          note: _noteController.text.trim(),
+          isFromDashboard: widget.isFromDashboard,
+          mealName: widget.mealName,
+          mealId: widget.mealId,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(LucideIcons.arrowLeft, color: Color(0xFF0B132B)),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Consumer<LocalizationService>(
+          builder: (context, locService, child) => Text(
+            locService.currentLanguageCode == 'fr' ? 'Prévisualisation' : 'Preview',
+            style: const TextStyle(color: Color(0xFF0B132B)),
+          ),
+        ),
+      ),
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            // Image preview
+            Container(
+              height: 400,
+              width: double.infinity,
+              margin: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Image.file(
+                  File(widget.imagePath),
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+
+            // Note input
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Consumer<LocalizationService>(
+                    builder: (context, locService, child) => Text(
+                      locService.currentLanguageCode == 'fr'
+                          ? 'Ajouter une note (optionnel)'
+                          : 'Add a note (optional)',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF0B132B),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Consumer<LocalizationService>(
+                    builder: (context, locService, child) => Text(
+                      locService.currentLanguageCode == 'fr'
+                          ? 'Décrivez le plat pour améliorer la précision'
+                          : 'Describe the dish to improve accuracy',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: const Color(0xFF0B132B).withOpacity(0.6),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _noteController,
+                    maxLength: _maxNoteLength,
+                    maxLines: 3,
+                    decoration: InputDecoration(
+                      hintText: 'Ex: Salade césar avec poulet grillé, portion moyenne',
+                      hintStyle: TextStyle(
+                        color: const Color(0xFF0B132B).withOpacity(0.4),
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: const Color(0xFF0B132B).withOpacity(0.1),
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: const Color(0xFF0B132B).withOpacity(0.1),
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(
+                          color: Color(0xFF0B132B),
+                          width: 2,
+                        ),
+                      ),
+                      contentPadding: const EdgeInsets.all(16),
+                    ),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      color: Color(0xFF0B132B),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 30),
+
+            // Boutons
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                children: [
+                  // Bouton reprendre
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: _retakePicture,
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFF0B132B)),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Consumer<LocalizationService>(
+                        builder: (context, locService, child) => Text(
+                          locService.currentLanguageCode == 'fr' ? 'Reprendre' : 'Retake',
+                          style: const TextStyle(
+                            color: Color(0xFF0B132B),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(width: 15),
+
+                  // Bouton analyser
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _analyzePhoto,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0B132B),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Consumer<LocalizationService>(
+                        builder: (context, locService, child) => Text(
+                          locService.currentLanguageCode == 'fr' ? 'Analyser' : 'Analyze',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// Écran d'analyse avec l'UI ORIGINALE pour les résultats
+class AIAnalysisScreen extends StatefulWidget {
+  final String imagePath;
+  final String? note;
+  final bool isFromDashboard;
+  final String? mealName;
+  final String? mealId;
+
+  const AIAnalysisScreen({
+    super.key,
+    required this.imagePath,
+    this.note,
+    this.isFromDashboard = false,
+    this.mealName,
+    this.mealId,
+  });
+
+  @override
+  State<AIAnalysisScreen> createState() => _AIAnalysisScreenState();
+}
+
+class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
+  bool _isAnalyzing = true;
+  bool _hasResult = false;
+  AIAnalysisResult? _analysisResult;
+  String? _errorMessage;
+  File? _capturedImage;
+  Uint8List? _capturedImageBytes;
+
+  // Contrôleurs pour l'UI originale
+  final TextEditingController _mealNameController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    print('🔥 [FLUX AI] 🤖 Démarrage analyse IA pour: ${widget.imagePath}');
+    if (widget.note != null && widget.note!.isNotEmpty) {
+      print('🔥 [FLUX AI] 📝 Note utilisateur: ${widget.note}');
+    }
+    _capturedImage = File(widget.imagePath);
+    _startAnalysis();
+  }
+
+  @override
+  void dispose() {
+    _mealNameController.dispose();
+    super.dispose();
+  }
+
+  String _getLocalizedHint(BuildContext context) {
+    final localizationService = Provider.of<LocalizationService>(context, listen: false);
+    return localizationService.currentLanguageCode == 'fr'
+        ? 'Nom du plat détecté par l\'IA'
+        : 'AI-detected dish name';
+  }
+
+  Future<void> _startAnalysis() async {
+    try {
+      final file = File(widget.imagePath);
+
+      // Appeler le service Gemini avec la note utilisateur
+      final result = await GeminiAnalysisServiceV2.analyzeImageWithFallback(
+        file,
+        userNote: widget.note,
+      );
+
+      if (mounted) {
+        setState(() {
+          _analysisResult = result;
+          _isAnalyzing = false;
+
+          if (result.success && result.detectedFoods.isNotEmpty) {
+            _hasResult = true;
+            _errorMessage = null;
+            // Mettre à jour le nom du repas avec le nom généré par l'IA
+            _mealNameController.text = result.mealName ?? 'Plat détecté par IA';
+            print('🔥 [FLUX AI] ✅ Analyse terminée avec succès');
+          } else {
+            _hasResult = false;
+            _errorMessage = result.error ?? 'Aucun aliment détecté';
+            print('🔥 [FLUX AI] ❌ Erreur d\'analyse: ${result.error}');
+          }
+        });
+      }
+    } catch (e) {
+      print('🔥 [FLUX AI] ❌ Exception lors de l\'analyse: $e');
+      if (mounted) {
+        setState(() {
+          _isAnalyzing = false;
+          _hasResult = false;
+          _errorMessage = e.toString();
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isAnalyzing) {
+      return _buildLoadingScreen();
+    }
+
+    if (_hasResult && _analysisResult != null) {
+      return _buildResultScreen();
+    }
+
+    return _buildErrorScreen();
+  }
+
+  Widget _buildLoadingScreen() {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(LucideIcons.arrowLeft, color: Color(0xFF0B132B)),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Consumer<LocalizationService>(
+          builder: (context, locService, child) => Text(
+            locService.currentLanguageCode == 'fr' ? 'Analyse IA' : 'AI Analysis',
+            style: const TextStyle(color: Color(0xFF0B132B)),
+          ),
+        ),
+      ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const CircularProgressIndicator(
+              color: Color(0xFF0B132B),
+            ),
+            const SizedBox(height: 24),
+            Consumer<LocalizationService>(
+              builder: (context, locService, child) => Text(
+                locService.currentLanguageCode == 'fr'
+                    ? 'Analyse en cours...'
+                    : 'Analyzing...',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF0B132B),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Consumer<LocalizationService>(
+              builder: (context, locService, child) => Text(
+                locService.currentLanguageCode == 'fr'
+                    ? 'Identification des aliments'
+                    : 'Identifying foods',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: const Color(0xFF0B132B).withOpacity(0.6),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorScreen() {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(LucideIcons.arrowLeft, color: Color(0xFF0B132B)),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Consumer<LocalizationService>(
+          builder: (context, locService, child) => Text(
+            locService.currentLanguageCode == 'fr' ? 'Erreur' : 'Error',
+            style: const TextStyle(color: Color(0xFF0B132B)),
+          ),
+        ),
+      ),
+      body: Center(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
-                LucideIcons.cameraOff,
-                color: Colors.white,
-                size: 64,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                errorMessage!,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.red.withOpacity(0.1),
                 ),
-                textAlign: TextAlign.center,
+                child: const Icon(
+                  LucideIcons.x,
+                  size: 32,
+                  color: Colors.red,
+                ),
               ),
               const SizedBox(height: 24),
+              Consumer<LocalizationService>(
+                builder: (context, locService, child) => Text(
+                  locService.currentLanguageCode == 'fr'
+                      ? 'Erreur d\'analyse'
+                      : 'Analysis Error',
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0B132B),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                _errorMessage ?? '',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: const Color(0xFF0B132B).withOpacity(0.7),
+                ),
+              ),
+              const SizedBox(height: 32),
               ElevatedButton(
-                onPressed: _initializeCamera,
+                onPressed: () {
+                  setState(() {
+                    _isAnalyzing = true;
+                    _errorMessage = null;
+                  });
+                  _startAnalysis();
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF0B132B),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 12,
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
                 child: Consumer<LocalizationService>(
                   builder: (context, locService, child) => Text(
-                    locService.currentLanguageCode == 'fr' ? 'Réessayer' : 'Try again',
-                    style: const TextStyle(color: Colors.white),
+                    locService.currentLanguageCode == 'fr' ? 'Réessayer' : 'Try Again',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),
@@ -457,397 +867,15 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
     );
   }
 
-  Future<void> _switchCamera() async {
-    if (_cameras == null || _cameras!.length < 2) return;
-    
-    try {
-      await _cameraController?.dispose();
-      
-      final currentCamera = _cameraController?.description;
-      final newCamera = _cameras!.firstWhere(
-        (camera) => camera.lensDirection != currentCamera?.lensDirection,
-        orElse: () => _cameras!.first,
-      );
-      
-      _cameraController = CameraController(
-        newCamera,
-        ResolutionPreset.high,
-        enableAudio: false,
-      );
-      
-      await _cameraController!.initialize();
-      setState(() {});
-    } catch (e) {
-      print('Erreur changement de caméra: $e');
-    }
-  }
-
-  Future<void> _pickImageFromGallery() async {
-    try {
-      // Sur web, on affiche un debug message pour comprendre le problème
-      if (kIsWeb) {
-        print('🌐 Tentative de sélection d\'image sur web...');
-      }
-      
-      final XFile? image = await _imagePicker.pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 80,
-        maxWidth: 1024,
-        maxHeight: 1024,
-      );
-      
-      print('📷 Image sélectionnée: ${image?.path ?? "aucune"}');
-      
-      if (image != null) {
-        if (kIsWeb) {
-          // Sur web, on utilise directement l'objet XFile
-          print('🌐 Traitement image web: ${image.name}, taille: ${await image.length()} bytes');
-          
-          // Lire les bytes pour l'analyse et l'affichage
-          final bytes = await image.readAsBytes();
-          print('📊 Bytes lus: ${bytes.length}');
-          
-          // Sauvegarder pour l'affichage web
-          setState(() {
-            _capturedImage = File(image.path); // Garde pour compatibilité
-            _capturedImageBytes = Uint8List.fromList(bytes); // Pour l'affichage web
-          });
-          
-          // Sauvegarder les bytes pour l'analyse après la note
-          _capturedImageBytes = bytes;
-          _showNoteInputOverlay();
-        } else {
-          // Sur mobile, utilisation normale
-          print('📱 Traitement image mobile: ${image.path}');
-          setState(() {
-            _capturedImage = File(image.path);
-          });
-          _showNoteInputOverlay();
-        }
-      } else {
-        print('❌ Aucune image sélectionnée');
-        _showErrorSnackbar('Aucune image sélectionnée');
-      }
-    } catch (e) {
-      print('❌ Erreur sélection image: $e');
-      _showErrorSnackbar('Erreur lors de la sélection: $e');
-    }
-  }
-
-  Future<void> _takePicture() async {
-    if (_cameraController == null || !_cameraController!.value.isInitialized) {
-      return;
-    }
-
-    try {
-      setState(() {
-        isAnalyzing = true;
-      });
-
-      final XFile image = await _cameraController!.takePicture();
-      
-      if (kIsWeb) {
-        // Sur web, sauvegarder aussi les bytes
-        final bytes = await image.readAsBytes();
-        setState(() {
-          _capturedImage = File(image.path);
-          _capturedImageBytes = Uint8List.fromList(bytes);
-        });
-        _capturedImageBytes = bytes;
-      } else {
-        // Sur mobile
-        setState(() {
-          _capturedImage = File(image.path);
-          _capturedImageBytes = null;
-        });
-      }
-      _showNoteInputOverlay();
-    } catch (e) {
-      setState(() {
-        isAnalyzing = false;
-      });
-      print('Erreur prise de photo: $e');
-    }
-  }
-
-  Future<void> _analyzeImage() async {
-    if (_capturedImage == null) return;
-
-    try {
-      if (mounted) {
-        setState(() {
-          _loadingPhase = 0;
-        });
-      }
-
-      // Démarrer l'animation de chargement
-      _startLoadingAnimation();
-
-      // Validate image file first
-      final validationError = await GeminiAnalysisService.validateImageFile(_capturedImage!);
-      if (validationError != null) {
-        if (mounted) {
-          setState(() {
-            isAnalyzing = false;
-            errorMessage = validationError;
-          });
-        }
-        return;
-      }
-
-      // Analyze image with Gemini service (with fallback to mock data)
-      final result = await GeminiAnalysisService.analyzeImageWithFallback(_capturedImage!);
-      
-      if (mounted) {
-        setState(() {
-          isAnalyzing = false;
-          _analysisResult = result;
-          
-          if (result.success && result.detectedFoods.isNotEmpty) {
-            hasResult = true;
-            errorMessage = null;
-            // Mettre à jour le nom du repas avec le nom généré par l'IA
-            _mealNameController.text = result.mealName ?? 'Plat détecté par IA';
-          } else {
-            hasResult = false;
-            errorMessage = result.error?.contains('API') == true 
-                ? 'Le service IA est temporairement surchargé.\nMerci de réessayer dans quelques minutes.' 
-                : 'Aucun aliment détecté dans cette image';
-          }
-        });
-      }
-
-    } catch (e) {
-      setState(() {
-        isAnalyzing = false;
-        hasResult = false;
-        errorMessage = 'Erreur lors de l\'analyse: $e';
-      });
-    }
-  }
-
-  /// Écran de chargement IA animé avec phases
-  Widget _buildAILoadingScreen() {
-    return Container(
-      color: const Color(0xFF0B132B),
-      child: Column(
-        children: [
-          // Header
-          Container(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      isAnalyzing = false;
-                      hasResult = false;
-                      _capturedImage = null;
-                      _capturedImageBytes = null;
-                    });
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      color: Colors.white24,
-                    ),
-                    child: const Icon(
-                      LucideIcons.chevronLeft,
-                      size: 20,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                const Expanded(
-                  child: Text(
-                    'Analyse IA en cours...',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          
-          // Contenu principal
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Robot IA animé
-                Container(
-                  width: 120,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    color: Colors.white12,
-                    borderRadius: BorderRadius.circular(60),
-                    border: Border.all(color: Colors.white, width: 2),
-                  ),
-                  child: Center(
-                    child: TweenAnimationBuilder(
-                      duration: const Duration(milliseconds: 1500),
-                      tween: Tween<double>(begin: 0, end: 1),
-                      builder: (context, double value, child) {
-                        return Transform.scale(
-                          scale: 0.8 + (0.2 * value),
-                          child: Icon(
-                            LucideIcons.brain,
-                            size: 64,
-                            color: Colors.white.withOpacity(0.8 + (0.2 * value)),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-                
-                const SizedBox(height: 40),
-                
-                // Phase actuelle
-                Consumer<LocalizationService>(
-                  builder: (context, locService, child) {
-                    final loadingPhases = _getLoadingPhases(locService.currentLanguageCode);
-                    return Text(
-                      _loadingPhase < loadingPhases.length 
-                          ? loadingPhases[_loadingPhase]
-                          : (locService.currentLanguageCode == 'fr' ? 'Finalisation...' : 'Finalizing...'),
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.white,
-                      ),
-                      textAlign: TextAlign.center,
-                    );
-                  },
-                ),
-                
-                const SizedBox(height: 32),
-                
-                // Indicateur de progression avec phases
-                Container(
-                  width: 280,
-                  child: Column(
-                    children: List.generate(_getLoadingPhases(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode).length, (index) {
-                      final isCompleted = index < _loadingPhase;
-                      final isCurrent = index == _loadingPhase;
-                      
-                      return Container(
-                        margin: const EdgeInsets.symmetric(vertical: 4),
-                        child: Row(
-                          children: [
-                            // Cercle de progression
-                            Container(
-                              width: 24,
-                              height: 24,
-                              decoration: BoxDecoration(
-                                color: isCompleted 
-                                    ? const Color(0xFF0B132B) 
-                                    : Colors.white24,
-                                shape: BoxShape.circle,
-                                border: isCurrent ? Border.all(
-                                  color: const Color(0xFF0B132B),
-                                  width: 2,
-                                ) : null,
-                              ),
-                              child: isCompleted 
-                                  ? const Icon(
-                                      Icons.circle,
-                                      size: 16,
-                                      color: Colors.white,
-                                    )
-                                  : isCurrent 
-                                      ? Container(
-                                          margin: const EdgeInsets.all(4),
-                                          decoration: const BoxDecoration(
-                                            color: Color(0xFF0B132B),
-                                            shape: BoxShape.circle,
-                                          ),
-                                        )
-                                      : null,
-                            ),
-                            const SizedBox(width: 12),
-                            // Texte de la phase
-                            Expanded(
-                              child: Consumer<LocalizationService>(
-                                builder: (context, locService, child) {
-                                  final loadingPhases = _getLoadingPhases(locService.currentLanguageCode);
-                                  return Text(
-                                    loadingPhases[index],
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: isCompleted 
-                                          ? Colors.white
-                                          : isCurrent 
-                                              ? Colors.white
-                                              : Colors.white54,
-                                      fontWeight: isCompleted || isCurrent ? FontWeight.w500 : FontWeight.normal,
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }),
-                  ),
-                ),
-                
-                const SizedBox(height: 40),
-                
-                // Barre de progression globale
-                Container(
-                  width: 200,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.white24,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                  child: FractionallySizedBox(
-                    widthFactor: (_loadingPhase + 1) / _getLoadingPhases(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode).length,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [const Color(0xFF0B132B), const Color(0xFF1A1A2E)],
-                        ),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                ),
-                
-                const SizedBox(height: 16),
-                
-                Consumer<LocalizationService>(
-                  builder: (context, locService, child) => Text(
-                    '${((_loadingPhase + 1) / _getLoadingPhases(locService.currentLanguageCode).length * 100).round()}%',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.white70,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
+  // UI ORIGINALE pour les résultats
   Widget _buildResultScreen() {
-    return Container(
-      color: Colors.white,
-      child: Column(
-        children: [
-          // Header
-          Container(
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Header
+            Container(
             padding: const EdgeInsets.all(16),
             decoration: const BoxDecoration(
               color: Colors.white,
@@ -888,9 +916,9 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
               ],
             ),
           ),
-          
+
           // Nom du plat modifiable (visible seulement quand on a un résultat)
-          if (hasResult && _analysisResult != null && _analysisResult!.success)
+          if (_hasResult && _analysisResult != null && _analysisResult!.success)
             Container(
               margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               child: Column(
@@ -910,9 +938,7 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
                   TextFormField(
                     controller: _mealNameController,
                     decoration: InputDecoration(
-                      hintText: Provider.of<LocalizationService>(context, listen: false).currentLanguageCode == 'fr' 
-                        ? 'Nom du plat détecté par l\'IA' 
-                        : 'AI-detected dish name',
+                      hintText: _getLocalizedHint(context),
                       filled: true,
                       fillColor: const Color(0xFFF9FAFB),
                       border: OutlineInputBorder(
@@ -948,7 +974,7 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
                 ],
               ),
             ),
-          
+
           // Photo analysée
           Container(
             width: double.infinity,
@@ -994,7 +1020,7 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
                     ),
                   ),
           ),
-          
+
           // Résultats de l'analyse
           Expanded(
             child: ListView(
@@ -1011,7 +1037,7 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
                   ),
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Aliments détectés via IA
                 if (_analysisResult != null && _analysisResult!.success)
                   ...(_analysisResult!.detectedFoods.asMap().entries.map((entry) {
@@ -1025,6 +1051,7 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
                           confidence: (food.confidence * 100).round(),
                           calories: food.calories,
                           quantity: '${food.estimatedQuantity.round()}g',
+                          food: food,
                         ),
                       ],
                     );
@@ -1044,7 +1071,7 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
               ],
             ),
           ),
-          
+
           // Boutons d'action
           Container(
             padding: const EdgeInsets.all(16),
@@ -1100,20 +1127,8 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
                   width: double.infinity,
                   child: OutlinedButton(
                     onPressed: () {
-                      if (mounted) {
-                        setState(() {
-                          hasResult = false;
-                          isAnalyzing = false;
-                          showNoteInput = false;
-                          _capturedImage = null;
-                          _capturedImageBytes = null;
-                          _analysisResult = null;
-                          _mealNameController.clear();
-                          _noteController.clear();
-                          _aiNote = '';
-                          errorMessage = null;
-                        });
-                      }
+                      // Retourner à la caméra
+                      Navigator.of(context).popUntil((route) => route.isFirst);
                     },
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
@@ -1142,6 +1157,7 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
           ),
         ],
       ),
+      ),
     );
   }
 
@@ -1150,6 +1166,7 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
     required int confidence,
     required int calories,
     required String quantity,
+    required DetectedFood food,
   }) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -1214,7 +1231,7 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
             ),
           ),
           GestureDetector(
-            onTap: () => _editDetectedFood(name, calories, quantity),
+            onTap: () => _editDetectedFood(name, calories, quantity, food),
             child: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
@@ -1233,51 +1250,30 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
     );
   }
 
-  void _editDetectedFood(String name, int calories, String currentQuantity) {
+  void _editDetectedFood(String name, int calories, String currentQuantity, DetectedFood food) {
     final quantity = double.tryParse(currentQuantity.replaceAll('g', '')) ?? 100;
-    
-    // Trouver l'aliment correspondant dans les résultats pour avoir les vraies macros
-    DetectedFood? matchedFood;
-    if (_analysisResult != null && _analysisResult!.success) {
-      try {
-        matchedFood = _analysisResult!.detectedFoods.firstWhere((food) => food.name == name);
-      } catch (e) {
-        // Aliment non trouvé, utiliser des valeurs par défaut
-      }
-    }
-    
-    // Utiliser les macros de l'IA ou des valeurs approximatives
-    final protein = matchedFood?.nutrition.proteins ?? (calories * 0.15 / 4);
-    final carbs = matchedFood?.nutrition.carbs ?? (calories * 0.55 / 4);  
-    final fat = matchedFood?.nutrition.fats ?? (calories * 0.30 / 9);
 
     EditableFoodDetailsBottomSheet.show(
       context,
       name: name,
       calories: calories,
-      proteins: protein,
-      glucides: carbs,
-      lipides: fat,
+      proteins: food.nutrition.proteins,
+      glucides: food.nutrition.carbs,
+      lipides: food.nutrition.fats,
       quantity: quantity,
       isModified: false,
-      // Utiliser onFoodSaved au lieu de onFoodAdded pour juste enregistrer les modifications
       onFoodSaved: (foodItem) {
-        // Ne rien faire - l'aliment est juste enregistré, pas ajouté au repas
-        // L'ajout se fera via le bouton "Ajouter tous les aliments"
         print('Aliment ${foodItem.name} enregistré avec modifications');
       },
     );
   }
 
-
-  /// Ajouter tous les aliments détectés à un repas spécifique (flux depuis journal)
   Future<void> _addFoodsToSpecificMeal(String mealName, String mealId) async {
     if (_analysisResult == null || !_analysisResult!.success || _analysisResult!.detectedFoods.isEmpty) {
       return;
     }
 
     try {
-      // Obtenir l'utilisateur connecté
       final authService = AuthService();
       final user = authService.currentUser;
       if (user == null) {
@@ -1292,7 +1288,6 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
         return;
       }
 
-      // Ajouter directement au repas comme un seul aliment personnalisé
       final success = await FoodEntriesService.addAIFoodEntry(
         userId: user.id,
         mealName: mealName,
@@ -1303,7 +1298,7 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
 
       if (mounted) {
         Navigator.pop(context);
-        
+
         if (success) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -1334,14 +1329,12 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
     }
   }
 
-  /// Ajouter tous les aliments détectés avec sélection de repas
   Future<void> _addFoodsToJournalWithSelection() async {
     if (_analysisResult == null || !_analysisResult!.success || _analysisResult!.detectedFoods.isEmpty) {
       return;
     }
 
     try {
-      // Obtenir l'utilisateur connecté
       final authService = AuthService();
       final user = authService.currentUser;
       if (user == null) {
@@ -1356,16 +1349,9 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
         return;
       }
 
-      // Récupérer les repas existants pour aujourd'hui
       final allMeals = await FoodEntriesService.getFoodEntriesForDate(user.id, DateTime.now());
-      
-      // Filtrer seulement les repas qui ont des aliments (vrais repas existants)
       final existingMeals = allMeals.where((meal) => meal.items.isNotEmpty).toList();
-      
-      print('🍽️ Repas trouvés au total: ${allMeals.length}');
-      print('🍽️ Repas avec aliments: ${existingMeals.length}');
-      
-      // Utiliser le widget de sélection de repas existant
+
       MealSelectionBottomSheet.show(
         context,
         foodName: _mealNameController.text.isNotEmpty ? _mealNameController.text : '${_analysisResult!.detectedFoods.length} aliment(s) détecté(s)',
@@ -1396,7 +1382,6 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
     }
   }
 
-  /// Ajouter l'aliment IA à un repas existant
   Future<void> _addAIFoodToExistingMeal(Meal selectedMeal, String userId) async {
     try {
       final success = await FoodEntriesService.addAIFoodEntry(
@@ -1409,7 +1394,7 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
 
       if (mounted) {
         Navigator.pop(context);
-        
+
         if (success) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -1426,7 +1411,7 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
           );
         }
       }
-      
+
     } catch (e) {
       print('Erreur lors de l\'ajout au repas existant: $e');
       if (mounted) {
@@ -1440,7 +1425,6 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
     }
   }
 
-  /// Ajouter l'aliment IA à un nouveau repas
   Future<void> _addAIFoodToNewMeal(String mealType, String userId) async {
     try {
       final success = await FoodEntriesService.addAIFoodEntry(
@@ -1453,7 +1437,7 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
 
       if (mounted) {
         Navigator.pop(context);
-        
+
         if (success) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -1470,7 +1454,7 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
           );
         }
       }
-      
+
     } catch (e) {
       print('Erreur lors de l\'ajout au nouveau repas: $e');
       if (mounted) {
@@ -1481,374 +1465,6 @@ class _AIScannerScreenState extends State<AIScannerScreen> with WidgetsBindingOb
           ),
         );
       }
-    }
-  }
-
-
-  /// Démarrer l'animation de chargement avec phases
-  void _startLoadingAnimation() async {
-    setState(() {
-      _loadingPhase = 0;
-    });
-    
-    // Avancer les phases automatiquement
-    final locService = Provider.of<LocalizationService>(context, listen: false);
-    for (int i = 0; i < _getLoadingPhases(locService.currentLanguageCode).length; i++) {
-      if (mounted && isAnalyzing) {
-        setState(() {
-          _loadingPhase = i;
-        });
-        await Future.delayed(Duration(milliseconds: i == 0 ? 300 : 800)); // Premier délai plus court
-      }
-    }
-  }
-
-  /// Analyser une image à partir de bytes (pour le web)
-  Future<void> _analyzeImageFromBytes(List<int> bytes) async {
-    try {
-      if (mounted) {
-        setState(() {
-          isAnalyzing = true;
-          hasResult = false;
-          errorMessage = null;
-          _loadingPhase = 0;
-        });
-      }
-
-      print('🔍 Début analyse image web: ${bytes.length} bytes');
-
-      // Démarrer l'animation de chargement
-      _startLoadingAnimation();
-
-      // Convertir en Uint8List et analyser directement
-      final Uint8List imageBytes = Uint8List.fromList(bytes);
-      
-      // Analyze image directly from bytes (Web compatible)
-      final result = await GeminiAnalysisService.analyzeImageFromBytes(imageBytes);
-      
-      print('🤖 Résultat analyse: success=${result.success}, aliments=${result.detectedFoods.length}');
-      
-      if (mounted) {
-        setState(() {
-          isAnalyzing = false;
-          _analysisResult = result;
-          
-          if (result.success && result.detectedFoods.isNotEmpty) {
-            hasResult = true;
-            errorMessage = null;
-            // Mettre à jour le nom du repas avec le nom généré par l'IA
-            _mealNameController.text = result.mealName ?? 'Plat détecté par IA';
-          } else {
-            hasResult = false;
-            errorMessage = result.error?.contains('API') == true 
-                ? 'Le service IA est temporairement surchargé.\nMerci de réessayer dans quelques minutes.' 
-                : 'Aucun aliment détecté dans cette image';
-          }
-        });
-      }
-
-    } catch (e) {
-      print('❌ Erreur analyse image web: $e');
-      if (mounted) {
-        setState(() {
-          isAnalyzing = false;
-          hasResult = false;
-          errorMessage = 'Le service IA est temporairement surchargé.\nMerci de réessayer dans quelques minutes.';
-        });
-      }
-    }
-  }
-
-  /// Afficher l'overlay de saisie de note
-  void _showNoteInputOverlay() {
-    setState(() {
-      showNoteInput = true;
-    });
-  }
-
-  /// Construire l'overlay de saisie de note
-  Widget _buildNoteInputOverlay() {
-    return Positioned.fill(
-      child: Container(
-        color: Colors.black.withOpacity(0.8),
-        child: Center(
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 24),
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Titre
-                const Text(
-                  'Ajouter une note pour l\'IA',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1A1A),
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Décrivez votre plat pour améliorer la précision de l\'analyse',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF64748B),
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 20),
-                
-                // Champ de saisie
-                TextField(
-                  controller: _noteController,
-                  maxLength: maxNoteLength,
-                  maxLines: 3,
-                  decoration: InputDecoration(
-                    hintText: 'Ex: Assiette de saumon 150g avec quinoa et haricots verts',
-                    hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFF0B132B), width: 2),
-                    ),
-                    contentPadding: const EdgeInsets.all(16),
-                    counterStyle: const TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF64748B),
-                    ),
-                  ),
-                  style: const TextStyle(
-                    fontSize: 16,
-                    color: Color(0xFF1A1A1A),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                
-                // Boutons
-                Row(
-                  children: [
-                    // Bouton Ignorer
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: _skipNote,
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          side: const BorderSide(color: Color(0xFFE2E8F0)),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: const Text(
-                          'Ignorer',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF64748B),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    // Bouton Analyser
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: _analyzeWithNote,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF0B132B),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: const Text(
-                          'Analyser',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Ignorer la saisie de note et procéder à l'analyse
-  void _skipNote() {
-    setState(() {
-      showNoteInput = false;
-      _aiNote = '';
-      _noteController.clear();
-    });
-    _startAnalysis();
-  }
-
-  /// Analyser avec la note utilisateur
-  void _analyzeWithNote() {
-    setState(() {
-      _aiNote = _noteController.text.trim();
-      showNoteInput = false;
-    });
-    _startAnalysis();
-  }
-
-  /// Démarrer l'analyse avec ou sans note
-  void _startAnalysis() {
-    setState(() {
-      isAnalyzing = true;
-    });
-    
-    if (kIsWeb && _capturedImageBytes != null) {
-      _analyzeImageFromBytesWithNote(_capturedImageBytes!);
-    } else if (_capturedImage != null) {
-      _analyzeImageWithNote();
-    }
-  }
-
-  /// Analyser image avec note utilisateur
-  Future<void> _analyzeImageWithNote() async {
-    if (_capturedImage == null) return;
-
-    try {
-      if (mounted) {
-        setState(() {
-          _loadingPhase = 0;
-        });
-      }
-
-      // Démarrer l'animation de chargement
-      _startLoadingAnimation();
-
-      // Validate image file first
-      final validationError = await GeminiAnalysisServiceV2.validateImageFile(_capturedImage!);
-      if (validationError != null) {
-        if (mounted) {
-          setState(() {
-            isAnalyzing = false;
-            errorMessage = validationError;
-          });
-        }
-        return;
-      }
-
-      // Analyze image with Gemini service V2 (with user note)
-      final result = await GeminiAnalysisServiceV2.analyzeImageWithFallback(
-        _capturedImage!,
-        userNote: _aiNote.isNotEmpty ? _aiNote : null,
-      );
-      
-      if (mounted) {
-        setState(() {
-          isAnalyzing = false;
-          _analysisResult = result;
-          
-          if (result.success && result.detectedFoods.isNotEmpty) {
-            hasResult = true;
-            errorMessage = null;
-            // Mettre à jour le nom du repas avec le nom généré par l'IA
-            _mealNameController.text = result.mealName ?? 'Plat détecté par IA';
-          } else {
-            hasResult = false;
-            errorMessage = result.error?.contains('API') == true 
-                ? 'Le service IA est temporairement surchargé.\nMerci de réessayer dans quelques minutes.' 
-                : 'Aucun aliment détecté dans cette image';
-          }
-        });
-      }
-
-    } catch (e) {
-      setState(() {
-        isAnalyzing = false;
-        hasResult = false;
-        errorMessage = 'Erreur lors de l\'analyse: $e';
-      });
-    }
-  }
-
-  /// Analyser image depuis bytes avec note utilisateur (pour web)
-  Future<void> _analyzeImageFromBytesWithNote(List<int> bytes) async {
-    try {
-      if (mounted) {
-        setState(() {
-          isAnalyzing = true;
-          hasResult = false;
-          errorMessage = null;
-          _loadingPhase = 0;
-        });
-      }
-
-      print('🔍 Début analyse image web avec note: "${_aiNote}"');
-
-      // Démarrer l'animation de chargement
-      _startLoadingAnimation();
-
-      // Convertir en Uint8List et analyser directement avec note
-      final Uint8List imageBytes = Uint8List.fromList(bytes);
-      
-      // Analyze image directly from bytes with user note (Web compatible)
-      final result = await GeminiAnalysisServiceV2.analyzeImageFromBytes(
-        imageBytes,
-        userNote: _aiNote.isNotEmpty ? _aiNote : null,
-      );
-      
-      print('🤖 Résultat analyse avec note: success=${result.success}, aliments=${result.detectedFoods.length}');
-      
-      if (mounted) {
-        setState(() {
-          isAnalyzing = false;
-          _analysisResult = result;
-          
-          if (result.success && result.detectedFoods.isNotEmpty) {
-            hasResult = true;
-            errorMessage = null;
-            // Mettre à jour le nom du repas avec le nom généré par l'IA
-            _mealNameController.text = result.mealName ?? 'Plat détecté par IA';
-          } else {
-            hasResult = false;
-            errorMessage = result.error?.contains('API') == true 
-                ? 'Le service IA est temporairement surchargé.\nMerci de réessayer dans quelques minutes.' 
-                : 'Aucun aliment détecté dans cette image';
-          }
-        });
-      }
-
-    } catch (e) {
-      print('❌ Erreur analyse image web avec note: $e');
-      if (mounted) {
-        setState(() {
-          isAnalyzing = false;
-          hasResult = false;
-          errorMessage = 'Le service IA est temporairement surchargé.\nMerci de réessayer dans quelques minutes.';
-        });
-      }
-    }
-  }
-
-  /// Afficher un message d'erreur
-  void _showErrorSnackbar(String message) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: const Color(0xFFDC2626),
-          duration: const Duration(seconds: 3),
-        ),
-      );
     }
   }
 }

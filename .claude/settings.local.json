@@ -97,7 +97,9 @@
       "Bash(nc:*)",
       "Bash(start:*)",
       "Bash(for file in \"C:\\rise app v2\\ryze_app\\lib\\services\\cardio_service.dart\" \"C:\\rise app v2\\ryze_app\\lib\\services\\content_tags_service.dart\" \"C:\\rise app v2\\ryze_app\\lib\\services\\localized_food_service.dart\" \"C:\\rise app v2\\ryze_app\\lib\\services\\cardio_session_manager.dart\" \"C:\\rise app v2\\ryze_app\\lib\\services\\streak_service.dart\" \"C:\\rise app v2\\ryze_app\\lib\\services\\recipe_image_service.dart\")",
-      "Bash(do echo \"=== Fixing $file ===\")"
+      "Bash(do echo \"=== Fixing $file ===\")",
+      "Bash(rm:*)",
+      "Bash(pod cache clean:*)"
     ],
     "deny": [],
     "ask": []

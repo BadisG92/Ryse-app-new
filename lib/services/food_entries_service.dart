@@ -9,13 +9,19 @@ import 'localization_service.dart';
 class FoodEntriesService {
   static final _supabase = Supabase.instance.client;
 
-  // Mapping des noms de repas français vers les meal_types en base
+  // Mapping des noms de repas français et anglais vers les meal_types en base
   static const Map<String, String> _mealTypeMapping = {
+    // Français
     'Petit-déjeuner': 'breakfast',
-    'Déjeuner': 'lunch', 
+    'Déjeuner': 'lunch',
     'Collation': 'snack',
     'Dîner': 'dinner',
     'Goûter': 'snack',
+    // English
+    'Breakfast': 'breakfast',
+    'Lunch': 'lunch',
+    'Snack': 'snack',
+    'Dinner': 'dinner',
   };
 
   // Mapping inverse pour l'affichage

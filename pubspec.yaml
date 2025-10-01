@@ -44,6 +44,7 @@ dependencies:
   camera: ^0.10.5+9
   permission_handler: ^11.3.1
   image_picker: ^1.1.2
+  image_cropper: ^11.0.0
   # google_ml_kit: ^0.18.0  # Temporairement commenté pour iOS compatibility
   # mobile_scanner: ^7.0.1  # REMOVED - iOS 18 conflict de codes-barres moderne - version la plus récente
   http: ^1.2.1

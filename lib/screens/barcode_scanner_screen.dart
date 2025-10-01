@@ -195,7 +195,11 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
               Navigator.of(context).pop();
               Navigator.of(context).pop(); // Return to previous screen
             },
-            child: const Text('OK'),
+            child: Consumer<LocalizationService>(
+              builder: (context, locService, child) => Text(
+                locService.currentLanguageCode == 'fr' ? 'OK' : 'OK',
+              ),
+            ),
           ),
           TextButton(
             onPressed: () {
@@ -234,7 +238,11 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                 isProcessing = false;
               });
             },
-            child: const Text('OK'),
+            child: Consumer<LocalizationService>(
+              builder: (context, locService, child) => Text(
+                locService.currentLanguageCode == 'fr' ? 'OK' : 'OK',
+              ),
+            ),
           ),
         ],
       ),
@@ -364,7 +372,11 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                         actions: [
                           TextButton(
                             onPressed: () => Navigator.of(context).pop(),
-                            child: const Text('OK'),
+                            child: Consumer<LocalizationService>(
+              builder: (context, locService, child) => Text(
+                locService.currentLanguageCode == 'fr' ? 'OK' : 'OK',
+              ),
+            ),
                           ),
                         ],
                       ),
