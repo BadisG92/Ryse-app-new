@@ -146,23 +146,7 @@ class _CalendarViewState extends State<CalendarView> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFFF8FAFC), Color(0xFFF1F5F9)],
-          ),
-        ),
-        child: const Center(
-          child: CircularProgressIndicator(
-            color: Color(0xFF0B132B),
-          ),
-        ),
-      );
-    }
-    
+    // OPTIMISATION: Afficher immédiatement, loader inline pendant chargement
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -223,9 +207,17 @@ class _CalendarViewState extends State<CalendarView> {
               padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + kBottomNavigationBarHeight),
               child: Column(
                 children: [
-                  // Stats du mois
-                  MonthStats(monthStats: _cachedMonthStats),
-                  
+                  // Stats du mois - avec loader inline si chargement
+                  _isLoading
+                    ? Container(
+                        height: 100,
+                        alignment: Alignment.center,
+                        child: const CircularProgressIndicator(
+                          color: Color(0xFF0B132B),
+                        ),
+                      )
+                    : MonthStats(monthStats: _cachedMonthStats),
+
                   const SizedBox(height: 16),
                   
                   // Bloc calendrier unifié avec légende intégrée

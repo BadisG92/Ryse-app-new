@@ -1,4 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 import '../config/supabase_config.dart';
 import '../components/ui/recipe_models.dart';
 import 'localization_service.dart';
@@ -6,32 +8,156 @@ import 'localization_service.dart';
 class RecipeService {
   static SupabaseClient get _supabase => SupabaseConfig.client;
 
-  /// Récupère toutes les recettes depuis Supabase
+  // Clés de cache
+  static const String _cacheKeyAllRecipes = 'recipes_all_cache';
+  static const String _cacheKeyFeaturedRecipes = 'recipes_featured_cache';
+  static const String _cacheKeyTimestamp = 'recipes_cache_timestamp';
+  static const Duration _cacheValidDuration = Duration(hours: 24); // Cache valide 24h
+
+  /// Récupère toutes les recettes - AVEC CACHE LOCAL
   static Future<List<Recipe>> getAllRecipes() async {
     try {
-      // Récupérer toutes les recettes avec leurs valeurs nutritionnelles directement
-      final recipesResponse = await _supabase
-          .from('recipes_database')
-          .select('*')
-          .eq('is_public', true);
+      // 1. Essayer de charger depuis le cache
+      final cachedRecipes = await _loadRecipesFromCache(_cacheKeyAllRecipes);
+      if (cachedRecipes != null && cachedRecipes.isNotEmpty) {
+        print('⚡ RecipeService: ${cachedRecipes.length} recettes chargées depuis le cache');
 
-      List<Recipe> recipes = [];
-      
-      for (int i = 0; i < recipesResponse.length; i++) {
-        var recipeData = recipesResponse[i];
-        try {
-          // Utiliser directement Recipe.fromJson maintenant que la classe l'a
-          final recipe = Recipe.fromJson(recipeData);
-          recipes.add(recipe);
-        } catch (e) {
-          print('❌ Erreur pour recette $i (${recipeData['name_fr'] ?? recipeData['name_en'] ?? 'Nom inconnu'}): $e');
-        }
+        // Lancer le rechargement en arrière-plan pour mettre à jour le cache
+        _refreshRecipesInBackground();
+
+        return cachedRecipes;
       }
-      
+
+      // 2. Si pas de cache, charger depuis Supabase
+      print('🔄 RecipeService: Chargement des recettes depuis Supabase...');
+      final recipes = await _fetchAllRecipesFromDB();
+
+      // 3. Sauvegarder dans le cache pour la prochaine fois
+      if (recipes.isNotEmpty) {
+        await _saveRecipesToCache(_cacheKeyAllRecipes, recipes);
+      }
+
       return recipes;
     } catch (e) {
       print('❌ RecipeService: Erreur lors de la récupération des recettes: $e');
-      return [];
+
+      // En cas d'erreur, essayer de charger le cache même expiré
+      final cachedRecipes = await _loadRecipesFromCache(_cacheKeyAllRecipes, ignoreExpiry: true);
+      return cachedRecipes ?? [];
+    }
+  }
+
+  /// Recharge les recettes en arrière-plan sans bloquer l'UI
+  static Future<void> _refreshRecipesInBackground() async {
+    try {
+      // Vérifier si le cache est encore valide
+      final prefs = await SharedPreferences.getInstance();
+      final timestamp = prefs.getInt(_cacheKeyTimestamp);
+
+      if (timestamp != null) {
+        final cacheAge = DateTime.now().millisecondsSinceEpoch - timestamp;
+        final isExpired = cacheAge > _cacheValidDuration.inMilliseconds;
+
+        if (!isExpired) {
+          print('✅ RecipeService: Cache encore valide, pas de refresh');
+          return;
+        }
+      }
+
+      print('🔄 RecipeService: Rafraîchissement en arrière-plan...');
+      final freshRecipes = await _fetchAllRecipesFromDB();
+
+      if (freshRecipes.isNotEmpty) {
+        await _saveRecipesToCache(_cacheKeyAllRecipes, freshRecipes);
+        print('✅ RecipeService: Cache mis à jour avec ${freshRecipes.length} recettes');
+      }
+    } catch (e) {
+      print('⚠️ RecipeService: Erreur refresh arrière-plan (non-bloquant): $e');
+    }
+  }
+
+  /// Charge les recettes depuis Supabase (méthode interne)
+  static Future<List<Recipe>> _fetchAllRecipesFromDB() async {
+    final recipesResponse = await _supabase
+        .from('recipes_database')
+        .select('*')
+        .eq('is_public', true);
+
+    List<Recipe> recipes = [];
+
+    for (int i = 0; i < recipesResponse.length; i++) {
+      var recipeData = recipesResponse[i];
+      try {
+        final recipe = Recipe.fromJson(recipeData);
+        recipes.add(recipe);
+      } catch (e) {
+        print('❌ Erreur pour recette $i (${recipeData['name_fr'] ?? recipeData['name_en'] ?? 'Nom inconnu'}): $e');
+      }
+    }
+
+    return recipes;
+  }
+
+  /// Sauvegarde les recettes dans le cache local
+  static Future<void> _saveRecipesToCache(String key, List<Recipe> recipes) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // Convertir les recettes en JSON
+      final recipesJson = recipes.map((r) => r.toJson()).toList();
+      final jsonString = jsonEncode(recipesJson);
+
+      // Sauvegarder
+      await prefs.setString(key, jsonString);
+      await prefs.setInt(_cacheKeyTimestamp, DateTime.now().millisecondsSinceEpoch);
+
+      print('💾 RecipeService: ${recipes.length} recettes sauvegardées en cache');
+    } catch (e) {
+      print('⚠️ RecipeService: Erreur sauvegarde cache: $e');
+    }
+  }
+
+  /// Charge les recettes depuis le cache local
+  static Future<List<Recipe>?> _loadRecipesFromCache(String key, {bool ignoreExpiry = false}) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // Vérifier l'expiration du cache
+      if (!ignoreExpiry) {
+        final timestamp = prefs.getInt(_cacheKeyTimestamp);
+        if (timestamp != null) {
+          final cacheAge = DateTime.now().millisecondsSinceEpoch - timestamp;
+          if (cacheAge > _cacheValidDuration.inMilliseconds) {
+            print('⏰ RecipeService: Cache expiré (${(cacheAge / 3600000).toStringAsFixed(1)}h)');
+            return null;
+          }
+        }
+      }
+
+      // Charger depuis le cache
+      final jsonString = prefs.getString(key);
+      if (jsonString == null) return null;
+
+      final recipesJson = jsonDecode(jsonString) as List;
+      final recipes = recipesJson.map((json) => Recipe.fromJson(json as Map<String, dynamic>)).toList();
+
+      return recipes;
+    } catch (e) {
+      print('⚠️ RecipeService: Erreur chargement cache: $e');
+      return null;
+    }
+  }
+
+  /// Force le rafraîchissement du cache (utilisé lors du changement de langue)
+  static Future<void> invalidateCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_cacheKeyAllRecipes);
+      await prefs.remove(_cacheKeyFeaturedRecipes);
+      await prefs.remove(_cacheKeyTimestamp);
+      print('🗑️ RecipeService: Cache invalidé');
+    } catch (e) {
+      print('⚠️ RecipeService: Erreur invalidation cache: $e');
     }
   }
 

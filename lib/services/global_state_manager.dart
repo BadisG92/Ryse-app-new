@@ -30,6 +30,10 @@ class GlobalStateManager {
   double _currentCarbs = 0;
   double _currentFats = 0;
 
+  // État Sport global (ajouté pour bloc Sport de la page d'accueil)
+  int _sportSessions = 0;
+  int _sportCaloriesBurned = 0;
+
   // Objectifs utilisateur (pour calcul de progression)
   double _calorieGoal = 2000;
   double _waterGoalL = 2.0;
@@ -45,6 +49,8 @@ class GlobalStateManager {
   double get currentProteins => _currentProteins;
   double get currentCarbs => _currentCarbs;
   double get currentFats => _currentFats;
+  int get sportSessions => _sportSessions;
+  int get sportCaloriesBurned => _sportCaloriesBurned;
 
   // Getters - Objectifs
   double get calorieGoal => _calorieGoal;
@@ -70,7 +76,7 @@ class GlobalStateManager {
         final endOfDay = startOfDay.add(const Duration(days: 1));
 
         // Requête parallèle pour performance
-        final futures = await Future.wait([
+        final futures = await Future.wait<dynamic>([
           // Récupérer les calories/macros du jour
           client
               .from('food_entries')
@@ -87,23 +93,21 @@ class GlobalStateManager {
               .gte('consumed_at', startOfDay.toIso8601String())
               .lt('consumed_at', endOfDay.toIso8601String()),
 
-          // Vérifier si workout fait aujourd'hui (workout_session_summaries)
+          // Récupérer TOUTES les séances musculation du jour (ID + calories)
           client
               .from('workout_session_summaries')
-              .select('history_session_id')
+              .select('history_session_id, calories_burned')
               .eq('user_id', user.id)
-              .eq('session_date', startOfDay.toIso8601String().split('T')[0])
-              .limit(1),
+              .eq('session_date', startOfDay.toIso8601String().split('T')[0]),
 
-          // Vérifier aussi les séances cardio du jour
+          // Récupérer TOUTES les séances cardio du jour (ID + calories)
           client
               .from('cardio_sessions')
-              .select('id')
+              .select('id, calories')
               .eq('user_id', user.id)
               .eq('is_completed', true)
               .gte('start_time', startOfDay.toIso8601String())
-              .lt('start_time', endOfDay.toIso8601String())
-              .limit(1),
+              .lt('start_time', endOfDay.toIso8601String()),
 
           // Récupérer les objectifs et le streak de l'utilisateur
           client
@@ -140,10 +144,22 @@ class GlobalStateManager {
           totalWaterMl += (entry['amount'] as num?)?.toDouble() ?? 0;
         }
 
-        // Traiter workout (musculation OU cardio)
+        // Traiter workout (musculation + cardio) - avec calories
         final workoutSessions = futures[2] as List;
         final cardioSessions = futures[3] as List;
         final hasWorkout = workoutSessions.isNotEmpty || cardioSessions.isNotEmpty;
+
+        // Compter les séances du jour (musculation + cardio)
+        final totalSessions = workoutSessions.length + cardioSessions.length;
+
+        // Calculer les calories brûlées (musculation + cardio)
+        int totalCaloriesBurned = 0;
+        for (var session in workoutSessions) {
+          totalCaloriesBurned += (session['calories_burned'] as num?)?.toInt() ?? 0;
+        }
+        for (var session in cardioSessions) {
+          totalCaloriesBurned += (session['calories'] as num?)?.toInt() ?? 0;
+        }
 
         // Traiter les objectifs et streak
         final userProfile = futures[4] as Map<String, dynamic>;
@@ -159,6 +175,8 @@ class GlobalStateManager {
         _currentWaterL = totalWaterMl / 1000.0;
         _mealsCount = uniqueMealIds.length;
         _workoutCompleted = hasWorkout;
+        _sportSessions = totalSessions;
+        _sportCaloriesBurned = totalCaloriesBurned;
 
         // Mettre à jour les objectifs
         _calorieGoal = dailyCaloriesGoal;
@@ -169,7 +187,7 @@ class GlobalStateManager {
         debugPrint('   📊 ${_currentCalories.toInt()}/${_calorieGoal.toInt()} kcal (${calorieProgress.toInt()}%)');
         debugPrint('   💧 ${_currentWaterL.toStringAsFixed(1)}L/${_waterGoalL.toStringAsFixed(1)}L (${waterProgress.toInt()}%)');
         debugPrint('   🍽️  $_mealsCount repas');
-        debugPrint('   🏋️ Sport: ${_workoutCompleted ? "✅" : "❌"}');
+        debugPrint('   🏋️ Sport: ${_workoutCompleted ? "✅" : "❌"} ($_sportSessions séances, $totalCaloriesBurned kcal)');
         debugPrint('   🔥 Streak: $_currentStreak jours');
       }
     } catch (e) {
@@ -265,6 +283,108 @@ class GlobalStateManager {
     ));
 
     debugPrint('🏋️ GlobalState: Workout mis à jour -> $_workoutCompleted');
+  }
+
+  /// MISE À JOUR INSTANTANÉE - Données Sport (séances + calories brûlées)
+  void updateSportData({int? sessions, int? caloriesBurned, bool? isAbsolute}) {
+    final absolute = isAbsolute ?? false;
+
+    if (sessions != null) {
+      _sportSessions = absolute ? sessions : _sportSessions + sessions;
+    }
+    if (caloriesBurned != null) {
+      _sportCaloriesBurned = absolute ? caloriesBurned : _sportCaloriesBurned + caloriesBurned;
+    }
+
+    // Mettre à jour aussi workoutCompleted si on a des séances
+    if (_sportSessions > 0) {
+      _workoutCompleted = true;
+    }
+
+    _notifyChange(StateChangeEvent(
+      type: ChangeType.sport,
+      value: {
+        'sessions': _sportSessions,
+        'caloriesBurned': _sportCaloriesBurned,
+      },
+    ));
+
+    debugPrint('🏋️ GlobalState: Sport mis à jour -> $_sportSessions séances, $_sportCaloriesBurned kcal');
+  }
+
+  /// RECOMPTE INSTANTANÉ - Recharge TOUTES les données Sport du jour depuis la base
+  Future<void> refreshSportData() async {
+    try {
+      final client = SupabaseConfig.client;
+      final user = client.auth.currentUser;
+      if (user == null) return;
+
+      final today = DateTime.now();
+      final startOfDay = DateTime(today.year, today.month, today.day);
+      final endOfDay = startOfDay.add(const Duration(days: 1));
+
+      // Récupérer TOUTES les séances du jour en parallèle
+      final futures = await Future.wait([
+        // Séances musculation
+        client
+            .from('workout_session_summaries')
+            .select('calories_burned')
+            .eq('user_id', user.id)
+            .eq('session_date', startOfDay.toIso8601String().split('T')[0]),
+
+        // Séances cardio
+        client
+            .from('cardio_sessions')
+            .select('calories')
+            .eq('user_id', user.id)
+            .eq('is_completed', true)
+            .gte('start_time', startOfDay.toIso8601String())
+            .lt('start_time', endOfDay.toIso8601String()),
+      ]);
+
+      final workoutSessions = futures[0] as List;
+      final cardioSessions = futures[1] as List;
+
+      debugPrint('🔍 DEBUG refreshSportData:');
+      debugPrint('   - Séances musculation trouvées: ${workoutSessions.length}');
+      debugPrint('   - Séances cardio trouvées: ${cardioSessions.length}');
+      debugPrint('   - Date recherchée: ${startOfDay.toIso8601String().split('T')[0]}');
+
+      // Compter les séances
+      final totalSessions = workoutSessions.length + cardioSessions.length;
+
+      // Calculer les calories brûlées
+      int totalCalories = 0;
+      for (var session in workoutSessions) {
+        final cals = (session['calories_burned'] as num?)?.toInt() ?? 0;
+        totalCalories += cals;
+        debugPrint('   - Musculation: $cals kcal');
+      }
+      for (var session in cardioSessions) {
+        final cals = (session['calories'] as num?)?.toInt() ?? 0;
+        totalCalories += cals;
+        debugPrint('   - Cardio: $cals kcal');
+      }
+
+      debugPrint('   - TOTAL: $totalSessions séances, $totalCalories kcal');
+
+      // Mettre à jour avec les valeurs absolues
+      _sportSessions = totalSessions;
+      _sportCaloriesBurned = totalCalories;
+      _workoutCompleted = totalSessions > 0;
+
+      _notifyChange(StateChangeEvent(
+        type: ChangeType.sport,
+        value: {
+          'sessions': _sportSessions,
+          'caloriesBurned': _sportCaloriesBurned,
+        },
+      ));
+
+      debugPrint('🔄 GlobalState: Sport rechargé depuis DB -> $_sportSessions séances, $_sportCaloriesBurned kcal');
+    } catch (e) {
+      debugPrint('❌ Erreur refresh sport data: $e');
+    }
   }
 
   /// MISE À JOUR INSTANTANÉE - Streak
@@ -405,12 +525,12 @@ class GlobalStateManager {
       {
         'id': 'workout',
         'label': 'Faire une séance aujourd\'hui',
-        'progress': _workoutCompleted ? 100 : 0,
+        'progress': _sportSessions >= 1 ? 100 : 0,
         'xp': 60,
-        'completed': _workoutCompleted,
-        'currentValue': _workoutCompleted ? 1.0 : 0.0,
+        'completed': _sportSessions >= 1,
+        'currentValue': _sportSessions.toDouble(),
         'targetValue': 1.0,
-        'unit': 'séance',
+        'unit': _sportSessions <= 1 ? 'séance' : 'séances',
       },
     ];
   }
@@ -446,6 +566,7 @@ enum ChangeType {
   calories,
   meals,
   workout,
+  sport,
   macros,
   streak,
   goals,

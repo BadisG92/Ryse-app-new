@@ -19,6 +19,7 @@ import '../services/food_entries_service.dart';
 import '../services/auth_service.dart';
 import '../services/localization_service.dart';
 import '../services/translations.dart';
+import '../services/global_state_manager.dart'; // NOUVEAU: GlobalStateManager
 import '../models/nutrition_models.dart' as nutrition_models;
 import '../screens/select_recipe_screen.dart';
 import 'package:provider/provider.dart';
@@ -31,14 +32,13 @@ class NutritionDashboardHybrid extends StatefulWidget {
 }
 
 class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
-    with TickerProviderStateMixin {
-  
+    with TickerProviderStateMixin, GlobalStateListener {
+
   // State variables
   late NutritionProfile nutritionProfile;
   late List<Timer> _timers;
-  bool isLoading = true;
-  late StreamSubscription _nutritionUpdateSubscription;
-  
+  bool isLoading = false; // Ne jamais bloquer - affichage immédiat
+
   // Animated counters
   int animatedCalories = 0;
   int animatedProtein = 0;
@@ -52,8 +52,40 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
   void initState() {
     super.initState();
     _timers = [];
+
+    // OPTIMISATION: Chargement instantané depuis GlobalStateManager
+    _loadInitialDataSync();
+
+    // Puis charger les vraies données en arrière-plan
     _loadNutritionData();
-    _setupNutritionUpdateListener();
+  }
+
+  /// Chargement synchrone instantané pour éviter tout flash
+  void _loadInitialDataSync() {
+    final globalState = GlobalStateManager.instance;
+    final locService = LocalizationService.instance;
+
+    // Créer le profil nutrition instantanément avec les vraies données
+    nutritionProfile = NutritionProfile(
+      targetCalories: globalState.calorieGoal.toInt(),
+      currentCalories: globalState.currentCalories.toInt(),
+      targetProtein: 150, // Sera mis à jour par _loadNutritionData
+      currentProtein: globalState.currentProteins.toInt(),
+      targetCarbs: 250, // Sera mis à jour
+      currentCarbs: globalState.currentCarbs.toInt(),
+      targetFat: 70, // Sera mis à jour
+      currentFat: globalState.currentFats.toInt(),
+      currentWaterMl: (globalState.currentWaterL * 1000).toInt(),
+      targetWaterMl: (globalState.waterGoalL * 1000).toInt(),
+    );
+
+    // Créer les repas avec les données de base
+    realMeals = _createMealsWithTranslations({});
+
+    // Démarrer les animations immédiatement
+    _startAnimations();
+
+    debugPrint('⚡ Nutrition Dashboard: Données initiales chargées en mode synchrone');
   }
 
   Future<void> _loadNutritionData() async {
@@ -61,59 +93,42 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
       final userId = Supabase.instance.client.auth.currentUser?.id;
       debugPrint('🔧 Dashboard: userId = $userId');
       if (userId == null) {
-        debugPrint('⚠️ Dashboard: Aucun utilisateur connecté, utilisation des données par défaut (0 kcal)');
-        setState(() {
-          nutritionProfile = NutritionData.profile;
-          isLoading = false;
-        });
-        _startAnimations();
+        debugPrint('⚠️ Dashboard: Aucun utilisateur connecté, garde les données GlobalState');
         return;
       }
 
-      debugPrint('🔧 Dashboard: Récupération des données...');
-      // Récupérer les données du tableau de bord
+      debugPrint('🔧 Dashboard: Enrichissement avec données DB...');
+      // Récupérer les données du tableau de bord pour les objectifs macros
       final dashboardData = await DatabaseService.getNutritionDashboardData(userId);
-      
-      debugPrint('🔧 Dashboard: Données reçues = $dashboardData');
-      
-      // Créer le profil nutrition avec les vraies données
-      nutritionProfile = NutritionProfile(
-        targetCalories: dashboardData['targetCalories'],
-        currentCalories: dashboardData['currentCalories'],
-        targetProtein: dashboardData['targetProtein'],
-        currentProtein: dashboardData['currentProtein'],
-        targetCarbs: dashboardData['targetCarbs'],
-        currentCarbs: dashboardData['currentCarbs'],
-        targetFat: dashboardData['targetFat'],
-        currentFat: dashboardData['currentFat'],
-        currentWaterMl: dashboardData['currentWaterMl'],
-        targetWaterMl: dashboardData['targetWaterMl'],
-      );
 
-      debugPrint('🔧 Dashboard: Profil nutrition créé = ${nutritionProfile.currentCalories}/${nutritionProfile.targetCalories} kcal');
+      debugPrint('🔧 Dashboard: Données DB reçues');
 
-      // Créer les repas avec les vraies calories
-      final mealCalories = dashboardData['mealCalories'] as Map<String, double>;
-      debugPrint('🔧 Dashboard: Calories par repas = $mealCalories');
-      
-      realMeals = _createMealsWithTranslations(mealCalories);
+      // Mettre à jour seulement les objectifs (pas les valeurs actuelles - déjà dans GlobalState)
+      if (mounted) {
+        setState(() {
+          nutritionProfile = NutritionProfile(
+            targetCalories: dashboardData['targetCalories'],
+            currentCalories: GlobalStateManager.instance.currentCalories.toInt(), // Toujours depuis GlobalState
+            targetProtein: dashboardData['targetProtein'],
+            currentProtein: GlobalStateManager.instance.currentProteins.toInt(), // Toujours depuis GlobalState
+            targetCarbs: dashboardData['targetCarbs'],
+            currentCarbs: GlobalStateManager.instance.currentCarbs.toInt(), // Toujours depuis GlobalState
+            targetFat: dashboardData['targetFat'],
+            currentFat: GlobalStateManager.instance.currentFats.toInt(), // Toujours depuis GlobalState
+            currentWaterMl: (GlobalStateManager.instance.currentWaterL * 1000).toInt(), // Toujours depuis GlobalState
+            targetWaterMl: dashboardData['targetWaterMl'],
+          );
 
-      debugPrint('🔧 Dashboard: ${realMeals.length} repas créés');
-      for (final meal in realMeals) {
-        debugPrint('   - ${meal.name}: ${meal.calories} kcal (${meal.isCompleted ? "✅" : "❌"})');
+          // Mettre à jour les repas avec les calories de la DB
+          final mealCalories = dashboardData['mealCalories'] as Map<String, double>;
+          realMeals = _createMealsWithTranslations(mealCalories);
+        });
       }
 
-      setState(() {
-        isLoading = false;
-      });
-      _startAnimations();
+      debugPrint('✅ Dashboard: Enrichissement terminé avec ${realMeals.length} repas');
     } catch (e) {
-      debugPrint('❌ Dashboard: Erreur lors du chargement des données nutrition: $e');
-      setState(() {
-        nutritionProfile = NutritionData.profile;
-        isLoading = false;
-      });
-    _startAnimations();
+      debugPrint('❌ Dashboard: Erreur enrichissement (non-bloquant): $e');
+      // On garde les données GlobalState - pas d'erreur
     }
   }
 
@@ -122,71 +137,42 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
     for (Timer timer in _timers) {
       timer.cancel();
     }
-    _nutritionUpdateSubscription.cancel();
     super.dispose();
   }
 
-  // Écouter les mises à jour nutritionnelles en temps réel
-  void _setupNutritionUpdateListener() {
-    _nutritionUpdateSubscription = FoodEntriesService.nutritionUpdates.listen((update) {
-      final updateUserId = update['user_id'] as String?;
-      final currentUser = Supabase.instance.client.auth.currentUser;
-      
-      // Recharger seulement si c'est pour l'utilisateur actuel et pour aujourd'hui
-      if (currentUser != null && updateUserId == currentUser.id) {
-        debugPrint('🔔 Dashboard: Rechargement automatique des données nutritionnelles');
-        _reloadNutritionDataWithoutAnimation();
-      }
-    });
-  }
+  // Implémentation requise par GlobalStateListener
+  @override
+  void onGlobalStateUpdate(StateChangeEvent event) {
+    debugPrint('🔔 Nutrition Dashboard: Mise à jour reçue du GlobalState - ${event.type}');
 
-  // Recharger les données sans relancer les animations
-  Future<void> _reloadNutritionDataWithoutAnimation() async {
-    try {
-      final userId = Supabase.instance.client.auth.currentUser?.id;
-      if (userId == null) return;
+    // Mettre à jour instantanément depuis GlobalState
+    final globalState = GlobalStateManager.instance;
 
-      debugPrint('🔄 Dashboard: Mise à jour en temps réel...');
-      final dashboardData = await DatabaseService.getNutritionDashboardData(userId);
-      
-      // Mettre à jour seulement les données, pas les animations
-      final newProfile = NutritionProfile(
-        targetCalories: dashboardData['targetCalories'],
-        currentCalories: dashboardData['currentCalories'],
-        targetProtein: dashboardData['targetProtein'],
-        currentProtein: dashboardData['currentProtein'],
-        targetCarbs: dashboardData['targetCarbs'],
-        currentCarbs: dashboardData['currentCarbs'],
-        targetFat: dashboardData['targetFat'],
-        currentFat: dashboardData['currentFat'],
-        currentWaterMl: dashboardData['currentWaterMl'],
-        targetWaterMl: dashboardData['targetWaterMl'],
-      );
-
-      // Mettre à jour les calories des repas
-      final mealCalories = dashboardData['mealCalories'] as Map<String, double>;
-      final updatedMeals = realMeals.map((meal) {
-        final newCalories = mealCalories[meal.id]?.round() ?? 0;
-        return meal.copyWith(
-          calories: newCalories,
-          isCompleted: newCalories > 0,
-        );
-      }).toList();
-
+    if (mounted) {
       setState(() {
-        nutritionProfile = newProfile;
-        realMeals = updatedMeals;
-        // Mettre à jour directement les valeurs animées (sans animation)
-        animatedCalories = newProfile.currentCalories;
-        animatedProtein = newProfile.currentProtein;
-        animatedCarbs = newProfile.currentCarbs;
-        animatedFat = newProfile.currentFat;
+        // Mettre à jour seulement les valeurs actuelles (pas les objectifs)
+        nutritionProfile = NutritionProfile(
+          targetCalories: nutritionProfile.targetCalories,
+          currentCalories: globalState.currentCalories.toInt(),
+          targetProtein: nutritionProfile.targetProtein,
+          currentProtein: globalState.currentProteins.toInt(),
+          targetCarbs: nutritionProfile.targetCarbs,
+          currentCarbs: globalState.currentCarbs.toInt(),
+          targetFat: nutritionProfile.targetFat,
+          currentFat: globalState.currentFats.toInt(),
+          currentWaterMl: (globalState.currentWaterL * 1000).toInt(),
+          targetWaterMl: nutritionProfile.targetWaterMl,
+        );
+
+        // Mettre à jour directement les valeurs animées (sans animation) pour réactivité
+        animatedCalories = globalState.currentCalories.toInt();
+        animatedProtein = globalState.currentProteins.toInt();
+        animatedCarbs = globalState.currentCarbs.toInt();
+        animatedFat = globalState.currentFats.toInt();
       });
-      
-      debugPrint('✅ Dashboard: Données mises à jour en temps réel');
-    } catch (e) {
-      debugPrint('❌ Dashboard: Erreur lors de la mise à jour: $e');
     }
+
+    debugPrint('✅ Nutrition Dashboard: Valeurs mises à jour instantanément');
   }
 
   void _startAnimations() {
@@ -271,14 +257,7 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading) {
-      return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
-    }
-
+    // Plus de loading - affichage immédiat
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(

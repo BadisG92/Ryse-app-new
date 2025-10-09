@@ -15,7 +15,7 @@ class NutritionRecipesHybrid extends StatefulWidget {
 class _NutritionRecipesHybridState extends State<NutritionRecipesHybrid> {
   String searchQuery = "";
   final TextEditingController _searchController = TextEditingController();
-  
+
   // Filtres avancés
   Map<String, Set<String>> selectedAdvancedFilters = {
     'regime': <String>{},
@@ -27,8 +27,29 @@ class _NutritionRecipesHybridState extends State<NutritionRecipesHybrid> {
   @override
   void initState() {
     super.initState();
-    // Initialiser les données des recettes
+    // Initialiser les données des recettes ET attendre le chargement
+    _loadRecipes();
+  }
+
+  Future<void> _loadRecipes() async {
+    // Initialiser (lance le chargement en arrière-plan)
     RecipeData.initialize();
+
+    // Attendre 100ms pour laisser le temps au cache de se charger
+    await Future.delayed(const Duration(milliseconds: 100));
+
+    // Vérifier toutes les 50ms si les données sont arrivées
+    int attempts = 0;
+    while (RecipeData.allRecipes.isEmpty && attempts < 100 && mounted) {
+      await Future.delayed(const Duration(milliseconds: 50));
+      attempts++;
+    }
+
+    // Forcer un rebuild quand les recettes sont chargées
+    if (mounted && RecipeData.allRecipes.isNotEmpty) {
+      setState(() {});
+      print('✅ Recettes affichées: ${RecipeData.allRecipes.length} recettes');
+    }
   }
 
   @override
@@ -42,14 +63,14 @@ class _NutritionRecipesHybridState extends State<NutritionRecipesHybrid> {
     // Vérifier si un filtre ou une recherche est active
     final bool hasAdvancedFilters = selectedAdvancedFilters.values.any((set) => set.isNotEmpty);
     final bool hasActiveFilter = searchQuery.isNotEmpty || hasAdvancedFilters;
-    
+
     // Filtrer les recettes selon la recherche et les filtres
     final filteredRecipes = RecipeFilters.filterRecipes(
       RecipeData.allRecipes,
       searchQuery: searchQuery.isEmpty ? null : searchQuery,
       selectedFilters: hasAdvancedFilters ? selectedAdvancedFilters : null,
     );
-    
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       child: Column(

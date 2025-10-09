@@ -11,6 +11,8 @@ import '../services/auth_service.dart';
 import '../services/dashboard_service.dart';
 import '../services/offline_workout_service.dart';
 import '../services/workout_cache_service.dart';
+import '../services/sport_dashboard_service.dart';
+import '../services/global_state_manager.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/translations.dart';
 import '../services/localization_service.dart';
@@ -1206,8 +1208,17 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                     Expanded(
                       child: OutlinedButton(
                         onPressed: () {
+                          // OPTIMISATION: Invalider les caches même sans sauvegarde
+                          try {
+                            SportDashboardService.forceInvalidateAllCaches();
+                            DashboardService.invalidateAndRefreshAfterWorkout();
+                            debugPrint('✅ Caches Sport invalidés');
+                          } catch (e) {
+                            debugPrint('⚠️ Erreur invalidation caches: $e');
+                          }
+
                           Navigator.pop(context); // Fermer popup
-                          Navigator.pop(context); // Retourner à la musculation
+                          Navigator.pop(context); // Retourner à la musculation (se rafraîchira automatiquement)
                         },
                         style: OutlinedButton.styleFrom(
                           side: const BorderSide(color: Color(0xFFE2E8F0)),
@@ -1235,9 +1246,19 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                       child: ElevatedButton(
                         onPressed: () {
                           _saveAsProgram(widget.sessionName);
+
+                          // OPTIMISATION: Invalider les caches après sauvegarde
+                          try {
+                            SportDashboardService.forceInvalidateAllCaches();
+                            DashboardService.invalidateAndRefreshAfterWorkout();
+                            debugPrint('✅ Caches Sport invalidés après sauvegarde programme');
+                          } catch (e) {
+                            debugPrint('⚠️ Erreur invalidation caches: $e');
+                          }
+
                           Navigator.pop(context); // Fermer popup
-                          Navigator.pop(context); // Retourner à la musculation
-                          
+                          Navigator.pop(context); // Retourner à la musculation (se rafraîchira automatiquement)
+
                           // Afficher confirmation
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
@@ -1309,13 +1330,18 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
       intensity: _selectedIntensity != null ? _mapIntensityToDbValue(_selectedIntensity!) : null,
       durationMinutes: _displayedDuration.inMinutes,
       caloriesBurned: _estimatedCalories,
-    ).then((_) {
-      // Invalider le cache du dashboard principal après la sauvegarde
+    ).then((_) async {
+      // OPTIMISATION: Invalider les caches pour forcer le rafraîchissement
       try {
+        SportDashboardService.forceInvalidateAllCaches();
         DashboardService.invalidateAndRefreshAfterWorkout();
-        debugPrint('✅ Dashboard principal mis à jour après musculation');
+
+        // Recharger TOUTES les données Sport depuis la DB
+        await GlobalStateManager.instance.refreshSportData();
+
+        debugPrint('✅ Caches Sport invalidés après séance musculation');
       } catch (e) {
-        debugPrint('⚠️ Erreur lors de la mise à jour du dashboard principal: $e');
+        debugPrint('⚠️ Erreur invalidation caches: $e');
       }
       
       // Afficher un message différent si on est hors ligne
@@ -1639,7 +1665,16 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                       if (!widget.isFromProgram && _exercises.isNotEmpty) {
                         _showSaveSessionDialog();
                       } else {
-                        Navigator.pop(context); // Retourner à la musculation
+                        // OPTIMISATION: Invalider les caches avant de retourner
+                        try {
+                          SportDashboardService.forceInvalidateAllCaches();
+                          DashboardService.invalidateAndRefreshAfterWorkout();
+                          debugPrint('✅ Caches Sport invalidés');
+                        } catch (e) {
+                          debugPrint('⚠️ Erreur invalidation caches: $e');
+                        }
+
+                        Navigator.pop(context); // Retourner à la musculation (se rafraîchira automatiquement)
                       }
                     },
                     style: ElevatedButton.styleFrom(

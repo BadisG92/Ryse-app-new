@@ -8,6 +8,7 @@ import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:crypto/crypto.dart';
 import '../models/user_model.dart';
 import '../config/supabase_config.dart';
+import 'global_state_manager.dart'; // NOUVEAU: Pour réinitialiser après connexion
 
 class AuthService extends ChangeNotifier {
   static final AuthService _instance = AuthService._internal();
@@ -50,13 +51,17 @@ class AuthService extends ChangeNotifier {
     _setLoading(true);
     try {
       debugPrint('🚀 Initializing AuthService...');
-      
+
       // Check if user is already logged in
       final session = _supabase.auth.currentSession;
       if (session != null) {
         debugPrint('🔍 Found existing session, loading profile...');
         // CORRECTION: Timeout global pour toute l'initialisation
         await _loadUserProfile(session.user.id).timeout(const Duration(seconds: 10));
+
+        // NOUVEAU: Réinitialiser GlobalStateManager si session existante
+        debugPrint('🔄 Réinitialisation GlobalStateManager (session existante)...');
+        await GlobalStateManager.instance.initialize();
       } else {
         debugPrint('📱 No existing session found');
       }
@@ -122,6 +127,11 @@ class AuthService extends ChangeNotifier {
       if (response.user != null) {
         await _loadUserProfile(response.user!.id);
         await _storeTokenSecurely(response.session?.accessToken);
+
+        // NOUVEAU: Réinitialiser GlobalStateManager après connexion réussie
+        debugPrint('🔄 Réinitialisation GlobalStateManager après connexion...');
+        await GlobalStateManager.instance.initialize();
+
         return true;
       }
       return false;
@@ -186,6 +196,11 @@ class AuthService extends ChangeNotifier {
       if (response.user != null) {
         await _loadUserProfile(response.user!.id);
         await _storeTokenSecurely(response.session?.accessToken);
+
+        // NOUVEAU: Réinitialiser GlobalStateManager après connexion Google
+        debugPrint('🔄 Réinitialisation GlobalStateManager après connexion Google...');
+        await GlobalStateManager.instance.initialize();
+
         return true;
       }
       return false;
@@ -223,6 +238,11 @@ class AuthService extends ChangeNotifier {
       if (response.user != null) {
         await _loadUserProfile(response.user!.id);
         await _storeTokenSecurely(response.session?.accessToken);
+
+        // NOUVEAU: Réinitialiser GlobalStateManager après connexion Apple
+        debugPrint('🔄 Réinitialisation GlobalStateManager après connexion Apple...');
+        await GlobalStateManager.instance.initialize();
+
         return true;
       }
       return false;

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../services/localization_service.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'dart:async';
 import 'ui/custom_card.dart';
@@ -18,6 +17,7 @@ import 'shared/workout_actions.dart';
 import '../services/translations.dart';
 import '../services/localization_service.dart';
 import 'package:provider/provider.dart';
+import '../services/global_state_manager.dart';
 
 class SportDashboard extends StatefulWidget {
   const SportDashboard({super.key});
@@ -29,57 +29,106 @@ class SportDashboard extends StatefulWidget {
 class _SportDashboardState extends State<SportDashboard> with TickerProviderStateMixin {
   bool showCalendar = false;
   SportDashboardData? _dashboardData;
-  bool _loading = true;
-  
+
   // Animation des calories
   int animatedCalories = 0;
-  List<Timer> _timers = [];
+  final List<Timer> _timers = [];
+  Timer? _caloriesTimer;
 
   @override
   void initState() {
     super.initState();
+
+    // OPTIMISATION: Chargement instantané depuis GlobalStateManager + cache
+    _loadInitialDataSync();
+
+    // Enrichissement en arrière-plan (non-bloquant)
     _loadDashboardData();
   }
 
-  /// Charge les données du dashboard depuis Supabase
+  /// Force le rafraîchissement des données
+  void refreshDashboard() {
+    _loadDashboardData();
+  }
+
+  /// NOUVEAU: Chargement synchrone instantané depuis GlobalStateManager
+  void _loadInitialDataSync() {
+    final globalState = GlobalStateManager.instance;
+
+    // Créer des données de base depuis GlobalStateManager pour affichage immédiat
+    final basicData = SportDashboardData(
+      totalCalories: 0, // Sera enrichi par _loadDashboardData
+      totalSessions: globalState.workoutCompleted ? 1 : 0,
+      totalDurationMinutes: 0,
+      cardioCalories: 0,
+      musculationCalories: 0,
+      targetWeeklyCalories: 2500,
+      totalTodaySessions: globalState.workoutCompleted ? 1 : 0,
+      recentSessions: [],
+      streak: globalState.currentStreak,
+    );
+
+    setState(() {
+      _dashboardData = basicData;
+      animatedCalories = 0;
+    });
+
+    // Démarrer l'animation des calories (partira de 0)
+    _startCaloriesAnimation();
+
+    print('⚡ Sport Dashboard chargé INSTANTANÉMENT depuis GlobalStateManager');
+  }
+
+  /// Charge les données du dashboard depuis Supabase (enrichissement en arrière-plan)
   Future<void> _loadDashboardData() async {
     try {
       final data = await SportDashboardService.getDashboardData();
       setState(() {
         _dashboardData = data;
-        _loading = false;
       });
+
+      // Redémarrer l'animation des calories avec les nouvelles données
       _startCaloriesAnimation();
 
+      print('✅ Sport Dashboard enrichi depuis Supabase');
     } catch (e) {
-      setState(() {
-        _loading = false;
-      });
       debugPrint('❌ Erreur chargement dashboard: $e');
+      // En cas d'erreur, on garde les données de GlobalStateManager
     }
   }
 
   void _startCaloriesAnimation() {
     if (_dashboardData == null) return;
-    
+
+    // OPTIMISATION: Annuler l'animation précédente
+    _caloriesTimer?.cancel();
+
     // Animation des calories - 1000ms avec easeOutExpo
     const duration = 1000; // 1 seconde
     const tickTime = 20; // 20ms
-    
-    Timer caloriesTimer = Timer.periodic(const Duration(milliseconds: tickTime), (timer) {
+
+    final startValue = animatedCalories; // Commencer depuis la valeur actuelle
+    final targetValue = _dashboardData!.totalCalories;
+    final delta = targetValue - startValue;
+
+    _caloriesTimer = Timer.periodic(const Duration(milliseconds: tickTime), (timer) {
       final elapsed = timer.tick * tickTime;
       final progress = (elapsed / duration).clamp(0.0, 1.0);
       final easedProgress = Curves.easeOutExpo.transform(progress);
-      final targetValue = (_dashboardData!.totalCalories * easedProgress).round();
-      
-      setState(() => animatedCalories = targetValue);
-      
+      final currentValue = (startValue + (delta * easedProgress)).round();
+
+      if (mounted) {
+        setState(() => animatedCalories = currentValue);
+      }
+
       if (progress >= 1.0) {
         timer.cancel();
-        setState(() => animatedCalories = _dashboardData!.totalCalories);
+        if (mounted) {
+          setState(() => animatedCalories = targetValue);
+        }
       }
     });
-    _timers.add(caloriesTimer);
+    _timers.add(_caloriesTimer!);
   }
 
 
@@ -154,24 +203,11 @@ class _SportDashboardState extends State<SportDashboard> with TickerProviderStat
         child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
-          children: [            
+          children: [
             // 1. Bloc calories (objectif / brûlées / progression)
-            if (_loading)
-              const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(40),
-                  child: CircularProgressIndicator(),
-                ),
-              )
-            else if (_dashboardData != null)
-              _buildWeeklyCalories(_dashboardData!, locService)
-            else
-              const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(40),
-                  child: Text('Erreur de chargement des données'),
-                ),
-              ),
+            // OPTIMISATION: Affichage immédiat sans condition de loading
+            if (_dashboardData != null)
+              _buildWeeklyCalories(_dashboardData!, locService),
             
             const SizedBox(height: 16),
             

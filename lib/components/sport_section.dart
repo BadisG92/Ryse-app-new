@@ -7,7 +7,6 @@ import 'sport_musculation_hybrid.dart';
 import '../services/dashboard_service.dart';
 import '../services/streak_service.dart';
 import '../services/header_cache_service.dart';
-import '../providers/goals_notifier.dart';
 import 'ui/language_switch_buttons.dart';
 import '../services/translations.dart';
 import '../services/localization_service.dart';
@@ -17,6 +16,7 @@ import 'package:provider/provider.dart';
 import 'ui/refresh_wrapper.dart';
 import '../services/fast_cache_service.dart';
 import '../services/sport_dashboard_service.dart';
+import '../services/global_state_manager.dart';
 
 class SportSection extends StatefulWidget {
   const SportSection({super.key});
@@ -32,11 +32,9 @@ class _SportSectionState extends State<SportSection>
   int _currentIndex = 0;
   int _completedGoals = 0;
   int _totalGoals = 0;
-  bool _loadingObjectives = true;
   int _currentStreak = 0;
-  bool _loadingStreak = true;
-  String _getObjectivesText(String languageCode) => _loadingObjectives ? '...' : '$_completedGoals/$_totalGoals ${'sport_objectives_text'.tr(languageCode)}';
-  String _getStreakText(String languageCode) => _loadingStreak ? '...' : '$_currentStreak ${'sport_days_text'.tr(languageCode)}';
+  String _getObjectivesText(String languageCode) => '$_completedGoals/$_totalGoals ${'sport_objectives_text'.tr(languageCode)}';
+  String _getStreakText(String languageCode) => '$_currentStreak ${'sport_days_text'.tr(languageCode)}';
 
   List<String> _getPageNames(String languageCode) => [
     'sport_dashboard_title'.tr(languageCode),
@@ -54,25 +52,35 @@ class _SportSectionState extends State<SportSection>
     super.initState();
     _pageController = PageController();
     _tabController = TabController(length: 3, vsync: this);
-    
-    // Essayer de charger depuis le cache d'abord
-    _loadFromCache();
-    
+
+    // OPTIMISATION: Chargement instantané depuis GlobalStateManager
+    _loadInitialDataSync();
+
+    // Enrichissement en arrière-plan (non-bloquant)
     _loadObjectives();
     _loadStreak();
+
     // Forcer la mise à jour du compteur d'objectifs
     DashboardService.refreshGoalsNotifier();
   }
-  
-  void _loadFromCache() {
-    final cachedStats = HeaderCacheService.getCachedHeaderStats();
-    if (cachedStats != null) {
-      setState(() {
-        _currentStreak = int.tryParse(cachedStats.dailyStreak.split(' ')[0]) ?? 0;
-        _loadingStreak = false;
-      });
-      print('⚡ Sport header chargé depuis le cache: ${cachedStats.dailyStreak}');
-    }
+
+  /// NOUVEAU: Chargement synchrone instantané depuis GlobalStateManager
+  void _loadInitialDataSync() {
+    final globalState = GlobalStateManager.instance;
+
+    setState(() {
+      // Charger le streak depuis GlobalStateManager
+      _currentStreak = globalState.currentStreak;
+
+      // Calculer les objectifs complétés depuis GlobalStateManager
+      final goals = globalState.getDailyGoalsForDashboard();
+      _completedGoals = goals.where((g) => g['completed'] == true).length;
+      _totalGoals = goals.length;
+    });
+
+    print('⚡ Sport header chargé INSTANTANÉMENT depuis GlobalStateManager:');
+    print('   - Streak: $_currentStreak jours');
+    print('   - Objectifs: $_completedGoals/$_totalGoals');
   }
 
   @override
@@ -83,6 +91,11 @@ class _SportSectionState extends State<SportSection>
   }
 
   void _onPageChanged(int index) {
+    // Rafraîchir le header quand on change de page
+    _loadInitialDataSync();
+    _loadObjectives();
+    _loadStreak();
+
     setState(() {
       _currentIndex = index;
     });
@@ -135,10 +148,10 @@ class _SportSectionState extends State<SportSection>
       setState(() {
         _completedGoals = completed;
         _totalGoals = goals.length;
-        _loadingObjectives = false;
       });
     } catch (e) {
-      setState(() => _loadingObjectives = false);
+      // Erreur lors du chargement des objectifs, garder les valeurs de GlobalStateManager
+      debugPrint('⚠️ Erreur chargement objectifs: $e');
     }
   }
 
@@ -147,12 +160,10 @@ class _SportSectionState extends State<SportSection>
       final streak = await StreakService.getCurrentStreak();
       setState(() {
         _currentStreak = streak;
-        _loadingStreak = false;
       });
     } catch (e) {
-      setState(() {
-        _loadingStreak = false;
-      });
+      // Erreur lors du chargement du streak, garder la valeur de GlobalStateManager
+      debugPrint('⚠️ Erreur chargement streak: $e');
     }
   }
 

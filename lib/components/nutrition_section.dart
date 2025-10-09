@@ -10,6 +10,7 @@ import '../services/streak_service.dart';
 import '../services/header_cache_service.dart';
 import '../services/localization_service.dart';
 import '../services/translations.dart';
+import '../services/global_state_manager.dart'; // NOUVEAU
 import '../providers/goals_notifier.dart';
 import 'ui/language_switch_buttons.dart';
 import 'ui/refresh_wrapper.dart';
@@ -55,53 +56,31 @@ class _NutritionSectionState extends State<NutritionSection>
     super.initState();
     _pageController = PageController();
     _tabController = TabController(length: 3, vsync: this);
-    
-    // Essayer de charger depuis le cache d'abord
-    _loadFromCache();
-    
-    _loadObjectives();
-    _loadStreak();
-    // Forcer la mise à jour du compteur d'objectifs
+
+    // OPTIMISATION: Charger instantanément depuis GlobalStateManager
+    _loadInitialDataSync();
+
+    // Forcer la mise à jour du compteur d'objectifs (en arrière-plan)
     DashboardService.refreshGoalsNotifier();
   }
-  
-  void _loadFromCache() {
-    final cachedStats = HeaderCacheService.getCachedHeaderStats();
-    if (cachedStats != null) {
-      setState(() {
-        _currentStreak = int.tryParse(cachedStats.dailyStreak.split(' ')[0]) ?? 0;
-        _loadingStreak = false;
-      });
-      print('⚡ Nutrition header chargé depuis le cache: ${cachedStats.dailyStreak}');
-    }
-  }
 
-  Future<void> _loadObjectives() async {
-    try {
-      final goals = await DashboardService.getDailyGoals();
-      final completed = goals.where((g) => g.completed).length;
-      setState(() {
-        _completedGoals = completed;
-        _totalGoals = goals.length;
-        _loadingObjectives = false;
-      });
-    } catch (e) {
-      // ignore errors, keep default
-    }
-  }
+  /// Chargement synchrone instantané depuis GlobalStateManager
+  void _loadInitialDataSync() {
+    final globalState = GlobalStateManager.instance;
 
-  Future<void> _loadStreak() async {
-    try {
-      final streak = await StreakService.getCurrentStreak();
-      setState(() {
-        _currentStreak = streak;
-        _loadingStreak = false;
-      });
-    } catch (e) {
-      setState(() {
-        _loadingStreak = false;
-      });
-    }
+    // Charger instantanément les objectifs depuis GlobalStateManager
+    final goals = globalState.getDailyGoalsForDashboard();
+    final completed = goals.where((g) => g['completed'] == true).length;
+
+    setState(() {
+      _completedGoals = completed;
+      _totalGoals = goals.length;
+      _loadingObjectives = false;
+      _currentStreak = globalState.currentStreak;
+      _loadingStreak = false;
+    });
+
+    debugPrint('⚡ Nutrition Section: Données header chargées en mode synchrone');
   }
 
   @override
@@ -130,18 +109,17 @@ class _NutritionSectionState extends State<NutritionSection>
     try {
       // OPTIMISATION: Vider le cache rapide pour forcer une vraie mise à jour
       FastCacheService.invalidateDashboard();
-      
-      // Recharger les données de la section nutrition en parallèle
-      await Future.wait([
-        _loadObjectives(),
-        _loadStreak(),
-        DashboardService.invalidateAndRefreshGoals(), // Force le refresh complet
-      ]);
-      
+
+      // Forcer le rechargement complet
+      await DashboardService.invalidateAndRefreshGoals();
+
+      // Recharger les données header depuis GlobalState
+      _loadInitialDataSync();
+
       // Vider le cache et forcer le rafraîchissement
       HeaderCacheService.clearCache();
       DashboardService.refreshGoalsNotifier();
-      
+
       // Feedback visuel
       if (mounted) {
         final locService = Provider.of<LocalizationService>(context, listen: false);

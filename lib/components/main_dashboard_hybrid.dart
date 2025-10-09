@@ -296,8 +296,8 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
         title: 'sport'.tr(languageCode),
         icon: LucideIcons.dumbbell,
         stats: {
-          'status'.tr(languageCode): globalState.workoutCompleted ? '✅' : '⏳',
-          'sessions'.tr(languageCode): globalState.workoutCompleted ? '1/1' : '0/1',
+          'calories'.tr(languageCode): '${globalState.sportCaloriesBurned} kcal',
+          'sessions'.tr(languageCode): globalState.sportSessions == 1 ? '1 séance' : '${globalState.sportSessions} séances',
         },
         gradientColors: const [Color(0xFF0B132B), Color(0xFF1C2951)],
       ),

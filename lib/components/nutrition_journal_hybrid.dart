@@ -28,6 +28,7 @@ class NutritionJournalHybrid extends StatefulWidget {
 
 class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
   bool showCalendar = false;
+  bool _isPreloadingCalendar = false; // NOUVEAU: Pour pré-charger avant d'afficher
   int? _selectedMealIndex; // Pour savoir à quel repas ajouter l'aliment
   String? _pendingMealType; // Type de repas en attente d'ajout d'aliment
   String? _pendingMealId; // ID pré-généré pour le nouveau repas
@@ -105,6 +106,13 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
         isLoading = false;
       });
     }
+  }
+
+  /// OPTIMISATION: Ouvre le calendrier instantanément
+  void _openCalendar() {
+    // Afficher le calendrier immédiatement
+    // CalendarView gérera son propre chargement en arrière-plan
+    setState(() => showCalendar = true);
   }
 
   void _addFoodToSelectedMeal(FoodItem foodItem) async {
@@ -655,18 +663,29 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
                                   },
                                 ),
                                 GestureDetector(
-                                  onTap: () => setState(() => showCalendar = true),
+                                  onTap: _openCalendar, // OPTIMISATION: Pré-charge avant d'afficher
                                   child: Container(
                                     padding: const EdgeInsets.all(12),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFF0B132B),
+                                      color: _isPreloadingCalendar
+                                        ? const Color(0xFF1C2951) // Feedback visuel pendant préchargement
+                                        : const Color(0xFF0B132B),
                                       borderRadius: BorderRadius.circular(12),
                                     ),
-                                    child: const Icon(
-                                      LucideIcons.expand,
-                                      size: 20,
-                                      color: Colors.white,
-                                    ),
+                                    child: _isPreloadingCalendar
+                                      ? const SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Colors.white,
+                                          ),
+                                        )
+                                      : const Icon(
+                                          LucideIcons.expand,
+                                          size: 20,
+                                          color: Colors.white,
+                                        ),
                                   ),
                                 ),
                               ],

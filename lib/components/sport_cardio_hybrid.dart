@@ -12,8 +12,23 @@ import '../services/translations.dart';
 import '../services/localization_service.dart';
 import '../services/cardio_service.dart';
 
-class SportCardioHybrid extends StatelessWidget {
+class SportCardioHybrid extends StatefulWidget {
   const SportCardioHybrid({super.key});
+
+  @override
+  State<SportCardioHybrid> createState() => _SportCardioHybridState();
+}
+
+class _SportCardioHybridState extends State<SportCardioHybrid> {
+  // Clé unique pour forcer le rafraîchissement des sections
+  Key _refreshKey = UniqueKey();
+
+  void _refreshPage() {
+    setState(() {
+      _refreshKey = UniqueKey();
+    });
+    debugPrint('🔄 Page cardio rafraîchie');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,27 +45,28 @@ class SportCardioHybrid extends StatelessWidget {
         child: Column(
           children: [
             // 1. Bloc "Cette semaine" avec statistiques (connecté à Supabase)
-            const WeeklyStatsSection(),
-            
+            WeeklyStatsSection(key: ValueKey('weekly_$_refreshKey')),
+
             const SizedBox(height: 16),
-            
+
             // 2. Bloc "Choisir une activité"
             ActivitySelectionSection(
               onActivitySelected: (activity) =>
                   _showActivityFormatsModal(context, activity),
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // 3. Bloc "Dernière séance enregistrée" (connecté à Supabase)
             LastSessionSection(
+              key: ValueKey('last_$_refreshKey'),
               onDetailsTap: () => _showSessionDetails(context),
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // 4. Bloc "Vos séances de la semaine" (connecté à Supabase)
-            const WeekSessionsSection(),
+            WeekSessionsSection(key: ValueKey('sessions_$_refreshKey')),
             
             const SizedBox(height: 16),
             
@@ -237,7 +253,7 @@ class SportCardioHybrid extends StatelessWidget {
 
   void _startTracking(BuildContext context, String formatTitle, CardioActivityType activity, CardioObjective? objective) {
     // Utiliser directement les informations de l'activité Supabase
-    
+
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -248,12 +264,15 @@ class SportCardioHybrid extends StatelessWidget {
           objective: objective,
         ),
       ),
-    );
+    ).then((_) {
+      // Rafraîchir la page au retour de la séance
+      _refreshPage();
+    });
   }
 
   void _openManualEntry(BuildContext context, String formatTitle, CardioActivityType activity) {
     // Utiliser directement les informations de l'activité Supabase
-    
+
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -263,7 +282,10 @@ class SportCardioHybrid extends StatelessWidget {
           formatTitle: formatTitle,
         ),
       ),
-    );
+    ).then((_) {
+      // Rafraîchir la page au retour de la séance
+      _refreshPage();
+    });
   }
 
   void _showSessionDetails(BuildContext context) {

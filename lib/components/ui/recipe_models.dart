@@ -126,6 +126,14 @@ class Recipe {
   final List<String> steps;
   final String difficulty;
 
+  // Données brutes pour le cache (optionnelles - utilisées seulement pour la sérialisation)
+  final String? nameFr;
+  final String? nameEn;
+  final String? tagsFr;
+  final String? tagsEn;
+  final String? stepsFr;
+  final String? stepsEn;
+
   const Recipe({
     required this.id,
     required this.name,
@@ -140,6 +148,12 @@ class Recipe {
     required this.ingredients,
     required this.steps,
     required this.difficulty,
+    this.nameFr,
+    this.nameEn,
+    this.tagsFr,
+    this.tagsEn,
+    this.stepsFr,
+    this.stepsEn,
   });
 
   // Factory pour créer une Recipe depuis JSON (base de données)
@@ -150,7 +164,7 @@ class Recipe {
       final calories = json['calories per portion'] ?? 0;
       final tags = _parseTagsFromJson(json);
       final steps = _parseStepsFromJson(json);
-      
+
       return Recipe(
         id: id,
         name: name,
@@ -165,6 +179,13 @@ class Recipe {
         ingredients: [], // Les ingrédients seront chargés séparément
         steps: steps,
         difficulty: json['difficulty'] ?? 'Facile',
+        // Préserver les données brutes pour le cache
+        nameFr: json['name_fr']?.toString(),
+        nameEn: json['name_en']?.toString(),
+        tagsFr: json['tags_fr']?.toString(),
+        tagsEn: json['tags_en']?.toString(),
+        stepsFr: json['steps_fr']?.toString(),
+        stepsEn: json['steps_en']?.toString(),
       );
     } catch (e) {
       print('❌ Recipe.fromJson - Erreur: $e');
@@ -212,6 +233,28 @@ class Recipe {
     } catch (e) {
       return [];
     }
+  }
+
+  // Conversion en JSON pour le cache
+  // IMPORTANT: On stocke les données brutes FR/EN pour préserver les deux langues
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name_fr': nameFr ?? name, // Utiliser les données brutes si disponibles
+      'name_en': nameEn ?? name,
+      'image_url': image,
+      'duration': duration,
+      'calories per portion': calories,
+      'servings': servings,
+      'tags_fr': tagsFr ?? tags.join(', '),
+      'tags_en': tagsEn ?? tags.join(', '),
+      'proteins per portion': proteins,
+      'carbs per portion': carbs,
+      'fat per portion': fats,
+      'steps_fr': stepsFr ?? steps.join(' | '),
+      'steps_en': stepsEn ?? steps.join(' | '),
+      'difficulty': difficulty,
+    };
   }
 
   // Helpers pour compatibilité avec l'écran de détails
@@ -637,18 +680,17 @@ class RecipeFilters {
 // Données de recettes - INTERFACE IDENTIQUE pour l'UI
 class RecipeData {
   // Variables privées pour stocker les données Supabase
-  static List<Recipe> _featuredRecipes = [
-    // Pas de données par défaut - utiliser uniquement Supabase
-  ];
-  
-  static List<Recipe> _allRecipes = _featuredRecipes;
+  static List<Recipe> _featuredRecipes = [];
+  static List<Recipe> _allRecipes = [];
   static bool _isLoaded = false;
+  static bool _isLoading = false; // NOUVEAU: Pour tracking du chargement
   static String _lastLanguage = '';
   static bool _isListenerSetup = false;
 
   // INTERFACE PUBLIQUE IDENTIQUE - getters synchrones
   static List<Recipe> get featuredRecipes => _featuredRecipes;
   static List<Recipe> get allRecipes => _allRecipes;
+  static bool get isLoading => _isLoading; // NOUVEAU: Pour afficher loader dans l'UI
 
   // Listener pour les changements de langue
   static void _setupLanguageListener() {
@@ -669,10 +711,12 @@ class RecipeData {
       _resetAndReload();
     }
   }
-  
+
   // Réinitialise et recharge les données
   static void _resetAndReload() {
     _isLoaded = false;
+    // Invalider le cache car la langue a changé
+    RecipeService.invalidateCache();
     _loadRecipesFromSupabase();
   }
 
@@ -688,27 +732,33 @@ class RecipeData {
 
   // Charge les données depuis Supabase et met à jour les listes
   static Future<void> _loadRecipesFromSupabase() async {
+    if (_isLoading) {
+      print('⏳ RecipeData: Chargement déjà en cours, skip...');
+      return;
+    }
+
+    _isLoading = true;
+    print('🔄 RecipeData: Début chargement des recettes...');
+
     try {
+      // RecipeService.getAllRecipes() charge depuis cache ou DB
       final supabaseAllRecipes = await RecipeService.getAllRecipes();
       final supabaseFeaturedRecipes = await RecipeService.getFeaturedRecipes();
-      
+
+      print('📦 RecipeData: Reçu ${supabaseAllRecipes.length} recettes, ${supabaseFeaturedRecipes.length} featured');
+
       // Mettre à jour les listes avec les données Supabase
-      _allRecipes = supabaseAllRecipes.isNotEmpty ? supabaseAllRecipes : _allRecipes;
-      
-      // S'assurer qu'il y a au moins 3 recettes featured pour le défilement
-      if (supabaseFeaturedRecipes.length >= 3) {
-        _featuredRecipes = supabaseFeaturedRecipes;
-      } else {
-        // Utiliser les données par défaut si pas assez de recettes Supabase
-        print('⚠️ Pas assez de recettes Supabase (${supabaseFeaturedRecipes.length}), utilisation des données par défaut');
-      }
-      
+      _allRecipes = supabaseAllRecipes;
+      _featuredRecipes = supabaseFeaturedRecipes.isNotEmpty ? supabaseFeaturedRecipes : supabaseAllRecipes.take(5).toList();
+
       _isLoaded = true;
-      
-      print('✅ Recettes chargées: ${_allRecipes.length} recettes, ${_featuredRecipes.length} featured');
+      _isLoading = false;
+
+      print('✅ RecipeData: ${_allRecipes.length} recettes chargées, ${_featuredRecipes.length} featured');
     } catch (e) {
-      print('⚠️ Erreur Supabase, utilisation des données par défaut: $e');
-      // Garde les données par défaut en cas d'erreur
+      print('❌ RecipeData: Erreur chargement: $e');
+      _isLoading = false;
+      // Garder les listes vides en cas d'erreur
     }
   }
 

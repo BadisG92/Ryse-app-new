@@ -25,8 +25,18 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
   WorkoutSession? _currentSession;
   List<WorkoutExercise> _currentExercises = [];
   bool _isFromProgram = false;
-  
+
   final WorkoutService _workoutService = WorkoutService();
+
+  // Clé unique pour forcer le rafraîchissement des sections
+  Key _refreshKey = UniqueKey();
+
+  void _refreshPage() {
+    setState(() {
+      _refreshKey = UniqueKey();
+    });
+    debugPrint('🔄 Page musculation rafraîchie');
+  }
 
   List<String> _getSessionTypes(String languageCode) {
     return [
@@ -145,8 +155,8 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
         child: Column(
           children: [
             // 1. Bloc "Cette semaine" (FACTORISÉ)
-            const WeeklyStatsSection(),
-            
+            WeeklyStatsSection(key: ValueKey('weekly_$_refreshKey')),
+
             const SizedBox(height: 16),
             
             // 2. Bloc principal "Types de séance" (2 boutons côte à côte)
@@ -175,12 +185,12 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
             ],
             
             // 5. Bloc "Historique de la semaine" (FACTORISÉ)
-            const WeekHistorySection(),
-            
+            WeekHistorySection(key: ValueKey('history_$_refreshKey')),
+
             const SizedBox(height: 16),
-            
+
             // 6. Bloc "Progression par exercice" (FACTORISÉ)
-            const ExerciseProgressSection(),
+            ExerciseProgressSection(key: ValueKey('progress_$_refreshKey')),
             
             // Padding bottom
             const SizedBox(height: 100),
@@ -471,7 +481,10 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
           },
         ),
       ),
-    );
+    ).then((_) {
+      // Rafraîchir la page au retour de la séance
+      _refreshPage();
+    });
   }
 
   void _startSessionFromProgram(WorkoutProgram program) {
@@ -499,7 +512,10 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
           guidedTemplateId: program.id,
         ),
       ),
-    );
+    ).then((_) {
+      // Rafraîchir la page au retour de la séance
+      _refreshPage();
+    });
   }
 
   void _completeSession() {

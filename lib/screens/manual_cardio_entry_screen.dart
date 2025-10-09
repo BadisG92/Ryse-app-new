@@ -6,6 +6,9 @@ import '../components/ui/numeric_text_field.dart';
 import '../services/cardio_service.dart';
 import '../services/translations.dart';
 import '../services/localization_service.dart';
+import '../services/sport_dashboard_service.dart';
+import '../services/dashboard_service.dart';
+import '../services/global_state_manager.dart';
 
 class ManualCardioEntryScreen extends StatefulWidget {
   final String activityType;
@@ -137,9 +140,22 @@ class _ManualCardioEntryScreenState extends State<ManualCardioEntryScreen> {
                 debugPrint('❌ Erreur sauvegarde session manuelle: $e');
                 // Continuer même en cas d'erreur pour ne pas bloquer l'utilisateur
               }
-              
+
+              // OPTIMISATION: Invalider les caches pour forcer le rafraîchissement
+              try {
+                SportDashboardService.forceInvalidateAllCaches();
+                DashboardService.invalidateAndRefreshAfterWorkout();
+
+                // Recharger TOUTES les données Sport depuis la DB
+                await GlobalStateManager.instance.refreshSportData();
+
+                debugPrint('✅ Caches Sport invalidés après séance cardio manuelle');
+              } catch (e) {
+                debugPrint('⚠️ Erreur invalidation caches: $e');
+              }
+
               Navigator.pop(context); // Fermer dialog
-              Navigator.pop(context); // Retourner au cardio
+              Navigator.pop(context); // Retourner au cardio (se rafraîchira automatiquement)
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF0B132B),

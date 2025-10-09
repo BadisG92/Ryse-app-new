@@ -11,6 +11,9 @@ import '../services/cardio_calculator.dart';
 import '../services/cardio_session_manager.dart';
 import '../services/translations.dart';
 import '../services/localization_service.dart';
+import '../services/sport_dashboard_service.dart';
+import '../services/dashboard_service.dart';
+import '../services/global_state_manager.dart';
 
 class CardioTrackingScreen extends StatefulWidget {
   final String activityType;
@@ -525,9 +528,22 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
                         debugPrint('❌ Erreur sauvegarde session: $e');
                         // Continuer même en cas d'erreur pour ne pas bloquer l'utilisateur
                       }
-                      
+
+                      // OPTIMISATION: Invalider les caches pour forcer le rafraîchissement
+                      try {
+                        SportDashboardService.forceInvalidateAllCaches();
+                        DashboardService.invalidateAndRefreshAfterWorkout();
+
+                        // Recharger TOUTES les données Sport depuis la DB
+                        await GlobalStateManager.instance.refreshSportData();
+
+                        debugPrint('✅ Caches Sport invalidés après séance cardio');
+                      } catch (e) {
+                        debugPrint('⚠️ Erreur invalidation caches: $e');
+                      }
+
                       Navigator.pop(context); // Fermer dialog
-                      Navigator.pop(context); // Retourner au cardio
+                      Navigator.pop(context); // Retourner au cardio (se rafraîchira automatiquement)
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF0B132B),
