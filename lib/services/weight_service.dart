@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../components/ui/global_progress_models.dart';
 import '../providers/weight_notifier.dart';
@@ -62,25 +63,25 @@ class WeightService {
             );
           }
         } catch (e) {
-          print('Impossible de créer une entrée initiale: $e');
+          debugPrint('Impossible de créer une entrée initiale: $e');
         }
-        
+
         // Fallback: récupérer depuis la table users avec la date de création
         final userResponse = await _supabase
             .from('users')
             .select('weight, target_weight, created_at')
             .eq('id', user.id)
             .single();
-        
+
         final currentWeight = (userResponse['weight'] as num?)?.toDouble() ?? 70.0;
         final targetWeight = (userResponse['target_weight'] as num?)?.toDouble() ?? currentWeight;
-        
+
         // Utiliser la date de création du profil au lieu de DateTime.now()
-        final profileCreatedAt = userResponse['created_at'] != null 
+        final profileCreatedAt = userResponse['created_at'] != null
             ? DateTime.parse(userResponse['created_at'])
             : DateTime.now();
-        
-        print('DEBUG WeightService FALLBACK - currentWeight: $currentWeight, targetWeight: $targetWeight');
+
+        debugPrint('DEBUG WeightService FALLBACK - currentWeight: $currentWeight, targetWeight: $targetWeight');
         
         return WeightProgress(
           currentWeight: currentWeight,
@@ -124,7 +125,7 @@ class WeightService {
       final previousWeight = entries.length > 1 ? entries[entries.length - 2].weight : currentWeight;
       final targetWeight = (data.last['target_weight'] as num?)?.toDouble() ?? currentWeight;
 
-      print('DEBUG WeightService - currentWeight: $currentWeight, targetWeight: $targetWeight, entries: ${entries.length}');
+      debugPrint('DEBUG WeightService - currentWeight: $currentWeight, targetWeight: $targetWeight, entries: ${entries.length}');
 
       return WeightProgress(
         currentWeight: currentWeight,
@@ -134,7 +135,7 @@ class WeightService {
         entries: entries,
       );
     } catch (e) {
-      print('Erreur lors du chargement des données de poids: $e');
+      debugPrint('Erreur lors du chargement des données de poids: $e');
       rethrow;
     }
   }
@@ -191,12 +192,12 @@ class WeightService {
           .update({'weight': weight, 'updated_at': DateTime.now().toIso8601String()})
           .eq('id', user.id);
 
-      print('Nouveau poids enregistré: ${weight}kg');
-      
+      debugPrint('Nouveau poids enregistré: ${weight}kg');
+
       // Notifier tous les écrans que les données de poids ont changé
       WeightNotifier.instance.notifyWeightChanged();
     } catch (e) {
-      print('Erreur lors de l\'enregistrement du poids: $e');
+      debugPrint('Erreur lors de l\'enregistrement du poids: $e');
       rethrow;
     }
   }
@@ -226,7 +227,7 @@ class WeightService {
         );
       }).toList();
     } catch (e) {
-      print('Erreur lors du chargement de l\'historique des poids: $e');
+      debugPrint('Erreur lors du chargement de l\'historique des poids: $e');
       rethrow;
     }
   }
@@ -245,7 +246,7 @@ class WeightService {
 
       return (response['weight'] as num?)?.toDouble();
     } catch (e) {
-      print('Erreur lors de la récupération du poids actuel: $e');
+      debugPrint('Erreur lors de la récupération du poids actuel: $e');
       return null;
     }
   }
@@ -264,7 +265,7 @@ class WeightService {
 
       return (response['target_weight'] as num?)?.toDouble();
     } catch (e) {
-      print('Erreur lors de la récupération du poids cible: $e');
+      debugPrint('Erreur lors de la récupération du poids cible: $e');
       return null;
     }
   }
@@ -287,7 +288,7 @@ class WeightService {
           .limit(1);
 
       if (existingEntries.isNotEmpty) {
-        print('L\'utilisateur a déjà des entrées de poids');
+        debugPrint('L\'utilisateur a déjà des entrées de poids');
         return;
       }
 
@@ -300,14 +301,22 @@ class WeightService {
 
       final weight = (userProfile['weight'] as num?)?.toDouble();
       if (weight == null || weight <= 0) {
-        print('Aucun poids valide trouvé pour créer une entrée initiale');
+        debugPrint('Aucun poids valide trouvé pour créer une entrée initiale');
         return;
       }
 
       // Utiliser la date de création du profil utilisateur au lieu de DateTime.now()
-      final profileCreatedAt = userProfile['created_at'] != null 
+      final profileCreatedAt = userProfile['created_at'] != null
           ? DateTime.parse(userProfile['created_at'])
           : DateTime.now();
+
+      // IMPORTANT: Marquer d'abord l'entrée is_current existante comme non-courante
+      // pour éviter la violation de contrainte unique
+      await _supabase
+          .from('user_profile_history')
+          .update({'is_current': false, 'valid_until': profileCreatedAt.toIso8601String()})
+          .eq('user_id', user.id)
+          .eq('is_current', true);
 
       // Créer l'entrée initiale
       await _supabase
@@ -333,10 +342,11 @@ class WeightService {
         'weight_modified': true,
       });
 
-      print('Entrée de poids initiale créée pour l\'utilisateur existant');
+      debugPrint('Entrée de poids initiale créée pour l\'utilisateur existant');
     } catch (e) {
-      print('Erreur lors de la création de l\'entrée initiale: $e');
-      rethrow;
+      debugPrint('Erreur lors de la création de l\'entrée initiale: $e');
+      // Ne pas rethrow pour éviter de bloquer l'application
+      // Le fallback dans getWeightProgress() gérera ce cas
     }
   }
 }

@@ -3,7 +3,9 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'dart:math' as math;
+import 'dart:convert';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../components/ui/global_progress_models.dart';
 import '../components/ui/numeric_text_field.dart';
 import '../services/weight_service.dart';
@@ -23,14 +25,21 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
   String selectedPeriod = 'this_month';
   bool showAddWeight = false;
   final TextEditingController _weightController = TextEditingController();
-  
+
   WeightProgress? _weightProgress;
-  bool _isLoading = true;
+  bool _isLoading = false; // OPTIMISATION: Changé de true à false
   String? _errorMessage;
+
+  static const String _cacheKey = 'weight_progress_cache';
+  static const String _cacheTimestampKey = 'weight_progress_cache_timestamp';
+  static const Duration _cacheDuration = Duration(hours: 24);
 
   @override
   void initState() {
     super.initState();
+    // OPTIMISATION: Chargement instantané depuis le cache
+    _loadInitialDataSync();
+    // Enrichissement en arrière-plan
     _loadWeightData();
   }
 
@@ -78,24 +87,90 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
     super.dispose();
   }
 
+  /// NOUVEAU: Chargement synchrone instantané depuis le cache
+  void _loadInitialDataSync() {
+    SharedPreferences.getInstance().then((prefs) {
+      final cachedData = prefs.getString(_cacheKey);
+      final cachedTimestamp = prefs.getInt(_cacheTimestampKey);
+
+      if (cachedData != null && cachedTimestamp != null) {
+        final cacheAge = DateTime.now().millisecondsSinceEpoch - cachedTimestamp;
+
+        // Utiliser le cache s'il est valide (moins de 24h)
+        if (cacheAge < _cacheDuration.inMilliseconds) {
+          try {
+            final Map<String, dynamic> json = jsonDecode(cachedData);
+            final weightProgress = WeightProgress(
+              currentWeight: json['currentWeight'] ?? 0.0,
+              previousWeight: json['previousWeight'] ?? 0.0,
+              initialWeight: json['initialWeight'] ?? 0.0,
+              targetWeight: json['targetWeight'] ?? 0.0,
+              entries: (json['entries'] as List?)
+                  ?.map((e) => WeightEntry(
+                        date: DateTime.parse(e['date']),
+                        weight: e['weight'],
+                      ))
+                  .toList() ?? [],
+            );
+
+            setState(() {
+              _weightProgress = weightProgress;
+            });
+
+            debugPrint('⚡ Weight Evolution: Données chargées depuis le cache');
+            debugPrint('   - ${weightProgress.entries.length} entrées');
+          } catch (e) {
+            debugPrint('⚠️ Erreur lecture cache poids: $e');
+          }
+        }
+      }
+    });
+  }
+
   Future<void> _loadWeightData() async {
     try {
-      setState(() {
-        _isLoading = true;
-        _errorMessage = null;
-      });
-      
       final weightProgress = await WeightService.getWeightProgress();
-      
+
       setState(() {
         _weightProgress = weightProgress;
         _isLoading = false;
+        _errorMessage = null;
       });
+
+      // Mettre à jour le cache
+      await _saveToCache(weightProgress);
+
+      debugPrint('✅ Weight Evolution: Données mises à jour depuis la DB');
     } catch (e) {
       setState(() {
         _errorMessage = 'weight_loading_error'.tr(LocalizationService.instance.currentLanguageCode).replaceAll('{error}', e.toString());
         _isLoading = false;
       });
+    }
+  }
+
+  /// Sauvegarder les données dans le cache SharedPreferences
+  Future<void> _saveToCache(WeightProgress weightProgress) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      final json = {
+        'currentWeight': weightProgress.currentWeight,
+        'previousWeight': weightProgress.previousWeight,
+        'initialWeight': weightProgress.initialWeight,
+        'targetWeight': weightProgress.targetWeight,
+        'entries': weightProgress.entries.map((e) => {
+          'date': e.date.toIso8601String(),
+          'weight': e.weight,
+        }).toList(),
+      };
+
+      await prefs.setString(_cacheKey, jsonEncode(json));
+      await prefs.setInt(_cacheTimestampKey, DateTime.now().millisecondsSinceEpoch);
+
+      debugPrint('💾 Cache poids sauvegardé (${weightProgress.entries.length} entrées)');
+    } catch (e) {
+      debugPrint('⚠️ Erreur sauvegarde cache poids: $e');
     }
   }
 
@@ -838,10 +913,15 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
     if (weight != null && weight > 0) {
       try {
         await WeightService.saveWeightEntry(weight);
-        
+
+        // Invalider le cache pour forcer le rechargement
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove(_cacheKey);
+        await prefs.remove(_cacheTimestampKey);
+
         // Recharger les données
         await _loadWeightData();
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('weight_added_success'.tr(LocalizationService.instance.currentLanguageCode))),
         );
