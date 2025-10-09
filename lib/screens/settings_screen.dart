@@ -9,11 +9,13 @@ import '../services/streak_service.dart';
 import '../services/header_cache_service.dart';
 import '../services/localization_service.dart';
 import '../services/translations.dart';
+import '../services/global_state_manager.dart';
 import 'package:provider/provider.dart';
 import '../providers/goals_notifier.dart';
 import '../components/ui/onboarding_models.dart';
 import '../components/ui/numeric_text_field.dart';
 import '../components/ui/refresh_wrapper.dart';
+import '../components/ui/global_state_header.dart';
 import '../pages/ryze_app.dart';
 import '../core/infrastructure/migration/migration_controller.dart';
 
@@ -277,7 +279,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
           'dietary_restrictions': _dietaryRestrictions,
           'updated_at': DateTime.now().toIso8601String(),
         }).eq('id', userId);
-        
+
         // Si les macros sont personnalisées, les sauvegarder dans l'historique
         if (_hasCustomMacros) {
           await supabase.from('user_profile_history').update({
@@ -287,8 +289,11 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
             'fat_percentage': _fatPercentage,
           }).eq('user_id', userId).eq('is_current', true);
         }
+
+        // NOUVEAU: Mettre à jour GlobalStateManager pour synchronisation instantanée
+        GlobalStateManager.instance.updateGoals(calorieGoal: _caloriesTarget.toDouble());
       }
-      
+
       // Sauvegarder aussi localement pour la synchronisation
       await _saveToSharedPreferences();
       
@@ -1535,56 +1540,23 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
       ),
       child: Column(
         children: [
-          // Bandeau streak/XP comme les autres pages
-          Container(
-            width: double.infinity,
-            height: 40,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
-              ),
-            ),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Consumer<LocalizationService>(
-                      builder: (context, locService, _) => 
-                        _buildBannerItem(LucideIcons.flame, _getStreakText(locService.currentLanguageCode)),
-                    ),
-                    _buildBannerSeparator(),
-                    Consumer<LocalizationService>(
-                      builder: (context, localizationService, _) {
-                        return ValueListenableBuilder<GoalsSummary>(
-                          valueListenable: GoalsNotifier.instance,
-                          builder: (context, summary, _) {
-                            return _buildBannerItem(LucideIcons.target, '${summary.completed}/${summary.total} ${'objectives'.tr(localizationService.currentLanguageCode)}');
-                          },
-                        );
-                      },
-                    ),
-                    _buildBannerSeparator(),
-                    Consumer<LocalizationService>(
-                      builder: (context, locService, _) => 
-                        _buildBannerItemWithLogo('settings_header_title'.tr(locService.currentLanguageCode)),
-                    ),
-                  ],
-                ),
-                Positioned(
-                  left: 12,
-                  child: GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: const Icon(
-                      LucideIcons.arrowLeft,
-                      color: Colors.white,
-                      size: 20,
-                    ),
+          // NOUVEAU: Bandeau global avec GlobalStateManager (synchronisé instantanément)
+          Stack(
+            children: [
+              const GlobalStateHeaderWidget(),
+              Positioned(
+                left: 12,
+                top: 10,
+                child: GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: const Icon(
+                    LucideIcons.arrowLeft,
+                    color: Colors.white,
+                    size: 20,
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ],
       ),

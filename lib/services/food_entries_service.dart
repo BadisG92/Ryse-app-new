@@ -5,6 +5,7 @@ import '../models/nutrition_models.dart';
 import '../models/ai_analysis_models.dart';
 import 'dashboard_service.dart';
 import 'localization_service.dart';
+import 'global_state_manager.dart';
 
 class FoodEntriesService {
   static final _supabase = Supabase.instance.client;
@@ -276,6 +277,9 @@ class FoodEntriesService {
     DateTime? consumedAt,
     String? mealId, // Optionnel : pour ajouter à un bloc existant
   }) async {
+    // Déclarer les variables en dehors du try pour qu'elles soient accessibles dans le catch
+    Map<String, dynamic>? macronutrients;
+
     try {
       final mealType = _mealTypeMapping[mealName];
       if (mealType == null) {
@@ -289,7 +293,7 @@ class FoodEntriesService {
       final unit = portionParts.length > 1 ? portionParts.sublist(1).join(' ') : 'g';
 
       // Utiliser les macronutriments tels que vus par l'utilisateur (après ajustements et modifications)
-      final macronutrients = await _getMacronutrientsFromUserView(foodItem, quantity);
+      macronutrients = await _getMacronutrientsFromUserView(foodItem, quantity);
       
       final now = consumedAt ?? DateTime.now();
       final entry = {
@@ -343,14 +347,38 @@ class FoodEntriesService {
         entry['scanned_food_name'] = foodItem.name;
       }
 
+      // NOUVEAU: Mise à jour instantanée via GlobalStateManager
+      GlobalStateManager.instance.updateCalories(macronutrients['calories'].toDouble());
+      GlobalStateManager.instance.updateMacros(
+        proteins: macronutrients['proteins'].toDouble(),
+        carbs: macronutrients['carbs'].toDouble(),
+        fats: macronutrients['fats'].toDouble(),
+      );
+
       await _supabase.from('food_entries').insert(entry);
-      
+
+      // Recompter les repas uniques depuis la base pour avoir le bon nombre
+      await GlobalStateManager.instance.refreshMealsCount();
+
       // Déclencher la mise à jour des calculs nutritionnels
       await _notifyNutritionUpdate(userId, now);
-      
+
       return true;
     } catch (e) {
       debugPrint('Erreur lors de l\'ajout de l\'entrée: $e');
+
+      // ROLLBACK GlobalState en cas d'erreur (seulement si macronutrients a été calculé)
+      if (macronutrients != null) {
+        GlobalStateManager.instance.updateCalories(-macronutrients['calories'].toDouble());
+        GlobalStateManager.instance.updateMacros(
+          proteins: -macronutrients['proteins'].toDouble(),
+          carbs: -macronutrients['carbs'].toDouble(),
+          fats: -macronutrients['fats'].toDouble(),
+        );
+        // Recompter les repas pour être sûr d'avoir la bonne valeur même après erreur
+        await GlobalStateManager.instance.refreshMealsCount();
+      }
+
       return false;
     }
   }

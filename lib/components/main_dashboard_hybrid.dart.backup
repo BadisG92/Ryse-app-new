@@ -13,7 +13,9 @@ import '../services/dashboard_service.dart';
 import '../services/localization_service.dart';
 import '../services/translations.dart';
 import '../providers/goals_notifier.dart';
-import '../services/global_state_manager.dart';
+// ✅ NOUVEAU : Imports pour optimistic updates
+import '../providers/nutrition_notifier.dart';
+import '../core/config/feature_flags.dart';
 
 class MainDashboardHybrid extends StatefulWidget {
   final Function(String)? onTabChange;
@@ -25,7 +27,7 @@ class MainDashboardHybrid extends StatefulWidget {
 }
 
 class _MainDashboardHybridState extends State<MainDashboardHybrid>
-    with TickerProviderStateMixin, GlobalStateListener {
+    with TickerProviderStateMixin {
   
   // State variables
   UserProfile? userProfile;
@@ -34,65 +36,19 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
   late AnimationController _scoreAnimationController;
   late Timer _scoreTimer;
   int animatedScore = 0;
-  bool isLoading = false; // Ne jamais bloquer l'affichage - toujours afficher le squelette
+  bool isLoading = true;
 
   @override
   void initState() {
     super.initState();
     _initializeAnimations();
-
-    // OPTIMISATION: Charger instantanément depuis GlobalState en mode synchrone
-    _loadInitialDataSync();
-
-    // Puis charger les vraies données en arrière-plan
     _loadDashboardData();
-
+    
     // Listen to language changes
     LocalizationService.instance.addListener(_onLanguageChanged);
-
+    
     // Listen to goals changes for instant updates
     GoalsNotifier.instance.addListener(_onGoalsChanged);
-  }
-
-  /// Chargement synchrone instantané pour éviter tout flash
-  void _loadInitialDataSync() {
-    final globalState = GlobalStateManager.instance;
-    final locService = LocalizationService.instance;
-
-    // Créer un profil basique instantanément
-    userProfile = UserProfile(
-      name: 'User', // Sera mis à jour par _loadDashboardData
-      streak: globalState.currentStreak,
-      todayScore: _calculateTodayScore(globalState),
-      todayXP: _calculateTodayXP(globalState),
-      isPremium: false, // Sera mis à jour
-      photosUsed: 0,
-      dailyCalories: globalState.calorieGoal.toInt(),
-      currentCalories: globalState.currentCalories.toInt(),
-    );
-
-    // Charger les objectifs depuis GlobalState
-    dailyGoals = GlobalStateManager.instance.getDailyGoalsForDashboard().map((data) =>
-      DailyGoal(
-        id: data['id'] as String,
-        label: data['label'] as String,
-        progress: data['progress'] as int,
-        xp: data['xp'] as int,
-        completed: data['completed'] as bool,
-        isPremium: false,
-        currentValue: data['currentValue'] as double?,
-        targetValue: data['targetValue'] as double?,
-        unit: data['unit'] as String?,
-      )
-    ).toList();
-
-    // Charger les modules avec vraies données
-    modulePreviews = _buildModulePreviewsFromGlobalState(globalState, locService.currentLanguageCode);
-
-    // Démarrer l'animation du score
-    _startScoreAnimation();
-
-    print('⚡ Dashboard: Données initiales chargées en mode synchrone');
   }
 
   @override
@@ -119,28 +75,16 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
   
   Future<void> _reloadGoalsOnly() async {
     if (!mounted) return;
-
+    
     try {
-      // NOUVEAU: Recharger depuis GlobalStateManager pour mise à jour instantanée
-      final newGoals = GlobalStateManager.instance.getDailyGoalsForDashboard().map((data) =>
-        DailyGoal(
-          id: data['id'] as String,
-          label: data['label'] as String,
-          progress: data['progress'] as int,
-          xp: data['xp'] as int,
-          completed: data['completed'] as bool,
-          isPremium: false,
-          currentValue: data['currentValue'] as double?,
-          targetValue: data['targetValue'] as double?,
-          unit: data['unit'] as String?,
-        )
-      ).toList();
-
+      // Recharger seulement les objectifs (plus rapide)
+      final newGoals = await DashboardService.getDailyGoals();
+      
       if (mounted) {
         setState(() {
           dailyGoals = newGoals;
         });
-        print('🔄 Objectifs dashboard principal rechargés instantanément depuis GlobalState');
+        print('🔄 Objectifs dashboard principal rechargés instantanément');
       }
     } catch (e) {
       print('❌ Erreur rechargement objectifs: $e');
@@ -173,135 +117,47 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
   }
 
   Future<void> _loadDashboardData() async {
-    // OPTIMISATION: Charger instantanément depuis GlobalStateManager
-    final globalState = GlobalStateManager.instance;
+    setState(() {
+      isLoading = true;
+    });
 
-    // Créer un UserProfile basique avec les données GlobalState pour affichage immédiat
-    final locService = LocalizationService.instance;
-    final quickProfile = await _buildUserProfileFromGlobalState(globalState);
-
-    // Charger instantanément les objectifs depuis GlobalState
-    final quickGoals = GlobalStateManager.instance.getDailyGoalsForDashboard().map((data) =>
-      DailyGoal(
-        id: data['id'] as String,
-        label: data['label'] as String,
-        progress: data['progress'] as int,
-        xp: data['xp'] as int,
-        completed: data['completed'] as bool,
-        isPremium: false,
-        currentValue: data['currentValue'] as double?,
-        targetValue: data['targetValue'] as double?,
-        unit: data['unit'] as String?,
-      )
-    ).toList();
-
-    // Charger instantanément les modules avec vraies données
-    final quickModules = _buildModulePreviewsFromGlobalState(globalState, locService.currentLanguageCode);
-
-    // Affichage INSTANTANÉ - plus de loading, plus d'erreur
-    if (mounted) {
-      setState(() {
-        userProfile = quickProfile;
-        dailyGoals = quickGoals;
-        modulePreviews = quickModules;
-      });
-
-      // Démarrer l'animation du score
-      _startScoreAnimation();
-    }
-
-    print('⚡ Dashboard: Affichage instantané depuis GlobalState');
-
-    // En arrière-plan, charger le vrai profil utilisateur depuis la DB pour les infos complémentaires
     try {
-      final loadedProfile = await DashboardService.getUserProfile();
+      // Charger toutes les données en parallèle
+      final futures = await Future.wait([
+        DashboardService.getUserProfile(),
+        DashboardService.getDailyGoals(),
+        DashboardService.getModulePreviews(),
+      ]);
 
-      if (mounted && loadedProfile != null) {
+      final loadedProfile = futures[0] as UserProfile?;
+      final loadedGoals = futures[1] as List<DailyGoal>;
+      final loadedPreviews = futures[2] as List<ModulePreview>;
+
+      if (mounted) {
         setState(() {
-          // Mettre à jour avec les vraies données (nom, streak, premium, etc.)
-          // mais garder les calories/eau du GlobalState qui sont plus à jour
-          userProfile = loadedProfile.copyWith(
-            currentCalories: globalState.currentCalories.toInt(),
-          );
+          userProfile = loadedProfile;
+          dailyGoals = loadedGoals;
+          modulePreviews = loadedPreviews;
+          isLoading = false;
         });
+      }
 
-        // Redémarrer l'animation du score avec les vraies valeurs
+      // Démarrer l'animation du score après chargement
+      if (userProfile != null) {
         _startScoreAnimation();
       }
     } catch (e) {
-      print('⚠️ Erreur chargement profil DB (non-bloquant): $e');
-      // On garde le profil basique du GlobalState - pas d'erreur affichée
-    }
-  }
-
-  /// Construit un UserProfile basique depuis le GlobalState pour affichage immédiat
-  Future<UserProfile> _buildUserProfileFromGlobalState(GlobalStateManager globalState) async {
-    // Essayer de récupérer le nom depuis les SharedPreferences ou DB
-    String userName = 'User';
-    int userStreak = globalState.currentStreak;
-    bool isPremium = false;
-
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      userName = prefs.getString('user_name') ?? 'User';
-      isPremium = prefs.getBool('is_premium') ?? false;
-    } catch (e) {
-      print('⚠️ SharedPreferences non disponibles: $e');
-    }
-
-    return UserProfile(
-      name: userName,
-      streak: userStreak,
-      todayScore: _calculateTodayScore(globalState),
-      todayXP: _calculateTodayXP(globalState),
-      isPremium: isPremium,
-      photosUsed: 0, // Sera mis à jour par le vrai profil
-      dailyCalories: globalState.calorieGoal.toInt(),
-      currentCalories: globalState.currentCalories.toInt(),
-    );
-  }
-
-  /// Calcule le score du jour basé sur les objectifs complétés
-  int _calculateTodayScore(GlobalStateManager globalState) {
-    final goals = globalState.getDailyGoalsForDashboard();
-    final completedCount = goals.where((g) => g['completed'] == true).length;
-    return (completedCount / goals.length * 100).round();
-  }
-
-  /// Calcule les XP du jour
-  int _calculateTodayXP(GlobalStateManager globalState) {
-    final goals = globalState.getDailyGoalsForDashboard();
-    int totalXP = 0;
-    for (var goal in goals) {
-      if (goal['completed'] == true) {
-        totalXP += goal['xp'] as int;
+      print('Erreur lors du chargement des données: $e');
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+          // Ne pas utiliser de données statiques - rester vide
+          userProfile = null;
+          dailyGoals = [];
+          modulePreviews = [];
+        });
       }
     }
-    return totalXP;
-  }
-
-  /// Construit les ModulePreviews avec les vraies données du GlobalState
-  List<ModulePreview> _buildModulePreviewsFromGlobalState(GlobalStateManager globalState, String languageCode) {
-    return [
-      ModulePreview(
-        title: 'nutrition'.tr(languageCode),
-        icon: LucideIcons.apple,
-        stats: {
-          'calories'.tr(languageCode): '${globalState.currentCalories.toInt()}/${globalState.calorieGoal.toInt()} kcal',
-          'water'.tr(languageCode): '${globalState.currentWaterL.toStringAsFixed(1)}L',
-        },
-        gradientColors: const [Color(0xFF0B132B), Color(0xFF1C2951)],
-      ),
-      ModulePreview(
-        title: 'sport'.tr(languageCode),
-        icon: LucideIcons.dumbbell,
-        stats: {
-          'status'.tr(languageCode): globalState.workoutCompleted ? '✅' : '⏳',
-          'sessions'.tr(languageCode): globalState.workoutCompleted ? '1/1' : '0/1',
-        },
-        gradientColors: const [Color(0xFF0B132B), Color(0xFF1C2951)],
-      ),
-    ];
   }
 
   // Supprimé : Le dashboard ne doit pas recalculer les objectifs
@@ -312,6 +168,403 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
 
   @override
   Widget build(BuildContext context) {
+    // ✅ NOUVEAU : Feature flag pour activer/désactiver optimistic updates
+    if (FeatureFlags.USE_OPTIMISTIC_DASHBOARD) {
+      return _buildOptimisticDashboard(context);
+    } else {
+      return _buildLegacyDashboard(context);
+    }
+  }
+
+  /// ✅ NOUVEAU : Dashboard avec optimistic updates
+  Widget _buildOptimisticDashboard(BuildContext context) {
+    FeatureFlags.debugLog('Dashboard optimiste activé');
+
+    return ChangeNotifierProvider<NutritionNotifier>(
+      create: (_) => NutritionNotifier()..initializeDashboard(),
+      child: Consumer<NutritionNotifier>(
+        builder: (context, nutritionNotifier, child) {
+          return Scaffold(
+            body: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xFFF8FAFC),
+                    Color(0xFFF1F5F9),
+                  ],
+                ),
+              ),
+              child: nutritionNotifier.isLoading
+                ? const Center(
+                    child: CircularProgressIndicator(
+                      color: Color(0xFF0B132B),
+                    ),
+                  )
+                : nutritionNotifier.errorMessage != null
+                  ? _buildErrorState(nutritionNotifier.errorMessage!)
+                  : _buildOptimisticContent(context, nutritionNotifier),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  /// ✅ NOUVEAU : Contenu du dashboard optimiste
+  Widget _buildOptimisticContent(BuildContext context, NutritionNotifier nutritionNotifier) {
+    return RefreshIndicator(
+      onRefresh: () => nutritionNotifier.refreshData(),
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.only(top: 60, left: 20, right: 20, bottom: 100),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header avec profil (utilise userProfile existant ou fallback)
+            _buildProfileHeader(nutritionNotifier.userProfile ?? _getDefaultProfile()),
+
+            const SizedBox(height: 30),
+
+            // Objectifs journaliers avec indicateurs pending
+            _buildOptimisticGoalsSection(nutritionNotifier),
+
+            const SizedBox(height: 30),
+
+            // Actions rapides avec callback optimistes
+            _buildOptimisticQuickActions(context, nutritionNotifier),
+
+            const SizedBox(height: 30),
+
+            // Modules preview
+            _buildModulesPreview(nutritionNotifier.modulePreviews),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// ✅ NOUVEAU : Section objectifs avec optimistic updates
+  Widget _buildOptimisticGoalsSection(NutritionNotifier nutritionNotifier) {
+    return Consumer<LocalizationService>(
+      builder: (context, locService, child) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'today_goals'.tr(locService.currentLanguageCode),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF0B132B),
+                ),
+              ),
+              // Indicateur de sync si des mises à jour sont en attente
+              if (FeatureFlags.SHOW_PENDING_INDICATORS && nutritionNotifier.hasPendingUpdates)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: 12,
+                        height: 12,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Sync...',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: Colors.orange[700],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
+          // Grid des objectifs avec indicateurs visuels
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+              childAspectRatio: 1.4,
+            ),
+            itemCount: nutritionNotifier.dailyGoals.length,
+            itemBuilder: (context, index) {
+              final goal = nutritionNotifier.dailyGoals[index];
+              return _buildOptimisticGoalCard(goal);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// ✅ NOUVEAU : Card objectif avec indicateur pending
+  Widget _buildOptimisticGoalCard(DailyGoal goal) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: goal.isPending == true
+          ? Border.all(color: Colors.orange.withOpacity(0.5), width: 1.5)
+          : null,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header avec indicateur pending
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  goal.label,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF64748B),
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (FeatureFlags.SHOW_PENDING_INDICATORS && goal.isPending == true)
+                Icon(
+                  Icons.sync,
+                  size: 14,
+                  color: Colors.orange,
+                ),
+            ],
+          ),
+
+          const SizedBox(height: 8),
+
+          // Progress bar
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: LinearProgressIndicator(
+              value: goal.progressPercent,
+              backgroundColor: const Color(0xFFE2E8F0),
+              valueColor: AlwaysStoppedAnimation<Color>(
+                goal.isPending == true ? Colors.orange : const Color(0xFF0B132B)
+              ),
+              minHeight: 6,
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          // Valeurs avec badge XP
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                goal.progressText,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: goal.isPending == true ? Colors.orange[700] : const Color(0xFF0B132B),
+                ),
+              ),
+              CustomBadge(
+                text: goal.xpBadgeText,
+                backgroundColor: goal.completed
+                  ? const Color(0xFF0B132B)
+                  : const Color(0xFF64748B),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// ✅ NOUVEAU : Actions rapides avec callbacks optimistes
+  Widget _buildOptimisticQuickActions(BuildContext context, NutritionNotifier nutritionNotifier) {
+    return Consumer<LocalizationService>(
+      builder: (context, locService, child) {
+        final profile = nutritionNotifier.userProfile ?? _getDefaultProfile();
+        final actions = DashboardData.getGamifiedActions(profile, locService.currentLanguageCode);
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'quick_actions'.tr(locService.currentLanguageCode),
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF0B132B),
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              height: 100,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: actions.length,
+                itemBuilder: (context, index) {
+                  final action = actions[index];
+                  return Padding(
+                    padding: EdgeInsets.only(right: index < actions.length - 1 ? 16 : 0),
+                    child: _buildOptimisticActionCard(context, action, nutritionNotifier),
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// ✅ NOUVEAU : Action card avec callbacks optimistes
+  Widget _buildOptimisticActionCard(BuildContext context, QuickAction action, NutritionNotifier nutritionNotifier) {
+    return GestureDetector(
+      onTap: action.isDisabled ? null : () => _handleOptimisticAction(context, action, nutritionNotifier),
+      child: Container(
+        width: 85,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: action.colors,
+          ),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              action.icon,
+              color: action.textColor,
+              size: 24,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              action.label,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
+                color: action.textColor,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// ✅ NOUVEAU : Gestionnaire d'actions optimistes
+  void _handleOptimisticAction(BuildContext context, QuickAction action, NutritionNotifier nutritionNotifier) {
+    FeatureFlags.debugLog('Action optimiste: ${action.id}');
+
+    switch (action.id) {
+      case 'add_water':
+        _handleOptimisticWater(nutritionNotifier);
+        break;
+      case 'add_meal':
+        _handleOptimisticMeal(context, nutritionNotifier);
+        break;
+      case 'workout':
+        _handleOptimisticWorkout(nutritionNotifier);
+        break;
+      case 'take_photo':
+        _handleTakePhoto(context);
+        break;
+      case 'weight_tracking':
+        _handleWeightTracking(context);
+        break;
+      default:
+        // Fallback vers l'ancien système
+        if (action.onTap != null) {
+          action.onTap!();
+        }
+    }
+  }
+
+  /// ✅ NOUVEAU : Ajout eau optimiste
+  void _handleOptimisticWater(NutritionNotifier nutritionNotifier) {
+    if (!FeatureFlags.USE_OPTIMISTIC_WATER) {
+      // Fallback vers ancien système
+      _showWaterDialog();
+      return;
+    }
+
+    // Ajout rapide de 250ml (verre standard)
+    nutritionNotifier.addWaterOptimistic(250);
+
+    // Feedback visuel optionnel
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('💧 +250ml ajouté'),
+        duration: const Duration(seconds: 1),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  /// ✅ NOUVEAU : Ajout repas optimiste
+  void _handleOptimisticMeal(BuildContext context, NutritionNotifier nutritionNotifier) {
+    // Pour l'instant, navigation vers l'écran d'ajout de repas existant
+    // TODO: Intégrer optimistic updates pour les repas plus tard
+    widget.onTabChange?.call('nutrition');
+  }
+
+  /// ✅ NOUVEAU : Workout optimiste
+  void _handleOptimisticWorkout(NutritionNotifier nutritionNotifier) {
+    if (FeatureFlags.USE_OPTIMISTIC_WORKOUT) {
+      nutritionNotifier.completeWorkoutOptimistic();
+    } else {
+      // Navigation vers sport
+      widget.onTabChange?.call('sport');
+    }
+  }
+
+  // Fallbacks vers anciennes méthodes
+  void _handleTakePhoto(BuildContext context) {
+    widget.onTabChange?.call('nutrition');
+  }
+
+  void _handleWeightTracking(BuildContext context) {
+    // Navigation vers écran poids (à implémenter)
+  }
+
+  /// ✅ ANCIEN : Dashboard legacy (fallback complet)
+  Widget _buildLegacyDashboard(BuildContext context) {
+    FeatureFlags.debugLog('Dashboard legacy activé (fallback)');
+
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -324,81 +577,489 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
             ],
           ),
         ),
-        child: RefreshIndicator(
-          onRefresh: _refreshDashboardData,
-          color: const Color(0xFF0B132B),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.only(bottom: 120),
-            child: Column(
-              children: [
-                // Header Gamifié - Toujours affiché (jamais null grâce à _loadInitialDataSync)
-                DashboardHeader(
-                  profile: userProfile!.copyWith(todayScore: animatedScore),
-                  onPremiumTap: _onPremiumTap,
+        child: isLoading
+          ? const Center(
+              child: CircularProgressIndicator(
+                color: Color(0xFF0B132B),
+              ),
+            )
+          : userProfile == null
+            ? Consumer<LocalizationService>(
+                builder: (context, locService, child) => Center(
+                  child: Text(
+                    'error'.tr(locService.currentLanguageCode),
+                    style: const TextStyle(
+                      color: Color(0xFF64748B),
+                      fontSize: 16,
+                    ),
+                  ),
                 ),
+              )
+            : _buildLegacyContent(), // Continuer le contenu legacy existant
+      ),
+    );
+  }
 
-                // Contenu avec padding normal
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 16),
+  /// ✅ NOUVEAU : État d'erreur
+  Widget _buildErrorState(String errorMessage) {
+    return Consumer<LocalizationService>(
+      builder: (context, locService, child) => Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 64,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'error'.tr(locService.currentLanguageCode),
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF64748B),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              errorMessage,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Color(0xFF64748B),
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: () => _loadDashboardData(),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0B132B),
+                foregroundColor: Colors.white,
+              ),
+              child: Text('retry'.tr(locService.currentLanguageCode)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-                      // Objectifs du jour - Toujours affiché
-                      EnhancedDailyGoalsSection(
-                        goals: dailyGoals.isNotEmpty ? dailyGoals : DashboardData.dailyGoals,
-                        profile: userProfile!,
-                        isPremium: userProfile!.isPremium,
+  /// ✅ NOUVEAU : Profil par défaut pour fallback
+  UserProfile _getDefaultProfile() {
+    return const UserProfile(
+      name: 'Utilisateur',
+      streak: 0,
+      todayScore: 0,
+      todayXP: 0,
+      isPremium: false,
+      photosUsed: 0,
+      dailyCalories: 2000,
+      currentCalories: 0,
+    );
+  }
+
+  /// ✅ NOUVEAU : Header profil réutilisable
+  Widget _buildProfileHeader(UserProfile profile) {
+    return Consumer<LocalizationService>(
+      builder: (context, locService, child) => Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            // Avatar
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+                ),
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Text(
+                  profile.name.substring(0, 1).toUpperCase(),
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(width: 16),
+
+            // Infos
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    profile.greetingMessage(locService.currentLanguageCode),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF0B132B),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    profile.streakText(locService.currentLanguageCode),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF64748B),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Score
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0B132B).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                '${profile.todayScore}%',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF0B132B),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// ✅ NOUVEAU : Modules preview réutilisable
+  Widget _buildModulesPreview(List<ModulePreview> modules) {
+    if (modules.isEmpty) return const SizedBox.shrink();
+
+    return Consumer<LocalizationService>(
+      builder: (context, locService, child) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'modules'.tr(locService.currentLanguageCode),
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF0B132B),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: modules.map((module) {
+              return Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    right: modules.indexOf(module) < modules.length - 1 ? 16 : 0,
+                  ),
+                  child: GestureDetector(
+                    onTap: () => _onModuleTap(module.title),
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(colors: module.gradientColors),
+                        borderRadius: BorderRadius.circular(16),
                       ),
-
-                      const SizedBox(height: 16),
-
-                      // Actions rapides - Toujours affiché
-                      Consumer<LocalizationService>(
-                        builder: (context, locService, child) => QuickActionsSection(
-                          actions: DashboardData.getOriginalActionsWithWeight(userProfile!, locService.currentLanguageCode),
-                        ),
-                      ),
-
-                      const SizedBox(height: 16),
-
-                      // Suivi Nutrition & Sport - Toujours avec vraies données
-                      Consumer<LocalizationService>(
-                        builder: (context, locService, child) => NutritionSportTrackingSection(
-                          modules: modulePreviews.isNotEmpty
-                            ? modulePreviews
-                            : DashboardData.getModulePreviews(locService.currentLanguageCode),
-                          onModuleTap: _onModuleTap,
-                        ),
-                      ),
-
-                      const SizedBox(height: 16),
-
-                      // Social Proof & FOMO
-                      Consumer<LocalizationService>(
-                        builder: (context, locService, child) => CommunityStatsSection(
-                          stats: DashboardData.getCommunityStats(locService.currentLanguageCode),
-                        ),
-                      ),
-
-                      const SizedBox(height: 16),
-
-                      // CTA Premium
-                      userProfile!.isPremium
-                        ? PremiumInsightsSection(
-                            onViewAnalytics: _onViewAnalytics,
-                          )
-                        : PremiumCTASection(
-                            onUpgrade: _onPremiumUpgrade,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Icon(
+                                module.icon,
+                                color: Colors.white,
+                                size: 24,
+                              ),
+                            ],
                           ),
+                          const SizedBox(height: 12),
+                          Text(
+                            module.title,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          ...module.stats.entries.map((stat) =>
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 2),
+                              child: Text(
+                                '${stat.key}: ${stat.value}',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.white70,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// ✅ NOUVEAU : Dialog eau pour fallback
+  void _showWaterDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Ajouter de l\'eau'),
+        content: const Text('Combien d\'eau avez-vous bu ?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Annuler'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              // Ici utiliser l'ancien système WaterService
+            },
+            child: const Text('Ajouter'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// ✅ ANCIEN : Contenu legacy complet
+  Widget _buildLegacyContent() {
+    return RefreshIndicator(
+      onRefresh: _refreshDashboardData,
+      color: const Color(0xFF0B132B),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.only(bottom: 120),
+        child: Column(
+          children: [
+            // Header Gamifié avec charte graphique (pleine largeur)
+            DashboardHeader(
+              profile: userProfile!.copyWith(todayScore: animatedScore),
+              onPremiumTap: _onPremiumTap,
+            ),
+
+            // Contenu avec padding normal
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                children: [
+                  const SizedBox(height: 16),
+
+                  // Objectifs du jour (avec progression calorique et globale ajoutées)
+                  EnhancedDailyGoalsSection(
+                    goals: dailyGoals.isNotEmpty ? dailyGoals : DashboardData.dailyGoals,
+                    profile: userProfile!,
+                    isPremium: userProfile!.isPremium,
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Que faisons-nous aujourd'hui ? (5 actions format original)
+                  Consumer<LocalizationService>(
+                    builder: (context, locService, child) => QuickActionsSection(
+                      actions: DashboardData.getOriginalActionsWithWeight(userProfile!, locService.currentLanguageCode),
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Suivi Nutrition & Sport (format hybrid nouveau)
+                  Consumer<LocalizationService>(
+                    builder: (context, locService, child) => NutritionSportTrackingSection(
+                      modules: modulePreviews.isNotEmpty
+                        ? modulePreviews
+                        : DashboardData.getModulePreviews(locService.currentLanguageCode),
+                      onModuleTap: _onModuleTap,
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Social Proof & FOMO (format original)
+                  Consumer<LocalizationService>(
+                    builder: (context, locService, child) => CommunityStatsSection(
+                      stats: DashboardData.getCommunityStats(locService.currentLanguageCode),
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // CTA Premium (format original)
+                  userProfile!.isPremium
+                      ? PremiumInsightsSection(
+                          onViewAnalytics: _onViewAnalytics,
+                        )
+                      : PremiumCTASection(
+                          onUpgrade: _onPremiumUpgrade,
+                        ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Actualiser les données du dashboard
+  Future<void> _refreshDashboardData() async {
+    await _loadDashboardData();
+  }
+
+  // Event handlers - restaurés du design original
+  void _onPremiumTap() {
+    if (mounted && userProfile != null) {
+      setState(() {
+        userProfile = userProfile!.copyWith(isPremium: true);
+      });
+    }
+  }
+
+  void _onPremiumUpgrade() {
+    if (mounted && userProfile != null) {
+      setState(() {
+        userProfile = userProfile!.copyWith(isPremium: true);
+      });
+    }
+
+    // TODO: Intégrer avec la logique de paiement
+    final locService = LocalizationService.instance;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('welcome_premium'.tr(locService.currentLanguageCode)),
+        duration: const Duration(seconds: 2),
+        backgroundColor: const Color(0xFF0B132B).withOpacity(0.9),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
+  void _onModuleTap(String moduleTitle) {
+    final locService = LocalizationService.instance;
+    final nutritionTitle = 'nutrition'.tr(locService.currentLanguageCode);
+    final sportTitle = 'sport'.tr(locService.currentLanguageCode);
+
+    if (widget.onTabChange != null) {
+      if (moduleTitle == nutritionTitle) {
+        // Changer vers l'onglet nutrition
+        widget.onTabChange!('nutrition');
+      } else if (moduleTitle == sportTitle) {
+        // Changer vers l'onglet sport
+        widget.onTabChange!('sport');
+      }
+    } else {
+      // Fallback si pas de callback disponible
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${'navigate_to'.tr(locService.currentLanguageCode)} $moduleTitle'),
+          duration: const Duration(seconds: 2),
+          backgroundColor: const Color(0xFF0B132B).withOpacity(0.9),
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+    }
+  }
+
+  void _onViewAnalytics() {
+    // TODO: Ouvrir les analytics avancés
+    final locService = LocalizationService.instance;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('open_advanced_analytics'.tr(locService.currentLanguageCode)),
+        duration: const Duration(seconds: 2),
+        backgroundColor: const Color(0xFF0B132B).withOpacity(0.9),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+}
+                              profile: userProfile!,
+                              isPremium: userProfile!.isPremium,
+                            ),
+                            
+                            const SizedBox(height: 16),
+                            
+                            // Que faisons-nous aujourd'hui ? (5 actions format original)
+                            Consumer<LocalizationService>(
+                              builder: (context, locService, child) => QuickActionsSection(
+                                actions: DashboardData.getOriginalActionsWithWeight(userProfile!, locService.currentLanguageCode),
+                              ),
+                            ),
+                            
+                            const SizedBox(height: 16),
+                            
+                            // Suivi Nutrition & Sport (format hybrid nouveau)
+                            Consumer<LocalizationService>(
+                              builder: (context, locService, child) => NutritionSportTrackingSection(
+                                modules: modulePreviews.isNotEmpty 
+                                  ? modulePreviews 
+                                  : DashboardData.getModulePreviews(locService.currentLanguageCode),
+                                onModuleTap: _onModuleTap,
+                              ),
+                            ),
+                            
+                            const SizedBox(height: 16),
+                            
+                            // Social Proof & FOMO (format original)
+                            Consumer<LocalizationService>(
+                              builder: (context, locService, child) => CommunityStatsSection(
+                                stats: DashboardData.getCommunityStats(locService.currentLanguageCode),
+                              ),
+                            ),
+                            
+                            const SizedBox(height: 16),
+                            
+                            // CTA Premium (format original)
+                            userProfile!.isPremium
+                                ? PremiumInsightsSection(
+                                    onViewAnalytics: _onViewAnalytics,
+                                  )
+                                : PremiumCTASection(
+                                    onUpgrade: _onPremiumUpgrade,
+                                  ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
-        ),
-      ),
     );
   }
 
@@ -480,38 +1141,7 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
     );
   }
 
-  // Implémentation requise par le mixin GlobalStateListener
-  @override
-  void onGlobalStateUpdate(StateChangeEvent event) {
-    // Mise à jour instantanée quand l'état global change
-    print('🔄 Dashboard: Mise à jour reçue du GlobalState - ${event.type}');
 
-    // Recharger les objectifs immédiatement depuis GlobalStateManager
-    _reloadGoalsOnly();
-
-    // Mettre à jour les modules avec les nouvelles données
-    final globalState = GlobalStateManager.instance;
-    final locService = LocalizationService.instance;
-
-    if (mounted) {
-      setState(() {
-        // Mettre à jour les modules preview avec les vraies données
-        modulePreviews = _buildModulePreviewsFromGlobalState(globalState, locService.currentLanguageCode);
-
-        // Mettre à jour le userProfile avec les nouvelles calories si disponible
-        if (userProfile != null) {
-          userProfile = userProfile!.copyWith(
-            currentCalories: globalState.currentCalories.toInt(),
-            todayScore: _calculateTodayScore(globalState),
-            todayXP: _calculateTodayXP(globalState),
-          );
-
-          // Redémarrer l'animation du score
-          _startScoreAnimation();
-        }
-      });
-    }
-  }
 }
 
 // Section objectifs améliorée avec progression calorique et globale
@@ -537,8 +1167,7 @@ class _EnhancedDailyGoalsSectionState extends State<EnhancedDailyGoalsSection>
   late AnimationController _progressAnimationController;
   late Animation<double> _progressAnimation;
   int animatedProgress = 0;
-  int _targetProgress = 0; // Cible actuelle de l'animation
-  Timer? _progressTimer; // Nullable pour vérification
+  late Timer _progressTimer;
 
   @override
   void initState() {
@@ -550,28 +1179,16 @@ class _EnhancedDailyGoalsSectionState extends State<EnhancedDailyGoalsSection>
   @override
   void didUpdateWidget(EnhancedDailyGoalsSection oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Recalculer la cible et redémarrer l'animation seulement si elle a changé
+    // Redémarrer l'animation si les objectifs ont changé
     if (oldWidget.goals != widget.goals) {
-      // Calculer la nouvelle progression cible
-      double totalProgress = 0;
-      for (final goal in widget.goals) {
-        final cappedProgress = goal.progress.clamp(0, 100);
-        final goalContribution = (cappedProgress / 100.0) * 25.0;
-        totalProgress += goalContribution;
-      }
-      final newTargetProgress = totalProgress.round().clamp(0, 100);
-
-      // Ne relancer l'animation que si la cible a réellement changé
-      if (newTargetProgress != _targetProgress) {
-        _startProgressAnimation();
-      }
+      _startProgressAnimation();
     }
   }
 
   @override
   void dispose() {
     _progressAnimationController.dispose();
-    _progressTimer?.cancel();
+    if (_progressTimer.isActive) _progressTimer.cancel();
     super.dispose();
   }
 
@@ -588,9 +1205,6 @@ class _EnhancedDailyGoalsSectionState extends State<EnhancedDailyGoalsSection>
   }
 
   void _startProgressAnimation() {
-    // Annuler l'animation précédente si elle existe
-    _progressTimer?.cancel();
-
     // Calculer la progression globale basée sur les pourcentages réels (25% par objectif)
     double totalProgress = 0;
     for (final goal in widget.goals) {
@@ -600,32 +1214,25 @@ class _EnhancedDailyGoalsSectionState extends State<EnhancedDailyGoalsSection>
       totalProgress += goalContribution;
     }
     final targetProgress = totalProgress.round().clamp(0, 100); // Progression totale sur 100
-
-    // Mémoriser la nouvelle cible
-    _targetProgress = targetProgress;
-
-    // Réinitialiser à 0 pour l'effet d'animation depuis le début
-    if (mounted) {
-      setState(() => animatedProgress = 0);
-    }
-
-    // Animation par étapes pour un effet fluide - toujours partir de 0
+    
+    // Animation par étapes pour un effet plus fluide
     const tickTime = 20; // 20ms
-    const duration = 1200; // 1.2 secondes pour une animation visible
-
+    const duration = 1200; // 1.2 secondes
+    final totalTicks = duration ~/ tickTime;
+    
     _progressTimer = Timer.periodic(const Duration(milliseconds: tickTime), (timer) {
       if (!mounted) {
         timer.cancel();
         return;
       }
-
+      
       final elapsed = timer.tick * tickTime;
       final progress = (elapsed / duration).clamp(0.0, 1.0);
       final easedProgress = Curves.easeOutExpo.transform(progress);
       final currentValue = (targetProgress * easedProgress).round();
-
+      
       setState(() => animatedProgress = currentValue);
-
+      
       if (progress >= 1.0) {
         timer.cancel();
         if (mounted) {

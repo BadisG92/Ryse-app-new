@@ -5,6 +5,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 import 'ui/global_progress_models.dart';
 import 'ui/global_progress_widgets.dart';
+import 'ui/global_state_header.dart';
 import '../services/dashboard_service.dart';
 import '../services/progress_service_v2.dart';
 import '../services/header_cache_service.dart';
@@ -209,54 +210,25 @@ class _GlobalProgressState extends State<GlobalProgress> {
       ),
       child: Column(
         children: [
-          // Bandeau streak/XP remplace le titre
-          Container(
-            width: double.infinity,
-            height: 40,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
-              ),
-            ),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                // Contenu centré
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _buildBannerItem(LucideIcons.flame, _headerStats?.dailyStreak ?? '...'),
-                    _buildBannerSeparator(),
-                    Consumer<LocalizationService>(
-                      builder: (context, localizationService, _) {
-                        return ValueListenableBuilder<GoalsSummary>(
-                          valueListenable: GoalsNotifier.instance,
-                          builder: (context, summary, _) {
-                            return _buildBannerItem(LucideIcons.target, '${summary.completed}/${summary.total} ${'objectives'.tr(localizationService.currentLanguageCode)}');
-                          },
-                        );
-                      },
-                    ),
-                    _buildBannerSeparator(),
-                    _buildBannerItemWithLogo(_headerStats?.currentStatus ?? 'Progression'),
-                  ],
-                ),
-                // Icône settings alignée à droite
-                Positioned(
-                  right: 12,
-                  child: GestureDetector(
-                    onTap: () {
-                      Navigator.pushNamed(context, '/settings');
-                    },
-                    child: const Icon(
-                      LucideIcons.settings,
-                      color: Colors.white,
-                      size: 20,
-                    ),
+          // NOUVEAU: Bandeau global avec GlobalStateManager (synchronisé instantanément)
+          Stack(
+            children: [
+              const GlobalStateHeaderWidget(),
+              Positioned(
+                right: 12,
+                top: 10,
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.pushNamed(context, '/settings');
+                  },
+                  child: const Icon(
+                    LucideIcons.settings,
+                    color: Colors.white,
+                    size: 20,
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
           
           const SizedBox(height: 8),

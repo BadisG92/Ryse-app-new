@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
+import 'global_state_manager.dart';
 
 /// Service optimisé pour la gestion de la streak utilisateur
 /// Utilise un cache en base de données pour éviter les recalculs
@@ -88,8 +89,16 @@ class StreakService {
             'streak_last_date': date,
           })
           .eq('id', userId);
-          
+
       print('🎯 Streak initialisée: 1 jour');
+
+      // NOUVEAU: Notifier GlobalStateManager
+      try {
+        GlobalStateManager.instance.updateStreak(1);
+      } catch (e) {
+        print('⚠️ GlobalStateManager streak update failed: $e');
+      }
+
       return 1;
     } catch (e) {
       print('❌ Erreur initialisation streak: $e');
@@ -101,7 +110,7 @@ class StreakService {
   static Future<int> _incrementStreak(String userId, int currentStreak, String date) async {
     try {
       final newStreak = currentStreak + 1;
-      
+
       await _supabase
           .from('users')
           .update({
@@ -109,8 +118,16 @@ class StreakService {
             'streak_last_date': date,
           })
           .eq('id', userId);
-          
+
       print('📈 Streak incrémentée: $newStreak jours');
+
+      // NOUVEAU: Notifier GlobalStateManager
+      try {
+        GlobalStateManager.instance.updateStreak(newStreak);
+      } catch (e) {
+        print('⚠️ GlobalStateManager streak update failed: $e');
+      }
+
       return newStreak;
     } catch (e) {
       print('❌ Erreur incrémentation streak: $e');
@@ -128,8 +145,16 @@ class StreakService {
             'streak_last_date': date,
           })
           .eq('id', userId);
-          
+
       print('🔄 Streak reset: 1 jour');
+
+      // NOUVEAU: Notifier GlobalStateManager
+      try {
+        GlobalStateManager.instance.updateStreak(1);
+      } catch (e) {
+        print('⚠️ GlobalStateManager streak update failed: $e');
+      }
+
       return 1;
     } catch (e) {
       print('❌ Erreur reset streak: $e');

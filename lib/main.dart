@@ -15,20 +15,28 @@ import 'services/preload_service.dart';
 import 'services/fast_cache_service.dart';
 import 'core/infrastructure/migration/migration_controller.dart';
 import 'core/infrastructure/startup/priority_service_initializer.dart';
+import 'services/global_state_manager.dart';
+import 'services/navigation_preloader.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // OPTIMISATION: Initialisation par priorités pour performance maximale
   final initializer = PriorityServiceInitializer.instance;
-  
+
   // Phase 1: Services critiques SEULEMENT (2s max, bloquant)
   await initializer.initializeCriticalServices();
-  
+
+  // NOUVEAU: Initialiser le state manager global
+  await GlobalStateManager.instance.initialize();
+
   // Phases 2 & 3: Non-bloquantes, en arrière-plan
   unawaited(initializer.initializeImportantServices());
   unawaited(initializer.initializeOptionalServices());
-  
+
+  // NOUVEAU: Précharger les données du dashboard au démarrage
+  unawaited(NavigationPreloader.instance.preloadForRoute('/dashboard'));
+
   // Lancer l'app immédiatement après les services critiques
   runApp(const MyApp());
 }

@@ -12,6 +12,7 @@ import 'ui/language_switch_buttons.dart';
 import '../services/translations.dart';
 import '../services/localization_service.dart';
 import 'ui/custom_snackbar.dart';
+import 'ui/global_state_header.dart';
 import 'package:provider/provider.dart';
 import 'ui/refresh_wrapper.dart';
 import '../services/fast_cache_service.dart';
@@ -205,38 +206,8 @@ class _SportSectionState extends State<SportSection>
       ),
       child: Column(
         children: [
-          // Bandeau streak/XP remplace le titre
-          Container(
-            width: double.infinity,
-            height: 40,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Consumer<LocalizationService>(
-                  builder: (context, locService, _) => 
-                    _buildBannerItem(LucideIcons.flame, _getStreakText(locService.currentLanguageCode)),
-                ),
-                _buildBannerSeparator(),
-                Consumer<LocalizationService>(
-                  builder: (context, localizationService, _) {
-                    return ValueListenableBuilder<GoalsSummary>(
-                      valueListenable: GoalsNotifier.instance,
-                      builder: (context, summary, _) {
-                        return _buildBannerItem(LucideIcons.target, '${summary.completed}/${summary.total} ${'objectives'.tr(localizationService.currentLanguageCode)}');
-                      },
-                    );
-                  },
-                ),
-                _buildBannerSeparator(),
-                _buildBannerItemWithLogo('Sport'),
-              ],
-            ),
-          ),
+          // NOUVEAU: Bandeau global avec GlobalStateManager (synchronisé instantanément)
+          const GlobalStateHeaderWidget(),
           
           const SizedBox(height: 8),
           

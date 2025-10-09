@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../services/localization_service.dart';
 import '../services/translations.dart';
 import '../components/ui/recipe_models.dart';
+import '../components/ui/global_state_header.dart';
 import '../bottom_sheets/editable_food_details_bottom_sheet.dart';
 import '../bottom_sheets/meal_selection_bottom_sheet.dart';
 import '../bottom_sheets/new_meal_type_bottom_sheet.dart';

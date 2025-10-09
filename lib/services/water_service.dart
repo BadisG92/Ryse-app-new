@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
 import 'dashboard_service.dart';
 import 'optimistic_update_service.dart';
+import 'global_state_manager.dart';
 
 /// Service pour gérer le suivi d'hydratation
 class WaterService {
@@ -27,7 +28,10 @@ class WaterService {
       final user = _supabase.auth.currentUser;
       if (user == null) throw Exception('Utilisateur non connecté');
 
-      // OPTIMISATION: Mise à jour optimiste immédiate de l'UI
+      // NOUVEAU: Mise à jour instantanée via GlobalStateManager
+      GlobalStateManager.instance.updateWater(amount / 1000.0); // Convertir ml en L
+
+      // OPTIMISATION: Mise à jour optimiste immédiate de l'UI (garde pour compatibilité)
       await OptimisticUpdateService.updateWaterOptimistic(amount);
 
       // Insertion en base (non-bloquant pour l'UI)
@@ -44,6 +48,7 @@ class WaterService {
       }).catchError((error) {
         print('❌ Erreur ajout eau: $error');
         // Rollback si erreur
+        GlobalStateManager.instance.updateWater(-amount / 1000.0); // Rollback GlobalState
         OptimisticUpdateService.rollback();
       });
 
@@ -148,9 +153,10 @@ class WaterService {
     try {
       // Si on connait la quantité, mise à jour optimiste
       if (amountToRemove != null) {
+        GlobalStateManager.instance.updateWater(-amountToRemove / 1000.0); // NOUVEAU
         await OptimisticUpdateService.updateWaterOptimistic(-amountToRemove);
       }
-      
+
       // Suppression en base (non-bloquant)
       _supabase.from('water_entries').delete().eq('id', entryId).then((_) {
         print('✅ Eau supprimée de la base');
@@ -158,9 +164,12 @@ class WaterService {
         DashboardService.invalidateAndRefreshGoals();
       }).catchError((error) {
         print('❌ Erreur suppression eau: $error');
+        if (amountToRemove != null) {
+          GlobalStateManager.instance.updateWater(amountToRemove / 1000.0); // Rollback
+        }
         OptimisticUpdateService.rollback();
       });
-      
+
       return true;
     } catch (e) {
       print('Erreur lors de la suppression: $e');
@@ -178,6 +187,9 @@ class WaterService {
           .from('users')
           .update({'daily_water_goal': goalMl})
           .eq('id', user.id);
+
+      // NOUVEAU: Mettre à jour GlobalStateManager pour synchronisation instantanée
+      GlobalStateManager.instance.updateGoals(waterGoalL: goalMl / 1000.0);
 
       return true;
     } catch (e) {

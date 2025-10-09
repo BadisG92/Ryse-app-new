@@ -10,6 +10,7 @@ import 'workout_cache_service.dart';
 import 'sport_dashboard_service.dart';
 import 'offline_workout_service.dart';
 import 'localization_service.dart';
+import 'global_state_manager.dart';
 
 class DatabaseService {
   static final SupabaseClient _client = Supabase.instance.client;
@@ -1413,13 +1414,21 @@ class DatabaseService {
         'intensity': intensityValue,
         'guided_template_id': guidedTemplateId,
       });
-      
+
+      // NOUVEAU: Notifier GlobalStateManager immédiatement (AVANT invalidation cache)
+      try {
+        GlobalStateManager.instance.updateWorkout(true);
+        debugPrint('✅ GlobalStateManager: Workout marqué comme complété instantanément');
+      } catch (e) {
+        debugPrint('⚠️ GlobalStateManager workout update failed: $e');
+      }
+
       // Invalide le cache pour cet utilisateur après une nouvelle séance
       WorkoutCacheService.invalidateUserCache(userId);
-      
+
       // Invalide aussi le cache du SportDashboardService
       SportDashboardService.invalidateCache();
-      
+
       debugPrint('🔄 Caches invalidated after workout session save');
       
     } catch (e) {
