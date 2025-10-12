@@ -2,11 +2,11 @@ class GeminiConfig {
   // Google Gemini API Configuration
   static const String geminiApiKey = 'AIzaSyDCdJLXaVF68RsJkmHTPlnMoJvqbxOSxac';
   
-  // Gemini API endpoint for vision
-  static const String geminiApiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
-  
+  // Gemini API endpoint for vision (using Gemini 2.0 Flash - faster and more stable)
+  static const String geminiApiUrl = 'https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent';
+
   // Model configuration
-  static const String modelName = 'gemini-1.5-flash';
+  static const String modelName = 'gemini-2.0-flash';
   
   // Generation parameters
   static const double temperature = 0.3; // Lower for more consistent results

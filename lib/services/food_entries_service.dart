@@ -619,15 +619,18 @@ class FoodEntriesService {
     required String mealName,
     required List<DetectedFood> detectedFoods,
     required String aiMealName,
+    String? mealId, // meal_id optionnel pour ajouter à un repas existant
     DateTime? consumedAt,
   }) async {
+    // Déclarer les variables hors du try pour le rollback en cas d'erreur
+    double totalCalories = 0;
+    double totalProteins = 0;
+    double totalCarbs = 0;
+    double totalFats = 0;
+    double totalWeight = 0;
+
     try {
       // Calculer les totaux
-      double totalCalories = 0;
-      double totalProteins = 0;
-      double totalCarbs = 0;
-      double totalFats = 0;
-      double totalWeight = 0;
 
       for (final food in detectedFoods) {
         totalCalories += food.calories;
@@ -654,29 +657,40 @@ class FoodEntriesService {
       }
 
       // Ajouter l'entrée au journal
-      final mealType = _mealTypeMapping[mealName];
+      // Extraire le type de base du nom (ex: "Breakfast 2" -> "Breakfast")
+      String baseMealName = mealId ?? mealName;
+      final regex = RegExp(r'^(.+?)\s+\d+$');
+      final match = regex.firstMatch(baseMealName);
+      if (match != null && match.group(1) != null) {
+        baseMealName = match.group(1)!;
+      }
+
+      final mealType = _mealTypeMapping[baseMealName];
       if (mealType == null) {
-        debugPrint('Type de repas non reconnu: $mealName');
+        debugPrint('Type de repas non reconnu: $mealName (base: $baseMealName)');
         return false;
       }
 
       final targetDate = consumedAt ?? DateTime.now();
-      
-      // Générer un meal_id pour ce repas
-      final mealId = await generateMealId(
-        userId: userId,
-        mealName: mealName,
-        forDate: targetDate,
-      );
 
-      if (mealId == null) {
-        return false;
+      // Utiliser le meal_id fourni OU en générer un nouveau
+      String? finalMealId = mealId;
+      if (finalMealId == null) {
+        finalMealId = await generateMealId(
+          userId: userId,
+          mealName: mealName,
+          forDate: targetDate,
+        );
+
+        if (finalMealId == null) {
+          return false;
+        }
       }
 
       print('🍽️ Création entrée food_entries:');
       print('   - user_id: $userId');
       print('   - meal_type: $mealType');
-      print('   - meal_id: $mealId');
+      print('   - meal_id: $finalMealId');
       print('   - custom_food_id: $customFoodId');
       print('   - quantity: ${totalWeight}g');
       print('   - unit: g');
@@ -686,10 +700,18 @@ class FoodEntriesService {
       print('   - fats: $totalFats');
 
       // Insérer dans food_entries avec les bonnes colonnes
+      // NOUVEAU: Mise à jour instantanée via GlobalStateManager
+      GlobalStateManager.instance.updateCalories(totalCalories);
+      GlobalStateManager.instance.updateMacros(
+        proteins: totalProteins,
+        carbs: totalCarbs,
+        fats: totalFats,
+      );
+
       await _supabase.from('food_entries').insert({
         'user_id': userId,
         'meal_type': mealType,
-        'meal_id': mealId,
+        'meal_id': finalMealId,
         'custom_food_id': int.parse(customFoodId),
         'quantity': totalWeight,
         'unit': 'g',
@@ -699,8 +721,11 @@ class FoodEntriesService {
         'fats': totalFats,
         'consumed_at': targetDate.toIso8601String(),
       });
-      
+
       print('✅ Entrée food_entries créée avec succès');
+
+      // Recompter les repas uniques depuis la base pour avoir le bon nombre
+      await GlobalStateManager.instance.refreshMealsCount();
 
       // Notifier la mise à jour de la nutrition
       await _notifyNutritionUpdate(userId, targetDate);
@@ -708,6 +733,17 @@ class FoodEntriesService {
       return true;
     } catch (e) {
       debugPrint('Erreur lors de l\'ajout de l\'aliment IA: $e');
+
+      // ROLLBACK GlobalState en cas d'erreur
+      GlobalStateManager.instance.updateCalories(-totalCalories);
+      GlobalStateManager.instance.updateMacros(
+        proteins: -totalProteins,
+        carbs: -totalCarbs,
+        fats: -totalFats,
+      );
+      // Recompter les repas pour être sûr d'avoir la bonne valeur même après erreur
+      await GlobalStateManager.instance.refreshMealsCount();
+
       return false;
     }
   }

@@ -14,6 +14,7 @@ import '../models/nutrition_models.dart';
 import '../services/food_entries_service.dart';
 import '../services/auth_service.dart';
 import '../services/translations.dart';
+import '../components/nutrition_journal_hybrid.dart';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -1293,17 +1294,27 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
         mealName: mealName,
         detectedFoods: _analysisResult!.detectedFoods,
         aiMealName: _mealNameController.text.isNotEmpty ? _mealNameController.text : 'Plat détecté par IA',
+        mealId: mealId, // Utiliser le meal_id du repas existant
         consumedAt: DateTime.now(),
       );
 
       if (mounted) {
-        Navigator.pop(context);
+        // Retourner à la page principale (accueil)
+        Navigator.of(context).popUntil((route) => route.isFirst);
 
         if (success) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('${_analysisResult!.mealName ?? "Plat IA"} ajouté au $mealName'),
               backgroundColor: const Color(0xFF0B132B),
+              action: SnackBarAction(
+                label: 'Voir',
+                textColor: Colors.white,
+                onPressed: () {
+                  // L'utilisateur peut naviguer manuellement vers le Journal
+                },
+              ),
+              duration: const Duration(seconds: 4),
             ),
           );
         } else {
@@ -1389,17 +1400,29 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
         mealName: selectedMeal.name,
         detectedFoods: _analysisResult!.detectedFoods,
         aiMealName: _mealNameController.text.isNotEmpty ? _mealNameController.text : 'Plat détecté par IA',
+        mealId: selectedMeal.id, // Utiliser le meal_id du repas existant
         consumedAt: DateTime.now(),
       );
 
       if (mounted) {
-        Navigator.pop(context);
+        // Retourner à la page principale (accueil)
+        Navigator.of(context).popUntil((route) => route.isFirst);
 
         if (success) {
+          // Afficher un message de succès avec action vers le Journal
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('${_analysisResult!.mealName ?? "Plat IA"} ajouté au ${selectedMeal.name}'),
               backgroundColor: const Color(0xFF0B132B),
+              action: SnackBarAction(
+                label: 'Voir',
+                textColor: Colors.white,
+                onPressed: () {
+                  // L'utilisateur peut naviguer manuellement vers le Journal
+                  // ou on pourrait implémenter une navigation automatique ici
+                },
+              ),
+              duration: const Duration(seconds: 4),
             ),
           );
         } else {
@@ -1436,13 +1459,22 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
       );
 
       if (mounted) {
-        Navigator.pop(context);
+        // Retourner à la page principale (accueil)
+        Navigator.of(context).popUntil((route) => route.isFirst);
 
         if (success) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('${_analysisResult!.mealName ?? "Plat IA"} ajouté au $mealType'),
               backgroundColor: const Color(0xFF0B132B),
+              action: SnackBarAction(
+                label: 'Voir',
+                textColor: Colors.white,
+                onPressed: () {
+                  // L'utilisateur peut naviguer manuellement vers le Journal
+                },
+              ),
+              duration: const Duration(seconds: 4),
             ),
           );
         } else {

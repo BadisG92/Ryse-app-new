@@ -101,7 +101,16 @@
       "Bash(rm:*)",
       "Bash(pod cache clean:*)",
       "Bash(findstr:*)",
-      "Bash(open ios/Runner.xcworkspace)"
+      "Bash(open ios/Runner.xcworkspace)",
+      "Bash(curl -s \"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=AIzaSyDCdJLXaVF68RsJkmHTPlnMoJvqbxOSxac\" )",
+      "Bash(curl -s \"https://generativelanguage.googleapis.com/v1/models?key=AIzaSyDCdJLXaVF68RsJkmHTPlnMoJvqbxOSxac\")",
+      "Bash(python3:*)",
+      "Bash(curl -s \"https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=AIzaSyDCdJLXaVF68RsJkmHTPlnMoJvqbxOSxac\" )",
+      "Bash(curl -s \"https://vision.googleapis.com/v1/images:annotate?key=AIzaSyDCdJLXaVF68RsJkmHTPlnMoJvqbxOSxac\" -H 'Content-Type: application/json' -d '{\n    \"\"\"\"requests\"\"\"\": [{\n      \"\"\"\"image\"\"\"\": {\n        \"\"\"\"content\"\"\"\": \"\"\"\"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==\"\"\"\"\n      },\n      \"\"\"\"features\"\"\"\": [{\n        \"\"\"\"type\"\"\"\": \"\"\"\"TEXT_DETECTION\"\"\"\"\n      }]\n    }]\n  }')",
+      "Bash(curl -s \"https://vision.googleapis.com/v1/images:annotate?key=AIzaSyDCdJLXaVF68RsJkmHTPlnMoJvqbxOSxac\" -H 'Content-Type: application/json' -d @/tmp/test_vision.json)",
+      "Bash(curl -s \"https://world.openfoodfacts.org/api/v0/product/3229820108605.json\")",
+      "Bash(curl -s \"https://world.openfoodfacts.org/api/v0/product/7613036249928.json\")",
+      "Bash(mcp__supabase__list_tables:*)"
     ],
     "deny": [],
     "ask": []

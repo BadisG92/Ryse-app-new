@@ -1,7 +1,7 @@
 class GoogleVisionConfig {
   // Google Cloud Vision API Configuration
-  static const String googleCloudProjectId = 'YOUR_PROJECT_ID';
-  static const String googleCloudApiKey = 'YOUR_API_KEY';
+  static const String googleCloudProjectId = 'ryse-app'; // Project ID (can be adjusted if needed)
+  static const String googleCloudApiKey = 'AIzaSyDCdJLXaVF68RsJkmHTPlnMoJvqbxOSxac';
   
   // Google Vision API endpoint
   static const String visionApiUrl = 'https://vision.googleapis.com/v1/images:annotate';
