@@ -49,7 +49,9 @@
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Cette application utilise votre localisation pour vous proposer des recommandations nutritionnelles adaptées à votre région et pour suivre précisément vos activités cardio (distance, vitesse, parcours).</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Cette application peut utiliser le microphone pour des fonctionnalités d'assistance vocale lors du scan nutritionnel.</string>
+	<string>Cette application utilise le microphone pour l'assistance vocale lors du scan nutritionnel et l'enregistrement mains-libres de vos performances pendant les entraînements.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Cette application utilise la reconnaissance vocale pour enregistrer vos répétitions et poids pendant l'entraînement musculation, vous permettant de rester concentré sur votre séance.</string>
 	<key>NSMotionUsageDescription</key>
 	<string>Cette application utilise les capteurs de mouvement pour compter vos pas lors des séances de marche et optimiser le suivi de vos activités.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>

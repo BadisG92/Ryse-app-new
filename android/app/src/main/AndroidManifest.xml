@@ -4,18 +4,24 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-    
+
+    <!-- Permissions pour la reconnaissance vocale -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <!-- Feature pour reconnaissance vocale (optionnel mais recommandé) -->
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
+
     <!-- Permissions pour les fonctionnalités caméra -->
     <uses-feature android:name="android.hardware.camera" android:required="true" />
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
     <uses-feature android:name="android.hardware.camera.flash" android:required="false" />
-    
+
     <!-- Permissions spécifiques pour mobile_scanner -->
     <uses-permission android:name="android.permission.FLASHLIGHT" />
     <uses-feature android:name="android.hardware.camera.any" android:required="true" />
     <uses-feature android:name="android.hardware.camera2" android:required="false" />
-    
-    <!-- Permissions pour l'accès réseau (upload d'images) -->
+
+    <!-- Permissions pour l'accès réseau (upload d'images + voice recognition API) -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     

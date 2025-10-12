@@ -17,6 +17,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/translations.dart';
 import '../services/localization_service.dart';
 import '../services/workout_voice_service.dart';
+import '../services/native_speech_service.dart';
 import 'package:provider/provider.dart';
 
 class WorkoutSessionScreen extends StatefulWidget {
@@ -91,8 +92,8 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
   final GlobalKey _historyIconKey = GlobalKey();
   Map<String, dynamic>? _exerciseHistoryData;
 
-  // Mode vocal (Voice input pour reps/poids)
-  final WorkoutVoiceService _voiceService = WorkoutVoiceService();
+  // Mode vocal (Voice input pour reps/poids) - Service hybride iOS natif + Android fallback
+  final HybridVoiceService _voiceService = HybridVoiceService();
   bool _isVoiceListening = false;
   String _recognizedText = '';
   bool _voiceInitialized = false;

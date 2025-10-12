@@ -100,7 +100,8 @@
       "Bash(do echo \"=== Fixing $file ===\")",
       "Bash(rm:*)",
       "Bash(pod cache clean:*)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(open ios/Runner.xcworkspace)"
     ],
     "deny": [],
     "ask": []

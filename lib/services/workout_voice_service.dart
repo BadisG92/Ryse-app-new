@@ -66,7 +66,7 @@ class WorkoutVoiceService {
     final localeId = lang == 'fr' ? 'fr_FR' : 'en_US';
 
     try {
-      // Tenter avec onDevice = true (meilleur filtre bruit)
+      // 🎯 Configuration OPTIMALE pour meilleure reconnaissance (iOS-like quality)
       await _speech.listen(
         onResult: (result) {
           // Résultats partiels pendant que l'user parle
@@ -77,18 +77,20 @@ class WorkoutVoiceService {
             onFinalResult(result.recognizedWords);
           }
         },
-        listenFor: const Duration(seconds: 5), // Timeout max
-        pauseFor: const Duration(seconds: 2),  // Pause avant finalisation
+        listenFor: const Duration(seconds: 8), // ⬆️ Augmenté de 5s à 8s
+        pauseFor: const Duration(seconds: 1),  // ⬇️ Réduit de 2s à 1s (plus réactif)
         localeId: localeId,
         cancelOnError: true,
-        listenMode: ListenMode.confirmation,
-        // 🔇 Filtre de bruit activé pour environnement bruyant (salle de sport)
-        onDevice: true, // Traitement sur appareil = meilleure qualité dans le bruit
-        partialResults: true, // Afficher résultats partiels même avec bruit
+        listenMode: ListenMode.dictation, // 🔥 CHANGEMENT CLÉ : dictation au lieu de confirmation
+        // 🔇 onDevice désactivé car API cloud Apple a MEILLEURE qualité pour dictée
+        onDevice: false, // Cloud API = meilleure reconnaissance pour nombres et termes techniques
+        partialResults: true,
+        // 🎯 NOUVEAUX PARAMÈTRES pour qualité maximale
+        sampleRate: 16000, // Qualité audio HD (recommandé par Apple)
       );
     } catch (e) {
-      // Fallback: vieux devices qui ne supportent pas onDevice
-      debugPrint('⚠️ onDevice not supported, fallback to cloud');
+      // Fallback en cas d'erreur (rare)
+      debugPrint('⚠️ Erreur reconnaissance principale, fallback: $e');
       await _speech.listen(
         onResult: (result) {
           if (!result.finalResult) {
@@ -97,12 +99,12 @@ class WorkoutVoiceService {
             onFinalResult(result.recognizedWords);
           }
         },
-        listenFor: const Duration(seconds: 5),
-        pauseFor: const Duration(seconds: 2),
+        listenFor: const Duration(seconds: 8),
+        pauseFor: const Duration(seconds: 1),
         localeId: localeId,
         cancelOnError: true,
-        listenMode: ListenMode.confirmation,
-        onDevice: false, // Fallback sans onDevice
+        listenMode: ListenMode.dictation, // Même mode que principal
+        onDevice: false,
         partialResults: true,
       );
     }
@@ -130,18 +132,27 @@ class WorkoutVoiceService {
   /// Formats supportés:
   /// - "10 reps 80 kilos"
   /// - "80 kilos 10 reps" (ordre inversé)
-  /// - "dix répétitions quatre-vingts kilos" (à venir)
+  /// - "10 répétitions de 80 kilos" (avec "de")
+  /// - Variantes: rep, reps, répétition, répétitions, kg, kilo, kilos, kilogrammes
   WorkoutSetData? parseVoiceInput(String text) {
     final normalized = text.toLowerCase().trim();
     debugPrint('🔍 Parsing: "$normalized"');
 
-    // Pattern 1: "10 reps 80 kilos" (ou kg/kilo)
+    // Nettoyer le texte des mots parasites communs
+    var cleaned = normalized
+        .replaceAll(RegExp(r'\b(et|de|à|avec|pour|fois)\b'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    debugPrint('🧹 Cleaned: "$cleaned"');
+
+    // Pattern 1: "10 reps 80 kilos" (avec séparateurs optionnels)
+    // Accepte: "10 reps 80 kilos", "10 répétitions 80 kg", "10 rep 80.5 kilo"
     final pattern1 = RegExp(
-      r'(\d+)\s*(?:rep|reps|répétitions?|répétition)\s*(\d+\.?\d*)\s*(?:kg|kilo|kilos)',
+      r'(\d+)\s*(?:rep|reps|répétitions?|répétition)s?\s*(?:de|à)?\s*(\d+\.?\d*)\s*(?:kg|kilo|kilos|kilogrammes?)',
       caseSensitive: false,
     );
 
-    final match1 = pattern1.firstMatch(normalized);
+    final match1 = pattern1.firstMatch(cleaned);
     if (match1 != null) {
       try {
         final reps = int.parse(match1.group(1)!);
@@ -153,13 +164,13 @@ class WorkoutVoiceService {
       }
     }
 
-    // Pattern 2: "80 kilos 10 reps" (ordre inversé)
+    // Pattern 2: "80 kilos 10 reps" (ordre inversé avec séparateurs)
     final pattern2 = RegExp(
-      r'(\d+\.?\d*)\s*(?:kg|kilo|kilos)\s*(\d+)\s*(?:rep|reps|répétitions?|répétition)',
+      r'(\d+\.?\d*)\s*(?:kg|kilo|kilos|kilogrammes?)\s*(?:pour|de|à)?\s*(\d+)\s*(?:rep|reps|répétitions?|répétition)s?',
       caseSensitive: false,
     );
 
-    final match2 = pattern2.firstMatch(normalized);
+    final match2 = pattern2.firstMatch(cleaned);
     if (match2 != null) {
       try {
         final weight = double.parse(match2.group(1)!);
@@ -171,27 +182,46 @@ class WorkoutVoiceService {
       }
     }
 
-    // Pattern 3: SUPPRIMÉ - On n'accepte JAMAIS juste le poids seul
-    // L'utilisateur DOIT donner au moins les reps
-
-    // Pattern 4: Juste les reps "10 reps" (poids garde valeur précédente ou 0)
-    final pattern4 = RegExp(
-      r'(\d+)\s*(?:rep|reps|répétitions?|répétition)',
+    // Pattern 3: Juste les reps "10 reps" (poids garde valeur précédente ou 0)
+    final pattern3 = RegExp(
+      r'(\d+)\s*(?:rep|reps|répétitions?|répétition)s?',
       caseSensitive: false,
     );
 
-    final match4 = pattern4.firstMatch(normalized);
-    if (match4 != null && !normalized.contains(RegExp(r'kg|kilo', caseSensitive: false))) {
+    final match3 = pattern3.firstMatch(cleaned);
+    if (match3 != null && !cleaned.contains(RegExp(r'kg|kilo', caseSensitive: false))) {
       try {
-        final reps = int.parse(match4.group(1)!);
-        debugPrint('✅ Parsed (pattern 4 - reps only): $reps reps');
+        final reps = int.parse(match3.group(1)!);
+        debugPrint('✅ Parsed (pattern 3 - reps only): $reps reps');
         return WorkoutSetData(reps: reps, weight: null);
+      } catch (e) {
+        debugPrint('⚠️ Parse error pattern 3: $e');
+      }
+    }
+
+    // Pattern 4: Format simple nombres "10 80" (reps poids)
+    // Accepte si 2 nombres séparés, le premier < 50 (probablement reps)
+    final pattern4 = RegExp(r'(\d+)\s+(\d+\.?\d*)');
+    final match4 = pattern4.firstMatch(cleaned);
+    if (match4 != null) {
+      try {
+        final first = int.parse(match4.group(1)!);
+        final second = double.parse(match4.group(2)!);
+
+        // Si premier nombre < 50, c'est probablement reps, sinon poids
+        if (first < 50) {
+          debugPrint('✅ Parsed (pattern 4 - numbers): $first reps, $second kg');
+          return WorkoutSetData(reps: first, weight: second);
+        } else {
+          debugPrint('✅ Parsed (pattern 4 reversed): ${second.toInt()} reps, $first kg');
+          return WorkoutSetData(reps: second.toInt(), weight: first.toDouble());
+        }
       } catch (e) {
         debugPrint('⚠️ Parse error pattern 4: $e');
       }
     }
 
-    debugPrint('❌ No pattern matched');
+    debugPrint('❌ No pattern matched for: "$cleaned"');
     return null;
   }
 
