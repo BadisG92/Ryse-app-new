@@ -87,6 +87,10 @@ dependencies:
   # Network connectivity
   connectivity_plus: ^6.0.5
 
+  # Voice recognition for workout
+  speech_to_text: ^7.0.0
+  flutter_tts: ^4.0.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

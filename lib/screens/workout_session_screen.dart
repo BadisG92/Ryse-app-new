@@ -16,6 +16,7 @@ import '../services/global_state_manager.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/translations.dart';
 import '../services/localization_service.dart';
+import '../services/workout_voice_service.dart';
 import 'package:provider/provider.dart';
 
 class WorkoutSessionScreen extends StatefulWidget {
@@ -90,6 +91,23 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
   final GlobalKey _historyIconKey = GlobalKey();
   Map<String, dynamic>? _exerciseHistoryData;
 
+  // Mode vocal (Voice input pour reps/poids)
+  final WorkoutVoiceService _voiceService = WorkoutVoiceService();
+  bool _isVoiceListening = false;
+  String _recognizedText = '';
+  bool _voiceInitialized = false;
+
+  // Système Undo
+  Timer? _undoTimer;
+  bool _showUndoButton = false;
+  int _undoCountdown = 3;
+  int? _lastVoiceExerciseIndex;
+  int? _lastVoiceSetIndex;
+
+  // Système Auto-Retry
+  int _voiceRetryCount = 0;
+  static const int _maxRetries = 3;
+
   @override
   void initState() {
     super.initState();
@@ -147,6 +165,10 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
         focusNode.dispose();
       }
     }
+    // Dispose voice service
+    _voiceService.dispose();
+    // Dispose undo timer
+    _undoTimer?.cancel();
     super.dispose();
   }
 
@@ -1884,6 +1906,12 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
       children: [
         _buildWorkoutScreen(),
         _buildHistoryBubble(),
+        // Bouton vocal flottant (uniquement si exercice sélectionné)
+        if (_exercises.isNotEmpty) _buildVoiceButton(),
+        // Bouton Undo (si actif)
+        if (_showUndoButton) _buildUndoButton(),
+        // Overlay pendant écoute
+        if (_isVoiceListening) _buildVoiceListeningOverlay(),
       ],
     );
   }
@@ -2982,5 +3010,551 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
       return setValue.replaceAll(' reps', '');
     }
     return setValue;
+  }
+
+  // ========================================
+  // VOICE INPUT METHODS
+  // ========================================
+
+  /// Bouton micro flottant (bas-droite)
+  Widget _buildVoiceButton() {
+    return Positioned(
+      right: 16,
+      bottom: 100, // Au-dessus navigation bottom bar
+      child: GestureDetector(
+        onLongPressStart: (_) => _startVoiceInput(),
+        onLongPressEnd: (_) => _stopVoiceInput(),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          decoration: BoxDecoration(
+            color: _isVoiceListening ? Colors.red : const Color(0xFF0B132B),
+            borderRadius: BorderRadius.circular(30),
+            boxShadow: [
+              BoxShadow(
+                color: _isVoiceListening
+                    ? Colors.red.withOpacity(0.5)
+                    : Colors.black26,
+                blurRadius: _isVoiceListening ? 20 : 10,
+                spreadRadius: _isVoiceListening ? 5 : 0,
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                LucideIcons.mic,
+                color: Colors.white,
+                size: 24,
+              ),
+              if (!_isVoiceListening) ...[
+                const SizedBox(width: 8),
+                Consumer<LocalizationService>(
+                  builder: (context, locService, _) => Text(
+                    locService.currentLanguageCode == 'fr' ? "Tenir" : "Hold",
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Bouton Undo avec countdown
+  Widget _buildUndoButton() {
+    return Positioned(
+      left: 16,
+      bottom: 100,
+      child: GestureDetector(
+        onTap: _undoVoiceInput,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.orange,
+            borderRadius: BorderRadius.circular(30),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.orange.withOpacity(0.4),
+                blurRadius: 15,
+                spreadRadius: 2,
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                LucideIcons.undo2,
+                color: Colors.white,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Consumer<LocalizationService>(
+                builder: (context, locService, _) => Text(
+                  locService.currentLanguageCode == 'fr'
+                      ? 'Annuler ($_undoCountdown)'
+                      : 'Undo ($_undoCountdown)',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Overlay fullscreen pendant l'écoute
+  Widget _buildVoiceListeningOverlay() {
+    // Couleur selon le retry count
+    final micColor = _voiceRetryCount == 0
+        ? Colors.red
+        : _voiceRetryCount == 1
+            ? Colors.orange
+            : Colors.deepOrange;
+
+    return Positioned.fill(
+      child: Container(
+        color: Colors.black87,
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Animation micro pulsante avec couleur dynamique
+              Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: micColor.withOpacity(0.2),
+                ),
+                child: Center(
+                  child: Icon(
+                    LucideIcons.mic,
+                    size: 50,
+                    color: micColor,
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              Consumer<LocalizationService>(
+                builder: (context, locService, _) {
+                  String mainText;
+                  if (_voiceRetryCount == 0) {
+                    mainText = locService.currentLanguageCode == 'fr'
+                        ? "Dictez vos reps et poids..."
+                        : "Dictate your reps and weight...";
+                  } else {
+                    mainText = locService.currentLanguageCode == 'fr'
+                        ? "Réessayez ($_voiceRetryCount/$_maxRetries)"
+                        : "Try again ($_voiceRetryCount/$_maxRetries)";
+                  }
+
+                  return Text(
+                    mainText,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w500,
+                      shadows: _voiceRetryCount > 0
+                          ? [
+                              Shadow(
+                                color: micColor.withOpacity(0.5),
+                                blurRadius: 10,
+                              )
+                            ]
+                          : null,
+                    ),
+                  );
+                },
+              ),
+
+              const SizedBox(height: 16),
+
+              // Texte reconnu en temps réel
+              Container(
+                padding: const EdgeInsets.all(16),
+                margin: const EdgeInsets.symmetric(horizontal: 32),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  _recognizedText.isEmpty ? "..." : _recognizedText,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              Consumer<LocalizationService>(
+                builder: (context, locService, _) => Text(
+                  locService.currentLanguageCode == 'fr'
+                      ? 'Exemple: "10 reps 80 kilos"'
+                      : 'Example: "10 reps 80 kilos"',
+                  style: const TextStyle(
+                    color: Colors.white60,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Feedback multi-sensoriel selon le type d'événement
+  void _multiSensoryFeedback(String type) {
+    switch (type) {
+      case 'start':
+        // Début d'écoute
+        HapticFeedback.selectionClick();
+        break;
+      case 'success':
+        // Succès de reconnaissance
+        HapticFeedback.heavyImpact();
+        break;
+      case 'warning':
+        // Avertissement (retry)
+        HapticFeedback.mediumImpact();
+        break;
+      case 'error':
+        // Erreur finale
+        HapticFeedback.vibrate();
+        break;
+      case 'undo':
+        // Action annulée
+        HapticFeedback.lightImpact();
+        break;
+    }
+  }
+
+  /// Démarrer l'écoute vocale (bouton pressé)
+  Future<void> _startVoiceInput() async {
+    // Feedback début
+    _multiSensoryFeedback('start');
+
+    // Initialiser la première fois
+    if (!_voiceInitialized) {
+      final success = await _voiceService.initialize();
+      if (!success) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Consumer<LocalizationService>(
+                builder: (context, locService, _) => Text(
+                  locService.currentLanguageCode == 'fr'
+                      ? 'Erreur micro. Vérifiez les permissions.'
+                      : 'Microphone error. Check permissions.',
+                ),
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+      _voiceInitialized = true;
+    }
+
+    setState(() => _isVoiceListening = true);
+    HapticFeedback.mediumImpact();
+
+    await _voiceService.startListening(
+      onPartialResult: (text) {
+        if (mounted) {
+          setState(() => _recognizedText = text);
+        }
+      },
+      onFinalResult: (text) {
+        // Final sera traité dans stopVoiceInput
+        if (mounted) {
+          setState(() => _recognizedText = text);
+        }
+      },
+    );
+  }
+
+  /// Arrêter l'écoute (bouton relâché)
+  Future<void> _stopVoiceInput() async {
+    await _voiceService.stopListening();
+
+    // Parser le résultat
+    final setData = _voiceService.parseVoiceInput(_recognizedText);
+
+    if (setData != null && setData.hasData) {
+      // ✅ Données extraites avec succès
+      _voiceRetryCount = 0; // Reset retry counter
+      await _handleVoiceSetData(setData);
+
+      if (mounted) {
+        setState(() {
+          _isVoiceListening = false;
+          _recognizedText = '';
+        });
+      }
+    } else {
+      // ❌ Pas compris - Auto-retry si tentatives restantes
+      _voiceRetryCount++;
+
+      if (_voiceRetryCount < _maxRetries) {
+        // Auto-retry
+        debugPrint('🔄 Auto-retry $_voiceRetryCount/$_maxRetries');
+
+        final locService = LocalizationService.instance;
+        final retryMsg = locService.currentLanguageCode == 'fr'
+            ? 'Je n\'ai pas compris. Réessayez. Tentative $_voiceRetryCount sur $_maxRetries.'
+            : 'I didn\'t understand. Try again. Attempt $_voiceRetryCount of $_maxRetries.';
+
+        await _voiceService.speak(retryMsg);
+        _multiSensoryFeedback('warning'); // Feedback warning
+
+        // Redémarrer automatiquement l'écoute après 1.5 secondes
+        await Future.delayed(const Duration(milliseconds: 1500));
+
+        if (mounted) {
+          setState(() => _recognizedText = '');
+          await _startVoiceInput();
+        }
+      } else {
+        // Max retries atteint - abandon
+        _voiceRetryCount = 0; // Reset pour la prochaine fois
+
+        final errorMsg = _voiceService.getErrorMessage();
+        await _voiceService.speak(errorMsg);
+        _multiSensoryFeedback('error'); // Feedback error
+
+        if (mounted) {
+          setState(() {
+            _isVoiceListening = false;
+            _recognizedText = '';
+          });
+        }
+      }
+    }
+  }
+
+  /// Gérer les données vocales (logique intelligente selon tes specs)
+  Future<void> _handleVoiceSetData(WorkoutSetData data) async {
+    final exercise = _exercises[_currentExerciseIndex];
+    final sets = exercise.sets;
+
+    // Trouver la dernière série non validée
+    int targetSetIndex = -1;
+    bool hasNonValidatedData = false;
+
+    for (int i = 0; i < sets.length; i++) {
+      final set = sets[i];
+      // Série non validée = isCompleted = false
+      if (!set.isCompleted) {
+        targetSetIndex = i;
+        // Vérifier si elle a des données
+        if (set.reps > 0 || set.weight > 0) {
+          hasNonValidatedData = true;
+        }
+        break; // Prendre la première non validée
+      }
+    }
+
+    // Cas 1: Série non validée avec données existantes
+    if (hasNonValidatedData && targetSetIndex != -1) {
+      // LOGIQUE AUTO (sans dialog pour garder hands-free)
+      // Si série a reps=0 → Écraser (série vide ou juste poids saisi)
+      final set = sets[targetSetIndex];
+      if (set.reps == 0) {
+        // Écraser car pas de reps = série incomplète
+        final locService = LocalizationService.instance;
+        final msg = locService.currentLanguageCode == 'fr'
+            ? 'Remplacement série incomplète'
+            : 'Replacing incomplete set';
+        await _voiceService.speak(msg);
+      } else {
+        // Si série a reps>0 (avec ou sans poids) → Créer nouvelle série
+        targetSetIndex++;
+        if (targetSetIndex >= sets.length) {
+          _addSerie(exercise);
+          targetSetIndex = sets.length - 1;
+        }
+
+        final locService = LocalizationService.instance;
+        final msg = locService.currentLanguageCode == 'fr'
+            ? 'Nouvelle série ajoutée'
+            : 'New set added';
+        await _voiceService.speak(msg);
+      }
+    }
+
+    // Cas 2: Pas de série non validée (toutes validées) → Ajouter nouvelle série
+    if (targetSetIndex == -1) {
+      _addSerie(exercise);
+      targetSetIndex = sets.length - 1;
+    }
+
+    // Remplir les champs
+    _fillSetWithVoiceData(exercise, targetSetIndex, data);
+
+    // Valider EN CASCADE (toutes les séries jusqu'à celle-là incluse)
+    _validateSetsUpTo(exercise, targetSetIndex);
+
+    // Sauvegarder indices pour undo
+    _lastVoiceExerciseIndex = _currentExerciseIndex;
+    _lastVoiceSetIndex = targetSetIndex;
+
+    // Démarrer timer undo (3 secondes)
+    _startUndoTimer();
+
+    // Feedback vocal + multi-sensoriel
+    final confirmMsg = _voiceService.getConfirmationMessage(data);
+    await _voiceService.speak(confirmMsg);
+    _multiSensoryFeedback('success'); // Feedback succès avec vibration forte
+  }
+
+  /// Démarrer le timer d'undo (3 secondes)
+  void _startUndoTimer() {
+    // Annuler le timer précédent si existe
+    _undoTimer?.cancel();
+
+    setState(() {
+      _showUndoButton = true;
+      _undoCountdown = 3;
+    });
+
+    // Countdown chaque seconde
+    _undoTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      setState(() {
+        _undoCountdown--;
+      });
+
+      if (_undoCountdown <= 0) {
+        timer.cancel();
+        setState(() {
+          _showUndoButton = false;
+        });
+      }
+    });
+  }
+
+  /// Annuler la dernière saisie vocale
+  void _undoVoiceInput() {
+    if (_lastVoiceExerciseIndex == null || _lastVoiceSetIndex == null) return;
+
+    final exercise = _exercises[_lastVoiceExerciseIndex!];
+    final setIndex = _lastVoiceSetIndex!;
+
+    // Réinitialiser les valeurs en utilisant copyWith
+    setState(() {
+      // Créer une nouvelle instance avec valeurs vides
+      final updatedSet = exercise.sets[setIndex].copyWith(
+        reps: 0,
+        weight: 0.0,
+        isCompleted: false,
+      );
+
+      // Remplacer dans la liste
+      exercise.sets[setIndex] = updatedSet;
+
+      // Vider les controllers
+      _repsControllers[exercise.exercise.id]?[setIndex]?.text = '';
+      _weightControllers[exercise.exercise.id]?[setIndex]?.text = '';
+
+      // Masquer le bouton undo
+      _showUndoButton = false;
+    });
+
+    // Annuler le timer
+    _undoTimer?.cancel();
+
+    // Feedback multi-sensoriel + vocal
+    _multiSensoryFeedback('undo');
+
+    final locService = LocalizationService.instance;
+    final undoMsg = locService.currentLanguageCode == 'fr'
+        ? 'Annulé'
+        : 'Undone';
+    _voiceService.speak(undoMsg);
+
+    debugPrint('↩️ Undo: série $setIndex réinitialisée');
+  }
+
+  /// Remplir une série avec les données vocales
+  void _fillSetWithVoiceData(WorkoutExercise exercise, int setIndex, WorkoutSetData data) {
+    // Récupérer valeurs précédentes si partial data
+    final currentSet = exercise.sets[setIndex];
+    final reps = data.reps ?? currentSet.reps;
+    final weight = data.weight ?? currentSet.weight;
+
+    // Mettre à jour les controllers
+    _repsControllers[exercise.exercise.id]?[setIndex]?.text = reps.toString();
+    _weightControllers[exercise.exercise.id]?[setIndex]?.text = weight.toString();
+
+    // Mettre à jour le modèle avec copyWith
+    setState(() {
+      final updatedSet = currentSet.copyWith(
+        reps: reps,
+        weight: weight,
+      );
+      exercise.sets[setIndex] = updatedSet;
+    });
+
+    debugPrint('✅ Filled set $setIndex: $reps reps, $weight kg');
+  }
+
+  /// Valider EN CASCADE (toutes les séries jusqu'à celle-là incluse)
+  void _validateSetsUpTo(WorkoutExercise exercise, int upToIndex) {
+    for (int i = 0; i <= upToIndex && i < exercise.sets.length; i++) {
+      final set = exercise.sets[i];
+      if (!set.isCompleted) {
+        setState(() {
+          final updatedSet = set.copyWith(isCompleted: true);
+          exercise.sets[i] = updatedSet;
+        });
+        debugPrint('✅ Validated set $i');
+      }
+    }
+  }
+
+
+  /// Méthode helper pour ajouter une série (si elle n'existe pas déjà)
+  void _addSerie(WorkoutExercise exercise) {
+    final newSet = ExerciseSet(
+      reps: 0,
+      weight: 0.0,
+      isCompleted: false,
+    );
+
+    setState(() {
+      exercise.sets.add(newSet);
+    });
+
+    // Initialiser les controllers pour la nouvelle série
+    final setIndex = exercise.sets.length - 1;
+    _weightControllers[exercise.exercise.id]?[setIndex] = TextEditingController();
+    _repsControllers[exercise.exercise.id]?[setIndex] = TextEditingController();
+    _weightFocusNodes[exercise.exercise.id]?[setIndex] = FocusNode();
+    _repsFocusNodes[exercise.exercise.id]?[setIndex] = FocusNode();
+    _setKeys[exercise.exercise.id]?[setIndex] = GlobalKey();
+
+    debugPrint('➕ Added new set (index $setIndex)');
   }
 }
