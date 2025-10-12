@@ -243,7 +243,7 @@ class WorkoutVoiceService {
 
 
         if (reps != null || weight != null) {
-          debugPrint('✅ Parsed (pattern 5 - intelligent): ${reps ?? 0} reps, ${weight?.toStringAsFixed(1) ?? 0.0}');
+          debugPrint('✅ Parsed (pattern 5 - intelligent): ${reps ?? 0} reps, ${weight?.toStringAsFixed(1) ?? 0.0} kg');
           return WorkoutSetData(reps: reps, weight: weight);
         }
       } catch (e) {

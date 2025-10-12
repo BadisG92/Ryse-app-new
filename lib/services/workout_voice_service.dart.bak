@@ -241,9 +241,14 @@ class WorkoutVoiceService {
         final reps = repsMatch != null ? int.parse(repsMatch.group(1)!) : null;
         var weight = weightMatch != null ? double.parse(weightMatch.group(1)!) : null;
 
+        // Conversion pounds → kg si détecté
+        if (weight != null && cleaned.contains(RegExp(r'\b(pounds?|lbs?|lb)\b', caseSensitive: false))) {
+          weight = weight * 0.453592; // 1 lb = 0.453592 kg
+          debugPrint('🔄 Converted pounds to kg: $weight kg');
+        }
 
         if (reps != null || weight != null) {
-          debugPrint('✅ Parsed (pattern 5 - intelligent): ${reps ?? 0} reps, ${weight?.toStringAsFixed(1) ?? 0.0}');
+          debugPrint('✅ Parsed (pattern 5 - intelligent): ${reps ?? 0} reps, ${weight?.toStringAsFixed(1) ?? 0.0} kg');
           return WorkoutSetData(reps: reps, weight: weight);
         }
       } catch (e) {

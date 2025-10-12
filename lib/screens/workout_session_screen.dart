@@ -18,6 +18,7 @@ import '../services/translations.dart';
 import '../services/localization_service.dart';
 import '../services/workout_voice_service.dart';
 import '../services/native_speech_service.dart';
+import '../components/voice/modern_voice_input.dart';
 import 'package:provider/provider.dart';
 
 class WorkoutSessionScreen extends StatefulWidget {
@@ -97,6 +98,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
   bool _isVoiceListening = false;
   String _recognizedText = '';
   bool _voiceInitialized = false;
+  bool _voiceHasError = false; // État d'erreur pour afficher bouton rouge
 
   // Système Undo
   Timer? _undoTimer;
@@ -1907,12 +1909,19 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
       children: [
         _buildWorkoutScreen(),
         _buildHistoryBubble(),
-        // Bouton vocal flottant (uniquement si exercice sélectionné)
-        if (_exercises.isNotEmpty) _buildVoiceButton(),
+        // 🎤 Nouveau système vocal moderne (floating button + compact bottom bar)
+        if (_exercises.isNotEmpty)
+          ModernVoiceInput(
+            onStartListening: _startVoiceInput,
+            onStopListening: _stopVoiceInput,
+            onCancel: _cancelVoiceInput,
+            isListening: _isVoiceListening,
+            recognizedText: _recognizedText,
+            hasError: _voiceHasError,
+            retryCount: _voiceRetryCount,
+          ),
         // Bouton Undo (si actif)
         if (_showUndoButton) _buildUndoButton(),
-        // Overlay pendant écoute
-        if (_isVoiceListening) _buildVoiceListeningOverlay(),
       ],
     );
   }
@@ -3253,6 +3262,14 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
 
   /// Démarrer l'écoute vocale (bouton pressé)
   Future<void> _startVoiceInput() async {
+    // Reset error state quand user relance
+    if (mounted) {
+      setState(() {
+        _voiceHasError = false;
+        _recognizedText = '';
+      });
+    }
+
     // Feedback début
     _multiSensoryFeedback('start');
 
@@ -3313,6 +3330,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
         setState(() {
           _isVoiceListening = false;
           _recognizedText = '';
+          _voiceHasError = false; // Reset error state
         });
       }
     } else {
@@ -3320,23 +3338,24 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
       _voiceRetryCount++;
 
       if (_voiceRetryCount < _maxRetries) {
-        // Auto-retry
-        debugPrint('🔄 Auto-retry $_voiceRetryCount/$_maxRetries');
+        // MANUEL RETRY : Utilisateur doit TAP à nouveau sur le bouton rouge
+        debugPrint('❌ Parse failed. Waiting for manual retry $_voiceRetryCount/$_maxRetries');
 
         final locService = LocalizationService.instance;
         final retryMsg = locService.currentLanguageCode == 'fr'
-            ? 'Je n\'ai pas compris. Réessayez. Tentative $_voiceRetryCount sur $_maxRetries.'
-            : 'I didn\'t understand. Try again. Attempt $_voiceRetryCount of $_maxRetries.';
+            ? 'Je n\'ai pas compris. Appuyez à nouveau sur le micro.'
+            : 'I didn\'t understand. Tap the microphone again.';
 
         await _voiceService.speak(retryMsg);
         _multiSensoryFeedback('warning'); // Feedback warning
 
-        // Redémarrer automatiquement l'écoute après 1.5 secondes
-        await Future.delayed(const Duration(milliseconds: 1500));
-
+        // Arrêter l'écoute et passer en mode "error" (bouton rouge)
         if (mounted) {
-          setState(() => _recognizedText = '');
-          await _startVoiceInput();
+          setState(() {
+            _isVoiceListening = false;
+            _recognizedText = retryMsg; // Afficher le message
+            _voiceHasError = true; // Activer l'état d'erreur (bouton rouge)
+          });
         }
       } else {
         // Max retries atteint - abandon
@@ -3350,10 +3369,27 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
           setState(() {
             _isVoiceListening = false;
             _recognizedText = '';
+            _voiceHasError = false; // Reset error state
           });
         }
       }
     }
+  }
+
+  /// Annuler l'input vocal (bouton X dans la bottom bar)
+  Future<void> _cancelVoiceInput() async {
+    await _voiceService.stopListening();
+
+    if (mounted) {
+      setState(() {
+        _isVoiceListening = false;
+        _recognizedText = '';
+        _voiceRetryCount = 0;
+        _voiceHasError = false; // Reset error state
+      });
+    }
+
+    debugPrint('❌ Voice input cancelled by user');
   }
 
   /// Gérer les données vocales (logique intelligente selon tes specs)
