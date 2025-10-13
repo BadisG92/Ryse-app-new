@@ -1,0 +1,64 @@
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+class SupabaseConfig {
+  // Supabase Project Configuration
+  static const String supabaseUrl = 'YOUR_SUPABASE_URL_HERE';
+  static const String supabaseAnonKey = 'YOUR_SUPABASE_ANON_KEY_HERE';
+
+  // Singleton instance
+  static SupabaseClient? _client;
+
+  /// Check if Supabase is properly configured
+  static bool get isConfigured {
+    return supabaseUrl != 'YOUR_SUPABASE_URL_HERE' &&
+           supabaseAnonKey != 'YOUR_SUPABASE_ANON_KEY_HERE' &&
+           supabaseUrl.isNotEmpty &&
+           supabaseAnonKey.isNotEmpty;
+  }
+
+  /// Check if Supabase is available (configured and initialized)
+  static bool get isAvailable {
+    return isConfigured && _client != null;
+  }
+
+  /// Get the Supabase client instance
+  static SupabaseClient get client {
+    if (_client == null) {
+      throw Exception('Supabase not initialized. Call initialize() first.');
+    }
+    return _client!;
+  }
+
+  /// Initialize Supabase
+  static Future<void> initialize() async {
+    if (!isConfigured) {
+      throw Exception('Supabase not configured. Please set your URL and Anon Key.');
+    }
+
+    if (_client != null) {
+      // Already initialized
+      return;
+    }
+
+    try {
+      await Supabase.initialize(
+        url: supabaseUrl,
+        anonKey: supabaseAnonKey,
+        authOptions: const FlutterAuthClientOptions(
+          authFlowType: AuthFlowType.pkce,
+        ),
+      );
+      _client = Supabase.instance.client;
+    } catch (e) {
+      throw Exception('Failed to initialize Supabase: $e');
+    }
+  }
+
+  /// Get the current user
+  static User? get currentUser => _client?.auth.currentUser;
+
+  /// Sign out the current user
+  static Future<void> signOut() async {
+    await _client?.auth.signOut();
+  }
+}
