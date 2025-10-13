@@ -76,6 +76,11 @@ DerivedData/
 .env.production
 .env.staging
 
+# API Keys - NEVER COMMIT THESE FILES
+lib/config/gemini_config.dart
+lib/config/google_vision_config.dart
+lib/config/supabase_config.dart
+
 # Database
 *.sqlite
 *.sqlite3

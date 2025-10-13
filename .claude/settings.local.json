@@ -110,7 +110,10 @@
       "Bash(curl -s \"https://vision.googleapis.com/v1/images:annotate?key=AIzaSyDCdJLXaVF68RsJkmHTPlnMoJvqbxOSxac\" -H 'Content-Type: application/json' -d @/tmp/test_vision.json)",
       "Bash(curl -s \"https://world.openfoodfacts.org/api/v0/product/3229820108605.json\")",
       "Bash(curl -s \"https://world.openfoodfacts.org/api/v0/product/7613036249928.json\")",
-      "Bash(mcp__supabase__list_tables:*)"
+      "Bash(mcp__supabase__list_tables:*)",
+      "Bash(git log:*)",
+      "Bash(git add:*)",
+      "Bash(git rm --cached lib/config/gemini_config.dart lib/config/google_vision_config.dart lib/config/supabase_config.dart)"
     ],
     "deny": [],
     "ask": []
