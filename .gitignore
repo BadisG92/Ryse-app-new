@@ -81,6 +81,13 @@ lib/config/gemini_config.dart
 lib/config/google_vision_config.dart
 lib/config/supabase_config.dart
 
+# Claude settings (may contain sensitive permissions)
+.claude/settings.local.json
+
+# API documentation (may contain test keys)
+API_STATUS_REPORT.md
+FINAL_API_STATUS.md
+
 # Database
 *.sqlite
 *.sqlite3
