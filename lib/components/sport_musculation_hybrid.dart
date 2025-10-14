@@ -4,7 +4,6 @@ import 'ui/custom_card.dart';
 import 'ui/workout_widgets.dart';
 import 'ui/exercise_sets_widget.dart';
 import '../models/sport_models.dart';
-import '../bottom_sheets/exercise_selection_bottom_sheet.dart';
 import '../bottom_sheets/program_selection_bottom_sheet.dart';
 import '../screens/workout_session_screen.dart';
 import '../services/workout_service.dart';
@@ -578,28 +577,18 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
                   );
                 }).toList(),
               ),
-            
-            const SizedBox(height: 16),
-            Center(
-              child: TextButton.icon(
-                onPressed: _showExerciseSelection,
-                icon: const Icon(LucideIcons.plus, size: 16),
-                label: Consumer<LocalizationService>(
-                  builder: (context, locService, _) => Text(
-                    'workout_add_exercise'.tr(locService.currentLanguageCode),
-                  ),
-                ),
-                style: TextButton.styleFrom(
-                  foregroundColor: const Color(0xFF0B132B),
-                ),
-              ),
-            ),
+
+            // NOTE: Le bouton "Ajouter un exercice" n'est plus ici car l'utilisateur
+            // est redirigé vers WorkoutSessionScreen pour gérer les exercices
           ],
         ),
       ),
     );
   }
 
+  // NOTE: Cette méthode n'est plus utilisée - le bottom sheet d'exercices
+  // est maintenant directement dans WorkoutSessionScreen
+  /*
   void _showExerciseSelection() {
     showModalBottomSheet(
       context: context,
@@ -611,6 +600,7 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
       ),
     );
   }
+  */
 
   void _addExerciseFromDatabase(Exercise exercise, int setsCount) {
     final workoutExercise = WorkoutExercise(

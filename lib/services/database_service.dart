@@ -121,7 +121,7 @@ class DatabaseService {
     try {
       final rows = await _client
           .from('exercises')
-          .select('id, name_en, name_fr, muscle_group, equipment, description, is_custom')
+          .select('id, name_en, name_fr, muscle_group_fr, muscle_group_en, equipment, description, is_custom')
           .order(lang == 'fr' ? 'name_fr' : 'name_en', ascending: true)
           .limit(500);
       if (rows is List && rows.isNotEmpty) {
@@ -130,10 +130,13 @@ class DatabaseService {
           final name = lang == 'fr'
               ? (map['name_fr'] as String? ?? '')
               : (map['name_en'] as String? ?? '');
+          final muscleGroup = lang == 'fr'
+              ? (map['muscle_group_fr'] as String? ?? '')
+              : (map['muscle_group_en'] as String? ?? '');
           return models.Exercise(
             id: map['id']?.toString() ?? '',
             name: name,
-            muscleGroup: (map['muscle_group'] as String?) ?? '',
+            muscleGroup: muscleGroup,
             equipment: (map['equipment'] as String?) ?? '',
             description: (map['description'] as String?) ?? '',
             isCustom: (map['is_custom'] as bool?) ?? false,
@@ -148,17 +151,20 @@ class DatabaseService {
         if (userId != null) {
           final customRows = await _client
               .from('custom_exercises')
-              .select('id, name, muscle_group, equipment, description, visible_list')
+              .select('id, name, muscle_group_fr, muscle_group_en, equipment, description, visible_list')
               .eq('user_id', userId)
               .eq('visible_list', true)
               .order('created_at', ascending: false);
           if (customRows is List && customRows.isNotEmpty) {
             final customs = customRows.map<models.Exercise>((m) {
               final map = m as Map<String, dynamic>;
+              final muscleGroup = lang == 'fr'
+                  ? (map['muscle_group_fr'] as String? ?? '')
+                  : (map['muscle_group_en'] as String? ?? '');
           return models.Exercise(
                 id: map['id']?.toString() ?? '',
                 name: (map['name'] as String?) ?? '',
-                muscleGroup: (map['muscle_group'] as String?) ?? '',
+                muscleGroup: muscleGroup,
                 equipment: (map['equipment'] as String?) ?? '',
                 description: (map['description'] as String?) ?? '',
                 isCustom: true,

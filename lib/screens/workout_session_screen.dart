@@ -723,13 +723,28 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     setState(() {
       _addExercisePressed = true;
     });
-    
+
     final TextEditingController searchController = TextEditingController();
     List<Exercise> filteredExercises = [];
     Map<String, int> exerciseSessionCounts = {};
-    
+
+    // Variable pour le filtre de groupe musculaire (sélection multiple)
+    final locService = LocalizationService.instance;
+    Set<String> selectedMuscleFilters = {}; // Vide = tous les exercices
+    List<String> availableMuscleGroups = [];
+
     // Charger depuis Supabase ou cache offline
     final List<Exercise> allExercises = await db.DatabaseService.getSystemExercises();
+
+    // Extraire les groupes musculaires uniques
+    final muscleGroupsSet = <String>{};
+    for (final exercise in allExercises) {
+      if (exercise.muscleGroup.isNotEmpty) {
+        muscleGroupsSet.add(exercise.muscleGroup);
+      }
+    }
+    availableMuscleGroups = muscleGroupsSet.toList()..sort();
+    debugPrint('✅ ${availableMuscleGroups.length} groupes musculaires extraits: $availableMuscleGroups');
     
     // Charger les statistiques des exercices pour les tags de fréquence
     try {
@@ -812,9 +827,17 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
           void filterExercises() {
             setModalState(() {
               filteredExercises = allExercises.where((exercise) {
-                return exercise.name
+                // Filtre par texte de recherche
+                final matchesSearch = exercise.name
                     .toLowerCase()
                     .contains(searchController.text.toLowerCase());
+
+                // Filtre par groupe musculaire (sélection multiple)
+                // Si aucun filtre sélectionné, afficher tous les exercices
+                final matchesMuscleGroup = selectedMuscleFilters.isEmpty ||
+                    selectedMuscleFilters.contains(exercise.muscleGroup);
+
+                return matchesSearch && matchesMuscleGroup;
               }).toList();
               
               // Re-trier par fréquence après le filtrage
@@ -885,28 +908,104 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                     ),
                     
                     const SizedBox(height: 24),
-                    
-                    // Barre de recherche
-                    TextField(
-                      controller: searchController,
-                      decoration: InputDecoration(
-                        hintText: 'workout_search_create_exercise'.tr(LocalizationService.instance.currentLanguageCode),
-                        prefixIcon: const Icon(LucideIcons.search, size: 20),
-                        filled: true,
-                        fillColor: const Color(0xFFF8FAFC),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
+
+                    // Barre de recherche + bouton filtre
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: searchController,
+                            decoration: InputDecoration(
+                              hintText: 'workout_search_create_exercise'.tr(LocalizationService.instance.currentLanguageCode),
+                              prefixIcon: const Icon(LucideIcons.search, size: 20),
+                              filled: true,
+                              fillColor: const Color(0xFFF8FAFC),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide.none,
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 14,
+                              ),
+                            ),
+                          ),
                         ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 14,
+
+                        const SizedBox(width: 12),
+
+                        // Bouton filtre par groupe musculaire
+                        IconButton(
+                          onPressed: () {
+                            debugPrint('🟡 FILTRE CLICKED dans workout_session_screen!');
+                            _openFilterModal(context, setModalState, availableMuscleGroups, selectedMuscleFilters, (newFilters) {
+                              selectedMuscleFilters = newFilters;
+                              filterExercises();
+                            });
+                          },
+                          icon: const Icon(
+                            LucideIcons.settings,
+                            size: 20,
+                            color: Color(0xFF0B132B),
+                          ),
+                          style: IconButton.styleFrom(
+                            backgroundColor: const Color(0xFFF1F5F9),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            padding: const EdgeInsets.all(12),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
-                    
+
+                    const SizedBox(height: 12),
+
+                    // Affichage des filtres actifs
+                    if (selectedMuscleFilters.isNotEmpty)
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: selectedMuscleFilters.map((filter) {
+                          return Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0B132B),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  filter,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                GestureDetector(
+                                  onTap: () {
+                                    setModalState(() {
+                                      selectedMuscleFilters.remove(filter);
+                                      filterExercises();
+                                    });
+                                  },
+                                  child: const Icon(
+                                    Icons.close,
+                                    size: 14,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                      ),
+
                     const SizedBox(height: 16),
-                    
+
                     // Bouton pour créer un exercice custom si pas de résultats
                     if (searchController.text.isNotEmpty && filteredExercises.isEmpty)
                       GestureDetector(
@@ -1159,6 +1258,175 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
           );
         },
       ),
+    );
+  }
+
+  void _openFilterModal(BuildContext context, StateSetter setModalState, List<String> availableMuscleGroups, Set<String> currentFilters, Function(Set<String>) onFiltersSelected) {
+    if (availableMuscleGroups.isEmpty) {
+      debugPrint('⚠️ Aucun groupe musculaire disponible');
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        // Copier les filtres actuels pour modification locale
+        Set<String> tempSelectedFilters = Set.from(currentFilters);
+
+        return StatefulBuilder(
+          builder: (context, setFilterModalState) {
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.6,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(24),
+                  topRight: Radius.circular(24),
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Handle
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE2E8F0),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // Header avec titre et bouton "Effacer tout"
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Consumer<LocalizationService>(
+                          builder: (context, locService, _) => Text(
+                            'filters'.tr(locService.currentLanguageCode),
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF1A1A1A),
+                            ),
+                          ),
+                        ),
+                        if (tempSelectedFilters.isNotEmpty)
+                          TextButton(
+                            onPressed: () {
+                              setFilterModalState(() {
+                                tempSelectedFilters.clear();
+                              });
+                            },
+                            child: Consumer<LocalizationService>(
+                              builder: (context, locService, _) => Text(
+                                'clear_all'.tr(locService.currentLanguageCode),
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Color(0xFF64748B),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // Groupes musculaires avec Wrap (bulles horizontales - sélection multiple)
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: availableMuscleGroups.map((group) {
+                            final isSelected = tempSelectedFilters.contains(group);
+                            return GestureDetector(
+                              onTap: () {
+                                setFilterModalState(() {
+                                  if (isSelected) {
+                                    tempSelectedFilters.remove(group);
+                                  } else {
+                                    tempSelectedFilters.add(group);
+                                  }
+                                });
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? const Color(0xFF0B132B)
+                                      : const Color(0xFFF8FAFC),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: isSelected
+                                        ? const Color(0xFF0B132B)
+                                        : const Color(0xFFE2E8F0),
+                                    width: 1.5,
+                                  ),
+                                ),
+                                child: Text(
+                                  group,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: isSelected
+                                        ? Colors.white
+                                        : const Color(0xFF1A1A1A),
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Bouton Appliquer avec compteur
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          onFiltersSelected(tempSelectedFilters);
+                          Navigator.pop(context);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF0B132B),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Consumer<LocalizationService>(
+                          builder: (context, locService, _) => Text(
+                            tempSelectedFilters.isEmpty
+                                ? 'apply_filters'.tr(locService.currentLanguageCode)
+                                : '${'apply_filters'.tr(locService.currentLanguageCode)} (${tempSelectedFilters.length})',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
