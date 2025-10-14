@@ -7,6 +7,7 @@ import 'dart:math' as math;
 import '../../services/workout_cache_service.dart';
 import '../../services/translations.dart';
 import '../../services/localization_service.dart';
+import '../../components/exercise_ai_analysis_widget.dart';
 
 class ExerciseDetailPage extends StatefulWidget {
   final String exerciseName;
@@ -208,6 +209,8 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
                     _buildStatsSection(),
                     const SizedBox(height: 24),
                     _buildProgressChart(),
+                    const SizedBox(height: 16),
+                    _buildAiAnalysis(),
                     const SizedBox(height: 24),
                     _buildSessionHistory(),
                   ],
@@ -843,6 +846,20 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
   bool titleCaseEquals(String a, String b) => a.toLowerCase() == b.toLowerCase();
 
 
+
+  Widget _buildAiAnalysis() {
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) return const SizedBox.shrink();
+
+    final sessionHistory = (exercise?['sessionHistory'] as List?) ?? [];
+
+    // Afficher le widget dans tous les cas (il gère l'affichage selon le nombre de séances)
+    return ExerciseAiAnalysisWidget(
+      exerciseName: localizedExerciseName ?? widget.exerciseName,
+      userId: userId,
+      sessionHistory: sessionHistory.cast<Map<String, dynamic>>(),
+    );
+  }
 
   Widget _buildSessionHistory() {
     return Column(

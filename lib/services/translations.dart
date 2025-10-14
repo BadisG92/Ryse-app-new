@@ -3763,6 +3763,44 @@ class AppTranslations {
       'fr': 'Note App',
       'en': 'App Rating',
     },
+
+    // AI Analysis - Coach Ryze
+    'analyze_with_ai': {
+      'fr': 'Analyser avec le Coach Ryze',
+      'en': 'Analyze with Coach Ryze',
+    },
+    'ai_analysis': {
+      'fr': 'Coach Ryze',
+      'en': 'Coach Ryze',
+    },
+    'analysis_in_progress': {
+      'fr': 'Analyse en cours...',
+      'en': 'Analysis in progress...',
+    },
+    'refresh_analysis': {
+      'fr': 'Rafraîchir l\'analyse',
+      'en': 'Refresh analysis',
+    },
+    'new_analysis_available': {
+      'fr': 'Nouvelle dispo',
+      'en': 'New available',
+    },
+    'minimum_sessions_required': {
+      'fr': 'Au moins 3 séances sont nécessaires pour une analyse',
+      'en': 'At least 3 sessions are required for analysis',
+    },
+    'ai_analysis_unavailable': {
+      'fr': 'Disponible après 3 séances de cet exercice',
+      'en': 'Available after 3 sessions of this exercise',
+    },
+    'ai_performance_analysis': {
+      'fr': 'Conseil personnalisé du Coach Ryze',
+      'en': 'Personalized advice from Coach Ryze',
+    },
+    'analysis_error': {
+      'fr': 'Erreur lors de la génération de l\'analyse',
+      'en': 'Error generating analysis',
+    },
   };
 
   static String get(String key, String languageCode) {
