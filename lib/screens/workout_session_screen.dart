@@ -120,7 +120,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     
     // Initialiser les controllers pour tous les exercices existants
     for (final exercise in _exercises) {
-      _initializeControllersForExercise(exercise.exercise.id, exercise.sets.length);
+      _initializeControllersForExercise(exercise);
     }
     
     _startTimer();
@@ -396,14 +396,14 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
 
   void _addExercise(String name, String muscleGroup, {int setsCount = 3, String? exerciseId, bool isCustom = false}) {
     final resolvedId = exerciseId ?? DateTime.now().millisecondsSinceEpoch.toString();
-    
+
     setState(() {
       // Créer les séries vides
-      final sets = List.generate(setsCount, (index) => 
+      final sets = List.generate(setsCount, (index) =>
         const ExerciseSet(weight: 0, reps: 0, isCompleted: false)
       );
-      
-      _exercises.add(WorkoutExercise(
+
+      final newExercise = WorkoutExercise(
         exercise: Exercise(
           id: resolvedId,
           name: name,
@@ -411,11 +411,13 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
           isCustom: isCustom || exerciseId == null,
         ),
         sets: sets,
-      ));
-      
+      );
+
+      _exercises.add(newExercise);
+
       // Initialiser les controllers pour cet exercice
-      _initializeControllersForExercise(resolvedId, setsCount);
-      
+      _initializeControllersForExercise(newExercise);
+
       // Si c'est le premier exercice, le sélectionner
       if (_exercises.length == 1) {
         _currentExerciseIndex = 0;
@@ -426,24 +428,35 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     });
   }
   
-  void _initializeControllersForExercise(String exerciseId, int setsCount) {
+  void _initializeControllersForExercise(WorkoutExercise exercise) {
+    final exerciseId = exercise.exercise.id;
     _weightControllers[exerciseId] = {};
     _repsControllers[exerciseId] = {};
     _weightFocusNodes[exerciseId] = {};
     _repsFocusNodes[exerciseId] = {};
     _setKeys[exerciseId] = {};
-    
-    for (int i = 0; i < setsCount; i++) {
-      _weightControllers[exerciseId]![i] = TextEditingController();
-      _repsControllers[exerciseId]![i] = TextEditingController();
-      
+
+    for (int i = 0; i < exercise.sets.length; i++) {
+      final set = exercise.sets[i];
+
+      // Pré-remplir les controllers avec les valeurs de l'IA si disponibles
+      final weightController = TextEditingController(
+        text: set.weight > 0 ? set.weight.toString() : '',
+      );
+      final repsController = TextEditingController(
+        text: set.reps > 0 ? set.reps.toString() : '',
+      );
+
+      _weightControllers[exerciseId]![i] = weightController;
+      _repsControllers[exerciseId]![i] = repsController;
+
       // Créer les FocusNodes avec listeners
       final weightFocus = FocusNode();
       final repsFocus = FocusNode();
-      
+
       weightFocus.addListener(() => _onFieldFocusChanged(i, weightFocus.hasFocus));
       repsFocus.addListener(() => _onFieldFocusChanged(i, repsFocus.hasFocus));
-      
+
       _weightFocusNodes[exerciseId]![i] = weightFocus;
       _repsFocusNodes[exerciseId]![i] = repsFocus;
       _setKeys[exerciseId]![i] = GlobalKey();
@@ -909,51 +922,135 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                     
                     const SizedBox(height: 24),
 
-                    // Barre de recherche + bouton filtre
+                    // Barre de recherche
+                    TextField(
+                      controller: searchController,
+                      decoration: InputDecoration(
+                        hintText: 'workout_search_create_exercise'.tr(LocalizationService.instance.currentLanguageCode),
+                        prefixIcon: const Icon(LucideIcons.search, size: 20),
+                        filled: true,
+                        fillColor: const Color(0xFFF8FAFC),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Ligne de filtres de groupes musculaires défilable
                     Row(
                       children: [
+                        // Bouton "Tout" pour déselectionner tous les filtres
+                        if (selectedMuscleFilters.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 6),
+                            child: GestureDetector(
+                              onTap: () {
+                                setModalState(() {
+                                  selectedMuscleFilters.clear();
+                                  filterExercises();
+                                });
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEF4444),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      LucideIcons.x,
+                                      size: 12,
+                                      color: Colors.white,
+                                    ),
+                                    const SizedBox(width: 3),
+                                    Text(
+                                      locService.isFrench ? 'Tout' : 'All',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+
+                        // Liste défilable des groupes musculaires
                         Expanded(
-                          child: TextField(
-                            controller: searchController,
-                            decoration: InputDecoration(
-                              hintText: 'workout_search_create_exercise'.tr(LocalizationService.instance.currentLanguageCode),
-                              prefixIcon: const Icon(LucideIcons.search, size: 20),
-                              filled: true,
-                              fillColor: const Color(0xFFF8FAFC),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide.none,
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 14,
-                              ),
-                            ),
-                          ),
-                        ),
+                          child: SizedBox(
+                            height: 30,
+                            child: ListView.builder(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: availableMuscleGroups.length,
+                              itemBuilder: (context, index) {
+                                final group = availableMuscleGroups[index];
+                                final isSelected = selectedMuscleFilters.contains(group);
 
-                        const SizedBox(width: 12),
-
-                        // Bouton filtre par groupe musculaire
-                        IconButton(
-                          onPressed: () {
-                            debugPrint('🟡 FILTRE CLICKED dans workout_session_screen!');
-                            _openFilterModal(context, setModalState, availableMuscleGroups, selectedMuscleFilters, (newFilters) {
-                              selectedMuscleFilters = newFilters;
-                              filterExercises();
-                            });
-                          },
-                          icon: const Icon(
-                            LucideIcons.settings,
-                            size: 20,
-                            color: Color(0xFF0B132B),
-                          ),
-                          style: IconButton.styleFrom(
-                            backgroundColor: const Color(0xFFF1F5F9),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
+                                return Padding(
+                                  padding: EdgeInsets.only(
+                                    right: index < availableMuscleGroups.length - 1 ? 6 : 0,
+                                  ),
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      setModalState(() {
+                                        if (isSelected) {
+                                          selectedMuscleFilters.remove(group);
+                                        } else {
+                                          selectedMuscleFilters.add(group);
+                                        }
+                                        filterExercises();
+                                      });
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 6,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: isSelected
+                                            ? const Color(0xFF0B132B)
+                                            : const Color(0xFFF8FAFC),
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(
+                                          color: isSelected
+                                              ? const Color(0xFF0B132B)
+                                              : const Color(0xFFE2E8F0),
+                                          width: 1,
+                                        ),
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          group,
+                                          style: TextStyle(
+                                            color: isSelected
+                                                ? Colors.white
+                                                : const Color(0xFF64748B),
+                                            fontSize: 12,
+                                            fontWeight: isSelected
+                                                ? FontWeight.w600
+                                                : FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
                             ),
-                            padding: const EdgeInsets.all(12),
                           ),
                         ),
                       ],
@@ -961,50 +1058,21 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
 
                     const SizedBox(height: 12),
 
-                    // Affichage des filtres actifs
-                    if (selectedMuscleFilters.isNotEmpty)
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: selectedMuscleFilters.map((filter) {
-                          return Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF0B132B),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  filter,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                const SizedBox(width: 4),
-                                GestureDetector(
-                                  onTap: () {
-                                    setModalState(() {
-                                      selectedMuscleFilters.remove(filter);
-                                      filterExercises();
-                                    });
-                                  },
-                                  child: const Icon(
-                                    Icons.close,
-                                    size: 14,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }).toList(),
-                      ),
+                    // Indicateur du nombre d'exercices trouvés
+                    Row(
+                      children: [
+                        Text(
+                          '${filteredExercises.length} ${locService.isFrench ? 'exercice${filteredExercises.length > 1 ? 's' : ''} trouvé${filteredExercises.length > 1 ? 's' : ''}' : 'exercise${filteredExercises.length > 1 ? 's' : ''} found'}',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF64748B),
+                          ),
+                        ),
+                      ],
+                    ),
 
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
 
                     // Bouton pour créer un exercice custom si pas de résultats
                     if (searchController.text.isNotEmpty && filteredExercises.isEmpty)

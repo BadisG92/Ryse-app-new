@@ -3801,6 +3801,28 @@ class AppTranslations {
       'fr': 'Erreur lors de la génération de l\'analyse',
       'en': 'Error generating analysis',
     },
+
+    // AI Workout Generation
+    'ai_workout_button': {
+      'fr': 'Séance IA',
+      'en': 'AI Workout',
+    },
+    'ai_workout_title': {
+      'fr': 'Séance IA',
+      'en': 'AI Workout',
+    },
+    'ai_workout_generated_session': {
+      'fr': 'Séance générée par IA',
+      'en': 'AI Generated Workout',
+    },
+    'ai_workout_error_unknown': {
+      'fr': 'Erreur lors de la génération de la séance',
+      'en': 'Error generating workout',
+    },
+    'coach_ryze_personalized': {
+      'fr': 'Personnalisé',
+      'en': 'Personalized',
+    },
   };
 
   static String get(String key, String languageCode) {

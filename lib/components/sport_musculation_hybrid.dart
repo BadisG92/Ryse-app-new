@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'ui/custom_card.dart';
 import 'ui/workout_widgets.dart';
@@ -6,6 +7,7 @@ import 'ui/exercise_sets_widget.dart';
 import '../models/sport_models.dart';
 import '../bottom_sheets/program_selection_bottom_sheet.dart';
 import '../screens/workout_session_screen.dart';
+import '../screens/ai_workout_generator_screen.dart';
 import '../services/workout_service.dart';
 import '../services/translations.dart';
 import '../services/localization_service.dart';
@@ -63,8 +65,8 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
               ),
               
               const SizedBox(height: 16),
-              
-              // Grille 1x2 avec les 2 boutons
+
+              // Grille 1x3 avec les 3 boutons
               Row(
                 children: [
                   // Bouton séance manuelle
@@ -76,9 +78,9 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
                       onTap: _showManualSessionFlow,
                     ),
                   ),
-                  
+
                   const SizedBox(width: 12),
-                  
+
                   // Bouton séance guidée
                   Expanded(
                     child: _buildSessionTypeButton(
@@ -86,6 +88,16 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
                       title: 'workout_guided_session'.tr(locService.currentLanguageCode),
                       subtitle: '',
                       onTap: _showProgramsModal,
+                    ),
+                  ),
+
+                  const SizedBox(width: 12),
+
+                  // Bouton Coach Ryze (avec logo SVG)
+                  Expanded(
+                    child: _buildCoachRyzeButton(
+                      title: locService.isFrench ? 'Coach Ryze' : 'Coach Ryze',
+                      onTap: _navigateToAIWorkoutGenerator,
                     ),
                   ),
                 ],
@@ -113,6 +125,7 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
           border: Border.all(color: const Color(0xFFE2E8F0)),
         ),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Container(
               width: 48,
@@ -124,16 +137,98 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
               child: Icon(icon, color: Colors.white, size: 24),
             ),
             const SizedBox(height: 12),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF1A1A1A),
+            SizedBox(
+              height: 36,
+              child: Center(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1A1A1A),
+                    height: 1.2,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                ),
               ),
-              textAlign: TextAlign.center,
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCoachRyzeButton({
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return Consumer<LocalizationService>(
+      builder: (context, locService, _) => GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0B132B),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Center(
+                  child: SvgPicture.asset(
+                    'assets/images/logo_solo.svg',
+                    width: 24,
+                    height: 24,
+                    colorFilter: const ColorFilter.mode(
+                      Colors.white,
+                      BlendMode.srcIn,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 36,
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Coach Ryze',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1A1A1A),
+                          height: 1.2,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'coach_ryze_personalized'.tr(locService.currentLanguageCode),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF0B132B),
+                          height: 1.2,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -340,6 +435,18 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
 
   void _showManualSessionFlow() {
     _showSessionNameModal();
+  }
+
+  void _navigateToAIWorkoutGenerator() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const AIWorkoutGeneratorScreen(),
+      ),
+    ).then((_) {
+      // Rafraîchir la page au retour
+      _refreshPage();
+    });
   }
 
   void _showSessionNameModal() {

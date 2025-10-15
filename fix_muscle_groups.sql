@@ -1,0 +1,51 @@
+-- Fix muscle_group_fr translations based on muscle_group_en
+-- Total translations: 34
+-- Generated automatically
+
+UPDATE exercises
+SET muscle_group_fr = CASE muscle_group_en
+  WHEN 'Abs' THEN 'Abdominaux'
+  WHEN 'Back' THEN 'Dos'
+  WHEN 'Biceps' THEN 'Biceps'
+  WHEN 'Calves' THEN 'Mollets'
+  WHEN 'Cardio' THEN 'Cardio'
+  WHEN 'Chest' THEN 'Pectoraux'
+  WHEN 'Core' THEN 'Tronc'
+  WHEN 'Custom' THEN 'Personnalisé'
+  WHEN 'Forearms' THEN 'Avant-bras'
+  WHEN 'Front Shoulders' THEN 'Avant des épaules'
+  WHEN 'Full Body' THEN 'Corps entier'
+  WHEN 'Glutes' THEN 'Fessiers'
+  WHEN 'Hamstrings' THEN 'Ischio-jambiers'
+  WHEN 'Hip Flexors' THEN 'Fléchisseurs de la hanche'
+  WHEN 'Inner Thighs' THEN 'Intérieur des cuisses'
+  WHEN 'Lats' THEN 'Dorsaux'
+  WHEN 'Legs' THEN 'Jambes'
+  WHEN 'Lower Abs' THEN 'Abdominaux inférieurs'
+  WHEN 'Lower Back' THEN 'Bas du dos'
+  WHEN 'Lower Chest' THEN 'Bas des pectoraux'
+  WHEN 'Neck' THEN 'Cou'
+  WHEN 'Obliques' THEN 'Obliques'
+  WHEN 'Other' THEN 'Autre'
+  WHEN 'Outer Thighs' THEN 'Extérieur des cuisses'
+  WHEN 'Quads' THEN 'Quadriceps'
+  WHEN 'Rear Shoulders' THEN 'Arrière des épaules'
+  WHEN 'Shoulders' THEN 'Épaules'
+  WHEN 'Side Shoulders' THEN 'Épaules latérales'
+  WHEN 'Traps' THEN 'Trapèzes'
+  WHEN 'Triceps' THEN 'Triceps'
+  WHEN 'Upper Abs' THEN 'Abdominaux supérieurs'
+  WHEN 'Upper Back' THEN 'Haut du dos'
+  WHEN 'Upper Chest' THEN 'Haut des pectoraux'
+  ELSE muscle_group_fr
+END
+WHERE muscle_group_en IS NOT NULL;
+
+-- Verification: Check distinct muscle groups
+SELECT DISTINCT
+  muscle_group_en,
+  muscle_group_fr,
+  COUNT(*) as exercise_count
+FROM exercises
+GROUP BY muscle_group_en, muscle_group_fr
+ORDER BY muscle_group_en, muscle_group_fr;
