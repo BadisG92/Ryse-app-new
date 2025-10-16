@@ -6,6 +6,9 @@ import '../services/exercise_ai_analysis_service.dart';
 import '../services/localization_service.dart';
 import '../services/translations.dart';
 
+// Export des classes du service pour utilisation dans le widget
+export '../services/exercise_ai_analysis_service.dart' show ExerciseAnalysis, ExerciseRecommendation;
+
 class ExerciseAiAnalysisWidget extends StatefulWidget {
   final String exerciseName;
   final String userId;
@@ -25,7 +28,7 @@ class ExerciseAiAnalysisWidget extends StatefulWidget {
 class _ExerciseAiAnalysisWidgetState extends State<ExerciseAiAnalysisWidget> {
   bool _isLoading = false;
   bool _isExpanded = true;
-  String? _analysisText;
+  ExerciseAnalysis? _analysis;
   DateTime? _analysisTimestamp;
   bool _hasNewSessions = false;
   String? _errorMessage;
@@ -74,7 +77,7 @@ class _ExerciseAiAnalysisWidgetState extends State<ExerciseAiAnalysisWidget> {
 
     if (cached != null) {
       setState(() {
-        _analysisText = cached.text;
+        _analysis = cached.analysis;
         _analysisTimestamp = cached.timestamp;
       });
 
@@ -114,14 +117,14 @@ class _ExerciseAiAnalysisWidgetState extends State<ExerciseAiAnalysisWidget> {
       await ExerciseAiAnalysisService.cacheAnalysis(
         userId: widget.userId,
         exerciseName: widget.exerciseName,
-        analysisText: analysis,
+        analysis: analysis,
         sessionCount: widget.sessionHistory.length,
       );
 
       if (!mounted) return;
 
       setState(() {
-        _analysisText = analysis;
+        _analysis = analysis;
         _analysisTimestamp = DateTime.now();
         _hasNewSessions = false;
         _isExpanded = true;
@@ -179,109 +182,6 @@ class _ExerciseAiAnalysisWidgetState extends State<ExerciseAiAnalysisWidget> {
     }
   }
 
-  /// Construit le texte formaté avec support du markdown pour **gras**
-  /// et ajoute automatiquement "Analyse :" et "Recommandations" en gras
-  Widget _buildFormattedText(String text) {
-    final spans = <TextSpan>[];
-
-    // Supprimer les préambules type "Analyse de ta progression sur..." au début
-    text = text.replaceAll(RegExp(r'^Analyse de ta progression sur [^:]+:\s*', multiLine: false), '');
-    text = text.replaceAll(RegExp(r'^Analysis of your progression on [^:]+:\s*', multiLine: false), '');
-
-    // Ajouter "Analyse :" en gras au début si pas déjà présent
-    if (!text.startsWith('**Analyse') && !text.startsWith('**Analysis')) {
-      if (text.startsWith('Analyse :') || text.startsWith('Analyse:')) {
-        // Si "Analyse :" existe déjà, le mettre en gras
-        text = text.replaceFirst(RegExp(r'^Analyse\s*:'), '**Analyse** :');
-      } else if (text.startsWith('Analysis :') || text.startsWith('Analysis:')) {
-        text = text.replaceFirst(RegExp(r'^Analysis\s*:'), '**Analysis** :');
-      } else {
-        // Sinon, ajouter "Analyse :" au début
-        // Détecter la langue (si "Recommandations" ou "Recommendations")
-        if (text.contains('Recommandations')) {
-          text = '**Analyse** :\n\n$text';
-        } else {
-          text = '**Analysis** :\n\n$text';
-        }
-      }
-    }
-
-    // Entourer "Recommandations" avec ** et ajouter : s'il manque
-    text = text.replaceAll(RegExp(r'(?<!\*\*)Recommandations(?!\*\*)(?!\s*:)'), '**Recommandations** :');
-    text = text.replaceAll(RegExp(r'(?<!\*\*)Recommendations(?!\*\*)(?!\s*:)'), '**Recommendations** :');
-    // Si déjà en gras mais sans :
-    text = text.replaceAll(RegExp(r'\*\*Recommandations\*\*(?!\s*:)'), '**Recommandations** :');
-    text = text.replaceAll(RegExp(r'\*\*Recommendations\*\*(?!\s*:)'), '**Recommendations** :');
-
-    // Ajouter des bullet points avant chaque recommandation
-    // Détecte les lignes après "Recommandations :" qui commencent par une majuscule et ne sont pas vides
-    final lines = text.split('\n');
-    bool afterRecommandations = false;
-    for (int i = 0; i < lines.length; i++) {
-      final line = lines[i].trim();
-
-      // Détecter si on est après "Recommandations :"
-      if (line.contains('**Recommandations**') || line.contains('**Recommendations**')) {
-        afterRecommandations = true;
-        continue;
-      }
-
-      // Si on est après recommandations et que la ligne commence par une lettre majuscule et ne commence pas déjà par •
-      if (afterRecommandations && line.isNotEmpty && !line.startsWith('•') && RegExp(r'^[A-ZÀÂÄÇÉÈÊËÏÎÔÙÛÜ]').hasMatch(line)) {
-        lines[i] = '• ${lines[i].trimLeft()}';
-      }
-    }
-    text = lines.join('\n');
-
-    final regex = RegExp(r'\*\*(.*?)\*\*');
-    int lastIndex = 0;
-
-    for (final match in regex.allMatches(text)) {
-      // Ajouter le texte avant le match
-      if (match.start > lastIndex) {
-        spans.add(TextSpan(
-          text: text.substring(lastIndex, match.start),
-          style: const TextStyle(
-            fontSize: 14,
-            height: 1.7,
-            color: Color(0xFF334155),
-            letterSpacing: 0.2,
-          ),
-        ));
-      }
-
-      // Ajouter le texte en gras (sans les **)
-      spans.add(TextSpan(
-        text: match.group(1),
-        style: const TextStyle(
-          fontSize: 15,
-          height: 1.7,
-          color: Color(0xFF0B132B),
-          letterSpacing: 0.2,
-          fontWeight: FontWeight.w700,
-        ),
-      ));
-
-      lastIndex = match.end;
-    }
-
-    // Ajouter le reste du texte
-    if (lastIndex < text.length) {
-      spans.add(TextSpan(
-        text: text.substring(lastIndex),
-        style: const TextStyle(
-          fontSize: 14,
-          height: 1.7,
-          color: Color(0xFF334155),
-          letterSpacing: 0.2,
-        ),
-      ));
-    }
-
-    return RichText(
-      text: TextSpan(children: spans),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -295,7 +195,7 @@ class _ExerciseAiAnalysisWidgetState extends State<ExerciseAiAnalysisWidget> {
         }
 
         // État 1 : Bouton initial (pas d'analyse en cache)
-        if (_analysisText == null && !_isLoading) {
+        if (_analysis == null && !_isLoading) {
           return _buildInitialButton(languageCode);
         }
 
@@ -305,7 +205,7 @@ class _ExerciseAiAnalysisWidgetState extends State<ExerciseAiAnalysisWidget> {
         }
 
         // État 3 : Affichage de l'analyse
-        if (_analysisText != null) {
+        if (_analysis != null) {
           return _buildAnalysisCard(languageCode);
         }
 
@@ -545,18 +445,24 @@ class _ExerciseAiAnalysisWidgetState extends State<ExerciseAiAnalysisWidget> {
   }
 
   Widget _buildAnalysisCard(String languageCode) {
+    final isFrench = languageCode == 'fr';
+
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8.0),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF0B132B), // Bleu foncé Ryze
+            Color(0xFF1E293B), // Slate foncé
+          ],
         ),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF0B132B).withOpacity(0.25),
+            color: const Color(0xFF0B132B).withOpacity(0.3),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -565,126 +471,206 @@ class _ExerciseAiAnalysisWidgetState extends State<ExerciseAiAnalysisWidget> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header premium avec gradient
-          InkWell(
-            onTap: () {
-              setState(() {
-                _isExpanded = !_isExpanded;
-              });
-            },
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Row(
-                children: [
-                  // Logo Ryze en blanc sur fond gradient
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: SvgPicture.asset(
-                      'assets/images/logo_solo.svg',
-                      width: 20,
-                      height: 20,
-                      colorFilter: const ColorFilter.mode(
-                        Colors.white,
-                        BlendMode.srcIn,
-                      ),
-                    ),
+          // Titre principal avec logo : "Coach Ryze"
+          Row(
+            children: [
+              SizedBox(
+                width: 28,
+                height: 28,
+                child: SvgPicture.asset(
+                  'assets/images/logo_solo.svg',
+                  colorFilter: const ColorFilter.mode(
+                    Colors.white,
+                    BlendMode.srcIn,
                   ),
-                  const SizedBox(width: 12),
-                  // Titre en blanc
-                  Expanded(
-                    child: Text(
-                      'ai_analysis'.tr(languageCode),
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Coach Ryze',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
                   ),
+                ),
+              ),
 
-                  // Bouton refresh stylé (TEMPORAIRE: toujours visible pour les tests)
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: IconButton(
-                      icon: const Icon(Icons.refresh_rounded, size: 18),
-                      color: Colors.white,
-                      onPressed: _generateAnalysis,
-                      padding: const EdgeInsets.all(6),
-                      constraints: const BoxConstraints(),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
+              // Bouton refresh
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: IconButton(
+                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                  color: Colors.white,
+                  onPressed: _generateAnalysis,
+                  padding: const EdgeInsets.all(6),
+                  constraints: const BoxConstraints(),
+                ),
+              ),
+            ],
+          ),
 
-                  // Icon expand/collapse stylé
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      _isExpanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
-                      color: Colors.white,
-                      size: 24,
-                    ),
-                  ),
-                ],
+          const SizedBox(height: 20),
+
+          // Séparateur blanc (symétrique)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 40),
+            child: Container(
+              height: 1,
+              color: Colors.white.withOpacity(0.3),
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          // Titre "Analyse" en blanc dans le gradient
+          Row(
+            children: [
+              Icon(
+                Icons.insights_rounded,
+                size: 22,
+                color: Colors.white,
+              ),
+              const SizedBox(width: 10),
+              Text(
+                isFrench ? 'Analyse' : 'Analysis',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          // Bloc blanc d'analyse (sans titre dedans)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              _analysis!.analysis,
+              style: TextStyle(
+                fontSize: 15,
+                height: 1.6,
+                color: const Color(0xFF334155),
+                fontWeight: FontWeight.w400,
               ),
             ),
           ),
 
-          // Contenu (si expanded)
-          if (_isExpanded) ...[
-            Container(
-              margin: const EdgeInsets.all(16),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Texte de l'analyse avec support markdown pour gras
-                  _buildFormattedText(_analysisText!),
+          if (_analysis!.recommendations.isNotEmpty) ...[
+            const SizedBox(height: 20),
 
-                  // Timestamp stylé
-                  if (_analysisTimestamp != null) ...[
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(8),
+            // Séparateur blanc (symétrique)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40),
+              child: Container(
+                height: 1,
+                color: Colors.white.withOpacity(0.3),
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // Titre "Recommandations" en blanc dans le gradient
+            Row(
+              children: [
+                Icon(
+                  Icons.lightbulb_outline_rounded,
+                  size: 22,
+                  color: Colors.white,
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  isFrench ? 'Recommandations' : 'Recommendations',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 12),
+
+            // Cards de recommandations individuelles
+            ..._analysis!.recommendations.asMap().entries.map((entry) {
+              final recommendation = entry.value;
+
+              return Padding(
+                padding: EdgeInsets.only(bottom: 12),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        recommendation.title,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF0B132B),
+                        ),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.schedule_rounded,
-                            size: 12,
-                            color: Colors.grey.shade600,
+                      if (recommendation.description.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          recommendation.description,
+                          style: TextStyle(
+                            fontSize: 14,
+                            height: 1.5,
+                            color: const Color(0xFF64748B),
                           ),
-                          const SizedBox(width: 4),
-                          Text(
-                            _getTimeAgo(_analysisTimestamp!, languageCode),
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.grey.shade600,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ],
+
+          // Timestamp stylé
+          if (_analysisTimestamp != null) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.schedule_rounded,
+                    size: 12,
+                    color: Colors.white.withOpacity(0.7),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    _getTimeAgo(_analysisTimestamp!, languageCode),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.white.withOpacity(0.7),
+                      fontWeight: FontWeight.w500,
                     ),
-                  ],
+                  ),
                 ],
               ),
             ),

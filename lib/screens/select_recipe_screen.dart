@@ -60,18 +60,42 @@ class _SelectRecipeScreenState extends State<SelectRecipeScreen> {
   void initState() {
     super.initState();
     _initializeFilters();
+    _initializeRecipes();
+  }
+
+  // Initialise les recettes et écoute les changements
+  void _initializeRecipes() async {
+    // Forcer l'initialisation
+    RecipeData.initialize();
+
+    // Attendre le chargement initial
+    await Future.delayed(const Duration(milliseconds: 100));
+
+    // Vérifier périodiquement si le chargement est terminé
+    int attempts = 0;
+    while (RecipeData.isLoading && attempts < 50) {
+      await Future.delayed(const Duration(milliseconds: 100));
+      attempts++;
+    }
+
+    // Forcer un setState pour rafraîchir l'UI
+    if (mounted) {
+      setState(() {
+        print('✅ Recettes chargées: ${RecipeData.allRecipes.length}');
+      });
+    }
   }
 
   // Initialise les filtres depuis RecipeFilters.advancedFilters
   void _initializeFilters() async {
     print('🔍 INIT: Initialisation des filtres depuis RecipeFilters');
-    
+
     // Forcer l'initialisation de RecipeFilters
     RecipeFilters.initialize();
-    
+
     // Attendre un peu que les filtres se chargent
     await Future.delayed(const Duration(milliseconds: 500));
-    
+
     setState(() {
       // Créer un Set vide pour chaque catégorie disponible
       for (final category in RecipeFilters.advancedFilters.keys) {
@@ -206,23 +230,27 @@ class _SelectRecipeScreenState extends State<SelectRecipeScreen> {
                   
                   // Liste des recettes
                   Expanded(
-                    child: ListView.builder(
-                      itemCount: filteredRecipes.length,
-                      itemBuilder: (context, index) {
-                        final recipe = filteredRecipes[index];
-                        return Column(
-                          children: [
-                            _buildRecipeCard(recipe),
-                            if (index < filteredRecipes.length - 1)
-                              const Divider(
-                                color: Color(0xFFE2E8F0),
-                                height: 1,
-                                thickness: 1,
+                    child: RecipeData.isLoading
+                        ? _buildLoadingPlaceholder()
+                        : filteredRecipes.isEmpty
+                            ? _buildEmptyState()
+                            : ListView.builder(
+                                itemCount: filteredRecipes.length,
+                                itemBuilder: (context, index) {
+                                  final recipe = filteredRecipes[index];
+                                  return Column(
+                                    children: [
+                                      _buildRecipeCard(recipe),
+                                      if (index < filteredRecipes.length - 1)
+                                        const Divider(
+                                          color: Color(0xFFE2E8F0),
+                                          height: 1,
+                                          thickness: 1,
+                                        ),
+                                    ],
+                                  );
+                                },
                               ),
-                          ],
-                        );
-                      },
-                    ),
                   ),
                 ],
               ),
@@ -324,6 +352,107 @@ class _SelectRecipeScreenState extends State<SelectRecipeScreen> {
         selectedAdvancedFilters[filterData['key']]?.remove(filterData['label']);
       }
     });
+  }
+
+  Widget _buildLoadingPlaceholder() {
+    return ListView.builder(
+      itemCount: 6,
+      itemBuilder: (context, index) {
+        return Container(
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+          child: Row(
+            children: [
+              // Placeholder image
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE2E8F0),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Placeholder texte
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      height: 16,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE2E8F0),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      height: 12,
+                      width: 150,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      height: 12,
+                      width: 200,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Consumer<LocalizationService>(
+          builder: (context, locService, child) => Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                LucideIcons.chefHat,
+                size: 64,
+                color: Color(0xFFCBD5E1),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                locService.currentLanguageCode == 'fr'
+                    ? 'Aucune recette trouvée'
+                    : 'No recipes found',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF64748B),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                locService.currentLanguageCode == 'fr'
+                    ? 'Essayez de modifier vos filtres'
+                    : 'Try adjusting your filters',
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF94A3B8),
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void _openRecipeDetails(Recipe recipe) {

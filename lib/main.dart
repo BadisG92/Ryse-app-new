@@ -18,6 +18,7 @@ import 'core/infrastructure/startup/priority_service_initializer.dart';
 import 'services/global_state_manager.dart';
 import 'services/navigation_preloader.dart';
 import 'services/exercise_ai_analysis_service.dart';
+import 'services/coach_ryze_nutrition_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,8 +32,9 @@ void main() async {
   // NOUVEAU: Initialiser le state manager global
   await GlobalStateManager.instance.initialize();
 
-  // Initialiser le service d'analyse IA avec Gemini
+  // Initialiser les services d'analyse IA avec Gemini
   ExerciseAiAnalysisService.initialize();
+  CoachRyzeNutritionService.initialize();
 
   // Phases 2 & 3: Non-bloquantes, en arrière-plan
   unawaited(initializer.initializeImportantServices());

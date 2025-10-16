@@ -38,6 +38,23 @@ class ExerciseAiAnalysisService {
 
     try {
       final data = json.decode(cached);
+
+      // Vérifier si c'est l'ancien format (text) ou le nouveau (analysis object)
+      if (data['text'] != null && data['analysis'] == null) {
+        // Ancien format: migrer vers le nouveau
+        print('⚠️ Migration ancien format vers nouveau format');
+        final analysis = ExerciseAnalysis(
+          analysis: data['text'] as String,
+          recommendations: [], // Pas de recommandations dans l'ancien format
+        );
+        return CachedAnalysis(
+          analysis: analysis,
+          timestamp: DateTime.parse(data['timestamp'] as String),
+          sessionCount: data['sessionCount'] as int,
+        );
+      }
+
+      // Nouveau format
       final analysis = CachedAnalysis.fromJson(data);
 
       // PAS de vérification d'expiration - le cache reste indéfiniment
@@ -45,6 +62,7 @@ class ExerciseAiAnalysisService {
 
       return analysis;
     } catch (e) {
+      print('⚠️ Erreur décodage cache: $e');
       return null;
     }
   }
@@ -66,7 +84,7 @@ class ExerciseAiAnalysisService {
   }
 
   /// Génère une nouvelle analyse IA
-  static Future<String> generateAnalysis({
+  static Future<ExerciseAnalysis> generateAnalysis({
     required String exerciseName,
     required List<Map<String, dynamic>> sessionHistory,
     required String languageCode,
@@ -129,26 +147,77 @@ class ExerciseAiAnalysisService {
       );
     }
 
-    return response.text!;
+    // Parser le JSON
+    try {
+      // Nettoyer la réponse (enlever les backticks markdown si présents)
+      String cleanedResponse = response.text!.trim();
+      if (cleanedResponse.startsWith('```json')) {
+        cleanedResponse = cleanedResponse.substring(7);
+      }
+      if (cleanedResponse.startsWith('```')) {
+        cleanedResponse = cleanedResponse.substring(3);
+      }
+      if (cleanedResponse.endsWith('```')) {
+        cleanedResponse = cleanedResponse.substring(0, cleanedResponse.length - 3);
+      }
+      cleanedResponse = cleanedResponse.trim();
+
+      final jsonData = json.decode(cleanedResponse) as Map<String, dynamic>;
+
+      // Extraire l'analyse
+      final analysisText = jsonData['analysis'] as String? ?? '';
+
+      // Extraire les recommandations
+      final recommendations = <ExerciseRecommendation>[];
+      if (jsonData['recommendations'] is List) {
+        final recosList = jsonData['recommendations'] as List<dynamic>;
+        for (final reco in recosList) {
+          if (reco is Map<String, dynamic>) {
+            final title = reco['title'] as String? ?? '';
+            final description = reco['description'] as String? ?? '';
+            if (title.isNotEmpty) {
+              recommendations.add(ExerciseRecommendation(
+                title: title,
+                description: description,
+              ));
+            }
+          }
+        }
+      }
+
+      print('✅ JSON parsé avec succès: analyse + ${recommendations.length} recommandations');
+
+      return ExerciseAnalysis(
+        analysis: analysisText,
+        recommendations: recommendations,
+      );
+    } catch (e) {
+      print('⚠️ Erreur de parsing JSON, fallback sur texte brut: $e');
+      // Fallback: retourner le texte brut comme analyse
+      return ExerciseAnalysis(
+        analysis: response.text!,
+        recommendations: [],
+      );
+    }
   }
 
   /// Sauvegarde l'analyse en cache
   static Future<void> cacheAnalysis({
     required String userId,
     required String exerciseName,
-    required String analysisText,
+    required ExerciseAnalysis analysis,
     required int sessionCount,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final key = _getCacheKey(userId, exerciseName);
 
-    final analysis = CachedAnalysis(
-      text: analysisText,
+    final cached = CachedAnalysis(
+      analysis: analysis,
       timestamp: DateTime.now(),
       sessionCount: sessionCount,
     );
 
-    await prefs.setString(key, json.encode(analysis.toJson()));
+    await prefs.setString(key, json.encode(cached.toJson()));
   }
 
   /// Supprime le cache pour un exercice (utilisé seulement en cas de régénération)
@@ -205,26 +274,42 @@ class ExerciseAiAnalysisService {
       buffer.writeln('');
     }
 
-    buffer.writeln('STRUCTURE OBLIGATOIRE :');
+    buffer.writeln('FORMAT DE RÉPONSE OBLIGATOIRE (JSON) :');
+    buffer.writeln('Réponds UNIQUEMENT avec ce format JSON exact :');
     buffer.writeln('');
-    buffer.writeln('1. ANALYSE (40-50 mots max)');
-    buffer.writeln('   - NE PAS écrire "Analyse de ta progression sur [exercice]"');
-    buffer.writeln('   - Commence DIRECTEMENT par le constat : "Tu progresses..." ou "Tes performances..."');
-    buffer.writeln('   - Pas de préambule, pas d\'introduction');
-    buffer.writeln('   - Constat principal en 1 phrase (progression/plateau/régression)');
-    buffer.writeln('   - Observation clé en 1-2 phrases (variations, patterns)');
-    buffer.writeln('   - Évite les dates précises (dis "récemment", "au début")');
-    buffer.writeln('   - Évite de détailler chaque séance');
+    buffer.writeln('{');
+    buffer.writeln('  "analysis": "Ton analyse en 40-50 mots",');
+    buffer.writeln('  "recommendations": [');
+    buffer.writeln('    {');
+    buffer.writeln('      "title": "Titre court (3-5 mots)",');
+    buffer.writeln('      "description": "Description en 20-25 mots"');
+    buffer.writeln('    },');
+    buffer.writeln('    {');
+    buffer.writeln('      "title": "Titre court (3-5 mots)",');
+    buffer.writeln('      "description": "Description en 20-25 mots"');
+    buffer.writeln('    }');
+    buffer.writeln('  ]');
+    buffer.writeln('}');
     buffer.writeln('');
-    buffer.writeln('2. RECOMMANDATIONS (2 conseils × 25 mots max)');
-    buffer.writeln('   - Titre court (3-4 mots) : Action concrète avec chiffres');
-    buffer.writeln('   - Chaque conseil doit être actionnable immédiatement');
-    buffer.writeln('   ');
-    buffer.writeln('   Exemples selon situation :');
-    buffer.writeln('   - Si progression → "Augmente de [X]kg à la prochaine séance"');
-    buffer.writeln('   - Si plateau → "Change le format : passe à [X] séries de [Y] reps"');
-    buffer.writeln('   - Si fatigue → "Réduis à [X]kg pendant 1 semaine puis reprends"');
-    buffer.writeln('   - Si débutant → "Maintiens [X]kg pendant 2 séances puis augmente"');
+    buffer.writeln('RÈGLES POUR L\'ANALYSE :');
+    buffer.writeln('- NE PAS écrire "Analyse de ta progression sur [exercice]"');
+    buffer.writeln('- Commence DIRECTEMENT par le constat : "Tu progresses..." ou "Tes performances..."');
+    buffer.writeln('- Pas de préambule, pas d\'introduction');
+    buffer.writeln('- Constat principal en 1 phrase (progression/plateau/régression)');
+    buffer.writeln('- Observation clé en 1-2 phrases (variations, patterns)');
+    buffer.writeln('- Évite les dates précises (dis "récemment", "au début")');
+    buffer.writeln('- 40-50 mots maximum');
+    buffer.writeln('');
+    buffer.writeln('RÈGLES POUR LES RECOMMANDATIONS :');
+    buffer.writeln('- 2 recommandations exactement');
+    buffer.writeln('- Titre court (3-5 mots) : Action concrète avec chiffres si possible');
+    buffer.writeln('- Description actionnable (20-25 mots)');
+    buffer.writeln('');
+    buffer.writeln('Exemples selon situation :');
+    buffer.writeln('- Si progression → "Augmente de [X]kg à la prochaine séance"');
+    buffer.writeln('- Si plateau → "Change le format : passe à [X] séries de [Y] reps"');
+    buffer.writeln('- Si fatigue → "Réduis à [X]kg pendant 1 semaine puis reprends"');
+    buffer.writeln('- Si débutant → "Maintiens [X]kg pendant 2 séances puis augmente"');
     buffer.writeln('');
     buffer.writeln('STYLE :');
     buffer.writeln('- Ton direct et pro, tutoiement');
@@ -232,33 +317,23 @@ class ExerciseAiAnalysisService {
     buffer.writeln('- Chiffres précis (poids, reps, pourcentages)');
     buffer.writeln('- Motivant mais réaliste');
     buffer.writeln('- AUCUN emoji, AUCUN symbole (📊 💡 •)');
-    buffer.writeln('- Pas de mots de remplissage ("en effet", "notamment", "par exemple")');
+    buffer.writeln('- Pas de mots de remplissage');
     buffer.writeln('');
-    buffer.writeln('FORMAT :');
-    buffer.writeln('- Paragraphes de 2 lignes max');
-    buffer.writeln('- Saut de ligne entre chaque paragraphe');
-    buffer.writeln('- Le mot "Recommandations" en gras avec **');
-    buffer.writeln('- Saut de ligne entre chaque recommandation');
+    buffer.writeln('EXEMPLE DE RÉPONSE JSON :');
     buffer.writeln('');
-    buffer.writeln('EXEMPLE DE FEEDBACK IDÉAL (85 mots) :');
-    buffer.writeln('');
-    buffer.writeln('Tes performances montrent de l\'irrégularité avec des variations importantes de charge.');
-    buffer.writeln('');
-    buffer.writeln('Tu es passé de charges élevées à plus légères, ce qui peut indiquer une gestion de fatigue ou un manque de structure dans ta planification.');
-    buffer.writeln('');
-    buffer.writeln('**Recommandations**');
-    buffer.writeln('');
-    buffer.writeln('Planifie ta progression : Augmente de 2.5kg toutes les 2 séances en gardant 3 séries de 15-20 reps.');
-    buffer.writeln('');
-    buffer.writeln('Technique avant charge : Maîtrise parfaitement le mouvement avec charge modérée avant d\'augmenter. Focus sur la contraction complète.');
-    buffer.writeln('');
-    buffer.writeln('VÉRIFICATION FINALE :');
-    buffer.writeln('Compte tes mots avant de répondre. Si >100 mots, supprime :');
-    buffer.writeln('1. Les détails de séances individuelles');
-    buffer.writeln('2. Les explications longues dans les recommandations');
-    buffer.writeln('3. Les phrases d\'introduction inutiles');
-    buffer.writeln('');
-    buffer.writeln('Réponds maintenant avec maximum 100 mots.');
+    buffer.writeln('{');
+    buffer.writeln('  "analysis": "Tes performances montrent de l\'irrégularité avec des variations importantes de charge. Tu es passé de charges élevées à plus légères, ce qui peut indiquer une gestion de fatigue ou un manque de structure.",');
+    buffer.writeln('  "recommendations": [');
+    buffer.writeln('    {');
+    buffer.writeln('      "title": "Planifie ta progression",');
+    buffer.writeln('      "description": "Augmente de 2.5kg toutes les 2 séances en gardant 3 séries de 15-20 reps."');
+    buffer.writeln('    },');
+    buffer.writeln('    {');
+    buffer.writeln('      "title": "Technique avant charge",');
+    buffer.writeln('      "description": "Maîtrise parfaitement le mouvement avec charge modérée avant d\'augmenter. Focus sur la contraction complète."');
+    buffer.writeln('    }');
+    buffer.writeln('  ]');
+    buffer.writeln('}');
 
     return buffer.toString();
   }
@@ -297,26 +372,42 @@ class ExerciseAiAnalysisService {
       buffer.writeln('');
     }
 
-    buffer.writeln('MANDATORY STRUCTURE:');
+    buffer.writeln('MANDATORY RESPONSE FORMAT (JSON):');
+    buffer.writeln('Respond ONLY with this exact JSON format:');
     buffer.writeln('');
-    buffer.writeln('1. ANALYSIS (40-50 words max)');
-    buffer.writeln('   - DO NOT write "Analysis of your progression on [exercise]"');
-    buffer.writeln('   - Start DIRECTLY with the observation: "You\'re progressing..." or "Your performance..."');
-    buffer.writeln('   - No preamble, no introduction');
-    buffer.writeln('   - Main observation in 1 sentence (progression/plateau/regression)');
-    buffer.writeln('   - Key observation in 1-2 sentences (variations, patterns)');
-    buffer.writeln('   - Avoid precise dates (say "recently", "initially")');
-    buffer.writeln('   - Avoid detailing each session');
+    buffer.writeln('{');
+    buffer.writeln('  "analysis": "Your analysis in 40-50 words",');
+    buffer.writeln('  "recommendations": [');
+    buffer.writeln('    {');
+    buffer.writeln('      "title": "Short title (3-5 words)",');
+    buffer.writeln('      "description": "Description in 20-25 words"');
+    buffer.writeln('    },');
+    buffer.writeln('    {');
+    buffer.writeln('      "title": "Short title (3-5 words)",');
+    buffer.writeln('      "description": "Description in 20-25 words"');
+    buffer.writeln('    }');
+    buffer.writeln('  ]');
+    buffer.writeln('}');
     buffer.writeln('');
-    buffer.writeln('2. RECOMMENDATIONS (2 tips × 25 words max)');
-    buffer.writeln('   - Short title (3-4 words): Concrete action with numbers');
-    buffer.writeln('   - Each tip must be immediately actionable');
-    buffer.writeln('   ');
-    buffer.writeln('   Examples by situation:');
-    buffer.writeln('   - If progression → "Increase by [X]lbs next session"');
-    buffer.writeln('   - If plateau → "Change format: switch to [X] sets of [Y] reps"');
-    buffer.writeln('   - If fatigue → "Reduce to [X]lbs for 1 week then resume"');
-    buffer.writeln('   - If beginner → "Maintain [X]lbs for 2 sessions then increase"');
+    buffer.writeln('RULES FOR ANALYSIS:');
+    buffer.writeln('- DO NOT write "Analysis of your progression on [exercise]"');
+    buffer.writeln('- Start DIRECTLY with the observation: "You\'re progressing..." or "Your performance..."');
+    buffer.writeln('- No preamble, no introduction');
+    buffer.writeln('- Main observation in 1 sentence (progression/plateau/regression)');
+    buffer.writeln('- Key observation in 1-2 sentences (variations, patterns)');
+    buffer.writeln('- Avoid precise dates (say "recently", "initially")');
+    buffer.writeln('- 40-50 words maximum');
+    buffer.writeln('');
+    buffer.writeln('RULES FOR RECOMMENDATIONS:');
+    buffer.writeln('- Exactly 2 recommendations');
+    buffer.writeln('- Short title (3-5 words): Concrete action with numbers if possible');
+    buffer.writeln('- Actionable description (20-25 words)');
+    buffer.writeln('');
+    buffer.writeln('Examples by situation:');
+    buffer.writeln('- If progression → "Increase by [X]lbs next session"');
+    buffer.writeln('- If plateau → "Change format: switch to [X] sets of [Y] reps"');
+    buffer.writeln('- If fatigue → "Reduce to [X]lbs for 1 week then resume"');
+    buffer.writeln('- If beginner → "Maintain [X]lbs for 2 sessions then increase"');
     buffer.writeln('');
     buffer.writeln('STYLE:');
     buffer.writeln('- Direct and pro tone');
@@ -324,33 +415,23 @@ class ExerciseAiAnalysisService {
     buffer.writeln('- Precise numbers (weight, reps, percentages)');
     buffer.writeln('- Motivating but realistic');
     buffer.writeln('- NO emojis, NO symbols (📊 💡 •)');
-    buffer.writeln('- No filler words ("indeed", "notably", "for example")');
+    buffer.writeln('- No filler words');
     buffer.writeln('');
-    buffer.writeln('FORMAT:');
-    buffer.writeln('- Paragraphs of 2 lines max');
-    buffer.writeln('- Line break between each paragraph');
-    buffer.writeln('- The word "Recommendations" in bold with **');
-    buffer.writeln('- Line break between each recommendation');
+    buffer.writeln('JSON RESPONSE EXAMPLE:');
     buffer.writeln('');
-    buffer.writeln('IDEAL FEEDBACK EXAMPLE (85 words):');
-    buffer.writeln('');
-    buffer.writeln('Your performance shows irregularity with significant load variations.');
-    buffer.writeln('');
-    buffer.writeln('You went from high loads to lighter ones, which may indicate fatigue management or lack of structure in your planning.');
-    buffer.writeln('');
-    buffer.writeln('**Recommendations**');
-    buffer.writeln('');
-    buffer.writeln('Plan your progression: Increase by 5lbs every 2 sessions while keeping 3 sets of 15-20 reps.');
-    buffer.writeln('');
-    buffer.writeln('Technique before load: Master the movement perfectly with moderate load before increasing. Focus on full contraction.');
-    buffer.writeln('');
-    buffer.writeln('FINAL CHECK:');
-    buffer.writeln('Count your words before answering. If >100 words, delete:');
-    buffer.writeln('1. Individual session details');
-    buffer.writeln('2. Long explanations in recommendations');
-    buffer.writeln('3. Unnecessary introduction sentences');
-    buffer.writeln('');
-    buffer.writeln('Answer now with maximum 100 words.');
+    buffer.writeln('{');
+    buffer.writeln('  "analysis": "Your performance shows irregularity with significant load variations. You went from high loads to lighter ones, which may indicate fatigue management or lack of structure in your planning.",');
+    buffer.writeln('  "recommendations": [');
+    buffer.writeln('    {');
+    buffer.writeln('      "title": "Plan your progression",');
+    buffer.writeln('      "description": "Increase by 5lbs every 2 sessions while keeping 3 sets of 15-20 reps."');
+    buffer.writeln('    },');
+    buffer.writeln('    {');
+    buffer.writeln('      "title": "Technique before load",');
+    buffer.writeln('      "description": "Master the movement perfectly with moderate load before increasing. Focus on full contraction."');
+    buffer.writeln('    }');
+    buffer.writeln('  ]');
+    buffer.writeln('}');
 
     return buffer.toString();
   }
@@ -360,26 +441,70 @@ class ExerciseAiAnalysisService {
   }
 }
 
+/// Modèle pour l'analyse d'exercice
+class ExerciseAnalysis {
+  final String analysis;
+  final List<ExerciseRecommendation> recommendations;
+
+  ExerciseAnalysis({
+    required this.analysis,
+    required this.recommendations,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'analysis': analysis,
+    'recommendations': recommendations.map((r) => r.toJson()).toList(),
+  };
+
+  factory ExerciseAnalysis.fromJson(Map<String, dynamic> json) => ExerciseAnalysis(
+    analysis: json['analysis'] as String? ?? '',
+    recommendations: (json['recommendations'] as List<dynamic>?)
+        ?.map((r) => ExerciseRecommendation.fromJson(r as Map<String, dynamic>))
+        .toList() ?? [],
+  );
+}
+
+/// Modèle pour une recommandation d'exercice
+class ExerciseRecommendation {
+  final String title;
+  final String description;
+
+  ExerciseRecommendation({
+    required this.title,
+    required this.description,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'title': title,
+    'description': description,
+  };
+
+  factory ExerciseRecommendation.fromJson(Map<String, dynamic> json) => ExerciseRecommendation(
+    title: json['title'] as String? ?? '',
+    description: json['description'] as String? ?? '',
+  );
+}
+
 /// Modèle pour l'analyse en cache
 class CachedAnalysis {
-  final String text;
+  final ExerciseAnalysis analysis;
   final DateTime timestamp;
   final int sessionCount;
 
   CachedAnalysis({
-    required this.text,
+    required this.analysis,
     required this.timestamp,
     required this.sessionCount,
   });
 
   Map<String, dynamic> toJson() => {
-    'text': text,
+    'analysis': analysis.toJson(),
     'timestamp': timestamp.toIso8601String(),
     'sessionCount': sessionCount,
   };
 
   factory CachedAnalysis.fromJson(Map<String, dynamic> json) => CachedAnalysis(
-    text: json['text'] as String,
+    analysis: ExerciseAnalysis.fromJson(json['analysis'] as Map<String, dynamic>? ?? {}),
     timestamp: DateTime.parse(json['timestamp'] as String),
     sessionCount: json['sessionCount'] as int,
   );

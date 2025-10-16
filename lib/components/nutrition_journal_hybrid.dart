@@ -18,6 +18,8 @@ import '../services/localization_service.dart';
 import '../services/translations.dart';
 import 'ui/custom_snackbar.dart';
 import '../bottom_sheets/add_meal_bottom_sheet.dart';
+import 'coach_ryze_nutrition_button.dart';
+import '../services/workout_service.dart';
 
 class NutritionJournalHybrid extends StatefulWidget {
   const NutritionJournalHybrid({super.key});
@@ -155,16 +157,14 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
         consumedAt: selectedDate,
         mealId: selectedMeal.id,
       ).then((success) {
-        if (success) {
-          // Recharger les données après succès
-          _loadMealsForDate(selectedDate);
-        } else {
+        if (!success) {
           // Rollback si erreur
           OptimisticUpdateService.rollback();
           if (mounted) {
             CustomSnackbarService.showError(context, 'Erreur lors de l\'ajout de l\'aliment');
           }
         }
+        // ✅ OPTIMISATION: Ne pas recharger ici, le stream listener s'en charge automatiquement
       });
       
     } else if (_pendingMealType != null && _pendingMealId != null) {
@@ -185,16 +185,14 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
         consumedAt: selectedDate,
         mealId: _pendingMealId!,
       ).then((success) {
-        if (success) {
-          // Recharger les données après succès
-          _loadMealsForDate(selectedDate);
-        } else {
+        if (!success) {
           // Rollback si erreur
           OptimisticUpdateService.rollback();
           if (mounted) {
             CustomSnackbarService.showError(context, 'Erreur lors de l\'ajout de l\'aliment');
           }
         }
+        // ✅ OPTIMISATION: Ne pas recharger ici, le stream listener s'en charge automatiquement
       });
       
     } else {
@@ -386,9 +384,8 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
                         );
 
                         if (success) {
-                          // Recharger les données
-                          await _loadMealsForDate(selectedDate);
-                          
+                          // ✅ OPTIMISATION: Ne pas recharger ici, le stream listener s'en charge automatiquement
+
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
@@ -471,9 +468,8 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
                           );
 
                           if (success) {
-                            // Recharger les données
-                            await _loadMealsForDate(selectedDate);
-                            
+                            // ✅ OPTIMISATION: Ne pas recharger ici, le stream listener s'en charge automatiquement
+
                             if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
@@ -695,6 +691,56 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
                           ],
                         ),
                       ),
+
+                      // Coach Ryze Nutrition Button
+                      FutureBuilder<Map<String, dynamic>>(
+                        future: _getWorkoutInfo(),
+                        builder: (context, snapshot) {
+                          final user = AuthService().currentUser;
+                          if (user == null) return const SizedBox.shrink();
+
+                          final workoutInfo = snapshot.data ?? {
+                            'hasWorkout': false,
+                            'workoutType': null,
+                            'caloriesBurned': null,
+                            'workoutTime': null,
+                          };
+
+                          // Calculer les totaux pour la journée
+                          int totalCalories = 0;
+                          double totalProteins = 0.0;
+                          double totalCarbs = 0.0;
+                          double totalFats = 0.0;
+
+                          for (final meal in meals) {
+                            for (final item in meal.items) {
+                              totalCalories += item.calories;
+                              totalProteins += item.proteins;
+                              totalCarbs += item.carbs;
+                              totalFats += item.fats;
+                            }
+                          }
+
+                          final calorieTarget = user.dailyCalories ?? 2500;
+                          final macroTargets = _getMacroTargets(calorieTarget);
+
+                          return CoachRyzeNutritionButton(
+                            userId: user.id,
+                            date: selectedDate,
+                            todayMeals: meals,
+                            calorieTarget: calorieTarget,
+                            proteinTarget: macroTargets['protein']!,
+                            carbsTarget: macroTargets['carbs']!,
+                            fatsTarget: macroTargets['fats']!,
+                            waterIntake: 0, // TODO: Intégrer water intake si disponible
+                            hasWorkoutToday: workoutInfo['hasWorkout'] as bool,
+                            workoutType: workoutInfo['workoutType'] as String?,
+                            caloriesBurned: workoutInfo['caloriesBurned'] as int?,
+                            workoutTime: workoutInfo['workoutTime'] as DateTime?,
+                          );
+                        },
+                      ),
+
                       // Repas existants
                         ...meals
                             .where((meal) => meal.items.isNotEmpty)
@@ -709,8 +755,7 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
                               _showAddFoodBottomSheet();
                             },
                                 onFoodRemoved: () {
-                                  // Recharger les repas après suppression
-                                  _loadMealsForDate(selectedDate);
+                                  // ✅ OPTIMISATION: Ne pas recharger ici, le stream listener s'en charge automatiquement
                                 },
                           ),
                         );
@@ -926,6 +971,32 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
         ),
       ],
     );
+  }
+
+  /// Récupérer les informations de workout pour la date sélectionnée
+  Future<Map<String, dynamic>> _getWorkoutInfo() async {
+    // Pour l'instant, retourner false (pas de workout)
+    // TODO: Implémenter la récupération des workouts depuis Supabase
+    return {
+      'hasWorkout': false,
+      'workoutType': null,
+      'caloriesBurned': null,
+      'workoutTime': null,
+    };
+  }
+
+  /// Calculer les objectifs macros basés sur l'utilisateur
+  Map<String, double> _getMacroTargets(int calorieTarget) {
+    // Répartition standard : 30% protéines, 40% glucides, 30% lipides
+    final proteinCalories = calorieTarget * 0.30;
+    final carbsCalories = calorieTarget * 0.40;
+    final fatsCalories = calorieTarget * 0.30;
+
+    return {
+      'protein': proteinCalories / 4, // 4 kcal par gramme
+      'carbs': carbsCalories / 4,     // 4 kcal par gramme
+      'fats': fatsCalories / 9,       // 9 kcal par gramme
+    };
   }
 
   // ===== BOTTOM SHEETS INTÉGRÉS =====

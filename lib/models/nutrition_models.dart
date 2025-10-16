@@ -5,15 +5,17 @@ class Meal {
   final String? id; // UUID unique pour chaque bloc de repas
   final String time;
   final String name;
+  final String? mealType; // 'breakfast', 'lunch', 'dinner', 'snack' - optionnel pour compatibilité
   final List<FoodItem> items;
 
   Meal({
     this.id,
     required this.time,
     required this.name,
+    this.mealType,
     required this.items,
   });
-  
+
   void addItem(FoodItem item) {
     items.add(item);
   }
@@ -26,6 +28,7 @@ class FoodItem {
   final double proteins;
   final double carbs;
   final double fats;
+  final double fiber; // Fibres
   final String portion;
   final bool isModified;
   final bool hasModifiedMacros;
@@ -43,6 +46,7 @@ class FoodItem {
     this.proteins = 0.0,
     this.carbs = 0.0,
     this.fats = 0.0,
+    this.fiber = 0.0,
     required this.portion,
     this.isModified = false,
     this.hasModifiedMacros = false,
@@ -61,6 +65,7 @@ class FoodItem {
     double? proteins,
     double? carbs,
     double? fats,
+    double? fiber,
     String? portion,
     bool? isModified,
     bool? hasModifiedMacros,
@@ -78,6 +83,7 @@ class FoodItem {
       proteins: proteins ?? this.proteins,
       carbs: carbs ?? this.carbs,
       fats: fats ?? this.fats,
+      fiber: fiber ?? this.fiber,
       portion: portion ?? this.portion,
       isModified: isModified ?? this.isModified,
       hasModifiedMacros: hasModifiedMacros ?? this.hasModifiedMacros,
@@ -101,6 +107,7 @@ class FoodItem {
     'proteins': proteins,
     'carbs': carbs,
     'fats': fats,
+    'fiber': fiber,
     'portion': portion,
     'isModified': isModified,
     'hasModifiedMacros': hasModifiedMacros,
