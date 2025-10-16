@@ -1471,6 +1471,50 @@ class AppTranslations {
       'fr': 'Ajouter une recette',
       'en': 'Add a recipe',
     },
+    'scan_barcode_subtitle': {
+      'fr': 'Scanner le code-barres d\'un produit',
+      'en': 'Scan a product barcode',
+    },
+    'manual_entry_subtitle': {
+      'fr': 'Rechercher un aliment dans la base',
+      'en': 'Search for food in the database',
+    },
+    'ai_scan_subtitle': {
+      'fr': 'Analyser votre plat avec l\'IA',
+      'en': 'Analyze your dish with AI',
+    },
+    'create_recipe_subtitle': {
+      'fr': 'Créer une nouvelle recette',
+      'en': 'Create a new recipe',
+    },
+    'keep_going': {
+      'fr': 'Continuez vos efforts !',
+      'en': 'Keep going!',
+    },
+    'excellent_work': {
+      'fr': 'Excellent travail !',
+      'en': 'Excellent work!',
+    },
+    'good_rhythm': {
+      'fr': 'Bon rythme !',
+      'en': 'Good rhythm!',
+    },
+    'goal_calories': {
+      'fr': 'Atteindre mes calories',
+      'en': 'Reach my calories',
+    },
+    'goal_water': {
+      'fr': 'Boire',
+      'en': 'Drink',
+    },
+    'goal_meals': {
+      'fr': 'Suivre mes repas aujourd\'hui',
+      'en': 'Track my meals today',
+    },
+    'goal_sport': {
+      'fr': 'Faire du sport',
+      'en': 'Exercise',
+    },
     'add_to_existing_or_new_meal': {
       'fr': 'Voulez-vous ajouter à un repas existant ou créer un nouveau repas ?',
       'en': 'Do you want to add to an existing meal or create a new meal?',

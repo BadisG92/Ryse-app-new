@@ -496,7 +496,6 @@ class _ExerciseAiAnalysisWidgetState extends State<ExerciseAiAnalysisWidget> {
                   ),
                 ),
               ),
-
               // Bouton refresh
               Container(
                 decoration: BoxDecoration(

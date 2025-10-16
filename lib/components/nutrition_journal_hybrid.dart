@@ -1064,7 +1064,7 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
               FoodOptionWidget(
                 icon: LucideIcons.pencil,
                 title: 'manual_entry'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
-                subtitle: 'search_add_manually'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
+                subtitle: 'manual_entry_subtitle'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
                 onTap: () {
                   Navigator.pop(context);
                   _showManualEntryBottomSheet();
@@ -1076,7 +1076,7 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
               FoodOptionWidget(
                 icon: LucideIcons.camera,
                 title: 'Scanner avec l\'IA',
-                subtitle: 'take_photo_of_dish'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
+                subtitle: 'ai_scan_subtitle'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
                 onTap: () {
                   Navigator.pop(context);
                   // ✅ Navigation directe avec informations du repas sélectionné
@@ -1127,7 +1127,7 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
               FoodOptionWidget(
                 icon: LucideIcons.chefHat,
                 title: 'my_recipes'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
-                subtitle: 'choose_saved_recipes'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
+                subtitle: 'choose_from_saved_recipes'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
                 onTap: () {
                   Navigator.pop(context);
                   Navigator.push(

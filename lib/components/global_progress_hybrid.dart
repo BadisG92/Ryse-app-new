@@ -27,11 +27,11 @@ class _GlobalProgressState extends State<GlobalProgress> {
 
   // État des données (chargées depuis les services)
   WeightProgress? _weightProgress;
-  WeeklyBalance _weeklyBalance = const WeeklyBalance(items: []); // OPTIMISATION: Initialiser vide pour éviter le flash
-  List<TrackingDay> _trackingDays = const []; // OPTIMISATION: Initialiser vide pour éviter le flash
+  WeeklyBalance _weeklyBalance = const WeeklyBalance(items: []); // Initialiser vide pour éviter le flash
+  List<TrackingDay> _trackingDays = const []; // Initialiser vide pour éviter le flash
   int _completedGoals = 0;
   int _totalGoals = 0;
-  bool _loadingProgress = false;    // OPTIMISATION: Changé de true à false
+  bool _dataLoaded = false;  // Flag pour savoir si les vraies données sont chargées
 
   // Clés de cache pour poids
   static const String _weightCacheKey = 'progress_weight_cache';
@@ -45,32 +45,123 @@ class _GlobalProgressState extends State<GlobalProgress> {
     // OPTIMISATION: Chargement instantané depuis GlobalStateManager
     _loadInitialDataSync();
 
-    // Enrichissement en arrière-plan (non-bloquant)
+    // Charger les vraies données immédiatement
     _loadProgressData();
 
-    // Forcer la mise à jour du compteur d'objectifs
-    DashboardService.refreshGoalsNotifier();
+    // Forcer la mise à jour du compteur d'objectifs (en arrière-plan)
+    Future.delayed(const Duration(milliseconds: 200), () {
+      DashboardService.refreshGoalsNotifier();
+    });
 
     // Écouter les changements de poids
     WeightNotifier.instance.addListener(_onWeightChanged);
   }
 
+  /// Helper pour obtenir le label du jour
+  String _getDayLabel(int weekday) {
+    const translationKeys = ['day_l', 'day_m', 'day_m2', 'day_j', 'day_v', 'day_s', 'day_d'];
+    return translationKeys[weekday - 1].tr(LocalizationService.instance.currentLanguageCode);
+  }
+
   /// NOUVEAU: Chargement synchrone instantané depuis GlobalStateManager et cache
   void _loadInitialDataSync() {
     final globalState = GlobalStateManager.instance;
+    final locService = LocalizationService.instance;
 
     setState(() {
       // Charger les objectifs depuis GlobalStateManager
       final goals = globalState.getDailyGoalsForDashboard();
       _completedGoals = goals.where((g) => g['completed'] == true).length;
       _totalGoals = goals.length;
+
+      // NOUVEAU: Créer un bilan hebdomadaire initial basé sur les données actuelles de GlobalState
+      // Cela donne une estimation instantanée qui sera enrichie par les vraies données
+      _weeklyBalance = _createInitialWeeklyBalance(globalState, locService.currentLanguageCode);
+
+      // NOUVEAU: Créer un tracking hebdomadaire initial basé sur aujourd'hui
+      _trackingDays = _createInitialTrackingDays(globalState, locService.currentLanguageCode);
+
+      // Marquer comme partiellement chargé pour affichage immédiat
+      _dataLoaded = true;
     });
 
     // Charger les données de poids depuis le cache de manière asynchrone mais non-bloquante
     _loadWeightFromCache();
 
-    debugPrint('⚡ GlobalProgress: Données initiales chargées en mode synchrone');
+    debugPrint('⚡ GlobalProgress: Données initiales chargées instantanément');
     debugPrint('   - Objectifs: $_completedGoals/$_totalGoals');
+    debugPrint('   - Bilan items: ${_weeklyBalance.items.length}');
+    debugPrint('   - Tracking days: ${_trackingDays.length}');
+  }
+
+  /// Créer un bilan hebdomadaire initial basé sur les données actuelles
+  WeeklyBalance _createInitialWeeklyBalance(GlobalStateManager state, String langCode) {
+    // Utiliser les données du jour actuel pour estimer la semaine
+    // Ce sera remplacé par les vraies données hebdomadaires
+    final todayCompleted = state.calorieProgress >= 90 ? 1 : 0;
+    final waterCompleted = state.waterProgress >= 90 ? 1 : 0;
+    final mealsRecorded = state.mealsCount > 0 ? state.mealsCount : 0;
+    final sportCompleted = state.sportSessions;
+
+    return WeeklyBalance(
+      items: [
+        BalanceItem(
+          icon: LucideIcons.flame,
+          label: 'calorie_target_reached'.tr(langCode),
+          achieved: todayCompleted * DateTime.now().weekday, // Estimation basée sur aujourd'hui
+          target: 7,
+          unit: 'days'.tr(langCode),
+        ),
+        BalanceItem(
+          icon: LucideIcons.droplet,
+          label: 'hydration_validated'.tr(langCode),
+          achieved: waterCompleted * DateTime.now().weekday, // Estimation
+          target: 7,
+          unit: 'days'.tr(langCode),
+        ),
+        BalanceItem(
+          icon: LucideIcons.utensils,
+          label: 'meals_recorded'.tr(langCode),
+          achieved: mealsRecorded * DateTime.now().weekday, // Estimation
+          target: 21,
+          unit: 'meals'.tr(langCode),
+        ),
+        BalanceItem(
+          icon: LucideIcons.dumbbell,
+          label: 'sport_sessions'.tr(langCode),
+          achieved: sportCompleted, // Nombre réel de séances aujourd'hui
+          target: 4,
+          unit: 'sessions'.tr(langCode),
+        ),
+      ],
+    );
+  }
+
+  /// Créer un tracking hebdomadaire initial basé sur aujourd'hui
+  List<TrackingDay> _createInitialTrackingDays(GlobalStateManager state, String langCode) {
+    final now = DateTime.now();
+    final todayScore = state.calorieProgress >= 90
+        ? TrackingScore.achieved
+        : state.calorieProgress >= 50
+            ? TrackingScore.partial
+            : TrackingScore.missed;
+
+    final todaySport = state.sportSessions > 0
+        ? ['musculation'] // Estimation, sera corrigé par les vraies données
+        : <String>[];
+
+    // Créer les 7 jours avec estimation pour aujourd'hui seulement
+    return List.generate(7, (index) {
+      final date = now.subtract(Duration(days: 6 - index));
+      final isToday = index == 6;
+
+      return TrackingDay(
+        dayLabel: _getDayLabel(date.weekday),
+        date: date,
+        nutritionScore: isToday ? todayScore : TrackingScore.missed,
+        sportActivities: isToday ? todaySport : [],
+      );
+    });
   }
 
   /// Charger les données de poids depuis le cache SharedPreferences
@@ -126,37 +217,51 @@ class _GlobalProgressState extends State<GlobalProgress> {
 
   Future<void> _loadProgressData() async {
     try {
-      debugPrint('🔄 Chargement des données de progression avec cache hebdomadaire...');
+      debugPrint('🔄 Chargement des données de progression en arrière-plan...');
 
-      // S'assurer que le cache est propre pour éviter les conflits de statut
-      ProgressServiceV2.forceRefresh();
+      // NE PAS faire de forceRefresh qui ralentit tout
+      // ProgressServiceV2.forceRefresh(); // SUPPRIMÉ
 
-      // Charger avec le nouveau service optimisé pour les bilans hebdo + données de poids réelles
-      final results = await Future.wait([
-        WeightService.getWeightProgress(),
-        ProgressServiceV2.getWeeklyBalance(),
-        ProgressServiceV2.getWeeklyTracking(),
-      ]);
-
-      final weightProgress = results[0] as WeightProgress;
-
-      setState(() {
-        _weightProgress = weightProgress;
-        _weeklyBalance = results[1] as WeeklyBalance;
-        _trackingDays = results[2] as List<TrackingDay>;
-        _loadingProgress = false;
+      // Charger les données une par une pour un affichage progressif
+      // D'abord le poids (le plus rapide)
+      WeightService.getWeightProgress().then((weightProgress) {
+        if (mounted) {
+          setState(() {
+            _weightProgress = weightProgress;
+          });
+          _saveWeightToCache(weightProgress);
+        }
       });
 
-      // Sauvegarder le poids dans le cache
-      await _saveWeightToCache(weightProgress);
+      // Puis le bilan hebdomadaire
+      ProgressServiceV2.getWeeklyBalance().then((balance) {
+        if (mounted) {
+          setState(() {
+            _weeklyBalance = balance;
+            _dataLoaded = true;  // Marquer que les vraies données sont chargées
+          });
+        }
+      });
 
-      debugPrint('✅ Données de progression chargées avec cache hebdomadaire');
-      debugPrint('   - Bilan hebdomadaire: ${_weeklyBalance.items.length} items');
-      debugPrint('   - Tracking: ${_trackingDays.length} jours');
+      // Enfin le tracking hebdomadaire
+      ProgressServiceV2.getWeeklyTracking().then((tracking) {
+        if (mounted) {
+          setState(() {
+            _trackingDays = tracking;
+            _dataLoaded = true;  // Marquer que les vraies données sont chargées
+          });
+        }
+      });
+
+      debugPrint('✅ Chargement des données de progression lancé en arrière-plan');
 
     } catch (e) {
       debugPrint('❌ Erreur lors du chargement des données de progression: $e');
-      setState(() => _loadingProgress = false);
+      if (mounted) {
+        setState(() {
+          _dataLoaded = true;  // Même en cas d'erreur, on ne veut pas rester bloqué en chargement
+        });
+      }
     }
   }
 
@@ -214,23 +319,20 @@ class _GlobalProgressState extends State<GlobalProgress> {
                           )
                         : _buildLoadingSection(),
                       
-                      // OPTIMISATION: Ne pas afficher les sections si elles sont vides pour éviter le flash
-                      if (_weeklyBalance.items.isNotEmpty || _loadingProgress) ...[
+                      // Section du bilan global hebdomadaire
+                      const SizedBox(height: 16),
+                      if (!_dataLoaded)
+                        _buildBalanceLoadingSection()
+                      else if (_weeklyBalance.items.isNotEmpty)
+                        GlobalProgressSectionBuilder.buildBalanceSection(_weeklyBalance),
+
+                      // Section de tracking hebdomadaire (nutrition + sport)
+                      if (!_dataLoaded) ...[
                         const SizedBox(height: 16),
-
-                        // Section du bilan global hebdomadaire
-                        _loadingProgress
-                          ? _buildLoadingSection()
-                          : GlobalProgressSectionBuilder.buildBalanceSection(_weeklyBalance),
-                      ],
-
-                      if (_trackingDays.isNotEmpty || _loadingProgress) ...[
+                        _buildBalanceLoadingSection(),  // Réutiliser le même skeleton
+                      ] else if (_trackingDays.isNotEmpty) ...[
                         const SizedBox(height: 16),
-
-                        // Section de tracking hebdomadaire (nutrition + sport)
-                        _loadingProgress
-                          ? _buildLoadingSection()
-                          : GlobalProgressSectionBuilder.buildTrackingSection(_trackingDays),
+                        GlobalProgressSectionBuilder.buildTrackingSection(_trackingDays),
                       ],
                       
                       // Espace en bas pour éviter que le contenu soit coupé
@@ -346,6 +448,81 @@ class _GlobalProgressState extends State<GlobalProgress> {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBalanceLoadingSection() {
+    // Un skeleton loader qui imite la structure de la vraie section
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Titre skeleton
+          Container(
+            width: 150,
+            height: 20,
+            decoration: BoxDecoration(
+              color: Colors.grey[200],
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+          const SizedBox(height: 20),
+          // Skeleton items
+          ...List.generate(3, (index) => Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[200],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 120,
+                        height: 14,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[200],
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        width: double.infinity,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          )),
         ],
       ),
     );

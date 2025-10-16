@@ -680,28 +680,60 @@ class NutritionAnalysisScreen extends StatelessWidget {
   // Obtenir un emoji selon le contenu de la recommandation
   String _getRecommendationEmoji(String recommendation) {
     final lower = recommendation.toLowerCase();
-    if (lower.contains('eau') || lower.contains('hydrat') || lower.contains('water') || lower.contains('bois')) {
-      return '💧';
+
+    // Glucides / Carbohydrates (FR: glucide, EN: carb/carbohydrate)
+    if (lower.contains('glucide') || lower.contains('carb') || lower.contains('carbohydrate') ||
+        lower.contains('pain') || lower.contains('bread') ||
+        lower.contains('céréale') || lower.contains('cereal') ||
+        lower.contains('riz') || lower.contains('rice') ||
+        lower.contains('pâte') || lower.contains('pasta')) {
+      return '🌾';  // Icône de blé pour les glucides
     }
-    if (lower.contains('protéine') || lower.contains('protein') || lower.contains('viande') || lower.contains('yaourt')) {
+
+    // Protéines / Proteins (FR: protéine, EN: protein)
+    if (lower.contains('protéine') || lower.contains('protein') ||
+        lower.contains('viande') || lower.contains('meat') ||
+        lower.contains('poisson') || lower.contains('fish') ||
+        lower.contains('œuf') || lower.contains('egg') ||
+        lower.contains('poulet') || lower.contains('chicken')) {
       return '🍗';
     }
-    if (lower.contains('glucide') || lower.contains('carb') || lower.contains('pain') || lower.contains('céréale')) {
-      return '🍞';
-    }
-    if (lower.contains('lipide') || lower.contains('fat') || lower.contains('huile') || lower.contains('avocat')) {
+
+    // Lipides / Fats (FR: lipide/graisse, EN: fat/lipid)
+    if (lower.contains('lipide') || lower.contains('fat') || lower.contains('lipid') ||
+        lower.contains('graisse') || lower.contains('huile') || lower.contains('oil') ||
+        lower.contains('avocat') || lower.contains('avocado')) {
       return '🥑';
     }
-    if (lower.contains('fruit') || lower.contains('légume') || lower.contains('vegetable') || lower.contains('salade')) {
+
+    // Eau / Water (FR: eau/hydratation, EN: water/hydration)
+    if (lower.contains('eau') || lower.contains('water') ||
+        lower.contains('hydrat') || lower.contains('boire') || lower.contains('drink')) {
+      return '💧';
+    }
+
+    // Fruits et légumes / Fruits and vegetables
+    if (lower.contains('fruit') || lower.contains('légume') || lower.contains('vegetable') ||
+        lower.contains('salade') || lower.contains('salad')) {
       return '🥗';
     }
-    if (lower.contains('repas') || lower.contains('meal') || lower.contains('manger') || lower.contains('petit-déjeuner') || lower.contains('déjeuner')) {
+
+    // Repas / Meals
+    if (lower.contains('repas') || lower.contains('meal') ||
+        lower.contains('manger') || lower.contains('eat') ||
+        lower.contains('déjeuner') || lower.contains('lunch') ||
+        lower.contains('dîner') || lower.contains('dinner')) {
       return '🍽️';
     }
-    if (lower.contains('sport') || lower.contains('workout') || lower.contains('entraînement') || lower.contains('exercice')) {
+
+    // Sport / Exercise
+    if (lower.contains('sport') || lower.contains('workout') || lower.contains('exercise') ||
+        lower.contains('entraînement') || lower.contains('training') ||
+        lower.contains('activité') || lower.contains('activity')) {
       return '💪';
     }
-    return '💡';
+
+    return '🍴';  // Icône par défaut (fourchette et couteau pour alimentation générale)
   }
 
   // Section Métriques améliorées

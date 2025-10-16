@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
+import 'localization_service.dart';
+import 'translations.dart';
 
 /// Gestionnaire d'état global pour synchronisation instantanée entre pages
 /// Résout le problème de latence et de mise à jour non reflétée
@@ -491,10 +493,11 @@ class GlobalStateManager {
   List<dynamic> getDailyGoalsForDashboard() {
     // Import dynamique pour éviter les dépendances circulaires
     // On retourne une liste de Maps que le dashboard peut convertir en DailyGoal
+    final languageCode = LocalizationService.instance.currentLanguageCode;
     return [
       {
         'id': 'calories',
-        'label': 'Atteindre mes calories',
+        'label': 'goal_calories'.tr(languageCode),
         'progress': calorieProgress.toInt(),
         'xp': 50,
         'completed': calorieProgress >= 100,
@@ -504,7 +507,7 @@ class GlobalStateManager {
       },
       {
         'id': 'water',
-        'label': 'Boire',
+        'label': 'goal_water'.tr(languageCode),
         'progress': waterProgress.toInt(),
         'xp': 30,
         'completed': waterProgress >= 100,
@@ -514,23 +517,23 @@ class GlobalStateManager {
       },
       {
         'id': 'meals',
-        'label': 'Suivre mes repas aujourd\'hui',
+        'label': 'goal_meals'.tr(languageCode),
         'progress': (_mealsCount >= 3) ? 100 : (_mealsCount * 33),
         'xp': 40,
         'completed': _mealsCount >= 3,
         'currentValue': _mealsCount.toDouble(),
         'targetValue': 3.0,
-        'unit': 'repas',
+        'unit': languageCode == 'fr' ? 'repas' : 'meals',
       },
       {
         'id': 'workout',
-        'label': 'Faire une séance aujourd\'hui',
+        'label': 'goal_sport'.tr(languageCode),
         'progress': _sportSessions >= 1 ? 100 : 0,
         'xp': 60,
         'completed': _sportSessions >= 1,
         'currentValue': _sportSessions.toDouble(),
         'targetValue': 1.0,
-        'unit': _sportSessions <= 1 ? 'séance' : 'séances',
+        'unit': languageCode == 'fr' ? (_sportSessions <= 1 ? 'séance' : 'séances') : (_sportSessions <= 1 ? 'session' : 'sessions'),
       },
     ];
   }

@@ -34,7 +34,10 @@ class ExerciseAiAnalysisService {
     final key = _getCacheKey(userId, exerciseName);
     final cached = prefs.getString(key);
 
-    if (cached == null) return null;
+    if (cached == null) {
+      print('📊 Pas d\'analyse en cache pour $exerciseName');
+      return null;
+    }
 
     try {
       final data = json.decode(cached);
@@ -59,6 +62,10 @@ class ExerciseAiAnalysisService {
 
       // PAS de vérification d'expiration - le cache reste indéfiniment
       // Il ne sera supprimé que si une nouvelle séance est ajoutée et qu'on régénère
+      print('✅ Analyse trouvée en cache pour $exerciseName (${analysis.sessionCount} séances)');
+      print('   📅 Créée: ${analysis.timestamp}');
+      print('   ⏰ Âge: ${DateTime.now().difference(analysis.timestamp).inDays} jours');
+      print('   💾 Cette analyse persiste jusqu\'à la prochaine séance');
 
       return analysis;
     } catch (e) {
@@ -218,6 +225,15 @@ class ExerciseAiAnalysisService {
     );
 
     await prefs.setString(key, json.encode(cached.toJson()));
+
+    print('💾 ========== ANALYSE SAUVEGARDÉE ==========');
+    print('📊 Exercice: $exerciseName');
+    print('🔢 Basée sur: ${sessionCount} séances');
+    print('⏰ Timestamp: ${DateTime.now()}');
+    print('✅ Persistance: Jusqu\'à la prochaine séance');
+    print('📱 L\'analyse reste disponible même après fermeture de l\'app');
+    print('🔄 Sera régénérée uniquement si nouvelle séance ajoutée');
+    print('─' * 45);
   }
 
   /// Supprime le cache pour un exercice (utilisé seulement en cas de régénération)
