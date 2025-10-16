@@ -12,7 +12,6 @@ import '../services/localization_service.dart';
 import '../services/translations.dart';
 import '../services/global_state_manager.dart'; // NOUVEAU
 import '../providers/goals_notifier.dart';
-import 'ui/language_switch_buttons.dart';
 import 'ui/refresh_wrapper.dart';
 import 'ui/custom_snackbar.dart';
 import 'ui/global_state_header.dart';
@@ -162,7 +161,6 @@ class _NutritionSectionState extends State<NutritionSection>
                 ),
               ],
             ),
-            const LanguageSwitchButtons(),
           ],
         ),
       ),

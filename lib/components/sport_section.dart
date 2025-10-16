@@ -7,7 +7,6 @@ import 'sport_musculation_hybrid.dart';
 import '../services/dashboard_service.dart';
 import '../services/streak_service.dart';
 import '../services/header_cache_service.dart';
-import 'ui/language_switch_buttons.dart';
 import '../services/translations.dart';
 import '../services/localization_service.dart';
 import 'ui/custom_snackbar.dart';
@@ -196,7 +195,6 @@ class _SportSectionState extends State<SportSection>
                 ),
               ],
             ),
-            const LanguageSwitchButtons(),
           ],
         ),
       ),

@@ -287,7 +287,7 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
         title: 'nutrition'.tr(languageCode),
         icon: LucideIcons.apple,
         stats: {
-          'calories'.tr(languageCode): '${globalState.currentCalories.toInt()}/${globalState.calorieGoal.toInt()} kcal',
+          'calories'.tr(languageCode): '${globalState.currentCalories.toInt()} kcal',
           'water'.tr(languageCode): '${globalState.currentWaterL.toStringAsFixed(1)}L',
         },
         gradientColors: const [Color(0xFF0B132B), Color(0xFF1C2951)],
@@ -882,25 +882,32 @@ class NutritionSportTrackingSection extends StatelessWidget {
             const SizedBox(height: 12),
             
             // Stats du module
-            ...module.stats.entries.map((entry) => 
+            ...module.stats.entries.map((entry) =>
               Padding(
                 padding: const EdgeInsets.only(bottom: 6),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      entry.key,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF64748B),
+                    Flexible(
+                      child: Text(
+                        entry.key,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF64748B),
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    Text(
-                      entry.value,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF1A1A1A),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        entry.value,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1A1A1A),
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
