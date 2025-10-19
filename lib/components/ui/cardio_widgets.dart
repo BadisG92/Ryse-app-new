@@ -89,7 +89,7 @@ class _WeeklyStatsSectionState extends State<WeeklyStatsSection> {
                 ],
               ),
               const SizedBox(height: 16),
-              
+
               if (_loading)
                 const Center(child: CircularProgressIndicator())
               else if (_stats != null)
@@ -211,7 +211,7 @@ class _ActivitySelectionSectionState extends State<ActivitySelectionSection> {
                 ],
               ),
               const SizedBox(height: 16),
-              
+
               if (_loading)
                 const Center(child: CircularProgressIndicator())
               else if (_activities.isEmpty)
@@ -225,6 +225,7 @@ class _ActivitySelectionSectionState extends State<ActivitySelectionSection> {
                 GridView.count(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
+                  padding: EdgeInsets.zero,
                   crossAxisCount: 2,
                   mainAxisSpacing: 12,
                   crossAxisSpacing: 12,

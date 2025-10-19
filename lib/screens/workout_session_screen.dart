@@ -207,7 +207,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
   int get _completedSets {
     return _exercises.fold(
       0,
-      (sum, exercise) => sum + exercise.sets.where((set) => set.isCompleted).length,
+      (sum, exercise) => sum + exercise.sets.where((set) => set.isValid).length,
     );
   }
 
@@ -215,7 +215,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     return _exercises.fold(
       0.0,
       (sum, exercise) => sum + exercise.sets
-          .where((set) => set.isCompleted)
+          .where((set) => set.isValid)
           .fold(0.0, (setSum, set) => setSum + (set.weight * set.reps)),
     );
   }

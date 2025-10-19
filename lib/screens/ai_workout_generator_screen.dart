@@ -7,6 +7,7 @@ import '../services/ai_workout_generation_service.dart';
 import '../services/localization_service.dart';
 import '../services/offline_workout_service.dart';
 import '../services/translations.dart';
+import '../services/auth_service.dart';
 import '../models/sport_models.dart';
 import 'workout_session_screen.dart';
 
@@ -209,6 +210,40 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> {
     return isFrench ? 'Coach Ryze - Séance' : 'Coach Ryze - Workout';
   }
 
+  /// Génère un message contextuel basé sur l'heure et l'état de l'utilisateur
+  String _getContextualMessage(bool isFrench, String userName) {
+    final hour = DateTime.now().hour;
+
+    // Message selon l'heure de la journée
+    if (_generatedWorkout != null) {
+      // Si un workout est déjà généré
+      if (isFrench) {
+        return 'Ta séance est prête ! Lance-toi et donne tout 💪';
+      } else {
+        return 'Your workout is ready! Let\'s crush it 💪';
+      }
+    } else {
+      // Aucun workout généré encore
+      if (hour >= 5 && hour < 12) {
+        return isFrench
+          ? 'Prêt à commencer la journée en force ?'
+          : 'Ready to start your day strong?';
+      } else if (hour >= 12 && hour < 18) {
+        return isFrench
+          ? 'C\'est le moment parfait pour t\'entraîner !'
+          : 'Perfect time for a workout!';
+      } else if (hour >= 18 && hour < 22) {
+        return isFrench
+          ? 'Une bonne séance pour finir la journée ?'
+          : 'End your day with a great session?';
+      } else {
+        return isFrench
+          ? 'Motivé pour une séance nocturne ?'
+          : 'Motivated for a late workout?';
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final locService = Provider.of<LocalizationService>(context);
@@ -220,7 +255,7 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(LucideIcons.arrowLeft, color: Color(0xFF0B132B)),
+          icon: const Icon(LucideIcons.chevronLeft, color: Color(0xFF0B132B)),
           onPressed: () {
             // Si en mode édition, sortir du mode édition au lieu de quitter
             if (_isEditMode && _generatedWorkout != null) {
@@ -266,13 +301,63 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> {
   }
 
   Widget _buildGeneratorView(bool isFrench) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Header avec avatar Coach Ryze - Comparaison PNG vs SVG
-          Center(
+    return Consumer<AuthService>(
+      builder: (context, authService, child) {
+        final userName = authService.currentUser?.firstName ?? (isFrench ? 'Champion' : 'Champion');
+        final greeting = isFrench ? 'Salut' : 'Hey';
+        final contextualMessage = _getContextualMessage(isFrench, userName);
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Bulle de bienvenue personnalisée
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF0B132B).withOpacity(0.15),
+                      blurRadius: 20,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '$greeting $userName !',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      contextualMessage,
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: Colors.white.withOpacity(0.9),
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 32),
+
+              // Header avec avatar Coach Ryze - Comparaison PNG vs SVG
+              Center(
             child: Column(
               children: [
                 // Afficher les 2 avatars côte à côte
@@ -656,6 +741,8 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> {
           ),
         ],
       ),
+        );
+      },
     );
   }
 
@@ -663,17 +750,6 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> {
   Widget _buildCompactExerciseDetails(WorkoutExercise workoutEx, bool isFrench) {
     final weights = workoutEx.sets.map((s) => s.weight).toSet().toList();
     weights.sort();
-
-    String weightText = '';
-    if (weights.isNotEmpty && weights.first > 0) {
-      if (weights.length == 1) {
-        weightText = '🏋️ ${weights.first.toStringAsFixed(weights.first.truncateToDouble() == weights.first ? 0 : 1)}kg';
-      } else {
-        final minWeight = weights.first;
-        final maxWeight = weights.last;
-        weightText = '🏋️ ${minWeight.toStringAsFixed(minWeight.truncateToDouble() == minWeight ? 0 : 1)}-${maxWeight.toStringAsFixed(maxWeight.truncateToDouble() == maxWeight ? 0 : 1)}kg';
-      }
-    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
@@ -686,14 +762,27 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> {
             color: Color(0xFF0B132B),
           ),
         ),
-        if (weightText.isNotEmpty) ...[
+        if (weights.isNotEmpty && weights.first > 0) ...[
           const SizedBox(height: 2),
-          Text(
-            weightText,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Color(0xFF64748B),
-            ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                LucideIcons.dumbbell,
+                size: 12,
+                color: Color(0xFF64748B),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                weights.length == 1
+                    ? '${weights.first.toStringAsFixed(weights.first.truncateToDouble() == weights.first ? 0 : 1)}kg'
+                    : '${weights.first.toStringAsFixed(weights.first.truncateToDouble() == weights.first ? 0 : 1)}-${weights.last.toStringAsFixed(weights.last.truncateToDouble() == weights.last ? 0 : 1)}kg',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF64748B),
+                ),
+              ),
+            ],
           ),
         ],
       ],

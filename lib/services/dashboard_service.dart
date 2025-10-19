@@ -79,8 +79,12 @@ class DashboardService {
       final realStreak = await StreakService.getCurrentStreak();
       print('🏆 DashboardService: Streak calculée = $realStreak jours');
 
+      // Capitaliser le nom automatiquement
+      final rawName = response['first_name'] ?? 'Utilisateur';
+      final capitalizedName = rawName.isEmpty ? rawName : rawName[0].toUpperCase() + rawName.substring(1).toLowerCase();
+
       final profile = UserProfile(
-        name: response['first_name'] ?? 'Utilisateur',
+        name: capitalizedName,
         streak: realStreak, // Vraie streak calculée
         todayScore: 85, // TODO: Calculer le vrai score
         todayXP: 250, // TODO: Calculer les vrais XP

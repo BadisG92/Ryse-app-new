@@ -44,16 +44,16 @@ class BottomNavigation extends StatelessWidget {
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
           child: Padding(
-            padding: const EdgeInsets.only(left: 8, right: 8, top: 8, bottom: 16),
+            padding: const EdgeInsets.only(left: 8, right: 8, top: 12, bottom: 20),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: tabs.map((tab) {
                 final isActive = activeTab == tab['id'];
-                
+
                 return GestureDetector(
                   onTap: () => onTabChange(tab['id'] as String),
                   child: Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(12),
                       gradient: isActive

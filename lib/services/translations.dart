@@ -845,12 +845,24 @@ class AppTranslations {
     },
     // Actions rapides
     'add_meal': {
-      'fr': 'Ajouter repas',
-      'en': 'Add meal',
+      'fr': 'Ajouter aliment',
+      'en': 'Add food',
     },
     'scan_food': {
-      'fr': 'Scanner aliment',
+      'fr': 'Scanner un aliment',
       'en': 'Scan food',
+    },
+    'scan_food_subtitle': {
+      'fr': 'Choisissez votre méthode de scan',
+      'en': 'Choose your scanning method',
+    },
+    'scan_dish': {
+      'fr': 'Scanner un plat',
+      'en': 'Scan a dish',
+    },
+    'scan_dish_subtitle': {
+      'fr': 'Analyse automatique',
+      'en': 'Automatic analysis',
     },
     'start_workout': {
       'fr': 'Entraînement',
@@ -1496,8 +1508,8 @@ class AppTranslations {
       'en': 'Add a recipe',
     },
     'scan_barcode_subtitle': {
-      'fr': 'Scanner le code-barres d\'un produit',
-      'en': 'Scan a product barcode',
+      'fr': 'Code-barre produit',
+      'en': 'Product barcode',
     },
     'manual_entry_subtitle': {
       'fr': 'Rechercher un aliment dans la base',

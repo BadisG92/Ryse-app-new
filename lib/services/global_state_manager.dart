@@ -42,6 +42,9 @@ class GlobalStateManager {
   // Streak (série de jours consécutifs)
   int _currentStreak = 0;
 
+  // Informations utilisateur
+  String _userName = 'User';
+
   // NOUVEAU: Données hebdomadaires pour GlobalProgress
   WeeklyBalance? _weeklyBalance;
   List<TrackingDay>? _weeklyTracking;
@@ -67,6 +70,10 @@ class GlobalStateManager {
   double get calorieGoal => _calorieGoal;
   double get waterGoalL => _waterGoalL;
   int get currentStreak => _currentStreak;
+
+  // Getters - Informations utilisateur
+  String get userName => _userName;
+  bool get isPremium => false; // Non utilisé dans l'app
 
   // Getters - Progression (%)
   double get calorieProgress => _calorieGoal > 0 ? (_currentCalories / _calorieGoal * 100).clamp(0, 100) : 0;
@@ -102,13 +109,16 @@ class GlobalStateManager {
 
   /// Initialiser avec les données existantes de Supabase
   Future<void> initialize() async {
-    debugPrint('🚀 GlobalStateManager: Initialisation...');
+    debugPrint('🚀 GlobalStateManager: Initialisation DEBUT...');
 
     try {
       final client = SupabaseConfig.client;
       final user = client.auth.currentUser;
 
+      debugPrint('🔍 User connecté: ${user?.id ?? "AUCUN"}');
+
       if (user != null) {
+        debugPrint('✅ User trouvé, chargement des données...');
         // Charger les données du jour depuis Supabase
         final today = DateTime.now();
         final startOfDay = DateTime(today.year, today.month, today.day);
@@ -148,10 +158,10 @@ class GlobalStateManager {
               .gte('start_time', startOfDay.toIso8601String())
               .lt('start_time', endOfDay.toIso8601String()),
 
-          // Récupérer les objectifs et le streak de l'utilisateur
+          // Récupérer les objectifs, le streak et le prénom de l'utilisateur
           client
               .from('users')
-              .select('daily_calories, daily_water_goal, streak_count')
+              .select('daily_calories, daily_water_goal, streak_count, first_name')
               .eq('id', user.id)
               .single(),
         ]);
@@ -200,11 +210,21 @@ class GlobalStateManager {
           totalCaloriesBurned += (session['calories'] as num?)?.toInt() ?? 0;
         }
 
-        // Traiter les objectifs et streak
+        // Traiter les objectifs, streak et infos utilisateur
         final userProfile = futures[4] as Map<String, dynamic>;
+
+        debugPrint('📝 Profil utilisateur brut: $userProfile');
+
         final dailyCaloriesGoal = (userProfile['daily_calories'] as num?)?.toDouble() ?? 2000;
         final dailyWaterGoalMl = (userProfile['daily_water_goal'] as num?)?.toDouble() ?? 2000;
         final streakCount = (userProfile['streak_count'] as num?)?.toInt() ?? 0;
+        final name = userProfile['first_name'] as String? ?? user.email?.split('@').first ?? 'User';
+
+        debugPrint('📊 Valeurs extraites:');
+        debugPrint('   - dailyCaloriesGoal: $dailyCaloriesGoal (brut: ${userProfile['daily_calories']})');
+        debugPrint('   - dailyWaterGoalMl: $dailyWaterGoalMl (brut: ${userProfile['daily_water_goal']})');
+        debugPrint('   - streakCount: $streakCount');
+        debugPrint('   - name: $name');
 
         // Mettre à jour l'état global
         _currentCalories = totalCalories;
@@ -217,22 +237,29 @@ class GlobalStateManager {
         _sportSessions = totalSessions;
         _sportCaloriesBurned = totalCaloriesBurned;
 
-        // Mettre à jour les objectifs
+        // Mettre à jour les objectifs et infos utilisateur
         _calorieGoal = dailyCaloriesGoal;
         _waterGoalL = dailyWaterGoalMl / 1000.0;
         _currentStreak = streakCount;
+        _userName = name;
 
         debugPrint('✅ GlobalState initialisé:');
+        debugPrint('   👤 Nom: $_userName');
         debugPrint('   📊 ${_currentCalories.toInt()}/${_calorieGoal.toInt()} kcal (${calorieProgress.toInt()}%)');
         debugPrint('   💧 ${_currentWaterL.toStringAsFixed(1)}L/${_waterGoalL.toStringAsFixed(1)}L (${waterProgress.toInt()}%)');
         debugPrint('   🍽️  $_mealsCount repas');
         debugPrint('   🏋️ Sport: ${_workoutCompleted ? "✅" : "❌"} ($_sportSessions séances, $totalCaloriesBurned kcal)');
         debugPrint('   🔥 Streak: $_currentStreak jours');
+      } else {
+        debugPrint('⚠️ AUCUN utilisateur connecté - GlobalState pas initialisé');
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('⚠️ GlobalStateManager init error (non-critique): $e');
+      debugPrint('Stack trace: $stackTrace');
       // Continue sans les données, elles seront chargées par les pages
     }
+
+    debugPrint('🏁 GlobalStateManager: Initialisation TERMINEE');
 
     // Démarrer la vérification du changement de jour
     _startMidnightCheck();
@@ -619,6 +646,13 @@ class GlobalStateManager {
     // Import dynamique pour éviter les dépendances circulaires
     // On retourne une liste de Maps que le dashboard peut convertir en DailyGoal
     final languageCode = LocalizationService.instance.currentLanguageCode;
+
+    debugPrint('📋 getDailyGoalsForDashboard() - État actuel:');
+    debugPrint('   Calories: $_currentCalories / $_calorieGoal kcal');
+    debugPrint('   Eau: $_currentWaterL / $_waterGoalL L');
+    debugPrint('   Repas: $_mealsCount');
+    debugPrint('   Séances sport: $_sportSessions');
+
     return [
       {
         'id': 'calories',

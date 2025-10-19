@@ -108,7 +108,7 @@ class _ExerciseSetsWidgetState extends State<ExerciseSetsWidget> {
                     ),
                   ),
                   Text(
-                    '${widget.workoutExercise.sets.where((set) => set.isCompleted).length}/${widget.workoutExercise.sets.length}',
+                    '${widget.workoutExercise.sets.where((set) => set.isValid).length}/${widget.workoutExercise.sets.length}',
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,

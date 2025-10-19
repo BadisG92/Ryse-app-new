@@ -6,7 +6,12 @@ import 'package:provider/provider.dart';
 /// Widget de header qui écoute GlobalStateManager pour synchronisation instantanée
 /// Remplace l'ancien HeaderCacheService pour une architecture unifiée
 class GlobalStateHeaderWidget extends StatefulWidget {
-  const GlobalStateHeaderWidget({super.key});
+  final bool useGradient;
+
+  const GlobalStateHeaderWidget({
+    super.key,
+    this.useGradient = true,
+  });
 
   @override
   State<GlobalStateHeaderWidget> createState() => _GlobalStateHeaderWidgetState();
@@ -29,13 +34,17 @@ class _GlobalStateHeaderWidgetState extends State<GlobalStateHeaderWidget> with 
     return Container(
       width: double.infinity,
       padding: EdgeInsets.only(top: topInset, left: 12, right: 12),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-        ),
-      ),
+      decoration: widget.useGradient
+          ? const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+            )
+          : const BoxDecoration(
+              color: Colors.transparent,
+            ),
       child: SizedBox(
         height: 48,
         child: Row(

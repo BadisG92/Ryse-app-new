@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:provider/provider.dart';
 import '../../models/sport_models.dart';
 import '../../screens/workout_session_screen.dart';
+import '../../screens/ai_workout_generator_screen.dart';
 import '../../bottom_sheets/program_selection_bottom_sheet.dart';
 import '../../services/workout_service.dart';
+import '../../services/localization_service.dart';
 
 class WorkoutActions {
   static void showMusculationBottomSheet(BuildContext context) {
@@ -56,10 +60,10 @@ class WorkoutActions {
                   color: Color(0xFF64748B),
                 ),
               ),
-              
-              const SizedBox(height: 24),
-              
-              // Les 2 boutons côte à côte
+
+              const SizedBox(height: 16),
+
+              // Les 3 boutons côte à côte
               Row(
                 children: [
                   // Bouton séance manuelle
@@ -70,9 +74,9 @@ class WorkoutActions {
                       onTap: () => startManualSession(context),
                     ),
                   ),
-                  
+
                   const SizedBox(width: 12),
-                  
+
                   // Bouton séance guidée
                   Expanded(
                     child: WorkoutOptionButton(
@@ -81,9 +85,18 @@ class WorkoutActions {
                       onTap: () => showGuidedSessionOptions(context),
                     ),
                   ),
+
+                  const SizedBox(width: 12),
+
+                  // Bouton Coach Ryze
+                  Expanded(
+                    child: CoachRyzeButton(
+                      onTap: () => startAIWorkoutGenerator(context),
+                    ),
+                  ),
                 ],
               ),
-              
+
               const SizedBox(height: 24),
             ],
           ),
@@ -259,6 +272,16 @@ class WorkoutActions {
       ),
     );
   }
+
+  static void startAIWorkoutGenerator(BuildContext context) {
+    Navigator.pop(context); // Fermer le bottom sheet
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const AIWorkoutGeneratorScreen(),
+      ),
+    );
+  }
 }
 
 class WorkoutOptionButton extends StatelessWidget {
@@ -296,14 +319,119 @@ class WorkoutOptionButton extends StatelessWidget {
               child: Icon(icon, color: Colors.white, size: 24),
             ),
             const SizedBox(height: 12),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF1A1A1A),
+            SizedBox(
+              height: 36,
+              child: Center(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1A1A1A),
+                    height: 1.2,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                ),
               ),
-              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class CoachRyzeButton extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const CoachRyzeButton({
+    super.key,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<LocalizationService>(
+      builder: (context, locService, _) => GestureDetector(
+        onTap: onTap,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0B132B),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Center(
+                      child: SvgPicture.asset(
+                        'assets/images/logo_solo.svg',
+                        width: 24,
+                        height: 24,
+                        colorFilter: const ColorFilter.mode(
+                          Colors.white,
+                          BlendMode.srcIn,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    height: 36,
+                    child: Center(
+                      child: Text(
+                        'Coach\nRyze',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1A1A1A),
+                          height: 1.2,
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Bulle "For you" positionnée au-dessus
+            Positioned(
+              top: -10,
+              right: 8,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0B132B),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF0B132B).withOpacity(0.2),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Text(
+                  locService.currentLanguageCode == 'fr' ? 'Pour toi' : 'For you',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
             ),
           ],
         ),

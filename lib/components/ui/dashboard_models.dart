@@ -37,8 +37,118 @@ class UserProfile {
   // Reste de calories
   int get remainingCalories => max(0, dailyCalories - currentCalories);
 
-  // Message de salutation
-  String greetingMessage(String languageCode) => '${'hello'.tr(languageCode)} $name !';
+  // Message de salutation engageant basé sur l'heure et le contexte
+  String greetingMessage(String languageCode) {
+    final hour = DateTime.now().hour;
+    final isFrench = languageCode == 'fr';
+
+    // Selon l'heure de la journée
+    if (hour >= 5 && hour < 12) {
+      // Matin
+      return isFrench ? 'Bon retour $name !' : 'Welcome back $name!';
+    } else if (hour >= 12 && hour < 18) {
+      // Après-midi
+      if (streak >= 7) {
+        return isFrench ? 'Content de te revoir $name !' : 'Great to see you $name!';
+      }
+      return isFrench ? 'Salut $name !' : 'Hey $name!';
+    } else if (hour >= 18 && hour < 22) {
+      // Soirée
+      return isFrench ? 'Bonsoir $name !' : 'Good evening $name!';
+    } else {
+      // Nuit
+      return isFrench ? 'Bonsoir $name !' : 'Hey $name!';
+    }
+  }
+
+  // Message contextuel CTA basé sur l'heure et l'état de l'utilisateur
+  String contextualMessage(String languageCode) {
+    final hour = DateTime.now().hour;
+    final isFrench = languageCode == 'fr';
+    final caloriesProgress = currentCalories / dailyCalories;
+    final hasStartedDay = currentCalories > 0;
+
+    // Note: mealsCount et sportSessions ne sont pas disponibles dans UserProfile
+    // On utilise les données disponibles (calories, score) pour approximer
+
+    // Si l'utilisateur a bien progressé aujourd'hui (≥ 70%)
+    if (todayScore >= 70) {
+      return isFrench
+        ? 'Objectif presque atteint ! Finis ta journée en beauté.'
+        : 'Almost there! Finish your day strong.';
+    }
+
+    // Messages selon l'heure et le contexte
+    if (hour >= 5 && hour < 9) {
+      // Matin (5h - 9h)
+      if (!hasStartedDay) {
+        return isFrench
+          ? 'Enregistre ton petit-déjeuner pour bien démarrer.'
+          : 'Log your breakfast to start strong.';
+      } else {
+        return isFrench
+          ? 'Bon début ! N\'oublie pas de boire de l\'eau.'
+          : 'Great start! Don\'t forget to hydrate.';
+      }
+    } else if (hour >= 9 && hour < 12) {
+      // Milieu de matinée (9h - 12h)
+      if (caloriesProgress < 0.1) {
+        return isFrench
+          ? 'Ajoute ton petit-déjeuner dans le journal.'
+          : 'Add your breakfast to your journal.';
+      } else {
+        return isFrench
+          ? 'Continue comme ça ! Prêt pour une séance de sport ?'
+          : 'Keep it up! Ready for a workout?';
+      }
+    } else if (hour >= 12 && hour < 14) {
+      // Midi (12h - 14h)
+      if (caloriesProgress < 0.3) {
+        return isFrench
+          ? 'C\'est l\'heure ! Scanne ton déjeuner avec l\'IA.'
+          : 'Lunch time! Scan your meal with AI.';
+      } else {
+        return isFrench
+          ? 'Déjeuner enregistré ! Pense à t\'hydrater.'
+          : 'Lunch logged! Remember to drink water.';
+      }
+    } else if (hour >= 14 && hour < 18) {
+      // Après-midi (14h - 18h)
+      if (todayScore < 25) {
+        // Pas de sport fait (approximation)
+        return isFrench
+          ? 'Besoin d\'énergie ? Lance une séance de sport.'
+          : 'Need energy? Start a workout session.';
+      } else {
+        final remaining = dailyCalories - currentCalories;
+        return isFrench
+          ? 'Il te reste ${remaining} kcal à tracker.'
+          : '${remaining} kcal left to track.';
+      }
+    } else if (hour >= 18 && hour < 21) {
+      // Soirée (18h - 21h)
+      if (caloriesProgress < 0.7) {
+        return isFrench
+          ? 'Dîner au programme ? Enregistre-le maintenant.'
+          : 'Dinner planned? Log it now.';
+      } else {
+        return isFrench
+          ? 'Tous tes repas tracés ! Vérifie ton bilan du jour.'
+          : 'All meals logged! Check your daily summary.';
+      }
+    } else {
+      // Nuit (21h - 5h)
+      if (todayScore < 50) {
+        return isFrench
+          ? 'Demain est un nouveau jour ! Prépare ton planning.'
+          : 'Tomorrow is a fresh start! Plan ahead.';
+      } else {
+        return isFrench
+          ? 'Bonne journée ! Prends du repos, tu l\'as mérité.'
+          : 'Great day! Rest well, you earned it.';
+      }
+    }
+  }
 
   // Méthode copyWith pour créer une copie modifiée
   UserProfile copyWith({
@@ -425,30 +535,35 @@ class DashboardData {
   // Actions originales avec pesée pour le dashboard hybrid
   static List<QuickAction> getOriginalActionsWithWeight(UserProfile profile, String languageCode) {
     return [
-      QuickAction(
-        id: 'add_meal',
-        label: 'add_meal'.tr(languageCode),
-        icon: LucideIcons.utensils,
-      ),
-      QuickAction(
-        id: 'add_water',
-        label: 'add_water'.tr(languageCode),
-        icon: LucideIcons.droplets,
-      ),
+      // 1. Prendre une photo
       QuickAction(
         id: 'take_photo',
         label: 'take_photo'.tr(languageCode),
-        icon: (!profile.isPremium && profile.photosUsed >= 3) 
-            ? LucideIcons.lock 
+        icon: (!profile.isPremium && profile.photosUsed >= 3)
+            ? LucideIcons.lock
             : LucideIcons.camera,
         isDisabled: !profile.isPremium && profile.photosUsed >= 3,
         isPremiumRequired: !profile.isPremium && profile.photosUsed >= 3,
       ),
+      // 2. Entraînement
       QuickAction(
         id: 'workout',
         label: 'start_workout'.tr(languageCode),
         icon: LucideIcons.dumbbell,
       ),
+      // 3. Boire
+      QuickAction(
+        id: 'add_water',
+        label: 'add_water'.tr(languageCode),
+        icon: LucideIcons.droplets,
+      ),
+      // 4. Ajouter aliment
+      QuickAction(
+        id: 'add_meal',
+        label: 'add_meal'.tr(languageCode),
+        icon: LucideIcons.utensils,
+      ),
+      // 5. Pesée
       QuickAction(
         id: 'weight_tracking',
         label: 'weight_tracking'.tr(languageCode),

@@ -353,8 +353,6 @@ class _GlobalProgressState extends State<GlobalProgress> {
               ),
             ],
           ),
-          
-          const SizedBox(height: 8),
         ],
       ),
     );

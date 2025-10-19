@@ -930,14 +930,14 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
     );
     final completedSets = _currentExercises.fold<int>(
       0,
-      (sum, exercise) => sum + exercise.sets.where((set) => set.isCompleted).length,
+      (sum, exercise) => sum + exercise.sets.where((set) => set.isValid).length,
     );
-    
-    // Calcul des kilos soulevés (poids × répétitions pour les séries terminées)
+
+    // Calcul des kilos soulevés (poids × répétitions pour toutes les séries valides)
     final totalWeight = _currentExercises.fold<double>(
       0.0,
       (sum, exercise) => sum + exercise.sets
-          .where((set) => set.isCompleted)
+          .where((set) => set.isValid)
           .fold<double>(0.0, (setSum, set) => setSum + (set.weight * set.reps)),
     );
     

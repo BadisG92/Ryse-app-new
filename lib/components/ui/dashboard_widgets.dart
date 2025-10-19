@@ -138,7 +138,7 @@ class _QuickActionsSectionState extends State<QuickActionsSection> {
         _handleAddWater(context);
         break;
       case 'take_photo':
-        _navigateToAIScanner(context);
+        _showPhotoScanOptions(context);
         break;
       case 'cardio':
         _showCardioOptions(context);
@@ -221,11 +221,203 @@ class _QuickActionsSectionState extends State<QuickActionsSection> {
     NutritionQuickActionsSection.showMealSelectionForDashboard(context);
   }
 
+  void _showPhotoScanOptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(24),
+            topRight: Radius.circular(24),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Handle
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE2E8F0),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              Consumer<LocalizationService>(
+                builder: (context, locService, child) => Text(
+                  'scan_food'.tr(locService.currentLanguageCode),
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1A1A1A),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 8),
+
+              Consumer<LocalizationService>(
+                builder: (context, locService, child) => Text(
+                  'scan_food_subtitle'.tr(locService.currentLanguageCode),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF64748B),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // Les 2 boutons côte à côte
+              Row(
+                children: [
+                  // Bouton Scanner un plat
+                  Expanded(
+                    child: Consumer<LocalizationService>(
+                      builder: (context, locService, child) => _buildScanOption(
+                        context,
+                        icon: LucideIcons.camera,
+                        title: 'scan_dish'.tr(locService.currentLanguageCode),
+                        subtitle: 'scan_dish_subtitle'.tr(locService.currentLanguageCode),
+                        onTap: () {
+                          Navigator.pop(context);
+                          _navigateToAIScanner(context);
+                        },
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(width: 16),
+
+                  // Bouton Scanner un code-barre
+                  Expanded(
+                    child: Consumer<LocalizationService>(
+                      builder: (context, locService, child) => _buildScanOption(
+                        context,
+                        icon: LucideIcons.scan,
+                        title: 'scan_barcode'.tr(locService.currentLanguageCode),
+                        subtitle: 'scan_barcode_subtitle'.tr(locService.currentLanguageCode),
+                        onTap: () {
+                          Navigator.pop(context);
+                          _navigateToBarcodeScannerScreen(context);
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 24),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildScanOption(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF0B132B).withOpacity(0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+                ),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF0B132B).withOpacity(0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Icon(icon, color: Colors.white, size: 28),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              height: 20,
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1A1A1A),
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(height: 4),
+            SizedBox(
+              height: 32,
+              child: Text(
+                subtitle,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF64748B),
+                  height: 1.3,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _navigateToAIScanner(BuildContext context) {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => const AIScannerScreen(isFromDashboard: true),
+      ),
+    );
+  }
+
+  void _navigateToBarcodeScannerScreen(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const BarcodeScannerScreen(),
       ),
     );
   }

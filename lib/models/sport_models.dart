@@ -183,7 +183,7 @@ class WorkoutSession {
   int get completedSets {
     return exercises.fold(
       0,
-      (sum, exercise) => sum + exercise.sets.where((set) => set.isCompleted).length,
+      (sum, exercise) => sum + exercise.sets.where((set) => set.isValid).length,
     );
   }
 

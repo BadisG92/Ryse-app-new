@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'dart:async';
@@ -10,6 +9,7 @@ import 'ui/dashboard_cards.dart';
 import 'ui/dashboard_widgets.dart';
 import 'ui/custom_card.dart';
 import 'ui/custom_badge.dart';
+import 'ui/global_state_header.dart';
 import '../services/dashboard_service.dart';
 import '../services/localization_service.dart';
 import '../services/translations.dart';
@@ -36,15 +36,10 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
   late Timer _scoreTimer;
   int animatedScore = 0;
   bool isLoading = false; // Ne jamais bloquer l'affichage - toujours afficher le squelette
-  late final ScrollController _scrollController;
-  final GlobalKey _headerKey = GlobalKey();
-  double _headerHeight = 0;
-  bool _isStatusBarLight = true;
 
   @override
   void initState() {
     super.initState();
-    _scrollController = ScrollController()..addListener(_handleScroll);
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
     _initializeAnimations();
 
@@ -59,11 +54,6 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
 
     // Listen to goals changes for instant updates
     GoalsNotifier.instance.addListener(_onGoalsChanged);
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _captureHeaderHeight();
-      _updateStatusBarStyle(force: true);
-    });
   }
 
   /// Chargement synchrone instantané pour éviter tout flash
@@ -109,8 +99,6 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
 
   @override
   void dispose() {
-    _scrollController.removeListener(_handleScroll);
-    _scrollController.dispose();
     _scoreAnimationController.dispose();
     // S'assurer que les timers sont vraiment cancellés
     if (_scoreTimer.isActive) {
@@ -159,38 +147,6 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
       }
     } catch (e) {
       print('❌ Erreur rechargement objectifs: $e');
-    }
-  }
-
-  void _captureHeaderHeight() {
-    if (!mounted) return;
-    final headerContext = _headerKey.currentContext;
-    if (headerContext == null) return;
-    final renderBox = headerContext.findRenderObject() as RenderBox?;
-    final newHeight = renderBox?.size.height ?? 0;
-    if (newHeight > 0 && (newHeight - _headerHeight).abs() > 1) {
-      _headerHeight = newHeight;
-      _updateStatusBarStyle(force: true);
-    }
-  }
-
-  void _handleScroll() {
-    _updateStatusBarStyle();
-  }
-
-  void _updateStatusBarStyle({bool force = false}) {
-    if (!mounted) return;
-    if (!_scrollController.hasClients || _headerHeight == 0) return;
-
-    final topPadding = MediaQuery.of(context).padding.top;
-    final threshold = (_headerHeight - topPadding).clamp(0.0, double.infinity);
-    final shouldBeLight = _scrollController.offset < threshold;
-
-    if (force || shouldBeLight != _isStatusBarLight) {
-      _isStatusBarLight = shouldBeLight;
-      SystemChrome.setSystemUIOverlayStyle(
-        shouldBeLight ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
-      );
     }
   }
 
@@ -255,7 +211,6 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
 
       // Démarrer l'animation du score
       _startScoreAnimation();
-      WidgetsBinding.instance.addPostFrameCallback((_) => _captureHeaderHeight());
     }
 
     print('⚡ Dashboard: Affichage instantané depuis GlobalState');
@@ -267,15 +222,16 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
       if (mounted && loadedProfile != null) {
         setState(() {
           // Mettre à jour avec les vraies données (nom, streak, premium, etc.)
-          // mais garder les calories/eau du GlobalState qui sont plus à jour
+          // mais garder les calories/eau/score du GlobalState qui sont plus à jour
           userProfile = loadedProfile.copyWith(
             currentCalories: globalState.currentCalories.toInt(),
+            todayScore: _calculateTodayScore(globalState), // ✅ Recalculer le score en temps réel
+            todayXP: _calculateTodayXP(globalState), // ✅ Recalculer les XP en temps réel
           );
         });
 
         // Redémarrer l'animation du score avec les vraies valeurs
         _startScoreAnimation();
-        WidgetsBinding.instance.addPostFrameCallback((_) => _captureHeaderHeight());
       }
     } catch (e) {
       print('⚠️ Erreur chargement profil DB (non-bloquant): $e');
@@ -285,25 +241,13 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
 
   /// Construit un UserProfile basique depuis le GlobalState pour affichage immédiat
   Future<UserProfile> _buildUserProfileFromGlobalState(GlobalStateManager globalState) async {
-    // Essayer de récupérer le nom depuis les SharedPreferences ou DB
-    String userName = 'User';
-    int userStreak = globalState.currentStreak;
-    bool isPremium = false;
-
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      userName = prefs.getString('user_name') ?? 'User';
-      isPremium = prefs.getBool('is_premium') ?? false;
-    } catch (e) {
-      print('⚠️ SharedPreferences non disponibles: $e');
-    }
-
+    // Récupérer directement depuis GlobalState (déjà chargé à l'init)
     return UserProfile(
-      name: userName,
-      streak: userStreak,
+      name: globalState.userName,
+      streak: globalState.currentStreak,
       todayScore: _calculateTodayScore(globalState),
       todayXP: _calculateTodayXP(globalState),
-      isPremium: isPremium,
+      isPremium: globalState.isPremium,
       photosUsed: 0, // Sera mis à jour par le vrai profil
       dailyCalories: globalState.calorieGoal.toInt(),
       currentCalories: globalState.currentCalories.toInt(),
@@ -314,7 +258,17 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
   int _calculateTodayScore(GlobalStateManager globalState) {
     final goals = globalState.getDailyGoalsForDashboard();
     final completedCount = goals.where((g) => g['completed'] == true).length;
-    return (completedCount / goals.length * 100).round();
+    final score = (completedCount / goals.length * 100).round();
+
+    // DEBUG: Afficher les objectifs et le score
+    print('🎯 DEBUG Score:');
+    print('   - Objectifs complétés: $completedCount/${goals.length}');
+    for (var goal in goals) {
+      print('   - ${goal['label']}: ${goal['completed'] ? '✅' : '❌'} (${goal['progress']}%)');
+    }
+    print('   - Score final: $score%');
+
+    return score;
   }
 
   /// Calcule les XP du jour
@@ -362,77 +316,63 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFFF8FAFC),
-              Color(0xFFF1F5F9),
-            ],
-          ),
-        ),
-        child: RefreshIndicator(
-          onRefresh: _refreshDashboardData,
-          color: const Color(0xFF0B132B),
-          child: SingleChildScrollView(
-            controller: _scrollController,
-            padding: const EdgeInsets.only(bottom: 120),
-            child: Column(
-              children: [
-                // Header Gamifié - Toujours affiché (jamais null grâce à _loadInitialDataSync)
-                DashboardHeader(
-                  key: _headerKey,
-                  profile: userProfile!.copyWith(todayScore: animatedScore),
-                  onPremiumTap: _onPremiumTap,
-                ),
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: Column(
+        children: [
+          // Header avec bandeau global (identique aux autres pages)
+          _buildHeader(),
 
-                // Contenu avec padding normal
-                Padding(
+          // Contenu scrollable
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: _refreshDashboardData,
+              color: const Color(0xFF0B132B),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.only(bottom: 120),
+                child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Column(
                     children: [
                       const SizedBox(height: 16),
 
-                      // Objectifs du jour - Toujours affiché
-                      EnhancedDailyGoalsSection(
-                        goals: dailyGoals.isNotEmpty ? dailyGoals : DashboardData.dailyGoals,
-                        profile: userProfile!,
-                        isPremium: userProfile!.isPremium,
-                      ),
+                          // Objectifs du jour - Toujours affiché
+                          EnhancedDailyGoalsSection(
+                            goals: dailyGoals.isNotEmpty ? dailyGoals : DashboardData.dailyGoals,
+                            profile: userProfile!,
+                            isPremium: userProfile!.isPremium,
+                          ),
 
-                      const SizedBox(height: 16),
+                          const SizedBox(height: 16),
 
-                      // Actions rapides - Toujours affiché
-                      Consumer<LocalizationService>(
-                        builder: (context, locService, child) => QuickActionsSection(
-                          actions: DashboardData.getOriginalActionsWithWeight(userProfile!, locService.currentLanguageCode),
-                        ),
-                      ),
+                          // Actions rapides - Toujours affiché
+                          Consumer<LocalizationService>(
+                            builder: (context, locService, child) => QuickActionsSection(
+                              actions: DashboardData.getOriginalActionsWithWeight(userProfile!, locService.currentLanguageCode),
+                            ),
+                          ),
 
-                      const SizedBox(height: 16),
+                          const SizedBox(height: 16),
 
-                      // Suivi Nutrition & Sport - Toujours avec vraies données
-                      Consumer<LocalizationService>(
-                        builder: (context, locService, child) => NutritionSportTrackingSection(
-                          modules: modulePreviews.isNotEmpty
-                            ? modulePreviews
-                            : DashboardData.getModulePreviews(locService.currentLanguageCode),
-                          onModuleTap: _onModuleTap,
-                        ),
-                      ),
+                          // Suivi Nutrition & Sport - Toujours avec vraies données
+                          Consumer<LocalizationService>(
+                            builder: (context, locService, child) => NutritionSportTrackingSection(
+                              modules: modulePreviews.isNotEmpty
+                                ? modulePreviews
+                                : DashboardData.getModulePreviews(locService.currentLanguageCode),
+                              onModuleTap: _onModuleTap,
+                            ),
+                          ),
 
-                      const SizedBox(height: 16),
+                          const SizedBox(height: 16),
 
-                      // Social Proof & FOMO
-                      Consumer<LocalizationService>(
-                        builder: (context, locService, child) => CommunityStatsSection(
-                          stats: DashboardData.getCommunityStats(locService.currentLanguageCode),
-                        ),
-                      ),
+                          // Social Proof & FOMO
+                          Consumer<LocalizationService>(
+                            builder: (context, locService, child) => CommunityStatsSection(
+                              stats: DashboardData.getCommunityStats(locService.currentLanguageCode),
+                            ),
+                          ),
 
-                      const SizedBox(height: 16),
+                          const SizedBox(height: 16),
 
                       // CTA Premium
                       userProfile!.isPremium
@@ -445,10 +385,103 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
                     ],
                   ),
                 ),
-              ],
+              ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  /// Construit le header avec le bandeau global et le message de bienvenue
+  Widget _buildHeader() {
+    if (userProfile == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
         ),
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0B132B).withOpacity(0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Bandeau global avec GlobalStateManager (synchronisé instantanément)
+          // useGradient: false pour hériter du gradient du container parent
+          const GlobalStateHeaderWidget(useGradient: false),
+
+          // Séparation visuelle
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Container(
+              height: 1,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [
+                    Colors.white.withOpacity(0.0),
+                    Colors.white.withOpacity(0.3),
+                    Colors.white.withOpacity(0.0),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // Message de bienvenue personnalisé (intégré dans le header)
+          Consumer<LocalizationService>(
+            builder: (context, locService, child) {
+              return Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Message d'accueil engageant (plus gros)
+                      Text(
+                        userProfile!.greetingMessage(locService.currentLanguageCode),
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                        textAlign: TextAlign.left,
+                      ),
+                      const SizedBox(height: 8),
+                      // CTA actionnable (plus petit)
+                      Text(
+                        userProfile!.contextualMessage(locService.currentLanguageCode),
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w400,
+                          color: Colors.white.withOpacity(0.9),
+                          height: 1.4,
+                        ),
+                        textAlign: TextAlign.left,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
       ),
     );
   }
@@ -459,14 +492,6 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
   }
 
   // Event handlers - restaurés du design original
-  void _onPremiumTap() {
-    if (mounted && userProfile != null) {
-      setState(() {
-        userProfile = userProfile!.copyWith(isPremium: true);
-      });
-    }
-  }
-
   void _onPremiumUpgrade() {
     if (mounted && userProfile != null) {
       setState(() {

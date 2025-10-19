@@ -443,7 +443,7 @@ class SessionTrackingCard extends StatelessWidget {
     );
     final completedSets = currentExercises.fold<int>(
       0,
-      (sum, exercise) => sum + (exercise['sets'] as List).where((set) => set['completed'] == true).length,
+      (sum, exercise) => sum + (exercise['sets'] as List).where((set) => (set['reps'] ?? 0) > 0).length,
     );
 
     return Container(

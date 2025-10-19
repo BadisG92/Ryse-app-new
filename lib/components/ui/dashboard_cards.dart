@@ -164,10 +164,35 @@ class DashboardHeader extends StatelessWidget {
                         ),
                       ),
                     ),
+
+                    const SizedBox(height: 12),
+
+                    // Message contextuel CTA
+                    Consumer<LocalizationService>(
+                      builder: (context, locService, child) => Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.2),
+                            width: 1,
+                          ),
+                        ),
+                        child: Text(
+                          profile.contextualMessage(locService.currentLanguageCode),
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
-              
+
               // Score circulaire
               CircularScoreWidget(score: profile.todayScore, size: 70),
             ],
