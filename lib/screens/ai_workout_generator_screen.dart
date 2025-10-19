@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../services/ai_workout_generation_service.dart';
 import '../services/localization_service.dart';
+import '../services/offline_workout_service.dart';
 import '../services/translations.dart';
 import '../models/sport_models.dart';
 import 'workout_session_screen.dart';
@@ -27,6 +29,8 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> {
   List<WorkoutExercise>? _generatedWorkout;
   String? _aiSuggestions;
   String? _errorMessage;
+  bool _isEditMode = false; // Mode édition du plan
+  String _sessionName = ''; // Nom de la séance généré automatiquement
 
   // 8 chips de suggestions rapides
   final List<Map<String, String>> _quickChips = [
@@ -76,6 +80,7 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> {
         setState(() {
           _generatedWorkout = result.exercises;
           _aiSuggestions = result.aiSuggestions;
+          _sessionName = _generateSessionName(result.exercises, locService.isFrench);
         });
       } else {
         setState(() {
@@ -100,12 +105,108 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> {
       context,
       MaterialPageRoute(
         builder: (context) => WorkoutSessionScreen(
-          sessionName: 'ai_workout_generated_session'.tr(LocalizationService.instance.currentLanguageCode),
+          sessionName: _sessionName.isNotEmpty ? _sessionName : 'ai_workout_generated_session'.tr(LocalizationService.instance.currentLanguageCode),
           exercises: _generatedWorkout!,
           isFromProgram: true,
         ),
       ),
     );
+  }
+
+  /// Génère un nom de séance intelligent basé sur les groupes musculaires
+  String _generateSessionName(List<WorkoutExercise> exercises, bool isFrench) {
+    // Compter les groupes musculaires
+    final muscleGroups = <String, int>{};
+    for (final ex in exercises) {
+      final group = ex.exercise.muscleGroup.toLowerCase();
+      muscleGroups[group] = (muscleGroups[group] ?? 0) + 1;
+    }
+
+    // Mapper vers noms français/anglais
+    final muscleNamesFr = {
+      'chest': 'Pectoraux',
+      'pectoraux': 'Pectoraux',
+      'back': 'Dos',
+      'dorsaux': 'Dos',
+      'legs': 'Jambes',
+      'quadriceps': 'Jambes',
+      'ischio-jambiers': 'Jambes',
+      'hamstrings': 'Jambes',
+      'shoulders': 'Épaules',
+      'épaules': 'Épaules',
+      'arms': 'Bras',
+      'biceps': 'Bras',
+      'triceps': 'Bras',
+      'core': 'Core',
+      'abdominaux': 'Core',
+      'abs': 'Core',
+      'glutes': 'Fessiers',
+      'fessiers': 'Fessiers',
+      'calves': 'Mollets',
+      'mollets': 'Mollets',
+    };
+
+    final muscleNamesEn = {
+      'chest': 'Chest',
+      'pectoraux': 'Chest',
+      'back': 'Back',
+      'dorsaux': 'Back',
+      'legs': 'Legs',
+      'quadriceps': 'Legs',
+      'ischio-jambiers': 'Legs',
+      'hamstrings': 'Legs',
+      'shoulders': 'Shoulders',
+      'épaules': 'Shoulders',
+      'arms': 'Arms',
+      'biceps': 'Arms',
+      'triceps': 'Arms',
+      'core': 'Core',
+      'abdominaux': 'Core',
+      'abs': 'Core',
+      'glutes': 'Glutes',
+      'fessiers': 'Glutes',
+      'calves': 'Calves',
+      'mollets': 'Calves',
+    };
+
+    final nameMap = isFrench ? muscleNamesFr : muscleNamesEn;
+
+    // Trouver les groupes dominants (>= 2 exercices)
+    final dominantGroups = <String>[];
+    for (final entry in muscleGroups.entries) {
+      if (entry.value >= 2) {
+        final normalizedName = nameMap[entry.key] ?? entry.key;
+        if (!dominantGroups.contains(normalizedName)) {
+          dominantGroups.add(normalizedName);
+        }
+      }
+    }
+
+    // Si pas de groupes dominants, prendre les 2 premiers différents
+    if (dominantGroups.isEmpty) {
+      final uniqueGroups = <String>[];
+      for (final entry in muscleGroups.entries) {
+        final normalizedName = nameMap[entry.key] ?? entry.key;
+        if (!uniqueGroups.contains(normalizedName)) {
+          uniqueGroups.add(normalizedName);
+          if (uniqueGroups.length >= 2) break;
+        }
+      }
+      dominantGroups.addAll(uniqueGroups);
+    }
+
+    // Construire le nom
+    if (dominantGroups.isEmpty) {
+      return isFrench ? 'Coach Ryze - Full Body' : 'Coach Ryze - Full Body';
+    } else if (dominantGroups.length == 1) {
+      return 'Coach Ryze - ${dominantGroups[0]}';
+    } else if (dominantGroups.length == 2) {
+      return 'Coach Ryze - ${dominantGroups[0]} + ${dominantGroups[1]}';
+    } else if (dominantGroups.length >= 3) {
+      return isFrench ? 'Coach Ryze - Full Body' : 'Coach Ryze - Full Body';
+    }
+
+    return isFrench ? 'Coach Ryze - Séance' : 'Coach Ryze - Workout';
   }
 
   @override
@@ -120,7 +221,16 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(LucideIcons.arrowLeft, color: Color(0xFF0B132B)),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            // Si en mode édition, sortir du mode édition au lieu de quitter
+            if (_isEditMode && _generatedWorkout != null) {
+              setState(() {
+                _isEditMode = false;
+              });
+            } else {
+              Navigator.pop(context);
+            }
+          },
         ),
         title: Text(
           'ai_workout_title'.tr(locService.currentLanguageCode),
@@ -130,6 +240,24 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> {
             fontWeight: FontWeight.w600,
           ),
         ),
+        actions: [
+          // Icône Modifier (seulement si workout généré)
+          if (_generatedWorkout != null)
+            IconButton(
+              icon: Icon(
+                _isEditMode ? LucideIcons.check : LucideIcons.pencil,
+                color: _isEditMode ? const Color(0xFF10B981) : const Color(0xFF1C2951),
+              ),
+              onPressed: () {
+                setState(() {
+                  _isEditMode = !_isEditMode;
+                });
+              },
+              tooltip: _isEditMode
+                  ? (isFrench ? 'Valider' : 'Confirm')
+                  : (isFrench ? 'Modifier' : 'Edit'),
+            ),
+        ],
       ),
       body: _generatedWorkout == null
           ? _buildGeneratorView(isFrench)
@@ -751,21 +879,60 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Titre des exercices générés
+                // Nom de la séance (éditable en mode édition)
+                GestureDetector(
+                  onTap: _isEditMode ? _showEditNameDialog : null,
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: _isEditMode
+                          ? const Color(0xFF1C2951).withOpacity(0.05)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(12),
+                      border: _isEditMode
+                          ? Border.all(color: const Color(0xFF1C2951).withOpacity(0.3))
+                          : null,
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            _sessionName.isNotEmpty ? _sessionName : 'Coach Ryze - Séance',
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF0B132B),
+                            ),
+                          ),
+                        ),
+                        if (_isEditMode)
+                          Icon(
+                            LucideIcons.pencil,
+                            size: 18,
+                            color: const Color(0xFF1C2951).withOpacity(0.6),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 8),
+
+                // Nombre d'exercices
                 Text(
                   isFrench
                       ? '${_generatedWorkout!.length} exercices'
                       : '${_generatedWorkout!.length} exercises',
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF0B132B),
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: const Color(0xFF64748B),
                   ),
                 ),
 
                 const SizedBox(height: 16),
 
-                // Liste des exercices (compacte)
+                // Liste des exercices (compacte ou éditable)
                 ..._generatedWorkout!.asMap().entries.map((entry) {
                   final index = entry.key;
                   final workoutEx = entry.value;
@@ -780,25 +947,80 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> {
                     ),
                     child: Row(
                       children: [
-                        // Numéro
-                        Container(
-                          width: 28,
-                          height: 28,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF0B132B),
-                            borderRadius: BorderRadius.circular(6),
+                        // Mode édition : boutons haut/bas
+                        if (_isEditMode) ...[
+                          Column(
+                            children: [
+                              // Bouton monter
+                              GestureDetector(
+                                onTap: index > 0
+                                    ? () => _moveExerciseUp(index)
+                                    : null,
+                                child: Container(
+                                  width: 28,
+                                  height: 28,
+                                  decoration: BoxDecoration(
+                                    color: index > 0
+                                        ? const Color(0xFF0B132B).withOpacity(0.1)
+                                        : Colors.grey.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Icon(
+                                    LucideIcons.arrowUp,
+                                    size: 16,
+                                    color: index > 0
+                                        ? const Color(0xFF0B132B)
+                                        : Colors.grey,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              // Bouton descendre
+                              GestureDetector(
+                                onTap: index < _generatedWorkout!.length - 1
+                                    ? () => _moveExerciseDown(index)
+                                    : null,
+                                child: Container(
+                                  width: 28,
+                                  height: 28,
+                                  decoration: BoxDecoration(
+                                    color: index < _generatedWorkout!.length - 1
+                                        ? const Color(0xFF0B132B).withOpacity(0.1)
+                                        : Colors.grey.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Icon(
+                                    LucideIcons.arrowDown,
+                                    size: 16,
+                                    color: index < _generatedWorkout!.length - 1
+                                        ? const Color(0xFF0B132B)
+                                        : Colors.grey,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                          child: Center(
-                            child: Text(
-                              '${index + 1}',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
+                          const SizedBox(width: 8),
+                        ] else
+                          // Numéro normal (mode preview)
+                          Container(
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0B132B),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Center(
+                              child: Text(
+                                '${index + 1}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
                               ),
                             ),
                           ),
-                        ),
                         const SizedBox(width: 12),
                         // Infos exercice
                         Expanded(
@@ -825,12 +1047,49 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        // Détails à droite
-                        _buildCompactExerciseDetails(workoutEx, isFrench),
+                        // Mode édition : bouton supprimer
+                        if (_isEditMode)
+                          GestureDetector(
+                            onTap: () => _removeExercise(index),
+                            child: Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEF4444).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Icon(
+                                LucideIcons.trash2,
+                                size: 16,
+                                color: Color(0xFFEF4444),
+                              ),
+                            ),
+                          )
+                        else
+                          // Détails à droite (mode preview)
+                          _buildCompactExerciseDetails(workoutEx, isFrench),
                       ],
                     ),
                   );
                 }).toList(),
+
+                // Bouton ajouter exercice (mode édition)
+                if (_isEditMode) ...[
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed: _showAddExerciseToWorkout,
+                    icon: const Icon(LucideIcons.plus, size: 18),
+                    label: Text(isFrench ? 'Ajouter un exercice' : 'Add exercise'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF0B132B),
+                      side: const BorderSide(color: Color(0xFFE2E8F0)),
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ],
 
                 // Conseils de Coach Ryze (style identique à l'analyse d'exercice)
                 if (_aiSuggestions != null && _aiSuggestions!.isNotEmpty) ...[
@@ -927,12 +1186,14 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> {
           ),
           child: Row(
             children: [
+              // Bouton Régénérer (toujours visible)
               Expanded(
                 child: OutlinedButton(
                   onPressed: () {
                     setState(() {
                       _generatedWorkout = null;
                       _aiSuggestions = null;
+                      _isEditMode = false;
                     });
                   },
                   style: OutlinedButton.styleFrom(
@@ -953,6 +1214,7 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> {
                 ),
               ),
               const SizedBox(width: 12),
+              // Bouton Commencer
               Expanded(
                 flex: 2,
                 child: ElevatedButton(
@@ -986,6 +1248,319 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  // ========================================
+  // EDIT MODE FUNCTIONS
+  // ========================================
+
+  void _moveExerciseUp(int index) {
+    if (index == 0 || _generatedWorkout == null) return;
+
+    setState(() {
+      final workout = List<WorkoutExercise>.from(_generatedWorkout!);
+      final temp = workout[index];
+      workout[index] = workout[index - 1];
+      workout[index - 1] = temp;
+      _generatedWorkout = workout;
+    });
+  }
+
+  void _moveExerciseDown(int index) {
+    if (_generatedWorkout == null || index >= _generatedWorkout!.length - 1) return;
+
+    setState(() {
+      final workout = List<WorkoutExercise>.from(_generatedWorkout!);
+      final temp = workout[index];
+      workout[index] = workout[index + 1];
+      workout[index + 1] = temp;
+      _generatedWorkout = workout;
+    });
+  }
+
+  void _removeExercise(int index) {
+    if (_generatedWorkout == null) return;
+
+    setState(() {
+      final workout = List<WorkoutExercise>.from(_generatedWorkout!);
+      workout.removeAt(index);
+      _generatedWorkout = workout.isEmpty ? null : workout;
+
+      // Si plus d'exercices, sortir du mode édition
+      if (_generatedWorkout == null) {
+        _isEditMode = false;
+      }
+    });
+  }
+
+  Future<void> _showAddExerciseToWorkout() async {
+    // Utiliser le même bottom sheet que l'écran de session
+    // Pour l'instant, navigation vers sélection d'exercice simple
+    final locService = LocalizationService.instance;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.9,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        builder: (context, scrollController) {
+          return Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            child: Column(
+              children: [
+                // Header
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: const BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(color: Color(0xFFE2E8F0)),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          locService.isFrench ? 'Ajouter un exercice' : 'Add exercise',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF0B132B),
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(LucideIcons.x),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Note importante
+                Container(
+                  margin: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1C2951).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        LucideIcons.info,
+                        size: 20,
+                        color: Color(0xFF1C2951),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          locService.isFrench
+                              ? 'Les exercices ajoutés n\'auront pas de poids ou répétitions pré-remplis'
+                              : 'Added exercises won\'t have pre-filled weight or reps',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Color(0xFF1C2951),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Liste simplifiée pour sélection rapide
+                Expanded(
+                  child: FutureBuilder(
+                    future: _loadExercisesForSelection(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+
+                      final exercises = snapshot.data as List<Exercise>? ?? [];
+
+                      return ListView.builder(
+                        controller: scrollController,
+                        padding: const EdgeInsets.all(16),
+                        itemCount: exercises.length,
+                        itemBuilder: (context, index) {
+                          final exercise = exercises[index];
+
+                          return GestureDetector(
+                            onTap: () {
+                              _addExerciseToWorkout(exercise);
+                              Navigator.pop(context);
+                            },
+                            child: Container(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF8FAFC),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: const Color(0xFFE2E8F0)),
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          exercise.name,
+                                          style: const TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w600,
+                                            color: Color(0xFF0B132B),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          exercise.muscleGroup,
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: Color(0xFF64748B),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const Icon(
+                                    LucideIcons.plus,
+                                    color: Color(0xFF1C2951),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Future<List<Exercise>> _loadExercisesForSelection() async {
+    // Charger exercices depuis le service offline (cache)
+    try {
+      final offlineService = OfflineWorkoutService();
+      final exercises = await offlineService.getCachedExercises();
+      return exercises;
+    } catch (e) {
+      debugPrint('Error loading exercises: $e');
+      return [];
+    }
+  }
+
+  void _addExerciseToWorkout(Exercise exercise) {
+    if (_generatedWorkout == null) return;
+
+    setState(() {
+      final workout = List<WorkoutExercise>.from(_generatedWorkout!);
+
+      // Créer un WorkoutExercise SANS reps/poids pré-remplis
+      final newWorkoutExercise = WorkoutExercise(
+        exercise: exercise,
+        sets: [
+          const ExerciseSet(weight: 0, reps: 0, isCompleted: false),
+          const ExerciseSet(weight: 0, reps: 0, isCompleted: false),
+          const ExerciseSet(weight: 0, reps: 0, isCompleted: false),
+        ],
+        suggestedRepsMin: null, // Pas de suggestions
+        suggestedRepsMax: null,
+      );
+
+      workout.add(newWorkoutExercise);
+      _generatedWorkout = workout;
+    });
+  }
+
+  /// Affiche un dialog pour éditer le nom de la séance
+  void _showEditNameDialog() {
+    final locService = LocalizationService.instance;
+    final TextEditingController nameController = TextEditingController(text: _sessionName);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Text(
+          locService.isFrench ? 'Nom de la séance' : 'Session name',
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF0B132B),
+          ),
+        ),
+        content: TextField(
+          controller: nameController,
+          autofocus: true,
+          maxLength: 50,
+          decoration: InputDecoration(
+            hintText: locService.isFrench ? 'Ex: Coach Ryze - Pectoraux' : 'Ex: Coach Ryze - Chest',
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFF1C2951), width: 2),
+            ),
+            contentPadding: const EdgeInsets.all(16),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              locService.isFrench ? 'Annuler' : 'Cancel',
+              style: const TextStyle(
+                fontSize: 16,
+                color: Color(0xFF64748B),
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              setState(() {
+                _sessionName = nameController.text.trim().isNotEmpty
+                    ? nameController.text.trim()
+                    : _sessionName;
+              });
+              Navigator.pop(context);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF1C2951),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 0,
+            ),
+            child: Text(
+              locService.isFrench ? 'Valider' : 'Confirm',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

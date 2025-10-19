@@ -67,15 +67,23 @@ class ExerciseSet {
     this.isCompleted = false,
   });
 
+  /// Auto-validation: une série est valide si elle a au moins des répétitions
+  /// Le poids peut être 0 pour les exercices au poids du corps
+  bool get isValid => reps > 0;
+
   ExerciseSet copyWith({
     int? reps,
     double? weight,
     bool? isCompleted,
   }) {
+    // Auto-synchronisation de isCompleted avec la validité des reps
+    final newReps = reps ?? this.reps;
+    final autoCompleted = isCompleted ?? (newReps > 0);
+
     return ExerciseSet(
-      reps: reps ?? this.reps,
+      reps: newReps,
       weight: weight ?? this.weight,
-      isCompleted: isCompleted ?? this.isCompleted,
+      isCompleted: autoCompleted,
     );
   }
 

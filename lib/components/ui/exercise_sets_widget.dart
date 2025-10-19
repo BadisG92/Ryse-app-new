@@ -295,66 +295,25 @@ class _ExerciseSetsWidgetState extends State<ExerciseSetsWidget> {
           ),
           
           const SizedBox(width: 8),
-          
-          // Bouton valider/supprimer
-          SizedBox(
-            width: 50,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                // Bouton done
-                GestureDetector(
-                  onTap: () {
-                    final updatedSet = set.copyWith(isCompleted: !set.isCompleted);
-                    widget.onSetUpdated(index, updatedSet);
-                  },
-                  child: Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: set.isCompleted 
-                          ? const Color(0xFF0B132B) 
-                          : const Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(
-                        color: set.isCompleted 
-                            ? const Color(0xFF0B132B) 
-                            : const Color(0xFFE2E8F0),
-                      ),
-                    ),
-                    child: Icon(
-                      set.isCompleted ? LucideIcons.check : LucideIcons.check,
-                      size: 16,
-                      color: set.isCompleted 
-                          ? Colors.white 
-                          : const Color(0xFF64748B),
-                    ),
-                  ),
+
+          // Bouton supprimer (affiché seulement s'il y a plus d'une série)
+          if (widget.workoutExercise.sets.length > 1)
+            GestureDetector(
+              onTap: () => widget.onRemoveSet(index),
+              child: Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEF4444).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                
-                const SizedBox(width: 4),
-                
-                // Bouton supprimer (optionnel, affiché seulement s'il y a plus d'une série)
-                if (widget.workoutExercise.sets.length > 1)
-                  GestureDetector(
-                    onTap: () => widget.onRemoveSet(index),
-                    child: Container(
-                      width: 14,
-                      height: 14,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF64748B),
-                        borderRadius: BorderRadius.circular(3),
-                      ),
-                      child: const Icon(
-                        LucideIcons.x,
-                        size: 10,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-              ],
+                child: const Icon(
+                  LucideIcons.trash2,
+                  size: 12,
+                  color: Color(0xFFEF4444),
+                ),
+              ),
             ),
-          ),
         ],
       ),
     );

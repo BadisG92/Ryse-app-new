@@ -300,21 +300,31 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     });
   }
   
+  // ❌ SUPPRIMÉ : Plus besoin de validation manuelle
+  // La validation est automatique dès que reps > 0 (voir ExerciseSet.copyWith)
+  /*
   void _validateSet(int setIndex) {
+    // Ancienne méthode de validation manuelle - remplacée par auto-validation
+  }
+  */
+  
+  void _updateSetValue(int setIndex, {double? weight, int? reps}) {
     if (_exercises.isEmpty) return;
-    
+
     final currentExercise = _exercises[_currentExerciseIndex];
     if (setIndex >= currentExercise.sets.length) return;
-    
-    // Vérifier que la série précédente est validée (si pas la première)
-    if (setIndex > 0) {
+
+    // ✅ NOUVEAU : Contrainte séquentielle - vérifier que série précédente a des reps
+    if (setIndex > 0 && reps != null && reps > 0) {
       final previousSet = currentExercise.sets[setIndex - 1];
-      if (!previousSet.isCompleted) {
+      if (previousSet.reps == 0) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Consumer<LocalizationService>(
               builder: (context, locService, _) => Text(
-                'workout_validate_set_first'.tr(locService.currentLanguageCode).replaceAll('{0}', setIndex.toString()),
+                locService.isFrench
+                  ? 'Veuillez compléter la série ${setIndex} avant'
+                  : 'Please complete set ${setIndex} first',
               ),
             ),
             backgroundColor: Colors.orange,
@@ -324,59 +334,17 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
         return;
       }
     }
-    
-    final set = currentExercise.sets[setIndex];
-    
-    if (set.reps > 0) {
-      setState(() {
-        final updatedSets = List<ExerciseSet>.from(currentExercise.sets);
-        updatedSets[setIndex] = set.copyWith(isCompleted: true);
-        _exercises[_currentExerciseIndex] = currentExercise.copyWith(sets: updatedSets);
-        // Réinitialiser la série active après validation
-        _activeSetIndex = null;
-      });
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Consumer<LocalizationService>(
-            builder: (context, locService, _) => Text(
-              'workout_set_validated'.tr(locService.currentLanguageCode).replaceAll('{0}', '${setIndex + 1}'),
-            ),
-          ),
-          backgroundColor: const Color(0xFF10B981),
-          duration: const Duration(seconds: 1),
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Consumer<LocalizationService>(
-            builder: (context, locService, _) => Text(
-              'workout_enter_weight_reps'.tr(locService.currentLanguageCode),
-            ),
-          ),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-  
-  void _updateSetValue(int setIndex, {double? weight, int? reps}) {
-    if (_exercises.isEmpty) return;
-    
-    final currentExercise = _exercises[_currentExerciseIndex];
-    if (setIndex >= currentExercise.sets.length) return;
-    
+
     setState(() {
       final updatedSets = List<ExerciseSet>.from(currentExercise.sets);
       final currentSet = updatedSets[setIndex];
-      
+
+      // ✅ Auto-validation basée sur reps > 0 (copyWith gère automatiquement)
       updatedSets[setIndex] = currentSet.copyWith(
         weight: weight ?? currentSet.weight,
         reps: reps ?? currentSet.reps,
-        isCompleted: false, // Reset validation quand on modifie
       );
-      
+
       _exercises[_currentExerciseIndex] = currentExercise.copyWith(sets: updatedSets);
     });
   }
@@ -1958,7 +1926,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                             child: Consumer<LocalizationService>(
                               builder: (context, locService, _) => _buildSummaryMetric(
                                 'workout_sets_count'.tr(locService.currentLanguageCode),
-                                '$_completedSets/$_totalSets',
+                                '$_completedSets',
                                 LucideIcons.repeat,
                               ),
                             ),
@@ -2117,6 +2085,29 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
   }
 
   void _showIntensityAndDurationDialog() {
+    // ✅ NOUVEAU : Auto-supprimer les séries vides en fin d'exercice
+    setState(() {
+      for (int i = 0; i < _exercises.length; i++) {
+        final exercise = _exercises[i];
+
+        // Trouver la dernière série avec des reps
+        int lastValidSetIndex = -1;
+        for (int j = exercise.sets.length - 1; j >= 0; j--) {
+          if (exercise.sets[j].reps > 0) {
+            lastValidSetIndex = j;
+            break;
+          }
+        }
+
+        // Supprimer toutes les séries vides après la dernière série valide
+        if (lastValidSetIndex >= 0 && lastValidSetIndex < exercise.sets.length - 1) {
+          final validSets = exercise.sets.sublist(0, lastValidSetIndex + 1);
+          _exercises[i] = exercise.copyWith(sets: validSets);
+          debugPrint('✂️ Auto-suppression de ${exercise.sets.length - validSets.length} série(s) vide(s) pour ${exercise.exercise.name}');
+        }
+      }
+    });
+
     final TextEditingController minutesController = TextEditingController(
       text: (_effectiveDurationMinutes ?? (_sessionDuration.inMinutes > 0 ? _sessionDuration.inMinutes : 1)).toString(),
     );
@@ -2633,7 +2624,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 80), // Espace pour les boutons
+                            const SizedBox(width: 136), // Espace pour 3 boutons (micro + copier + supprimer) = ~32*3 + 8*3 = 120 + marges
                   ],
                 ),
               ),
@@ -2873,31 +2864,52 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
           ),
           
           const SizedBox(width: 12),
-          
-          // Bouton Valider
+
+          // 🎤 NOUVEAU : Bouton micro par série (seulement si séries précédentes validées)
+          if (_canShowVoiceButtonForSet(setIndex))
+            GestureDetector(
+              onTap: () => _startVoiceInputForSet(setIndex),
+              child: Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: _isVoiceListening && _activeSetIndex == setIndex
+                      ? const Color(0xFFEF4444)
+                      : const Color(0xFF0B132B).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  LucideIcons.mic,
+                  color: _isVoiceListening && _activeSetIndex == setIndex
+                      ? Colors.white
+                      : const Color(0xFF0B132B),
+                  size: 16,
+                ),
+              ),
+            ),
+
+          const SizedBox(width: 8),
+
+          // ➕ NOUVEAU : Bouton copier vers série suivante
           GestureDetector(
-            onTap: currentSet.isCompleted ? null : () => _validateSet(setIndex),
+            onTap: () => _copyToNextSet(setIndex),
             child: Container(
               width: 32,
               height: 32,
               decoration: BoxDecoration(
-                color: currentSet.isCompleted 
-                    ? const Color(0xFF10B981)
-                    : Colors.white.withOpacity(0.9),
+                color: const Color(0xFF1C2951).withOpacity(0.3), // Bleu de l'app
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(
-                LucideIcons.check,
-                color: currentSet.isCompleted 
-                    ? Colors.white
-                    : const Color(0xFF0B132B),
+              child: const Icon(
+                LucideIcons.arrowDown,
+                color: Color(0xFF1C2951), // Bleu de l'app
                 size: 16,
               ),
             ),
           ),
-          
+
           const SizedBox(width: 8),
-          
+
           // Bouton Supprimer
           GestureDetector(
             onTap: () => _removeSet(setIndex),
@@ -2969,6 +2981,40 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
   }
 
   void _showConfirmEndSessionDialog() {
+    // ✅ NOUVEAU : Détecter séries incomplètes et séries vides en fin d'exercice
+    final List<String> incompleteSets = [];
+    final List<String> emptyTrailingSets = [];
+
+    for (var i = 0; i < _exercises.length; i++) {
+      final exercise = _exercises[i];
+
+      // Trouver la dernière série avec des reps
+      int lastValidSetIndex = -1;
+      for (int j = exercise.sets.length - 1; j >= 0; j--) {
+        if (exercise.sets[j].reps > 0) {
+          lastValidSetIndex = j;
+          break;
+        }
+      }
+
+      // Séries vides en fin (après la dernière série valide)
+      if (lastValidSetIndex >= 0 && lastValidSetIndex < exercise.sets.length - 1) {
+        final emptyCount = exercise.sets.length - lastValidSetIndex - 1;
+        emptyTrailingSets.add('${exercise.exercise.name}: $emptyCount série${emptyCount > 1 ? 's' : ''} vide${emptyCount > 1 ? 's' : ''}');
+      }
+
+      // Séries incomplètes (avec poids mais sans reps, ou gaps)
+      for (int j = 0; j < exercise.sets.length; j++) {
+        final set = exercise.sets[j];
+        if (set.reps == 0 && set.weight > 0) {
+          incompleteSets.add('${exercise.exercise.name} - Série ${j + 1} (poids saisi mais pas de reps)');
+        }
+      }
+    }
+
+    final hasIncompleteSets = incompleteSets.isNotEmpty;
+    final hasEmptyTrailingSets = emptyTrailingSets.isNotEmpty;
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -2978,7 +3024,9 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
         ),
         title: Consumer<LocalizationService>(
           builder: (context, locService, _) => Text(
-            'workout_confirm_end_session'.tr(locService.currentLanguageCode),
+            hasIncompleteSets || hasEmptyTrailingSets
+                ? (locService.isFrench ? '⚠️ Attention' : '⚠️ Warning')
+                : 'workout_confirm_end_session'.tr(locService.currentLanguageCode),
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
@@ -2987,12 +3035,63 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
           ),
         ),
         content: Consumer<LocalizationService>(
-          builder: (context, locService, _) => Text(
-            'workout_confirm_end_session_message'.tr(locService.currentLanguageCode),
-            style: const TextStyle(
-              fontSize: 14,
-              color: Color(0xFF64748B),
-            ),
+          builder: (context, locService, _) => Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (hasIncompleteSets) ...[
+                Text(
+                  locService.isFrench
+                      ? 'Séries incomplètes détectées :'
+                      : 'Incomplete sets detected:',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFFEF4444),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                ...incompleteSets.map((s) => Padding(
+                  padding: const EdgeInsets.only(left: 8, bottom: 4),
+                  child: Text('• $s',
+                    style: const TextStyle(fontSize: 13, color: Color(0xFF64748B))),
+                )),
+                const SizedBox(height: 12),
+              ],
+              if (hasEmptyTrailingSets) ...[
+                Text(
+                  locService.isFrench
+                      ? 'Séries vides seront supprimées :'
+                      : 'Empty sets will be removed:',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFFF59E0B),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                ...emptyTrailingSets.map((s) => Padding(
+                  padding: const EdgeInsets.only(left: 8, bottom: 4),
+                  child: Text('• $s',
+                    style: const TextStyle(fontSize: 13, color: Color(0xFF64748B))),
+                )),
+                const SizedBox(height: 12),
+              ],
+              Text(
+                hasIncompleteSets || hasEmptyTrailingSets
+                    ? (locService.isFrench
+                        ? 'Voulez-vous quand même terminer la séance ?'
+                        : 'Do you still want to end the session?')
+                    : 'workout_confirm_end_session_message'.tr(locService.currentLanguageCode),
+                style: TextStyle(
+                  fontSize: 14,
+                  color: const Color(0xFF64748B),
+                  fontWeight: hasIncompleteSets || hasEmptyTrailingSets
+                      ? FontWeight.w600
+                      : FontWeight.normal,
+                ),
+              ),
+            ],
           ),
         ),
         actions: [
@@ -3369,57 +3468,12 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
   // VOICE INPUT METHODS
   // ========================================
 
-  /// Bouton micro flottant (bas-droite)
+  // ❌ SUPPRIMÉ : Ancien bouton micro flottant (remplacé par bouton micro par série)
+  /*
   Widget _buildVoiceButton() {
-    return Positioned(
-      right: 16,
-      bottom: 100, // Au-dessus navigation bottom bar
-      child: GestureDetector(
-        onLongPressStart: (_) => _startVoiceInput(),
-        onLongPressEnd: (_) => _stopVoiceInput(),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          decoration: BoxDecoration(
-            color: _isVoiceListening ? Colors.red : const Color(0xFF0B132B),
-            borderRadius: BorderRadius.circular(30),
-            boxShadow: [
-              BoxShadow(
-                color: _isVoiceListening
-                    ? Colors.red.withOpacity(0.5)
-                    : Colors.black26,
-                blurRadius: _isVoiceListening ? 20 : 10,
-                spreadRadius: _isVoiceListening ? 5 : 0,
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                LucideIcons.mic,
-                color: Colors.white,
-                size: 24,
-              ),
-              if (!_isVoiceListening) ...[
-                const SizedBox(width: 8),
-                Consumer<LocalizationService>(
-                  builder: (context, locService, _) => Text(
-                    locService.currentLanguageCode == 'fr' ? "Tenir" : "Hold",
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
+    // Ancien système global - plus utilisé
   }
+  */
 
   /// Bouton Undo avec countdown
   Widget _buildUndoButton() {
@@ -3603,7 +3657,242 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     }
   }
 
-  /// Démarrer l'écoute vocale (bouton pressé)
+  /// Vérifie si le bouton micro peut être affiché pour une série
+  /// Condition : Toutes les séries précédentes doivent être validées (reps > 0)
+  bool _canShowVoiceButtonForSet(int setIndex) {
+    if (_exercises.isEmpty) return false;
+
+    final currentExercise = _exercises[_currentExerciseIndex];
+
+    // Première série : toujours OK
+    if (setIndex == 0) return true;
+
+    // Vérifier que toutes les séries précédentes ont des reps
+    for (int i = 0; i < setIndex; i++) {
+      if (i < currentExercise.sets.length && currentExercise.sets[i].reps == 0) {
+        return false; // Une série précédente n'est pas validée
+      }
+    }
+
+    return true;
+  }
+
+  /// Copie les valeurs de la série actuelle vers la série suivante
+  void _copyToNextSet(int setIndex) {
+    if (_exercises.isEmpty) return;
+
+    final currentExercise = _exercises[_currentExerciseIndex];
+    if (setIndex >= currentExercise.sets.length) return;
+
+    final currentSet = currentExercise.sets[setIndex];
+
+    // Vérifier qu'il y a une série suivante
+    if (setIndex + 1 < currentExercise.sets.length) {
+      // Copier vers série existante
+      setState(() {
+        final updatedSets = List<ExerciseSet>.from(currentExercise.sets);
+        updatedSets[setIndex + 1] = currentSet.copyWith();
+        _exercises[_currentExerciseIndex] = currentExercise.copyWith(sets: updatedSets);
+
+        // Mettre à jour les controllers
+        final exerciseId = currentExercise.exercise.id;
+        _weightControllers[exerciseId]?[setIndex + 1]?.text =
+            currentSet.weight > 0 ? currentSet.weight.toString() : '';
+        _repsControllers[exerciseId]?[setIndex + 1]?.text =
+            currentSet.reps > 0 ? currentSet.reps.toString() : '';
+      });
+
+      // Feedback
+      HapticFeedback.lightImpact();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Consumer<LocalizationService>(
+            builder: (context, locService, _) => Text(
+              locService.isFrench
+                  ? 'Valeurs copiées vers série ${setIndex + 2}'
+                  : 'Values copied to set ${setIndex + 2}',
+            ),
+          ),
+          backgroundColor: const Color(0xFF1C2951), // Bleu de l'app
+          duration: const Duration(seconds: 1),
+        ),
+      );
+    } else {
+      // Créer nouvelle série avec les mêmes valeurs
+      setState(() {
+        final updatedSets = List<ExerciseSet>.from(currentExercise.sets);
+        updatedSets.add(currentSet.copyWith());
+        _exercises[_currentExerciseIndex] = currentExercise.copyWith(sets: updatedSets);
+
+        // Initialiser les controllers pour la nouvelle série
+        final exerciseId = currentExercise.exercise.id;
+        final newSetIndex = updatedSets.length - 1;
+
+        _weightControllers[exerciseId] ??= {};
+        _repsControllers[exerciseId] ??= {};
+        _weightFocusNodes[exerciseId] ??= {};
+        _repsFocusNodes[exerciseId] ??= {};
+        _setKeys[exerciseId] ??= {};
+
+        _weightControllers[exerciseId]![newSetIndex] = TextEditingController(
+          text: currentSet.weight > 0 ? currentSet.weight.toString() : '',
+        );
+        _repsControllers[exerciseId]![newSetIndex] = TextEditingController(
+          text: currentSet.reps > 0 ? currentSet.reps.toString() : '',
+        );
+
+        final weightFocus = FocusNode();
+        final repsFocus = FocusNode();
+        weightFocus.addListener(() => _onFieldFocusChanged(newSetIndex, weightFocus.hasFocus));
+        repsFocus.addListener(() => _onFieldFocusChanged(newSetIndex, repsFocus.hasFocus));
+
+        _weightFocusNodes[exerciseId]![newSetIndex] = weightFocus;
+        _repsFocusNodes[exerciseId]![newSetIndex] = repsFocus;
+        _setKeys[exerciseId]![newSetIndex] = GlobalKey();
+      });
+
+      // Feedback
+      HapticFeedback.lightImpact();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Consumer<LocalizationService>(
+            builder: (context, locService, _) => Text(
+              locService.isFrench
+                  ? 'Nouvelle série ajoutée avec les mêmes valeurs'
+                  : 'New set added with same values',
+            ),
+          ),
+          backgroundColor: const Color(0xFF1C2951), // Bleu de l'app
+          duration: const Duration(seconds: 1),
+        ),
+      );
+    }
+  }
+
+  /// 🎤 NOUVEAU : Démarrer l'input vocal pour une série spécifique
+  Future<void> _startVoiceInputForSet(int setIndex) async {
+    if (_exercises.isEmpty) return;
+
+    // Marquer cette série comme active
+    setState(() {
+      _activeSetIndex = setIndex;
+      _voiceHasError = false;
+      _recognizedText = '';
+    });
+
+    // Feedback début
+    _multiSensoryFeedback('start');
+
+    // Initialiser la première fois
+    if (!_voiceInitialized) {
+      final success = await _voiceService.initialize();
+      if (!success) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Consumer<LocalizationService>(
+                builder: (context, locService, _) => Text(
+                  locService.currentLanguageCode == 'fr'
+                      ? 'Erreur micro. Vérifiez les permissions.'
+                      : 'Microphone error. Check permissions.',
+                ),
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+      _voiceInitialized = true;
+    }
+
+    setState(() => _isVoiceListening = true);
+    HapticFeedback.mediumImpact();
+
+    await _voiceService.startListening(
+      onPartialResult: (text) {
+        if (mounted) {
+          setState(() => _recognizedText = text);
+        }
+      },
+      onFinalResult: (text) async {
+        if (mounted) {
+          setState(() => _recognizedText = text);
+        }
+
+        // Auto-stop et traiter immédiatement
+        await _stopVoiceInputForSet(setIndex);
+      },
+    );
+  }
+
+  /// Arrêter l'écoute vocale pour une série spécifique
+  Future<void> _stopVoiceInputForSet(int setIndex) async {
+    await _voiceService.stopListening();
+
+    // Parser le résultat
+    final setData = _voiceService.parseVoiceInput(_recognizedText);
+
+    if (setData != null && setData.hasData) {
+      // ✅ Données extraites - remplir la série ciblée
+      _voiceRetryCount = 0;
+
+      final currentExercise = _exercises[_currentExerciseIndex];
+
+      // Remplir directement la série ciblée
+      _fillSetWithVoiceData(currentExercise, setIndex, setData);
+
+      // Feedback succès
+      final confirmMsg = _voiceService.getConfirmationMessage(setData);
+      await _voiceService.speak(confirmMsg);
+      _multiSensoryFeedback('success');
+
+      if (mounted) {
+        setState(() {
+          _isVoiceListening = false;
+          _recognizedText = '';
+          _voiceHasError = false;
+          _activeSetIndex = null;
+        });
+      }
+    } else {
+      // ❌ Pas compris
+      _voiceRetryCount++;
+
+      if (_voiceRetryCount < _maxRetries) {
+        final locService = LocalizationService.instance;
+        final retryMsg = locService.currentLanguageCode == 'fr'
+            ? 'Je n\'ai pas compris. Réessayez.'
+            : 'I didn\'t understand. Try again.';
+
+        await _voiceService.speak(retryMsg);
+        _multiSensoryFeedback('warning');
+
+        if (mounted) {
+          setState(() {
+            _isVoiceListening = false;
+            _voiceHasError = true;
+          });
+        }
+      } else {
+        _voiceRetryCount = 0;
+        final errorMsg = _voiceService.getErrorMessage();
+        await _voiceService.speak(errorMsg);
+        _multiSensoryFeedback('error');
+
+        if (mounted) {
+          setState(() {
+            _isVoiceListening = false;
+            _recognizedText = '';
+            _voiceHasError = false;
+            _activeSetIndex = null;
+          });
+        }
+      }
+    }
+  }
+
+  /// Démarrer l'écoute vocale (bouton pressé) - ANCIEN SYSTÈME GLOBAL
   Future<void> _startVoiceInput() async {
     // Reset error state quand user relance
     if (mounted) {
