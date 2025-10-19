@@ -6,6 +6,7 @@ import 'custom_card.dart';
 import 'nutrition_models.dart';
 import '../../services/localization_service.dart';
 import '../../services/translations.dart';
+import '../../services/global_state_manager.dart';
 
 // Carte principale des calories avec animation
 class MainCaloriesCard extends StatelessWidget {
@@ -617,7 +618,8 @@ class MealsCard extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      NutritionData.mealsProgress,
+                      // NOUVEAU: Utiliser GlobalStateManager pour le nombre réel de repas
+                      '${GlobalStateManager.instance.mealsCount}/4',
                       style: const TextStyle(
                         fontSize: 12,
                         color: Color(0xFF888888),

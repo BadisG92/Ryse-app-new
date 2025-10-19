@@ -5,6 +5,7 @@ import '../../components/ui/custom_card.dart';
 import '../../services/sport_dashboard_service.dart';
 import '../../services/translations.dart';
 import '../../services/localization_service.dart';
+import 'day_sessions_bottom_sheet.dart';
 
 class SportCalendarView extends StatefulWidget {
   final VoidCallback onBack;
@@ -32,21 +33,29 @@ class _SportCalendarViewState extends State<SportCalendarView> {
   }
 
   Future<void> _loadMonthData() async {
-    setState(() {
-      _loading = true;
-    });
+    // Ne pas afficher le loader fullscreen au changement de mois
+    // Afficher uniquement le loader inline dans les stats
+    if (_sportData.isEmpty) {
+      setState(() {
+        _loading = true;
+      });
+    }
 
     try {
       final data = await SportDashboardService.getMonthSportData(selectedMonth);
-      setState(() {
-        _sportData = Map<String, Map<String, dynamic>>.from(data['monthData'] ?? {});
-        _monthStats = data['stats'] ?? {};
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _sportData = Map<String, Map<String, dynamic>>.from(data['monthData'] ?? {});
+          _monthStats = data['stats'] ?? {};
+          _loading = false;
+        });
+      }
     } catch (e) {
-      setState(() {
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _loading = false;
+        });
+      }
       debugPrint('❌ Error loading calendar data: $e');
     }
   }
@@ -65,25 +74,29 @@ class _SportCalendarViewState extends State<SportCalendarView> {
     _loadMonthData();
   }
 
+  void _showDayDetails(String dateKey, DateTime date) {
+    final weekdays = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+    final displayDate = '${weekdays[date.weekday - 1]} ${date.day}';
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => DaySessionsBottomSheet(
+        date: dateKey,
+        displayDate: displayDate,
+        onSessionDeleted: () {
+          // Recharger les données du mois
+          _loadMonthData();
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final DateTime currentDate = DateTime.now();
-    
-    if (_loading) {
-      return Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFFF8FAFC), Color(0xFFF1F5F9)],
-          ),
-        ),
-        child: const Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
-    }
-    
+
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -92,41 +105,53 @@ class _SportCalendarViewState extends State<SportCalendarView> {
           colors: [Color(0xFFF8FAFC), Color(0xFFF1F5F9)],
         ),
       ),
-      child: Consumer<LocalizationService>(
-        builder: (context, locService, _) => SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-            // Header avec navigation
-            SportCalendarHeader(
+      child: Column(
+        children: [
+          // Header avec navigation (non-sticky)
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: SportCalendarHeader(
               onBack: widget.onBack,
             ),
-            
-            const SizedBox(height: 20),
-            
-            // Stats du mois
-            SportMonthStats(monthStats: Map<String, int>.from(_monthStats)),
-            
-            const SizedBox(height: 16),
-            
-            // Légende
-            const SportCalendarLegend(),
-            
-            const SizedBox(height: 16),
-            
-            // Calendrier
-            SportCalendarGrid(
-              sportData: _sportData, 
-              currentDate: currentDate,
-              selectedMonth: selectedMonth,
-              onPreviousMonth: _previousMonth,
-              onNextMonth: _nextMonth,
+          ),
+
+          // Page scrollable avec tout le contenu
+          Expanded(
+            child: Consumer<LocalizationService>(
+              builder: (context, locService, _) => SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 16 + kBottomNavigationBarHeight),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Stats du mois - avec loader inline si chargement
+                    _loading
+                      ? Container(
+                          height: 100,
+                          alignment: Alignment.center,
+                          child: const CircularProgressIndicator(
+                            color: Color(0xFF0B132B),
+                          ),
+                        )
+                      : SportMonthStats(monthStats: Map<String, int>.from(_monthStats)),
+
+                    const SizedBox(height: 16),
+
+                    // Calendrier avec légende intégrée
+                    SportCalendarGrid(
+                      sportData: _sportData,
+                      currentDate: currentDate,
+                      selectedMonth: selectedMonth,
+                      onPreviousMonth: _previousMonth,
+                      onNextMonth: _nextMonth,
+                      onDayTapped: _showDayDetails,
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
-    ),
     );
   }
 
@@ -150,11 +175,18 @@ class SportCalendarHeader extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+              color: Colors.white.withOpacity(0.9),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: const Icon(
-              LucideIcons.chevronLeft,
+              LucideIcons.arrowLeft,
               size: 20,
               color: Color(0xFF0B132B),
             ),
@@ -162,25 +194,13 @@ class SportCalendarHeader extends StatelessWidget {
         ),
         const SizedBox(width: 16),
         Consumer<LocalizationService>(
-          builder: (context, locService, _) => Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'sport_calendar_title'.tr(locService.currentLanguageCode),
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1A1A1A),
-                ),
-              ),
-              Text(
-                'sport_calendar_subtitle'.tr(locService.currentLanguageCode),
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF888888),
-                ),
-              ),
-            ],
+          builder: (context, locService, _) => Text(
+            'sport_calendar_title'.tr(locService.currentLanguageCode),
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1A1A1A),
+            ),
           ),
         ),
       ],
@@ -198,112 +218,90 @@ class SportMonthStats extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<LocalizationService>(
-      builder: (context, locService, _) => Row(
-        children: [
-          // Jours actifs
-          Expanded(
-            child: CustomCard(
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(24),
-                  color: Colors.white.withOpacity(0.9),
+    return CustomCard(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        child: Consumer<LocalizationService>(
+          builder: (context, locService, _) {
+            return Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _buildKpi(
+                  value: '${monthStats['activeDays'] ?? 0}',
+                  label: 'sport_active_days'.tr(locService.currentLanguageCode).replaceAll(' ', '\n'),
+                  context: context,
                 ),
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  children: [
-                    Text(
-                      '${monthStats['activeDays']}',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF0B132B),
-                      ),
-                    ),
-                    Text(
-                      'sport_active_days'.tr(locService.currentLanguageCode),
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: Color(0xFF888888),
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
+                _buildKpi(
+                  value: '${monthStats['musculationDays'] ?? 0}',
+                  label: 'sport_muscle_training'.tr(locService.currentLanguageCode).replaceAll(' ', '\n'),
+                  context: context,
                 ),
+                _buildKpi(
+                  value: '${monthStats['cardioDays'] ?? 0}',
+                  label: 'sport_cardio'.tr(locService.currentLanguageCode),
+                  context: context,
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildKpi({required String value, required String label, required BuildContext context}) {
+    // Calculer la taille de police dynamiquement selon la longueur du nombre
+    double fontSize = 18;
+    if (value.length >= 6) {
+      fontSize = 12; // Très grands nombres (6+ chiffres)
+    } else if (value.length >= 5) {
+      fontSize = 14; // Grands nombres (5 chiffres)
+    } else if (value.length >= 4) {
+      fontSize = 16; // Nombres moyens (4 chiffres)
+    }
+
+    return Expanded(
+      child: Container(
+        height: 80, // Hauteur fixe pour aligner tous les KPI
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.end,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(
+                value,
+                style: TextStyle(
+                  fontSize: fontSize,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF0B132B),
+                ),
+                textAlign: TextAlign.center,
               ),
             ),
-          ),
-          
-          const SizedBox(width: 12),
-            
-          // Musculation
-          Expanded(
-            child: CustomCard(
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(24),
-                  color: Colors.white.withOpacity(0.9),
-                ),
-                padding: const EdgeInsets.all(8),
-                child: Column(
-                  children: [
-                    Text(
-                      '${monthStats['musculationDays']}',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF0B132B),
-                      ),
-                    ),
-                    Text(
-                      'sport_muscle_training'.tr(locService.currentLanguageCode),
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: Color(0xFF888888),
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 11,
+                color: Color(0xFF888888),
               ),
+              textAlign: TextAlign.center,
             ),
-          ),
-          
-          const SizedBox(width: 12),
-          
-          // Cardio
-          Expanded(
-            child: CustomCard(
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(24),
-                  color: Colors.white.withOpacity(0.9),
-                ),
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  children: [
-                    Text(
-                      '${monthStats['cardioDays']}',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF1C2951),
-                      ),
-                    ),
-                    Text(
-                      'sport_cardio'.tr(locService.currentLanguageCode),
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: Color(0xFF888888),
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -315,129 +313,109 @@ class SportCalendarLegend extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Consumer<LocalizationService>(
-      builder: (context, locService, _) => CustomCard(
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'sport_legend'.tr(locService.currentLanguageCode),
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF1A1A1A),
+      builder: (context, locService, _) => Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+              // Musculation
+              Flexible(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 14,
+                      height: 14,
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+                        ),
+                        borderRadius: BorderRadius.all(Radius.circular(3)),
+                      ),
+                      child: const Icon(
+                        LucideIcons.dumbbell,
+                        size: 8,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        'sport_muscle_training'.tr(locService.currentLanguageCode),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF6B7280),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  // Musculation - Format carré comme nutrition
-                  Flexible(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 20,
-                          height: 20,
-                          decoration: const BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
-                            ),
-                            borderRadius: BorderRadius.all(Radius.circular(4)),
-                          ),
-                          child: const Icon(
-                            LucideIcons.dumbbell,
-                            size: 10,
-                            color: Colors.white,
-                          ),
+              // Cardio
+              Flexible(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 14,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            const Color(0xFF0B132B).withOpacity(0.7),
+                            const Color(0xFF1C2951).withOpacity(0.7)
+                          ],
                         ),
-                        const SizedBox(width: 6),
-                        Flexible(
-                          child: Text(
-                            'sport_muscle_training'.tr(locService.currentLanguageCode),
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: Color(0xFF888888),
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
+                        borderRadius: const BorderRadius.all(Radius.circular(3)),
+                      ),
+                      child: const Icon(
+                        LucideIcons.activity,
+                        size: 8,
+                        color: Colors.white,
+                      ),
                     ),
-                  ),
-                  // Cardio - Format carré comme nutrition
-                  Flexible(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 20,
-                          height: 20,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                const Color(0xFF0B132B).withOpacity(0.7), 
-                                const Color(0xFF1C2951).withOpacity(0.7)
-                              ],
-                            ),
-                            borderRadius: const BorderRadius.all(Radius.circular(4)),
-                          ),
-                          child: const Icon(
-                            LucideIcons.activity,
-                            size: 10,
-                            color: Colors.white,
-                          ),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        'sport_cardio'.tr(locService.currentLanguageCode),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF6B7280),
                         ),
-                        const SizedBox(width: 6),
-                        Flexible(
-                          child: Text(
-                            'sport_cardio'.tr(locService.currentLanguageCode),
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: Color(0xFF888888),
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
-                  // Repos - Format carré comme nutrition
-                  Flexible(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 20,
-                          height: 20,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF1F5F9),
-                            border: Border.all(color: const Color(0xFFE2E8F0)),
-                            borderRadius: const BorderRadius.all(Radius.circular(4)),
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Flexible(
-                          child: Text(
-                            'sport_rest'.tr(locService.currentLanguageCode),
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: Color(0xFF888888),
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
+                  ],
+                ),
+              ),
+              // Repos
+              Flexible(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 14,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE5E7EB),
+                        borderRadius: BorderRadius.circular(3),
+                      ),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        'sport_rest'.tr(locService.currentLanguageCode),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF6B7280),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
-        ),
-      ),
     );
   }
 }
@@ -448,6 +426,7 @@ class SportCalendarGrid extends StatelessWidget {
   final DateTime selectedMonth;
   final VoidCallback onPreviousMonth;
   final VoidCallback onNextMonth;
+  final Function(String dateKey, DateTime date) onDayTapped;
 
   const SportCalendarGrid({
     super.key,
@@ -456,6 +435,7 @@ class SportCalendarGrid extends StatelessWidget {
     required this.selectedMonth,
     required this.onPreviousMonth,
     required this.onNextMonth,
+    required this.onDayTapped,
   });
 
   String _getMonthName(int month, String languageCode) {
@@ -475,38 +455,49 @@ class SportCalendarGrid extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Navigation mois/année centrée comme dans le calendrier nutritionnel
+              // Navigation mois/année - même style que nutrition
               Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
+                  // Flèche précédent
                   GestureDetector(
                     onTap: onPreviousMonth,
                     child: Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        color: const Color(0xFF0B132B).withOpacity(0.1),
+                      ),
                       child: const Icon(
                         LucideIcons.chevronLeft,
-                        size: 20,
+                        size: 16,
                         color: Color(0xFF0B132B),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 24),
+
+                  // Mois centré
                   Text(
                     '${_getMonthName(selectedMonth.month, locService.currentLanguageCode)} ${selectedMonth.year}',
                     style: const TextStyle(
                       fontSize: 18,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.bold,
                       color: Color(0xFF1A1A1A),
                     ),
                   ),
-                  const SizedBox(width: 24),
+
+                  // Flèche suivant
                   GestureDetector(
                     onTap: onNextMonth,
                     child: Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        color: const Color(0xFF0B132B).withOpacity(0.1),
+                      ),
                       child: const Icon(
                         LucideIcons.chevronRight,
-                        size: 20,
+                        size: 16,
                         color: Color(0xFF0B132B),
                       ),
                     ),
@@ -535,9 +526,14 @@ class SportCalendarGrid extends StatelessWidget {
               ),
               
               const SizedBox(height: 12),
-              
+
               // Grille du calendrier avec jours précédents/suivants
               ..._buildCalendarWeeks(),
+
+              const SizedBox(height: 16),
+
+              // Légende intégrée dans le bloc calendrier
+              const SportCalendarLegend(),
             ],
           ),
         ),
@@ -594,46 +590,55 @@ class SportCalendarGrid extends StatelessWidget {
 
   Widget _buildDayCell(DateTime dayDate) {
     final bool isCurrentMonth = dayDate.month == selectedMonth.month;
-    final bool isCurrentDay = dayDate.year == currentDate.year && 
-                             dayDate.month == currentDate.month && 
+    final bool isCurrentDay = dayDate.year == currentDate.year &&
+                             dayDate.month == currentDate.month &&
                              dayDate.day == currentDate.day;
-    
+    final bool isFutureDay = dayDate.isAfter(currentDate);
+
     final String dateKey = "${dayDate.year}-${dayDate.month.toString().padLeft(2, '0')}-${dayDate.day.toString().padLeft(2, '0')}";
     final Map<String, dynamic>? dayData = sportData[dateKey];
-    
+    final bool hasActivities = dayData != null &&
+                               (dayData['activities'] as List).isNotEmpty;
+
     return Expanded(
-      child: Container(
-        height: 40,
-        margin: const EdgeInsets.all(1),
-        child: dayData != null && isCurrentMonth
-            ? SportDayIcon(
-                activities: List<String>.from(dayData['activities']),
-                dayNumber: dayDate.day,
-                isCurrentDay: isCurrentDay,
-              )
-            : Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  color: const Color(0xFFF1F5F9),
-                  border: isCurrentDay 
-                      ? Border.all(color: const Color(0xFF1C2951), width: 2)
-                      : Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: Center(
-                  child: Text(
-                    dayDate.day.toString(),
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isCurrentMonth 
-                          ? const Color(0xFF64748B)
-                          : const Color(0xFFBBBBBB), // Grisé pour les autres mois
-                      fontWeight: isCurrentDay ? FontWeight.bold : FontWeight.normal,
+      child: GestureDetector(
+        onTap: hasActivities && isCurrentMonth ? () => onDayTapped(dateKey, dayDate) : null,
+        child: Container(
+          height: 40,
+          margin: const EdgeInsets.all(1),
+          child: dayData != null && isCurrentMonth && hasActivities
+              ? SportDayIcon(
+                  activities: List<String>.from(dayData['activities']),
+                  dayNumber: dayDate.day,
+                  isCurrentDay: isCurrentDay,
+                )
+              : Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    // Fond transparent pour jours futurs, gris clair pour jours passés sans activité
+                    color: isFutureDay && isCurrentMonth
+                        ? Colors.white.withOpacity(0.1)
+                        : (isCurrentMonth ? const Color(0xFFE5E7EB) : Colors.transparent),
+                    border: isCurrentDay
+                        ? Border.all(color: const Color(0xFF1C2951), width: 2)
+                        : null,
+                  ),
+                  child: Center(
+                    child: Text(
+                      dayDate.day.toString(),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isCurrentMonth
+                            ? const Color(0xFF374151)
+                            : const Color(0xFFCCCCCC), // Même couleur que nutrition pour autres mois
+                        fontWeight: isCurrentDay ? FontWeight.bold : FontWeight.normal,
+                      ),
                     ),
                   ),
                 ),
-              ),
+        ),
       ),
     );
   }

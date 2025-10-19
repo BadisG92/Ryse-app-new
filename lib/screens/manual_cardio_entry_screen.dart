@@ -14,12 +14,14 @@ class ManualCardioEntryScreen extends StatefulWidget {
   final String activityType;
   final String activityTitle;
   final String formatTitle;
+  final CardioObjective? objective;
 
   const ManualCardioEntryScreen({
     super.key,
     required this.activityType,
     required this.activityTitle,
     required this.formatTitle,
+    this.objective,
   });
 
   @override
@@ -27,11 +29,53 @@ class ManualCardioEntryScreen extends StatefulWidget {
 }
 
 class _ManualCardioEntryScreenState extends State<ManualCardioEntryScreen> {
-  final TextEditingController _durationHoursController = TextEditingController(text: '0');
-  final TextEditingController _durationMinutesController = TextEditingController(text: '30');
-  final TextEditingController _distanceController = TextEditingController(text: '5.0');
-  final TextEditingController _stepsController = TextEditingController(text: '3000');
+  late final TextEditingController _durationHoursController;
+  late final TextEditingController _durationMinutesController;
+  late final TextEditingController _distanceController;
+  final TextEditingController _stepsController = TextEditingController();
   final TextEditingController _notesController = TextEditingController();
+
+  // Intensité de l'effort (1=Faible, 2=Modéré, 3=Élevé, 4=Très élevé)
+  int _intensity = 2;
+
+  // Protection contre les double-clics lors de la sauvegarde
+  bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Pré-remplir selon l'objectif choisi
+    if (widget.objective != null) {
+      if (widget.objective!.type == 'duration' && widget.objective!.targetDuration != null) {
+        // Objectif durée : pré-remplir la durée, laisser distance vide
+        final duration = widget.objective!.targetDuration!;
+        _durationHoursController = TextEditingController(text: duration.inHours.toString());
+        _durationMinutesController = TextEditingController(text: (duration.inMinutes % 60).toString());
+        _distanceController = TextEditingController(); // Vide
+      } else if (widget.objective!.type == 'distance' && widget.objective!.targetDistance != null) {
+        // Objectif distance : pré-remplir la distance, laisser durée vide
+        _durationHoursController = TextEditingController(); // Vide
+        _durationMinutesController = TextEditingController(); // Vide
+        _distanceController = TextEditingController(text: widget.objective!.targetDistance.toString());
+      } else {
+        // Pas d'objectif spécifique, laisser vide
+        _durationHoursController = TextEditingController();
+        _durationMinutesController = TextEditingController();
+        _distanceController = TextEditingController();
+      }
+    } else {
+      // Pas d'objectif, laisser vide
+      _durationHoursController = TextEditingController();
+      _durationMinutesController = TextEditingController();
+      _distanceController = TextEditingController();
+    }
+
+    // Écouter les changements pour mettre à jour le calcul en temps réel
+    _durationHoursController.addListener(() => setState(() {}));
+    _durationMinutesController.addListener(() => setState(() {}));
+    _distanceController.addListener(() => setState(() {}));
+  }
   
   DateTime _selectedDate = DateTime.now();
 
@@ -46,12 +90,20 @@ class _ManualCardioEntryScreenState extends State<ManualCardioEntryScreen> {
   }
 
   void _saveEntry() {
+    // Protection contre les clics multiples
+    if (_isSaving) {
+      debugPrint('⚠️ Sauvegarde déjà en cours, ignoré');
+      return;
+    }
+
     final locService = LocalizationService.instance;
     final hours = int.tryParse(_durationHoursController.text) ?? 0;
     final minutes = int.tryParse(_durationMinutesController.text) ?? 0;
     final distance = double.tryParse(_distanceController.text) ?? 0.0;
     final steps = int.tryParse(_stepsController.text) ?? 0;
 
+    // IMPORTANT: La durée est obligatoire pour calculer les calories
+    // La distance est optionnelle (améliore la précision si fournie)
     if (minutes == 0 && hours == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -62,7 +114,12 @@ class _ManualCardioEntryScreenState extends State<ManualCardioEntryScreen> {
       return;
     }
 
-    if (distance <= 0) {
+    // Validation selon l'objectif si présent
+    final bool isDurationObjective = widget.objective?.type == 'duration';
+    final bool isDistanceObjective = widget.objective?.type == 'distance';
+
+    // Si objectif distance spécifique, vérifier que la distance est renseignée
+    if (isDistanceObjective && distance <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('error_distance_required'.tr(locService.currentLanguageCode)),
@@ -72,8 +129,8 @@ class _ManualCardioEntryScreenState extends State<ManualCardioEntryScreen> {
       return;
     }
 
-    // Pour la marche, vérifier aussi les pas
-    if (widget.activityType == 'walking' && steps <= 0) {
+    // Pour la marche, vérifier aussi les pas si renseignés
+    if (widget.activityType == 'walking' && steps <= 0 && _stepsController.text.isNotEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('error_steps_required'.tr(locService.currentLanguageCode)),
@@ -92,6 +149,7 @@ class _ManualCardioEntryScreenState extends State<ManualCardioEntryScreen> {
       steps: steps,
       date: _selectedDate,
       notes: _notesController.text.isEmpty ? null : _notesController.text,
+      intensity: _intensity,
     );
 
     // Afficher le résumé
@@ -103,7 +161,7 @@ class _ManualCardioEntryScreenState extends State<ManualCardioEntryScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: Row(
           children: [
             const Icon(LucideIcons.check, color: Color(0xFF10B981)),
@@ -131,13 +189,25 @@ class _ManualCardioEntryScreenState extends State<ManualCardioEntryScreen> {
         ),
         actions: [
           ElevatedButton(
-            onPressed: () async {
+            onPressed: _isSaving ? null : () async {
+              // Protection contre les double-clics
+              if (_isSaving) return;
+
+              setState(() {
+                _isSaving = true;
+              });
+
               // Historiser la session dans Supabase
               try {
                 await _saveManualSessionToSupabase(entry);
                 debugPrint('✅ Session manuelle cardio sauvegardée');
               } catch (e) {
                 debugPrint('❌ Erreur sauvegarde session manuelle: $e');
+                if (mounted) {
+                  setState(() {
+                    _isSaving = false;
+                  });
+                }
                 // Continuer même en cas d'erreur pour ne pas bloquer l'utilisateur
               }
 
@@ -154,13 +224,29 @@ class _ManualCardioEntryScreenState extends State<ManualCardioEntryScreen> {
                 debugPrint('⚠️ Erreur invalidation caches: $e');
               }
 
-              Navigator.pop(context); // Fermer dialog
-              Navigator.pop(context); // Retourner au cardio (se rafraîchira automatiquement)
+              // Use dialogContext to safely pop the dialog
+              if (Navigator.canPop(dialogContext)) {
+                Navigator.pop(dialogContext); // Fermer dialog
+              }
+
+              // Use main widget context to pop back to cardio screen
+              if (mounted && Navigator.canPop(context)) {
+                Navigator.pop(context); // Retourner au cardio (se rafraîchira automatiquement)
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF0B132B),
             ),
-            child: Text('manual_finish'.tr(locService.currentLanguageCode), style: const TextStyle(color: Colors.white)),
+            child: _isSaving
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                : Text('manual_finish'.tr(locService.currentLanguageCode), style: const TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -199,10 +285,18 @@ class _ManualCardioEntryScreenState extends State<ManualCardioEntryScreen> {
         currentSpeed: entry.calculateAverageSpeed(),
       );
       
+      // Utiliser l'intensité du slider pour la sauvegarde
       final locService = LocalizationService.instance;
+      final intensityLabels = [
+        'workout_intensity_low'.tr(locService.currentLanguageCode),      // 1
+        'workout_intensity_moderate'.tr(locService.currentLanguageCode), // 2
+        'workout_intensity_high'.tr(locService.currentLanguageCode),     // 3
+        'workout_intensity_very_high'.tr(locService.currentLanguageCode),// 4
+      ];
+
       await CardioService.saveCompletedCardioSession(
         sessionData: sessionData,
-        intensity: 'manual_intensity_moderate'.tr(locService.currentLanguageCode), // Valeur par défaut
+        intensity: intensityLabels[entry.intensity - 1],
         notes: entry.notes,
       );
       
@@ -402,6 +496,16 @@ class _ManualCardioEntryScreenState extends State<ManualCardioEntryScreen> {
 
               const SizedBox(height: 24),
 
+              // Slider d'intensité
+              _buildIntensitySlider(locService),
+
+              const SizedBox(height: 24),
+
+              // Estimation des calories en temps réel
+              _buildCaloriesEstimation(locService),
+
+              const SizedBox(height: 24),
+
               // Nombre de pas (pour la marche uniquement)
               if (widget.activityType == 'walking') ...[
                 _buildSection(
@@ -465,6 +569,228 @@ class _ManualCardioEntryScreenState extends State<ManualCardioEntryScreen> {
         ),
       ),
     ),
+    );
+  }
+
+  /// Construit le sélecteur d'intensité avec slider (style séances IA)
+  /// Masqué si une distance est fournie (calcul basé sur vitesse réelle)
+  Widget _buildIntensitySlider(LocalizationService locService) {
+    // Masquer si distance fournie
+    final distance = double.tryParse(_distanceController.text) ?? 0.0;
+    if (distance > 0) {
+      return const SizedBox.shrink();
+    }
+
+    // Obtenir le label d'intensité actuel
+    String getIntensityLabel() {
+      switch (_intensity) {
+        case 1:
+          return 'workout_intensity_low'.tr(locService.currentLanguageCode);
+        case 2:
+          return 'workout_intensity_moderate'.tr(locService.currentLanguageCode);
+        case 3:
+          return 'workout_intensity_high'.tr(locService.currentLanguageCode);
+        case 4:
+          return 'workout_intensity_very_high'.tr(locService.currentLanguageCode);
+        default:
+          return 'workout_intensity_moderate'.tr(locService.currentLanguageCode);
+      }
+    }
+
+    return _buildSection(
+      title: 'cardio_intensity_label'.tr(locService.currentLanguageCode),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 4),
+          Text(
+            'cardio_intensity_description'.tr(locService.currentLanguageCode),
+            style: const TextStyle(
+              fontSize: 13,
+              color: Color(0xFF64748B),
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          // Slider d'intensité avec 4 niveaux (comme dans ai_workout_generator_screen)
+          Slider(
+            value: (_intensity - 1) / 3, // Convertir 1-4 en 0.0-1.0
+            onChanged: (value) {
+              setState(() {
+                // Convertir 0.0-1.0 en 1-4 avec arrondi
+                _intensity = (value * 3).round() + 1;
+              });
+            },
+            activeColor: const Color(0xFF0B132B),
+            inactiveColor: const Color(0xFFE2E8F0),
+            divisions: 3, // 4 positions: 0, 0.33, 0.67, 1.0
+            label: getIntensityLabel(),
+          ),
+
+          // Labels aux extrémités du slider
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'workout_intensity_low'.tr(locService.currentLanguageCode),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF64748B),
+                  ),
+                ),
+                Text(
+                  'workout_intensity_very_high'.tr(locService.currentLanguageCode),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF64748B),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Construit l'affichage de l'estimation des calories en temps réel
+  Widget _buildCaloriesEstimation(LocalizationService locService) {
+    final hours = int.tryParse(_durationHoursController.text) ?? 0;
+    final minutes = int.tryParse(_durationMinutesController.text) ?? 0;
+    final distance = double.tryParse(_distanceController.text) ?? 0.0;
+
+    // Calculer seulement si durée > 0
+    if (hours == 0 && minutes == 0) {
+      return const SizedBox.shrink();
+    }
+
+    final entry = ManualCardioEntry(
+      activityType: widget.activityType,
+      activityTitle: widget.activityTitle,
+      formatTitle: widget.formatTitle,
+      duration: Duration(hours: hours, minutes: minutes),
+      distance: distance,
+      date: _selectedDate,
+      intensity: _intensity,
+    );
+
+    final calories = entry.calculateCalories();
+    final isBasedOnSpeed = distance > 0;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            _getActivityColor(),
+            _getActivityColor().withValues(alpha: 0.8),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: _getActivityColor().withValues(alpha: 0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // Icône
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              LucideIcons.flame,
+              color: Colors.white,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 16),
+          // Texte
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'cardio_estimated_calories_realtime'.tr(locService.currentLanguageCode),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Colors.white70,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      '$calories',
+                      style: const TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        height: 1,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: 4),
+                      child: Text(
+                        'kcal',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.white70,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                // Indicateur de méthode de calcul
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isBasedOnSpeed ? LucideIcons.gauge : LucideIcons.activity,
+                        color: Colors.white,
+                        size: 12,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        isBasedOnSpeed
+                            ? 'cardio_based_on_speed'.tr(locService.currentLanguageCode)
+                            : 'cardio_based_on_intensity'.tr(locService.currentLanguageCode),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 

@@ -1698,26 +1698,35 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setModalState) {
-          // Calculer les grammes en temps réel
-          Map<String, int> tempMacros = {
-            'protein': ((tempCalories * tempProtein) / 4).round(),
-            'carbs': ((tempCalories * tempCarbs) / 4).round(),
-            'fat': ((tempCalories * tempFat) / 9).round(),
-          };
+      enableDrag: true,
+      isDismissible: true,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.85,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (_, __) {
+          return GestureDetector(
+            onTap: () => FocusScope.of(context).unfocus(),
+            child: StatefulBuilder(
+              builder: (context, setModalState) {
+                // Calculer les grammes en temps réel
+                Map<String, int> tempMacros = {
+                  'protein': ((tempCalories * tempProtein) / 4).round(),
+                  'carbs': ((tempCalories * tempCarbs) / 4).round(),
+                  'fat': ((tempCalories * tempFat) / 9).round(),
+                };
 
-          return Container(
-            height: MediaQuery.of(context).size.height * 0.85,
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(20),
-                topRight: Radius.circular(20),
-              ),
-            ),
-            child: Column(
-              children: [
+                return Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(20),
+                      topRight: Radius.circular(20),
+                    ),
+                  ),
+                  child: Column(
+                    children: [
                 // Poignée
                 Container(
                   margin: const EdgeInsets.only(top: 12),
@@ -2083,7 +2092,10 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                     ],
                   ),
                 ),
-              ],
+                    ],
+                  ),
+                );
+              },
             ),
           );
         },

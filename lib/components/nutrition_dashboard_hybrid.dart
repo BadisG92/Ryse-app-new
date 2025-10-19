@@ -66,14 +66,20 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
     final locService = LocalizationService.instance;
 
     // Créer le profil nutrition instantanément avec les vraies données
+    // Calculer les objectifs de macros basés sur l'objectif calorique (30% protéines, 40% glucides, 30% lipides)
+    final calorieGoal = globalState.calorieGoal;
+    final proteinGoal = (calorieGoal * 0.30 / 4).toInt(); // 4 kcal par gramme
+    final carbsGoal = (calorieGoal * 0.40 / 4).toInt();   // 4 kcal par gramme
+    final fatsGoal = (calorieGoal * 0.30 / 9).toInt();    // 9 kcal par gramme
+
     nutritionProfile = NutritionProfile(
       targetCalories: globalState.calorieGoal.toInt(),
       currentCalories: globalState.currentCalories.toInt(),
-      targetProtein: 150, // Sera mis à jour par _loadNutritionData
+      targetProtein: proteinGoal,
       currentProtein: globalState.currentProteins.toInt(),
-      targetCarbs: 250, // Sera mis à jour
+      targetCarbs: carbsGoal,
       currentCarbs: globalState.currentCarbs.toInt(),
-      targetFat: 70, // Sera mis à jour
+      targetFat: fatsGoal,
       currentFat: globalState.currentFats.toInt(),
       currentWaterMl: (globalState.currentWaterL * 1000).toInt(),
       targetWaterMl: (globalState.waterGoalL * 1000).toInt(),
@@ -150,19 +156,40 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
 
     if (mounted) {
       setState(() {
-        // Mettre à jour seulement les valeurs actuelles (pas les objectifs)
-        nutritionProfile = NutritionProfile(
-          targetCalories: nutritionProfile.targetCalories,
-          currentCalories: globalState.currentCalories.toInt(),
-          targetProtein: nutritionProfile.targetProtein,
-          currentProtein: globalState.currentProteins.toInt(),
-          targetCarbs: nutritionProfile.targetCarbs,
-          currentCarbs: globalState.currentCarbs.toInt(),
-          targetFat: nutritionProfile.targetFat,
-          currentFat: globalState.currentFats.toInt(),
-          currentWaterMl: (globalState.currentWaterL * 1000).toInt(),
-          targetWaterMl: nutritionProfile.targetWaterMl,
-        );
+        // Si les objectifs ont changé, recalculer les macros
+        if (event.type == ChangeType.goals || event.type == ChangeType.dayReset) {
+          final calorieGoal = globalState.calorieGoal;
+          final proteinGoal = (calorieGoal * 0.30 / 4).toInt();
+          final carbsGoal = (calorieGoal * 0.40 / 4).toInt();
+          final fatsGoal = (calorieGoal * 0.30 / 9).toInt();
+
+          nutritionProfile = NutritionProfile(
+            targetCalories: globalState.calorieGoal.toInt(),
+            currentCalories: globalState.currentCalories.toInt(),
+            targetProtein: proteinGoal,
+            currentProtein: globalState.currentProteins.toInt(),
+            targetCarbs: carbsGoal,
+            currentCarbs: globalState.currentCarbs.toInt(),
+            targetFat: fatsGoal,
+            currentFat: globalState.currentFats.toInt(),
+            currentWaterMl: (globalState.currentWaterL * 1000).toInt(),
+            targetWaterMl: (globalState.waterGoalL * 1000).toInt(),
+          );
+        } else {
+          // Mise à jour normale des valeurs actuelles
+          nutritionProfile = NutritionProfile(
+            targetCalories: nutritionProfile.targetCalories,
+            currentCalories: globalState.currentCalories.toInt(),
+            targetProtein: nutritionProfile.targetProtein,
+            currentProtein: globalState.currentProteins.toInt(),
+            targetCarbs: nutritionProfile.targetCarbs,
+            currentCarbs: globalState.currentCarbs.toInt(),
+            targetFat: nutritionProfile.targetFat,
+            currentFat: globalState.currentFats.toInt(),
+            currentWaterMl: (globalState.currentWaterL * 1000).toInt(),
+            targetWaterMl: nutritionProfile.targetWaterMl,
+          );
+        }
 
         // Mettre à jour directement les valeurs animées (sans animation) pour réactivité
         animatedCalories = globalState.currentCalories.toInt();

@@ -20,6 +20,7 @@ import 'ui/custom_snackbar.dart';
 import '../bottom_sheets/add_meal_bottom_sheet.dart';
 import 'coach_ryze_nutrition_button.dart';
 import '../services/workout_service.dart';
+import '../services/global_state_manager.dart';
 
 class NutritionJournalHybrid extends StatefulWidget {
   const NutritionJournalHybrid({super.key});
@@ -38,17 +39,34 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
   DateTime selectedDate = DateTime.now(); // Date sélectionnée pour le journal
   bool isLoading = true;
   late StreamSubscription _nutritionUpdateSubscription;
+  StreamSubscription<StateChangeEvent>? _globalStateSubscription;
 
   @override
   void initState() {
     super.initState();
     _loadMealsForDate(selectedDate);
     _setupNutritionUpdateListener();
+
+    // Écouter les changements d'objectifs dans GlobalStateManager
+    _globalStateSubscription = GlobalStateManager.instance.events.listen((event) {
+      // Rafraîchir l'UI quand les objectifs changent ou nouveau jour
+      if ((event.type == ChangeType.goals || event.type == ChangeType.dayReset) && mounted) {
+        if (event.type == ChangeType.dayReset) {
+          // Nouveau jour : recharger les repas pour aujourd'hui
+          _loadMealsForDate(DateTime.now());
+        } else {
+          setState(() {
+            // L'UI se mettra à jour automatiquement car elle lit GlobalStateManager
+          });
+        }
+      }
+    });
   }
 
   @override
   void dispose() {
     _nutritionUpdateSubscription.cancel();
+    _globalStateSubscription?.cancel();
     super.dispose();
   }
 
@@ -556,76 +574,11 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
                     color: Color(0xFF0B132B),
                   ),
                 )
-              : !hasFoodEntries
-                ? // Message informatif quand aucun repas n'est enregistré
-                  Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(
-                            LucideIcons.utensils,
-                            size: 48,
-                            color: Color(0xFF64748B),
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'no_meals_recorded'.tr(LocalizationService.instance.currentLanguageCode),
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF1A1A1A),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'add_first_meal_message'.tr(LocalizationService.instance.currentLanguageCode),
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Color(0xFF64748B),
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          GestureDetector(
-                            onTap: () => _showAddMealBottomSheet(),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF0B132B),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    LucideIcons.plus,
-                                    size: 16,
-                                    color: Colors.white,
-                                  ),
-                                  SizedBox(width: 8),
-                                  Text(
-                                    'add_meal'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w500,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                  ),
-                )
               : SingleChildScrollView(
                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 140), // Ajout de padding bottom pour éviter la barre de navigation
                   child: Column(
                     children: [
-                      // Header (date + résumé) désormais scrollable
+                      // Header (date + bouton calendrier) TOUJOURS visible
                       Container(
                         padding: const EdgeInsets.fromLTRB(0, 0, 0, 24),
                         child: Column(
@@ -678,7 +631,7 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
                                           ),
                                         )
                                       : const Icon(
-                                          LucideIcons.expand,
+                                          LucideIcons.calendar,  // CHANGÉ: De expand à calendar
                                           size: 20,
                                           color: Colors.white,
                                         ),
@@ -686,11 +639,80 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 16),
-                            _buildDaySummary(),
+                            // Afficher le résumé du jour SEULEMENT s'il y a des repas
+                            if (hasFoodEntries) ...[
+                              const SizedBox(height: 16),
+                              _buildDaySummary(),
+                            ],
                           ],
                         ),
                       ),
+
+                      // Contenu : soit les repas, soit le message pour ajouter un repas
+                      if (!hasFoodEntries)
+                        // Message quand aucun repas n'est enregistré
+                        Container(
+                          padding: const EdgeInsets.symmetric(vertical: 48),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                LucideIcons.utensils,
+                                size: 48,
+                                color: Color(0xFF64748B),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'no_meals_recorded'.tr(LocalizationService.instance.currentLanguageCode),
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF1A1A1A),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'add_first_meal_message'.tr(LocalizationService.instance.currentLanguageCode),
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Color(0xFF64748B),
+                                ),
+                              ),
+                              const SizedBox(height: 24),
+                              GestureDetector(
+                                onTap: () => _showAddMealBottomSheet(),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF0B132B),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        LucideIcons.plus,
+                                        size: 16,
+                                        color: Colors.white,
+                                      ),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        'add_meal'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w500,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      else ...[
 
                       // Coach Ryze Nutrition Button
                       FutureBuilder<Map<String, dynamic>>(
@@ -721,8 +743,8 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
                             }
                           }
 
-                          final calorieTarget = user.dailyCalories ?? 2500;
-                          final macroTargets = _getMacroTargets(calorieTarget);
+                          final calorieTarget = GlobalStateManager.instance.calorieGoal.toInt();
+                          final macroTargets = _getMacroTargets();
 
                           return CoachRyzeNutritionButton(
                             userId: user.id,
@@ -799,10 +821,11 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
                       ),
                     ),
                   ),
+                      ],  // Ferme le else pour hasFoodEntries
                     ],
                   ),
                 ),
-                ),
+          ),
         ],
       ),
     );
@@ -825,9 +848,8 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
       }
     }
     
-    // Récupérer l'objectif calorique depuis l'utilisateur
-    final user = AuthService().currentUser;
-    final int targetCalories = user?.dailyCalories ?? 2500; // Valeur par défaut si non définie
+    // Récupérer l'objectif calorique depuis GlobalStateManager pour cohérence
+    final int targetCalories = GlobalStateManager.instance.calorieGoal.toInt();
     
     return CustomCard(
       child: Padding(
@@ -986,7 +1008,10 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
   }
 
   /// Calculer les objectifs macros basés sur l'utilisateur
-  Map<String, double> _getMacroTargets(int calorieTarget) {
+  Map<String, double> _getMacroTargets() {
+    // Utiliser l'objectif calorique de GlobalStateManager
+    final calorieTarget = GlobalStateManager.instance.calorieGoal;
+
     // Répartition standard : 30% protéines, 40% glucides, 30% lipides
     final proteinCalories = calorieTarget * 0.30;
     final carbsCalories = calorieTarget * 0.40;

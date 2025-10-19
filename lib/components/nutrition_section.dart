@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
@@ -134,34 +135,38 @@ class _NutritionSectionState extends State<NutritionSection>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Column(
-              children: [
-                // Header avec titre et indicateurs de page
-                _buildHeader(),
-                
-                // Contenu principal avec PageView et RefreshIndicator
-                Expanded(
-                  child: RefreshWrapper(
-                    onRefresh: _onRefresh,
-                    child: PageView(
-                      controller: _pageController,
-                      onPageChanged: _onPageChanged,
-                      children: const [
-                        NutritionDashboardHybrid(),
-                        NutritionJournalHybrid(),
-                        NutritionRecipesHybrid(),
-                      ],
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light,
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF8FAFC),
+        body: SafeArea(
+          top: false,
+          child: Stack(
+            children: [
+              Column(
+                children: [
+                  // Header avec titre et indicateurs de page
+                  _buildHeader(),
+                  
+                  // Contenu principal avec PageView et RefreshIndicator
+                  Expanded(
+                    child: RefreshWrapper(
+                      onRefresh: _onRefresh,
+                      child: PageView(
+                        controller: _pageController,
+                        onPageChanged: _onPageChanged,
+                        children: const [
+                          NutritionDashboardHybrid(),
+                          NutritionJournalHybrid(),
+                          NutritionRecipesHybrid(),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

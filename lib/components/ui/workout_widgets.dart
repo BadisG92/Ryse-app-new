@@ -106,6 +106,7 @@ class _WeekHistorySectionState extends State<WeekHistorySection> {
 
       final List<WorkoutSession> result = [];
       for (final s in sessionsData) {
+        final sessionId = s['history_session_id']?.toString() ?? s['session_id']?.toString();
         final name = s['session_name']?.toString() ?? '';
         final performedAt = DateTime.tryParse(s['performed_at']?.toString() ?? '') ?? now;
         final calories = (s['calories_burned'] as int?) ?? 0;
@@ -120,7 +121,7 @@ class _WeekHistorySectionState extends State<WeekHistorySection> {
           final bestWeight = (e['best_weight'] as num?)?.toDouble();
           final bestReps = (e['best_reps'] as int?) ?? 0;
           final setsCount = (e['sets_count'] as int?) ?? 0;
-          
+
           return SessionExerciseBest(
             name: e['localized_exercise_name']?.toString() ?? e['exercise_name']?.toString() ?? '',
             setsCount: setsCount,
@@ -130,6 +131,7 @@ class _WeekHistorySectionState extends State<WeekHistorySection> {
         }).toList();
 
         result.add(WorkoutSession(
+          sessionId: sessionId,
           name: name,
           day: dayLabel,
           calories: calories,
@@ -144,6 +146,41 @@ class _WeekHistorySectionState extends State<WeekHistorySection> {
     } catch (e) {
       debugPrint('❌ WeekHistory error: $e');
       setState(() { _sessions = const []; _loading = false; });
+    }
+  }
+
+  Future<void> _deleteSession(String sessionId) async {
+    try {
+      debugPrint('🗑️ Suppression de la séance: $sessionId');
+
+      // Supprimer de Supabase
+      await Supabase.instance.client
+          .from('workout_history')
+          .delete()
+          .eq('history_session_id', sessionId);
+
+      debugPrint('✅ Séance supprimée avec succès');
+
+      // Invalider le cache
+      // WorkoutCacheService.invalidateWeeklyHistory(); // TODO: Fix this
+
+      // Recharger les séances
+      await _loadWeekHistory();
+    } catch (e) {
+      debugPrint('❌ Erreur lors de la suppression: $e');
+      // Afficher un message d'erreur
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              LocalizationService.instance.currentLanguageCode == 'fr'
+                  ? 'Erreur lors de la suppression de la séance'
+                  : 'Error deleting session'
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -215,7 +252,10 @@ class _WeekHistorySectionState extends State<WeekHistorySection> {
                   style: const TextStyle(color: Color(0xFF64748B)),
                 ),
               )
-            else ..._sessions.map((s) => WorkoutHistoryCard(session: s)).toList(),
+            else ..._sessions.map((s) => WorkoutHistoryCard(
+              session: s,
+              onDelete: _deleteSession,
+            )).toList(),
           ],
         ),
       ),

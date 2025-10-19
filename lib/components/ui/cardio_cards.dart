@@ -30,7 +30,7 @@ class WeeklyStatCard extends StatelessWidget {
     }
 
     return Container(
-      height: 100,
+      height: 85,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -65,17 +65,20 @@ class WeeklyStatCard extends StatelessWidget {
     if (parts.length >= 2) {
       final mainValue = parts[0];
       final unit = parts.sublist(1).join(' ');
-      
+
       // Calculer la taille de police dynamiquement selon la longueur du nombre
-      double fontSize = 24;
+      // Réduction des tailles pour que 233 kcal passe dans la boîte
+      double fontSize = 20;
       if (mainValue.length >= 6) {
-        fontSize = 14; // Très grands nombres (6+ chiffres)
+        fontSize = 12; // Très grands nombres (6+ chiffres)
       } else if (mainValue.length >= 5) {
-        fontSize = 16; // Grands nombres (5 chiffres)
+        fontSize = 14; // Grands nombres (5 chiffres)
       } else if (mainValue.length >= 4) {
-        fontSize = 18; // Nombres moyens (4 chiffres)
+        fontSize = 16; // Nombres moyens (4 chiffres)
+      } else if (mainValue.length >= 3) {
+        fontSize = 18; // Nombres à 3 chiffres (comme 233)
       }
-      
+
       return Row(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.end,
@@ -105,15 +108,17 @@ class WeeklyStatCard extends StatelessWidget {
       );
     } else {
       // Pas d'unité, calculer la taille dynamiquement aussi
-      double fontSize = 24;
+      double fontSize = 20;
       if (value.length >= 6) {
-        fontSize = 14;
+        fontSize = 12;
       } else if (value.length >= 5) {
-        fontSize = 16;
+        fontSize = 14;
       } else if (value.length >= 4) {
+        fontSize = 16;
+      } else if (value.length >= 3) {
         fontSize = 18;
       }
-      
+
       return Flexible(
         child: Text(
           value,

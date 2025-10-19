@@ -1,10 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
 import 'localization_service.dart';
 import 'translations.dart';
+import '../components/ui/global_progress_models.dart';
 
 /// Gestionnaire d'état global pour synchronisation instantanée entre pages
 /// Résout le problème de latence et de mise à jour non reflétée
@@ -43,6 +42,16 @@ class GlobalStateManager {
   // Streak (série de jours consécutifs)
   int _currentStreak = 0;
 
+  // NOUVEAU: Données hebdomadaires pour GlobalProgress
+  WeeklyBalance? _weeklyBalance;
+  List<TrackingDay>? _weeklyTracking;
+  DateTime? _weeklyDataLastUpdate;
+  static const Duration _weeklyDataCacheDuration = Duration(minutes: 5);
+
+  // Gestion du changement de jour et de semaine
+  DateTime? _lastCheckedDate;
+  Timer? _midnightCheckTimer;
+
   // Getters - Valeurs actuelles
   double get currentCalories => _currentCalories;
   double get currentWaterL => _currentWaterL;
@@ -62,6 +71,34 @@ class GlobalStateManager {
   // Getters - Progression (%)
   double get calorieProgress => _calorieGoal > 0 ? (_currentCalories / _calorieGoal * 100).clamp(0, 100) : 0;
   double get waterProgress => _waterGoalL > 0 ? (_currentWaterL / _waterGoalL * 100).clamp(0, 100) : 0;
+
+  // Getters pour les données hebdomadaires
+  WeeklyBalance? get weeklyBalance => _weeklyBalance;
+  List<TrackingDay>? get weeklyTracking => _weeklyTracking;
+
+  // Vérifier si les données hebdomadaires sont encore valides
+  bool get weeklyDataValid {
+    if (_weeklyDataLastUpdate == null) return false;
+    final age = DateTime.now().difference(_weeklyDataLastUpdate!);
+    return age < _weeklyDataCacheDuration;
+  }
+
+  // Mettre à jour les données hebdomadaires
+  void updateWeeklyData(WeeklyBalance balance, List<TrackingDay> tracking) {
+    _weeklyBalance = balance;
+    _weeklyTracking = tracking;
+    _weeklyDataLastUpdate = DateTime.now();
+
+    debugPrint('📊 GlobalState: Données hebdomadaires mises en cache');
+    debugPrint('   - Balance items: ${balance.items.length}');
+    debugPrint('   - Tracking days: ${tracking.length}');
+  }
+
+  // Forcer le rafraîchissement des données hebdomadaires
+  void invalidateWeeklyData() {
+    _weeklyDataLastUpdate = null;
+    debugPrint('🔄 GlobalState: Cache hebdomadaire invalidé');
+  }
 
   /// Initialiser avec les données existantes de Supabase
   Future<void> initialize() async {
@@ -196,7 +233,95 @@ class GlobalStateManager {
       debugPrint('⚠️ GlobalStateManager init error (non-critique): $e');
       // Continue sans les données, elles seront chargées par les pages
     }
+
+    // Démarrer la vérification du changement de jour
+    _startMidnightCheck();
+    _lastCheckedDate = DateTime.now();
   }
+
+  /// Démarrer la vérification périodique du changement de jour
+  void _startMidnightCheck() {
+    // Annuler le timer précédent s'il existe
+    _midnightCheckTimer?.cancel();
+
+    // Calculer le temps jusqu'à minuit
+    final now = DateTime.now();
+    final midnight = DateTime(now.year, now.month, now.day + 1);
+    final timeUntilMidnight = midnight.difference(now);
+
+    debugPrint('⏰ GlobalState: Prochain check à minuit dans ${timeUntilMidnight.inMinutes} minutes');
+
+    // Timer pour minuit
+    _midnightCheckTimer = Timer(timeUntilMidnight, () {
+      _checkDayChange();
+
+      // Ensuite vérifier toutes les minutes pour détecter les changements d'app
+      _midnightCheckTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+        _checkDayChange();
+      });
+    });
+  }
+
+  /// Vérifier si on a changé de jour ou de semaine
+  void _checkDayChange() {
+    final now = DateTime.now();
+    final currentDay = DateTime(now.year, now.month, now.day);
+
+    if (_lastCheckedDate != null) {
+      final lastDay = DateTime(_lastCheckedDate!.year, _lastCheckedDate!.month, _lastCheckedDate!.day);
+
+      // Si on a changé de jour
+      if (currentDay.isAfter(lastDay)) {
+        debugPrint('🌙 GlobalState: Nouveau jour détecté! Réinitialisation des données journalières...');
+
+        // Vérifier si c'est lundi (changement de semaine)
+        if (now.weekday == DateTime.monday) {
+          debugPrint('📅 GlobalState: Nouveau lundi détecté! Réinitialisation des données hebdomadaires...');
+          _resetWeeklyData();
+        }
+
+        // Réinitialiser les données journalières
+        _resetDailyData();
+
+        // Recharger les données depuis Supabase pour le nouveau jour
+        initialize();
+      }
+    }
+
+    _lastCheckedDate = now;
+  }
+
+  /// Réinitialiser les données journalières
+  void _resetDailyData() {
+    // Réinitialiser toutes les valeurs journalières
+    _currentCalories = 0;
+    _currentProteins = 0;
+    _currentCarbs = 0;
+    _currentFats = 0;
+    _currentWaterL = 0;
+    _mealsCount = 0;
+    _workoutCompleted = false;
+    _sportSessions = 0;
+    _sportCaloriesBurned = 0;
+
+    // Notifier tous les listeners
+    _notifyChange(StateChangeEvent(
+      type: ChangeType.dayReset,
+      value: DateTime.now(),
+    ));
+
+    debugPrint('✨ GlobalState: Données journalières réinitialisées à 0');
+  }
+
+  /// Réinitialiser les données hebdomadaires
+  void _resetWeeklyData() {
+    _weeklyBalance = null;
+    _weeklyTracking = null;
+    _weeklyDataLastUpdate = null;
+
+    debugPrint('✨ GlobalState: Données hebdomadaires réinitialisées');
+  }
+
 
   /// MISE À JOUR INSTANTANÉE - Eau
   void updateWater(double deltaLiters, {bool isAbsolute = false}) {
@@ -547,6 +672,7 @@ class GlobalStateManager {
 
   /// Nettoie les ressources
   void dispose() {
+    _midnightCheckTimer?.cancel();
     _eventController.close();
   }
 }
@@ -574,6 +700,7 @@ enum ChangeType {
   streak,
   goals,
   batch,
+  dayReset,  // Nouveau jour détecté (minuit)
   other,
 }
 

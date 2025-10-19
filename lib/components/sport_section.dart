@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'sport_dashboard.dart';
@@ -32,6 +33,26 @@ class _SportSectionState extends State<SportSection>
   int _completedGoals = 0;
   int _totalGoals = 0;
   int _currentStreak = 0;
+  final GlobalKey<SportDashboardState> _dashboardKey = GlobalKey<SportDashboardState>();
+
+  void _openSportCalendar() {
+    // Naviguer vers le dashboard (index 0) si on n'y est pas déjà
+    if (_currentIndex != 0) {
+      setState(() {
+        _currentIndex = 0;
+      });
+      _pageController.jumpToPage(0);
+      _tabController.animateTo(0);
+
+      // Attendre que la page soit construite avant d'ouvrir le calendrier
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _dashboardKey.currentState?.openCalendar();
+      });
+    } else {
+      // Si on est déjà sur le dashboard, ouvrir directement le calendrier
+      _dashboardKey.currentState?.openCalendar();
+    }
+  }
   String _getObjectivesText(String languageCode) => '$_completedGoals/$_totalGoals ${'sport_objectives_text'.tr(languageCode)}';
   String _getStreakText(String languageCode) => '$_currentStreak ${'sport_days_text'.tr(languageCode)}';
 
@@ -168,34 +189,38 @@ class _SportSectionState extends State<SportSection>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Column(
-              children: [
-                // Header avec titre et indicateurs de page
-                _buildHeader(),
-                
-                // Contenu principal avec PageView et RefreshIndicator
-                Expanded(
-                  child: RefreshWrapper(
-                    onRefresh: _onRefresh,
-                    child: PageView(
-                      controller: _pageController,
-                      onPageChanged: _onPageChanged,
-                      children: const [
-                        SportDashboard(),
-                        SportCardioHybrid(),
-                        SportMusculationHybrid(),
-                      ],
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light,
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF8FAFC),
+        body: SafeArea(
+          top: false,
+          child: Stack(
+            children: [
+              Column(
+                children: [
+                  // Header avec titre et indicateurs de page
+                  _buildHeader(),
+                  
+                  // Contenu principal avec PageView et RefreshIndicator
+                  Expanded(
+                    child: RefreshWrapper(
+                      onRefresh: _onRefresh,
+                      child: PageView(
+                        controller: _pageController,
+                        onPageChanged: _onPageChanged,
+                        children: [
+                          SportDashboard(key: _dashboardKey, onOpenCalendar: _openSportCalendar),
+                          SportCardioHybrid(onOpenCalendar: _openSportCalendar),
+                          SportMusculationHybrid(onOpenCalendar: _openSportCalendar),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

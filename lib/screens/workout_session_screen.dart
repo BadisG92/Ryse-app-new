@@ -925,6 +925,8 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                     // Barre de recherche
                     TextField(
                       controller: searchController,
+                      textInputAction: TextInputAction.search,
+                      onSubmitted: (_) => FocusScope.of(context).unfocus(),
                       decoration: InputDecoration(
                         hintText: 'workout_search_create_exercise'.tr(LocalizationService.instance.currentLanguageCode),
                         prefixIcon: const Icon(LucideIcons.search, size: 20),
@@ -2932,7 +2934,12 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
       focusNode: focusNode,
       onTap: () => _scrollToField(setIndex),
       onChanged: onChanged,
-      keyboardType: isDecimal 
+      textInputAction: TextInputAction.next,
+      onSubmitted: (_) {
+        // Passer au champ suivant ou fermer le clavier
+        focusNode.unfocus();
+      },
+      keyboardType: isDecimal
           ? const TextInputType.numberWithOptions(decimal: true)
           : TextInputType.number,
       inputFormatters: isDecimal

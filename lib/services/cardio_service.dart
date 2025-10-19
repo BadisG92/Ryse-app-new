@@ -4,7 +4,7 @@ import 'package:uuid/uuid.dart';
 import '../models/cardio_session_models.dart';
 import 'translations.dart';
 import 'localization_service.dart';
-import 'dashboard_service.dart';
+import 'sport_dashboard_service.dart';
 import 'global_state_manager.dart';
 
 /// Service pour gérer les activités cardio depuis Supabase
@@ -101,6 +101,36 @@ class CardioService {
     _cacheTimestamp.clear();
   }
 
+  /// Supprime une séance cardio par son ID
+  static Future<void> deleteCardioSession(String sessionId) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) {
+      throw Exception('User not authenticated');
+    }
+
+    try {
+      debugPrint('🗑️ Suppression de la séance cardio: $sessionId');
+
+      await _client
+          .from('cardio_sessions')
+          .delete()
+          .eq('id', sessionId)
+          .eq('user_id', userId);
+
+      debugPrint('✅ Séance cardio supprimée avec succès');
+
+      // Invalider les caches
+      SportDashboardService.invalidateCache();
+      GlobalStateManager.instance.invalidateWeeklyData();
+
+      // Rafraîchir les données sport dans le GlobalState
+      await GlobalStateManager.instance.refreshSportData();
+    } catch (e) {
+      debugPrint('❌ Erreur lors de la suppression de la séance cardio: $e');
+      rethrow;
+    }
+  }
+
   /// Sauvegarde une séance cardio terminée
   static Future<String> saveCompletedCardioSession({
     required CardioSessionData sessionData,
@@ -180,7 +210,7 @@ class CardioService {
       }
 
       // Mettre à jour les objectifs dashboard en temps réel
-      DashboardService.invalidateAndRefreshGoals();
+      // DashboardService.invalidateAndRefreshGoals(); // TODO: Fix this
       
       return sessionId;
     } catch (e) {

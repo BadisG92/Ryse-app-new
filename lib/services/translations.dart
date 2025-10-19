@@ -137,6 +137,26 @@ class AppTranslations {
       'fr': 'Supprimer',
       'en': 'Delete',
     },
+    'delete_session': {
+      'fr': 'Supprimer la séance',
+      'en': 'Delete session',
+    },
+    'delete_session_confirm': {
+      'fr': 'Êtes-vous sûr de vouloir supprimer cette séance ? Cette action est irréversible.',
+      'en': 'Are you sure you want to delete this session? This action cannot be undone.',
+    },
+    'delete_session_success': {
+      'fr': 'Séance supprimée avec succès',
+      'en': 'Session deleted successfully',
+    },
+    'delete_session_error': {
+      'fr': 'Erreur lors de la suppression de la séance',
+      'en': 'Error deleting session',
+    },
+    'no_sessions_this_day': {
+      'fr': 'Aucune séance ce jour',
+      'en': 'No sessions this day',
+    },
     'save': {
       'fr': 'Sauvegarder',
       'en': 'Save',
@@ -919,6 +939,10 @@ class AppTranslations {
       'fr': 'Hydratation',
       'en': 'Hydration',
     },
+    'water': {
+      'fr': 'Eau',
+      'en': 'Water',
+    },
     'weighing': {
       'fr': 'Pesée',
       'en': 'Weighing',
@@ -1538,8 +1562,8 @@ class AppTranslations {
       'en': 'Carbs',
     },
     'consumed': {
-      'fr': 'consommées',
-      'en': 'consumed',
+      'fr': 'Consommé',
+      'en': 'Consumed',
     },
     'percent_of_goal_achieved': {
       'fr': '{percent}% de l\'objectif',
@@ -2330,8 +2354,12 @@ class AppTranslations {
       'en': 'No sessions this week',
     },
     'cardio_view_journal': {
-      'fr': 'Voir tout mon journal cardio',
-      'en': 'View my full cardio journal',
+      'fr': 'Voir tout mon journal de séances',
+      'en': 'View my full session log',
+    },
+    'workout_view_journal': {
+      'fr': 'Voir tout mon journal de séances',
+      'en': 'View my full session log',
     },
     'cardio_today': {
       'fr': 'Aujourd\'hui',
@@ -2719,6 +2747,10 @@ class AppTranslations {
     'error_distance_required': {
       'fr': 'Veuillez entrer une distance valide',
       'en': 'Please enter a valid distance',
+    },
+    'error_duration_or_distance_required': {
+      'fr': 'Veuillez entrer une durée ou une distance',
+      'en': 'Please enter a duration or distance',
     },
     'error_steps_required': {
       'fr': 'Veuillez entrer un nombre de pas valide',
@@ -3205,6 +3237,31 @@ class AppTranslations {
     'workout_intensity_high': {
       'fr': 'Élevé',
       'en': 'High',
+    },
+    'workout_intensity_very_high': {
+      'fr': 'Très élevé',
+      'en': 'Very High',
+    },
+    // Cardio intensity labels
+    'cardio_intensity_label': {
+      'fr': 'Intensité de l\'effort',
+      'en': 'Effort Intensity',
+    },
+    'cardio_intensity_description': {
+      'fr': 'Sélectionnez l\'intensité de votre effort (utilisé si distance non fournie)',
+      'en': 'Select your effort intensity (used if distance not provided)',
+    },
+    'cardio_estimated_calories_realtime': {
+      'fr': 'Calories estimées',
+      'en': 'Estimated Calories',
+    },
+    'cardio_based_on_speed': {
+      'fr': 'Basé sur vitesse réelle',
+      'en': 'Based on real speed',
+    },
+    'cardio_based_on_intensity': {
+      'fr': 'Basé sur intensité',
+      'en': 'Based on intensity',
     },
     'workout_validate_set_first': {
       'fr': 'Validez d\'abord la série {0} !',

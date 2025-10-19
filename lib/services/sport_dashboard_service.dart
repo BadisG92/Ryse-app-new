@@ -4,6 +4,7 @@ import 'cardio_service.dart';
 import 'workout_cache_service.dart';
 import 'calorie_target_service.dart';
 import 'streak_service.dart';
+import 'global_state_manager.dart';
 
 /// Service unifié pour les données du tableau de bord Sport
 /// Combine les données cardio et musculation
@@ -453,6 +454,85 @@ class SportDashboardService {
           'cardioDays': 0,
         }
       };
+    }
+  }
+
+  /// Récupère les détails des séances pour un jour spécifique
+  static Future<Map<String, dynamic>> getDaySessionDetails(String date) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) {
+      throw Exception('User not authenticated');
+    }
+
+    try {
+      debugPrint('📅 Récupération des détails pour le $date');
+
+      // Sessions cardio du jour
+      final cardioSessions = await _client
+          .from('cardio_sessions')
+          .select('id, activity_type, activity_title, format_title, duration_seconds, calories, distance_km, intensity, session_date, created_at')
+          .eq('user_id', userId)
+          .eq('session_date', date)
+          .eq('is_completed', true)
+          .order('created_at', ascending: false);
+
+      // Sessions musculation du jour
+      final musculationSessions = await _client
+          .from('workout_session_summaries')
+          .select('id, session_name, duration_minutes, calories_burned, session_date, created_at')
+          .eq('user_id', userId)
+          .eq('session_date', date)
+          .order('created_at', ascending: false);
+
+      debugPrint('✅ Trouvé ${cardioSessions.length} sessions cardio et ${musculationSessions.length} sessions musculation');
+
+      return {
+        'cardio': cardioSessions,
+        'musculation': musculationSessions,
+      };
+    } catch (e) {
+      debugPrint('❌ Erreur lors de la récupération des détails: $e');
+      return {
+        'cardio': [],
+        'musculation': [],
+      };
+    }
+  }
+
+  /// Supprime une séance de musculation par son ID
+  static Future<void> deleteMusculationSession(String sessionId) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) {
+      throw Exception('User not authenticated');
+    }
+
+    try {
+      debugPrint('🗑️ Suppression de la séance de musculation: $sessionId');
+
+      // Supprimer d'abord les détails des sets
+      await _client
+          .from('workout_set_history')
+          .delete()
+          .eq('session_summary_id', sessionId);
+
+      // Puis supprimer le résumé de la séance
+      await _client
+          .from('workout_session_summaries')
+          .delete()
+          .eq('id', sessionId)
+          .eq('user_id', userId);
+
+      debugPrint('✅ Séance de musculation supprimée avec succès');
+
+      // Invalider les caches
+      invalidateCache();
+      GlobalStateManager.instance.invalidateWeeklyData();
+
+      // Rafraîchir les données sport dans le GlobalState
+      await GlobalStateManager.instance.refreshSportData();
+    } catch (e) {
+      debugPrint('❌ Erreur lors de la suppression de la séance de musculation: $e');
+      rethrow;
     }
   }
 }

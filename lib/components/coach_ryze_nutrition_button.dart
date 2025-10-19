@@ -171,30 +171,63 @@ class _CoachRyzeNutritionButtonState extends State<CoachRyzeNutritionButton> {
 
         // Déterminer l'apparence selon le contexte
         final buttonConfig = _getButtonConfig(isFrench);
+        final showEndOfDayBadge = _currentContext == 'end_of_day';
 
         return GestureDetector(
           onTap: _isLoading ? null : () => _handleAnalysisTap(context),
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: buttonConfig.gradientColors,
-              ),
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: buttonConfig.gradientColors[0].withOpacity(0.3),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: buttonConfig.gradientColors,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: buttonConfig.gradientColors[0].withOpacity(0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            child: _isLoading
-                ? _buildLoadingState()
-                : _buildButtonContent(buttonConfig, isFrench),
+                child: _isLoading
+                    ? _buildLoadingState()
+                    : _buildButtonContent(buttonConfig, isFrench),
+              ),
+              if (showEndOfDayBadge)
+                Positioned(
+                  top: 4,
+                  right: 32,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10B981),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF10B981).withOpacity(0.3),
+                          blurRadius: 6,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Text(
+                      isFrench ? 'Bilan dispo' : 'Summary ready',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
         );
       },
@@ -335,8 +368,8 @@ class _CoachRyzeNutritionButtonState extends State<CoachRyzeNutritionButton> {
               : 'Your daily summary',
           icon: LucideIcons.circleCheck,
           gradientColors: [
-            const Color(0xFF10B981), // Vert
-            const Color(0xFF059669), // Vert foncé
+            const Color(0xFF0B132B), // Bleu foncé Ryze
+            const Color(0xFF1E293B), // Slate
           ],
         );
 

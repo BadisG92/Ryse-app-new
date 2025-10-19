@@ -69,22 +69,32 @@ class _NumericTextFieldState extends State<NumericTextField> {
 
   void _showDoneButton() {
     _removeOverlay();
-    
-    _overlayEntry = OverlayEntry(
-      builder: (context) => Positioned(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-        left: 0,
-        right: 0,
-        child: _DoneButtonToolbar(
-          onPressed: () {
-            _focusNode.unfocus();
-            widget.onEditingComplete?.call();
-          },
-        ),
-      ),
-    );
 
-    Overlay.of(context).insert(_overlayEntry!);
+    // Utiliser WidgetsBinding pour obtenir le vrai contexte après le build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
+      final overlay = Overlay.of(context, rootOverlay: true);
+      final renderBox = context.findRenderObject() as RenderBox?;
+
+      if (renderBox == null || !renderBox.hasSize) return;
+
+      _overlayEntry = OverlayEntry(
+        builder: (overlayContext) => Positioned(
+          bottom: 0, // Toujours en bas de l'écran
+          left: 0,
+          right: 0,
+          child: _DoneButtonToolbar(
+            onPressed: () {
+              _focusNode.unfocus();
+              widget.onEditingComplete?.call();
+            },
+          ),
+        ),
+      );
+
+      overlay.insert(_overlayEntry!);
+    });
   }
 
   void _removeOverlay() {

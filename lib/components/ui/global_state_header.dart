@@ -24,58 +24,64 @@ class _GlobalStateHeaderWidgetState extends State<GlobalStateHeaderWidget> with 
     final globalState = GlobalStateManager.instance;
     final locService = Provider.of<LocalizationService>(context);
     final isEnglish = locService.currentLanguageCode == 'en';
+    final topInset = MediaQuery.of(context).padding.top;
 
     return Container(
       width: double.infinity,
-      height: 40,
+      padding: EdgeInsets.only(top: topInset, left: 12, right: 12),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
         ),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Calories
-          _buildStatItem(
-            icon: Icons.restaurant,
-            value: '${globalState.currentCalories.toInt()}',
-            label: isEnglish ? 'kcal' : 'kcal',
-            progress: globalState.calorieProgress / 100,
-          ),
+      child: SizedBox(
+        height: 48,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Calories
+            _buildStatItem(
+              icon: Icons.restaurant,
+              value: '${globalState.currentCalories.toInt()}',
+              label: isEnglish ? 'kcal' : 'kcal',
+              progress: globalState.calorieProgress / 100,
+            ),
 
-          const _HeaderSeparator(),
+            const _HeaderSeparator(),
 
-          // Eau
-          _buildStatItem(
-            icon: Icons.water_drop,
-            value: '${globalState.currentWaterL.toStringAsFixed(1)}',
-            label: 'L',
-            progress: globalState.waterProgress / 100,
-          ),
+            // Eau
+            _buildStatItem(
+              icon: Icons.water_drop,
+              value: '${globalState.currentWaterL.toStringAsFixed(1)}',
+              label: 'L',
+              progress: globalState.waterProgress / 100,
+            ),
 
-          const _HeaderSeparator(),
+            const _HeaderSeparator(),
 
-          // Sport
-          _buildStatItem(
-            icon: Icons.fitness_center,
-            value: globalState.workoutCompleted ? '✓' : '○',
-            label: isEnglish ? 'Sport' : 'Sport',
-            progress: globalState.workoutCompleted ? 1.0 : 0.0,
-            isCompleted: globalState.workoutCompleted,
-          ),
+            // Sport
+            _buildStatItem(
+              icon: Icons.fitness_center,
+              value: globalState.workoutCompleted ? '✓' : '○',
+              label: isEnglish ? 'Sport' : 'Sport',
+              progress: globalState.workoutCompleted ? 1.0 : 0.0,
+              isCompleted: globalState.workoutCompleted,
+            ),
 
-          const _HeaderSeparator(),
+            const _HeaderSeparator(),
 
-          // Streak
-          _buildStatItem(
-            icon: Icons.local_fire_department,
-            value: '${globalState.currentStreak}',
-            label: isEnglish ? 'days' : 'jours',
-            progress: 1.0, // Streak n'a pas de progression
-            color: const Color(0xFFFF6B35),
-          ),
-        ],
+            // Streak
+            _buildStatItem(
+              icon: Icons.local_fire_department,
+              value: '${globalState.currentStreak}',
+              label: isEnglish ? 'days' : 'jours',
+              progress: 1.0, // Streak n'a pas de progression
+              color: const Color(0xFFFF6B35),
+            ),
+          ],
+        ),
       ),
     );
   }

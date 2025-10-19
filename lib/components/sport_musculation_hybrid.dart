@@ -12,9 +12,12 @@ import '../services/workout_service.dart';
 import '../services/translations.dart';
 import '../services/localization_service.dart';
 import 'package:provider/provider.dart';
+import '../widgets/sport/sport_calendar_view.dart';
 
 class SportMusculationHybrid extends StatefulWidget {
-  const SportMusculationHybrid({super.key});
+  final VoidCallback? onOpenCalendar;
+
+  const SportMusculationHybrid({super.key, this.onOpenCalendar});
 
   @override
   State<SportMusculationHybrid> createState() => _SportMusculationHybridState();
@@ -26,6 +29,7 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
   WorkoutSession? _currentSession;
   List<WorkoutExercise> _currentExercises = [];
   bool _isFromProgram = false;
+  bool _showCalendar = false;
 
   final WorkoutService _workoutService = WorkoutService();
 
@@ -254,6 +258,18 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
 
   @override
   Widget build(BuildContext context) {
+    // Si on doit afficher le calendrier, afficher SportCalendarView
+    if (_showCalendar) {
+      return SportCalendarView(
+        onBack: () {
+          setState(() {
+            _showCalendar = false;
+          });
+          _refreshPage(); // Rafraîchir les données au retour
+        },
+      );
+    }
+
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -298,6 +314,11 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
             
             // 5. Bloc "Historique de la semaine" (FACTORISÉ)
             WeekHistorySection(key: ValueKey('history_$_refreshKey')),
+
+            const SizedBox(height: 16),
+
+            // 5.5 Bouton "Voir tout mon journal"
+            _buildViewJournalButton(),
 
             const SizedBox(height: 16),
 
@@ -1078,5 +1099,41 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
         ),
       ],
     );
+  }
+
+  Widget _buildViewJournalButton() {
+    return Consumer<LocalizationService>(
+      builder: (context, locService, _) => Center(
+        child: TextButton(
+          onPressed: _openMusculationJournal,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                LucideIcons.calendar,
+                size: 16,
+                color: Color(0xFF0B132B),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'workout_view_journal'.tr(locService.currentLanguageCode),
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF0B132B),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _openMusculationJournal() {
+    // Ouvrir le calendrier directement dans cette page
+    setState(() {
+      _showCalendar = true;
+    });
   }
 } 

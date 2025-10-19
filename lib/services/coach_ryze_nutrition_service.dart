@@ -59,7 +59,7 @@ class CoachRyzeNutritionService {
         .where((meal) => meal.items.isNotEmpty)
         .length;
 
-    if (hour >= 20 || mealCount >= 3) {
+    if (hour >= 22 || mealCount >= 3) {
       return 'end_of_day';
     }
 

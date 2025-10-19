@@ -37,6 +37,7 @@ class ManualFoodSearchBottomSheet extends StatefulWidget {
         initialChildSize: 0.9,
         minChildSize: 0.5,
         maxChildSize: 0.95,
+        expand: false,
         builder: (context, scrollController) => ManualFoodSearchBottomSheet(
           onFoodCreated: onFoodCreated,
           isFromDashboard: isFromDashboard,
@@ -222,16 +223,20 @@ class _ManualFoodSearchBottomSheetState extends State<ManualFoodSearchBottomShee
   @override
   Widget build(BuildContext context) {
     final displayFoods = _getCurrentDisplayFoods();
-    
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
-        ),
+
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.9,
       ),
-      child: Column(
+      child: Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
+            ),
+          ),
+          child: Column(
         children: [
           Container(
             margin: const EdgeInsets.only(top: 12),
@@ -295,6 +300,8 @@ class _ManualFoodSearchBottomSheetState extends State<ManualFoodSearchBottomShee
               builder: (context, localizationService, _) {
                 return TextField(
                   controller: _searchController,
+                  textInputAction: TextInputAction.search,
+                  onSubmitted: (_) => FocusScope.of(context).unfocus(),
                   decoration: InputDecoration(
                     hintText: 'search_food_placeholder'.tr(localizationService.currentLanguageCode),
                     hintStyle: const TextStyle(
@@ -331,8 +338,14 @@ class _ManualFoodSearchBottomSheetState extends State<ManualFoodSearchBottomShee
                     context: context,
                     isScrollControlled: true,
                     backgroundColor: Colors.transparent,
-                    builder: (context) => CreateCustomFoodBottomSheet(
-                      onFoodSelected: widget.onFoodCreated,
+                    builder: (context) => DraggableScrollableSheet(
+                      initialChildSize: 0.9,
+                      minChildSize: 0.5,
+                      maxChildSize: 0.95,
+                      expand: false,
+                      builder: (_, __) => CreateCustomFoodBottomSheet(
+                        onFoodSelected: widget.onFoodCreated,
+                      ),
                     ),
                   );
                 }
@@ -472,6 +485,7 @@ class _ManualFoodSearchBottomSheetState extends State<ManualFoodSearchBottomShee
           ),
         ],
       ),
+        ),
     );
   }
 

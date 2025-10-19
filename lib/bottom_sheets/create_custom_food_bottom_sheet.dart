@@ -204,12 +204,16 @@ class _CreateCustomFoodBottomSheetState extends State<CreateCustomFoodBottomShee
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.9,
       ),
-      child: Column(
+      child: Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           // Handle bar
@@ -282,6 +286,8 @@ class _CreateCustomFoodBottomSheetState extends State<CreateCustomFoodBottomShee
                   Consumer<LocalizationService>(
                     builder: (context, locService, child) => TextField(
                       controller: _nameController,
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) => FocusScope.of(context).unfocus(),
                       decoration: InputDecoration(
                         hintText: 'food_name_placeholder'.tr(locService.currentLanguageCode),
                         border: const OutlineInputBorder(
@@ -603,6 +609,7 @@ class _CreateCustomFoodBottomSheetState extends State<CreateCustomFoodBottomShee
           ),
         ],
       ),
+        ),
     );
   }
-} 
+}

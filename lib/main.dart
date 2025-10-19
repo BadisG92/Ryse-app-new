@@ -60,6 +60,18 @@ class MyApp extends StatelessWidget {
       child: MaterialApp(
         title: 'Ryze App',
         debugShowCheckedModeBanner: false,
+        builder: (context, child) {
+          return GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: () {
+              final currentFocus = FocusScope.of(context);
+              if (!currentFocus.hasPrimaryFocus && currentFocus.hasFocus) {
+                currentFocus.unfocus();
+              }
+            },
+            child: child ?? const SizedBox.shrink(),
+          );
+        },
         theme: ThemeData(
           textTheme: GoogleFonts.interTextTheme(),
           colorScheme: ColorScheme.fromSeed(

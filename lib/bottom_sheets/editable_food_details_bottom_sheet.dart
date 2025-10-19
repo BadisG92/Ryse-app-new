@@ -27,19 +27,24 @@ class EditableFoodDetailsBottomSheet {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => _EditableFoodDetailsContent(
-        id: id,
-        name: name,
-        calories: calories,
-        proteins: proteins,
-        glucides: glucides,
-        lipides: lipides,
-        quantity: quantity,
-        isModified: isModified,
-        isCustomFood: isCustomFood,
-        referenceUnit: referenceUnit,
-        onFoodAdded: onFoodAdded,
-        onFoodSaved: onFoodSaved,
+      useRootNavigator: false,
+      isDismissible: false, // On gère manuellement
+      enableDrag: false, // On gère le drag manuellement
+      builder: (context) => _KeyboardAwareBottomSheet(
+        child: _EditableFoodDetailsContent(
+          id: id,
+          name: name,
+          calories: calories,
+          proteins: proteins,
+          glucides: glucides,
+          lipides: lipides,
+          quantity: quantity,
+          isModified: isModified,
+          isCustomFood: isCustomFood,
+          referenceUnit: referenceUnit,
+          onFoodAdded: onFoodAdded,
+          onFoodSaved: onFoodSaved,
+        ),
       ),
     );
   }
@@ -52,8 +57,109 @@ class EditableFoodDetailsBottomSheet {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => _CreateFoodContent(
-        onFoodCreated: onFoodCreated,
+      useRootNavigator: false,
+      isDismissible: false, // On gère manuellement
+      enableDrag: false, // On gère le drag manuellement
+      builder: (context) => _KeyboardAwareBottomSheet(
+        child: _CreateFoodContent(
+          onFoodCreated: onFoodCreated,
+        ),
+      ),
+    );
+  }
+}
+
+// Widget qui gère intelligemment le clavier et le geste de fermeture
+class _KeyboardAwareBottomSheet extends StatefulWidget {
+  final Widget child;
+
+  const _KeyboardAwareBottomSheet({
+    required this.child,
+  });
+
+  @override
+  State<_KeyboardAwareBottomSheet> createState() => _KeyboardAwareBottomSheetState();
+}
+
+class _KeyboardAwareBottomSheetState extends State<_KeyboardAwareBottomSheet> with SingleTickerProviderStateMixin {
+  double _dragOffset = 0.0;
+  bool _isDragging = false;
+  DateTime? _lastKeyboardDismissTime;
+
+  @override
+  Widget build(BuildContext context) {
+    final keyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    // Vérifier si le clavier a été fermé récemment (dans les 500ms)
+    final recentlyDismissedKeyboard = _lastKeyboardDismissTime != null &&
+        DateTime.now().difference(_lastKeyboardDismissTime!) < const Duration(milliseconds: 500);
+
+    return GestureDetector(
+      onVerticalDragStart: (details) {
+        setState(() {
+          _isDragging = true;
+          _dragOffset = 0;
+        });
+      },
+      onVerticalDragUpdate: (details) {
+        setState(() {
+          // Seulement permettre le drag vers le bas
+          _dragOffset += details.delta.dy;
+          if (_dragOffset < 0) _dragOffset = 0;
+        });
+      },
+      onVerticalDragEnd: (details) {
+        final shouldDismiss = _dragOffset > 100 ||
+            (details.primaryVelocity != null && details.primaryVelocity! > 700);
+
+        setState(() {
+          _isDragging = false;
+        });
+
+        if (keyboardVisible) {
+          // Si le clavier est visible, toujours le fermer en premier
+          FocusScope.of(context).unfocus();
+          _lastKeyboardDismissTime = DateTime.now();
+          setState(() {
+            _dragOffset = 0;
+          });
+        } else if (!recentlyDismissedKeyboard && shouldDismiss) {
+          // Si le clavier n'est pas visible ET n'a pas été fermé récemment,
+          // et que le drag est suffisant, fermer le bottom sheet
+          Navigator.pop(context);
+        } else {
+          // Sinon, revenir à la position initiale
+          setState(() {
+            _dragOffset = 0;
+          });
+        }
+      },
+      onVerticalDragCancel: () {
+        setState(() {
+          _isDragging = false;
+          _dragOffset = 0;
+        });
+      },
+      child: AnimatedContainer(
+        duration: _isDragging ? Duration.zero : const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+        transform: Matrix4.translationValues(0, _dragOffset, 0),
+        child: Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: GestureDetector(
+            onTap: () {
+              if (keyboardVisible) {
+                FocusScope.of(context).unfocus();
+                _lastKeyboardDismissTime = DateTime.now();
+              }
+            },
+            behavior: HitTestBehavior.opaque,
+            child: widget.child,
+          ),
+        ),
       ),
     );
   }

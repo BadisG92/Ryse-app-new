@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
@@ -35,10 +36,16 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
   late Timer _scoreTimer;
   int animatedScore = 0;
   bool isLoading = false; // Ne jamais bloquer l'affichage - toujours afficher le squelette
+  late final ScrollController _scrollController;
+  final GlobalKey _headerKey = GlobalKey();
+  double _headerHeight = 0;
+  bool _isStatusBarLight = true;
 
   @override
   void initState() {
     super.initState();
+    _scrollController = ScrollController()..addListener(_handleScroll);
+    SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
     _initializeAnimations();
 
     // OPTIMISATION: Charger instantanément depuis GlobalState en mode synchrone
@@ -52,6 +59,11 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
 
     // Listen to goals changes for instant updates
     GoalsNotifier.instance.addListener(_onGoalsChanged);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _captureHeaderHeight();
+      _updateStatusBarStyle(force: true);
+    });
   }
 
   /// Chargement synchrone instantané pour éviter tout flash
@@ -97,6 +109,8 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
 
   @override
   void dispose() {
+    _scrollController.removeListener(_handleScroll);
+    _scrollController.dispose();
     _scoreAnimationController.dispose();
     // S'assurer que les timers sont vraiment cancellés
     if (_scoreTimer.isActive) {
@@ -104,6 +118,7 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
     }
     LocalizationService.instance.removeListener(_onLanguageChanged);
     GoalsNotifier.instance.removeListener(_onGoalsChanged);
+    SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.dark);
     super.dispose();
   }
 
@@ -144,6 +159,38 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
       }
     } catch (e) {
       print('❌ Erreur rechargement objectifs: $e');
+    }
+  }
+
+  void _captureHeaderHeight() {
+    if (!mounted) return;
+    final headerContext = _headerKey.currentContext;
+    if (headerContext == null) return;
+    final renderBox = headerContext.findRenderObject() as RenderBox?;
+    final newHeight = renderBox?.size.height ?? 0;
+    if (newHeight > 0 && (newHeight - _headerHeight).abs() > 1) {
+      _headerHeight = newHeight;
+      _updateStatusBarStyle(force: true);
+    }
+  }
+
+  void _handleScroll() {
+    _updateStatusBarStyle();
+  }
+
+  void _updateStatusBarStyle({bool force = false}) {
+    if (!mounted) return;
+    if (!_scrollController.hasClients || _headerHeight == 0) return;
+
+    final topPadding = MediaQuery.of(context).padding.top;
+    final threshold = (_headerHeight - topPadding).clamp(0.0, double.infinity);
+    final shouldBeLight = _scrollController.offset < threshold;
+
+    if (force || shouldBeLight != _isStatusBarLight) {
+      _isStatusBarLight = shouldBeLight;
+      SystemChrome.setSystemUIOverlayStyle(
+        shouldBeLight ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+      );
     }
   }
 
@@ -208,6 +255,7 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
 
       // Démarrer l'animation du score
       _startScoreAnimation();
+      WidgetsBinding.instance.addPostFrameCallback((_) => _captureHeaderHeight());
     }
 
     print('⚡ Dashboard: Affichage instantané depuis GlobalState');
@@ -227,6 +275,7 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
 
         // Redémarrer l'animation du score avec les vraies valeurs
         _startScoreAnimation();
+        WidgetsBinding.instance.addPostFrameCallback((_) => _captureHeaderHeight());
       }
     } catch (e) {
       print('⚠️ Erreur chargement profil DB (non-bloquant): $e');
@@ -328,11 +377,13 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
           onRefresh: _refreshDashboardData,
           color: const Color(0xFF0B132B),
           child: SingleChildScrollView(
+            controller: _scrollController,
             padding: const EdgeInsets.only(bottom: 120),
             child: Column(
               children: [
                 // Header Gamifié - Toujours affiché (jamais null grâce à _loadInitialDataSync)
                 DashboardHeader(
+                  key: _headerKey,
                   profile: userProfile!.copyWith(todayScore: animatedScore),
                   onPremiumTap: _onPremiumTap,
                 ),
@@ -485,6 +536,13 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
   void onGlobalStateUpdate(StateChangeEvent event) {
     // Mise à jour instantanée quand l'état global change
     print('🔄 Dashboard: Mise à jour reçue du GlobalState - ${event.type}');
+
+    // Si c'est un nouveau jour, recharger toutes les données
+    if (event.type == ChangeType.dayReset) {
+      print('🌅 Dashboard: Nouveau jour détecté, rechargement complet...');
+      _loadDashboardData();
+      return;
+    }
 
     // Recharger les objectifs immédiatement depuis GlobalStateManager
     _reloadGoalsOnly();
@@ -646,6 +704,7 @@ class _EnhancedDailyGoalsSectionState extends State<EnhancedDailyGoalsSection>
     
     // Progression animée pour l'affichage (0 à 100%)
     final globalProgressAnimated = animatedProgress / 100.0;
+    const showGlobalProgressBar = false;
     
     return CustomCard(
       child: Padding(
@@ -695,70 +754,69 @@ class _EnhancedDailyGoalsSectionState extends State<EnhancedDailyGoalsSection>
               isPremium: widget.isPremium,
             )).toList(),
             
-            const SizedBox(height: 16),
+            if (showGlobalProgressBar) const SizedBox(height: 16),
             
-            
-            // Progression globale (format complet comme avant)
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    const Color(0xFF0B132B).withOpacity(0.05),
-                    Colors.transparent,
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Consumer<LocalizationService>(
-                        builder: (context, locService, child) => Text(
-                          'progress'.tr(locService.currentLanguageCode),
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF1A1A1A),
-                          ),
-                        ),
-                      ),
-                      Text(
-                        '$animatedProgress%',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF0B132B),
-                        ),
-                      ),
+            if (showGlobalProgressBar)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      const Color(0xFF0B132B).withOpacity(0.05),
+                      Colors.transparent,
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  Container(
-                    width: double.infinity,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF1F5F9),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: FractionallySizedBox(
-                      alignment: Alignment.centerLeft,
-                      widthFactor: globalProgressAnimated,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Consumer<LocalizationService>(
+                          builder: (context, locService, child) => Text(
+                            'progress'.tr(locService.currentLanguageCode),
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF1A1A1A),
+                            ),
                           ),
-                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        Text(
+                          '$animatedProgress%',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF0B132B),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      width: double.infinity,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: FractionallySizedBox(
+                        alignment: Alignment.centerLeft,
+                        widthFactor: globalProgressAnimated,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+                            ),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
           ],
         ),
       ),

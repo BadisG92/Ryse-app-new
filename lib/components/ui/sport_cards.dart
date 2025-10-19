@@ -21,7 +21,7 @@ class WeeklyStatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 100,
+      height: 85,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -56,17 +56,20 @@ class WeeklyStatCard extends StatelessWidget {
     if (parts.length >= 2) {
       final mainValue = parts[0];
       final unit = parts.sublist(1).join(' ');
-      
+
       // Calculer la taille de police dynamiquement selon la longueur du nombre
-      double fontSize = 24;
+      // Réduction des tailles pour que 233 kcal passe dans la boîte
+      double fontSize = 20;
       if (mainValue.length >= 6) {
-        fontSize = 14; // Très grands nombres (6+ chiffres)
+        fontSize = 12; // Très grands nombres (6+ chiffres)
       } else if (mainValue.length >= 5) {
-        fontSize = 16; // Grands nombres (5 chiffres)
+        fontSize = 14; // Grands nombres (5 chiffres)
       } else if (mainValue.length >= 4) {
-        fontSize = 18; // Nombres moyens (4 chiffres)
+        fontSize = 16; // Nombres moyens (4 chiffres)
+      } else if (mainValue.length >= 3) {
+        fontSize = 18; // Nombres à 3 chiffres (comme 233)
       }
-      
+
       return Row(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.end,
@@ -96,15 +99,17 @@ class WeeklyStatCard extends StatelessWidget {
       );
     } else {
       // Pas d'unité, calculer la taille dynamiquement aussi
-      double fontSize = 24;
+      double fontSize = 20;
       if (value.length >= 6) {
-        fontSize = 14;
+        fontSize = 12;
       } else if (value.length >= 5) {
-        fontSize = 16;
+        fontSize = 14;
       } else if (value.length >= 4) {
+        fontSize = 16;
+      } else if (value.length >= 3) {
         fontSize = 18;
       }
-      
+
       return Flexible(
         child: Text(
           value,
@@ -195,8 +200,13 @@ class WeeklyStatsCard extends StatelessWidget {
 // Card pour l'historique des séances
 class WorkoutHistoryCard extends StatefulWidget {
   final WorkoutSession session;
+  final Function(String)? onDelete; // Callback pour supprimer la séance
 
-  const WorkoutHistoryCard({super.key, required this.session});
+  const WorkoutHistoryCard({
+    super.key,
+    required this.session,
+    this.onDelete,
+  });
 
   @override
   State<WorkoutHistoryCard> createState() => _WorkoutHistoryCardState();
@@ -204,6 +214,32 @@ class WorkoutHistoryCard extends StatefulWidget {
 
 class _WorkoutHistoryCardState extends State<WorkoutHistoryCard> {
   bool _expanded = false;
+
+  Future<void> _confirmDelete() async {
+    final locService = LocalizationService.instance;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('delete_session'.tr(locService.currentLanguageCode)),
+        content: Text('delete_session_confirm'.tr(locService.currentLanguageCode)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('cancel'.tr(locService.currentLanguageCode)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: Text('delete'.tr(locService.currentLanguageCode)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && widget.session.sessionId != null) {
+      widget.onDelete?.call(widget.session.sessionId!);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -251,11 +287,26 @@ class _WorkoutHistoryCardState extends State<WorkoutHistoryCard> {
                   ],
                 ),
               ),
+              // Bouton de suppression
+              if (session.sessionId != null)
+                GestureDetector(
+                  onTap: _confirmDelete,
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    child: const Icon(
+                      LucideIcons.x,
+                      size: 16,
+                      color: Color(0xFF888888),
+                    ),
+                  ),
+                ),
+              const SizedBox(width: 8),
+              // Bouton d'expansion
               IconButton(
                 onPressed: () => setState(() => _expanded = !_expanded),
                 icon: Icon(
                   _expanded ? LucideIcons.chevronUp : LucideIcons.chevronDown,
-                  size: 18, 
+                  size: 18,
                   color: const Color(0xFF64748B),
                 ),
                 padding: EdgeInsets.zero,

@@ -838,30 +838,15 @@ class CalendarAccessCard extends StatelessWidget {
             GestureDetector(
               onTap: onCalendarTap,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  border: Border.all(
-                    color: const Color(0xFF0B132B).withOpacity(0.2),
-                  ),
+                  color: const Color(0xFF0B132B),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      LucideIcons.calendar,
-                      size: 16,
-                      color: Color(0xFF0B132B),
-                    ),
-                    SizedBox(width: 8),
-                    Text(
-                      'Voir calendrier',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF0B132B),
-                      ),
-                    ),
-                  ],
+                child: const Icon(
+                  LucideIcons.calendar,
+                  size: 20,
+                  color: Colors.white,
                 ),
               ),
             ),

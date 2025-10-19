@@ -481,8 +481,8 @@ class _AIPreviewScreenState extends State<AIPreviewScreen> {
                   Consumer<LocalizationService>(
                     builder: (context, locService, child) => Text(
                       locService.currentLanguageCode == 'fr'
-                          ? 'Ajouter une note (optionnel)'
-                          : 'Add a note (optional)',
+                          ? 'Ajoute des précisions (optionnel)'
+                          : 'Add extra details (optional)',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
@@ -494,8 +494,8 @@ class _AIPreviewScreenState extends State<AIPreviewScreen> {
                   Consumer<LocalizationService>(
                     builder: (context, locService, child) => Text(
                       locService.currentLanguageCode == 'fr'
-                          ? 'Décrivez le plat pour améliorer la précision'
-                          : 'Describe the dish to improve accuracy',
+                          ? 'Ajoute les ingrédients, la cuisson ou la portion pour guider l’analyse'
+                          : 'Mention ingredients, cooking style or portion to guide the analysis',
                       style: TextStyle(
                         fontSize: 14,
                         color: const Color(0xFF0B132B).withOpacity(0.6),

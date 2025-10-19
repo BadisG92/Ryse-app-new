@@ -11,9 +11,12 @@ import '../screens/manual_cardio_entry_screen.dart';
 import '../services/translations.dart';
 import '../services/localization_service.dart';
 import '../services/cardio_service.dart';
+import '../widgets/sport/sport_calendar_view.dart';
 
 class SportCardioHybrid extends StatefulWidget {
-  const SportCardioHybrid({super.key});
+  final VoidCallback? onOpenCalendar;
+
+  const SportCardioHybrid({super.key, this.onOpenCalendar});
 
   @override
   State<SportCardioHybrid> createState() => _SportCardioHybridState();
@@ -22,6 +25,7 @@ class SportCardioHybrid extends StatefulWidget {
 class _SportCardioHybridState extends State<SportCardioHybrid> {
   // Clé unique pour forcer le rafraîchissement des sections
   Key _refreshKey = UniqueKey();
+  bool _showCalendar = false;
 
   void _refreshPage() {
     setState(() {
@@ -32,6 +36,18 @@ class _SportCardioHybridState extends State<SportCardioHybrid> {
 
   @override
   Widget build(BuildContext context) {
+    // Si on doit afficher le calendrier, afficher SportCalendarView
+    if (_showCalendar) {
+      return SportCalendarView(
+        onBack: () {
+          setState(() {
+            _showCalendar = false;
+          });
+          _refreshPage(); // Rafraîchir les données au retour
+        },
+      );
+    }
+
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -245,7 +261,7 @@ class _SportCardioHybridState extends State<SportCardioHybrid> {
         },
         onDeclarePressed: () {
           Navigator.pop(context);
-          _openManualEntry(context, formatTitle, activity);
+          _openManualEntry(context, formatTitle, activity, objective);
         },
       ),
     );
@@ -270,7 +286,7 @@ class _SportCardioHybridState extends State<SportCardioHybrid> {
     });
   }
 
-  void _openManualEntry(BuildContext context, String formatTitle, CardioActivityType activity) {
+  void _openManualEntry(BuildContext context, String formatTitle, CardioActivityType activity, CardioObjective? objective) {
     // Utiliser directement les informations de l'activité Supabase
 
     Navigator.push(
@@ -280,6 +296,7 @@ class _SportCardioHybridState extends State<SportCardioHybrid> {
           activityType: activity.activityKey,
           activityTitle: activity.name,
           formatTitle: formatTitle,
+          objective: objective,
         ),
       ),
     ).then((_) {
@@ -297,10 +314,9 @@ class _SportCardioHybridState extends State<SportCardioHybrid> {
   }
 
   void _openCardioJournal(BuildContext context) {
-    // TODO: Ouvrir le journal cardio complet
-    final locService = LocalizationService.instance;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('cardio_journal_opening'.tr(locService.currentLanguageCode))),
-    );
+    // Ouvrir le calendrier directement dans cette page
+    setState(() {
+      _showCalendar = true;
+    });
   }
 } 

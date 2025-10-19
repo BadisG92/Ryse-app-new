@@ -62,6 +62,7 @@ class SessionExerciseBest {
 }
 
 class WorkoutSession {
+  final String? sessionId; // ID de la séance pour permettre la suppression
   final String name;
   final String day;
   final int calories;
@@ -71,6 +72,7 @@ class WorkoutSession {
   final String lastUsed;
 
   const WorkoutSession({
+    this.sessionId,
     required this.name,
     required this.day,
     required this.calories,

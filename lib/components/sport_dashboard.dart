@@ -20,14 +20,22 @@ import 'package:provider/provider.dart';
 import '../services/global_state_manager.dart';
 
 class SportDashboard extends StatefulWidget {
-  const SportDashboard({super.key});
+  final VoidCallback? onOpenCalendar;
+
+  const SportDashboard({super.key, this.onOpenCalendar});
 
   @override
-  State<SportDashboard> createState() => _SportDashboardState();
+  State<SportDashboard> createState() => SportDashboardState();
 }
 
-class _SportDashboardState extends State<SportDashboard> with TickerProviderStateMixin {
+class SportDashboardState extends State<SportDashboard> with TickerProviderStateMixin {
   bool showCalendar = false;
+
+  void openCalendar() {
+    setState(() {
+      showCalendar = true;
+    });
+  }
   SportDashboardData? _dashboardData;
 
   // Animation des calories
@@ -478,7 +486,7 @@ class _SportDashboardState extends State<SportDashboard> with TickerProviderStat
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Icon(
-                      LucideIcons.expand,
+                      LucideIcons.calendar,
                       size: 20,
                       color: Colors.white,
                     ),

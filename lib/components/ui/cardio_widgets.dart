@@ -422,6 +422,12 @@ class _LastSessionSectionState extends State<LastSessionSection> {
                     Expanded(
                       child: _buildMetric('cardio_distance'.tr(locService.currentLanguageCode), session.distanceText, LucideIcons.mapPin),
                     ),
+                  ] else if (session.intensity != null && session.intensity!.isNotEmpty) ...[
+                    // Afficher l'intensité si pas de distance
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _buildMetric('cardio_intensity_label'.tr(locService.currentLanguageCode), session.intensity!, LucideIcons.zap),
+                    ),
                   ],
                 ],
               ),
@@ -515,6 +521,65 @@ class _WeekSessionsSectionState extends State<WeekSessionsSection> {
     }
   }
 
+  Future<void> _deleteSession(String sessionId) async {
+    final locService = LocalizationService.instance;
+
+    // Afficher confirmation
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('delete_session'.tr(locService.currentLanguageCode)),
+        content: Text('delete_session_confirm'.tr(locService.currentLanguageCode)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(
+              'cancel'.tr(locService.currentLanguageCode),
+              style: const TextStyle(color: Color(0xFF888888)),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(
+              'delete'.tr(locService.currentLanguageCode),
+              style: const TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      // Supprimer la séance
+      await CardioService.deleteCardioSession(sessionId);
+
+      // Recharger la liste
+      await _loadWeekSessions();
+
+      // Afficher message de succès
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('delete_session_success'.tr(locService.currentLanguageCode)),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ Erreur suppression cardio: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('delete_session_error'.tr(locService.currentLanguageCode)),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<LocalizationService>(
@@ -593,9 +658,9 @@ class _WeekSessionsSectionState extends State<WeekSessionsSection> {
           color: const Color(0xFF0B132B),
           size: 20,
         ),
-        
+
         const SizedBox(width: 12),
-        
+
         // Informations de la séance
         Expanded(
           child: Column(
@@ -640,12 +705,29 @@ class _WeekSessionsSectionState extends State<WeekSessionsSection> {
                   if (session.distance != null && session.distance! > 0) ...[
                     const SizedBox(width: 16),
                     _buildSessionStat(LucideIcons.mapPin, session.distanceText),
+                  ] else if (session.intensity != null && session.intensity!.isNotEmpty) ...[
+                    // Afficher l'intensité si pas de distance
+                    const SizedBox(width: 16),
+                    _buildSessionStat(LucideIcons.zap, session.intensity!),
                   ],
                   const SizedBox(width: 16),
                   _buildSessionStat(LucideIcons.flame, session.caloriesText),
                 ],
               ),
             ],
+          ),
+        ),
+
+        // Bouton de suppression
+        GestureDetector(
+          onTap: () => _deleteSession(session.id),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            child: const Icon(
+              LucideIcons.x,
+              size: 16,
+              color: Color(0xFF888888),
+            ),
           ),
         ),
       ],
