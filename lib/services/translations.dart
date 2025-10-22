@@ -1535,6 +1535,10 @@ class AppTranslations {
       'fr': 'Bon rythme !',
       'en': 'Good rhythm!',
     },
+    'start_your_week': {
+      'fr': 'Commencez votre semaine',
+      'en': 'Start your week',
+    },
     'goal_calories': {
       'fr': 'Atteindre mes calories',
       'en': 'Reach my calories',
@@ -3921,8 +3925,8 @@ class AppTranslations {
       'en': 'AI Workout',
     },
     'ai_workout_title': {
-      'fr': 'Séance IA',
-      'en': 'AI Workout',
+      'fr': 'Séance du Coach Ryze',
+      'en': 'Coach Ryze Session',
     },
     'ai_workout_generated_session': {
       'fr': 'Séance générée par IA',

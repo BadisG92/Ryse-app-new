@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 enum CoachRyzeAvatarType {
   workout,    // Panda coach sport
   nutrition,  // Panda docteur nutrition
+  chef,       // Panda chef cuisinier
 }
 
 /// Tailles prédéfinies pour l'avatar Coach Ryze
@@ -63,6 +64,8 @@ class CoachRyzeAvatar extends StatelessWidget {
         return 'assets/images/coach_ryze_workout_avatar.png';
       case CoachRyzeAvatarType.nutrition:
         return 'assets/images/coach_ryze_nutrition_avatar.png';
+      case CoachRyzeAvatarType.chef:
+        return 'assets/images/coach_ryze_chef_avatar.png';
     }
   }
 

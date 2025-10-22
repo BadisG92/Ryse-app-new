@@ -21,6 +21,7 @@ import '../bottom_sheets/add_meal_bottom_sheet.dart';
 import 'coach_ryze_nutrition_button.dart';
 import '../services/workout_service.dart';
 import '../services/global_state_manager.dart';
+import 'ui/coach_ryze_avatar.dart';
 
 class NutritionJournalHybrid extends StatefulWidget {
   const NutritionJournalHybrid({super.key});
@@ -650,36 +651,47 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
 
                       // Contenu : soit les repas, soit le message pour ajouter un repas
                       if (!hasFoodEntries)
-                        // Message quand aucun repas n'est enregistré
+                        // Message quand aucun repas n'est enregistré - Chef Panda
                         Container(
-                          padding: const EdgeInsets.symmetric(vertical: 48),
+                          padding: const EdgeInsets.symmetric(vertical: 24),
                           child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Icon(
-                                LucideIcons.utensils,
-                                size: 48,
-                                color: Color(0xFF64748B),
+                              // Coach Ryze Chef Header
+                              Consumer<LocalizationService>(
+                                builder: (context, locService, child) {
+                                  final message = locService.currentLanguageCode == 'fr'
+                                    ? 'Qu\'est-ce qu\'on mange aujourd\'hui ?'
+                                    : 'What are we eating today?';
+
+                                  return Padding(
+                                    padding: const EdgeInsets.fromLTRB(0, 8, 0, 24),
+                                    child: Row(
+                                      crossAxisAlignment: CrossAxisAlignment.center,
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            message,
+                                            style: const TextStyle(
+                                              fontSize: 22,
+                                              fontWeight: FontWeight.bold,
+                                              color: Color(0xFF0B132B),
+                                              height: 1.3,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 16),
+                                        const CoachRyzeAvatar(
+                                          type: CoachRyzeAvatarType.chef,
+                                          size: CoachRyzeAvatarSize.xxlarge, // 160px
+                                          withShadow: false,
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
                               ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'no_meals_recorded'.tr(LocalizationService.instance.currentLanguageCode),
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF1A1A1A),
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'add_first_meal_message'.tr(LocalizationService.instance.currentLanguageCode),
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Color(0xFF64748B),
-                                ),
-                              ),
-                              const SizedBox(height: 24),
+
+                              // Bouton ajouter un aliment
                               GestureDetector(
                                 onTap: () => _showAddMealBottomSheet(),
                                 child: Container(
@@ -691,15 +703,15 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Icon(
+                                      const Icon(
                                         LucideIcons.plus,
                                         size: 16,
                                         color: Colors.white,
                                       ),
-                                      SizedBox(width: 8),
+                                      const SizedBox(width: 8),
                                       Text(
                                         'add_meal'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
-                                        style: TextStyle(
+                                        style: const TextStyle(
                                           fontSize: 14,
                                           fontWeight: FontWeight.w500,
                                           color: Colors.white,

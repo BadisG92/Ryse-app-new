@@ -128,12 +128,15 @@ class _NutritionAnalysisScreenState extends State<NutritionAnalysisScreen> with 
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header avec logo et contexte
+                // Date et heure de l'analyse
+                _buildDateHeader(isFrench),
+
+                // Header avec panda Coach Ryze
                 _buildHeader(isFrench),
 
-                const SizedBox(height: Spacing.xl),
+                const SizedBox(height: 12),
 
-                // Score avec gauge circulaire impactante
+                // Score nutritionnel horizontal compact
                 if (widget.analysis.score != null) ...[
                   _buildEnhancedScoreCard(isFrench),
                   const SizedBox(height: Spacing.xl),
@@ -219,6 +222,25 @@ class _NutritionAnalysisScreenState extends State<NutritionAnalysisScreen> with 
     }
   }
 
+  /// Date et heure de l'analyse
+  Widget _buildDateHeader(bool isFrench) {
+    final dateStr = DateFormat('dd/MM/yyyy').format(widget.analysis.date);
+    final timeStr = DateFormat('HH:mm').format(widget.analysis.timestamp);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+      child: Text(
+        isFrench
+            ? 'Bilan du $dateStr fait à $timeStr'
+            : 'Report for $dateStr made at $timeStr',
+        style: const TextStyle(
+          fontSize: 13,
+          color: Color(0xFF94A3B8),
+        ),
+      ),
+    );
+  }
+
   Widget _buildHeader(bool isFrench) {
     return Consumer<AuthService>(
       builder: (context, authService, child) {
@@ -229,7 +251,7 @@ class _NutritionAnalysisScreenState extends State<NutritionAnalysisScreen> with 
         final contextMessage = _getContextMessage(widget.analysis.context, isFrench);
 
         return Padding(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -332,7 +354,7 @@ class _NutritionAnalysisScreenState extends State<NutritionAnalysisScreen> with 
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: Spacing.md),
-      padding: const EdgeInsets.all(Spacing.lg),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -342,83 +364,102 @@ class _NutritionAnalysisScreenState extends State<NutritionAnalysisScreen> with 
             scoreColor.withOpacity(0.1),
           ],
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: scoreColor.withOpacity(0.2),
           width: 1,
         ),
       ),
-      child: Column(
+      child: Row(
         children: [
-          // Gauge circulaire - Réduite pour être informative, pas dominante
+          // Score avec mini gauge à gauche
           SizedBox(
-            width: 120,
-            height: 120,
-            child: CustomPaint(
-              painter: _CircularGaugePainter(
-                score: score,
-                color: scoreColor,
-              ),
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+            width: 80,
+            height: 80,
+            child: Stack(
+              children: [
+                // Gauge circulaire en arrière-plan
+                CustomPaint(
+                  size: const Size(80, 80),
+                  painter: _CircularGaugePainter(
+                    score: score,
+                    color: scoreColor,
+                  ),
+                ),
+                // Score au centre
+                Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        '${score.toInt()}',
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w800,
+                          color: scoreColor,
+                          height: 1,
+                        ),
+                      ),
+                      Text(
+                        '/100',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                          color: scoreColor.withOpacity(0.6),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(width: 20),
+
+          // Infos à droite - Plus d'espace utilisé
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  isFrench ? 'Score Nutritionnel' : 'Nutrition Score',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF64748B),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
                   children: [
-                    Text(
-                      '${score.toInt()}',
-                      style: TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.w800,
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
                         color: scoreColor,
-                        height: 1,
+                        shape: BoxShape.circle,
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '/ 100',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: scoreColor.withOpacity(0.6),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        scoreLabel,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: scoreColor,
+                          height: 1.3,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
                 ),
-              ),
+              ],
             ),
-          ),
-          const SizedBox(height: Spacing.md),
-
-          // Label - Plus prominent
-          Text(
-            isFrench ? 'Score Nutritionnel' : 'Nutrition Score',
-            style: AppTextStyles.body.copyWith(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: const Color(0xFF0B132B),
-            ),
-          ),
-          const SizedBox(height: Spacing.xs),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  color: scoreColor,
-                  shape: BoxShape.circle,
-                ),
-              ),
-              const SizedBox(width: Spacing.sm),
-              Text(
-                scoreLabel,
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: scoreColor,
-                ),
-              ),
-            ],
           ),
         ],
       ),
@@ -1133,13 +1174,15 @@ class _NutritionAnalysisScreenState extends State<NutritionAnalysisScreen> with 
 
   String _getScoreLabel(double score, bool isFrench) {
     if (isFrench) {
-      if (score >= 80) return 'Excellent';
-      if (score >= 60) return 'Bon';
-      return 'À améliorer';
+      if (score >= 80) return 'Super ! Équilibre nutritionnel optimal';
+      if (score >= 60) return 'Bien ! Quelques petits ajustements';
+      if (score >= 40) return 'Pas mal, mais on peut mieux faire';
+      return 'Améliore ton équilibre nutritionnel';
     } else {
-      if (score >= 80) return 'Excellent';
-      if (score >= 60) return 'Good';
-      return 'Needs improvement';
+      if (score >= 80) return 'Great! Optimal nutritional balance';
+      if (score >= 60) return 'Good! A few minor tweaks needed';
+      if (score >= 40) return 'Not bad, but we can do better';
+      return 'Improve your nutritional balance';
     }
   }
 
@@ -1321,8 +1364,8 @@ class _CircularGaugePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width / 2 - 12;
-    final strokeWidth = 12.0;
+    final radius = size.width / 2 - 6;
+    final strokeWidth = 6.0;
 
     // Background circle (gris clair)
     final backgroundPaint = Paint()

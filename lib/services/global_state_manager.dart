@@ -218,7 +218,12 @@ class GlobalStateManager {
         final dailyCaloriesGoal = (userProfile['daily_calories'] as num?)?.toDouble() ?? 2000;
         final dailyWaterGoalMl = (userProfile['daily_water_goal'] as num?)?.toDouble() ?? 2000;
         final streakCount = (userProfile['streak_count'] as num?)?.toInt() ?? 0;
-        final name = userProfile['first_name'] as String? ?? user.email?.split('@').first ?? 'User';
+
+        // Formater le nom avec la première lettre en majuscule dès le chargement
+        final rawName = userProfile['first_name'] as String? ?? user.email?.split('@').first ?? 'User';
+        final name = rawName.isNotEmpty
+            ? rawName[0].toUpperCase() + (rawName.length > 1 ? rawName.substring(1).toLowerCase() : '')
+            : 'User';
 
         debugPrint('📊 Valeurs extraites:');
         debugPrint('   - dailyCaloriesGoal: $dailyCaloriesGoal (brut: ${userProfile['daily_calories']})');

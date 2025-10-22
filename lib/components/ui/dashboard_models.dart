@@ -563,12 +563,6 @@ class DashboardData {
         label: 'add_meal'.tr(languageCode),
         icon: LucideIcons.utensils,
       ),
-      // 5. Pesée
-      QuickAction(
-        id: 'weight_tracking',
-        label: 'weight_tracking'.tr(languageCode),
-        icon: LucideIcons.scale,
-      ),
     ];
   }
 

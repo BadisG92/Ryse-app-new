@@ -333,18 +333,6 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
               
               const SizedBox(height: 16),
               
-              // Conseil IA - avec icône IA
-              Consumer<LocalizationService>(
-                builder: (context, localizationService, _) {
-                  final tips = NutritionData.getTips(localizationService.currentLanguageCode);
-                  return AITipCard(
-                    tip: tips.first, // TODO: Rotation intelligente
-                  );
-                },
-              ),
-              
-              const SizedBox(height: 16),
-              
               // Quick Actions - avec recette et swipe
               NutritionQuickActionsSection(
                 actions: NutritionData.quickActions,

@@ -114,11 +114,8 @@ class WeeklyBalance {
 
   // Message motivationnel selon le score
   String get motivationalMessage {
-    final locService = LocalizationService.instance;
-    if (globalScore >= 0.9) return 'perfect_week'.tr(locService.currentLanguageCode);
-    if (globalScore >= 0.7) return 'excellent_work'.tr(locService.currentLanguageCode);
-    if (globalScore >= 0.5) return 'good_rhythm'.tr(locService.currentLanguageCode);
-    return 'keep_going'.tr(locService.currentLanguageCode);
+    // Retourner une chaîne vide pour ne pas afficher de sous-titre
+    return '';
   }
 
   // Couleur selon le score

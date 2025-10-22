@@ -61,9 +61,9 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
     final globalState = GlobalStateManager.instance;
     final locService = LocalizationService.instance;
 
-    // Créer un profil basique instantanément
+    // Créer un profil basique instantanément avec le nom déjà formaté depuis GlobalState
     userProfile = UserProfile(
-      name: 'User', // Sera mis à jour par _loadDashboardData
+      name: globalState.userName, // Utiliser directement le nom formaté du GlobalState
       streak: globalState.currentStreak,
       todayScore: _calculateTodayScore(globalState),
       todayXP: _calculateTodayXP(globalState),
@@ -364,24 +364,6 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
                           ),
 
                           const SizedBox(height: 16),
-
-                          // Social Proof & FOMO
-                          Consumer<LocalizationService>(
-                            builder: (context, locService, child) => CommunityStatsSection(
-                              stats: DashboardData.getCommunityStats(locService.currentLanguageCode),
-                            ),
-                          ),
-
-                          const SizedBox(height: 16),
-
-                      // CTA Premium
-                      userProfile!.isPremium
-                        ? PremiumInsightsSection(
-                            onViewAnalytics: _onViewAnalytics,
-                          )
-                        : PremiumCTASection(
-                            onUpgrade: _onPremiumUpgrade,
-                          ),
                     ],
                   ),
                 ),
