@@ -611,6 +611,7 @@ class DatabaseService {
         description,
         created_at,
         estimated_duration_minutes,
+        is_from_ai,
         user_workout_template_exercises(
           order_index,
           suggested_sets,
@@ -649,6 +650,7 @@ class DatabaseService {
             'description_fr': template['description'],
             'created_at': template['created_at'],
             'estimated_duration_minutes': template['estimated_duration_minutes'],
+            'is_from_ai': template['is_from_ai'] ?? false, // ⚡ Pass Coach Ryze flag
             'workout_template_exercises': (template['user_workout_template_exercises'] as List?)
                 ?.map((ex) {
                   // Gérer exercice générique vs custom
@@ -747,6 +749,7 @@ class DatabaseService {
         estimatedDuration: (map['estimated_duration_minutes'] as int?) ?? 45,
         exercises: exercises,
         isCustom: isCustomTemplate,
+        isFromAI: map['is_from_ai'] == true, // ⚡ Load Coach Ryze flag
       );
     }).toList();
 
@@ -976,18 +979,22 @@ class DatabaseService {
   }
 
   // SAUVEGARDE DES TEMPLATES UTILISATEUR
-  static Future<String> saveUserWorkoutTemplate(models.WorkoutSession session) async {
+  static Future<String> saveUserWorkoutTemplate(
+    models.WorkoutSession session, {
+    bool isFromAI = false,
+  }) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) throw Exception('User not authenticated');
 
     final sessionDuration = session.endTime?.difference(session.startTime).inMinutes ?? 45;
-    
+
     // 1. Créer le template utilisateur
     final templateData = {
       'user_id': userId,
       'name': session.name,
       'description': 'Programme créé à partir d\'une séance manuelle',
       'is_custom': true,
+      'is_from_ai': isFromAI, // ⚡ Mark as Coach Ryze if from AI
       'estimated_duration_minutes': sessionDuration,
     };
 
@@ -1010,17 +1017,17 @@ class DatabaseService {
       final exercise = workoutExercise.exercise;
       
       // Compter le nombre de séries validées pour cet exercice
-      final completedSets = workoutExercise.sets.where((set) => set.isCompleted).length;
+      final completedSets = workoutExercise.sets.where((set) => set.reps > 0).length;
       final totalSets = workoutExercise.sets.length;
       
       debugPrint('Exercice ${i + 1}: ${exercise.name}');
       debugPrint('- Total séries: $totalSets');
-      debugPrint('- Séries validées: $completedSets');
+      debugPrint('- Séries avec données (reps > 0): $completedSets');
       debugPrint('- Est custom: ${exercise.isCustom}');
       debugPrint('- ID exercice: ${exercise.id}');
       
       if (completedSets == 0) {
-        debugPrint('- IGNORÉ (aucune série validée)');
+        debugPrint('- IGNORÉ (aucune série avec données)');
         continue; // Ignorer les exercices sans série validée
       }
       
@@ -1361,7 +1368,7 @@ class DatabaseService {
         exerciseId = await _ensureExerciseExistsAndGetId(we.exercise);
         if (exerciseId == null) continue;
       }
-      for (final set in we.sets.where((s) => s.isCompleted)) {
+      for (final set in we.sets.where((s) => s.reps > 0)) {
         rows.add({
           'user_id': userId,
           'history_session_id': historySessionId,
@@ -1378,29 +1385,25 @@ class DatabaseService {
       }
     }
 
-    // Insert in bulk into workout_set_history
-    if (rows.isNotEmpty) {
-      await _client.from('workout_set_history').insert(rows);
-    }
+    // Calculate session summary data FIRST (before any inserts)
+    final numExercises = session.exercises.length;
+    final totalVolume = rows.fold<double>(0, (sum, r) => sum + (((r['weight'] as num?)?.toDouble() ?? 0) * ((r['reps'] as num?)?.toDouble() ?? 0)));
+    final intensityValue = intensity ?? 'Modéré';
+    final performedAtDate = DateTime.tryParse(performedAt) ?? DateTime.now();
+    final durationMins = durationMinutes ?? (session.endTime != null ? session.endTime!.difference(session.startTime).inMinutes : 0);
 
-    // Create session summary row
+    // Generate unique session name with automatic numbering
+    final baseSessionName = (session.name.trim().isEmpty)
+        ? 'Séance ${performedAtDate.toIso8601String().split('T').first}'
+        : session.name.trim();
+
+    final sessionName = await generateUniqueSessionName(
+      baseSessionName: baseSessionName,
+      performedAtDate: performedAtDate,
+    );
+
+    // Create session summary row FIRST (parent must exist before children)
     try {
-      final numExercises = session.exercises.length;
-      final totalVolume = rows.fold<double>(0, (sum, r) => sum + (((r['weight'] as num?)?.toDouble() ?? 0) * ((r['reps'] as num?)?.toDouble() ?? 0)));
-      final intensityValue = intensity ?? 'Modéré';
-      final performedAtDate = DateTime.tryParse(performedAt) ?? DateTime.now();
-      final durationMins = durationMinutes ?? (session.endTime != null ? session.endTime!.difference(session.startTime).inMinutes : 0);
-      
-      // Generate unique session name with automatic numbering
-      final baseSessionName = (session.name.trim().isEmpty)
-          ? 'Séance ${performedAtDate.toIso8601String().split('T').first}'
-          : session.name.trim();
-      
-      final sessionName = await generateUniqueSessionName(
-        baseSessionName: baseSessionName,
-        performedAtDate: performedAtDate,
-      );
-
       debugPrint('📝 Creating workout_session_summary:');
       debugPrint('  userId=$userId historySessionId=$historySessionId');
       debugPrint('  name=$sessionName date=$performedAtDate durationMins=$durationMins');
@@ -1421,6 +1424,28 @@ class DatabaseService {
         'guided_template_id': guidedTemplateId,
       });
 
+      // Insert sets into workout_set_history AFTER summary exists (to respect CASCADE constraint)
+      try {
+        if (rows.isNotEmpty) {
+          debugPrint('📝 Inserting ${rows.length} sets into workout_set_history');
+          await _client.from('workout_set_history').insert(rows);
+          debugPrint('✅ Sets inserted successfully');
+        }
+      } catch (e) {
+        debugPrint('❌ Error inserting sets: $e');
+        // Rollback: delete the summary since sets failed
+        try {
+          await _client
+              .from('workout_session_summaries')
+              .delete()
+              .eq('history_session_id', historySessionId);
+          debugPrint('🔄 Rollback: Summary deleted due to sets insertion failure');
+        } catch (rollbackError) {
+          debugPrint('❌ Rollback failed: $rollbackError');
+        }
+        rethrow;
+      }
+
       // NOUVEAU: Notifier GlobalStateManager immédiatement (AVANT invalidation cache)
       try {
         GlobalStateManager.instance.updateWorkout(true);
@@ -1436,7 +1461,7 @@ class DatabaseService {
       SportDashboardService.invalidateCache();
 
       debugPrint('🔄 Caches invalidated after workout session save');
-      
+
     } catch (e) {
       debugPrint('❌ Error creating workout_session_summary: $e');
       // Re-throw the error so it's not silently ignored

@@ -80,7 +80,7 @@ class AIWorkoutGenerationService {
 
       if (response == null) {
         return AIWorkoutResult.error(
-          error: 'Failed to get response from Gemini',
+          error: 'Coach Ryze est occupé, réessayez dans quelques instants',
           processingTime: stopwatch.elapsedMilliseconds / 1000.0,
         );
       }

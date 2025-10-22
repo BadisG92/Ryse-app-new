@@ -28,13 +28,20 @@ class SportDashboard extends StatefulWidget {
   State<SportDashboard> createState() => SportDashboardState();
 }
 
-class SportDashboardState extends State<SportDashboard> with TickerProviderStateMixin {
+class SportDashboardState extends State<SportDashboard> with TickerProviderStateMixin, GlobalStateListener<SportDashboard> {
   bool showCalendar = false;
 
   void openCalendar() {
     setState(() {
       showCalendar = true;
     });
+  }
+
+  /// Méthode appelée par GlobalStateListener quand les données changent
+  @override
+  void onGlobalStateUpdate(StateChangeEvent event) {
+    debugPrint('🔄 SportDashboard: GlobalState mis à jour, rechargement des données...');
+    _loadDashboardData();
   }
   SportDashboardData? _dashboardData;
 
@@ -90,6 +97,9 @@ class SportDashboardState extends State<SportDashboard> with TickerProviderState
   /// Charge les données du dashboard depuis Supabase (enrichissement en arrière-plan)
   Future<void> _loadDashboardData() async {
     try {
+      // TEMPORAIRE: Invalider le cache pour forcer le rechargement avec les nouveaux logs
+      SportDashboardService.invalidateCache();
+
       final data = await SportDashboardService.getDashboardData();
       setState(() {
         _dashboardData = data;

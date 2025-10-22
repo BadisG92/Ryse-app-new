@@ -9,6 +9,7 @@ import '../services/offline_workout_service.dart';
 import '../services/translations.dart';
 import '../services/auth_service.dart';
 import '../models/sport_models.dart';
+import '../components/ui/coach_ryze_avatar.dart';
 import 'workout_session_screen.dart';
 
 class AIWorkoutGeneratorScreen extends StatefulWidget {
@@ -18,7 +19,7 @@ class AIWorkoutGeneratorScreen extends StatefulWidget {
   State<AIWorkoutGeneratorScreen> createState() => _AIWorkoutGeneratorScreenState();
 }
 
-class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> {
+class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> with SingleTickerProviderStateMixin {
   final TextEditingController _textController = TextEditingController();
   String? _selectedChip;
   bool _showParams = false;
@@ -33,6 +34,11 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> {
   bool _isEditMode = false; // Mode édition du plan
   String _sessionName = ''; // Nom de la séance généré automatiquement
 
+  // Animation du panda
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+
   // 8 chips de suggestions rapides
   final List<Map<String, String>> _quickChips = [
     {'label_fr': 'Haut du corps', 'label_en': 'Upper body', 'emoji': '💪'},
@@ -46,7 +52,38 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+
+    // Initialiser l'animation du panda
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeOut,
+    ));
+
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0.3, 0), // Vient de la droite
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeOutCubic,
+    ));
+
+    // Démarrer l'animation
+    _animationController.forward();
+  }
+
+  @override
   void dispose() {
+    _animationController.dispose();
     _textController.dispose();
     super.dispose();
   }
@@ -100,15 +137,26 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> {
   }
 
   void _startWorkout() {
-    if (_generatedWorkout == null) return;
+    if (_generatedWorkout == null) {
+      debugPrint('❌ _startWorkout: _generatedWorkout est null!');
+      return;
+    }
 
-    Navigator.pushReplacement(
+    debugPrint('✅ _startWorkout: ${_generatedWorkout!.length} exercices');
+    for (var i = 0; i < _generatedWorkout!.length; i++) {
+      final ex = _generatedWorkout![i];
+      debugPrint('  [$i] ${ex.exercise.name} - ${ex.sets.length} séries');
+    }
+
+    // ⚡ FIX: Use push instead of pushReplacement to preserve navigation stack
+    Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => WorkoutSessionScreen(
           sessionName: _sessionName.isNotEmpty ? _sessionName : 'ai_workout_generated_session'.tr(LocalizationService.instance.currentLanguageCode),
           exercises: _generatedWorkout!,
-          isFromProgram: true,
+          isFromProgram: false, // ⚡ Coach Ryze is NOT a predefined program - user chooses whether to save
+          isFromAI: true, // ⚡ Marks as Coach Ryze for 3-pop navigation
         ),
       ),
     );
@@ -303,168 +351,63 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> {
   Widget _buildGeneratorView(bool isFrench) {
     return Consumer<AuthService>(
       builder: (context, authService, child) {
-        final userName = authService.currentUser?.firstName ?? (isFrench ? 'Champion' : 'Champion');
+        // Capitaliser le prénom (même méthode que le dashboard)
+        final rawName = authService.currentUser?.firstName ?? (isFrench ? 'Champion' : 'Champion');
+        final userName = rawName.isEmpty ? rawName : rawName[0].toUpperCase() + rawName.substring(1).toLowerCase();
         final greeting = isFrench ? 'Salut' : 'Hey';
-        final contextualMessage = _getContextualMessage(isFrench, userName);
 
         return SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Bulle de bienvenue personnalisée
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+              // Header avec Coach Ryze - Design simplifié et engageant
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Message principal
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '$greeting $userName !',
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF0B132B),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          isFrench
+                            ? 'Prêt pour une séance sur-mesure ?'
+                            : 'Ready for a custom workout?',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: Color(0xFF64748B),
+                            height: 1.3,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF0B132B).withOpacity(0.15),
-                      blurRadius: 20,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '$greeting $userName !',
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                  const SizedBox(width: 16),
+                  // Avatar Coach Ryze à droite avec animation (plus grand)
+                  FadeTransition(
+                    opacity: _fadeAnimation,
+                    child: SlideTransition(
+                      position: _slideAnimation,
+                      child: const CoachRyzeAvatar(
+                        size: CoachRyzeAvatarSize.xxlarge, // 160px
+                        withShadow: true,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      contextualMessage,
-                      style: TextStyle(
-                        fontSize: 15,
-                        color: Colors.white.withOpacity(0.9),
-                        height: 1.4,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
 
               const SizedBox(height: 32),
-
-              // Header avec avatar Coach Ryze - Comparaison PNG vs SVG
-              Center(
-            child: Column(
-              children: [
-                // Afficher les 2 avatars côte à côte
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Version PNG
-                    Column(
-                      children: [
-                        Container(
-                          width: 100,
-                          height: 100,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF0B132B).withOpacity(0.2),
-                                blurRadius: 15,
-                                offset: const Offset(0, 6),
-                              ),
-                            ],
-                          ),
-                          child: ClipOval(
-                            child: Image.asset(
-                              'assets/images/coach_ryze_avatar.png',
-                              width: 100,
-                              height: 100,
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'PNG',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF64748B),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(width: 40),
-                    // Version SVG
-                    Column(
-                      children: [
-                        Container(
-                          width: 100,
-                          height: 100,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF0B132B).withOpacity(0.2),
-                                blurRadius: 15,
-                                offset: const Offset(0, 6),
-                              ),
-                            ],
-                          ),
-                          child: ClipOval(
-                            child: SvgPicture.asset(
-                              'assets/images/coach_ryze_avatar.svg',
-                              width: 100,
-                              height: 100,
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'SVG',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF64748B),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  isFrench ? 'Crée ta séance idéale' : 'Create your ideal workout',
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF0B132B),
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  isFrench
-                      ? "L'IA analyse tes performances\net crée un programme personnalisé"
-                      : "AI analyzes your performance\nand creates a personalized program",
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF64748B),
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 32),
 
           // Suggestions rapides (sans emoji)
           Row(

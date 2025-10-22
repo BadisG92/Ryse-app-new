@@ -75,8 +75,21 @@ class _SportCalendarViewState extends State<SportCalendarView> {
   }
 
   void _showDayDetails(String dateKey, DateTime date) {
-    final weekdays = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
-    final displayDate = '${weekdays[date.weekday - 1]} ${date.day}';
+    final locService = LocalizationService.instance;
+    final isFrench = locService.currentLanguageCode == 'fr';
+
+    // Jours de la semaine
+    final weekdays = isFrench
+        ? ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
+        : ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+    // Mois de l'année
+    final months = isFrench
+        ? ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre']
+        : ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+    // Format: "Lundi 15 janvier" ou "Monday 15 January"
+    final displayDate = '${weekdays[date.weekday - 1]} ${date.day} ${months[date.month - 1]}';
 
     showModalBottomSheet(
       context: context,

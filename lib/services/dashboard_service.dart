@@ -422,15 +422,41 @@ class DashboardService {
 
       final today = DateTime.now();
       final todayStr = DateTime(today.year, today.month, today.day).toIso8601String().split('T')[0];
-      
+
       print('📊 DEBUG Module Sport - Récupération DIRECTE pour: ${user.id}, date: $todayStr');
 
+      // D'abord vérifier TOUTES les séances de l'utilisateur pour debug
+      final allCardio = await _supabase
+          .from('cardio_sessions')
+          .select('session_date, calories')
+          .eq('user_id', user.id)
+          .eq('is_completed', true)
+          .order('session_date', ascending: false)
+          .limit(5);
+
+      final allMuscu = await _supabase
+          .from('workout_session_summaries')
+          .select('session_date, calories_burned')
+          .eq('user_id', user.id)
+          .order('session_date', ascending: false)
+          .limit(5);
+
+      print('🔍 DEBUG: Dernières 5 séances cardio dans la base:');
+      for (var s in allCardio) {
+        print('   -> ${s['session_date']}: ${s['calories']}kcal');
+      }
+      print('🔍 DEBUG: Dernières 5 séances muscu dans la base:');
+      for (var s in allMuscu) {
+        print('   -> ${s['session_date']}: ${s['calories_burned']}kcal');
+      }
+
       // Récupérer DIRECTEMENT les mêmes données que le bloc "activité du jour"
+      // ⚡ FIX: Utiliser .eq() au lieu de .gte() pour chercher uniquement AUJOURD'HUI
       final cardioSessions = await _supabase
           .from('cardio_sessions')
           .select('calories, activity_type, session_date')
           .eq('user_id', user.id)
-          .gte('session_date', todayStr)
+          .eq('session_date', todayStr)
           .eq('is_completed', true)
           .order('created_at', ascending: false);
 
@@ -438,10 +464,10 @@ class DashboardService {
           .from('workout_session_summaries')
           .select('calories_burned, session_name, session_date')
           .eq('user_id', user.id)
-          .gte('session_date', todayStr)
+          .eq('session_date', todayStr)
           .order('created_at', ascending: false);
-      
-      print('📊 DEBUG Sessions trouvées:');
+
+      print('📊 DEBUG Sessions trouvées pour TODAY ($todayStr):');
       print('   - Cardio: ${cardioSessions.length} sessions');
       print('   - Musculation: ${musculationSessions.length} sessions');
       

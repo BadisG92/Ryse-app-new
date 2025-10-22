@@ -271,12 +271,15 @@ class GlobalStateManager {
     // Annuler le timer précédent s'il existe
     _midnightCheckTimer?.cancel();
 
-    // Calculer le temps jusqu'à minuit
-    final now = DateTime.now();
-    final midnight = DateTime(now.year, now.month, now.day + 1);
+    // Calculer le temps jusqu'à minuit LOCAL de l'utilisateur
+    final now = DateTime.now(); // Heure locale
+    final today = DateTime(now.year, now.month, now.day);
+    final midnight = today.add(const Duration(days: 1)); // Minuit du jour suivant
     final timeUntilMidnight = midnight.difference(now);
 
-    debugPrint('⏰ GlobalState: Prochain check à minuit dans ${timeUntilMidnight.inMinutes} minutes');
+    final hours = timeUntilMidnight.inHours;
+    final minutes = timeUntilMidnight.inMinutes % 60;
+    debugPrint('⏰ GlobalState: Prochain check à minuit dans ${hours}h${minutes}min (heure locale utilisateur)');
 
     // Timer pour minuit
     _midnightCheckTimer = Timer(timeUntilMidnight, () {

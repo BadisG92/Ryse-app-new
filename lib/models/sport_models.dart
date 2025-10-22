@@ -76,14 +76,14 @@ class ExerciseSet {
     double? weight,
     bool? isCompleted,
   }) {
-    // Auto-synchronisation de isCompleted avec la validité des reps
+    // ⚡ DÉSACTIVATION de l'auto-validation verte
+    // Les séries ne deviennent JAMAIS vertes automatiquement
     final newReps = reps ?? this.reps;
-    final autoCompleted = isCompleted ?? (newReps > 0);
 
     return ExerciseSet(
       reps: newReps,
       weight: weight ?? this.weight,
-      isCompleted: autoCompleted,
+      isCompleted: isCompleted ?? false, // ⚡ Toujours false par défaut
     );
   }
 
@@ -388,6 +388,7 @@ class WorkoutProgram {
   final int estimatedDuration; // en minutes
   final List<ProgramExercise> exercises;
   final bool isCustom; // true si le programme vient de user_workout_templates
+  final bool isFromAI; // ⚡ true si le programme vient de Coach Ryze
 
   const WorkoutProgram({
     required this.id,
@@ -397,6 +398,7 @@ class WorkoutProgram {
     required this.estimatedDuration,
     required this.exercises,
     this.isCustom = false,
+    this.isFromAI = false, // ⚡ Par défaut false
   });
 
   factory WorkoutProgram.fromJson(Map<String, dynamic> json) {
@@ -410,6 +412,7 @@ class WorkoutProgram {
           .map((exerciseJson) => ProgramExercise.fromJson(exerciseJson))
           .toList(),
       isCustom: json['isCustom'] ?? false,
+      isFromAI: json['isFromAI'] ?? false, // ⚡ Charger depuis JSON
     );
   }
 
@@ -422,6 +425,7 @@ class WorkoutProgram {
       'estimatedDuration': estimatedDuration,
       'exercises': exercises.map((exercise) => exercise.toJson()).toList(),
       'isCustom': isCustom,
+      'isFromAI': isFromAI, // ⚡ Sauvegarder dans JSON
     };
   }
 } 

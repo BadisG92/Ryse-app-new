@@ -99,17 +99,17 @@ class CalorieTargetService {
           .gte('session_date', startDate.toIso8601String().split('T')[0])
           .order('session_date', ascending: false);
 
-      // Récupérer les sessions musculation  
+      // Récupérer les sessions musculation
       final musculationSessions = await _client
           .from('workout_session_summaries')
-          .select('burned_calories, session_date')
+          .select('calories_burned, session_date')
           .eq('user_id', userId)
           .gte('session_date', startDate.toIso8601String().split('T')[0])
           .order('session_date', ascending: false);
 
       // Grouper par semaine et calculer les totaux
       final weeklyTotals = <int, int>{}; // weekNumber -> totalCalories
-      
+
       // Traiter les sessions cardio
       for (final session in cardioSessions) {
         final date = DateTime.parse(session['session_date']);
@@ -122,7 +122,7 @@ class CalorieTargetService {
       for (final session in musculationSessions) {
         final date = DateTime.parse(session['session_date']);
         final weekNumber = _getWeekNumber(date);
-        final calories = session['burned_calories'] as int? ?? 0;
+        final calories = session['calories_burned'] as int? ?? 0;
         weeklyTotals[weekNumber] = (weeklyTotals[weekNumber] ?? 0) + calories;
       }
 

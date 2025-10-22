@@ -18,12 +18,17 @@ class SportDashboardService {
 
   /// Récupère toutes les données du dashboard sport
   static Future<SportDashboardData> getDashboardData() async {
+    debugPrint('📊 SportDashboardService.getDashboardData() appelé');
+
     // Vérifier le cache
-    if (_cachedData != null && 
-        _cacheTimestamp != null && 
+    if (_cachedData != null &&
+        _cacheTimestamp != null &&
         DateTime.now().difference(_cacheTimestamp!) < _cacheDuration) {
-      debugPrint('📊 SportDashboardService: Using cached data');
-      return SportDashboardData.fromJson(_cachedData!);
+      final remainingSeconds = _cacheDuration.inSeconds - DateTime.now().difference(_cacheTimestamp!).inSeconds;
+      debugPrint('📊 SportDashboardService: Using cached data (expires in ${remainingSeconds}s)');
+      final cachedResult = SportDashboardData.fromJson(_cachedData!);
+      debugPrint('📊 SportDashboardService: Cached data - ${cachedResult.totalSessions} sessions, ${cachedResult.totalCalories} kcal');
+      return cachedResult;
     }
 
     debugPrint('📊 SportDashboardService: Fetching fresh data...');
@@ -65,17 +70,25 @@ class SportDashboardService {
   /// Récupère les données de calories hebdomadaires (cardio + musculation)
   static Future<Map<String, dynamic>> _getWeeklyCaloriesData(String userId) async {
     try {
+      debugPrint('📊 _getWeeklyCaloriesData: Récupération des données hebdomadaires...');
+
       // Récupérer les données cardio de la semaine
+      debugPrint('📊 _getWeeklyCaloriesData: Récupération cardio...');
       final cardioData = await CardioService.getWeeklyStats();
-      
+      debugPrint('📊 _getWeeklyCaloriesData: Cardio récupéré - ${cardioData.sessionsCount} sessions, ${cardioData.totalCalories} kcal');
+
       // Récupérer les données musculation de la semaine
+      debugPrint('📊 _getWeeklyCaloriesData: Récupération musculation...');
       final musculationData = await WorkoutCacheService.getWeeklyStats(userId);
-      
+      debugPrint('📊 _getWeeklyCaloriesData: Musculation récupéré - ${musculationData}');
+
       // Calculer les totaux
       final totalCalories = cardioData.totalCalories + (musculationData['total_calories'] ?? 0);
-      final totalSessions = cardioData.sessionsCount + (musculationData['sessions_count'] ?? 0);
+      final totalSessions = cardioData.sessionsCount + (musculationData['sessions'] ?? 0);
       final totalDuration = cardioData.totalDuration.inMinutes + (musculationData['total_duration_minutes'] ?? 0);
-      
+
+      debugPrint('📊 _getWeeklyCaloriesData: TOTAUX - Sessions: $totalSessions, Calories: $totalCalories, Durée: ${totalDuration}min');
+
       return {
         'totalCalories': totalCalories,
         'totalSessions': totalSessions,
@@ -147,6 +160,8 @@ class SportDashboardService {
       final now = DateTime.now();
       final sevenDaysAgo = now.subtract(const Duration(days: 6)); // 6 jours + aujourd'hui = 7 jours
 
+      debugPrint('📊 _getRecentWorkoutsData: Récupération séances récentes depuis ${sevenDaysAgo.toIso8601String().split('T')[0]}');
+
       // Sessions cardio récentes
       final recentCardio = await _client
           .from('cardio_sessions')
@@ -155,12 +170,16 @@ class SportDashboardService {
           .gte('session_date', sevenDaysAgo.toIso8601String().split('T')[0])
           .eq('is_completed', true);
 
+      debugPrint('📊 _getRecentWorkoutsData: ${recentCardio.length} sessions cardio récentes');
+
       // Sessions musculation récentes
       final recentMusculation = await _client
           .from('workout_session_summaries')
           .select('session_date')
           .eq('user_id', userId)
           .gte('session_date', sevenDaysAgo.toIso8601String().split('T')[0]);
+
+      debugPrint('📊 _getRecentWorkoutsData: ${recentMusculation.length} sessions musculation récentes');
 
       // Créer la structure des 7 derniers jours (Lundi à Dimanche)
       final weekDays = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
@@ -508,12 +527,33 @@ class SportDashboardService {
 
     try {
       debugPrint('🗑️ Suppression de la séance de musculation: $sessionId');
+      debugPrint('🔍 User ID: $userId');
+
+      // Récupérer le history_session_id depuis la table workout_session_summaries
+      final sessionData = await _client
+          .from('workout_session_summaries')
+          .select('history_session_id, user_id')
+          .eq('id', sessionId)
+          .maybeSingle();
+
+      debugPrint('🔍 Session data trouvée: $sessionData');
+
+      if (sessionData == null) {
+        throw Exception('Session not found - ID: $sessionId does not exist in workout_session_summaries');
+      }
+
+      // Vérifier que l'utilisateur est bien le propriétaire
+      if (sessionData['user_id'] != userId) {
+        throw Exception('Unauthorized - This session belongs to another user');
+      }
+
+      final historySessionId = sessionData['history_session_id'] as String;
 
       // Supprimer d'abord les détails des sets
       await _client
           .from('workout_set_history')
           .delete()
-          .eq('session_summary_id', sessionId);
+          .eq('history_session_id', historySessionId);
 
       // Puis supprimer le résumé de la séance
       await _client
@@ -524,12 +564,15 @@ class SportDashboardService {
 
       debugPrint('✅ Séance de musculation supprimée avec succès');
 
-      // Invalider les caches
+      // Invalider TOUS les caches
+      WorkoutCacheService.invalidateUserCache(userId);
       invalidateCache();
       GlobalStateManager.instance.invalidateWeeklyData();
 
       // Rafraîchir les données sport dans le GlobalState
       await GlobalStateManager.instance.refreshSportData();
+
+      debugPrint('🔄 Caches invalidés et GlobalStateManager rafraîchi');
     } catch (e) {
       debugPrint('❌ Erreur lors de la suppression de la séance de musculation: $e');
       rethrow;

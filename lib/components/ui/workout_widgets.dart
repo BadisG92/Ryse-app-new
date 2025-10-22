@@ -6,6 +6,8 @@ import 'sport_models.dart';
 import 'sport_cards.dart';
 import '../../widgets/exercise/exercise_list_bottom_sheet.dart';
 import '../../services/workout_cache_service.dart';
+import '../../services/sport_dashboard_service.dart';
+import '../../services/global_state_manager.dart';
 import '../../services/translations.dart';
 import '../../services/localization_service.dart';
 import 'package:provider/provider.dart';
@@ -18,9 +20,15 @@ class WeeklyStatsSection extends StatefulWidget {
   State<WeeklyStatsSection> createState() => _WeeklyStatsSectionState();
 }
 
-class _WeeklyStatsSectionState extends State<WeeklyStatsSection> {
+class _WeeklyStatsSectionState extends State<WeeklyStatsSection> with GlobalStateListener<WeeklyStatsSection> {
   WeeklyStats? _stats;
   bool _loading = true;
+
+  @override
+  void onGlobalStateUpdate(StateChangeEvent event) {
+    // Rafraîchir quand les données sport changent
+    _loadWeeklyStats();
+  }
 
   @override
   void initState() {
@@ -82,9 +90,15 @@ class WeekHistorySection extends StatefulWidget {
   State<WeekHistorySection> createState() => _WeekHistorySectionState();
 }
 
-class _WeekHistorySectionState extends State<WeekHistorySection> {
+class _WeekHistorySectionState extends State<WeekHistorySection> with GlobalStateListener<WeekHistorySection> {
   List<WorkoutSession> _sessions = const [];
   bool _loading = true;
+
+  @override
+  void onGlobalStateUpdate(StateChangeEvent event) {
+    debugPrint('🔄 WeekHistorySection: GlobalState mis à jour, rechargement historique...');
+    _loadWeekHistory();
+  }
 
   @override
   void initState() {
@@ -106,7 +120,7 @@ class _WeekHistorySectionState extends State<WeekHistorySection> {
 
       final List<WorkoutSession> result = [];
       for (final s in sessionsData) {
-        final sessionId = s['history_session_id']?.toString() ?? s['session_id']?.toString();
+        final sessionId = s['id']?.toString(); // ⚡ FIX: Use 'id' (primary key), not 'history_session_id'
         final name = s['session_name']?.toString() ?? '';
         final performedAt = DateTime.tryParse(s['performed_at']?.toString() ?? '') ?? now;
         final calories = (s['calories_burned'] as int?) ?? 0;
@@ -151,24 +165,46 @@ class _WeekHistorySectionState extends State<WeekHistorySection> {
 
   Future<void> _deleteSession(String sessionId) async {
     try {
-      debugPrint('🗑️ Suppression de la séance: $sessionId');
+      debugPrint('🗑️ Suppression de la séance de musculation: $sessionId');
 
-      // Supprimer de Supabase
-      await Supabase.instance.client
-          .from('workout_history')
+      final db = Supabase.instance.client;
+      final userId = db.auth.currentUser?.id;
+      if (userId == null) {
+        throw Exception('User not authenticated');
+      }
+
+      // ⚡ SIMPLIFIÉ: Grâce à ON DELETE CASCADE, supprimer le résumé supprime automatiquement les sets!
+      await db
+          .from('workout_session_summaries')
           .delete()
-          .eq('history_session_id', sessionId);
+          .eq('id', sessionId)
+          .eq('user_id', userId);
 
-      debugPrint('✅ Séance supprimée avec succès');
+      debugPrint('✅ Séance supprimée avec succès (CASCADE a supprimé les sets automatiquement)');
 
-      // Invalider le cache
-      // WorkoutCacheService.invalidateWeeklyHistory(); // TODO: Fix this
+      // Invalider TOUS les caches
+      WorkoutCacheService.invalidateUserCache(userId);
+      SportDashboardService.invalidateCache();
+      GlobalStateManager.instance.invalidateWeeklyData();
 
       // Recharger les séances
       await _loadWeekHistory();
+
+      // Afficher un message de succès
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              LocalizationService.instance.currentLanguageCode == 'fr'
+                  ? 'Séance supprimée avec succès'
+                  : 'Session deleted successfully'
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
     } catch (e) {
       debugPrint('❌ Erreur lors de la suppression: $e');
-      // Afficher un message d'erreur
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -271,10 +307,16 @@ class ExerciseProgressSection extends StatefulWidget {
   State<ExerciseProgressSection> createState() => _ExerciseProgressSectionState();
 }
 
-class _ExerciseProgressSectionState extends State<ExerciseProgressSection> {
+class _ExerciseProgressSectionState extends State<ExerciseProgressSection> with GlobalStateListener<ExerciseProgressSection> {
   List<ExerciseProgress> _exercises = [];
   bool _loading = true;
   bool _showAll = false;
+
+  @override
+  void onGlobalStateUpdate(StateChangeEvent event) {
+    // Rafraîchir quand les données sport changent
+    _loadExerciseProgress();
+  }
 
   @override
   void initState() {

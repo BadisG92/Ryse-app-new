@@ -227,10 +227,33 @@ class CardioService {
     }
 
     try {
-      final result = await _client.rpc('get_cardio_dashboard_data', 
-        params: {'target_user_id': userId});
-      
-      return result as Map<String, dynamic>;
+      // Calculer la semaine courante (lundi-dimanche) en heure LOCALE de l'utilisateur
+      final now = DateTime.now(); // Heure locale
+      final weekday = now.weekday; // 1=Lundi, 7=Dimanche
+      final mondayThisWeek = now.subtract(Duration(days: weekday - 1));
+      final weekStart = DateTime(mondayThisWeek.year, mondayThisWeek.month, mondayThisWeek.day);
+      final weekEnd = weekStart.add(const Duration(days: 7));
+
+      final weekStartStr = weekStart.toIso8601String().split('T')[0];
+      final weekEndStr = weekEnd.toIso8601String().split('T')[0];
+
+      debugPrint('📅 Cardio: Semaine courante (locale utilisateur): $weekStartStr -> $weekEndStr');
+      debugPrint('📅 Cardio: Appel RPC get_cardio_dashboard_data pour user: $userId');
+
+      final result = await _client.rpc('get_cardio_dashboard_data',
+        params: {
+          'target_user_id': userId,
+          'week_start_date': weekStartStr,
+          'week_end_date': weekEndStr,
+        });
+
+      final data = result as Map<String, dynamic>;
+      debugPrint('📊 Cardio: Résultat RPC reçu:');
+      debugPrint('   - weekly_stats: ${data['weekly_stats']}');
+      debugPrint('   - last_session: ${data['last_session'] != null ? "présente" : "null"}');
+      debugPrint('   - week_sessions: ${(data['week_sessions'] as List?)?.length ?? 0} session(s)');
+
+      return data;
     } catch (e) {
       debugPrint('❌ Error loading cardio dashboard data: $e');
       return {

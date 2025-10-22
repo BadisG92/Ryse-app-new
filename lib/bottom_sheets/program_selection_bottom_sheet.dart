@@ -220,13 +220,17 @@ class _ProgramSelectionBottomSheetState extends State<ProgramSelectionBottomShee
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF0B132B),
+                            color: program.isFromAI
+                                ? const Color(0xFF3B82F6)  // ⚡ Bleu pour Coach Ryze (même bleu que l'app)
+                                : const Color(0xFF0B132B), // Noir pour créé par toi
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Consumer<LocalizationService>(
                             builder: (context, locService, _) => Text(
-                              'created_by_you'.tr(locService.currentLanguageCode),
-                              style: TextStyle(
+                              program.isFromAI
+                                  ? 'Coach Ryze' // ⚡ Afficher "Coach Ryze" si vient de l'IA
+                                  : 'created_by_you'.tr(locService.currentLanguageCode),
+                              style: const TextStyle(
                                 fontSize: 9,
                                 fontWeight: FontWeight.w600,
                                 color: Colors.white,

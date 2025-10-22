@@ -1,0 +1,10 @@
+Instructions pour fix CASCADE:
+
+1. Déplacer lignes 1388-1402 (calcul des données) AVANT ligne 1381
+2. Déplacer ligne 1381-1384 (insertion sets) APRÈS ligne 1422 (insertion summary)
+3. Ajouter rollback si insertion sets échoue
+
+Résultat attendu:
+- Ligne ~1381: Calcul numExercises, totalVolume, etc.
+- Ligne ~1400: Insert summary
+- Ligne ~1425: Insert sets with error handling

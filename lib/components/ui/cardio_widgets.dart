@@ -42,12 +42,15 @@ class _WeeklyStatsSectionState extends State<WeeklyStatsSection> {
 
   Future<void> _loadWeeklyStats() async {
     try {
+      debugPrint('📊 WeeklyStatsSection: Chargement des stats hebdomadaires...');
       final stats = await CardioService.getWeeklyStats();
+      debugPrint('📊 WeeklyStatsSection: Stats reçues: ${stats.sessionsCount} sessions, ${stats.totalCalories} kcal, ${stats.totalDistance} km');
       setState(() {
         _stats = stats;
         _loading = false;
       });
     } catch (e) {
+      debugPrint('❌ WeeklyStatsSection: Erreur lors du chargement: $e');
       setState(() {
         _loading = false;
         // Fallback vers des stats vides
@@ -311,12 +314,19 @@ class _LastSessionSectionState extends State<LastSessionSection> {
 
   Future<void> _loadLastSession() async {
     try {
+      debugPrint('🔍 LastSessionSection: Chargement de la dernière séance...');
       final session = await CardioService.getLastSession();
+      if (session != null) {
+        debugPrint('🔍 LastSessionSection: Dernière séance trouvée: ${session.activityTitle} - ${session.timeAgo} - ${session.caloriesText}');
+      } else {
+        debugPrint('🔍 LastSessionSection: Aucune séance trouvée');
+      }
       setState(() {
         _lastSession = session;
         _loading = false;
       });
     } catch (e) {
+      debugPrint('❌ LastSessionSection: Erreur lors du chargement: $e');
       setState(() {
         _loading = false;
       });
@@ -510,12 +520,19 @@ class _WeekSessionsSectionState extends State<WeekSessionsSection> {
 
   Future<void> _loadWeekSessions() async {
     try {
+      debugPrint('📋 WeekSessionsSection: Chargement des séances de la semaine...');
       final sessions = await CardioService.getWeekSessions();
+      debugPrint('📋 WeekSessionsSection: ${sessions.length} séance(s) trouvée(s)');
+      for (var i = 0; i < sessions.length; i++) {
+        final s = sessions[i];
+        debugPrint('   [$i] ${s.activityTitle} - ${s.timeAgo} - ${s.caloriesText}');
+      }
       setState(() {
         _sessions = sessions;
         _loading = false;
       });
     } catch (e) {
+      debugPrint('❌ WeekSessionsSection: Erreur lors du chargement: $e');
       setState(() {
         _loading = false;
       });

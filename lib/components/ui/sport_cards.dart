@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'custom_card.dart';
 import 'sport_models.dart';
 import '../../widgets/exercise/exercise_detail_page.dart';
 import '../../services/translations.dart';
 import '../../services/localization_service.dart';
+import '../../services/sport_dashboard_service.dart';
+import '../../services/global_state_manager.dart';
+import '../../services/workout_cache_service.dart';
 import 'package:provider/provider.dart';
 
 // Card pour les statistiques hebdomadaires individuelles
@@ -237,8 +241,90 @@ class _WorkoutHistoryCardState extends State<WorkoutHistoryCard> {
     );
 
     if (confirmed == true && widget.session.sessionId != null) {
-      widget.onDelete?.call(widget.session.sessionId!);
+      try {
+        // Appeler le service de suppression (comme CardioService)
+        await _deleteWorkoutSession(widget.session.sessionId!);
+
+        // Afficher message de succès
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('delete_session_success'.tr(locService.currentLanguageCode)),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+
+        // Notifier le parent pour rafraîchir
+        widget.onDelete?.call(widget.session.sessionId!);
+      } catch (e) {
+        debugPrint('❌ Erreur suppression workout: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('delete_session_error'.tr(locService.currentLanguageCode)),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
     }
+  }
+
+  Future<void> _deleteWorkoutSession(String sessionId) async {
+    final db = Supabase.instance.client;
+    final userId = db.auth.currentUser?.id;
+    if (userId == null) {
+      throw Exception('User not authenticated');
+    }
+
+    debugPrint('🗑️ Suppression de la séance de musculation: $sessionId');
+    debugPrint('🔍 User ID: $userId');
+
+    // Récupérer le history_session_id depuis la table workout_session_summaries
+    final sessionData = await db
+        .from('workout_session_summaries')
+        .select('history_session_id, user_id')
+        .eq('id', sessionId)
+        .maybeSingle();
+
+    debugPrint('🔍 Session data trouvée: $sessionData');
+
+    if (sessionData == null) {
+      throw Exception('Session not found - ID: $sessionId does not exist in workout_session_summaries');
+    }
+
+    // Vérifier que l'utilisateur est bien le propriétaire
+    if (sessionData['user_id'] != userId) {
+      throw Exception('Unauthorized - This session belongs to another user');
+    }
+
+    final historySessionId = sessionData['history_session_id'] as String;
+
+    // Supprimer d'abord les détails des sets
+    await db
+        .from('workout_set_history')
+        .delete()
+        .eq('history_session_id', historySessionId);
+
+    // Puis supprimer le résumé de la séance
+    await db
+        .from('workout_session_summaries')
+        .delete()
+        .eq('id', sessionId)
+        .eq('user_id', userId);
+
+    debugPrint('✅ Séance de musculation supprimée avec succès');
+
+    // Invalider TOUS les caches
+    WorkoutCacheService.invalidateUserCache(userId);
+    SportDashboardService.invalidateCache();
+    GlobalStateManager.instance.invalidateWeeklyData();
+
+    // Rafraîchir les données sport dans le GlobalState
+    await GlobalStateManager.instance.refreshSportData();
+
+    debugPrint('🔄 Caches invalidés et GlobalStateManager rafraîchi');
   }
 
   @override

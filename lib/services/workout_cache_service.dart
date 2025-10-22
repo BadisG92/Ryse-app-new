@@ -60,29 +60,45 @@ class WorkoutCacheService {
   static Future<Map<String, dynamic>> getWeeklyDashboardData(String userId) async {
     final key = 'weekly_dashboard_$userId';
     final cached = _cache[key];
-    
+
     if (cached != null && !cached.isExpired) {
       return cached.data as Map<String, dynamic>;
     }
-    
+
     try {
-      // Utilise la fonction PostgreSQL optimisée
-      final result = await _client.rpc('get_weekly_dashboard_data', 
-        params: {'target_user_id': userId});
-      
+      // Calculer la semaine courante (lundi-dimanche) en heure LOCALE de l'utilisateur
+      final now = DateTime.now(); // Heure locale
+      final weekday = now.weekday; // 1=Lundi, 7=Dimanche
+      final mondayThisWeek = now.subtract(Duration(days: weekday - 1));
+      final weekStart = DateTime(mondayThisWeek.year, mondayThisWeek.month, mondayThisWeek.day);
+      final weekEnd = weekStart.add(const Duration(days: 7));
+
+      final weekStartStr = weekStart.toIso8601String().split('T')[0];
+      final weekEndStr = weekEnd.toIso8601String().split('T')[0];
+
+      print('📅 Musculation: Semaine courante (locale utilisateur): $weekStartStr -> $weekEndStr');
+
+      // Utilise la fonction PostgreSQL optimisée avec les dates calculées
+      final result = await _client.rpc('get_weekly_dashboard_data',
+        params: {
+          'target_user_id': userId,
+          'week_start_date': weekStartStr,
+          'week_end_date': weekEndStr,
+        });
+
       final rawData = result as Map<String, dynamic>;
-      
+
       // Localiser les noms d'exercices dans weekly_sessions
       final weeklySessions = rawData['weekly_sessions'] as List<dynamic>? ?? [];
       final localizedSessions = await _localizeWeeklySessionsData(weeklySessions);
-      
+
       final data = {
         ...rawData,
         'weekly_sessions': localizedSessions,
       };
-      
+
       _cache[key] = _CacheEntry(data, DateTime.now(), _defaultTTL);
-      
+
       return data;
     } catch (e) {
       // Fallback sur les données cachées expirées si disponibles

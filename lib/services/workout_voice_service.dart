@@ -140,15 +140,21 @@ class WorkoutVoiceService {
 
     // Nettoyer le texte des mots parasites communs (plus agressif)
     var cleaned = normalized
-        .replaceAll(RegExp(r'\b(et|de|à|avec|pour|fois|and|of|at|with|for)\b'), ' ')
+        // Remplacer virgules par points pour nombres décimaux
+        .replaceAll(',', '.')
+        // Retirer mots parasites français et anglais
+        .replaceAll(RegExp(r'\b(et|de|d|à|au|avec|pour|the|and|of|at|with|for|a|an)\b'), ' ')
+        // Gérer "x" comme multiplicateur (ex: "10 x 80" ou "10x80")
+        .replaceAll(RegExp(r'(\d+)\s*x\s*(\d+)'), r'\1 fois \2')
         .replaceAll(RegExp(r'\s+'), ' ')
         .trim();
     debugPrint('🧹 Cleaned: "$cleaned"');
 
     // Pattern 1: "10 reps 80 kilos" (avec séparateurs optionnels)
-    // Accepte: "10 reps 80 kilos", "10 times 20 kg", "10 wraps 80 pounds"
+    // Français: répétitions, reps, fois, séries, kg, kilo, kilos, kilogrammes
+    // Anglais: reps, repetitions, times, sets, pounds, lbs, lb
     final pattern1 = RegExp(
-      r'(\d+)\s*(?:rep|reps|répétitions?|répétition|wraps?|repetitions?|times?|sets?|fois)s?\s*(\d+\.?\d*)\s*(?:kg|kilo|kilos|kilogrammes?|pounds?|lbs?|lb)',
+      r'(\d+)\s*(?:rep|reps|répétitions?|répétition|wraps?|repetitions?|times?|sets?|séries?|série|fois|x)s?\s*(\d+\.?\d*)\s*(?:kg|kilo|kilos|kilogrammes?|pounds?|lbs?|lb)',
       caseSensitive: false,
     );
 
@@ -166,7 +172,7 @@ class WorkoutVoiceService {
 
     // Pattern 2: "80 kilos 10 reps" (ordre inversé)
     final pattern2 = RegExp(
-      r'(\d+\.?\d*)\s*(?:kg|kilo|kilos|kilogrammes?|pounds?|lbs?|lb)\s*(\d+)\s*(?:rep|reps|répétitions?|répétition|wraps?|repetitions?|times?|sets?|fois)s?',
+      r'(\d+\.?\d*)\s*(?:kg|kilo|kilos|kilogrammes?|pounds?|lbs?|lb)\s*(\d+)\s*(?:rep|reps|répétitions?|répétition|wraps?|repetitions?|times?|sets?|séries?|série|fois|x)s?',
       caseSensitive: false,
     );
 
@@ -184,7 +190,7 @@ class WorkoutVoiceService {
 
     // Pattern 3: Juste les reps "10 reps" (poids garde valeur précédente ou 0)
     final pattern3 = RegExp(
-      r'(\d+)\s*(?:rep|reps|répétitions?|répétition|wraps?|repetitions?|times?|sets?|fois)s?',
+      r'(\d+)\s*(?:rep|reps|répétitions?|répétition|wraps?|repetitions?|times?|sets?|séries?|série|fois|x)s?',
       caseSensitive: false,
     );
 
@@ -225,7 +231,7 @@ class WorkoutVoiceService {
     // Cherche n'importe quel nombre avec "rep-like" mot et n'importe quel nombre avec "kg-like" mot
     // ULTRA FLEXIBLE : accepte TOUTES les variations possibles
     final repsPattern = RegExp(
-      r'(\d+)\s*(?:rep|reps|répétitions?|répétition|wraps?|repetitions?|times?|sets?|fois)',
+      r'(\d+)\s*(?:rep|reps|répétitions?|répétition|wraps?|repetitions?|times?|sets?|séries?|série|fois|x)',
       caseSensitive: false,
     );
     final weightPattern = RegExp(
@@ -248,6 +254,61 @@ class WorkoutVoiceService {
         }
       } catch (e) {
         debugPrint('⚠️ Parse error pattern 5: $e');
+      }
+    }
+
+    // Pattern 6: Format français "10 répétitions à 80 kilos" ou "10 reps at 80kg"
+    final pattern6 = RegExp(
+      r'(\d+)\s*(?:rep|reps|répétitions?|répétition|séries?|série|fois)\s*(?:à|at|of)\s*(\d+\.?\d*)\s*(?:kg|kilo|kilos|kilogrammes?|pounds?|lbs?|lb)',
+      caseSensitive: false,
+    );
+    final match6 = pattern6.firstMatch(cleaned);
+    if (match6 != null) {
+      try {
+        final reps = int.parse(match6.group(1)!);
+        final weight = double.parse(match6.group(2)!);
+        debugPrint('✅ Parsed (pattern 6 - à/at): $reps reps, $weight kg');
+        return WorkoutSetData(reps: reps, weight: weight);
+      } catch (e) {
+        debugPrint('⚠️ Parse error pattern 6: $e');
+      }
+    }
+
+    // Pattern 7: Nombres avec virgule décimale "10 reps 82.5 kilos" ou "12 fois 75,5kg"
+    final pattern7 = RegExp(
+      r'(\d+)\s*(?:rep|reps|répétitions?|répétition|séries?|série|fois|x)\s*(\d+[.,]\d+)\s*(?:kg|kilo|kilos|kilogrammes?|pounds?|lbs?|lb)',
+      caseSensitive: false,
+    );
+    final match7 = pattern7.firstMatch(cleaned);
+    if (match7 != null) {
+      try {
+        final reps = int.parse(match7.group(1)!);
+        final weightStr = match7.group(2)!.replaceAll(',', '.');
+        final weight = double.parse(weightStr);
+        debugPrint('✅ Parsed (pattern 7 - decimal): $reps reps, $weight kg');
+        return WorkoutSetData(reps: reps, weight: weight);
+      } catch (e) {
+        debugPrint('⚠️ Parse error pattern 7: $e');
+      }
+    }
+
+    // Pattern 8: Format "je fais 10 à 80" ou "I do 10 at 80"
+    final pattern8 = RegExp(
+      r'(?:je fais|i do|fais|do)?\s*(\d+)\s*(?:à|at|with)?\s*(\d+\.?\d*)',
+      caseSensitive: false,
+    );
+    final match8 = pattern8.firstMatch(cleaned);
+    if (match8 != null) {
+      try {
+        final first = int.parse(match8.group(1)!);
+        final second = double.parse(match8.group(2)!);
+        // Heuristique: si premier < 50, c'est probablement reps
+        if (first < 50) {
+          debugPrint('✅ Parsed (pattern 8 - je fais): $first reps, $second kg');
+          return WorkoutSetData(reps: first, weight: second);
+        }
+      } catch (e) {
+        debugPrint('⚠️ Parse error pattern 8: $e');
       }
     }
 

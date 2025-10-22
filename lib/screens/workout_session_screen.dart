@@ -18,7 +18,6 @@ import '../services/translations.dart';
 import '../services/localization_service.dart';
 import '../services/workout_voice_service.dart';
 import '../services/native_speech_service.dart';
-import '../components/voice/modern_voice_input.dart';
 import 'package:provider/provider.dart';
 
 class WorkoutSessionScreen extends StatefulWidget {
@@ -26,6 +25,7 @@ class WorkoutSessionScreen extends StatefulWidget {
   final List<WorkoutExercise> exercises;
   final bool isFromProgram;
   final String? guidedTemplateId; // si séance guidée, passer l'id du template
+  final bool isFromAI; // ⚡ NEW: Identifie les séances Coach Ryze pour navigation 3-pop
   final Function(WorkoutProgram)? onProgramSaved;
   final Function(WorkoutSession)? onSessionCompleted;
 
@@ -35,6 +35,7 @@ class WorkoutSessionScreen extends StatefulWidget {
     required this.exercises,
     this.isFromProgram = false,
     this.guidedTemplateId,
+    this.isFromAI = false, // ⚡ Par défaut false (manuel et guidé)
     this.onProgramSaved,
     this.onSessionCompleted,
   });
@@ -114,7 +115,12 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
   @override
   void initState() {
     super.initState();
-    _exercises = widget.isFromProgram ? List.from(widget.exercises) : [];
+    // ⚡ FIX: Coach Ryze (isFromAI) et programmes guidés arrivent avec exercices pré-remplis
+    // Seules les séances VRAIMENT manuelles (ni program, ni AI) commencent vides
+    _exercises = (widget.isFromProgram || widget.isFromAI) ? List.from(widget.exercises) : [];
+
+    debugPrint('🏋️ WorkoutSessionScreen init: ${_exercises.length} exercices (isFromProgram: ${widget.isFromProgram}, isFromAI: ${widget.isFromAI})');
+
     _sessionStartTime = DateTime.now();
     _currentFocusNode = FocusNode();
     
@@ -1549,7 +1555,13 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                           }
 
                           Navigator.pop(context); // Fermer popup
-                          Navigator.pop(context); // Retourner à la musculation (se rafraîchira automatiquement)
+                          Navigator.pop(context); // Retourner à la page précédente
+
+                          // ⚡ FIX: Pop supplémentaire pour Coach Ryze (isFromAI)
+                          if (widget.isFromAI) {
+                            Navigator.pop(context); // Fermer AI Generator → retour musculation
+                            debugPrint('✅ Navigation pop x3 effectuée (bouton Non - Coach Ryze)');
+                          }
                         },
                         style: OutlinedButton.styleFrom(
                           side: const BorderSide(color: Color(0xFFE2E8F0)),
@@ -1588,7 +1600,13 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                           }
 
                           Navigator.pop(context); // Fermer popup
-                          Navigator.pop(context); // Retourner à la musculation (se rafraîchira automatiquement)
+                          Navigator.pop(context); // Retourner à la page précédente
+
+                          // ⚡ FIX: Pop supplémentaire pour Coach Ryze (isFromAI)
+                          if (widget.isFromAI) {
+                            Navigator.pop(context); // Fermer AI Generator → retour musculation
+                            debugPrint('✅ Navigation pop x3 effectuée (bouton Oui - Coach Ryze)');
+                          }
 
                           // Afficher confirmation
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -1751,7 +1769,10 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     
     try {
       // Sauvegarder dans Supabase
-      final templateId = await db.DatabaseService.saveUserWorkoutTemplate(completedSession);
+      final templateId = await db.DatabaseService.saveUserWorkoutTemplate(
+        completedSession,
+        isFromAI: widget.isFromAI, // ⚡ Pass the Coach Ryze flag
+      );
       debugPrint('✅ Template utilisateur sauvegardé avec ID: $templateId');
       
       // Créer le programme à partir de la séance (pour compatibilité avec l'ancien système)
@@ -1774,6 +1795,8 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
         type: 'workout_custom_type'.tr(LocalizationService.instance.currentLanguageCode),
         estimatedDuration: durationInMinutes,
         exercises: programExercises,
+        isCustom: true, // Toujours custom quand sauvegardé par l'utilisateur
+        isFromAI: widget.isFromAI, // ⚡ Marquer si vient de Coach Ryze
       );
       
       // Appeler les callbacks pour sauvegarder dans l'écran parent
@@ -1988,15 +2011,15 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                   child: ElevatedButton(
                     onPressed: () {
                       Navigator.pop(context); // Fermer dialog
-                      
+
                       // Toujours valider la session d'abord
                       _validateSession();
-                      
-                      // Afficher le popup de sauvegarde avant de retourner (séances manuelles uniquement)
+
+                      // ⚡ Popup uniquement si PAS un programme prédéfini (manuel ou Coach Ryze)
                       if (!widget.isFromProgram && _exercises.isNotEmpty) {
                         _showSaveSessionDialog();
                       } else {
-                        // OPTIMISATION: Invalider les caches avant de retourner
+                        // Programmes guidés: pas de popup, retourner directement
                         try {
                           SportDashboardService.forceInvalidateAllCaches();
                           DashboardService.invalidateAndRefreshAfterWorkout();
@@ -2005,7 +2028,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                           debugPrint('⚠️ Erreur invalidation caches: $e');
                         }
 
-                        Navigator.pop(context); // Retourner à la musculation (se rafraîchira automatiquement)
+                        Navigator.pop(context); // Retourner à la musculation
                       }
                     },
                     style: ElevatedButton.styleFrom(
@@ -2238,17 +2261,8 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
       children: [
         _buildWorkoutScreen(),
         _buildHistoryBubble(),
-        // 🎤 Nouveau système vocal moderne (floating button + compact bottom bar)
-        if (_exercises.isNotEmpty)
-          ModernVoiceInput(
-            onStartListening: _startVoiceInput,
-            onStopListening: _stopVoiceInput,
-            onCancel: _cancelVoiceInput,
-            isListening: _isVoiceListening,
-            recognizedText: _recognizedText,
-            hasError: _voiceHasError,
-            retryCount: _voiceRetryCount,
-          ),
+        // Overlay d'écoute vocale (quand micro actif)
+        if (_isVoiceListening) _buildVoiceListeningOverlay(),
         // Bouton Undo (si actif)
         if (_showUndoButton) _buildUndoButton(),
       ],
@@ -2865,7 +2879,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
           
           const SizedBox(width: 12),
 
-          // 🎤 NOUVEAU : Bouton micro par série (seulement si séries précédentes validées)
+          // 🎤 Bouton micro par série (visible si série précédente non vide)
           if (_canShowVoiceButtonForSet(setIndex))
             GestureDetector(
               onTap: () => _startVoiceInputForSet(setIndex),
@@ -2874,15 +2888,13 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                 height: 32,
                 decoration: BoxDecoration(
                   color: _isVoiceListening && _activeSetIndex == setIndex
-                      ? const Color(0xFFEF4444)
-                      : const Color(0xFF0B132B).withOpacity(0.1),
+                      ? const Color(0xFFEF4444) // Rouge quand actif
+                      : const Color(0xFF1C2951), // Bleu de l'app (visible)
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
                   LucideIcons.mic,
-                  color: _isVoiceListening && _activeSetIndex == setIndex
-                      ? Colors.white
-                      : const Color(0xFF0B132B),
+                  color: Colors.white,
                   size: 16,
                 ),
               ),
@@ -2902,7 +2914,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
               ),
               child: const Icon(
                 LucideIcons.arrowDown,
-                color: Color(0xFF1C2951), // Bleu de l'app
+                color: Colors.white, // Blanc
                 size: 16,
               ),
             ),
@@ -3688,10 +3700,12 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
 
     // Vérifier qu'il y a une série suivante
     if (setIndex + 1 < currentExercise.sets.length) {
-      // Copier vers série existante
+      // Copier vers série existante (⚡ PAS DE VALIDATION VERTE)
       setState(() {
         final updatedSets = List<ExerciseSet>.from(currentExercise.sets);
-        updatedSets[setIndex + 1] = currentSet.copyWith();
+        updatedSets[setIndex + 1] = currentSet.copyWith(
+          isCompleted: false, // ⚡ NE PAS valider la série copiée
+        );
         _exercises[_currentExerciseIndex] = currentExercise.copyWith(sets: updatedSets);
 
         // Mettre à jour les controllers
@@ -4168,25 +4182,25 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
 
   /// Remplir une série avec les données vocales
   void _fillSetWithVoiceData(WorkoutExercise exercise, int setIndex, WorkoutSetData data) {
-    // Récupérer valeurs précédentes si partial data
-    final currentSet = exercise.sets[setIndex];
-    final reps = data.reps ?? currentSet.reps;
-    final weight = data.weight ?? currentSet.weight;
+    // ⚡ NOUVEAU: Si donnée non mentionnée dans le micro, on VIDE la case (au lieu de garder l'ancienne valeur)
+    final reps = data.reps ?? 0;
+    final weight = data.weight ?? 0.0;
 
     // Mettre à jour les controllers
-    _repsControllers[exercise.exercise.id]?[setIndex]?.text = reps.toString();
-    _weightControllers[exercise.exercise.id]?[setIndex]?.text = weight.toString();
+    _repsControllers[exercise.exercise.id]?[setIndex]?.text = reps > 0 ? reps.toString() : '';
+    _weightControllers[exercise.exercise.id]?[setIndex]?.text = weight > 0 ? weight.toString() : '';
 
-    // Mettre à jour le modèle avec copyWith
+    // Mettre à jour le modèle avec copyWith (PAS de isCompleted = true)
     setState(() {
-      final updatedSet = currentSet.copyWith(
+      final updatedSet = exercise.sets[setIndex].copyWith(
         reps: reps,
         weight: weight,
+        // ⚡ NE PAS valider la série (pas de vert)
       );
       exercise.sets[setIndex] = updatedSet;
     });
 
-    debugPrint('✅ Filled set $setIndex: $reps reps, $weight kg');
+    debugPrint('✅ Filled set $setIndex: $reps reps, $weight kg (sans validation)');
   }
 
   /// Valider EN CASCADE (toutes les séries jusqu'à celle-là incluse)
