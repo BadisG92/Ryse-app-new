@@ -134,20 +134,26 @@ class _ExerciseAiAnalysisWidgetState extends State<ExerciseAiAnalysisWidget> {
 
       if (!mounted) return;
 
-      // Gérer différents types d'erreurs
+      // Gérer différents types d'erreurs avec des messages clairs
       String errorMsg;
-      if (e.toString().contains('API key expired')) {
+      final errorString = e.toString().toLowerCase();
+
+      if (errorString.contains('api key') || errorString.contains('quota') || errorString.contains('billing')) {
         errorMsg = languageCode == 'fr'
-            ? '⚠️ Clé API expirée. Veuillez contacter le support.'
-            : '⚠️ API key expired. Please contact support.';
-      } else if (e.toString().contains('sessions are required')) {
+            ? 'Le service d\'IA est temporairement indisponible. Veuillez réessayer dans quelques instants.'
+            : 'AI service temporarily unavailable. Please try again in a few moments.';
+      } else if (errorString.contains('sessions are required') || errorString.contains('not enough data')) {
         errorMsg = languageCode == 'fr'
-            ? '⚠️ Au moins 3 séances sont nécessaires'
-            : '⚠️ At least 3 sessions are required';
+            ? 'Effectuez au moins 3 séances avec cet exercice pour obtenir une analyse personnalisée.'
+            : 'Complete at least 3 sessions with this exercise to get a personalized analysis.';
+      } else if (errorString.contains('network') || errorString.contains('connection') || errorString.contains('timeout')) {
+        errorMsg = languageCode == 'fr'
+            ? 'Problème de connexion. Vérifiez votre connexion internet et réessayez.'
+            : 'Connection problem. Check your internet connection and try again.';
       } else {
         errorMsg = languageCode == 'fr'
-            ? '⚠️ Erreur lors de la génération. Réessayez.'
-            : '⚠️ Generation error. Please retry.';
+            ? 'Une erreur s\'est produite. Réessayez dans quelques instants.'
+            : 'An error occurred. Please try again in a few moments.';
       }
 
       setState(() {

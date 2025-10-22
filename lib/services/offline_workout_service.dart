@@ -342,23 +342,25 @@ class OfflineWorkoutService {
   /// Sauvegarde une séance en attente de synchronisation
   Future<void> saveSessionForSync(WorkoutSession session, {
     String? guidedTemplateId,
+    String sessionSource = 'manual',
     String? intensity,
     int? durationMinutes,
     int? caloriesBurned,
   }) async {
     final prefs = await SharedPreferences.getInstance();
-    
+
     // Récupérer les sessions en attente
     final pendingJson = prefs.getString(_pendingSessionsKey);
-    final List<dynamic> pendingSessions = pendingJson != null 
-        ? jsonDecode(pendingJson) 
+    final List<dynamic> pendingSessions = pendingJson != null
+        ? jsonDecode(pendingJson)
         : [];
-    
+
     // Créer l'entrée de session
     final sessionData = {
       'id': const Uuid().v4(),
       'session': _sessionToJson(session),
       'guidedTemplateId': guidedTemplateId,
+      'sessionSource': sessionSource,
       'intensity': intensity,
       'durationMinutes': durationMinutes,
       'caloriesBurned': caloriesBurned,
@@ -469,17 +471,18 @@ class OfflineWorkoutService {
       for (final sessionData in pendingSessions) {
         try {
           debugPrint('📤 Synchronisation de la séance ${sessionData['id']}...');
-          
+
           final session = _sessionFromJson(sessionData['session']);
-          
+
           await db.DatabaseService.persistCompletedWorkoutAsHistory(
             session: session,
             guidedTemplateId: sessionData['guidedTemplateId'],
+            sessionSource: sessionData['sessionSource'] ?? 'manual', // Default to manual for old sessions
             intensity: sessionData['intensity'],
             durationMinutes: sessionData['durationMinutes'],
             caloriesBurned: sessionData['caloriesBurned'],
           );
-          
+
           debugPrint('✅ Séance synchronisée avec succès');
         } catch (e) {
           debugPrint('❌ Erreur de synchronisation: $e');

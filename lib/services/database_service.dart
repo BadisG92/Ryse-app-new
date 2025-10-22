@@ -43,6 +43,30 @@ class DatabaseService {
     }
   }
 
+  /// Vérifie si un template utilisateur a été généré par l'IA
+  /// Retourne true si le template existe dans user_workout_templates avec is_from_ai=true
+  static Future<bool> isTemplateFromAI(String templateId) async {
+    try {
+      final result = await _client
+          .from('user_workout_templates')
+          .select('is_from_ai')
+          .eq('id', templateId)
+          .maybeSingle();
+
+      if (result != null) {
+        final isFromAI = result['is_from_ai'] as bool? ?? false;
+        debugPrint('🔍 Template $templateId: is_from_ai=$isFromAI');
+        return isFromAI;
+      }
+
+      debugPrint('🔍 Template $templateId non trouvé dans user_workout_templates');
+      return false;
+    } catch (e) {
+      debugPrint('❌ Error checking if template is from AI: $e');
+      return false;
+    }
+  }
+
   // Créer un exercice custom
   static Future<models.Exercise?> createCustomExercise({
     required String name,
@@ -1229,6 +1253,7 @@ class DatabaseService {
   static Future<void> persistCompletedWorkoutAsHistory({
     required models.WorkoutSession session,
     String? guidedTemplateId,
+    String sessionSource = 'manual', // 'manual' | 'guided_template' | 'ai_coach'
     String? intensity, // 'Faible' | 'Modéré' | 'Élevé'
     int? durationMinutes,
     int? caloriesBurned,
@@ -1241,6 +1266,7 @@ class DatabaseService {
       await offlineService.saveSessionForSync(
         session,
         guidedTemplateId: guidedTemplateId,
+        sessionSource: sessionSource,
         intensity: intensity,
         durationMinutes: durationMinutes,
         caloriesBurned: caloriesBurned,
@@ -1408,7 +1434,8 @@ class DatabaseService {
       debugPrint('  userId=$userId historySessionId=$historySessionId');
       debugPrint('  name=$sessionName date=$performedAtDate durationMins=$durationMins');
       debugPrint('  numExercises=$numExercises totalVolumeKg=${totalVolume.toStringAsFixed(2)}');
-      debugPrint('  caloriesBurned=${caloriesBurned ?? 0} intensity=$intensityValue template=$guidedTemplateId');
+      debugPrint('  caloriesBurned=${caloriesBurned ?? 0} intensity=$intensityValue');
+      debugPrint('  session_source=$sessionSource template=$guidedTemplateId');
 
       await _client.from('workout_session_summaries').insert({
         'history_session_id': historySessionId,
@@ -1421,6 +1448,7 @@ class DatabaseService {
         'total_volume_kg': totalVolume,
         'calories_burned': caloriesBurned ?? 0,
         'intensity': intensityValue,
+        'session_source': sessionSource,
         'guided_template_id': guidedTemplateId,
       });
 

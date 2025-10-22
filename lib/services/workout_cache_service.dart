@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart';
 import 'localization_service.dart';
 
 /// Cache entry avec timestamp pour TTL
@@ -110,12 +111,13 @@ class WorkoutCacheService {
   }
 
   /// Localise les noms d'exercices dans les données de sessions hebdomadaires
+  /// et récupère les exercices depuis workout_set_history
   static Future<List<dynamic>> _localizeWeeklySessionsData(List<dynamic> sessions) async {
     if (sessions.isEmpty) return sessions;
-    
+
     final locService = LocalizationService.instance;
     final suffix = locService.getColumnSuffix();
-    
+
     // Récupérer tous les exercices système avec noms localisés
     final exercisesMap = <String, String>{};
     final exerciseRows = await _client
@@ -134,43 +136,85 @@ class WorkoutCacheService {
       customExercisesMap[row['id']] = row['name'] ?? '';
     }
 
-    return sessions.map((session) {
-      if (session is Map<String, dynamic>) {
-        final exercises = session['exercises'] as List<dynamic>? ?? [];
-        final localizedExercises = exercises.map((exercise) {
-          if (exercise is Map<String, dynamic>) {
-            String localizedName = exercise['exercise_name']?.toString() ?? '';
-            
-            // Chercher par nom exact dans les exercices système
-            final matchingExercise = exercisesMap.entries
-                .where((entry) => entry.value.toLowerCase() == localizedName.toLowerCase());
-            
-            if (matchingExercise.isNotEmpty) {
-              localizedName = matchingExercise.first.value;
-            } else {
-              // Chercher dans les exercices custom
-              final matchingCustom = customExercisesMap.entries
-                  .where((entry) => entry.value.toLowerCase() == localizedName.toLowerCase());
-              if (matchingCustom.isNotEmpty) {
-                localizedName = matchingCustom.first.value;
-              }
-            }
-            
-            return {
-              ...exercise,
-              'localized_exercise_name': localizedName,
-            };
-          }
-          return exercise;
-        }).toList();
-        
-        return {
-          ...session,
-          'exercises': localizedExercises,
-        };
+    // Traiter chaque session
+    final result = <Map<String, dynamic>>[];
+    for (final session in sessions) {
+      if (session is! Map<String, dynamic>) {
+        result.add(session as Map<String, dynamic>);
+        continue;
       }
-      return session;
-    }).toList();
+
+      final historySessionId = session['history_session_id']?.toString();
+      if (historySessionId == null) {
+        result.add(session);
+        continue;
+      }
+
+      // Récupérer les sets de cette session depuis workout_set_history
+      debugPrint('📊 Récupération des exercices pour session $historySessionId');
+      final sets = await _client
+          .from('workout_set_history')
+          .select('exercise_id, custom_exercise_id, exercise_name, weight, reps')
+          .eq('history_session_id', historySessionId)
+          .order('set_order');
+
+      debugPrint('📊 ${sets.length} sets trouvés pour session $historySessionId');
+
+      // Agréger par exercice (meilleur set par exercice)
+      final Map<String, Map<String, dynamic>> exerciseStats = {};
+
+      for (final set in sets) {
+        String exerciseName = set['exercise_name']?.toString() ?? '';
+        final exerciseId = set['exercise_id']?.toString();
+        final customExerciseId = set['custom_exercise_id']?.toString();
+
+        // Obtenir le nom localisé
+        String localizedName = exerciseName;
+        if (exerciseId != null && exercisesMap.containsKey(exerciseId)) {
+          localizedName = exercisesMap[exerciseId]!;
+        } else if (customExerciseId != null && customExercisesMap.containsKey(customExerciseId)) {
+          localizedName = customExercisesMap[customExerciseId]!;
+        }
+
+        final weight = (set['weight'] as num?)?.toDouble() ?? 0;
+        final reps = (set['reps'] as int?) ?? 0;
+
+        // Utiliser le nom d'exercice comme clé pour grouper
+        final key = exerciseName;
+
+        if (!exerciseStats.containsKey(key)) {
+          exerciseStats[key] = {
+            'exercise_name': exerciseName,
+            'localized_exercise_name': localizedName,
+            'best_weight': weight,
+            'best_reps': reps,
+            'sets_count': 1,
+          };
+        } else {
+          exerciseStats[key]!['sets_count'] = (exerciseStats[key]!['sets_count'] as int) + 1;
+
+          // Mettre à jour le meilleur set (comparaison par poids, puis reps)
+          final currentBestWeight = exerciseStats[key]!['best_weight'] as double;
+          final currentBestReps = exerciseStats[key]!['best_reps'] as int;
+
+          if (weight > currentBestWeight || (weight == currentBestWeight && reps > currentBestReps)) {
+            exerciseStats[key]!['best_weight'] = weight;
+            exerciseStats[key]!['best_reps'] = reps;
+          }
+        }
+      }
+
+      // Ajouter la session avec ses exercices
+      final exercisesList = exerciseStats.values.toList();
+      debugPrint('📊 Session $historySessionId: ${exercisesList.length} exercice(s) agrégé(s)');
+
+      result.add({
+        ...session,
+        'exercises': exercisesList,
+      });
+    }
+
+    return result;
   }
   
   /// Récupère les statistiques hebdomadaires (pour WeeklyStatsSection)

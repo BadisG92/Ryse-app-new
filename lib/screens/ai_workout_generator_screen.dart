@@ -357,57 +357,64 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> wit
         final greeting = isFrench ? 'Salut' : 'Hey';
 
         return SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Header avec Coach Ryze - Design simplifié et engageant
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // Message principal
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '$greeting $userName !',
-                          style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF0B132B),
+              // Header avec Coach Ryze - Design simple et unifié
+              Padding(
+                padding: const EdgeInsets.all(24),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // Message principal
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '$greeting $userName !',
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF0B132B),
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          isFrench
-                            ? 'Prêt pour une séance sur-mesure ?'
-                            : 'Ready for a custom workout?',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            color: Color(0xFF64748B),
-                            height: 1.3,
+                          const SizedBox(height: 8),
+                          Text(
+                            isFrench
+                              ? 'Prêt pour une séance sur-mesure ?'
+                              : 'Ready for a custom workout?',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              color: Color(0xFF64748B),
+                              height: 1.3,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  // Avatar Coach Ryze à droite avec animation (plus grand)
-                  FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: SlideTransition(
-                      position: _slideAnimation,
-                      child: const CoachRyzeAvatar(
-                        size: CoachRyzeAvatarSize.xxlarge, // 160px
-                        withShadow: true,
+                        ],
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 16),
+                    // Avatar Coach Ryze à droite avec animation
+                    FadeTransition(
+                      opacity: _fadeAnimation,
+                      child: SlideTransition(
+                        position: _slideAnimation,
+                        child: const CoachRyzeAvatar(
+                          type: CoachRyzeAvatarType.workout,
+                          size: CoachRyzeAvatarSize.xxlarge, // 160px
+                          withShadow: false, // Pas besoin, le container a déjà une ombre
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
 
-              const SizedBox(height: 32),
+              Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
 
           // Suggestions rapides (sans emoji)
           Row(
@@ -680,10 +687,13 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> wit
                         ),
                       ],
                     ),
-            ),
+                  ),
+                ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
         );
       },
     );

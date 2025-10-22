@@ -1,16 +1,26 @@
 import 'package:flutter/material.dart';
 
+/// Types d'avatar Coach Ryze
+enum CoachRyzeAvatarType {
+  workout,    // Panda coach sport
+  nutrition,  // Panda docteur nutrition
+}
+
 /// Tailles prédéfinies pour l'avatar Coach Ryze
 enum CoachRyzeAvatarSize {
-  small,   // 32px - Pour badges, chips
-  medium,  // 64px - Pour headers, cartes
-  large,   // 96px - Pour pages principales
-  xlarge,  // 128px - Pour splash, onboarding
-  xxlarge  // 160px - Pour header principal
+  small,    // 32px - Pour badges, chips
+  medium,   // 64px - Pour headers, cartes
+  large,    // 96px - Pour pages principales
+  xlarge,   // 128px - Pour splash, onboarding
+  xxlarge,  // 160px - Pour header principal
+  xxxlarge  // 180px - Pour panda docteur (compense la blouse blanche)
 }
 
 /// Widget réutilisable pour afficher l'avatar Coach Ryze de manière optimisée
 class CoachRyzeAvatar extends StatelessWidget {
+  /// Type d'avatar à afficher
+  final CoachRyzeAvatarType type;
+
   /// Taille de l'avatar
   final CoachRyzeAvatarSize size;
 
@@ -22,6 +32,7 @@ class CoachRyzeAvatar extends StatelessWidget {
 
   const CoachRyzeAvatar({
     Key? key,
+    this.type = CoachRyzeAvatarType.workout,
     this.size = CoachRyzeAvatarSize.medium,
     this.withShadow = true,
     this.withBorder = false,
@@ -40,13 +51,25 @@ class CoachRyzeAvatar extends StatelessWidget {
         return 128;
       case CoachRyzeAvatarSize.xxlarge:
         return 160;
+      case CoachRyzeAvatarSize.xxxlarge:
+        return 180;
+    }
+  }
+
+  /// Retourne le chemin de l'image selon le type
+  String get _imagePath {
+    switch (type) {
+      case CoachRyzeAvatarType.workout:
+        return 'assets/images/coach_ryze_workout_avatar.png';
+      case CoachRyzeAvatarType.nutrition:
+        return 'assets/images/coach_ryze_nutrition_avatar.png';
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Image.asset(
-      'assets/images/coach_ryze_avatar.png',
+      _imagePath,
       width: _size,
       height: _size,
       fit: BoxFit.contain,

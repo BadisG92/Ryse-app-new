@@ -7,6 +7,8 @@ import 'package:intl/intl.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import '../models/nutrition_analysis.dart';
 import '../services/localization_service.dart';
+import '../services/auth_service.dart';
+import '../components/ui/coach_ryze_avatar.dart';
 
 // Design tokens pour cohérence
 class Spacing {
@@ -48,7 +50,7 @@ class AppTextStyles {
 
 /// Écran d'affichage d'une analyse nutritionnelle Coach Ryze
 /// Version redesignée avec hiérarchie visuelle améliorée
-class NutritionAnalysisScreen extends StatelessWidget {
+class NutritionAnalysisScreen extends StatefulWidget {
   final NutritionAnalysis analysis;
   final VoidCallback onRegenerate;
 
@@ -59,13 +61,47 @@ class NutritionAnalysisScreen extends StatelessWidget {
   }) : super(key: key);
 
   @override
+  State<NutritionAnalysisScreen> createState() => _NutritionAnalysisScreenState();
+}
+
+class _NutritionAnalysisScreenState extends State<NutritionAnalysisScreen> with SingleTickerProviderStateMixin {
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
+    );
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0.3, 0),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOutCubic),
+    );
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Consumer<LocalizationService>(
       builder: (context, locService, _) {
         final isFrench = locService.currentLanguageCode == 'fr';
 
         return Scaffold(
-          backgroundColor: const Color(0xFFF8FAFC), // Fond gris très clair
+          backgroundColor: Colors.white, // Fond blanc
           appBar: AppBar(
             backgroundColor: Colors.white,
             elevation: 0,
@@ -82,7 +118,7 @@ class NutritionAnalysisScreen extends StatelessWidget {
                 icon: const Icon(LucideIcons.refreshCw, color: Color(0xFF64748B)),
                 onPressed: () {
                   Navigator.pop(context);
-                  onRegenerate();
+                  widget.onRegenerate();
                 },
                 tooltip: isFrench ? 'Régénérer' : 'Regenerate',
               ),
@@ -98,7 +134,7 @@ class NutritionAnalysisScreen extends StatelessWidget {
                 const SizedBox(height: Spacing.xl),
 
                 // Score avec gauge circulaire impactante
-                if (analysis.score != null) ...[
+                if (widget.analysis.score != null) ...[
                   _buildEnhancedScoreCard(isFrench),
                   const SizedBox(height: Spacing.xl),
                   _buildDivider(),
@@ -116,7 +152,7 @@ class NutritionAnalysisScreen extends StatelessWidget {
                 _buildMetricsSection(isFrench),
 
                 // Contexte workout
-                if (analysis.metadata.hasWorkoutToday) ...[
+                if (widget.analysis.metadata.hasWorkoutToday) ...[
                   const SizedBox(height: Spacing.lg),
                   _buildWorkoutContextCard(isFrench),
                 ],
@@ -152,36 +188,93 @@ class NutritionAnalysisScreen extends StatelessWidget {
     );
   }
 
+  /// Retourne un message dynamique selon le contexte
+  String _getContextMessage(String context, bool isFrench) {
+    if (isFrench) {
+      switch (context) {
+        case 'empty_day':
+          return 'Ta journée est vide, commençons ensemble !';
+        case 'post_workout':
+          return 'Belle séance ! Analysons ta récupération nutrition';
+        case 'end_of_day':
+          return 'Faisons le bilan de ta journée !';
+        case 'in_progress':
+          return 'Analysons ta journée ensemble !';
+        default:
+          return 'Analysons ta nutrition ensemble !';
+      }
+    } else {
+      switch (context) {
+        case 'empty_day':
+          return 'Your day is empty, let\'s start together!';
+        case 'post_workout':
+          return 'Great session! Let\'s analyze your nutrition recovery';
+        case 'end_of_day':
+          return 'Let\'s review your day!';
+        case 'in_progress':
+          return 'Let\'s analyze your day together!';
+        default:
+          return 'Let\'s analyze your nutrition together!';
+      }
+    }
+  }
+
   Widget _buildHeader(bool isFrench) {
-    final dateStr = DateFormat('dd/MM/yyyy').format(analysis.date);
-    final timeStr = DateFormat('HH:mm').format(analysis.timestamp);
+    return Consumer<AuthService>(
+      builder: (context, authService, child) {
+        // Capitaliser le prénom (même méthode que le dashboard)
+        final rawName = authService.currentUser?.firstName ?? (isFrench ? 'Champion' : 'Champion');
+        final userName = rawName[0].toUpperCase() + rawName.substring(1).toLowerCase();
+        final greeting = isFrench ? 'Salut' : 'Hey';
+        final contextMessage = _getContextMessage(widget.analysis.context, isFrench);
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC), // Même couleur que le fond de la page
-      ),
-      child: Row(
-        children: [
-          // Texte "Bilan du (date) fait à (heure)"
-          Expanded(
-            child: Text(
-              isFrench
-                ? 'Bilan du $dateStr fait à $timeStr'
-                : 'Report for $dateStr made at $timeStr',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: const Color(0xFF64748B),
+        return Padding(
+          padding: const EdgeInsets.all(24),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Texte à gauche
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '$greeting $userName !',
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF0B132B),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      contextMessage,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        color: Color(0xFF64748B),
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
+              const SizedBox(width: 16),
+              // Avatar Coach Ryze Nutrition à droite avec animation
+              FadeTransition(
+                opacity: _fadeAnimation,
+                child: SlideTransition(
+                  position: _slideAnimation,
+                  child: const CoachRyzeAvatar(
+                    type: CoachRyzeAvatarType.nutrition,
+                    size: CoachRyzeAvatarSize.xxxlarge, // 180px - Plus grand pour compenser la blouse blanche
+                    withShadow: false, // Pas besoin, le container a déjà une ombre
+                  ),
+                ),
+              ),
+            ],
           ),
-
-          // Badge contexte
-          _buildEnhancedContextBadge(analysis.context, isFrench),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -233,7 +326,7 @@ class NutritionAnalysisScreen extends StatelessWidget {
 
   // Score avec gauge circulaire impactante
   Widget _buildEnhancedScoreCard(bool isFrench) {
-    final score = analysis.score!;
+    final score = widget.analysis.score!;
     final scoreColor = _getScoreColor(score);
     final scoreLabel = _getScoreLabel(score, isFrench);
 
@@ -257,10 +350,10 @@ class NutritionAnalysisScreen extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // Gauge circulaire
+          // Gauge circulaire - Réduite pour être informative, pas dominante
           SizedBox(
-            width: 160,
-            height: 160,
+            width: 120,
+            height: 120,
             child: CustomPaint(
               painter: _CircularGaugePainter(
                 score: score,
@@ -273,17 +366,17 @@ class NutritionAnalysisScreen extends StatelessWidget {
                     Text(
                       '${score.toInt()}',
                       style: TextStyle(
-                        fontSize: 48,
+                        fontSize: 32,
                         fontWeight: FontWeight.w800,
                         color: scoreColor,
                         height: 1,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
                     Text(
                       '/ 100',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 12,
                         fontWeight: FontWeight.w500,
                         color: scoreColor.withOpacity(0.6),
                       ),
@@ -295,25 +388,33 @@ class NutritionAnalysisScreen extends StatelessWidget {
           ),
           const SizedBox(height: Spacing.md),
 
-          // Label
+          // Label - Plus prominent
           Text(
             isFrench ? 'Score Nutritionnel' : 'Nutrition Score',
             style: AppTextStyles.body.copyWith(
+              fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: const Color(0xFF64748B),
+              color: const Color(0xFF0B132B),
             ),
           ),
           const SizedBox(height: Spacing.xs),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(_getScoreEmoji(score), style: TextStyle(fontSize: 20)),
+              Container(
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: scoreColor,
+                  shape: BoxShape.circle,
+                ),
+              ),
               const SizedBox(width: Spacing.sm),
               Text(
                 scoreLabel,
                 style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
                   color: scoreColor,
                 ),
               ),
@@ -420,7 +521,7 @@ class NutritionAnalysisScreen extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
-              analysis.analysisText,
+              widget.analysis.analysisText,
               style: TextStyle(
                 fontSize: 15,
                 height: 1.6,
@@ -444,7 +545,7 @@ class NutritionAnalysisScreen extends StatelessWidget {
           const SizedBox(height: 20),
 
           // Titre "Recommandations" en blanc dans le gradient
-          if (analysis.recommendations.isNotEmpty) ...[
+          if (widget.analysis.recommendations.isNotEmpty) ...[
             Row(
               children: [
                 Icon(
@@ -467,7 +568,7 @@ class NutritionAnalysisScreen extends StatelessWidget {
             const SizedBox(height: 12),
 
             // Cards de recommandations individuelles (sans titre dedans)
-            ...analysis.recommendations.asMap().entries.map((entry) {
+            ...widget.analysis.recommendations.asMap().entries.map((entry) {
               final index = entry.key;
               final recommendation = entry.value;
               final parts = _parseRecommendation(recommendation);
@@ -541,8 +642,8 @@ class NutritionAnalysisScreen extends StatelessWidget {
 
   // Section Recommandations avec cards séparées - Version épurée
   Widget _buildRecommendationsSection(bool isFrench) {
-    // Utiliser directement analysis.recommendations (maintenant structuré par Gemini)
-    final recos = analysis.recommendations;
+    // Utiliser directement widget.analysis.recommendations (maintenant structuré par Gemini)
+    final recos = widget.analysis.recommendations;
 
     if (recos.isEmpty) {
       print('⚠️ Aucune recommandation à afficher');
@@ -738,7 +839,7 @@ class NutritionAnalysisScreen extends StatelessWidget {
 
   // Section Métriques améliorées
   Widget _buildMetricsSection(bool isFrench) {
-    final meta = analysis.metadata;
+    final meta = widget.analysis.metadata;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: Spacing.md),
@@ -931,7 +1032,7 @@ class NutritionAnalysisScreen extends StatelessWidget {
   }
 
   Widget _buildWorkoutContextCard(bool isFrench) {
-    final meta = analysis.metadata;
+    final meta = widget.analysis.metadata;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: Spacing.md),

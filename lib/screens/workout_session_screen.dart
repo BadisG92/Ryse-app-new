@@ -1671,11 +1671,49 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     
     // Vérifier si on est hors ligne
     final isOffline = _offlineStatus != null && !_offlineStatus!.isOnline;
-    
-    // Historiser la séance (manuel ou guidé)
+
+    // Déterminer le type de source de la séance
+    String sessionSource;
+    String? guidedTemplateId;
+
+    if (widget.isFromAI) {
+      // Séance générée par l'IA directement -> traiter comme AI coach
+      sessionSource = 'ai_coach';
+      guidedTemplateId = null; // Pas de template pour les séances IA directes
+      debugPrint('🤖 Séance IA directe détectée: session_source=ai_coach, guidedTemplateId=null');
+    } else if (widget.isFromProgram) {
+      // Séance depuis un programme guidé - vérifier si c'est un template IA sauvegardé
+      final potentialTemplateId = widget.guidedTemplateId ?? _inferGuidedTemplateId();
+
+      // Vérifier si ce template a été généré par l'IA
+      bool isTemplateFromAI = false;
+      if (potentialTemplateId != null) {
+        isTemplateFromAI = await db.DatabaseService.isTemplateFromAI(potentialTemplateId);
+      }
+
+      if (isTemplateFromAI) {
+        // Template généré par l'IA et sauvegardé -> traiter comme AI coach
+        sessionSource = 'ai_coach';
+        guidedTemplateId = null; // Ne pas référencer le template car il n'existe pas dans workout_templates
+        debugPrint('🤖 Séance IA sauvegardée détectée (template=$potentialTemplateId): session_source=ai_coach, guidedTemplateId=null');
+      } else {
+        // Vrai template guidé de l'application
+        sessionSource = 'guided_template';
+        guidedTemplateId = potentialTemplateId;
+        debugPrint('📋 Séance guidée détectée: session_source=guided_template, guidedTemplateId=$guidedTemplateId');
+      }
+    } else {
+      // Séance créée manuellement
+      sessionSource = 'manual';
+      guidedTemplateId = null;
+      debugPrint('✍️ Séance manuelle détectée: session_source=manual, guidedTemplateId=null');
+    }
+
+    // Historiser la séance (manuel, guidé, ou IA)
     db.DatabaseService.persistCompletedWorkoutAsHistory(
       session: completedSession,
-      guidedTemplateId: widget.isFromProgram ? (widget.guidedTemplateId ?? _inferGuidedTemplateId()) : null,
+      guidedTemplateId: guidedTemplateId,
+      sessionSource: sessionSource,
       intensity: _selectedIntensity != null ? _mapIntensityToDbValue(_selectedIntensity!) : null,
       durationMinutes: _displayedDuration.inMinutes,
       caloriesBurned: _estimatedCalories,
