@@ -3573,7 +3573,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     );
   }
 
-  /// Overlay fullscreen pendant l'écoute
+  /// Overlay en bas de page pendant l'écoute (plus fullscreen)
   Widget _buildVoiceListeningOverlay() {
     // Couleur selon le retry count
     final micColor = _voiceRetryCount == 0
@@ -3582,100 +3582,150 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
             ? Colors.orange
             : Colors.deepOrange;
 
-    return Positioned.fill(
+    return Positioned(
+      left: 0,
+      right: 0,
+      bottom: 0,
       child: Container(
-        color: Colors.black87,
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Animation micro pulsante avec couleur dynamique
-              Container(
-                width: 100,
-                height: 100,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: micColor.withOpacity(0.2),
-                ),
-                child: Center(
-                  child: Icon(
-                    LucideIcons.mic,
-                    size: 50,
-                    color: micColor,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1C2951),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.3),
+              blurRadius: 10,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // En-tête avec micro animé et bouton fermer
+            Row(
+              children: [
+                // Animation micro pulsante avec couleur dynamique
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: micColor.withOpacity(0.2),
                   ),
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              Consumer<LocalizationService>(
-                builder: (context, locService, _) {
-                  String mainText;
-                  if (_voiceRetryCount == 0) {
-                    mainText = locService.currentLanguageCode == 'fr'
-                        ? "Dictez vos reps et poids..."
-                        : "Dictate your reps and weight...";
-                  } else {
-                    mainText = locService.currentLanguageCode == 'fr'
-                        ? "Réessayez ($_voiceRetryCount/$_maxRetries)"
-                        : "Try again ($_voiceRetryCount/$_maxRetries)";
-                  }
-
-                  return Text(
-                    mainText,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w500,
-                      shadows: _voiceRetryCount > 0
-                          ? [
-                              Shadow(
-                                color: micColor.withOpacity(0.5),
-                                blurRadius: 10,
-                              )
-                            ]
-                          : null,
+                  child: Center(
+                    child: Icon(
+                      LucideIcons.mic,
+                      size: 28,
+                      color: micColor,
                     ),
-                  );
-                },
-              ),
-
-              const SizedBox(height: 16),
-
-              // Texte reconnu en temps réel
-              Container(
-                padding: const EdgeInsets.all(16),
-                margin: const EdgeInsets.symmetric(horizontal: 32),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  _recognizedText.isEmpty ? "..." : _recognizedText,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.w700,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              Consumer<LocalizationService>(
-                builder: (context, locService, _) => Text(
-                  locService.currentLanguageCode == 'fr'
-                      ? 'Exemple: "10 reps 80 kilos"'
-                      : 'Example: "10 reps 80 kilos"',
-                  style: const TextStyle(
-                    color: Colors.white60,
-                    fontSize: 14,
                   ),
                 ),
+
+                const SizedBox(width: 12),
+
+                // Texte principal
+                Expanded(
+                  child: Consumer<LocalizationService>(
+                    builder: (context, locService, _) {
+                      String mainText;
+                      if (_voiceRetryCount == 0) {
+                        mainText = locService.currentLanguageCode == 'fr'
+                            ? "Dictez vos reps et poids..."
+                            : "Dictate your reps and weight...";
+                      } else {
+                        mainText = locService.currentLanguageCode == 'fr'
+                            ? "Réessayez ($_voiceRetryCount/$_maxRetries)"
+                            : "Try again ($_voiceRetryCount/$_maxRetries)";
+                      }
+
+                      return Text(
+                        mainText,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          shadows: _voiceRetryCount > 0
+                              ? [
+                                  Shadow(
+                                    color: micColor.withOpacity(0.5),
+                                    blurRadius: 10,
+                                  )
+                                ]
+                              : null,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+
+                // Bouton arrêter le micro
+                GestureDetector(
+                  onTap: () async {
+                    await _voiceService.stopListening();
+                    if (mounted) {
+                      setState(() {
+                        _isVoiceListening = false;
+                        _recognizedText = '';
+                        _voiceRetryCount = 0;
+                        _voiceHasError = false;
+                        _activeSetIndex = null;
+                      });
+                    }
+                  },
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.red, width: 1),
+                    ),
+                    child: const Icon(
+                      LucideIcons.x,
+                      size: 20,
+                      color: Colors.red,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 12),
+
+            // Texte reconnu en temps réel
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
               ),
-            ],
-          ),
+              child: Text(
+                _recognizedText.isEmpty ? "..." : _recognizedText,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            Consumer<LocalizationService>(
+              builder: (context, locService, _) => Text(
+                locService.currentLanguageCode == 'fr'
+                    ? 'Exemple: "10 reps 80 kilos"'
+                    : 'Example: "10 reps 80 kilos"',
+                style: const TextStyle(
+                  color: Colors.white60,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
