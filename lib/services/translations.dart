@@ -914,10 +914,10 @@ class AppTranslations {
       'fr': 'Rejoindre la communauté',
       'en': 'Join community',
     },
-    // Coach IA
+    // Coach Ryze
     'ai_coach': {
-      'fr': 'Coach IA',
-      'en': 'AI Coach',
+      'fr': 'Coach Ryze',
+      'en': 'Coach Ryze',
     },
     'personalized_recommendations': {
       'fr': 'Recommandations personnalisées',
@@ -932,8 +932,8 @@ class AppTranslations {
       'en': 'Talk to coach',
     },
     'ai_insights': {
-      'fr': 'Analyses IA',
-      'en': 'AI Insights',
+      'fr': 'Analyses du Coach',
+      'en': 'Coach Insights',
     },
     'sugar_free_challenge': {
       'fr': '30 jours sans sucre',
@@ -1276,8 +1276,8 @@ class AppTranslations {
     },
     // AI Recommendations
     'ai_recommendations': {
-      'fr': 'Recommandations IA',
-      'en': 'AI Recommendations',
+      'fr': 'Conseils du Coach Ryze',
+      'en': 'Coach Ryze Tips',
     },
     'smart_recommendation': {
       'fr': 'Conseil intelligent',
@@ -1480,8 +1480,8 @@ class AppTranslations {
       'en': 'Search and add manually',
     },
     'ai_scanner': {
-      'fr': 'Scanner avec l\'IA',
-      'en': 'AI Scanner',
+      'fr': 'Scanner avec Coach Ryze',
+      'en': 'Scan with Coach Ryze',
     },
     'take_photo_of_dish': {
       'fr': 'Prenez une photo de votre plat',
@@ -1516,8 +1516,8 @@ class AppTranslations {
       'en': 'Search for food in the database',
     },
     'ai_scan_subtitle': {
-      'fr': 'Analyser votre plat avec l\'IA',
-      'en': 'Analyze your dish with AI',
+      'fr': 'Le Coach Ryze analyse votre plat',
+      'en': 'Coach Ryze analyzes your dish',
     },
     'create_recipe_subtitle': {
       'fr': 'Créer une nouvelle recette',
@@ -1626,8 +1626,8 @@ class AppTranslations {
       'en': 'food item(s)',
     },
     'ai_tip': {
-      'fr': 'Astuce IA',
-      'en': 'AI Tip',
+      'fr': 'Conseil du Coach Ryze',
+      'en': 'Coach Ryze Tip',
     },
     'ai_tip_hydration': {
       'fr': '💡 Astuce : Buvez un verre d\'eau avant chaque repas pour une meilleure digestion et satiété.',
@@ -1846,8 +1846,28 @@ class AppTranslations {
       'en': 'Create new meal',
     },
     'ai_scanner_title': {
-      'fr': 'Scanner avec l\'IA',
-      'en': 'AI Scanner',
+      'fr': 'Scanner avec Coach Ryze',
+      'en': 'Scan with Coach Ryze',
+    },
+    'coach_detected_dish_name': {
+      'fr': 'Nom du plat détecté par Coach Ryze',
+      'en': 'Dish name detected by Coach Ryze',
+    },
+    'coach_detected_dish': {
+      'fr': 'Plat détecté par Coach Ryze',
+      'en': 'Dish detected by Coach Ryze',
+    },
+    'coach_analysis': {
+      'fr': 'Analyse Coach Ryze',
+      'en': 'Coach Ryze Analysis',
+    },
+    'scan_lunch_with_coach': {
+      'fr': 'C\'est l\'heure ! Scanne ton déjeuner avec Coach Ryze.',
+      'en': 'It\'s time! Scan your lunch with Coach Ryze.',
+    },
+    'unlimited_photos_coach': {
+      'fr': 'Photos illimitées + Coach Ryze personnel',
+      'en': 'Unlimited photos + Personal Coach Ryze',
     },
     // Meal descriptions
     'breakfast_description': {
@@ -2897,7 +2917,107 @@ class AppTranslations {
     },
     'hiit_finish': {
       'fr': 'Terminer la séance',
+      'en': 'Finish session',
+    },
+
+    // Meal description translations
+    'ai_chat': {
+      'fr': 'Décrire mon repas',
+      'en': 'Describe my meal',
+    },
+    'ai_chat_title': {
+      'fr': 'Décrivez votre repas',
+      'en': 'Describe your meal',
+    },
+    'ai_chat_subtitle': {
+      'fr': 'Le coach analysera votre description',
+      'en': 'Coach will analyze your description',
+    },
+    'describe_meal': {
+      'fr': 'Décrivez votre repas',
+      'en': 'Describe your meal',
+    },
+    'coach_will_analyze': {
+      'fr': 'Le coach analysera votre description',
+      'en': 'Coach will analyze your description',
+    },
+    'ai_chat_hint': {
+      'fr': 'Ex: 2 cafés, 1 croissant, salade césar...',
+      'en': 'Ex: 2 coffees, 1 croissant, caesar salad...',
+    },
+    'ai_chat_suggestions': {
+      'fr': 'Suggestions',
+      'en': 'Suggestions',
+    },
+    'analyze_meal': {
+      'fr': 'Analyser le repas',
+      'en': 'Analyze meal',
+    },
+    'ai_chat_analyze': {
+      'fr': 'Analyser le repas',
+      'en': 'Analyze meal',
+    },
+    'ai_chat_results': {
+      'fr': 'Résultats de l\'analyse',
+      'en': 'Analysis Results',
+    },
+    'ai_analysis_results': {
+      'fr': 'Résultats de l\'analyse',
+      'en': 'Analysis Results',
+    },
+    'add_all_foods': {
+      'fr': 'Ajouter tous les aliments',
+      'en': 'Add all foods',
+    },
+    'end_session': {
+      'fr': 'Annuler',
       'en': 'End session',
+    },
+    // Gemini Error Messages (friendly and playful)
+    'gemini_not_configured': {
+      'fr': '🤖 Oups ! Le coach a besoin de sa clé API pour analyser vos repas. Configurez Gemini dans les paramètres.',
+      'en': '🤖 Oops! Coach needs his API key to analyze your meals. Configure Gemini in settings.',
+    },
+    'gemini_no_response': {
+      'fr': '🤔 Le coach semble un peu dans la lune... Aucune réponse reçue. Réessayez dans un instant !',
+      'en': '🤔 Coach seems a bit distracted... No response received. Try again in a moment!',
+    },
+    'gemini_no_foods_detected': {
+      'fr': '🍽️ Hmm, le coach n\'a pas détecté d\'aliments. Pouvez-vous être plus précis dans votre description ?',
+      'en': '🍽️ Hmm, coach didn\'t detect any foods. Can you be more specific in your description?',
+    },
+    'gemini_analysis_failed': {
+      'fr': '😅 Oh non ! Le coach a trébuché pendant l\'analyse. Vérifiez votre connexion et réessayez.',
+      'en': '😅 Oh no! Coach stumbled during the analysis. Check your connection and try again.',
+    },
+    // Meal Selection for AI Chat
+    'select_meal_for_chat': {
+      'fr': 'À quel repas ?',
+      'en': 'Which meal?',
+    },
+    'select_meal_hint': {
+      'fr': 'Choisissez le repas pour ajouter vos aliments',
+      'en': 'Choose the meal to add your foods',
+    },
+    'continue_btn': {
+      'fr': 'Continuer',
+      'en': 'Continue',
+    },
+    'chat_ai_meal': {
+      'fr': 'Repas',
+      'en': 'Meal',
+    },
+    'your_meal': {
+      'fr': 'Votre repas',
+      'en': 'Your meal',
+    },
+    'nutritional_summary': {
+      'fr': 'Résumé nutritionnel',
+      'en': 'Nutritional summary',
+    },
+    'meal_name': {
+      'fr': 'Nom du plat',
+      'en': 'Meal name',
     },
     // Cardio Tracking Screen
     'tracking_duration': {
@@ -3921,16 +4041,16 @@ class AppTranslations {
 
     // AI Workout Generation
     'ai_workout_button': {
-      'fr': 'Séance IA',
-      'en': 'AI Workout',
+      'fr': 'Séance Coach Ryze',
+      'en': 'Coach Ryze Session',
     },
     'ai_workout_title': {
       'fr': 'Séance du Coach Ryze',
       'en': 'Coach Ryze Session',
     },
     'ai_workout_generated_session': {
-      'fr': 'Séance générée par IA',
-      'en': 'AI Generated Workout',
+      'fr': 'Séance créée par Coach Ryze',
+      'en': 'Coach Ryze Generated Workout',
     },
     'ai_workout_error_unknown': {
       'fr': 'Erreur lors de la génération de la séance',
@@ -3939,6 +4059,62 @@ class AppTranslations {
     'coach_ryze_personalized': {
       'fr': 'Personnalisé',
       'en': 'Personalized',
+    },
+
+    // Barcode Scanner
+    'fetching_product': {
+      'fr': 'Récupération du produit...',
+      'en': 'Fetching product...',
+    },
+    'scanning_barcode': {
+      'fr': 'Scannez le code-barres',
+      'en': 'Scan the barcode',
+    },
+    'searching_database': {
+      'fr': 'Recherche dans la base de données...',
+      'en': 'Searching in database...',
+    },
+    'place_barcode_in_zone': {
+      'fr': 'Placez le code-barres dans la zone de scan',
+      'en': 'Place the barcode in the scan zone',
+    },
+    'analyzing': {
+      'fr': 'Analyse en cours...',
+      'en': 'Analyzing...',
+    },
+    'scan_barcode_button': {
+      'fr': 'Scanner le code-barres',
+      'en': 'Scan barcode',
+    },
+    'enter_code_manually': {
+      'fr': 'Saisir le code manuellement',
+      'en': 'Enter code manually',
+    },
+    'product_found': {
+      'fr': 'Produit trouvé',
+      'en': 'Product found',
+    },
+
+    // Progress page additional (only adding non-duplicate keys)
+    'continue_your_efforts': {
+      'fr': 'Continue tes efforts, tu es sur la bonne voie !',
+      'en': 'Keep up the good work, you\'re on the right track!',
+    },
+    'global_progress': {
+      'fr': 'Progrès Global',
+      'en': 'Global Progress',
+    },
+    'weekly_score': {
+      'fr': 'Score hebdo',
+      'en': 'Weekly score',
+    },
+    'edit_values_per_100g': {
+      'fr': 'Modifier valeurs/100g',
+      'en': 'Edit values/100g',
+    },
+    'per_portion_of': {
+      'fr': 'par portion de',
+      'en': 'per portion of',
     },
   };
 

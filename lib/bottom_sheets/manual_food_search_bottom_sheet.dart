@@ -137,23 +137,148 @@ class _ManualFoodSearchBottomSheetState extends State<ManualFoodSearchBottomShee
     }
   }
 
+  // Fonction pour normaliser le texte (enlever accents, œ -> oe, etc.)
+  String _normalizeText(String text) {
+    // Tableau de correspondance des caractères accentués
+    const Map<String, String> accentsMap = {
+      'à': 'a', 'á': 'a', 'â': 'a', 'ä': 'a', 'ã': 'a', 'å': 'a',
+      'è': 'e', 'é': 'e', 'ê': 'e', 'ë': 'e',
+      'ì': 'i', 'í': 'i', 'î': 'i', 'ï': 'i',
+      'ò': 'o', 'ó': 'o', 'ô': 'o', 'ö': 'o', 'õ': 'o',
+      'ù': 'u', 'ú': 'u', 'û': 'u', 'ü': 'u',
+      'ÿ': 'y', 'ý': 'y',
+      'ñ': 'n',
+      'ç': 'c',
+      'œ': 'oe', 'æ': 'ae',
+      'À': 'a', 'Á': 'a', 'Â': 'a', 'Ä': 'a', 'Ã': 'a', 'Å': 'a',
+      'È': 'e', 'É': 'e', 'Ê': 'e', 'Ë': 'e',
+      'Ì': 'i', 'Í': 'i', 'Î': 'i', 'Ï': 'i',
+      'Ò': 'o', 'Ó': 'o', 'Ô': 'o', 'Ö': 'o', 'Õ': 'o',
+      'Ù': 'u', 'Ú': 'u', 'Û': 'u', 'Ü': 'u',
+      'Ÿ': 'y', 'Ý': 'y',
+      'Ñ': 'n',
+      'Ç': 'c',
+      'Œ': 'oe', 'Æ': 'ae',
+    };
+
+    String normalized = text.toLowerCase();
+    accentsMap.forEach((accented, normal) {
+      normalized = normalized.replaceAll(accented, normal);
+    });
+
+    return normalized;
+  }
+
+  // Fonction pour vérifier si tous les mots de la requête sont présents dans le nom
+  bool _matchesSearchQuery(String foodName, String query) {
+    // Normaliser le nom de l'aliment et la requête
+    final normalizedFoodName = _normalizeText(foodName);
+    final normalizedQuery = _normalizeText(query);
+
+    // Si la requête complète est contenue, c'est un match parfait
+    if (normalizedFoodName.contains(normalizedQuery)) {
+      return true;
+    }
+
+    // Sinon, vérifier que tous les mots de la requête sont présents
+    // Diviser la requête en mots (séparés par espaces)
+    final queryWords = normalizedQuery.split(RegExp(r'\s+'));
+
+    // Vérifier que chaque mot de la requête est présent dans le nom
+    for (final word in queryWords) {
+      if (word.isNotEmpty && !normalizedFoodName.contains(word)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  // Fonction pour calculer le score de pertinence d'un résultat
+  int _calculateRelevanceScore(String foodName, String query) {
+    final normalizedFoodName = _normalizeText(foodName).toLowerCase();
+    final normalizedQuery = _normalizeText(query).toLowerCase();
+
+    // Score max si correspondance exacte
+    if (normalizedFoodName == normalizedQuery) {
+      return 1000;
+    }
+
+    // Score élevé si le nom commence par la requête
+    if (normalizedFoodName.startsWith(normalizedQuery)) {
+      return 900;
+    }
+
+    // Score moyen si la requête complète est contenue
+    if (normalizedFoodName.contains(normalizedQuery)) {
+      return 800;
+    }
+
+    // Pour les recherches multi-mots, donner un score basé sur l'ordre et la proximité
+    final queryWords = normalizedQuery.split(RegExp(r'\s+'));
+    int score = 0;
+    int lastIndex = -1;
+
+    for (final word in queryWords) {
+      if (word.isNotEmpty) {
+        final index = normalizedFoodName.indexOf(word);
+        if (index != -1) {
+          score += 100; // Point de base pour chaque mot trouvé
+
+          // Bonus si le mot est au début
+          if (index == 0) {
+            score += 50;
+          }
+
+          // Bonus si les mots sont dans l'ordre
+          if (lastIndex != -1 && index > lastIndex) {
+            score += 25;
+          }
+
+          lastIndex = index;
+        }
+      }
+    }
+
+    return score;
+  }
+
   void _onSearchChanged() {
     final query = _searchController.text.toLowerCase();
     setState(() {
       _searchQuery = query;
-      
+
       if (query.isEmpty) {
         // Retour à l'état initial : afficher les fréquents ou rien
         _filteredFoods = [];
         _showingFrequentFoods = _frequentFoods.isNotEmpty;
       } else {
-        // Mode recherche : filtrer tous les aliments
+        // Mode recherche : filtrer et trier tous les aliments avec la nouvelle logique
         _showingFrequentFoods = false;
-        _filteredFoods = _allFoods.where((food) {
+
+        // Filtrer les aliments qui correspondent
+        final matchingFoods = _allFoods.where((food) {
           final locService = LocalizationService.instance;
-          final name = food.getLocalizedName(locService.currentLanguageCode).toLowerCase();
-          return name.contains(query);
-        }).take(100).toList(); // Limiter à 100 résultats pour la performance
+          final name = food.getLocalizedName(locService.currentLanguageCode);
+          return _matchesSearchQuery(name, query);
+        }).toList();
+
+        // Trier par score de pertinence (du plus pertinent au moins pertinent)
+        matchingFoods.sort((a, b) {
+          final locService = LocalizationService.instance;
+          final scoreA = _calculateRelevanceScore(
+            a.getLocalizedName(locService.currentLanguageCode),
+            query,
+          );
+          final scoreB = _calculateRelevanceScore(
+            b.getLocalizedName(locService.currentLanguageCode),
+            query,
+          );
+          return scoreB.compareTo(scoreA); // Ordre décroissant
+        });
+
+        // Limiter à 100 résultats pour la performance
+        _filteredFoods = matchingFoods.take(100).toList();
       }
     });
   }

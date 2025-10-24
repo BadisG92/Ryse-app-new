@@ -104,9 +104,7 @@ class UserProfile {
     } else if (hour >= 12 && hour < 14) {
       // Midi (12h - 14h)
       if (caloriesProgress < 0.3) {
-        return isFrench
-          ? 'C\'est l\'heure ! Scanne ton déjeuner avec l\'IA.'
-          : 'Lunch time! Scan your meal with AI.';
+        return 'scan_lunch_with_coach'.tr(isFrench ? 'fr' : 'en');
       } else {
         return isFrench
           ? 'Déjeuner enregistré ! Pense à t\'hydrater.'
@@ -444,6 +442,11 @@ class DashboardData {
         icon: LucideIcons.droplets,
       ),
       QuickAction(
+        id: 'ai_chat',
+        label: 'ai_chat'.tr(languageCode),
+        icon: LucideIcons.messageCircle,
+      ),
+      QuickAction(
         id: 'take_photo',
         label: 'take_photo'.tr(languageCode),
         icon: (!profile.isPremium && profile.photosUsed >= 3) 
@@ -470,7 +473,7 @@ class DashboardData {
     ];
   }
 
-  // Actions essentielles pour le nouveau dashboard (4 maximum)
+  // Actions essentielles pour le nouveau dashboard (5 actions)
   static List<QuickAction> getEssentialActions(UserProfile profile, String languageCode) {
     return [
       QuickAction(
@@ -481,11 +484,16 @@ class DashboardData {
       QuickAction(
         id: 'take_photo',
         label: 'scan_food'.tr(languageCode),
-        icon: (!profile.isPremium && profile.photosUsed >= 3) 
-            ? LucideIcons.lock 
+        icon: (!profile.isPremium && profile.photosUsed >= 3)
+            ? LucideIcons.lock
             : LucideIcons.camera,
         isDisabled: !profile.isPremium && profile.photosUsed >= 3,
         isPremiumRequired: !profile.isPremium && profile.photosUsed >= 3,
+      ),
+      QuickAction(
+        id: 'ai_chat',
+        label: 'ai_chat'.tr(languageCode),
+        icon: LucideIcons.messageCircle,
       ),
       QuickAction(
         id: 'add_water',
@@ -500,7 +508,7 @@ class DashboardData {
     ];
   }
 
-  // Actions gamifiées avec pesée (5 actions)
+  // Actions gamifiées avec pesée (6 actions)
   static List<QuickAction> getGamifiedActions(UserProfile profile, String languageCode) {
     return [
       QuickAction(
@@ -513,6 +521,11 @@ class DashboardData {
         label: 'scan_food'.tr(languageCode),
         icon: LucideIcons.camera,
         // Plus de limite Premium - fonctionnalité incluse de base
+      ),
+      QuickAction(
+        id: 'ai_chat',
+        label: 'ai_chat'.tr(languageCode),
+        icon: LucideIcons.messageCircle,
       ),
       QuickAction(
         id: 'add_water',
@@ -545,19 +558,25 @@ class DashboardData {
         isDisabled: !profile.isPremium && profile.photosUsed >= 3,
         isPremiumRequired: !profile.isPremium && profile.photosUsed >= 3,
       ),
-      // 2. Entraînement
+      // 2. AI Chat
+      QuickAction(
+        id: 'ai_chat',
+        label: 'ai_chat'.tr(languageCode),
+        icon: LucideIcons.messageCircle,
+      ),
+      // 3. Entraînement
       QuickAction(
         id: 'workout',
         label: 'start_workout'.tr(languageCode),
         icon: LucideIcons.dumbbell,
       ),
-      // 3. Boire
+      // 4. Boire
       QuickAction(
         id: 'add_water',
         label: 'add_water'.tr(languageCode),
         icon: LucideIcons.droplets,
       ),
-      // 4. Ajouter aliment
+      // 5. Ajouter aliment
       QuickAction(
         id: 'add_meal',
         label: 'add_meal'.tr(languageCode),

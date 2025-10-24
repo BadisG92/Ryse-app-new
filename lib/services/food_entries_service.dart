@@ -687,13 +687,20 @@ class FoodEntriesService {
         }
       }
 
+      // Déterminer l'unité selon le nombre d'aliments détectés
+      // Si un seul aliment ET c'est un liquide → ml
+      // Sinon (plusieurs aliments OU pas liquide) → g
+      final unit = detectedFoods.length == 1 && detectedFoods.first.isLiquid
+          ? 'ml'
+          : 'g';
+
       print('🍽️ Création entrée food_entries:');
       print('   - user_id: $userId');
       print('   - meal_type: $mealType');
       print('   - meal_id: $finalMealId');
       print('   - custom_food_id: $customFoodId');
-      print('   - quantity: ${totalWeight}g');
-      print('   - unit: g');
+      print('   - quantity: $totalWeight');
+      print('   - unit: $unit');
       print('   - calories: $totalCalories');
       print('   - proteins: $totalProteins');
       print('   - carbs: $totalCarbs');
@@ -714,7 +721,7 @@ class FoodEntriesService {
         'meal_id': finalMealId,
         'custom_food_id': int.parse(customFoodId),
         'quantity': totalWeight,
-        'unit': 'g',
+        'unit': unit,
         'calories': totalCalories.round(),
         'proteins': totalProteins,
         'carbs': totalCarbs,

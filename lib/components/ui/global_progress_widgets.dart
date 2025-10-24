@@ -4,6 +4,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'global_progress_models.dart';
 import 'global_progress_cards.dart';
 import '../../screens/weight_evolution_screen.dart';
+import '../../services/translations.dart';
+import '../../services/localization_service.dart';
 
 // En-tête global avec statistiques (réutilise le pattern des dashboards)
 class GlobalProgressHeader extends StatelessWidget {
@@ -184,8 +186,8 @@ class AIRecommendationSection extends StatelessWidget {
 
   AIRecommendation _selectRecommendation(List<AIRecommendation> recommendations) {
     if (recommendations.isEmpty) {
-      return const AIRecommendation(
-        message: "Continue tes efforts, tu es sur la bonne voie !",
+      return AIRecommendation(
+        message: 'continue_your_efforts'.tr(LocalizationService.instance.currentLanguageCode),
         type: RecommendationType.general,
         priority: 1,
       );
@@ -258,9 +260,9 @@ class GlobalProgressSummary extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 12),
-                const Text(
-                  'Progrès Global',
-                  style: TextStyle(
+                Text(
+                  'global_progress'.tr(LocalizationService.instance.currentLanguageCode),
+                  style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                     color: Color(0xFF1A1A1A),
@@ -272,11 +274,11 @@ class GlobalProgressSummary extends StatelessWidget {
             const SizedBox(height: 12),
             
             // Statistiques rapides
-            _buildQuickStat('Poids', '${weightProgress.currentWeight.toStringAsFixed(1)} kg'),
+            _buildQuickStat('weight'.tr(LocalizationService.instance.currentLanguageCode), '${weightProgress.currentWeight.toStringAsFixed(1)} kg'),
             const SizedBox(height: 4),
-            _buildQuickStat('Score hebdo', '${(weeklyBalance.globalScore * 100).round()}%'),
+            _buildQuickStat('weekly_score'.tr(LocalizationService.instance.currentLanguageCode), '${(weeklyBalance.globalScore * 100).round()}%'),
             const SizedBox(height: 4),
-            _buildQuickStat('Évolution', weightProgress.weightChangeText),
+            _buildQuickStat('evolution'.tr(LocalizationService.instance.currentLanguageCode), weightProgress.weightChangeText),
           ],
         ),
       ),

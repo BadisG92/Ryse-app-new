@@ -12,6 +12,7 @@ import 'global_progress_models.dart';
 import 'nutrition_widgets.dart';
 import '../shared/workout_actions.dart';
 import '../../screens/ai_scanner_screen.dart';
+import '../../screens/ai_chat_input_screen.dart';
 import '../../screens/barcode_scanner_screen.dart';
 import '../../services/localization_service.dart';
 import '../../services/translations.dart';
@@ -35,6 +36,8 @@ import 'custom_snackbar.dart';
 import '../../screens/hiit_config_screen.dart';
 import '../../screens/cardio_tracking_screen.dart';
 import '../../screens/manual_cardio_entry_screen.dart';
+import '../../services/food_entries_service.dart';
+import '../../services/auth_service.dart';
 
 // Section des actions rapides
 class QuickActionsSection extends StatefulWidget {
@@ -137,6 +140,9 @@ class _QuickActionsSectionState extends State<QuickActionsSection> {
       case 'add_water':
         _handleAddWater(context);
         break;
+      case 'ai_chat':
+        _showAIChatInput(context);
+        break;
       case 'take_photo':
         _showPhotoScanOptions(context);
         break;
@@ -158,6 +164,72 @@ class _QuickActionsSectionState extends State<QuickActionsSection> {
   void _handleAddWater(BuildContext context) {
     // Utiliser exactement le même bottom sheet que le bouton + d'hydratation du dashboard nutrition
     NutritionBottomSheetHelper.showWaterSheet(context, _addWaterAmount);
+  }
+
+  void _showAIChatInput(BuildContext context) async {
+    // Nouveau flux: Sélection du repas AVANT le chat AI
+    // Charger les repas existants du jour (même pattern que les autres boutons)
+    final user = AuthService().currentUser;
+    List<nutrition_models.Meal> existingMeals = [];
+
+    if (user != null) {
+      try {
+        final meals = await FoodEntriesService.getFoodEntriesForDate(user.id, DateTime.now());
+        existingMeals = meals.where((meal) => meal.items.isNotEmpty).toList();
+      } catch (e) {
+        print('Erreur lors de la récupération des repas existants: $e');
+      }
+    }
+
+    // Utiliser le MealSelectionBottomSheet existant pour la cohérence
+    if (!context.mounted) return;
+
+    MealSelectionBottomSheet.show(
+      context,
+      foodName: 'chat_ai_meal'.tr(LocalizationService.instance.currentLanguageCode),
+      existingMeals: existingMeals,
+      onExistingMealSelected: (meal) {
+        // Repas existant sélectionné
+        AIChatInputScreen.showAsBottomSheet(
+          context,
+          isFromDashboard: true,
+          mealName: meal.name,
+          mealId: meal.id ?? '',
+        );
+      },
+      onCreateNewMeal: () {
+        // Créer un nouveau repas - ouvrir le sélecteur de type de repas
+        _showMealTypeSelection(context);
+      },
+    );
+  }
+
+  /// Afficher le sélecteur de type de repas (Petit-déjeuner, Déjeuner, etc.)
+  void _showMealTypeSelection(BuildContext context) {
+    NewMealTypeBottomSheet.show(
+      context,
+      onMealTypeSelected: (mealType, time) async {
+        // Générer un ID de repas
+        final user = Supabase.instance.client.auth.currentUser;
+        if (user == null) return;
+
+        final mealId = await FoodEntriesService.generateMealId(
+          userId: user.id,
+          mealName: mealType,
+          forDate: DateTime.now(),
+        );
+
+        // Ouvrir le chat AI avec le type de repas sélectionné
+        if (context.mounted) {
+          AIChatInputScreen.showAsBottomSheet(
+            context,
+            isFromDashboard: true,
+            mealName: mealType,
+            mealId: mealId ?? 'meal_${DateTime.now().millisecondsSinceEpoch}',
+          );
+        }
+      },
+    );
   }
 
   void _addWaterAmount(int milliliters) async {
@@ -278,7 +350,7 @@ class _QuickActionsSectionState extends State<QuickActionsSection> {
 
               const SizedBox(height: 24),
 
-              // Les 2 boutons côte à côte
+              // 2 boutons : Scanner plat et Code-barre (le Chat IA est uniquement dans les boutons rapides)
               Row(
                 children: [
                   // Bouton Scanner un plat
@@ -1357,9 +1429,7 @@ class PremiumCTASection extends StatelessWidget {
                       ),
                       Consumer<LocalizationService>(
                         builder: (context, locService, child) => Text(
-                          locService.currentLanguageCode == 'fr' 
-                            ? 'Photos illimitées + Coach IA personnel'
-                            : 'Unlimited photos + Personal AI Coach',
+                          'unlimited_photos_coach'.tr(locService.currentLanguageCode),
                           style: const TextStyle(
                             fontSize: 14,
                             color: Color(0xFF64748B),
@@ -1503,4 +1573,4 @@ class PremiumInsightsSection extends StatelessWidget {
       ),
     );
   }
-} 
+}

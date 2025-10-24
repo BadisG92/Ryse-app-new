@@ -44,9 +44,10 @@ class AIAnalysisResult {
 class DetectedFood {
   final String name;
   final double confidence;
-  final double estimatedQuantity; // En grammes
+  final double estimatedQuantity; // En grammes ou ml
   final NutritionEstimate nutrition; // En grammes de macros
   final FoodCategory category;
+  final bool isLiquid; // Pour afficher ml au lieu de g
 
   DetectedFood({
     required this.name,
@@ -54,6 +55,7 @@ class DetectedFood {
     required this.estimatedQuantity,
     required this.nutrition,
     required this.category,
+    this.isLiquid = false,
   });
 
   /// Calculer les calories selon la formule de l'app: (protéines * 4) + (glucides * 4) + (lipides * 9)
@@ -86,9 +88,10 @@ class DetectedFood {
     required double proteins,
     required double carbs,
     required double fats,
+    bool isLiquid = false,
   }) {
     final category = _determineFoodCategory(name);
-    
+
     return DetectedFood(
       name: _formatFoodName(name),
       confidence: confidence,
@@ -98,6 +101,7 @@ class DetectedFood {
         carbs: carbs,
         fats: fats,
       ),
+      isLiquid: isLiquid,
       category: category,
     );
   }

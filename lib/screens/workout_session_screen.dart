@@ -3347,23 +3347,29 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
   }
 
   Widget _buildHistoryTable(int maxSets, List sessionHistory) {
+    // Largeur totale du contenu scrollable
+    final scrollableContentWidth = 80.0 + (maxSets * 70.0); // Max + Séries
+
     return Expanded(
-      child: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Header du tableau avec fond unique
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  // Header Date fixe
-                  Container(
-                    width: 70,
+      child: Row(
+        children: [
+          // Colonne Date fixe (non scrollable)
+          Container(
+            width: 70,
+            child: Column(
+              children: [
+                // Header Date
+                Container(
+                  height: 44,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.1),
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(12),
+                      bottomLeft: Radius.circular(12),
+                    ),
+                  ),
+                  child: Center(
                     child: Consumer<LocalizationService>(
                       builder: (context, locService, _) => Text(
                         'date'.tr(locService.currentLanguageCode),
@@ -3377,12 +3383,67 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                       ),
                     ),
                   ),
-                  // Header scrollable (Max + Séries)
-                  Expanded(
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
+                ),
+                const SizedBox(height: 8),
+                // Dates des sessions
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: sessionHistory.map((session) {
+                        return Container(
+                          height: 40,
+                          margin: const EdgeInsets.only(bottom: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.05),
+                            borderRadius: const BorderRadius.only(
+                              topLeft: Radius.circular(8),
+                              bottomLeft: Radius.circular(8),
+                            ),
+                          ),
+                          child: Center(
+                            child: Text(
+                              _formatBubbleDate(session['date']),
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white.withOpacity(0.9),
+                                decoration: TextDecoration.none,
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Partie scrollable horizontalement (Header + Data)
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              physics: const ClampingScrollPhysics(),
+              child: Container(
+                width: scrollableContentWidth,
+                child: Column(
+                  children: [
+                    // Header scrollable (Max + Séries)
+                    Container(
+                      height: 44,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.1),
+                        borderRadius: const BorderRadius.only(
+                          topRight: Radius.circular(12),
+                          bottomRight: Radius.circular(12),
+                        ),
+                      ),
                       child: Row(
                         children: [
+                          // Header Max
                           Container(
                             width: 80,
                             child: Consumer<LocalizationService>(
@@ -3398,6 +3459,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                               ),
                             ),
                           ),
+                          // Headers des séries
                           ...List.generate(maxSets, (index) => Container(
                             width: 70,
                             child: Consumer<LocalizationService>(
@@ -3416,84 +3478,68 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                         ],
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-            
-            const SizedBox(height: 8),
-            
-            // Lignes de données avec fond uniforme
-            ...sessionHistory.map((session) {
-              final allSets = (session['allSets'] as List<String>?) ?? [];
-              return Container(
-                margin: const EdgeInsets.only(bottom: 6),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.05),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    // Date fixe
-                    Container(
-                      width: 70,
-                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-                      child: Text(
-                        _formatBubbleDate(session['date']),
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.white.withOpacity(0.9),
-                          decoration: TextDecoration.none,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    // Partie scrollable (Max + Séries)
+
+                    const SizedBox(height: 8),
+
+                    // Données scrollables verticalement
                     Expanded(
                       child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: [
-                            // Charge Max
-                            Container(
-                              width: 80,
-                              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-                              child: Text(
-                                session['weight'] ?? '—',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.white.withOpacity(0.7),
-                                  decoration: TextDecoration.none,
+                        child: Column(
+                          children: sessionHistory.map((session) {
+                            final allSets = (session['allSets'] as List<String>?) ?? [];
+                            return Container(
+                              height: 40,
+                              margin: const EdgeInsets.only(bottom: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.05),
+                                borderRadius: const BorderRadius.only(
+                                  topRight: Radius.circular(8),
+                                  bottomRight: Radius.circular(8),
                                 ),
-                                textAlign: TextAlign.center,
                               ),
-                            ),
-                            // Toutes les séries
-                            ...List.generate(maxSets, (seriesIndex) => Container(
-                              width: 70,
-                              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-                              child: Text(
-                                seriesIndex < allSets.length ? _formatBubbleSetValue(allSets[seriesIndex]) : '—',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: Colors.white.withOpacity(0.6),
-                                  decoration: TextDecoration.none,
-                                ),
-                                textAlign: TextAlign.center,
+                              child: Row(
+                                children: [
+                                  // Charge Max
+                                  Container(
+                                    width: 80,
+                                    padding: const EdgeInsets.symmetric(vertical: 10),
+                                    child: Text(
+                                      session['weight'] ?? '—',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.white.withOpacity(0.7),
+                                        decoration: TextDecoration.none,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                  // Toutes les séries
+                                  ...List.generate(maxSets, (seriesIndex) => Container(
+                                    width: 70,
+                                    padding: const EdgeInsets.symmetric(vertical: 10),
+                                    child: Text(
+                                      seriesIndex < allSets.length ? _formatBubbleSetValue(allSets[seriesIndex]) : '—',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: Colors.white.withOpacity(0.6),
+                                        decoration: TextDecoration.none,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  )),
+                                ],
                               ),
-                            )),
-                          ],
+                            );
+                          }).toList(),
                         ),
                       ),
                     ),
                   ],
                 ),
-              );
-            }),
-          ],
-        ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -8,6 +8,7 @@ import '../widgets/nutrition/meal_card.dart';
 import '../widgets/nutrition/option_widgets.dart';
 import '../widgets/nutrition/calendar_view.dart';
 import '../screens/ai_scanner_screen.dart';
+import '../screens/ai_chat_input_screen.dart';
 import '../screens/barcode_scanner_screen.dart';
 import '../screens/select_recipe_screen.dart';
 import '../bottom_sheets/manual_food_search_bottom_sheet.dart';
@@ -1109,7 +1110,7 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
               ),
               
               const SizedBox(height: 12),
-              
+
               FoodOptionWidget(
                 icon: LucideIcons.camera,
                 title: 'Scanner avec l\'IA',
@@ -1119,13 +1120,13 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
                   // ✅ Navigation directe avec informations du repas sélectionné
                   String? mealName;
                   String? mealId;
-                  
+
                   if (_selectedMealIndex != null && _selectedMealIndex! < meals.length) {
                     final selectedMeal = meals[_selectedMealIndex!];
                     mealName = selectedMeal.name;
                     mealId = selectedMeal.id;
                   }
-                  
+
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -1138,7 +1139,34 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
                   );
                 },
               ),
-              
+
+              const SizedBox(height: 12),
+
+              FoodOptionWidget(
+                icon: LucideIcons.messageCircle,
+                title: 'ai_chat'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
+                subtitle: 'ai_chat_subtitle'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
+                onTap: () {
+                  Navigator.pop(context);
+                  // ✅ Navigation directe avec informations du repas sélectionné
+                  String? mealName;
+                  String? mealId;
+
+                  if (_selectedMealIndex != null && _selectedMealIndex! < meals.length) {
+                    final selectedMeal = meals[_selectedMealIndex!];
+                    mealName = selectedMeal.name;
+                    mealId = selectedMeal.id;
+                  }
+
+                  AIChatInputScreen.showAsBottomSheet(
+                    context,
+                    isFromDashboard: false,
+                    mealName: mealName,
+                    mealId: mealId,
+                  );
+                },
+              ),
+
               const SizedBox(height: 12),
               
               FoodOptionWidget(

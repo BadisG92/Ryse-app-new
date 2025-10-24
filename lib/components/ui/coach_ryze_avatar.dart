@@ -63,7 +63,7 @@ class CoachRyzeAvatar extends StatelessWidget {
       case CoachRyzeAvatarType.workout:
         return 'assets/images/coach_ryze_workout_avatar.png';
       case CoachRyzeAvatarType.nutrition:
-        return 'assets/images/coach_ryze_nutrition_avatar.png';
+        return 'assets/images/coach_ryze_ai_chat_nutrition.png';
       case CoachRyzeAvatarType.chef:
         return 'assets/images/coach_ryze_chef_avatar.png';
     }

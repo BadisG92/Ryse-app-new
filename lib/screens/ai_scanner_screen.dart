@@ -17,6 +17,7 @@ import '../services/translations.dart';
 import '../components/nutrition_journal_hybrid.dart';
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:math';
 
 class AIScannerScreen extends StatefulWidget {
   final bool isFromDashboard;
@@ -106,9 +107,7 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
 
   String _getLocalizedHint(BuildContext context) {
     final localizationService = Provider.of<LocalizationService>(context, listen: false);
-    return localizationService.currentLanguageCode == 'fr'
-        ? 'Nom du plat détecté par l\'IA'
-        : 'AI-detected dish name';
+    return 'coach_detected_dish_name'.tr(localizationService.currentLanguageCode);
   }
 
   Future<void> _takePicture() async {
@@ -252,7 +251,7 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
         ),
         title: Consumer<LocalizationService>(
           builder: (context, locService, child) => Text(
-            locService.currentLanguageCode == 'fr' ? 'Scanner IA' : 'AI Scanner',
+            'ai_scanner_title'.tr(locService.currentLanguageCode),
             style: const TextStyle(color: Colors.white),
           ),
         ),
@@ -663,9 +662,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
 
   String _getLocalizedHint(BuildContext context) {
     final localizationService = Provider.of<LocalizationService>(context, listen: false);
-    return localizationService.currentLanguageCode == 'fr'
-        ? 'Nom du plat détecté par l\'IA'
-        : 'AI-detected dish name';
+    return 'coach_detected_dish_name'.tr(localizationService.currentLanguageCode);
   }
 
   Future<void> _startAnalysis() async {
@@ -687,7 +684,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
             _hasResult = true;
             _errorMessage = null;
             // Mettre à jour le nom du repas avec le nom généré par l'IA
-            _mealNameController.text = result.mealName ?? 'Plat détecté par IA';
+            _mealNameController.text = result.mealName ?? 'coach_detected_dish'.tr(LocalizationService.instance.currentLanguageCode);
             print('🔥 [FLUX AI] ✅ Analyse terminée avec succès');
           } else {
             _hasResult = false;
@@ -733,7 +730,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
         ),
         title: Consumer<LocalizationService>(
           builder: (context, locService, child) => Text(
-            locService.currentLanguageCode == 'fr' ? 'Analyse IA' : 'AI Analysis',
+            'coach_analysis'.tr(locService.currentLanguageCode),
             style: const TextStyle(color: Color(0xFF0B132B)),
           ),
         ),
@@ -1027,6 +1024,12 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               children: [
+                // Bilan nutritionnel
+                if (_analysisResult != null && _analysisResult!.success)
+                  _buildNutritionalSummary(),
+
+                const SizedBox(height: 24),
+
                 Consumer<LocalizationService>(
                   builder: (context, locService, child) => Text(
                     locService.currentLanguageCode == 'fr' ? 'Aliments détectés :' : 'Detected foods:',
@@ -1162,6 +1165,153 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
     );
   }
 
+  Widget _buildNutritionalSummary() {
+    if (_analysisResult == null || !_analysisResult!.success) {
+      return const SizedBox.shrink();
+    }
+
+    final locService = LocalizationService.instance;
+
+    // Calculer les totaux
+    int totalCalories = 0;
+    int totalProteins = 0;
+    int totalCarbs = 0;
+    int totalFats = 0;
+
+    for (final food in _analysisResult!.detectedFoods) {
+      totalCalories += food.calories;
+      totalProteins += food.nutrition.proteins.round();
+      totalCarbs += food.nutrition.carbs.round();
+      totalFats += food.nutrition.fats.round();
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0B132B).withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                LucideIcons.trendingUp,
+                size: 16,
+                color: Color(0xFF0B132B),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'nutritional_summary'.tr(locService.currentLanguageCode),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1A1A1A),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Cercle avec gradient pour les calories
+          Center(
+            child: Container(
+              width: 100,
+              height: 100,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+                ),
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      '$totalCalories',
+                      style: const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const Text(
+                      'kcal',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.white70,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          // 3 valeurs de macros sans cercle
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildMacroValue(
+                name: 'proteins'.tr(locService.currentLanguageCode),
+                value: totalProteins,
+                unit: 'g',
+              ),
+              _buildMacroValue(
+                name: 'carbohydrates'.tr(locService.currentLanguageCode),
+                value: totalCarbs,
+                unit: 'g',
+              ),
+              _buildMacroValue(
+                name: 'fats'.tr(locService.currentLanguageCode),
+                value: totalFats,
+                unit: 'g',
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMacroValue({
+    required String name,
+    required int value,
+    required String unit,
+  }) {
+    return Column(
+      children: [
+        Text(
+          '$value$unit',
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF0B132B),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          name,
+          style: const TextStyle(
+            fontSize: 12,
+            color: Color(0xFF64748B),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildDetectedFood({
     required String name,
     required int confidence,
@@ -1293,7 +1443,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
         userId: user.id,
         mealName: mealName,
         detectedFoods: _analysisResult!.detectedFoods,
-        aiMealName: _mealNameController.text.isNotEmpty ? _mealNameController.text : 'Plat détecté par IA',
+        aiMealName: _mealNameController.text.isNotEmpty ? _mealNameController.text : 'coach_detected_dish'.tr(LocalizationService.instance.currentLanguageCode),
         mealId: mealId, // Utiliser le meal_id du repas existant
         consumedAt: DateTime.now(),
       );
@@ -1399,7 +1549,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
         userId: userId,
         mealName: selectedMeal.name,
         detectedFoods: _analysisResult!.detectedFoods,
-        aiMealName: _mealNameController.text.isNotEmpty ? _mealNameController.text : 'Plat détecté par IA',
+        aiMealName: _mealNameController.text.isNotEmpty ? _mealNameController.text : 'coach_detected_dish'.tr(LocalizationService.instance.currentLanguageCode),
         mealId: selectedMeal.id, // Utiliser le meal_id du repas existant
         consumedAt: DateTime.now(),
       );
@@ -1454,7 +1604,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
         userId: userId,
         mealName: mealType,
         detectedFoods: _analysisResult!.detectedFoods,
-        aiMealName: _mealNameController.text.isNotEmpty ? _mealNameController.text : 'Plat détecté par IA',
+        aiMealName: _mealNameController.text.isNotEmpty ? _mealNameController.text : 'coach_detected_dish'.tr(LocalizationService.instance.currentLanguageCode),
         consumedAt: DateTime.now(),
       );
 

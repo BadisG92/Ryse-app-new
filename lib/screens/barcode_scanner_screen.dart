@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:provider/provider.dart';
 import '../bottom_sheets/meal_selection_bottom_sheet.dart';
 import '../bottom_sheets/new_meal_type_bottom_sheet.dart';
 import '../models/nutrition_models.dart' as nutrition_models;
@@ -9,6 +10,8 @@ import '../services/openfoodfacts_service.dart';
 import '../services/auth_service.dart';
 import '../services/database_service.dart';
 import '../services/barcode_detection_service.dart';
+import '../services/translations.dart';
+import '../services/localization_service.dart';
 import '../config/supabase_config.dart';
 import '../config/google_vision_config.dart';
 
@@ -351,25 +354,31 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                   size: 32,
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  isLoadingProduct ? 'Récupération du produit...' : 'Scannez le code-barres',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
+                Consumer<LocalizationService>(
+                  builder: (context, locService, _) => Text(
+                    isLoadingProduct
+                        ? 'fetching_product'.tr(locService.currentLanguageCode)
+                        : 'scanning_barcode'.tr(locService.currentLanguageCode),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                  textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  isLoadingProduct 
-                      ? 'Recherche dans la base de données...'
-                      : 'Placez le code-barres dans la zone de scan',
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
+                Consumer<LocalizationService>(
+                  builder: (context, locService, _) => Text(
+                    isLoadingProduct
+                        ? 'searching_database'.tr(locService.currentLanguageCode)
+                        : 'place_barcode_in_zone'.tr(locService.currentLanguageCode),
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 14,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
-                  textAlign: TextAlign.center,
                 ),
               ],
             ),
@@ -403,12 +412,16 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                             color: Colors.white,
                             size: 20,
                           ),
-                    label: Text(
-                      isProcessing ? 'Analyse en cours...' : 'Scanner le code-barres',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
+                    label: Consumer<LocalizationService>(
+                      builder: (context, locService, _) => Text(
+                        isProcessing
+                            ? 'analyzing'.tr(locService.currentLanguageCode)
+                            : 'scan_barcode_button'.tr(locService.currentLanguageCode),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
                     style: ElevatedButton.styleFrom(
@@ -431,12 +444,14 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
               color: Colors.white,
               size: 20,
             ),
-            label: const Text(
-              'Saisir le code manuellement',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
+            label: Consumer<LocalizationService>(
+              builder: (context, locService, _) => Text(
+                'enter_code_manually'.tr(locService.currentLanguageCode),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
             style: OutlinedButton.styleFrom(
@@ -488,12 +503,16 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                 ),
                 const SizedBox(width: 16),
                 Expanded(
-                  child: Text(
-                    _errorMessage != null ? 'Erreur' : 'Produit trouvé',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF1A1A1A),
+                  child: Consumer<LocalizationService>(
+                    builder: (context, locService, _) => Text(
+                      _errorMessage != null
+                          ? 'error'.tr(locService.currentLanguageCode)
+                          : 'product_found'.tr(locService.currentLanguageCode),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF1A1A1A),
+                      ),
                     ),
                   ),
                 ),
@@ -712,9 +731,13 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                                     _isEditingNutritionalValues ? Icons.check : Icons.edit_outlined,
                                     size: 16,
                                   ),
-                                  label: Text(
-                                    _isEditingNutritionalValues ? 'Valider' : 'Modifier valeurs/100g',
-                                    style: const TextStyle(fontSize: 12),
+                                  label: Consumer<LocalizationService>(
+                                    builder: (context, locService, _) => Text(
+                                      _isEditingNutritionalValues
+                                          ? 'validate'.tr(locService.currentLanguageCode)
+                                          : 'edit_values_per_100g'.tr(locService.currentLanguageCode),
+                                      style: const TextStyle(fontSize: 12),
+                                    ),
                                   ),
                                   style: TextButton.styleFrom(
                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
