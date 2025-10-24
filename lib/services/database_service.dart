@@ -11,6 +11,7 @@ import 'sport_dashboard_service.dart';
 import 'offline_workout_service.dart';
 import 'localization_service.dart';
 import 'global_state_manager.dart';
+import 'food_cache_service.dart';
 
 class DatabaseService {
   static final SupabaseClient _client = Supabase.instance.client;
@@ -251,85 +252,121 @@ class DatabaseService {
   // FOODS
   static Future<List<Food>> getFoods({String? language}) async {
     try {
-      print('🔍 DatabaseService.getFoods: Début du chargement...');
-    
-      // Approche 1: Tenter d'abord une requête avec limit élevé (plus rapide si autorisé)
-      try {
-        print('🔍 DatabaseService.getFoods: Tentative avec limit(4000) pour récupérer tous les aliments...');
-        final response = await _client
-            .from('food_database')
-            .select('*')
-            .limit(4000) // Légèrement au-dessus de 3456 pour être sûr
-            .order('id');
-        
-        print('🔍 DatabaseService.getFoods: ${response.length} aliments récupérés avec limit');
-        
-        if (response.isNotEmpty) {
-          final foods = response.map((json) => Food.fromJson(json)).toList();
-          
-          // Si on a récupéré moins que prévu et exactement 1000, c'est probablement la limite par défaut
-          if (foods.length == 1000) {
-            print('⚠️ DatabaseService.getFoods: Limite de 1000 détectée, utilisation de la pagination...');
-            // Continuer avec la pagination
-          } else {
-            print('✅ DatabaseService.getFoods: ${foods.length} aliments chargés avec limit (Total attendu: 3456)');
-            return foods;
-          }
+      debugPrint('🔍 DatabaseService.getFoods: Début du chargement...');
+
+      // ÉTAPE 1: Vérifier le cache local d'abord
+      final cachedFoods = await FoodCacheService.getCachedFoods();
+      if (cachedFoods != null && cachedFoods.isNotEmpty) {
+        debugPrint('✅ DatabaseService.getFoods: ${cachedFoods.length} aliments chargés depuis le cache local');
+
+        // Rafraîchir en arrière-plan si le cache a plus de 3 jours
+        final cacheAge = await FoodCacheService.getCacheAge();
+        if (cacheAge != null && cacheAge.inDays >= 3) {
+          debugPrint('🔄 DatabaseService.getFoods: Cache ancien (${cacheAge.inDays} jours), rafraîchissement en arrière-plan...');
+          _refreshFoodsInBackground();
         }
-      } catch (limitError) {
-        print('⚠️ DatabaseService.getFoods: Échec avec limit, utilisation de la pagination: $limitError');
+
+        return cachedFoods;
       }
-      
-      // Approche 2: Pagination pour récupérer TOUS les aliments (contourner la limite de 1000)
-      print('🔍 DatabaseService.getFoods: Utilisation de la pagination...');
+
+      debugPrint('📡 DatabaseService.getFoods: Aucun cache, téléchargement depuis Supabase...');
+
+      // ÉTAPE 2: Télécharger depuis Supabase avec pagination
       List<Food> allFoods = [];
-      const int batchSize = 1000; // Taille de lot pour pagination
+      const int batchSize = 1000;
       int offset = 0;
       bool hasMoreData = true;
-      
+
       while (hasMoreData) {
-        print('🔍 DatabaseService.getFoods: Récupération lot ${(offset ~/ batchSize) + 1} (offset: $offset, limit: $batchSize)');
-        
+        debugPrint('🔍 DatabaseService.getFoods: Récupération lot ${(offset ~/ batchSize) + 1} (offset: $offset)');
+
         final response = await _client
             .from('food_database')
             .select('*')
             .range(offset, offset + batchSize - 1)
-            .order('id'); // Assurer un ordre cohérent pour la pagination
-        
-        print('🔍 DatabaseService.getFoods: ${response.length} aliments récupérés dans ce lot');
-        
+            .order('id');
+
+        debugPrint('📦 DatabaseService.getFoods: ${response.length} aliments récupérés dans ce lot');
+
         if (response.isEmpty || response.length < batchSize) {
           hasMoreData = false;
         }
-        
-        // Convertir et ajouter à la liste totale
+
         final batchFoods = response.map((json) => Food.fromJson(json)).toList();
         allFoods.addAll(batchFoods);
-        
+
         offset += batchSize;
-        
-        // Sécurité: éviter les boucles infinies (max 10 lots = 10000 aliments)
+
+        // Sécurité: max 10 lots
         if ((offset ~/ batchSize) > 10) {
-          print('⚠️ DatabaseService.getFoods: Arrêt de sécurité après 10 lots');
+          debugPrint('⚠️ DatabaseService.getFoods: Arrêt de sécurité après 10 lots');
           break;
         }
       }
-      
-      print('✅ DatabaseService.getFoods: ${allFoods.length} aliments chargés au total avec pagination (Attendu: 3456)');
-      
+
+      debugPrint('✅ DatabaseService.getFoods: ${allFoods.length} aliments téléchargés depuis Supabase');
+
       if (allFoods.isEmpty) {
-        print('⚠️ DatabaseService.getFoods: Aucun aliment trouvé dans la table');
+        debugPrint('⚠️ DatabaseService.getFoods: Aucun aliment trouvé');
         return _getFallbackFoods();
       }
-      
+
+      // ÉTAPE 3: Sauvegarder dans le cache pour les prochaines fois
+      await FoodCacheService.cacheFoods(allFoods);
+
       return allFoods;
     } catch (e) {
-      print('❌ DatabaseService.getFoods: Erreur lors du chargement: $e');
-      print('❌ Type d\'erreur: ${e.runtimeType}');
-      
-      // Retourner quelques aliments de fallback pour tester l'interface
+      debugPrint('❌ DatabaseService.getFoods: Erreur: $e');
+
+      // Fallback: essayer de retourner le cache même expiré
+      final cachedFoods = await FoodCacheService.getCachedFoods();
+      if (cachedFoods != null && cachedFoods.isNotEmpty) {
+        debugPrint('⚠️ DatabaseService.getFoods: Utilisation du cache expiré comme fallback');
+        return cachedFoods;
+      }
+
       return _getFallbackFoods();
     }
+  }
+
+  /// Rafraîchit la base d'aliments en arrière-plan (fire and forget)
+  static void _refreshFoodsInBackground() {
+    Future(() async {
+      try {
+        debugPrint('🔄 Background: Rafraîchissement de la base d\'aliments...');
+
+        List<Food> allFoods = [];
+        const int batchSize = 1000;
+        int offset = 0;
+        bool hasMoreData = true;
+
+        while (hasMoreData) {
+          final response = await _client
+              .from('food_database')
+              .select('*')
+              .range(offset, offset + batchSize - 1)
+              .order('id');
+
+          if (response.isEmpty || response.length < batchSize) {
+            hasMoreData = false;
+          }
+
+          final batchFoods = response.map((json) => Food.fromJson(json)).toList();
+          allFoods.addAll(batchFoods);
+
+          offset += batchSize;
+
+          if ((offset ~/ batchSize) > 10) break;
+        }
+
+        if (allFoods.isNotEmpty) {
+          await FoodCacheService.cacheFoods(allFoods);
+          debugPrint('✅ Background: Cache rafraîchi avec ${allFoods.length} aliments');
+        }
+      } catch (e) {
+        debugPrint('❌ Background: Erreur lors du rafraîchissement: $e');
+      }
+    });
   }
 
   // Méthode de fallback pour tester l'interface

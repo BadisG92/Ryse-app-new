@@ -93,6 +93,9 @@ dependencies:
   # Network connectivity
   connectivity_plus: ^6.0.5
 
+  # Image caching for performance
+  cached_network_image: ^3.3.1
+
   # Voice recognition for workout (already added above line 70)
   # speech_to_text: ^7.0.0  # Removed duplicate
   flutter_tts: ^4.0.2

@@ -2,35 +2,28 @@ import '../components/ui/global_progress_models.dart';
 
 /// Service de cache global pour le header
 /// Évite les rechargements et scintillements entre les pages
+/// OPTIMISATION: Cache infini - invalidation uniquement par événements
 class HeaderCacheService {
   static HeaderStats? _cachedHeaderStats;
-  static DateTime? _lastUpdate;
-  
-  /// Durée de validité du cache en minutes
-  static const int _cacheDurationMinutes = 5;
-  
-  /// Récupère les stats du header depuis le cache ou les charge
+  static DateTime? _lastUpdate; // Pour logs uniquement
+
+  /// Récupère les stats du header depuis le cache
   static HeaderStats? getCachedHeaderStats() {
-    if (_cachedHeaderStats != null && _isCacheValid()) {
-      return _cachedHeaderStats;
-    }
-    return null;
+    return _cachedHeaderStats;
   }
-  
+
   /// Met à jour le cache avec de nouvelles stats
   static void updateCache(HeaderStats headerStats) {
     _cachedHeaderStats = headerStats;
     _lastUpdate = DateTime.now();
-    print('💾 Header cache mis à jour: ${headerStats.dailyStreak}');
+    final age = _lastUpdate != null ? DateTime.now().difference(_lastUpdate!).inSeconds : 0;
+    print('💾 Header cache mis à jour: ${headerStats.dailyStreak} (age: ${age}s)');
   }
-  
+
   /// Vérifie si le cache est encore valide
+  /// OPTIMISATION: Toujours valide - invalidation par événements uniquement
   static bool _isCacheValid() {
-    if (_lastUpdate == null) return false;
-    
-    final now = DateTime.now();
-    final difference = now.difference(_lastUpdate!);
-    return difference.inMinutes < _cacheDurationMinutes;
+    return _cachedHeaderStats != null;
   }
   
   /// Force l'invalidation du cache

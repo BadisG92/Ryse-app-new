@@ -88,13 +88,13 @@ class PriorityServiceInitializer {
   
   Future<void> _initializeBasicAuth() async {
     try {
-      // Juste vérifier que Supabase est accessible
-      // L'auth complète se fera plus tard
+      // CRITICAL: Timeout ultra-court pour mode avion (500ms max)
       await SupabaseConfig.initialize()
-          .timeout(const Duration(seconds: 1));
+          .timeout(const Duration(milliseconds: 500));
       _logger.i('✅ Connexion Supabase OK', tag: 'STARTUP');
     } catch (e) {
-      _logger.w('⚠️ Supabase non accessible (mode offline)', error: e, tag: 'STARTUP');
+      _logger.w('⚠️ Supabase non accessible (mode offline) - App continue', error: e, tag: 'STARTUP');
+      // L'app continue normalement en mode offline
     }
   }
   

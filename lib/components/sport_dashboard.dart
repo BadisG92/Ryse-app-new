@@ -97,8 +97,8 @@ class SportDashboardState extends State<SportDashboard> with TickerProviderState
   /// Charge les données du dashboard depuis Supabase (enrichissement en arrière-plan)
   Future<void> _loadDashboardData() async {
     try {
-      // TEMPORAIRE: Invalider le cache pour forcer le rechargement avec les nouveaux logs
-      SportDashboardService.invalidateCache();
+      // OPTIMISATION: Utiliser le cache (5 min) pour chargement instantané
+      // L'invalidation se fait uniquement lors du refresh manuel ou après workout
 
       final data = await SportDashboardService.getDashboardData();
       setState(() {
@@ -108,7 +108,7 @@ class SportDashboardState extends State<SportDashboard> with TickerProviderState
       // Redémarrer l'animation des calories avec les nouvelles données
       _startCaloriesAnimation();
 
-      print('✅ Sport Dashboard enrichi depuis Supabase');
+      print('✅ Sport Dashboard enrichi depuis Supabase (avec cache)');
     } catch (e) {
       debugPrint('❌ Erreur chargement dashboard: $e');
       // En cas d'erreur, on garde les données de GlobalStateManager

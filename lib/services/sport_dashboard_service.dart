@@ -12,20 +12,19 @@ class SportDashboardService {
   static final _client = Supabase.instance.client;
   
   // Cache simple pour éviter les appels répétés
+  // OPTIMISATION: Pas de limite de temps - invalidation uniquement par événements
+  // (pull-to-refresh, fin de séance, suppression, etc.)
   static Map<String, dynamic>? _cachedData;
-  static DateTime? _cacheTimestamp;
-  static const Duration _cacheDuration = Duration(minutes: 5);
+  static DateTime? _cacheTimestamp; // Conservé pour les logs uniquement
 
   /// Récupère toutes les données du dashboard sport
   static Future<SportDashboardData> getDashboardData() async {
     debugPrint('📊 SportDashboardService.getDashboardData() appelé');
 
-    // Vérifier le cache
-    if (_cachedData != null &&
-        _cacheTimestamp != null &&
-        DateTime.now().difference(_cacheTimestamp!) < _cacheDuration) {
-      final remainingSeconds = _cacheDuration.inSeconds - DateTime.now().difference(_cacheTimestamp!).inSeconds;
-      debugPrint('📊 SportDashboardService: Using cached data (expires in ${remainingSeconds}s)');
+    // Vérifier le cache (pas de limite de temps - invalidation par événements uniquement)
+    if (_cachedData != null && _cacheTimestamp != null) {
+      final cacheAge = DateTime.now().difference(_cacheTimestamp!);
+      debugPrint('📊 SportDashboardService: Using cached data (age: ${cacheAge.inSeconds}s)');
       final cachedResult = SportDashboardData.fromJson(_cachedData!);
       debugPrint('📊 SportDashboardService: Cached data - ${cachedResult.totalSessions} sessions, ${cachedResult.totalCalories} kcal');
       return cachedResult;
@@ -39,19 +38,19 @@ class SportDashboardService {
     }
 
     try {
-      // Récupérer les données en parallèle
+      // OPTIMISATION: Réduire de 4 à 2 requêtes en fusionnant weekly + summary
       final futures = await Future.wait([
-        _getWeeklyCaloriesData(userId),
+        _getWeeklyAndSummaryData(userId), // NOUVEAU: Combine requêtes 1 et 4
         _getDailyActivitiesData(userId),
         _getRecentWorkoutsData(userId),
-        _getWeeklySummaryData(userId),
       ]);
 
+      final weeklyAndSummary = futures[0] as Map<String, dynamic>;
       final data = {
-        'weeklyCalories': futures[0],
+        'weeklyCalories': weeklyAndSummary['weeklyCalories'],
         'dailyActivities': futures[1],
         'recentWorkouts': futures[2],
-        'weeklySummary': futures[3],
+        'weeklySummary': weeklyAndSummary['weeklySummary'],
       };
 
       // Mettre en cache
@@ -67,7 +66,68 @@ class SportDashboardService {
     }
   }
 
+  /// NOUVEAU: Récupère weekly + summary en une seule passe (évite double appel)
+  static Future<Map<String, dynamic>> _getWeeklyAndSummaryData(String userId) async {
+    try {
+      debugPrint('📊 _getWeeklyAndSummaryData: Récupération combinée weekly + summary...');
+
+      // Récupérer les stats hebdomadaires UNE SEULE FOIS
+      final cardioData = await CardioService.getWeeklyStats();
+      final musculationData = await WorkoutCacheService.getWeeklyStats(userId);
+
+      // Calculer les totaux
+      final totalCalories = cardioData.totalCalories + (musculationData['total_calories'] ?? 0);
+      final totalSessions = cardioData.sessionsCount + (musculationData['sessions'] ?? 0);
+      final totalDuration = cardioData.totalDuration.inMinutes + (musculationData['total_duration_minutes'] ?? 0);
+
+      debugPrint('📊 _getWeeklyAndSummaryData: TOTAUX - Sessions: $totalSessions, Calories: $totalCalories, Durée: ${totalDuration}min');
+
+      // Calculer la streak sport
+      final streak = await _calculateSportWeeklyStreak(userId);
+
+      return {
+        'weeklyCalories': {
+          'totalCalories': totalCalories,
+          'totalSessions': totalSessions,
+          'totalDurationMinutes': totalDuration,
+          'cardioCalories': cardioData.totalCalories,
+          'musculationCalories': musculationData['total_calories'] ?? 0,
+          'targetWeeklyCalories': await CalorieTargetService.calculateWeeklyTarget(userId),
+        },
+        'weeklySummary': {
+          'totalSessions': totalSessions,
+          'totalCalories': totalCalories,
+          'totalDurationMinutes': totalDuration,
+          'cardioSessions': cardioData.sessionsCount,
+          'musculationSessions': musculationData['sessions'] ?? 0,
+          'streak': streak,
+        },
+      };
+    } catch (e) {
+      debugPrint('❌ Error loading weekly and summary data: $e');
+      return {
+        'weeklyCalories': {
+          'totalCalories': 0,
+          'totalSessions': 0,
+          'totalDurationMinutes': 0,
+          'cardioCalories': 0,
+          'musculationCalories': 0,
+          'targetWeeklyCalories': 1500,
+        },
+        'weeklySummary': {
+          'totalSessions': 0,
+          'totalCalories': 0,
+          'totalDurationMinutes': 0,
+          'cardioSessions': 0,
+          'musculationSessions': 0,
+          'streak': 0,
+        },
+      };
+    }
+  }
+
   /// Récupère les données de calories hebdomadaires (cardio + musculation)
+  /// DEPRECATED: Utiliser _getWeeklyAndSummaryData à la place
   static Future<Map<String, dynamic>> _getWeeklyCaloriesData(String userId) async {
     try {
       debugPrint('📊 _getWeeklyCaloriesData: Récupération des données hebdomadaires...');

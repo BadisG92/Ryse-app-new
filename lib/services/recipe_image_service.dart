@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../config/supabase_config.dart';
 
 class RecipeImageService {
@@ -16,7 +17,7 @@ class RecipeImageService {
 
 
   /// Widget helper pour afficher une image de recette avec fallback
-  /// 
+  ///
   /// [imageUrl] - L'URL de l'image de la recette
   /// [width] - Largeur de l'image
   /// [height] - Hauteur de l'image
@@ -30,26 +31,30 @@ class RecipeImageService {
     if (hasRecipeImage(imageUrl)) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(12),
-        child: Image.network(
-          imageUrl!,
+        child: CachedNetworkImage(
+          imageUrl: imageUrl!,
           width: width,
           height: height,
           fit: fit,
-          loadingBuilder: (context, child, loadingProgress) {
-            if (loadingProgress == null) return child;
-            return Container(
-              width: width,
-              height: height,
-              color: const Color(0xFFF8F8F8),
-              child: const Center(
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Color(0xFF0B132B),
-                ),
+          // Optimisation mémoire et disque
+          memCacheWidth: width != null ? (width * 2).toInt() : 800,
+          memCacheHeight: height != null ? (height * 2).toInt() : 800,
+          maxWidthDiskCache: 1000,
+          maxHeightDiskCache: 1000,
+          // Indicateur de chargement
+          placeholder: (context, url) => Container(
+            width: width,
+            height: height,
+            color: const Color(0xFFF8F8F8),
+            child: const Center(
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Color(0xFF0B132B),
               ),
-            );
-          },
-          errorBuilder: (context, error, stackTrace) {
+            ),
+          ),
+          // Gestion des erreurs
+          errorWidget: (context, url, error) {
             return _buildFallbackImage(width: width, height: height);
           },
         ),

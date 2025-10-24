@@ -4,6 +4,8 @@ import '../config/supabase_config.dart';
 import 'localization_service.dart';
 import 'translations.dart';
 import '../components/ui/global_progress_models.dart';
+import 'sport_dashboard_service.dart';
+import 'header_cache_service.dart';
 
 /// Gestionnaire d'état global pour synchronisation instantanée entre pages
 /// Résout le problème de latence et de mise à jour non reflétée
@@ -339,6 +341,11 @@ class GlobalStateManager {
     _sportSessions = 0;
     _sportCaloriesBurned = 0;
 
+    // TRIGGER: Invalider tous les caches pour le nouveau jour
+    SportDashboardService.invalidateCache();
+    HeaderCacheService.clearCache();
+    debugPrint('🗑️ GlobalState: Caches invalidés pour nouveau jour');
+
     // Notifier tous les listeners
     _notifyChange(StateChangeEvent(
       type: ChangeType.dayReset,
@@ -353,6 +360,10 @@ class GlobalStateManager {
     _weeklyBalance = null;
     _weeklyTracking = null;
     _weeklyDataLastUpdate = null;
+
+    // TRIGGER: Invalider le cache sport pour la nouvelle semaine
+    SportDashboardService.invalidateCache();
+    debugPrint('🗑️ GlobalState: Cache sport invalidé pour nouvelle semaine');
 
     debugPrint('✨ GlobalState: Données hebdomadaires réinitialisées');
   }

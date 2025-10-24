@@ -26,11 +26,22 @@ void main() async {
   // OPTIMISATION: Initialisation par priorités pour performance maximale
   final initializer = PriorityServiceInitializer.instance;
 
-  // Phase 1: Services critiques SEULEMENT (2s max, bloquant)
-  await initializer.initializeCriticalServices();
+  // Phase 1: Services critiques SEULEMENT (1s max en mode avion, bloquant)
+  // CRITICAL: Timeout global pour éviter tout blocage en mode avion
+  await initializer.initializeCriticalServices().timeout(
+    const Duration(seconds: 1),
+    onTimeout: () {
+      debugPrint('⚠️ Critical services timeout - app continues in offline mode');
+    },
+  );
 
   // NOUVEAU: Initialiser le state manager global
-  await GlobalStateManager.instance.initialize();
+  await GlobalStateManager.instance.initialize().timeout(
+    const Duration(milliseconds: 500),
+    onTimeout: () {
+      debugPrint('⚠️ GlobalStateManager timeout - using defaults');
+    },
+  );
 
   // Initialiser les services d'analyse IA avec Gemini
   ExerciseAiAnalysisService.initialize();
@@ -106,33 +117,40 @@ class _AppInitializerState extends State<AppInitializer> {
   Future<void> _initializeAuth() async {
     // SOLUTION: Délayer l'auth pour éviter le freeze pendant build
     await Future.delayed(const Duration(milliseconds: 100));
-    
+
     if (!mounted) return;
-    
+
     final authService = Provider.of<AuthService>(context, listen: false);
-    
+
     try {
       debugPrint('🔄 AppInitializer: Starting auth initialization...');
-      
+
       // Exécuter auth complètement hors du build cycle
       unawaited(_performAuthInitialization(authService));
-      
+
       debugPrint('✅ AppInitializer: Auth initialization scheduled');
     } catch (e) {
       debugPrint('❌ AppInitializer: Auth scheduling error: $e');
     }
   }
-  
+
   Future<void> _performAuthInitialization(AuthService authService) async {
     try {
       // Délai supplémentaire pour s'assurer qu'on est hors du build
       await Future.delayed(const Duration(milliseconds: 200));
-      
-      await authService.initialize().timeout(const Duration(seconds: 15));
-      
+
+      // CRITICAL: Timeout court pour mode avion (3s max au lieu de 15s)
+      await authService.initialize().timeout(
+        const Duration(seconds: 3),
+        onTimeout: () {
+          debugPrint('⚠️ Auth initialization timeout - app continues in offline mode');
+        },
+      );
+
       debugPrint('✅ Auth really initialized');
     } catch (e) {
-      debugPrint('❌ Auth initialization failed: $e');
+      debugPrint('❌ Auth initialization failed (app continues): $e');
+      // L'app continue même si l'auth échoue
     }
   }
 

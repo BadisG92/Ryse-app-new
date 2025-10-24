@@ -52,16 +52,32 @@ class AuthService extends ChangeNotifier {
     try {
       debugPrint('🚀 Initializing AuthService...');
 
+      // CRITICAL: Vérifier si Supabase est disponible avant d'accéder au client
+      if (!SupabaseConfig.isAvailable) {
+        debugPrint('⚠️ Supabase not available - working in offline mode');
+        _setLoading(false);
+        return;
+      }
+
       // Check if user is already logged in
-      final session = _supabase.auth.currentSession;
+      // CRITICAL: Timeout ultra-court pour éviter blocage en mode avion
+      final session = await Future.microtask(() => _supabase.auth.currentSession)
+          .timeout(const Duration(milliseconds: 500), onTimeout: () => null);
+
       if (session != null) {
         debugPrint('🔍 Found existing session, loading profile...');
-        // CORRECTION: Timeout global pour toute l'initialisation
-        await _loadUserProfile(session.user.id).timeout(const Duration(seconds: 10));
+        // Timeout court pour le chargement du profil
+        await _loadUserProfile(session.user.id)
+            .timeout(const Duration(seconds: 3), onTimeout: () {
+          debugPrint('⚠️ Profile loading timeout - continuing with cached data');
+        });
 
         // NOUVEAU: Réinitialiser GlobalStateManager si session existante
         debugPrint('🔄 Réinitialisation GlobalStateManager (session existante)...');
-        await GlobalStateManager.instance.initialize();
+        await GlobalStateManager.instance.initialize()
+            .timeout(const Duration(seconds: 2), onTimeout: () {
+          debugPrint('⚠️ GlobalStateManager timeout - using defaults');
+        });
       } else {
         debugPrint('📱 No existing session found');
       }
