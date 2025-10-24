@@ -114,7 +114,7 @@ class Food {
       createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : null,
       referenceUnitFr: json['reference_unit_fr'],
       referenceUnitEn: json['reference_unit_en'],
-      referenceQuantity: json['reference_quantity']?.toDouble(),
+      referenceQuantity: (json['reference_quantity'] ?? json['base_quantity'])?.toDouble(), // Support base_quantity (food_database) et reference_quantity (custom_foods)
       origin: json['origin'],
       barcode: json['barcode'],
     );
