@@ -18,11 +18,15 @@ import '../config/google_vision_config.dart';
 class BarcodeScannerScreen extends StatefulWidget {
   final bool isFromDashboard;
   final Function(nutrition_models.FoodItem)? onFoodScanned; // Callback pour ajouter au journal
-  
+  final String? mealName;
+  final String? mealId;
+
   const BarcodeScannerScreen({
-    super.key, 
+    super.key,
     this.isFromDashboard = false,
     this.onFoodScanned,
+    this.mealName,
+    this.mealId,
   });
 
   @override

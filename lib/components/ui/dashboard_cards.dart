@@ -303,14 +303,14 @@ class QuickActionButton extends StatelessWidget {
             
             // Texte en dessous
             SizedBox(
-              width: 72,
+              width: 80,
               child: Text(
                 action.label,
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 13,
                   fontWeight: FontWeight.w500,
-                  color: action.isDisabled 
-                      ? const Color(0xFF64748B) 
+                  color: action.isDisabled
+                      ? const Color(0xFF64748B)
                       : const Color(0xFF1A1A1A),
                 ),
                 textAlign: TextAlign.center,

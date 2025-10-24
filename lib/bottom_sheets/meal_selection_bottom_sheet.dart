@@ -8,7 +8,9 @@ import '../services/translations.dart';
 class MealSelectionBottomSheet {
   static void show(
     BuildContext context, {
-    required String foodName,
+    String? titleKey,
+    String? subtitleKey,
+    String? foodName, // Legacy support - sera remplacé graduellement par titleKey/subtitleKey
     required List<Meal> existingMeals,
     required Function(Meal meal) onExistingMealSelected,
     required VoidCallback onCreateNewMeal,
@@ -39,14 +41,23 @@ class MealSelectionBottomSheet {
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              
+
               const SizedBox(height: 20),
-              
+
               // Title
               Consumer<LocalizationService>(
                 builder: (context, localizationService, _) {
+                  String title;
+                  if (titleKey != null) {
+                    title = titleKey.tr(localizationService.currentLanguageCode);
+                  } else if (foodName != null) {
+                    title = 'add_food_title'.tr(localizationService.currentLanguageCode).replaceAll('{foodName}', foodName);
+                  } else {
+                    title = 'add_meal'.tr(localizationService.currentLanguageCode);
+                  }
+
                   return Text(
-                    'add_food_title'.tr(localizationService.currentLanguageCode).replaceAll('{foodName}', foodName),
+                    title,
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
@@ -56,13 +67,20 @@ class MealSelectionBottomSheet {
                   );
                 },
               ),
-              
+
               const SizedBox(height: 8),
-              
+
               Consumer<LocalizationService>(
                 builder: (context, localizationService, _) {
+                  String subtitle;
+                  if (subtitleKey != null) {
+                    subtitle = subtitleKey.tr(localizationService.currentLanguageCode);
+                  } else {
+                    subtitle = 'where_add_food'.tr(localizationService.currentLanguageCode);
+                  }
+
                   return Text(
-                    'where_add_food'.tr(localizationService.currentLanguageCode),
+                    subtitle,
                     style: const TextStyle(
                       fontSize: 14,
                       color: Color(0xFF64748B),
@@ -100,14 +118,17 @@ class MealSelectionBottomSheet {
                     child: Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.all(8),
+                          width: 48,
+                          height: 48,
                           decoration: BoxDecoration(
-                            color: const Color(0xFF0B132B),
-                            borderRadius: BorderRadius.circular(8),
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+                            ),
+                            borderRadius: BorderRadius.circular(12),
                           ),
                           child: const Icon(
                             LucideIcons.utensils,
-                            size: 16,
+                            size: 24,
                             color: Colors.white,
                           ),
                         ),
@@ -126,10 +147,11 @@ class MealSelectionBottomSheet {
                                       color: Color(0xFF1A1A1A),
                                     ),
                                   ),
+                                  const SizedBox(height: 4),
                                   Text(
                                     'choose_from_daily_meals'.tr(localizationService.currentLanguageCode),
                                     style: const TextStyle(
-                                      fontSize: 12,
+                                      fontSize: 13,
                                       color: Color(0xFF64748B),
                                     ),
                                   ),
@@ -140,7 +162,7 @@ class MealSelectionBottomSheet {
                         ),
                         const Icon(
                           LucideIcons.chevronRight,
-                          size: 16,
+                          size: 20,
                           color: Color(0xFF64748B),
                         ),
                       ],
@@ -171,14 +193,17 @@ class MealSelectionBottomSheet {
                   child: Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(8),
+                        width: 48,
+                        height: 48,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF0B132B),
-                          borderRadius: BorderRadius.circular(8),
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+                          ),
+                          borderRadius: BorderRadius.circular(12),
                         ),
                         child: const Icon(
                           LucideIcons.plus,
-                          size: 16,
+                          size: 24,
                           color: Colors.white,
                         ),
                       ),
@@ -197,10 +222,11 @@ class MealSelectionBottomSheet {
                                     color: Color(0xFF0B132B),
                                   ),
                                 ),
+                                const SizedBox(height: 4),
                                 Text(
                                   'meal_type_options'.tr(localizationService.currentLanguageCode),
                                   style: const TextStyle(
-                                    fontSize: 12,
+                                    fontSize: 13,
                                     color: Color(0xFF64748B),
                                   ),
                                 ),
@@ -211,7 +237,7 @@ class MealSelectionBottomSheet {
                       ),
                       const Icon(
                         LucideIcons.chevronRight,
-                        size: 16,
+                        size: 20,
                         color: Color(0xFF64748B),
                       ),
                     ],
@@ -229,7 +255,7 @@ class MealSelectionBottomSheet {
 
   static void _showExistingMealsBottomSheet(
     BuildContext context, {
-    required String foodName,
+    String? foodName,
     required List<Meal> existingMeals,
     required Function(Meal meal) onMealSelected,
   }) {
@@ -333,14 +359,17 @@ class MealSelectionBottomSheet {
                       child: Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.all(8),
+                            width: 48,
+                            height: 48,
                             decoration: BoxDecoration(
-                              color: const Color(0xFF0B132B),
-                              borderRadius: BorderRadius.circular(8),
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+                              ),
+                              borderRadius: BorderRadius.circular(12),
                             ),
                             child: Icon(
                               _getMealIcon(meal.name),
-                              size: 16,
+                              size: 24,
                               color: Colors.white,
                             ),
                           ),
@@ -357,6 +386,7 @@ class MealSelectionBottomSheet {
                                     color: Color(0xFF1A1A1A),
                                   ),
                                 ),
+                                const SizedBox(height: 4),
                                 Consumer<LocalizationService>(
                                   builder: (context, localizationService, _) {
                                     final count = meal.items.length;
@@ -367,7 +397,7 @@ class MealSelectionBottomSheet {
                                     return Text(
                                       '${meal.time} • $foodText',
                                       style: const TextStyle(
-                                        fontSize: 12,
+                                        fontSize: 13,
                                         color: Color(0xFF64748B),
                                       ),
                                     );
@@ -378,7 +408,7 @@ class MealSelectionBottomSheet {
                           ),
                           const Icon(
                             LucideIcons.chevronRight,
-                            size: 16,
+                            size: 20,
                             color: Color(0xFF64748B),
                           ),
                         ],
@@ -397,19 +427,24 @@ class MealSelectionBottomSheet {
   }
 
   static IconData _getMealIcon(String mealName) {
-    switch (mealName.toLowerCase()) {
-      case 'petit-déjeuner':
-      case 'petit déjeuner':
-        return LucideIcons.sunrise;
-      case 'déjeuner':
-        return LucideIcons.sun;
-      case 'dîner':
-      case 'diner':
-        return LucideIcons.sunset;
-      case 'collation':
-        return LucideIcons.milk;
-      default:
-        return LucideIcons.utensils;
+    // Normaliser le nom (enlever les numéros et espaces en trop)
+    final normalizedName = mealName.toLowerCase()
+        .replaceAll(RegExp(r'\s*\d+\s*$'), '') // Enlever les numéros à la fin (ex: "Petit-déjeuner 2" -> "Petit-déjeuner")
+        .trim();
+
+    // Vérifier les différentes variantes
+    if (normalizedName.contains('petit') && normalizedName.contains('déjeuner')) {
+      return LucideIcons.sunrise;
+    } else if (normalizedName == 'breakfast') {
+      return LucideIcons.sunrise;
+    } else if (normalizedName == 'déjeuner' || normalizedName == 'lunch') {
+      return LucideIcons.sun;
+    } else if (normalizedName == 'dîner' || normalizedName == 'diner' || normalizedName == 'dinner') {
+      return LucideIcons.sunset;
+    } else if (normalizedName == 'collation' || normalizedName == 'snack') {
+      return LucideIcons.milk;
     }
+
+    return LucideIcons.utensils;
   }
 } 

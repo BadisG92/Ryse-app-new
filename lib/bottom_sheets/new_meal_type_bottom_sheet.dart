@@ -66,7 +66,7 @@ class NewMealTypeBottomSheet {
               
               const SizedBox(height: 24),
               
-              // Options de repas
+              // Options de repas - Ordre: Petit-déjeuner, Déjeuner, Collation, Dîner
               Consumer<LocalizationService>(
                 builder: (context, locService, child) => Column(
                   children: [
@@ -81,9 +81,9 @@ class NewMealTypeBottomSheet {
                         onMealTypeSelected('breakfast'.tr(locService.currentLanguageCode), '08:00');
                       },
                     ),
-                    
+
                     const SizedBox(height: 12),
-                    
+
                     _buildMealOption(
                       context,
                       locService,
@@ -95,9 +95,9 @@ class NewMealTypeBottomSheet {
                         onMealTypeSelected('lunch'.tr(locService.currentLanguageCode), '12:30');
                       },
                     ),
-                    
+
                     const SizedBox(height: 12),
-                    
+
                     _buildMealOption(
                       context,
                       locService,
@@ -109,9 +109,9 @@ class NewMealTypeBottomSheet {
                         onMealTypeSelected('snack'.tr(locService.currentLanguageCode), '16:00');
                       },
                     ),
-                    
+
                     const SizedBox(height: 12),
-                    
+
                     _buildMealOption(
                       context,
                       locService,
@@ -149,7 +149,7 @@ class NewMealTypeBottomSheet {
         width: double.infinity,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: const Color(0xFFF8F9FA),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: const Color(0xFFE5E7EB),
@@ -159,14 +159,17 @@ class NewMealTypeBottomSheet {
         child: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
-                color: const Color(0xFF0B132B),
-                borderRadius: BorderRadius.circular(8),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+                ),
+                borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
                 icon,
-                size: 16,
+                size: 24,
                 color: Colors.white,
               ),
             ),
@@ -183,10 +186,11 @@ class NewMealTypeBottomSheet {
                       color: Color(0xFF1A1A1A),
                     ),
                   ),
+                  const SizedBox(height: 4),
                   Text(
                     descriptionKey.tr(locService.currentLanguageCode),
                     style: const TextStyle(
-                      fontSize: 12,
+                      fontSize: 13,
                       color: Color(0xFF64748B),
                     ),
                   ),
@@ -195,7 +199,7 @@ class NewMealTypeBottomSheet {
             ),
             const Icon(
               LucideIcons.chevronRight,
-              size: 16,
+              size: 20,
               color: Color(0xFF64748B),
             ),
           ],

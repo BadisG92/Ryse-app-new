@@ -350,8 +350,8 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
   }
 
   void _onAddMeal() {
-    // Reproduire exactement le même comportement que le bouton "Ajouter un aliment" du journal
-    _showAddFoodBottomSheet();
+    // Utiliser le même flux que les boutons rapides : sélection de repas → 5 options
+    NutritionQuickActionsSection.showMealSelectionForManualEntry(context);
   }
 
   // Méthode pour rafraîchir SEULEMENT les données d'hydratation (sans redémarrer les animations)

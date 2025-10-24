@@ -317,6 +317,11 @@ class NutritionData {
   // Actions rapides
   static const List<NutritionQuickAction> quickActions = [
     NutritionQuickAction(
+      id: 'chat',
+      label: 'Chat IA',
+      icon: LucideIcons.messageCircle,
+    ),
+    NutritionQuickAction(
       id: 'photo',
       label: 'Photo',
       icon: LucideIcons.camera,

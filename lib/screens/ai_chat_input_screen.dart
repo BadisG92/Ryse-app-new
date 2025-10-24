@@ -283,9 +283,9 @@ class _AIChatInputScreenState extends State<AIChatInputScreen> {
                   ),
                 ),
                 const SizedBox(width: 16),
-                // Avatar Coach Ryze Nutrition à droite - taille xxxlarge comme bilan
+                // Avatar Coach Ryze Chat (sans pomme) à droite - taille xxxlarge
                 const CoachRyzeAvatar(
-                  type: CoachRyzeAvatarType.nutrition,
+                  type: CoachRyzeAvatarType.nutritionChat,
                   size: CoachRyzeAvatarSize.xxxlarge, // 180px - Comme bilan nutritionnel
                   withShadow: false,
                 ),

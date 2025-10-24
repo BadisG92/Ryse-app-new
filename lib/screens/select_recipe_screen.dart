@@ -15,11 +15,15 @@ import '../services/recipe_image_service.dart';
 class SelectRecipeScreen extends StatefulWidget {
   final bool isFromDashboard;
   final Function(FoodItem)? onRecipeSelected; // Callback pour ajouter la recette au journal
-  
+  final String? mealName;
+  final String? mealId;
+
   const SelectRecipeScreen({
-    super.key, 
+    super.key,
     this.isFromDashboard = false,
     this.onRecipeSelected,
+    this.mealName,
+    this.mealId,
   });
 
   @override

@@ -845,8 +845,8 @@ class AppTranslations {
     },
     // Actions rapides
     'add_meal': {
-      'fr': 'Ajouter aliment',
-      'en': 'Add food',
+      'fr': 'Ajouter un repas',
+      'en': 'Add meal',
     },
     'scan_food': {
       'fr': 'Scanner un aliment',
@@ -857,15 +857,15 @@ class AppTranslations {
       'en': 'Choose your scanning method',
     },
     'scan_dish': {
-      'fr': 'Scanner un plat',
-      'en': 'Scan a dish',
+      'fr': 'Prendre en photo',
+      'en': 'Take a photo',
     },
     'scan_dish_subtitle': {
       'fr': 'Analyse automatique',
       'en': 'Automatic analysis',
     },
     'start_workout': {
-      'fr': 'Entraînement',
+      'fr': 'S\'entraîner',
       'en': 'Workout',
     },
     'weight_tracking': {
@@ -1455,8 +1455,8 @@ class AppTranslations {
       'en': 'Add quickly',
     },
     'add_food': {
-      'fr': 'Ajouter un aliment',
-      'en': 'Add food',
+      'fr': 'Ajouter un repas',
+      'en': 'Add meal',
     },
     'kcal_consumed': {
       'fr': 'kcal consommées',
@@ -1468,8 +1468,49 @@ class AppTranslations {
     },
     // Nutrition dashboard texts
     'choose_how_to_add_food': {
-      'fr': 'Choisissez comment vous souhaitez ajouter votre aliment',
-      'en': 'Choose how you want to add your food',
+      'fr': 'Choisissez comment vous souhaitez ajouter votre repas',
+      'en': 'Choose how you want to add your meal',
+    },
+    // Meal selection titles for each action type
+    'add_chat_meal_title': {
+      'fr': 'Décrire mon repas',
+      'en': 'Describe my meal',
+    },
+    'add_chat_meal_subtitle': {
+      'fr': 'Où souhaitez-vous ajouter ce repas ?',
+      'en': 'Where would you like to add this meal?',
+    },
+    'add_photo_meal_title': {
+      'fr': 'Prendre en photo',
+      'en': 'Take a photo',
+    },
+    'add_photo_meal_subtitle': {
+      'fr': 'Où souhaitez-vous ajouter ce repas ?',
+      'en': 'Where would you like to add this meal?',
+    },
+    'add_barcode_meal_title': {
+      'fr': 'Scanner un code-barres',
+      'en': 'Scan a barcode',
+    },
+    'add_barcode_meal_subtitle': {
+      'fr': 'Où souhaitez-vous ajouter ce produit ?',
+      'en': 'Where would you like to add this product?',
+    },
+    'add_search_meal_title': {
+      'fr': 'Chercher dans la base',
+      'en': 'Search in database',
+    },
+    'add_search_meal_subtitle': {
+      'fr': 'Où souhaitez-vous ajouter cet aliment ?',
+      'en': 'Where would you like to add this food?',
+    },
+    'add_recipe_meal_title': {
+      'fr': 'Choisir une recette',
+      'en': 'Choose a recipe',
+    },
+    'add_recipe_meal_subtitle': {
+      'fr': 'Où souhaitez-vous ajouter cette recette ?',
+      'en': 'Where would you like to add this recipe?',
     },
     'manual_entry': {
       'fr': 'Saisie manuelle',
@@ -1512,8 +1553,8 @@ class AppTranslations {
       'en': 'Product barcode',
     },
     'manual_entry_subtitle': {
-      'fr': 'Rechercher un aliment dans la base',
-      'en': 'Search for food in the database',
+      'fr': 'Rechercher dans la base de données',
+      'en': 'Search in the database',
     },
     'ai_scan_subtitle': {
       'fr': 'Le Coach Ryze analyse votre plat',
@@ -1678,8 +1719,8 @@ class AppTranslations {
       'en': 'You must be logged in to record hydration',
     },
     'search_food': {
-      'fr': 'Rechercher un aliment',
-      'en': 'Search for food',
+      'fr': 'Chercher dans la base',
+      'en': 'Search database',
     },
     'search_food_placeholder': {
       'fr': 'Rechercher un aliment...',
@@ -2934,12 +2975,12 @@ class AppTranslations {
       'en': 'Coach will analyze your description',
     },
     'describe_meal': {
-      'fr': 'Décrivez votre repas',
-      'en': 'Describe your meal',
+      'fr': 'Décrire mon repas',
+      'en': 'Describe my meal',
     },
     'coach_will_analyze': {
-      'fr': 'Le coach analysera votre description',
-      'en': 'Coach will analyze your description',
+      'fr': 'Coach Ryze analysera votre description',
+      'en': 'Coach Ryze will analyze your description',
     },
     'ai_chat_hint': {
       'fr': 'Ex: 2 cafés, 1 croissant, salade césar...',

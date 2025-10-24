@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 
 /// Types d'avatar Coach Ryze
 enum CoachRyzeAvatarType {
-  workout,    // Panda coach sport
-  nutrition,  // Panda docteur nutrition
-  chef,       // Panda chef cuisinier
+  workout,           // Panda coach sport
+  nutrition,         // Panda docteur nutrition (avec pomme) - pour analyse nutritionnelle
+  nutritionChat,     // Panda docteur nutrition (sans pomme) - pour chat AI
+  chef,              // Panda chef cuisinier
 }
 
 /// Tailles prédéfinies pour l'avatar Coach Ryze
@@ -61,11 +62,13 @@ class CoachRyzeAvatar extends StatelessWidget {
   String get _imagePath {
     switch (type) {
       case CoachRyzeAvatarType.workout:
-        return 'assets/images/coach_ryze_workout_avatar.png';
+        return 'images/coach_ryze_workout_avatar.png';
       case CoachRyzeAvatarType.nutrition:
-        return 'assets/images/coach_ryze_ai_chat_nutrition.png';
+        return 'images/coach_ryze_nutrition_avatar.png'; // Avec pomme
+      case CoachRyzeAvatarType.nutritionChat:
+        return 'images/coach_ryze_ai_chat_nutrition.png'; // Sans pomme
       case CoachRyzeAvatarType.chef:
-        return 'assets/images/coach_ryze_chef_avatar.png';
+        return 'images/coach_ryze_chef_avatar.png';
     }
   }
 

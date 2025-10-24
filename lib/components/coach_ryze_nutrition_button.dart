@@ -48,11 +48,15 @@ class _CoachRyzeNutritionButtonState extends State<CoachRyzeNutritionButton> {
   String _currentContext = 'in_progress';
   bool _isLoading = false;
   NutritionAnalysis? _cachedAnalysis;
+  bool _isInitialized = false;
 
   @override
   void initState() {
     super.initState();
-    _loadContextAndCache();
+    // Détecter le contexte de manière synchrone pour éviter le flash
+    _currentContext = _detectContextSync();
+    // Charger le cache en arrière-plan
+    _loadCacheInBackground();
   }
 
   @override
@@ -60,26 +64,55 @@ class _CoachRyzeNutritionButtonState extends State<CoachRyzeNutritionButton> {
     super.didUpdateWidget(oldWidget);
     // Mettre à jour le contexte si les repas changent
     if (oldWidget.todayMeals.length != widget.todayMeals.length) {
-      _loadContextAndCache();
+      setState(() {
+        _currentContext = _detectContextSync();
+      });
+      _loadCacheInBackground();
     }
   }
 
-  Future<void> _loadContextAndCache() async {
-    final context = await CoachRyzeNutritionService.detectContext(
-      todayMeals: widget.todayMeals,
-      hasWorkoutToday: widget.hasWorkoutToday,
-      workoutTime: widget.workoutTime,
-    );
+  /// Détection synchrone du contexte pour éviter le flash
+  String _detectContextSync() {
+    final now = DateTime.now();
+    final isEvening = now.hour >= 20; // Après 20h
 
+    // Journée vide
+    if (widget.todayMeals.isEmpty) {
+      return 'empty_day';
+    }
+
+    // Post-workout (moins de 2h après l'entraînement)
+    if (widget.hasWorkoutToday && widget.workoutTime != null) {
+      final hoursSinceWorkout = now.difference(widget.workoutTime!).inHours;
+      if (hoursSinceWorkout < 2) {
+        return 'post_workout';
+      }
+    }
+
+    // Fin de journée
+    if (isEvening) {
+      return 'end_of_day';
+    }
+
+    // Par défaut: journée en cours
+    return 'in_progress';
+  }
+
+  /// Charger le cache en arrière-plan sans provoquer de flash
+  Future<void> _loadCacheInBackground() async {
     final cached = await CoachRyzeNutritionService.getAnalysisForDate(
       userId: widget.userId,
       date: widget.date,
     );
 
-    if (mounted) {
+    if (mounted && cached != null) {
       setState(() {
-        _currentContext = context;
         _cachedAnalysis = cached;
+        _isInitialized = true;
+      });
+    } else if (mounted) {
+      setState(() {
+        _isInitialized = true;
       });
     }
   }

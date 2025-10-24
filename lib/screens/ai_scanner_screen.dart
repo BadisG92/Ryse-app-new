@@ -1515,7 +1515,8 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
 
       MealSelectionBottomSheet.show(
         context,
-        foodName: _mealNameController.text.isNotEmpty ? _mealNameController.text : '${_analysisResult!.detectedFoods.length} aliment(s) détecté(s)',
+        titleKey: 'add_photo_meal_title',
+        subtitleKey: 'add_photo_meal_subtitle',
         existingMeals: existingMeals,
         onExistingMealSelected: (Meal selectedMeal) async {
           await _addAIFoodToExistingMeal(selectedMeal, user.id);

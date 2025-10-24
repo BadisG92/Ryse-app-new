@@ -86,35 +86,54 @@ class _QuickActionsSectionState extends State<QuickActionsSection> {
           ),
           
           const SizedBox(height: 16),
-          
-          // Actions - Ligne horizontale scrollable avec effet fade
+
+          // Actions - Si 3 boutons ou moins, les centrer, sinon scrollable
           SizedBox(
             height: 120, // Hauteur généreuse pour éviter tout overflow de texte
-            child: ScrollableFadeContainer(
-              controller: _scrollController,
-              fadeWidth: 24.0,
-              fadeColor: Colors.white,
-              child: ListView.builder(
-                controller: _scrollController,
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                itemCount: widget.actions.length,
-                itemBuilder: (context, index) {
-                  final action = widget.actions[index];
-                  // Créer une copie de l'action avec le bon callback
-                  final actionWithCallback = QuickAction(
-                    id: action.id,
-                    label: action.label,
-                    icon: action.icon,
-                    reward: action.reward,
-                    isDisabled: action.isDisabled,
-                    isPremiumRequired: action.isPremiumRequired,
-                    onTap: () => _handleQuickAction(context, action),
-                  );
-                  return QuickActionButton(action: actionWithCallback);
-                },
-              ),
-            ),
+            child: widget.actions.length <= 3
+                ? Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: widget.actions.map((action) {
+                        final actionWithCallback = QuickAction(
+                          id: action.id,
+                          label: action.label,
+                          icon: action.icon,
+                          reward: action.reward,
+                          isDisabled: action.isDisabled,
+                          isPremiumRequired: action.isPremiumRequired,
+                          onTap: () => _handleQuickAction(context, action),
+                        );
+                        return QuickActionButton(action: actionWithCallback);
+                      }).toList(),
+                    ),
+                  )
+                : ScrollableFadeContainer(
+                    controller: _scrollController,
+                    fadeWidth: 24.0,
+                    fadeColor: Colors.white,
+                    child: ListView.builder(
+                      controller: _scrollController,
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                      itemCount: widget.actions.length,
+                      itemBuilder: (context, index) {
+                        final action = widget.actions[index];
+                        // Créer une copie de l'action avec le bon callback
+                        final actionWithCallback = QuickAction(
+                          id: action.id,
+                          label: action.label,
+                          icon: action.icon,
+                          reward: action.reward,
+                          isDisabled: action.isDisabled,
+                          isPremiumRequired: action.isPremiumRequired,
+                          onTap: () => _handleQuickAction(context, action),
+                        );
+                        return QuickActionButton(action: actionWithCallback);
+                      },
+                    ),
+                  ),
           ),
           
           const SizedBox(height: 12),
@@ -289,7 +308,7 @@ class _QuickActionsSectionState extends State<QuickActionsSection> {
   }
 
   void _showAddMealBottomSheet(BuildContext context) {
-    // Utiliser exactement le même flux que le bouton + repas du dashboard nutrition
+    // Utiliser exactement le même flux que le bouton + repas du journal nutrition
     NutritionQuickActionsSection.showMealSelectionForDashboard(context);
   }
 

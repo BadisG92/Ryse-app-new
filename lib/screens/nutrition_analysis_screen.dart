@@ -114,13 +114,20 @@ class _NutritionAnalysisScreenState extends State<NutritionAnalysisScreen> with 
               style: AppTextStyles.h2,
             ),
             actions: [
-              IconButton(
-                icon: const Icon(LucideIcons.refreshCw, color: Color(0xFF64748B)),
-                onPressed: () {
-                  Navigator.pop(context);
-                  widget.onRegenerate();
-                },
-                tooltip: isFrench ? 'Régénérer' : 'Regenerate',
+              Container(
+                margin: const EdgeInsets.only(right: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0B132B),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: IconButton(
+                  icon: const Icon(LucideIcons.rotateCw, color: Colors.white, size: 20),
+                  onPressed: () {
+                    Navigator.pop(context);
+                    widget.onRegenerate();
+                  },
+                  tooltip: isFrench ? 'Régénérer l\'analyse' : 'Regenerate analysis',
+                ),
               ),
             ],
           ),
@@ -878,7 +885,7 @@ class _NutritionAnalysisScreenState extends State<NutritionAnalysisScreen> with 
     return '🍴';  // Icône par défaut (fourchette et couteau pour alimentation générale)
   }
 
-  // Section Métriques améliorées
+  // Section Métriques redessinée selon le dashboard nutrition
   Widget _buildMetricsSection(bool isFrench) {
     final meta = widget.analysis.metadata;
 
@@ -887,77 +894,186 @@ class _NutritionAnalysisScreenState extends State<NutritionAnalysisScreen> with 
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Titre avec emoji
-          Row(
-            children: [
-              Text('📊', style: TextStyle(fontSize: 20)),
-              const SizedBox(width: Spacing.sm),
-              Text(
-                isFrench ? 'Tes Métriques' : 'Your Metrics',
-                style: AppTextStyles.h2,
-              ),
-            ],
+          // Titre sans icône
+          Text(
+            isFrench ? 'Tes Métriques' : 'Your Metrics',
+            style: AppTextStyles.h2,
           ),
-          const SizedBox(height: Spacing.md),
+          const SizedBox(height: Spacing.lg),
 
-          // Grille 2x2
-          Row(
-            children: [
-              Expanded(
-                child: _buildEnhancedMetricCard(
-                  icon: LucideIcons.flame,
-                  label: isFrench ? 'Calories' : 'Calories',
-                  value: meta.totalCalories.toDouble(),
-                  target: meta.calorieTarget.toDouble(),
-                  unit: '',
-                  color: const Color(0xFFEF4444),
-                  isFrench: isFrench,
-                ),
+          // Cercle de calories
+          Center(
+            child: SizedBox(
+              width: 180,
+              height: 180,
+              child: Stack(
+                children: [
+                  // Cercle de progression
+                  Center(
+                    child: SizedBox(
+                      width: 180,
+                      height: 180,
+                      child: CustomPaint(
+                        painter: _CalorieCirclePainter(
+                          consumed: meta.totalCalories.toDouble(),
+                          target: meta.calorieTarget.toDouble(),
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Valeur au centre
+                  Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          '${meta.totalCalories}',
+                          style: const TextStyle(
+                            fontSize: 40,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF0B132B),
+                            height: 1,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'kcal',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF64748B),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          isFrench ? 'Consommé' : 'Consumed',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF64748B),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildEnhancedMetricCard(
-                  icon: LucideIcons.beef,
-                  label: isFrench ? 'Protéines' : 'Protein',
-                  value: meta.totalProteins,
-                  target: meta.proteinTarget,
-                  unit: 'g',
-                  color: const Color(0xFF3B82F6),
-                  isFrench: isFrench,
-                ),
-              ),
-            ],
+            ),
           ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _buildEnhancedMetricCard(
-                  icon: LucideIcons.wheat,
-                  label: isFrench ? 'Glucides' : 'Carbs',
-                  value: meta.totalCarbs,
-                  target: meta.carbsTarget,
-                  unit: 'g',
-                  color: const Color(0xFFF59E0B),
-                  isFrench: isFrench,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildEnhancedMetricCard(
-                  icon: LucideIcons.droplet,
-                  label: isFrench ? 'Lipides' : 'Fats',
-                  value: meta.totalFats,
-                  target: meta.fatsTarget,
-                  unit: 'g',
-                  color: const Color(0xFF8B5CF6),
-                  isFrench: isFrench,
-                ),
-              ),
-            ],
+
+          const SizedBox(height: Spacing.xl),
+
+          // Macros avec barres horizontales
+          _buildMacroBar(
+            label: isFrench ? 'Protéines' : 'Protein',
+            value: meta.totalProteins,
+            target: meta.proteinTarget,
+            color: const Color(0xFF000000), // Noir
+            isFrench: isFrench,
+          ),
+          const SizedBox(height: 16),
+          _buildMacroBar(
+            label: isFrench ? 'Glucides' : 'Carbs',
+            value: meta.totalCarbs,
+            target: meta.carbsTarget,
+            color: const Color(0xFF000000), // Noir
+            isFrench: isFrench,
+          ),
+          const SizedBox(height: 16),
+          _buildMacroBar(
+            label: isFrench ? 'Lipides' : 'Fats',
+            value: meta.totalFats,
+            target: meta.fatsTarget,
+            color: const Color(0xFF000000), // Noir
+            isFrench: isFrench,
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildCalorieLegend(String value, String label) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF0B132B),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 11,
+            color: Color(0xFF64748B),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMacroBar({
+    required String label,
+    required double value,
+    required double target,
+    required Color color,
+    required bool isFrench,
+  }) {
+    final progress = (value / target).clamp(0.0, 1.0);
+    final percentage = (progress * 100).toInt();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Label avec pourcentage et valeurs
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            // Label + pourcentage
+            Row(
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF0B132B),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '$percentage%',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF94A3B8),
+                  ),
+                ),
+              ],
+            ),
+            // Valeurs
+            Text(
+              '${value.toInt()}g / ${target.toInt()}g',
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF0B132B),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        // Barre de progression
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: progress,
+            backgroundColor: const Color(0xFFE2E8F0),
+            valueColor: AlwaysStoppedAnimation<Color>(color),
+            minHeight: 8,
+          ),
+        ),
+      ],
     );
   }
 
@@ -1389,6 +1505,53 @@ class _CircularGaugePainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
 
     final sweepAngle = (score / 100) * 2 * math.pi;
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      -math.pi / 2, // Start at top
+      sweepAngle,
+      false,
+      progressPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+}
+
+// Custom painter pour le cercle de calories
+class _CalorieCirclePainter extends CustomPainter {
+  final double consumed;
+  final double target;
+
+  _CalorieCirclePainter({
+    required this.consumed,
+    required this.target,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2 - 10;
+    final strokeWidth = 12.0;
+
+    // Background circle (gris clair)
+    final backgroundPaint = Paint()
+      ..color = const Color(0xFFE2E8F0)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawCircle(center, radius, backgroundPaint);
+
+    // Progress arc (noir/bleu foncé)
+    final progress = (consumed / target).clamp(0.0, 1.0);
+    final progressPaint = Paint()
+      ..color = const Color(0xFF0B132B)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+
+    final sweepAngle = progress * 2 * math.pi;
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
       -math.pi / 2, // Start at top

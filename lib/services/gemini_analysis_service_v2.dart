@@ -11,7 +11,15 @@ import 'localization_service.dart';
 import 'translations.dart';
 
 class GeminiAnalysisServiceV2 {
-  
+
+  // Corrections pour compenser la sous-estimation de Gemini
+  static const Map<String, double> geminiCorrections = {
+    'calories': 1.25,     // +25% (50% des cas dévient de +20%)
+    'proteines': 1.15,    // +15% (tendance sous-estimation)
+    'glucides': 1.20,     // +20% (sous-estimation fréquente)
+    'lipides': 1.10,      // +10% (moins problématique)
+  };
+
   /// Resize image to optimize for Gemini API (max 1024x1024)
   static Future<Uint8List> _resizeImage(Uint8List imageBytes) async {
     try {
@@ -345,15 +353,25 @@ Be precise with your estimations and only include foods you can confidently iden
         
         for (final foodData in foods) {
           try {
+            // Récupérer les valeurs brutes de Gemini
+            final rawProteins = (foodData['nutrition']['proteins_g'] ?? 0).toDouble();
+            final rawCarbs = (foodData['nutrition']['carbs_g'] ?? 0).toDouble();
+            final rawFats = (foodData['nutrition']['fats_g'] ?? 0).toDouble();
+
+            // Appliquer les corrections pour compenser la sous-estimation de Gemini
+            final correctedProteins = rawProteins * geminiCorrections['proteines']!;
+            final correctedCarbs = rawCarbs * geminiCorrections['glucides']!;
+            final correctedFats = rawFats * geminiCorrections['lipides']!;
+
             final detectedFood = DetectedFood.fromAIResponse(
               name: foodData['name'] ?? 'Unknown food',
               confidence: (foodData['confidence'] ?? 50).toDouble() / 100.0,
               portionGrams: (foodData['portion_grams'] ?? 100).toDouble(),
-              proteins: (foodData['nutrition']['proteins_g'] ?? 0).toDouble(),
-              carbs: (foodData['nutrition']['carbs_g'] ?? 0).toDouble(),
-              fats: (foodData['nutrition']['fats_g'] ?? 0).toDouble(),
+              proteins: correctedProteins,
+              carbs: correctedCarbs,
+              fats: correctedFats,
             );
-            
+
             // Only include foods with reasonable confidence
             if (detectedFood.confidence >= GeminiConfig.confidenceThreshold) {
               detectedFoods.add(detectedFood);
@@ -490,13 +508,23 @@ Be precise with your estimations and only include foods you can confidently iden
             ? (foodData['portion_ml'] ?? 100).toDouble()  // ml for liquids
             : (foodData['portion_grams'] ?? 100).toDouble(); // grams for solids
 
+          // Récupérer les valeurs brutes de Gemini
+          final rawProteins = (foodData['nutrition']['proteins_g'] ?? 0).toDouble();
+          final rawCarbs = (foodData['nutrition']['carbs_g'] ?? 0).toDouble();
+          final rawFats = (foodData['nutrition']['fats_g'] ?? 0).toDouble();
+
+          // Appliquer les corrections pour compenser la sous-estimation de Gemini
+          final correctedProteins = rawProteins * geminiCorrections['proteines']!;
+          final correctedCarbs = rawCarbs * geminiCorrections['glucides']!;
+          final correctedFats = rawFats * geminiCorrections['lipides']!;
+
           final detectedFood = DetectedFood.fromAIResponse(
             name: foodData['name'] ?? 'Unknown food',
             confidence: (foodData['confidence'] ?? 50).toDouble() / 100.0,
             portionGrams: portionGrams,
-            proteins: (foodData['nutrition']['proteins_g'] ?? 0).toDouble(),
-            carbs: (foodData['nutrition']['carbs_g'] ?? 0).toDouble(),
-            fats: (foodData['nutrition']['fats_g'] ?? 0).toDouble(),
+            proteins: correctedProteins,
+            carbs: correctedCarbs,
+            fats: correctedFats,
             isLiquid: isLiquid, // Pass the isLiquid flag
           );
 

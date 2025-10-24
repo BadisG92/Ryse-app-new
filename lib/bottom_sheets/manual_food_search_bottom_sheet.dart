@@ -16,18 +16,24 @@ class ManualFoodSearchBottomSheet extends StatefulWidget {
   final Function(FoodItem foodItem) onFoodCreated;
   final bool isFromDashboard;
   final ScrollController? scrollController;
+  final String? mealName;
+  final String? mealId;
 
   const ManualFoodSearchBottomSheet({
     super.key,
     required this.onFoodCreated,
     this.isFromDashboard = false,
     this.scrollController,
+    this.mealName,
+    this.mealId,
   });
 
   static void show(
     BuildContext context, {
     required Function(FoodItem foodItem) onFoodCreated,
     bool isFromDashboard = false,
+    String? mealName,
+    String? mealId,
   }) {
     showModalBottomSheet(
       context: context,
@@ -42,6 +48,8 @@ class ManualFoodSearchBottomSheet extends StatefulWidget {
           onFoodCreated: onFoodCreated,
           isFromDashboard: isFromDashboard,
           scrollController: scrollController,
+          mealName: mealName,
+          mealId: mealId,
         ),
       ),
     );

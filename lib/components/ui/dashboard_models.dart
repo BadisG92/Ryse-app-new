@@ -545,42 +545,26 @@ class DashboardData {
     ];
   }
 
-  // Actions originales avec pesée pour le dashboard hybrid
+  // Actions originales avec pesée pour le dashboard hybrid - Version rationalisée (3 boutons)
   static List<QuickAction> getOriginalActionsWithWeight(UserProfile profile, String languageCode) {
     return [
-      // 1. Prendre une photo
+      // 1. Ajouter un repas
       QuickAction(
-        id: 'take_photo',
-        label: 'take_photo'.tr(languageCode),
-        icon: (!profile.isPremium && profile.photosUsed >= 3)
-            ? LucideIcons.lock
-            : LucideIcons.camera,
-        isDisabled: !profile.isPremium && profile.photosUsed >= 3,
-        isPremiumRequired: !profile.isPremium && profile.photosUsed >= 3,
+        id: 'add_meal',
+        label: 'add_meal'.tr(languageCode),
+        icon: LucideIcons.utensils,
       ),
-      // 2. AI Chat
-      QuickAction(
-        id: 'ai_chat',
-        label: 'ai_chat'.tr(languageCode),
-        icon: LucideIcons.messageCircle,
-      ),
-      // 3. Entraînement
+      // 2. Entraînement
       QuickAction(
         id: 'workout',
         label: 'start_workout'.tr(languageCode),
         icon: LucideIcons.dumbbell,
       ),
-      // 4. Boire
+      // 3. Boire de l'eau
       QuickAction(
         id: 'add_water',
         label: 'add_water'.tr(languageCode),
         icon: LucideIcons.droplets,
-      ),
-      // 5. Ajouter aliment
-      QuickAction(
-        id: 'add_meal',
-        label: 'add_meal'.tr(languageCode),
-        icon: LucideIcons.utensils,
       ),
     ];
   }

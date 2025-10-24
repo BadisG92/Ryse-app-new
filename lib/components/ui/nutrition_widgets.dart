@@ -7,10 +7,12 @@ import 'custom_button.dart';
 import 'nutrition_models.dart';
 import 'nutrition_cards.dart';
 import '../../screens/ai_scanner_screen.dart';
+import '../../screens/ai_chat_input_screen.dart';
 import '../../screens/barcode_scanner_screen.dart';
 import '../../screens/select_recipe_screen.dart';
 import '../../services/localization_service.dart';
 import '../../services/translations.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../widgets/nutrition/option_widgets.dart';
 import '../../bottom_sheets/editable_food_details_bottom_sheet.dart';
 import '../../bottom_sheets/manual_food_search_bottom_sheet.dart';
@@ -31,14 +33,6 @@ class NutritionQuickActionsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Ordre exact du bottomsheet : saisie manuelle, IA, code-barres, recettes
-    final quickActions = [
-      {'id': 'manual', 'icon': LucideIcons.pencil},
-      {'id': 'camera', 'icon': LucideIcons.camera},
-      {'id': 'barcode', 'icon': LucideIcons.scan},
-      {'id': 'recipe', 'icon': LucideIcons.chefHat},
-    ];
-
     return CustomCard(
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -56,19 +50,19 @@ class NutritionQuickActionsSection extends StatelessWidget {
                 ),
               ),
             ),
-            
+
             const SizedBox(height: 12),
-            
-            // Boutons d'action rapide
+
+            // Boutons d'action rapide - utilise la liste passée en paramètre
             Row(
-              children: quickActions.map((action) {
-                final isLast = action == quickActions.last;
+              children: actions.map((action) {
+                final isLast = action == actions.last;
                 return Expanded(
                   child: Padding(
                     padding: EdgeInsets.only(right: isLast ? 0 : 12),
                     child: Center(
                       child: GestureDetector(
-                        onTap: () => _handleQuickAction(context, action['id'] as String),
+                        onTap: () => _handleQuickAction(context, action.id),
                         child: Container(
                           width: 48,
                           height: 48,
@@ -79,7 +73,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Icon(
-                            action['icon'] as IconData,
+                            action.icon,
                             size: 24,
                             color: Colors.white,
                           ),
@@ -98,22 +92,26 @@ class NutritionQuickActionsSection extends StatelessWidget {
 
   void _handleQuickAction(BuildContext context, String actionId) {
     switch (actionId) {
+      case 'chat':
+        // Flux direct vers sélection de repas pour chat IA
+        _showDirectMealSelectionForChat(context);
+        break;
       case 'manual':
         // Utilise exactement le même flux que dans le journal
         _showManualEntryBottomSheet(context);
         break;
+      case 'photo':
       case 'camera':
-        // Navigation directe vers AIScannerScreen avec flag dashboard
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const AIScannerScreen(isFromDashboard: true),
-          ),
-        );
+        // Flux direct vers sélection de repas pour photo (même principe que barcode)
+        _showDirectMealSelectionForPhoto(context);
         break;
       case 'barcode':
         // Flux direct vers sélection de repas pour scanner (éviter double bottom sheet)
         _showDirectMealSelectionForScanner(context);
+        break;
+      case 'search':
+        // Utilise exactement le même flux que dans le journal
+        _showManualEntryBottomSheet(context);
         break;
       case 'recipe':
         // Flux direct vers sélection de repas pour recettes (même principe que scanner)
@@ -137,13 +135,27 @@ class NutritionQuickActionsSection extends StatelessWidget {
     _showMealSelectionForDetectedFood(context, detectedFood);
   }
 
-  // Méthodes publiques pour accéder aux flux de sélection depuis le dashboard
+  // Méthodes publiques pour accéder aux flux de sélection depuis le dashboard et journal
+  static Future<void> showMealSelectionForManualEntry(BuildContext context) async {
+    await _showMealSelectionFirst(context);
+  }
+
   static Future<void> showMealSelectionForScanner(BuildContext context) async {
     await _showDirectMealSelectionForScanner(context);
   }
 
   static Future<void> showMealSelectionForRecipe(BuildContext context) async {
     await _showDirectMealSelectionForRecipe(context);
+  }
+
+  // Méthode publique pour afficher directement les 5 options pour un nouveau repas (utilisée depuis le journal)
+  static void showAddFoodOptionsForNewMeal(BuildContext context, String mealType) {
+    _showAddFoodOptionsForNewMeal(context, mealType);
+  }
+
+  // Méthode publique pour afficher directement les 5 options pour un repas existant (utilisée depuis le journal)
+  static void showAddFoodOptionsForExistingMeal(BuildContext context, nutrition_models.Meal meal) {
+    _showAddFoodOptionsForDashboard(context, meal);
   }
 
   // Méthodes publiques pour ajouter des aliments depuis le dashboard
@@ -159,12 +171,46 @@ class NutritionQuickActionsSection extends StatelessWidget {
     await _addFoodToNewMealJournalStyle(context, foodItem, mealType);
   }
 
-  // Nouvelle méthode statique pour d'abord sélectionner le repas depuis le dashboard
+  // Nouvelle méthode statique pour d'abord sélectionner le repas depuis le dashboard (recherche manuelle)
   static Future<void> _showMealSelectionFirst(BuildContext context) async {
     // Récupérer les vrais repas du jour depuis la base de données
     final user = AuthService().currentUser;
     List<nutrition_models.Meal> existingMeals = [];
-    
+
+    if (user != null) {
+      try {
+        final meals = await FoodEntriesService.getFoodEntriesForDate(user.id, DateTime.now());
+        existingMeals = meals.where((meal) => meal.items.isNotEmpty).toList();
+      } catch (e) {
+        print('Erreur lors de la récupération des repas existants: $e');
+      }
+    }
+
+    // Utiliser directement MealSelectionBottomSheet avec les bonnes clés
+    MealSelectionBottomSheet.show(
+      context,
+      titleKey: 'add_search_meal_title',
+      subtitleKey: 'add_search_meal_subtitle',
+      existingMeals: existingMeals,
+      onExistingMealSelected: (meal) {
+        print('🎯 Repas existant sélectionné: ${meal.id}');
+        // Afficher les 5 options pour choisir le mode d'ajout
+        _showAddFoodOptionsForDashboard(context, meal);
+      },
+      onCreateNewMeal: () {
+        print('🔄 Nouveau repas demandé');
+        // Afficher la sélection de type de nouveau repas
+        _showNewMealTypeSelection(context);
+      },
+    );
+  }
+
+  // Ancienne implémentation - À SUPPRIMER SI PLUS UTILISÉE
+  static Future<void> _showMealSelectionFirst_OLD(BuildContext context) async {
+    // Récupérer les vrais repas du jour depuis la base de données
+    final user = AuthService().currentUser;
+    List<nutrition_models.Meal> existingMeals = [];
+
     if (user != null) {
       try {
         final meals = await FoodEntriesService.getFoodEntriesForDate(user.id, DateTime.now());
@@ -845,8 +891,8 @@ class NutritionQuickActionsSection extends StatelessWidget {
                   child: GestureDetector(
                     onTap: () {
                       Navigator.pop(context);
-                      // Aller directement à la recherche manuelle puisqu'on a déjà choisi "ajout manuel"
-                      _showManualFoodSearchForMeal(context, meal);
+                      // Afficher les 5 options d'ajout pour ce repas existant
+                      _showAddFoodOptionsForExistingMeal(context, meal);
                     },
                     child: Container(
                       width: double.infinity,
@@ -919,23 +965,23 @@ class NutritionQuickActionsSection extends StatelessWidget {
   // Méthode statique pour afficher la sélection de nouveau type de repas - FLUX SIMPLIFIÉ COMME LE JOURNAL
   static void _showNewMealTypeSelection(BuildContext context) {
     print('🔄 _showNewMealTypeSelection appelée');
-    
+
     // Stocker une référence au Navigator pour éviter les problèmes de context
     final navigator = Navigator.of(context);
-    
+
     NewMealTypeBottomSheet.show(
       context,
       onMealTypeSelected: (mealType, time) {
         print('🎯 Type de repas sélectionné: $mealType');
-        
+
         // Le NewMealTypeBottomSheet fait déjà Navigator.pop() dans ses options
-        // Attendre que l'animation se termine puis ouvrir le nouvel écran
+        // Attendre que l'animation se termine puis ouvrir le bottom sheet avec les 5 options
         Future.delayed(const Duration(milliseconds: 300), () {
           // Obtenir le context depuis le navigator stocké
           final newContext = navigator.context;
           if (newContext.mounted) {
-            print('🔍 Ouverture recherche manuelle pour nouveau repas avec navigator context');
-            _showManualFoodSearchForNewMeal(newContext, mealType);
+            print('🔍 Ouverture des options d\'ajout pour nouveau repas');
+            _showAddFoodOptionsForNewMeal(newContext, mealType);
           } else {
             print('❌ Navigator context invalide');
           }
@@ -962,7 +1008,8 @@ class NutritionQuickActionsSection extends StatelessWidget {
     // Utiliser directement MealSelectionBottomSheet pour éviter double bottom sheet
     MealSelectionBottomSheet.show(
       context,
-      foodName: "recette",
+      titleKey: 'add_recipe_meal_title',
+      subtitleKey: 'add_recipe_meal_subtitle',
       existingMeals: existingMeals,
       onExistingMealSelected: (meal) {
         print('🎯 Repas existant sélectionné pour recette: ${meal.id}');
@@ -995,7 +1042,8 @@ class NutritionQuickActionsSection extends StatelessWidget {
     // Utiliser directement MealSelectionBottomSheet pour éviter double bottom sheet
     MealSelectionBottomSheet.show(
       context,
-      foodName: "produit scanné",
+      titleKey: 'add_barcode_meal_title',
+      subtitleKey: 'add_barcode_meal_subtitle',
       existingMeals: existingMeals,
       onExistingMealSelected: (meal) {
         print('🎯 Repas existant sélectionné pour scanner: ${meal.id}');
@@ -1006,6 +1054,126 @@ class NutritionQuickActionsSection extends StatelessWidget {
         print('🔄 Nouveau repas demandé pour scanner');
         // Afficher la sélection de type de nouveau repas
         _showNewMealTypeSelectionForScanner(context);
+      },
+    );
+  }
+
+  // Méthode directe pour sélection de repas photo (même pattern que scanner/barcode)
+  static Future<void> _showDirectMealSelectionForPhoto(BuildContext context) async {
+    // Récupérer les vrais repas du jour depuis la base de données
+    final user = AuthService().currentUser;
+    List<nutrition_models.Meal> existingMeals = [];
+
+    if (user != null) {
+      try {
+        final meals = await FoodEntriesService.getFoodEntriesForDate(user.id, DateTime.now());
+        existingMeals = meals.where((meal) => meal.items.isNotEmpty).toList();
+      } catch (e) {
+        print('Erreur lors de la récupération des repas existants: $e');
+      }
+    }
+
+    // Utiliser directement MealSelectionBottomSheet pour éviter double bottom sheet
+    MealSelectionBottomSheet.show(
+      context,
+      titleKey: 'add_photo_meal_title',
+      subtitleKey: 'add_photo_meal_subtitle',
+      existingMeals: existingMeals,
+      onExistingMealSelected: (meal) {
+        print('🎯 Repas existant sélectionné pour photo: ${meal.id}');
+        // Ouvrir directement le scanner photo avec le repas pré-sélectionné
+        _showPhotoScannerForMeal(context, meal);
+      },
+      onCreateNewMeal: () {
+        print('🔄 Nouveau repas demandé pour photo');
+        // Afficher la sélection de type de nouveau repas
+        _showNewMealTypeSelectionForPhoto(context);
+      },
+    );
+  }
+
+  // Méthode directe pour sélection de repas chat IA (même pattern que scanner/recette)
+  static Future<void> _showDirectMealSelectionForChat(BuildContext context) async {
+    // Récupérer les vrais repas du jour depuis la base de données
+    final user = AuthService().currentUser;
+    List<nutrition_models.Meal> existingMeals = [];
+
+    if (user != null) {
+      try {
+        final meals = await FoodEntriesService.getFoodEntriesForDate(user.id, DateTime.now());
+        existingMeals = meals.where((meal) => meal.items.isNotEmpty).toList();
+      } catch (e) {
+        print('Erreur lors de la récupération des repas existants: $e');
+      }
+    }
+
+    // Utiliser directement MealSelectionBottomSheet pour éviter double bottom sheet
+    MealSelectionBottomSheet.show(
+      context,
+      titleKey: 'add_chat_meal_title',
+      subtitleKey: 'add_chat_meal_subtitle',
+      existingMeals: existingMeals,
+      onExistingMealSelected: (meal) {
+        print('🎯 Repas existant sélectionné pour chat IA: ${meal.id}');
+        // Ouvrir directement le chat IA avec le repas pré-sélectionné
+        _showChatForMeal(context, meal);
+      },
+      onCreateNewMeal: () {
+        print('🔄 Nouveau repas demandé pour chat IA');
+        // Afficher la sélection de type de nouveau repas
+        _showNewMealTypeSelectionForChat(context);
+      },
+    );
+  }
+
+  // Méthode statique pour afficher le chat IA avec un repas existant pré-sélectionné
+  static void _showChatForMeal(BuildContext context, nutrition_models.Meal selectedMeal) {
+    // Ouvrir le chat IA avec le repas pré-sélectionné
+    AIChatInputScreen.showAsBottomSheet(
+      context,
+      isFromDashboard: true,
+      mealName: selectedMeal.name,
+      mealId: selectedMeal.id,
+    );
+  }
+
+  // Méthode pour sélection de nouveau type de repas puis ouvrir le chat IA
+  static void _showNewMealTypeSelectionForChat(BuildContext context) {
+    print('🔄 _showNewMealTypeSelectionForChat appelée');
+
+    final navigator = Navigator.of(context);
+
+    NewMealTypeBottomSheet.show(
+      context,
+      onMealTypeSelected: (mealType, time) async {
+        print('🎯 Type de repas sélectionné pour chat IA: $mealType');
+
+        // Générer un ID de repas pour le chat
+        final user = Supabase.instance.client.auth.currentUser;
+        if (user == null) return;
+
+        final mealId = await FoodEntriesService.generateMealId(
+          userId: user.id,
+          mealName: mealType,
+          forDate: DateTime.now(),
+        );
+
+        // Attendre que l'animation se termine puis ouvrir le chat IA
+        Future.delayed(const Duration(milliseconds: 300), () {
+          final newContext = navigator.context;
+          if (newContext.mounted) {
+            print('🔍 Ouverture chat IA avec nouveau type de repas');
+            // Ouvrir le chat IA
+            AIChatInputScreen.showAsBottomSheet(
+              newContext,
+              isFromDashboard: true,
+              mealName: mealType,
+              mealId: mealId ?? 'meal_${DateTime.now().millisecondsSinceEpoch}',
+            );
+          } else {
+            print('❌ Navigator context invalide pour chat IA');
+          }
+        });
       },
     );
   }
@@ -1301,17 +1469,17 @@ class NutritionQuickActionsSection extends StatelessWidget {
     );
   }
 
-  // Méthode pour sélection de nouveau type de repas puis ouvrir le scanner
+  // Méthode pour sélection de nouveau type de repas puis ouvrir le scanner barcode
   static void _showNewMealTypeSelectionForScanner(BuildContext context) {
     print('🔄 _showNewMealTypeSelectionForScanner appelée');
-    
+
     final navigator = Navigator.of(context);
-    
+
     NewMealTypeBottomSheet.show(
       context,
       onMealTypeSelected: (mealType, time) {
         print('🎯 Type de repas sélectionné pour scanner: $mealType');
-        
+
         // Attendre que l'animation se termine puis ouvrir le scanner
         Future.delayed(const Duration(milliseconds: 300), () {
           final newContext = navigator.context;
@@ -1331,6 +1499,39 @@ class NutritionQuickActionsSection extends StatelessWidget {
             );
           } else {
             print('❌ Navigator context invalide pour scanner');
+          }
+        });
+      },
+    );
+  }
+
+  // Méthode pour sélection de nouveau type de repas puis ouvrir le scanner photo
+  static void _showNewMealTypeSelectionForPhoto(BuildContext context) {
+    print('🔄 _showNewMealTypeSelectionForPhoto appelée');
+
+    final navigator = Navigator.of(context);
+
+    NewMealTypeBottomSheet.show(
+      context,
+      onMealTypeSelected: (mealType, time) {
+        print('🎯 Type de repas sélectionné pour photo: $mealType');
+
+        // Attendre que l'animation se termine puis ouvrir le scanner photo
+        Future.delayed(const Duration(milliseconds: 300), () {
+          final newContext = navigator.context;
+          if (newContext.mounted) {
+            print('🔍 Ouverture scanner photo avec nouveau type de repas');
+            // Ouvrir le scanner photo - le flux de sélection de repas se fera dans AIAnalysisScreen
+            Navigator.push(
+              newContext,
+              MaterialPageRoute(
+                builder: (context) => const AIScannerScreen(
+                  isFromDashboard: true,
+                ),
+              ),
+            );
+          } else {
+            print('❌ Navigator context invalide pour scanner photo');
           }
         });
       },
@@ -1394,83 +1595,90 @@ class NutritionQuickActionsSection extends StatelessWidget {
               ),
               
               const SizedBox(height: 24),
-              
-              // Options d'ajout (identiques au journal)
-              _buildFoodOption(
-                context,
-                icon: LucideIcons.pencil,
-                title: 'Saisie manuelle',
-                subtitle: 'Rechercher et ajouter manuellement',
-                onTap: () {
-                  Navigator.pop(context);
-                  _showManualFoodSearchForMeal(context, selectedMeal);
-                },
+
+              // Options d'ajout - Ordre: Chat, Photo, Code-barre, Recherche, Recettes
+              // Option 1: Chat avec Ryze
+              Consumer<LocalizationService>(
+                builder: (context, locService, child) => _buildFoodOption(
+                  context,
+                  icon: LucideIcons.messageCircle,
+                  title: 'describe_meal'.tr(locService.currentLanguageCode),
+                  subtitle: 'ai_chat_subtitle'.tr(locService.currentLanguageCode),
+                  onTap: () {
+                    Navigator.pop(context);
+                    // Ouvrir le chat IA avec le repas existant
+                    AIChatInputScreen.showAsBottomSheet(
+                      context,
+                      isFromDashboard: true,
+                      mealName: selectedMeal.name,
+                      mealId: selectedMeal.id,
+                    );
+                  },
+                ),
               ),
-              
+
               const SizedBox(height: 12),
-              
-              _buildFoodOption(
-                context,
-                icon: LucideIcons.camera,
-                title: 'Scanner avec l\'IA',
-                subtitle: 'Prenez une photo de votre plat',
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const AIScannerScreen(
-                        isFromDashboard: true,
-                      ),
-                    ),
-                  );
-                },
+
+              // Option 2: Scanner avec l'IA (photo)
+              Consumer<LocalizationService>(
+                builder: (context, locService, child) => _buildFoodOption(
+                  context,
+                  icon: LucideIcons.camera,
+                  title: 'scan_dish'.tr(locService.currentLanguageCode),
+                  subtitle: 'scan_dish_subtitle'.tr(locService.currentLanguageCode),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showPhotoScannerForMeal(context, selectedMeal);
+                  },
+                ),
               ),
-              
+
               const SizedBox(height: 12),
-              
-              _buildFoodOption(
-                context,
-                icon: LucideIcons.scan,
-                title: 'Code-barres',
-                subtitle: 'Scanner le code-barres du produit',
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => BarcodeScannerScreen(
-                        isFromDashboard: true,
-                        onFoodScanned: (foodItem) {
-                          _addFoodToSelectedMeal(context, foodItem, selectedMeal);
-                        },
-                      ),
-                    ),
-                  );
-                },
+
+              // Option 3: Code-barres
+              Consumer<LocalizationService>(
+                builder: (context, locService, child) => _buildFoodOption(
+                  context,
+                  icon: LucideIcons.scan,
+                  title: 'scan_barcode'.tr(locService.currentLanguageCode),
+                  subtitle: 'scan_barcode_subtitle'.tr(locService.currentLanguageCode),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showScannerForMeal(context, selectedMeal);
+                  },
+                ),
               ),
-              
+
               const SizedBox(height: 12),
-              
-              _buildFoodOption(
-                context,
-                icon: LucideIcons.chefHat,
-                title: 'Mes recettes',
-                subtitle: 'Choisir parmi vos recettes sauvegardées',
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => SelectRecipeScreen(
-                        isFromDashboard: true,
-                        onRecipeSelected: (recipe) {
-                          _addFoodToSelectedMeal(context, recipe, selectedMeal);
-                        },
-                      ),
-                    ),
-                  );
-                },
+
+              // Option 4: Recherche manuelle
+              Consumer<LocalizationService>(
+                builder: (context, locService, child) => _buildFoodOption(
+                  context,
+                  icon: LucideIcons.search,
+                  title: 'search_food'.tr(locService.currentLanguageCode),
+                  subtitle: 'manual_entry_subtitle'.tr(locService.currentLanguageCode),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showManualFoodSearchForMeal(context, selectedMeal);
+                  },
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // Option 5: Mes recettes
+              Consumer<LocalizationService>(
+                builder: (context, locService, child) => _buildFoodOption(
+                  context,
+                  icon: LucideIcons.chefHat,
+                  title: 'my_recipes'.tr(locService.currentLanguageCode),
+                  subtitle: 'choose_from_saved_recipes'.tr(locService.currentLanguageCode),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showRecipeSelectionForMeal(context, selectedMeal);
+                  },
+                ),
               ),
               
               const SizedBox(height: 24),
@@ -1564,7 +1772,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
     );
   }
 
-  // Méthode statique pour afficher le scanner avec un repas existant pré-sélectionné
+  // Méthode statique pour afficher le scanner barcode avec un repas existant pré-sélectionné
   static void _showScannerForMeal(BuildContext context, nutrition_models.Meal selectedMeal) {
     Navigator.push(
       context,
@@ -1575,6 +1783,20 @@ class NutritionQuickActionsSection extends StatelessWidget {
             // Maintenant qu'on a l'aliment et le repas, on peut les ajouter
             _addFoodToSelectedMeal(context, foodItem, selectedMeal);
           },
+        ),
+      ),
+    );
+  }
+
+  // Méthode statique pour afficher le scanner photo avec un repas existant pré-sélectionné
+  static void _showPhotoScannerForMeal(BuildContext context, nutrition_models.Meal selectedMeal) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AIScannerScreen(
+          isFromDashboard: false, // false car on a déjà le repas sélectionné
+          mealName: selectedMeal.name,
+          mealId: selectedMeal.id,
         ),
       ),
     );
@@ -1653,85 +1875,292 @@ class NutritionQuickActionsSection extends StatelessWidget {
               ),
               
               const SizedBox(height: 24),
-              
+
               // Options d'ajout pour nouveau repas
-              _buildFoodOption(
-                context,
-                icon: LucideIcons.pencil,
-                title: 'Saisie manuelle',
-                subtitle: 'Rechercher et ajouter manuellement',
-                onTap: () {
-                  Navigator.pop(context);
-                  _showManualFoodSearchForNewMeal(context, mealType);
-                },
-              ),
-              
-              const SizedBox(height: 12),
-              
-              _buildFoodOption(
-                context,
-                icon: LucideIcons.camera,
-                title: 'Scanner avec l\'IA',
-                subtitle: 'Prenez une photo de votre plat',
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const AIScannerScreen(
+              // Option 1: Chat avec Ryze (nouvelle)
+              Consumer<LocalizationService>(
+                builder: (context, locService, child) => _buildFoodOption(
+                  context,
+                  icon: LucideIcons.messageCircle,
+                  title: 'describe_meal'.tr(locService.currentLanguageCode),
+                  subtitle: 'ai_chat_subtitle'.tr(locService.currentLanguageCode),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    // Générer un ID de repas pour le chat
+                    final user = Supabase.instance.client.auth.currentUser;
+                    if (user == null) return;
+
+                    final mealId = await FoodEntriesService.generateMealId(
+                      userId: user.id,
+                      mealName: mealType,
+                      forDate: DateTime.now(),
+                    );
+
+                    // Ouvrir le chat IA
+                    if (context.mounted) {
+                      AIChatInputScreen.showAsBottomSheet(
+                        context,
                         isFromDashboard: true,
-                      ),
-                    ),
-                  );
-                },
+                        mealName: mealType,
+                        mealId: mealId ?? 'meal_${DateTime.now().millisecondsSinceEpoch}',
+                      );
+                    }
+                  },
+                ),
               ),
-              
+
               const SizedBox(height: 12),
-              
-              _buildFoodOption(
-                context,
-                icon: LucideIcons.scan,
-                title: 'Code-barres',
-                subtitle: 'Scanner le code-barres du produit',
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => BarcodeScannerScreen(
-                        isFromDashboard: true,
-                        onFoodScanned: (foodItem) {
-                          _addFoodToNewMealJournalStyle(context, foodItem, mealType);
-                        },
+
+              // Option 2: Scanner avec IA (photo)
+              Consumer<LocalizationService>(
+                builder: (context, locService, child) => _buildFoodOption(
+                  context,
+                  icon: LucideIcons.camera,
+                  title: 'scan_dish'.tr(locService.currentLanguageCode),
+                  subtitle: 'scan_dish_subtitle'.tr(locService.currentLanguageCode),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AIScannerScreen(
+                          isFromDashboard: true,
+                        ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
-              
+
               const SizedBox(height: 12),
-              
-              _buildFoodOption(
-                context,
-                icon: LucideIcons.chefHat,
-                title: 'Mes recettes',
-                subtitle: 'Choisir parmi vos recettes sauvegardées',
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => SelectRecipeScreen(
-                        isFromDashboard: true,
-                        onRecipeSelected: (recipe) {
-                          _addFoodToNewMealJournalStyle(context, recipe, mealType);
-                        },
+
+              // Option 3: Code-barres
+              Consumer<LocalizationService>(
+                builder: (context, locService, child) => _buildFoodOption(
+                  context,
+                  icon: LucideIcons.scan,
+                  title: 'scan_barcode'.tr(locService.currentLanguageCode),
+                  subtitle: 'scan_barcode_subtitle'.tr(locService.currentLanguageCode),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => BarcodeScannerScreen(
+                          isFromDashboard: true,
+                          onFoodScanned: (foodItem) {
+                            _addFoodToNewMealJournalStyle(context, foodItem, mealType);
+                          },
+                        ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // Option 4: Saisie manuelle
+              Consumer<LocalizationService>(
+                builder: (context, locService, child) => _buildFoodOption(
+                  context,
+                  icon: LucideIcons.search,
+                  title: 'search_food'.tr(locService.currentLanguageCode),
+                  subtitle: 'manual_entry_subtitle'.tr(locService.currentLanguageCode),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showManualFoodSearchForNewMeal(context, mealType);
+                  },
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // Option 5: Mes recettes
+              Consumer<LocalizationService>(
+                builder: (context, locService, child) => _buildFoodOption(
+                  context,
+                  icon: LucideIcons.chefHat,
+                  title: 'my_recipes'.tr(locService.currentLanguageCode),
+                  subtitle: 'choose_from_saved_recipes'.tr(locService.currentLanguageCode),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => SelectRecipeScreen(
+                          isFromDashboard: true,
+                          onRecipeSelected: (recipe) {
+                            _addFoodToNewMealJournalStyle(context, recipe, mealType);
+                          },
+                        ),
+                      ),
+                    );
+                  },
+                ),
               ),
               
+              const SizedBox(height: 24),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Méthode statique pour afficher les options d'ajout pour un repas existant
+  static void _showAddFoodOptionsForExistingMeal(BuildContext context, nutrition_models.Meal meal) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle bar
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE5E5E5),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              // Titre
+              Consumer<LocalizationService>(
+                builder: (context, locService, child) => Text(
+                  'add_food'.tr(locService.currentLanguageCode),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1A1A1A),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              Consumer<LocalizationService>(
+                builder: (context, locService, child) => Text(
+                  'choose_how_to_add_food'.tr(locService.currentLanguageCode),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF64748B),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // Options d'ajout pour repas existant
+              // Option 1: Chat avec Ryze
+              Consumer<LocalizationService>(
+                builder: (context, locService, child) => _buildFoodOption(
+                  context,
+                  icon: LucideIcons.messageCircle,
+                  title: 'describe_meal'.tr(locService.currentLanguageCode),
+                  subtitle: 'ai_chat_subtitle'.tr(locService.currentLanguageCode),
+                  onTap: () {
+                    Navigator.pop(context);
+                    // Ouvrir le chat IA avec le repas existant
+                    AIChatInputScreen.showAsBottomSheet(
+                      context,
+                      isFromDashboard: true,
+                      mealName: meal.name,
+                      mealId: meal.id ?? 'meal_${DateTime.now().millisecondsSinceEpoch}',
+                    );
+                  },
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // Option 2: Scanner avec IA (photo)
+              Consumer<LocalizationService>(
+                builder: (context, locService, child) => _buildFoodOption(
+                  context,
+                  icon: LucideIcons.camera,
+                  title: 'scan_dish'.tr(locService.currentLanguageCode),
+                  subtitle: 'scan_dish_subtitle'.tr(locService.currentLanguageCode),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showScannerForMeal(context, meal);
+                  },
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // Option 3: Code-barres
+              Consumer<LocalizationService>(
+                builder: (context, locService, child) => _buildFoodOption(
+                  context,
+                  icon: LucideIcons.scan,
+                  title: 'scan_barcode'.tr(locService.currentLanguageCode),
+                  subtitle: 'scan_barcode_subtitle'.tr(locService.currentLanguageCode),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => BarcodeScannerScreen(
+                          isFromDashboard: true,
+                          onFoodScanned: (foodItem) {
+                            _addFoodToSelectedMeal(context, foodItem, meal);
+                          },
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // Option 4: Saisie manuelle
+              Consumer<LocalizationService>(
+                builder: (context, locService, child) => _buildFoodOption(
+                  context,
+                  icon: LucideIcons.search,
+                  title: 'search_food'.tr(locService.currentLanguageCode),
+                  subtitle: 'manual_entry_subtitle'.tr(locService.currentLanguageCode),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showManualFoodSearchForMeal(context, meal);
+                  },
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // Option 5: Mes recettes
+              Consumer<LocalizationService>(
+                builder: (context, locService, child) => _buildFoodOption(
+                  context,
+                  icon: LucideIcons.chefHat,
+                  title: 'my_recipes'.tr(locService.currentLanguageCode),
+                  subtitle: 'choose_from_saved_recipes'.tr(locService.currentLanguageCode),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showRecipeSelectionForMeal(context, meal);
+                  },
+                ),
+              ),
+
               const SizedBox(height: 24),
             ],
           ),

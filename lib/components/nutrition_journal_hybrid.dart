@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'ui/custom_card.dart';
+import 'ui/nutrition_widgets.dart';
 import '../models/nutrition_models.dart';
 import '../widgets/nutrition/meal_card.dart';
 import '../widgets/nutrition/option_widgets.dart';
@@ -786,8 +787,9 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
                           child: MealCard(
                             meal: meal,
                             onAddFood: () {
-                                  _selectedMealIndex = originalIndex;
-                              _showAddFoodBottomSheet();
+                              _selectedMealIndex = originalIndex;
+                              // Afficher directement les 5 options pour ce repas existant
+                              NutritionQuickActionsSection.showAddFoodOptionsForExistingMeal(context, meal);
                             },
                                 onFoodRemoved: () {
                                   // ✅ OPTIMISATION: Ne pas recharger ici, le stream listener s'en charge automatiquement
@@ -1042,6 +1044,11 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
   // ✅ Utilise les widgets factorés pour la cohérence et la réutilisabilité
   
   void _showAddFoodBottomSheet() {
+    // Utiliser le même flux que le dashboard : sélection de repas PUIS les 5 options
+    NutritionQuickActionsSection.showMealSelectionForManualEntry(context);
+  }
+
+  void _showAddFoodBottomSheet_OLD() {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -1221,10 +1228,10 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
       (String mealType) async {
         // Utiliser la méthode de sélection avec pré-génération d'ID
         await _selectNewMealType(mealType);
-        
-        // Ouvrir ensuite le bottom sheet d'ajout d'aliment
+
+        // Afficher directement les 5 options pour le nouveau repas
         Future.delayed(const Duration(milliseconds: 300), () {
-          _showAddFoodBottomSheet();
+          NutritionQuickActionsSection.showAddFoodOptionsForNewMeal(context, mealType);
         });
       },
     );
