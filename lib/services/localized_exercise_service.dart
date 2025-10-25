@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
 import 'localization_service.dart';
@@ -44,7 +45,7 @@ class LocalizedExerciseService {
       return await query.order('name$suffix');
       
     } catch (e) {
-      print('Erreur lors de la récupération des exercices: $e');
+      debugPrint('Erreur lors de la récupération des exercices: $e');
       return [];
     }
   }
@@ -70,7 +71,7 @@ class LocalizedExerciseService {
           .order('sort_order');
       
     } catch (e) {
-      print('Erreur lors de la récupération des activités cardio: $e');
+      debugPrint('Erreur lors de la récupération des activités cardio: $e');
       return [];
     }
   }
@@ -99,7 +100,7 @@ class LocalizedExerciseService {
           .order('sort_order');
       
     } catch (e) {
-      print('Erreur lors de la récupération des formats cardio: $e');
+      debugPrint('Erreur lors de la récupération des formats cardio: $e');
       return [];
     }
   }
@@ -141,7 +142,7 @@ class LocalizedExerciseService {
       return await query.order('average_rating', ascending: false);
       
     } catch (e) {
-      print('Erreur lors de la récupération des templates: $e');
+      debugPrint('Erreur lors de la récupération des templates: $e');
       return [];
     }
   }
@@ -175,7 +176,7 @@ class LocalizedExerciseService {
           .order('order_index');
       
     } catch (e) {
-      print('Erreur lors de la récupération des exercices du template: $e');
+      debugPrint('Erreur lors de la récupération des exercices du template: $e');
       return [];
     }
   }
@@ -218,7 +219,7 @@ class LocalizedExerciseService {
       return await query.order('community_rating', ascending: false);
       
     } catch (e) {
-      print('Erreur lors de la récupération des workouts HIIT: $e');
+      debugPrint('Erreur lors de la récupération des workouts HIIT: $e');
       return [];
     }
   }
@@ -271,7 +272,7 @@ class LocalizedExerciseService {
       return result;
       
     } catch (e) {
-      print('Erreur lors de la récupération des détails de l\'exercice: $e');
+      debugPrint('Erreur lors de la récupération des détails de l\'exercice: $e');
       return null;
     }
   }

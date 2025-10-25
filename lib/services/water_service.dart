@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
 import 'dashboard_service.dart';
@@ -43,10 +44,10 @@ class WaterService {
         'consumed_at': (consumedAt ?? DateTime.now()).toIso8601String(),
       }).then((_) {
         // Synchronisation ultra-rapide après succès
-        print('✅ Eau ajoutée en base - sync rapide');
+        debugPrint('✅ Eau ajoutée en base - sync rapide');
         DashboardService.invalidateAndRefreshGoals();
       }).catchError((error) {
-        print('❌ Erreur ajout eau: $error');
+        debugPrint('❌ Erreur ajout eau: $error');
         // Rollback si erreur
         GlobalStateManager.instance.updateWater(-amount / 1000.0); // Rollback GlobalState
         OptimisticUpdateService.rollback();
@@ -54,7 +55,7 @@ class WaterService {
 
       return true;
     } catch (e) {
-      print('Erreur lors de l\'ajout d\'eau: $e');
+      debugPrint('Erreur lors de l\'ajout d\'eau: $e');
       return false;
     }
   }
@@ -92,7 +93,7 @@ class WaterService {
 
       return null;
     } catch (e) {
-      print('Erreur lors de la récupération du progrès: $e');
+      debugPrint('Erreur lors de la récupération du progrès: $e');
       return null;
     }
   }
@@ -117,7 +118,7 @@ class WaterService {
 
       return response.map((data) => WaterEntry.fromJson(data)).toList();
     } catch (e) {
-      print('Erreur lors de la récupération des entrées: $e');
+      debugPrint('Erreur lors de la récupération des entrées: $e');
       return [];
     }
   }
@@ -143,7 +144,7 @@ class WaterService {
 
       return response.map((data) => DailyWaterSummary.fromJson(data)).toList();
     } catch (e) {
-      print('Erreur lors de la récupération de l\'historique: $e');
+      debugPrint('Erreur lors de la récupération de l\'historique: $e');
       return [];
     }
   }
@@ -159,11 +160,11 @@ class WaterService {
 
       // Suppression en base (non-bloquant)
       _supabase.from('water_entries').delete().eq('id', entryId).then((_) {
-        print('✅ Eau supprimée de la base');
+        debugPrint('✅ Eau supprimée de la base');
         // Sync complète après succès
         DashboardService.invalidateAndRefreshGoals();
       }).catchError((error) {
-        print('❌ Erreur suppression eau: $error');
+        debugPrint('❌ Erreur suppression eau: $error');
         if (amountToRemove != null) {
           GlobalStateManager.instance.updateWater(amountToRemove / 1000.0); // Rollback
         }
@@ -172,7 +173,7 @@ class WaterService {
 
       return true;
     } catch (e) {
-      print('Erreur lors de la suppression: $e');
+      debugPrint('Erreur lors de la suppression: $e');
       return false;
     }
   }
@@ -193,7 +194,7 @@ class WaterService {
 
       return true;
     } catch (e) {
-      print('Erreur lors de la mise à jour de l\'objectif: $e');
+      debugPrint('Erreur lors de la mise à jour de l\'objectif: $e');
       return false;
     }
   }
@@ -212,7 +213,7 @@ class WaterService {
 
       return response['daily_water_goal'] ?? 2000;
     } catch (e) {
-      print('Erreur lors de la récupération de l\'objectif: $e');
+      debugPrint('Erreur lors de la récupération de l\'objectif: $e');
       return 2000; // Valeur par défaut
     }
   }

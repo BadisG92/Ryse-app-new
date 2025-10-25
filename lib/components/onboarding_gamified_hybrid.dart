@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -920,9 +921,9 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
       await prefs.setInt('daily_fat', macros['fat']!);
       await prefs.setBool('onboarding_completed', true);
       
-      print('✅ Données d\'onboarding sauvegardées avec succès');
+      debugPrint('✅ Données d\'onboarding sauvegardées avec succès');
     } catch (e) {
-      print('❌ Erreur lors de la sauvegarde: $e');
+      debugPrint('❌ Erreur lors de la sauvegarde: $e');
       // En cas d'erreur, sauvegarder au moins en local
       await prefs.setInt('daily_calories', calories);
       await prefs.setInt('daily_protein', macros['protein']!);

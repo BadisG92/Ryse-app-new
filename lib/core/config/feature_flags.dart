@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 /// Configuration des feature flags pour migration progressive
 /// Permet d'activer/désactiver les nouvelles fonctionnalités en toute sécurité
 class FeatureFlags {
@@ -72,7 +73,7 @@ class FeatureFlags {
   /// Log conditionnel basé sur les feature flags
   static void debugLog(String message) {
     if (ENABLE_DEBUG_LOGS) {
-      print('🔧 [FEATURE] $message');
+      debugPrint('🔧 [FEATURE] $message');
     }
   }
 
@@ -88,16 +89,16 @@ class FeatureFlags {
   static void printAllFlags() {
     if (!ENABLE_DEBUG_LOGS) return;
 
-    print('🚩 FEATURE FLAGS ACTUELS:');
-    print('   📊 Dashboard optimistic: $USE_OPTIMISTIC_DASHBOARD');
-    print('   💧 Water optimistic: $USE_OPTIMISTIC_WATER');
-    print('   🍎 Food optimistic: $USE_OPTIMISTIC_FOOD');
-    print('   🏋️ Workout optimistic: $USE_OPTIMISTIC_WORKOUT');
-    print('   ⚖️ Weight optimistic: $USE_OPTIMISTIC_WEIGHT');
-    print('   🔧 Debug logs: $ENABLE_DEBUG_LOGS');
-    print('   🧹 Clear cache: $CLEAR_CACHE_ON_START');
-    print('   ⏱️ Network delay: $SIMULATE_NETWORK_DELAY (${NETWORK_DELAY_MS}ms)');
-    print('   🔄 Legacy fallback: $USE_LEGACY_FALLBACK');
-    print('   ⏳ Pending indicators: $SHOW_PENDING_INDICATORS');
+    debugPrint('🚩 FEATURE FLAGS ACTUELS:');
+    debugPrint('   📊 Dashboard optimistic: $USE_OPTIMISTIC_DASHBOARD');
+    debugPrint('   💧 Water optimistic: $USE_OPTIMISTIC_WATER');
+    debugPrint('   🍎 Food optimistic: $USE_OPTIMISTIC_FOOD');
+    debugPrint('   🏋️ Workout optimistic: $USE_OPTIMISTIC_WORKOUT');
+    debugPrint('   ⚖️ Weight optimistic: $USE_OPTIMISTIC_WEIGHT');
+    debugPrint('   🔧 Debug logs: $ENABLE_DEBUG_LOGS');
+    debugPrint('   🧹 Clear cache: $CLEAR_CACHE_ON_START');
+    debugPrint('   ⏱️ Network delay: $SIMULATE_NETWORK_DELAY (${NETWORK_DELAY_MS}ms)');
+    debugPrint('   🔄 Legacy fallback: $USE_LEGACY_FALLBACK');
+    debugPrint('   ⏳ Pending indicators: $SHOW_PENDING_INDICATORS');
   }
 }

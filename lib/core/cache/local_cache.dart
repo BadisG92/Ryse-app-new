@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../components/ui/dashboard_models.dart';
@@ -39,9 +40,9 @@ class LocalCache {
       await prefs.setStringList(_dailyGoalsKey, jsonList);
       await prefs.setInt(_cacheTimestampKey, DateTime.now().millisecondsSinceEpoch);
 
-      print('💾 Cache local: Objectifs sauvegardés (${goals.length} items)');
+      debugPrint('💾 Cache local: Objectifs sauvegardés (${goals.length} items)');
     } catch (e) {
-      print('❌ Erreur sauvegarde cache goals: $e');
+      debugPrint('❌ Erreur sauvegarde cache goals: $e');
     }
   }
 
@@ -55,7 +56,7 @@ class LocalCache {
       if (timestamp != null) {
         final cacheTime = DateTime.fromMillisecondsSinceEpoch(timestamp);
         if (DateTime.now().difference(cacheTime) > _cacheExpiry) {
-          print('📆 Cache expiré, suppression');
+          debugPrint('📆 Cache expiré, suppression');
           await clearDailyGoals();
           return null;
         }
@@ -79,10 +80,10 @@ class LocalCache {
         );
       }).toList();
 
-      print('📱 Cache local: Objectifs récupérés (${goals.length} items)');
+      debugPrint('📱 Cache local: Objectifs récupérés (${goals.length} items)');
       return goals;
     } catch (e) {
-      print('❌ Erreur lecture cache goals: $e');
+      debugPrint('❌ Erreur lecture cache goals: $e');
       return null;
     }
   }
@@ -93,9 +94,9 @@ class LocalCache {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_dailyGoalsKey);
       await prefs.remove(_cacheTimestampKey);
-      print('🧹 Cache objectifs vidé');
+      debugPrint('🧹 Cache objectifs vidé');
     } catch (e) {
-      print('❌ Erreur vidage cache: $e');
+      debugPrint('❌ Erreur vidage cache: $e');
     }
   }
 
@@ -109,10 +110,10 @@ class LocalCache {
       if (index != -1) {
         currentGoals[index] = updatedGoal;
         await saveDailyGoals(currentGoals);
-        print('🔄 Cache mis à jour pour objectif: $goalId');
+        debugPrint('🔄 Cache mis à jour pour objectif: $goalId');
       }
     } catch (e) {
-      print('❌ Erreur mise à jour goal cache: $e');
+      debugPrint('❌ Erreur mise à jour goal cache: $e');
     }
   }
 
@@ -138,10 +139,10 @@ class LocalCache {
 
         currentGoals[index] = updatedGoal;
         await saveDailyGoals(currentGoals);
-        print('⏳ Objectif $goalId marqué comme pending');
+        debugPrint('⏳ Objectif $goalId marqué comme pending');
       }
     } catch (e) {
-      print('❌ Erreur marking pending: $e');
+      debugPrint('❌ Erreur marking pending: $e');
     }
   }
 
@@ -164,9 +165,9 @@ class LocalCache {
       tempEntries.add(jsonEncode(tempEntry));
       await prefs.setStringList(_waterEntriesKey, tempEntries);
 
-      print('💧 Cache eau: Entrée temporaire sauvegardée (+${amount}ml)');
+      debugPrint('💧 Cache eau: Entrée temporaire sauvegardée (+${amount}ml)');
     } catch (e) {
-      print('❌ Erreur sauvegarde eau temp: $e');
+      debugPrint('❌ Erreur sauvegarde eau temp: $e');
     }
   }
 
@@ -175,9 +176,9 @@ class LocalCache {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_waterEntriesKey);
-      print('🧹 Entrées eau temporaires supprimées');
+      debugPrint('🧹 Entrées eau temporaires supprimées');
     } catch (e) {
-      print('❌ Erreur suppression eau temp: $e');
+      debugPrint('❌ Erreur suppression eau temp: $e');
     }
   }
 
@@ -190,9 +191,9 @@ class LocalCache {
       await prefs.remove(_foodEntriesKey);
       await prefs.remove(_cacheTimestampKey);
       await prefs.remove(_userProfileKey);
-      print('🧹 Tout le cache local vidé');
+      debugPrint('🧹 Tout le cache local vidé');
     } catch (e) {
-      print('❌ Erreur vidage complet cache: $e');
+      debugPrint('❌ Erreur vidage complet cache: $e');
     }
   }
 
@@ -217,9 +218,9 @@ class LocalCache {
       final jsonList = exercises.map((ex) => jsonEncode(ex)).toList();
       await prefs.setStringList(_exercisesKey, jsonList);
       await prefs.setInt('${_exercisesKey}_timestamp', DateTime.now().millisecondsSinceEpoch);
-      print('💾 Cache: ${exercises.length} exercices sauvegardés');
+      debugPrint('💾 Cache: ${exercises.length} exercices sauvegardés');
     } catch (e) {
-      print('❌ Erreur sauvegarde cache exercices: $e');
+      debugPrint('❌ Erreur sauvegarde cache exercices: $e');
     }
   }
 
@@ -243,10 +244,10 @@ class LocalCache {
       if (jsonList == null) return null;
 
       final exercises = jsonList.map((jsonStr) => jsonDecode(jsonStr)).toList();
-      print('📱 Cache: ${exercises.length} exercices récupérés');
+      debugPrint('📱 Cache: ${exercises.length} exercices récupérés');
       return exercises;
     } catch (e) {
-      print('❌ Erreur lecture cache exercices: $e');
+      debugPrint('❌ Erreur lecture cache exercices: $e');
       return null;
     }
   }
@@ -259,9 +260,9 @@ class LocalCache {
       final jsonList = meals.map((meal) => jsonEncode(meal)).toList();
       await prefs.setStringList(dateKey, jsonList);
       await prefs.setInt('${dateKey}_timestamp', DateTime.now().millisecondsSinceEpoch);
-      print('💾 Cache: ${meals.length} repas sauvegardés pour ${date.toIso8601String().split('T')[0]}');
+      debugPrint('💾 Cache: ${meals.length} repas sauvegardés pour ${date.toIso8601String().split('T')[0]}');
     } catch (e) {
-      print('❌ Erreur sauvegarde cache repas: $e');
+      debugPrint('❌ Erreur sauvegarde cache repas: $e');
     }
   }
 
@@ -286,10 +287,10 @@ class LocalCache {
       if (jsonList == null) return null;
 
       final meals = jsonList.map((jsonStr) => jsonDecode(jsonStr)).toList();
-      print('📱 Cache: ${meals.length} repas récupérés pour ${date.toIso8601String().split('T')[0]}');
+      debugPrint('📱 Cache: ${meals.length} repas récupérés pour ${date.toIso8601String().split('T')[0]}');
       return meals;
     } catch (e) {
-      print('❌ Erreur lecture cache repas: $e');
+      debugPrint('❌ Erreur lecture cache repas: $e');
       return null;
     }
   }
@@ -297,22 +298,22 @@ class LocalCache {
   /// Cache intelligent pour données fréquemment utilisées
   static Future<void> warmUpCache() async {
     try {
-      print('🔥 Warm-up cache: Préchauffage des données essentielles...');
+      debugPrint('🔥 Warm-up cache: Préchauffage des données essentielles...');
 
       // Précharger seulement si pas de cache existant
       final goals = await getDailyGoals();
       if (goals == null) {
-        print('🔥 Cache goals manquant - sera chargé à la demande');
+        debugPrint('🔥 Cache goals manquant - sera chargé à la demande');
       }
 
       final exercises = await getExercises();
       if (exercises == null) {
-        print('🔥 Cache exercices manquant - sera chargé à la demande');
+        debugPrint('🔥 Cache exercices manquant - sera chargé à la demande');
       }
 
-      print('🔥 Warm-up cache terminé');
+      debugPrint('🔥 Warm-up cache terminé');
     } catch (e) {
-      print('❌ Erreur warm-up cache: $e');
+      debugPrint('❌ Erreur warm-up cache: $e');
     }
   }
 
@@ -346,10 +347,10 @@ class LocalCache {
       }
 
       if (cleaned > 0) {
-        print('🧹 Cache: $cleaned entrées expirées supprimées');
+        debugPrint('🧹 Cache: $cleaned entrées expirées supprimées');
       }
     } catch (e) {
-      print('❌ Erreur nettoyage cache: $e');
+      debugPrint('❌ Erreur nettoyage cache: $e');
     }
   }
 
@@ -361,19 +362,19 @@ class LocalCache {
       final todayMeals = await getMealsForDate(DateTime.now());
       final isValid = await isCacheValid();
 
-      print('🔍 DEBUG CACHE LOCAL:');
-      print('   - Cache valide: $isValid');
-      print('   - Objectifs: ${goals?.length ?? 0} items');
-      print('   - Exercices: ${exercises?.length ?? 0} items');
-      print('   - Repas aujourd\'hui: ${todayMeals?.length ?? 0} items');
+      debugPrint('🔍 DEBUG CACHE LOCAL:');
+      debugPrint('   - Cache valide: $isValid');
+      debugPrint('   - Objectifs: ${goals?.length ?? 0} items');
+      debugPrint('   - Exercices: ${exercises?.length ?? 0} items');
+      debugPrint('   - Repas aujourd\'hui: ${todayMeals?.length ?? 0} items');
 
       if (goals != null) {
         for (final goal in goals) {
-          print('   - ${goal.label}: ${goal.progress}% (pending: ${goal.isPending})');
+          debugPrint('   - ${goal.label}: ${goal.progress}% (pending: ${goal.isPending})');
         }
       }
     } catch (e) {
-      print('❌ Erreur debug cache: $e');
+      debugPrint('❌ Erreur debug cache: $e');
     }
   }
 }

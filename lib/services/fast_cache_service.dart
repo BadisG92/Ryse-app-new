@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'dart:async';
 import '../components/ui/dashboard_models.dart';
 
@@ -30,7 +31,7 @@ class FastCacheService {
           if (age >= ttl) {
             _memoryCache.remove(key);
             _cacheTimestamps.remove(key);
-            print('🗑️ Cache expiré: $key');
+            debugPrint('🗑️ Cache expiré: $key');
           }
         }
       });
@@ -60,7 +61,7 @@ class FastCacheService {
   /// Cache les objectifs journaliers
   static void cacheGoals(List<DailyGoal> goals) {
     set('daily_goals', goals, ttl: _shortCacheDuration);
-    print('📦 Goals mis en cache (30s)');
+    debugPrint('📦 Goals mis en cache (30s)');
   }
   
   /// Récupère les objectifs depuis le cache
@@ -71,7 +72,7 @@ class FastCacheService {
   /// Cache le profil utilisateur
   static void cacheUserProfile(UserProfile profile) {
     set('user_profile', profile, ttl: _mediumCacheDuration);
-    print('📦 Profil mis en cache (2min)');
+    debugPrint('📦 Profil mis en cache (2min)');
   }
   
   /// Récupère le profil depuis le cache
@@ -82,7 +83,7 @@ class FastCacheService {
   /// Cache les modules de prévisualisation
   static void cacheModules(List<ModulePreview> modules) {
     set('module_previews', modules, ttl: _shortCacheDuration);
-    print('📦 Modules mis en cache (30s)');
+    debugPrint('📦 Modules mis en cache (30s)');
   }
   
   /// Récupère les modules depuis le cache
@@ -94,7 +95,7 @@ class FastCacheService {
   static void invalidate(String key) {
     _memoryCache.remove(key);
     _cacheTimestamps.remove(key);
-    print('🔄 Cache invalidé: $key');
+    debugPrint('🔄 Cache invalidé: $key');
   }
   
   /// Invalide tout le cache lié au dashboard
@@ -102,7 +103,7 @@ class FastCacheService {
     invalidate('daily_goals');
     invalidate('user_profile');
     invalidate('module_previews');
-    print('🔄 Cache dashboard complètement invalidé');
+    debugPrint('🔄 Cache dashboard complètement invalidé');
   }
   
   /// Nettoie les entrées expirées
@@ -122,7 +123,7 @@ class FastCacheService {
     }
     
     if (keysToRemove.isNotEmpty) {
-      print('🧹 Cache nettoyé: ${keysToRemove.length} entrées supprimées');
+      debugPrint('🧹 Cache nettoyé: ${keysToRemove.length} entrées supprimées');
     }
   }
   
@@ -130,12 +131,12 @@ class FastCacheService {
   static Future<void> preloadDashboardData() async {
     try {
       // Cette méthode peut être appelée au démarrage pour précharger
-      print('🚀 Préchargement du cache dashboard...');
+      debugPrint('🚀 Préchargement du cache dashboard...');
       
       // Le DashboardService va automatiquement mettre en cache
       // lors du premier appel
     } catch (e) {
-      print('⚠️ Erreur préchargement: $e');
+      debugPrint('⚠️ Erreur préchargement: $e');
     }
   }
 }

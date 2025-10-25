@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -621,7 +622,7 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
             setState(() {}); // Rafraîchir l'UI
           },
           onSessionCompleted: (WorkoutSession session) {
-            print('Session reçue: ${session.name} - ${session.duration.inMinutes}min - Complétée: ${session.isCompleted}');
+            debugPrint('Session reçue: ${session.name} - ${session.duration.inMinutes}min - Complétée: ${session.isCompleted}');
             // Ici on pourrait ajouter la session à un historique
           },
         ),

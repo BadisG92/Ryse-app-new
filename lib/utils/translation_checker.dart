@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../services/translations.dart';
 
 class TranslationChecker {
@@ -134,13 +135,13 @@ class TranslationChecker {
 
   // Méthode helper pour afficher toutes les clés existantes
   static void printAllKeys() {
-    print("=== TOUTES LES CLÉS DE TRADUCTION EXISTANTES ===");
+    debugPrint("=== TOUTES LES CLÉS DE TRADUCTION EXISTANTES ===");
     var sortedKeys = _translations.keys.toList()..sort();
     for (String key in sortedKeys) {
       var translations = _translations[key]!;
-      print("$key → fr: '${translations['fr']}' | en: '${translations['en']}'");
+      debugPrint("$key → fr: '${translations['fr']}' | en: '${translations['en']}'");
     }
-    print("=== TOTAL: ${_translations.length} clés ===");
+    debugPrint("=== TOTAL: ${_translations.length} clés ===");
   }
 
   // Méthode helper pour chercher par mot-clé

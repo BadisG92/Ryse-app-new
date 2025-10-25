@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'dart:async';
@@ -91,7 +92,7 @@ class SportDashboardState extends State<SportDashboard> with TickerProviderState
     // Démarrer l'animation des calories (partira de 0)
     _startCaloriesAnimation();
 
-    print('⚡ Sport Dashboard chargé INSTANTANÉMENT depuis GlobalStateManager');
+    debugPrint('⚡ Sport Dashboard chargé INSTANTANÉMENT depuis GlobalStateManager');
   }
 
   /// Charge les données du dashboard depuis Supabase (enrichissement en arrière-plan)
@@ -108,7 +109,7 @@ class SportDashboardState extends State<SportDashboard> with TickerProviderState
       // Redémarrer l'animation des calories avec les nouvelles données
       _startCaloriesAnimation();
 
-      print('✅ Sport Dashboard enrichi depuis Supabase (avec cache)');
+      debugPrint('✅ Sport Dashboard enrichi depuis Supabase (avec cache)');
     } catch (e) {
       debugPrint('❌ Erreur chargement dashboard: $e');
       // En cas d'erreur, on garde les données de GlobalStateManager

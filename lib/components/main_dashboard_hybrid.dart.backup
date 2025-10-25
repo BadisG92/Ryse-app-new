@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -84,10 +85,10 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
         setState(() {
           dailyGoals = newGoals;
         });
-        print('🔄 Objectifs dashboard principal rechargés instantanément');
+        debugPrint('🔄 Objectifs dashboard principal rechargés instantanément');
       }
     } catch (e) {
-      print('❌ Erreur rechargement objectifs: $e');
+      debugPrint('❌ Erreur rechargement objectifs: $e');
     }
   }
 
@@ -147,7 +148,7 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
         _startScoreAnimation();
       }
     } catch (e) {
-      print('Erreur lors du chargement des données: $e');
+      debugPrint('Erreur lors du chargement des données: $e');
       if (mounted) {
         setState(() {
           isLoading = false;

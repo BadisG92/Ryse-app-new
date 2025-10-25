@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../components/ui/dashboard_models.dart';
 
@@ -33,7 +34,7 @@ class GoalsNotifier extends ValueNotifier<GoalsSummary> {
   void update(List<DailyGoal> goals) {
     // PROTECTION ANTI-BOUCLE INFINIE
     if (_isUpdating) {
-      print('⚠️ GoalsNotifier: update() déjà en cours, ignoré');
+      debugPrint('⚠️ GoalsNotifier: update() déjà en cours, ignoré');
       return;
     }
     
@@ -50,7 +51,7 @@ class GoalsNotifier extends ValueNotifier<GoalsSummary> {
       
       // Ne notifier que si la valeur a changé (completed OU progress)
       if (_lastValue == null || _lastValue != newValue) {
-        print('🎯 GoalsNotifier: ${_lastValue?.completed ?? 0}/${_lastValue?.totalProgress?.toStringAsFixed(1) ?? "0.0"}% -> ${newValue.completed}/${newValue.totalProgress.toStringAsFixed(1)}%');
+        debugPrint('🎯 GoalsNotifier: ${_lastValue?.completed ?? 0}/${_lastValue?.totalProgress?.toStringAsFixed(1) ?? "0.0"}% -> ${newValue.completed}/${newValue.totalProgress.toStringAsFixed(1)}%');
         value = newValue;
         _lastValue = newValue;
       }

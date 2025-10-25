@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -73,7 +74,7 @@ class _LocalizedExerciseListState extends State<LocalizedExerciseList> {
         _sortExercisesByFrequency();
       }
     } catch (e) {
-      print('Erreur lors du chargement des données: $e');
+      debugPrint('Erreur lors du chargement des données: $e');
       setState(() => isLoading = false);
     }
   }
@@ -106,7 +107,7 @@ class _LocalizedExerciseListState extends State<LocalizedExerciseList> {
         _sortExercisesByFrequency();
       });
     } catch (e) {
-      print('❌ Erreur lors du chargement des stats d\'exercices: $e');
+      debugPrint('❌ Erreur lors du chargement des stats d\'exercices: $e');
       setState(() {
         _isLoadingStats = false;
       });

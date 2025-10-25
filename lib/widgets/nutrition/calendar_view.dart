@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../components/ui/custom_card.dart';
@@ -45,7 +46,7 @@ class _CalendarViewState extends State<CalendarView> {
       // Obtenir l'utilisateur actuel
       final user = Supabase.instance.client.auth.currentUser;
       if (user == null) {
-        print('❌ Aucun utilisateur connecté');
+        debugPrint('❌ Aucun utilisateur connecté');
         return;
       }
 
@@ -57,14 +58,14 @@ class _CalendarViewState extends State<CalendarView> {
             .eq('id', user.id)
             .single();
         _userTargetCalories = userResponse['daily_calories'] as int? ?? 2000;
-        print('🎯 Objectif calorique utilisateur: $_userTargetCalories');
+        debugPrint('🎯 Objectif calorique utilisateur: $_userTargetCalories');
       }
 
       // Calculer les dates de début et fin du mois
       final startOfMonth = DateTime(month.year, month.month, 1);
       final endOfMonth = DateTime(month.year, month.month + 1, 0, 23, 59, 59);
-      
-      print('📅 Recherche des données pour: ${startOfMonth.toString()} - ${endOfMonth.toString()}');
+
+      debugPrint('📅 Recherche des données pour: ${startOfMonth.toString()} - ${endOfMonth.toString()}');
 
       // Récupérer les entrées alimentaires du mois
       final response = await Supabase.instance.client
@@ -74,7 +75,7 @@ class _CalendarViewState extends State<CalendarView> {
           .gte('consumed_at', startOfMonth.toIso8601String())
           .lte('consumed_at', endOfMonth.toIso8601String());
 
-      print('📊 Nombre d\'entrées trouvées: ${response.length}');
+      debugPrint('📊 Nombre d\'entrées trouvées: ${response.length}');
 
       // Grouper les calories par jour
       final Map<String, int> dailyCalories = {};
@@ -83,7 +84,7 @@ class _CalendarViewState extends State<CalendarView> {
         final dateStr = "${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
         final calories = entry['calories'] as int? ?? 0;
         dailyCalories[dateStr] = (dailyCalories[dateStr] ?? 0) + calories;
-        print('🍽️ $dateStr: ${dailyCalories[dateStr]} calories');
+        debugPrint('🍽️ $dateStr: ${dailyCalories[dateStr]} calories');
       }
 
       // Construire les données nutritionnelles
@@ -109,7 +110,7 @@ class _CalendarViewState extends State<CalendarView> {
       final successRate = daysWithData > 0 ? ((achievedDays / daysWithData) * 100).round() : 0;
       final avgCalories = daysWithData > 0 ? (totalCalories / daysWithData).round() : 0;
 
-      print('📈 Stats calculées - Taux: $successRate%, Jours réussis: $achievedDays, Moyenne: $avgCalories kcal');
+      debugPrint('📈 Stats calculées - Taux: $successRate%, Jours réussis: $achievedDays, Moyenne: $avgCalories kcal');
 
       if (mounted) {
         setState(() {
@@ -123,7 +124,7 @@ class _CalendarViewState extends State<CalendarView> {
         });
       }
     } catch (e) {
-      print('❌ Erreur lors du chargement des données nutritionnelles: $e');
+      debugPrint('❌ Erreur lors du chargement des données nutritionnelles: $e');
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -704,37 +705,37 @@ class CalendarGrid extends StatelessWidget {
         // Pas de données - gris clair
         backgroundColor = const Color(0xFFE5E7EB);
         if (day.date.day <= 5) { // Debug seulement pour les 5 premiers jours
-          print('🔍 $dateStr: Pas de données -> Gris');
+          debugPrint('🔍 $dateStr: Pas de données -> Gris');
         }
       } else {
         final calories = data['calories'] as int;
         final targetCalories = data['target'] as int;
-        
+
         if (targetCalories <= 0) {
           backgroundColor = const Color(0xFFE5E7EB);
-          print('🔍 $dateStr: Target=0 -> Gris');
+          debugPrint('🔍 $dateStr: Target=0 -> Gris');
         } else {
           final percentage = (calories / targetCalories * 100).round();
-          
+
           // Niveau de couleur basé sur le pourcentage
           if (percentage == 0) {
             backgroundColor = const Color(0xFFE5E7EB); // Gris - 0%
-            print('🔍 $dateStr: $calories/$targetCalories (0%) -> Gris');
+            debugPrint('🔍 $dateStr: $calories/$targetCalories (0%) -> Gris');
           } else if (percentage <= 25) {
             backgroundColor = const Color(0xFF0B132B).withOpacity(0.2); // Bleu très clair - 1-25%
-            print('🔍 $dateStr: $calories/$targetCalories ($percentage%) -> Bleu 20%');
+            debugPrint('🔍 $dateStr: $calories/$targetCalories ($percentage%) -> Bleu 20%');
           } else if (percentage <= 50) {
             backgroundColor = const Color(0xFF0B132B).withOpacity(0.4); // Bleu clair - 26-50%
-            print('🔍 $dateStr: $calories/$targetCalories ($percentage%) -> Bleu 40%');
+            debugPrint('🔍 $dateStr: $calories/$targetCalories ($percentage%) -> Bleu 40%');
           } else if (percentage <= 75) {
             backgroundColor = const Color(0xFF0B132B).withOpacity(0.6); // Bleu moyen - 51-75%
-            print('🔍 $dateStr: $calories/$targetCalories ($percentage%) -> Bleu 60%');
+            debugPrint('🔍 $dateStr: $calories/$targetCalories ($percentage%) -> Bleu 60%');
           } else if (percentage <= 99) {
             backgroundColor = const Color(0xFF0B132B).withOpacity(0.8); // Bleu foncé - 76-99%
-            print('🔍 $dateStr: $calories/$targetCalories ($percentage%) -> Bleu 80%');
+            debugPrint('🔍 $dateStr: $calories/$targetCalories ($percentage%) -> Bleu 80%');
           } else {
             backgroundColor = const Color(0xFF0B132B); // Bleu complet - 100%+
-            print('🔍 $dateStr: $calories/$targetCalories ($percentage%) -> Bleu 100%');
+            debugPrint('🔍 $dateStr: $calories/$targetCalories ($percentage%) -> Bleu 100%');
           }
         }
       }

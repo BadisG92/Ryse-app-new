@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -88,7 +89,7 @@ class CoachRyzeNutritionService {
 
       return NutritionAnalysis.fromJson(response);
     } catch (e) {
-      print('❌ Erreur récupération analyse: $e');
+      debugPrint('❌ Erreur récupération analyse: $e');
       return null;
     }
   }
@@ -139,35 +140,35 @@ class CoachRyzeNutritionService {
     );
 
     // LOG: Afficher le prompt
-    print('🍎 ========== GEMINI NUTRITION PROMPT ==========');
-    print('📅 Date: ${DateFormat('yyyy-MM-dd').format(date)}');
-    print('🌍 Langue: $languageCode');
-    print('🎯 Contexte: $context');
-    print('📊 Calories: ${metadata.totalCalories}/${metadata.calorieTarget}');
-    print('');
-    print('📄 PROMPT COMPLET:');
-    print('─' * 50);
-    print(prompt);
-    print('─' * 50);
-    print('');
+    debugPrint('🍎 ========== GEMINI NUTRITION PROMPT ==========');
+    debugPrint('📅 Date: ${DateFormat('yyyy-MM-dd').format(date)}');
+    debugPrint('🌍 Langue: $languageCode');
+    debugPrint('🎯 Contexte: $context');
+    debugPrint('📊 Calories: ${metadata.totalCalories}/${metadata.calorieTarget}');
+    debugPrint('');
+    debugPrint('📄 PROMPT COMPLET:');
+    debugPrint('─' * 50);
+    debugPrint(prompt);
+    debugPrint('─' * 50);
+    debugPrint('');
 
     // Appeler Gemini
     final content = [Content.text(prompt)];
-    print('⏳ Envoi de la requête à Gemini...');
+    debugPrint('⏳ Envoi de la requête à Gemini...');
     final response = await _model.generateContent(content);
 
     // LOG: Afficher la réponse
-    print('');
-    print('✅ ========== GEMINI NUTRITION RESPONSE ==========');
+    debugPrint('');
+    debugPrint('✅ ========== GEMINI NUTRITION RESPONSE ==========');
     if (response.text != null && response.text!.isNotEmpty) {
-      print('📝 Réponse reçue (${response.text!.length} caractères):');
-      print('─' * 50);
-      print(response.text);
-      print('─' * 50);
+      debugPrint('📝 Réponse reçue (${response.text!.length} caractères):');
+      debugPrint('─' * 50);
+      debugPrint(response.text);
+      debugPrint('─' * 50);
     } else {
-      print('❌ Aucune réponse reçue de Gemini');
+      debugPrint('❌ Aucune réponse reçue de Gemini');
     }
-    print('');
+    debugPrint('');
 
     if (response.text == null || response.text!.isEmpty) {
       throw Exception(
@@ -196,12 +197,12 @@ class CoachRyzeNutritionService {
       }
       cleanedResponse = cleanedResponse.trim();
 
-      print('🔍 Parsing JSON response...');
+      debugPrint('🔍 Parsing JSON response...');
       final jsonData = json.decode(cleanedResponse) as Map<String, dynamic>;
 
       // Extraire l'analyse
       analysisText = jsonData['analysis'] as String? ?? '';
-      print('✅ Analysis extracted: ${analysisText.length} characters');
+      debugPrint('✅ Analysis extracted: ${analysisText.length} characters');
 
       // Extraire les recommandations
       if (jsonData['recommendations'] is List) {
@@ -216,7 +217,7 @@ class CoachRyzeNutritionService {
             }
           }
         }
-        print('✅ ${recommendations.length} recommendations extracted');
+        debugPrint('✅ ${recommendations.length} recommendations extracted');
       }
 
       // Extraire les insights (premières phrases de l'analyse)
@@ -228,8 +229,8 @@ class CoachRyzeNutritionService {
           .toList();
 
     } catch (e) {
-      print('❌ Erreur parsing JSON: $e');
-      print('📝 Réponse brute: ${response.text}');
+      debugPrint('❌ Erreur parsing JSON: $e');
+      debugPrint('📝 Réponse brute: ${response.text}');
       // Fallback: utiliser l'ancien système de parsing
       analysisText = response.text!;
       insights = _extractInsights(response.text!);
@@ -742,9 +743,9 @@ class CoachRyzeNutritionService {
           .from('nutrition_analyses')
           .insert(analysis.toJson());
 
-      print('✅ Analyse sauvegardée: ${analysis.id}');
+      debugPrint('✅ Analyse sauvegardée: ${analysis.id}');
     } catch (e) {
-      print('❌ Erreur sauvegarde analyse: $e');
+      debugPrint('❌ Erreur sauvegarde analyse: $e');
       rethrow;
     }
   }
@@ -757,9 +758,9 @@ class CoachRyzeNutritionService {
           .delete()
           .eq('id', analysisId);
 
-      print('✅ Analyse supprimée: $analysisId');
+      debugPrint('✅ Analyse supprimée: $analysisId');
     } catch (e) {
-      print('❌ Erreur suppression analyse: $e');
+      debugPrint('❌ Erreur suppression analyse: $e');
       rethrow;
     }
   }
@@ -781,7 +782,7 @@ class CoachRyzeNutritionService {
           .map((json) => NutritionAnalysis.fromJson(json))
           .toList();
     } catch (e) {
-      print('❌ Erreur récupération analyses: $e');
+      debugPrint('❌ Erreur récupération analyses: $e');
       return [];
     }
   }

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:ui' as ui;
@@ -43,7 +44,7 @@ class LocalizationService extends ChangeNotifier {
       // Sauvegarder ce choix
       await prefs.setString(_languageKey, savedLanguage);
       
-      print('🌍 Langue système détectée: $systemLanguage -> Application configurée en: $savedLanguage');
+      debugPrint('🌍 Langue système détectée: $systemLanguage -> Application configurée en: $savedLanguage');
     }
     
     _currentLocale = Locale(savedLanguage);

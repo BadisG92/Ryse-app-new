@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../services/localization_service.dart';
 
 /// Service pour gérer la traduction automatique des colonnes Supabase
@@ -139,9 +140,9 @@ class SupabaseLocalizationService {
 
   /// Debug: affiche les colonnes qui seraient sélectionnées
   static void debugColumns(List<String> baseColumns) {
-    print('🌐 Supabase Localization Debug:');
-    print('Current language: ${LocalizationService.instance.currentLanguageCode}');
-    print('Column suffix: ${getColumnSuffix()}');
-    print('Generated SELECT: ${generateSelectColumns(baseColumns)}');
+    debugPrint('🌐 Supabase Localization Debug:');
+    debugPrint('Current language: ${LocalizationService.instance.currentLanguageCode}');
+    debugPrint('Column suffix: ${getColumnSuffix()}');
+    debugPrint('Generated SELECT: ${generateSelectColumns(baseColumns)}');
   }
 }

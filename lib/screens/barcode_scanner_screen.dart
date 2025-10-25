@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -1406,8 +1407,8 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
   void _handleAddToMeal() {
     if (_scannedProduct == null) return;
     
-    print('DEBUG: _handleAddToMeal appelée, isFromDashboard: ${widget.isFromDashboard}');
-    print('DEBUG: Barcode: ${_scannedProduct!.barcode}');
+    debugPrint('DEBUG: _handleAddToMeal appelée, isFromDashboard: ${widget.isFromDashboard}');
+    debugPrint('DEBUG: Barcode: ${_scannedProduct!.barcode}');
 
     if (widget.isFromDashboard) {
       // Créer un FoodItem basé sur les données scannées
@@ -1425,18 +1426,18 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
       
       // Afficher le popup AVANT de déclencher la sélection
       if (_scannedProduct!.barcode != null && _scannedProduct!.barcode!.isNotEmpty) {
-        print('DEBUG: Dashboard - Affichage du popup');
+        debugPrint('DEBUG: Dashboard - Affichage du popup');
         _pendingDashboardFoodItem = foodItem; // Stocker pour après le popup
         _showSaveToCustomFoodsDialog();
       } else {
         // Pas de code-barres, comportement normal
-        print('DEBUG: Dashboard - Pas de code-barres, sélection directe');
+        debugPrint('DEBUG: Dashboard - Pas de code-barres, sélection directe');
       _handleDashboardFoodSelection(foodItem);
       }
     } else {
       // Comportement pour le journal - Afficher le popup d'abord
       if (_scannedProduct!.barcode != null && _scannedProduct!.barcode!.isNotEmpty) {
-        print('DEBUG: Mode Journal - Affichage immédiat du popup');
+        debugPrint('DEBUG: Mode Journal - Affichage immédiat du popup');
         _showSaveToCustomFoodsDialog();
         // La fermeture de l'écran sera gérée dans le popup lui-même
       } else {
@@ -1502,7 +1503,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
   void _showSaveToCustomFoodsDialog() async {
     if (_scannedProduct == null) return;
     
-    print('DEBUG: _showSaveToCustomFoodsDialog appelée');
+    debugPrint('DEBUG: _showSaveToCustomFoodsDialog appelée');
 
     // Vérifier d'abord si l'aliment existe déjà
     final user = AuthService().currentUser;
@@ -1762,7 +1763,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
         );
       }
     } catch (e) {
-      print('Erreur lors de la sauvegarde: $e'); // Pour le debug
+      debugPrint('Erreur lors de la sauvegarde: $e'); // Pour le debug
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

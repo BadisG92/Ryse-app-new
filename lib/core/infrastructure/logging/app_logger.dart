@@ -1,5 +1,6 @@
+import 'package:flutter/foundation.dart';
 /// Logger professionnel pour l'application
-/// Remplace tous les print() statements
+/// Remplace tous les debugPrint() statements
 class AppLogger {
   static final AppLogger _instance = AppLogger._internal();
   static AppLogger get instance => _instance;
@@ -135,7 +136,7 @@ class AppLogger {
     
     // Utiliser print seulement ici, centralisé
     // ignore: avoid_print
-    print(output);
+    debugPrint(output);
   }
   
   String _getCallerTag() {

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
@@ -60,9 +61,9 @@ class _RyzeAppState extends State<RyzeApp> {
           });
         }
         
-        print('✅ Statut onboarding: $isOnboarded');
+        debugPrint('✅ Statut onboarding: $isOnboarded');
       } catch (e) {
-        print('❌ Erreur lors de la vérification onboarding: $e');
+        debugPrint('❌ Erreur lors de la vérification onboarding: $e');
         
         // Fallback vers SharedPreferences en cas d'erreur
         final prefs = await SharedPreferences.getInstance();
@@ -115,9 +116,9 @@ class _RyzeAppState extends State<RyzeApp> {
           _isOnboarded = false;
         });
         
-        print('✅ Onboarding réinitialisé avec succès');
+        debugPrint('✅ Onboarding réinitialisé avec succès');
       } catch (e) {
-        print('❌ Erreur lors de la réinitialisation: $e');
+        debugPrint('❌ Erreur lors de la réinitialisation: $e');
       }
     }
   }

@@ -9,7 +9,7 @@ class WeightNotifier extends ChangeNotifier {
 
   /// Notifie tous les widgets qui écoutent que les données de poids ont changé
   void notifyWeightChanged() {
-    print('🔄 WeightNotifier: Notifying weight changed');
+    debugPrint('🔄 WeightNotifier: Notifying weight changed');
     notifyListeners();
   }
 

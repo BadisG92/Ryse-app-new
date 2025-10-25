@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -237,7 +238,7 @@ class WorkoutActions {
             WorkoutService().addProgram(program);
           },
           onSessionCompleted: (WorkoutSession session) {
-            print('Session complétée: ${session.name}');
+            debugPrint('Session complétée: ${session.name}');
           },
         ),
       ),
@@ -266,7 +267,7 @@ class WorkoutActions {
           isFromProgram: true,
           guidedTemplateId: program.id,
           onSessionCompleted: (WorkoutSession session) {
-            print('Session complétée: ${session.name}');
+            debugPrint('Session complétée: ${session.name}');
           },
         ),
       ),

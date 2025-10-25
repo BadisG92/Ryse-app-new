@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -120,15 +121,15 @@ class AIWorkoutGenerationService {
     if (_cachedExercises != null &&
         _cacheTimestamp != null &&
         DateTime.now().difference(_cacheTimestamp!) < _cacheDuration) {
-      print('✅ Using cached exercises (${_cachedExercises!.length} exercises)');
+      debugPrint('✅ Using cached exercises (${_cachedExercises!.length} exercises)');
       return _cachedExercises!;
     }
 
     // Cache expiré ou inexistant, récupérer depuis la DB
-    print('🔄 Fetching exercises from database...');
+    debugPrint('🔄 Fetching exercises from database...');
     _cachedExercises = await DatabaseService.getSystemExercises();
     _cacheTimestamp = DateTime.now();
-    print('✅ Cached ${_cachedExercises!.length} exercises (valid for ${_cacheDuration.inMinutes} minutes)');
+    debugPrint('✅ Cached ${_cachedExercises!.length} exercises (valid for ${_cacheDuration.inMinutes} minutes)');
 
     return _cachedExercises!;
   }
@@ -140,16 +141,16 @@ class AIWorkoutGenerationService {
         _cachedUserId == userId &&
         _userContextTimestamp != null &&
         DateTime.now().difference(_userContextTimestamp!) < _userContextCacheDuration) {
-      print('✅ Using cached user context for user $userId');
+      debugPrint('✅ Using cached user context for user $userId');
       return _cachedUserContext!;
     }
 
     // Cache expiré ou inexistant, récupérer depuis la DB
-    print('🔄 Fetching user context from database...');
+    debugPrint('🔄 Fetching user context from database...');
     _cachedUserContext = await _getUserContext(userId);
     _cachedUserId = userId;
     _userContextTimestamp = DateTime.now();
-    print('✅ Cached user context (valid for ${_userContextCacheDuration.inMinutes} minutes)');
+    debugPrint('✅ Cached user context (valid for ${_userContextCacheDuration.inMinutes} minutes)');
 
     return _cachedUserContext!;
   }
@@ -161,7 +162,7 @@ class AIWorkoutGenerationService {
     _cachedUserContext = null;
     _cachedUserId = null;
     _userContextTimestamp = null;
-    print('🗑️ Cache invalidated');
+    debugPrint('🗑️ Cache invalidated');
   }
 
   /// Récupérer le contexte utilisateur avec performances DÉTAILLÉES
@@ -267,7 +268,7 @@ class AIWorkoutGenerationService {
 
       return buffer.toString();
     } catch (e) {
-      print('Error fetching user context: $e');
+      debugPrint('Error fetching user context: $e');
       return 'No training history available. SUGGEST BEGINNER-FRIENDLY WEIGHTS (10-15kg upper body, 20-30kg lower body).';
     }
   }
@@ -474,7 +475,7 @@ Generate the workout now as valid JSON:
 
       return null;
     } catch (e) {
-      print('Error calling Gemini API: $e');
+      debugPrint('Error calling Gemini API: $e');
       return null;
     }
   }
@@ -493,7 +494,7 @@ Generate the workout now as valid JSON:
 
       return null;
     } catch (e) {
-      print('Error parsing Gemini response: $e');
+      debugPrint('Error parsing Gemini response: $e');
       return null;
     }
   }
@@ -541,7 +542,7 @@ Generate the workout now as valid JSON:
         }
 
         if (foundExercise == null) {
-          print('⚠️ Exercise not found: $exerciseName (ID: $exerciseId)');
+          debugPrint('⚠️ Exercise not found: $exerciseName (ID: $exerciseId)');
           continue; // Skip si l'exercice n'existe pas
         }
 
@@ -565,11 +566,11 @@ Generate the workout now as valid JSON:
         ));
       }
 
-      print('✅ Generated ${workoutExercises.length} valid exercises from AI with suggested weights');
+      debugPrint('✅ Generated ${workoutExercises.length} valid exercises from AI with suggested weights');
       return workoutExercises;
 
     } catch (e) {
-      print('Error parsing workout exercises: $e');
+      debugPrint('Error parsing workout exercises: $e');
       return [];
     }
   }

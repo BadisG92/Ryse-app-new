@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
@@ -43,8 +44,8 @@ class _SelectRecipeScreenState extends State<SelectRecipeScreen> {
     final bool hasAdvancedFilters = selectedAdvancedFilters.values.any((set) => set.isNotEmpty);
     
     if (hasAdvancedFilters) {
-      print('🎯 FILTRAGE ACTIF dans l\'UI');
-      print('🎯 Filtres sélectionnés: $selectedAdvancedFilters');
+      debugPrint('🎯 FILTRAGE ACTIF dans l\'UI');
+      debugPrint('🎯 Filtres sélectionnés: $selectedAdvancedFilters');
     }
     
     final result = RecipeFilters.filterRecipes(
@@ -54,7 +55,7 @@ class _SelectRecipeScreenState extends State<SelectRecipeScreen> {
     );
     
     if (hasAdvancedFilters) {
-      print('🎯 UI: ${result.length} recettes après filtrage');
+      debugPrint('🎯 UI: ${result.length} recettes après filtrage');
     }
     
     return result;
@@ -85,14 +86,14 @@ class _SelectRecipeScreenState extends State<SelectRecipeScreen> {
     // Forcer un setState pour rafraîchir l'UI
     if (mounted) {
       setState(() {
-        print('✅ Recettes chargées: ${RecipeData.allRecipes.length}');
+        debugPrint('✅ Recettes chargées: ${RecipeData.allRecipes.length}');
       });
     }
   }
 
   // Initialise les filtres depuis RecipeFilters.advancedFilters
   void _initializeFilters() async {
-    print('🔍 INIT: Initialisation des filtres depuis RecipeFilters');
+    debugPrint('🔍 INIT: Initialisation des filtres depuis RecipeFilters');
 
     // Forcer l'initialisation de RecipeFilters
     RecipeFilters.initialize();
@@ -105,8 +106,8 @@ class _SelectRecipeScreenState extends State<SelectRecipeScreen> {
       for (final category in RecipeFilters.advancedFilters.keys) {
         selectedAdvancedFilters[category] = <String>{};
       }
-      print('🔍 INIT: Categories disponibles = ${selectedAdvancedFilters.keys.toList()}');
-      print('🔍 INIT: RecipeFilters.advancedFilters = ${RecipeFilters.advancedFilters}');
+      debugPrint('🔍 INIT: Categories disponibles = ${selectedAdvancedFilters.keys.toList()}');
+      debugPrint('🔍 INIT: RecipeFilters.advancedFilters = ${RecipeFilters.advancedFilters}');
     });
   }
 
@@ -170,11 +171,11 @@ class _SelectRecipeScreenState extends State<SelectRecipeScreen> {
                   searchQuery: searchQuery,
                   onSearchChanged: _onSearchChanged,
                   onFiltersApplied: (Map<String, Set<String>> filters) {
-                    print('🔥🔥🔥 onFiltersApplied APPELÉ avec: $filters');
+                    debugPrint('🔥🔥🔥 onFiltersApplied APPELÉ avec: $filters');
                     setState(() {
                       selectedAdvancedFilters = filters;
                     });
-                    print('🔥🔥🔥 selectedAdvancedFilters mis à jour: $selectedAdvancedFilters');
+                    debugPrint('🔥🔥🔥 selectedAdvancedFilters mis à jour: $selectedAdvancedFilters');
                   },
                 ),
                 

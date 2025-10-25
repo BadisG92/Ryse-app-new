@@ -485,7 +485,7 @@ class DatabaseService {
   // RECIPES
   static Future<List<Recipe>> getRecipes({String? language}) async {
     try {
-      print('🔍 DatabaseService.getRecipes: Début du chargement...');
+      debugPrint('🔍 DatabaseService.getRecipes: Début du chargement...');
       
       // Récupérer toutes les recettes depuis recipes_database
       final response = await _client
@@ -493,10 +493,10 @@ class DatabaseService {
           .select('*')
           .range(0, 1000); // Récupérer jusqu'à 1000 recettes
       
-      print('🔍 DatabaseService.getRecipes: Réponse reçue: ${response.length} recettes depuis recipes_database');
+      debugPrint('🔍 DatabaseService.getRecipes: Réponse reçue: ${response.length} recettes depuis recipes_database');
       
       if (response.isEmpty) {
-        print('⚠️ DatabaseService.getRecipes: Aucune recette trouvée dans la table');
+        debugPrint('⚠️ DatabaseService.getRecipes: Aucune recette trouvée dans la table');
         return [];
       }
       
@@ -505,12 +505,12 @@ class DatabaseService {
         json['id'] = json['id']?.toString();
         return Recipe.fromJson(json);
       }).toList();
-      print('✅ DatabaseService.getRecipes: ${recipes.length} recettes chargées depuis recipes_database');
+      debugPrint('✅ DatabaseService.getRecipes: ${recipes.length} recettes chargées depuis recipes_database');
       
       return recipes;
     } catch (e) {
-      print('❌ DatabaseService.getRecipes: Erreur lors du chargement: $e');
-      print('❌ Type d\'erreur: ${e.runtimeType}');
+      debugPrint('❌ DatabaseService.getRecipes: Erreur lors du chargement: $e');
+      debugPrint('❌ Type d\'erreur: ${e.runtimeType}');
       
       // Retourner une liste vide en cas d'erreur
       return [];
@@ -1648,7 +1648,7 @@ class DatabaseService {
   // CUSTOM FOODS MANAGEMENT
   static Future<List<Food>> getCustomFoods(String userId, {String? language}) async {
     try {
-      print('🔍 DatabaseService.getCustomFoods: Chargement des aliments personnalisés pour l\'utilisateur $userId');
+      debugPrint('🔍 DatabaseService.getCustomFoods: Chargement des aliments personnalisés pour l\'utilisateur $userId');
       
       final response = await _client
           .from('custom_foods')
@@ -1656,7 +1656,7 @@ class DatabaseService {
           .eq('user_id', userId)
           .order('created_at', ascending: false);
       
-      print('🔍 DatabaseService.getCustomFoods: ${response.length} aliments personnalisés trouvés');
+      debugPrint('🔍 DatabaseService.getCustomFoods: ${response.length} aliments personnalisés trouvés');
       
       // Convertir les custom_foods en objets Food
       final customFoods = response.map((json) {
@@ -1664,9 +1664,9 @@ class DatabaseService {
         final barcode = json['barcode'];
         final name = json['name'];
         
-        print('🔍 DEBUG DatabaseService - Aliment: $name');
-        print('   - origin (DB): $origin');
-        print('   - barcode (DB): $barcode');
+        debugPrint('🔍 DEBUG DatabaseService - Aliment: $name');
+        debugPrint('   - origin (DB): $origin');
+        debugPrint('   - barcode (DB): $barcode');
         
         final food = Food(
           id: json['id'].toString(),
@@ -1685,15 +1685,15 @@ class DatabaseService {
           barcode: barcode, // Récupérer le code-barres
         );
         
-        print('   - origin (Food object): ${food.origin}');
-        print('   - barcode (Food object): ${food.barcode}');
+        debugPrint('   - origin (Food object): ${food.origin}');
+        debugPrint('   - barcode (Food object): ${food.barcode}');
         
         return food;
       }).toList();
       
       return customFoods;
     } catch (e) {
-      print('❌ DatabaseService.getCustomFoods: Erreur: $e');
+      debugPrint('❌ DatabaseService.getCustomFoods: Erreur: $e');
       return [];
     }
   }
@@ -1748,7 +1748,7 @@ class DatabaseService {
         barcode: barcode,
       );
     } catch (e) {
-      print('❌ DatabaseService.createCustomFoodFromData: Erreur: $e');
+      debugPrint('❌ DatabaseService.createCustomFoodFromData: Erreur: $e');
       return null;
     }
   }
@@ -1764,7 +1764,7 @@ class DatabaseService {
       
       return response.isNotEmpty;
     } catch (e) {
-      print('❌ DatabaseService.checkCustomFoodExists: Erreur: $e');
+      debugPrint('❌ DatabaseService.checkCustomFoodExists: Erreur: $e');
       return false;
     }
   }
@@ -1800,7 +1800,7 @@ class DatabaseService {
       
       return null;
     } catch (e) {
-      print('❌ DatabaseService.checkCustomFoodExistsByBarcode: Erreur: $e');
+      debugPrint('❌ DatabaseService.checkCustomFoodExistsByBarcode: Erreur: $e');
       return null;
     }
   }
@@ -1851,10 +1851,10 @@ class DatabaseService {
           .from('food_database')
           .select('id');
       
-      print('🔍 DatabaseService.getFoodsCount: Total foods in database: ${response.length}');
+      debugPrint('🔍 DatabaseService.getFoodsCount: Total foods in database: ${response.length}');
       return response.length;
     } catch (e) {
-      print('❌ DatabaseService.getFoodsCount: Erreur: $e');
+      debugPrint('❌ DatabaseService.getFoodsCount: Erreur: $e');
       return 0;
     }
   }

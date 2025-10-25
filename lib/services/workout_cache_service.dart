@@ -77,7 +77,7 @@ class WorkoutCacheService {
       final weekStartStr = weekStart.toIso8601String().split('T')[0];
       final weekEndStr = weekEnd.toIso8601String().split('T')[0];
 
-      print('📅 Musculation: Semaine courante (locale utilisateur): $weekStartStr -> $weekEndStr');
+      debugPrint('📅 Musculation: Semaine courante (locale utilisateur): $weekStartStr -> $weekEndStr');
 
       // Utilise la fonction PostgreSQL optimisée avec les dates calculées
       final result = await _client.rpc('get_weekly_dashboard_data',
@@ -439,32 +439,32 @@ class WorkoutCacheService {
       String? customExerciseId;
       
       // Chercher dans les exercices système
-      print('🔍 Recherche exercice: "$exerciseName" avec suffix: $suffix');
-      print('🔍 Requête: exercises table, colonne: name$suffix, valeur: "$exerciseName"');
+      debugPrint('🔍 Recherche exercice: "$exerciseName" avec suffix: $suffix');
+      debugPrint('🔍 Requête: exercises table, colonne: name$suffix, valeur: "$exerciseName"');
       
       final systemExercises = await _client
           .from('exercises')
           .select('id, name$suffix, name_fr, name_en')
           .eq('name$suffix', exerciseName);
       
-      print('🏋️ Exercices système trouvés: ${systemExercises.length}');
+      debugPrint('🏋️ Exercices système trouvés: ${systemExercises.length}');
       
       // Debug: Afficher quelques exercices pour comparaison si aucun trouvé
       if (systemExercises.isEmpty) {
-        print('❌ Aucun exercice système trouvé avec le nom "$exerciseName"');
-        print('🔍 Recherche d\'exercices similaires...');
+        debugPrint('❌ Aucun exercice système trouvé avec le nom "$exerciseName"');
+        debugPrint('🔍 Recherche d\'exercices similaires...');
         final similarExercises = await _client
             .from('exercises')
             .select('id, name_fr, name_en')
             .ilike('name$suffix', '%squat%')
             .limit(5);
-        print('🔍 Exercices avec "squat" trouvés: $similarExercises');
+        debugPrint('🔍 Exercices avec "squat" trouvés: $similarExercises');
       } else {
-        print('✅ Exercice système trouvé: ${systemExercises.first}');
+        debugPrint('✅ Exercice système trouvé: ${systemExercises.first}');
       }
       if (systemExercises.isNotEmpty) {
         exerciseId = systemExercises.first['id'];
-        print('✅ Exercise ID trouvé: $exerciseId');
+        debugPrint('✅ Exercise ID trouvé: $exerciseId');
       } else {
         // Chercher dans les exercices custom
         final customExercises = await _client
@@ -472,10 +472,10 @@ class WorkoutCacheService {
             .select('id, name')
             .eq('name', exerciseName);
         
-        print('🏋️ Exercices custom trouvés: ${customExercises.length}');
+        debugPrint('🏋️ Exercices custom trouvés: ${customExercises.length}');
         if (customExercises.isNotEmpty) {
           customExerciseId = customExercises.first['id'];
-          print('✅ Custom Exercise ID trouvé: $customExerciseId');
+          debugPrint('✅ Custom Exercise ID trouvé: $customExerciseId');
         }
       }
       
@@ -485,8 +485,8 @@ class WorkoutCacheService {
       
       List<dynamic> rows;
       if (exerciseId != null) {
-        print('🔍 Recherche historique avec exercise_id: $exerciseId pour user: $userId');
-        print('🔍 Date filter: $dateFilter');
+        debugPrint('🔍 Recherche historique avec exercise_id: $exerciseId pour user: $userId');
+        debugPrint('🔍 Date filter: $dateFilter');
         
         rows = await _client
             .from('workout_set_history')
@@ -497,11 +497,11 @@ class WorkoutCacheService {
             .order('performed_at', ascending: true)
             .order('set_order', ascending: true);
         
-        print('🏋️ Historique trouvé: ${rows.length} lignes');
+        debugPrint('🏋️ Historique trouvé: ${rows.length} lignes');
         if (rows.isNotEmpty) {
-          print('📊 Premier résultat: ${rows.first}');
+          debugPrint('📊 Premier résultat: ${rows.first}');
         } else {
-          print('❌ Aucune donnée avec cet exercise_id, essai du fallback par nom...');
+          debugPrint('❌ Aucune donnée avec cet exercise_id, essai du fallback par nom...');
           
           // Si aucune donnée trouvée avec l'exercise_id, essayer le fallback par nom
           var fallbackRows = await _client
@@ -513,7 +513,7 @@ class WorkoutCacheService {
               .order('performed_at', ascending: true)
               .order('set_order', ascending: true);
           
-          print('🔍 Recherche fallback par exercise_name="$exerciseName": ${fallbackRows.length} résultats');
+          debugPrint('🔍 Recherche fallback par exercise_name="$exerciseName": ${fallbackRows.length} résultats');
           rows = fallbackRows;
         }
       } else if (customExerciseId != null) {
@@ -526,7 +526,7 @@ class WorkoutCacheService {
             .order('performed_at', ascending: true)
             .order('set_order', ascending: true);
       } else {
-        print('❌ Aucun ID d\'exercice trouvé, utilisation du fallback par nom');
+        debugPrint('❌ Aucun ID d\'exercice trouvé, utilisation du fallback par nom');
         
         // Fallback : utiliser la même logique que getTopExercises()
         // D'abord, essayer avec le nom tel que reçu
@@ -539,7 +539,7 @@ class WorkoutCacheService {
             .order('performed_at', ascending: true)
             .order('set_order', ascending: true);
         
-        print('🔍 Recherche par exercise_name="$exerciseName": ${fallbackRows.length} résultats');
+        debugPrint('🔍 Recherche par exercise_name="$exerciseName": ${fallbackRows.length} résultats');
         
         if (fallbackRows.isEmpty) {
           // Essayer avec le nom dans l'autre langue (FR si on cherche en EN et vice versa)
@@ -551,7 +551,7 @@ class WorkoutCacheService {
           
           if (possibleExercises.isNotEmpty) {
             final rawName = possibleExercises.first['name$otherSuffix'];
-            print('🔍 Essai avec nom dans autre langue: "$rawName"');
+            debugPrint('🔍 Essai avec nom dans autre langue: "$rawName"');
             if (rawName != null) {
               fallbackRows = await _client
                   .from('workout_set_history')
@@ -566,10 +566,10 @@ class WorkoutCacheService {
         }
         
         rows = fallbackRows;
-        print('🔍 Fallback terminé: ${fallbackRows.length} résultats trouvés au total');
+        debugPrint('🔍 Fallback terminé: ${fallbackRows.length} résultats trouvés au total');
       }
       
-      print('🔍 Données finales pour traitement: ${rows.length} lignes');
+      debugPrint('🔍 Données finales pour traitement: ${rows.length} lignes');
       
       // Traitement côté client (inchangé pour compatibilité)
       final processedData = _processExerciseData(rows, exerciseName);
@@ -751,7 +751,7 @@ class WorkoutCacheService {
 
   /// Méthode de debug pour examiner les données d'exercices
   static Future<void> debugExerciseData(String userId) async {
-    print('🔍 === DEBUG EXERCISE DATA ===');
+    debugPrint('🔍 === DEBUG EXERCISE DATA ===');
     
     // Vérifier les exercices dans la table exercises
     final exercisesData = await _client
@@ -761,9 +761,9 @@ class WorkoutCacheService {
         .or('name_en.ilike.%squat%')
         .limit(10);
     
-    print('🏋️ Exercices avec "squat" dans la table exercises:');
+    debugPrint('🏋️ Exercices avec "squat" dans la table exercises:');
     for (final ex in exercisesData) {
-      print('  - ID: ${ex['id']}, FR: "${ex['name_fr']}", EN: "${ex['name_en']}"');
+      debugPrint('  - ID: ${ex['id']}, FR: "${ex['name_fr']}", EN: "${ex['name_en']}"');
     }
     
     // Vérifier l'historique des workouts pour cet utilisateur avec des noms contenant squat
@@ -774,9 +774,9 @@ class WorkoutCacheService {
         .ilike('exercise_name', '%squat%')
         .limit(10);
     
-    print('🏋️ Historique avec "squat" pour user $userId:');
+    debugPrint('🏋️ Historique avec "squat" pour user $userId:');
     for (final hist in historyData) {
-      print('  - Exercise ID: ${hist['exercise_id']}, Name: "${hist['exercise_name']}", Date: ${hist['performed_at']}');
+      debugPrint('  - Exercise ID: ${hist['exercise_id']}, Name: "${hist['exercise_name']}", Date: ${hist['performed_at']}');
     }
     
     // Vérifier les noms d'exercices uniques dans l'historique
@@ -793,12 +793,12 @@ class WorkoutCacheService {
       }
     }
     
-    print('🏋️ Noms d\'exercices uniques dans l\'historique (${names.length} au total):');
+    debugPrint('🏋️ Noms d\'exercices uniques dans l\'historique (${names.length} au total):');
     for (final name in names.take(20)) {
-      print('  - "$name"');
+      debugPrint('  - "$name"');
     }
     
-    print('🔍 === FIN DEBUG ===');
+    debugPrint('🔍 === FIN DEBUG ===');
   }
   
   /// Force le rechargement des données (pour debug/test)

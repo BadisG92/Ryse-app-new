@@ -33,7 +33,7 @@ class NutritionNotifier extends ChangeNotifier {
 
   /// Initialisation complète du dashboard avec cache-first
   Future<void> initializeDashboard() async {
-    print('🚀 NutritionNotifier: Initialisation dashboard...');
+    debugPrint('🚀 NutritionNotifier: Initialisation dashboard...');
 
     _isLoading = true;
     _errorMessage = null;
@@ -47,7 +47,7 @@ class NutritionNotifier extends ChangeNotifier {
       _syncFromServerInBackground();
 
     } catch (e) {
-      print('❌ Erreur initialisation dashboard: $e');
+      debugPrint('❌ Erreur initialisation dashboard: $e');
       _errorMessage = 'Erreur chargement dashboard: $e';
       _isLoading = false;
       notifyListeners();
@@ -65,7 +65,7 @@ class NutritionNotifier extends ChangeNotifier {
         _isLoading = false;
         notifyListeners();
 
-        print('⚡ Cache local: ${_dailyGoals.length} objectifs chargés');
+        debugPrint('⚡ Cache local: ${_dailyGoals.length} objectifs chargés');
         return;
       }
 
@@ -73,7 +73,7 @@ class NutritionNotifier extends ChangeNotifier {
       await _loadFromServerDirectly();
 
     } catch (e) {
-      print('❌ Erreur chargement cache: $e');
+      debugPrint('❌ Erreur chargement cache: $e');
       await _loadFromServerDirectly();
     }
   }
@@ -92,9 +92,9 @@ class NutritionNotifier extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
 
-      print('🔄 Serveur: Dashboard chargé (${_dailyGoals.length} objectifs)');
+      debugPrint('🔄 Serveur: Dashboard chargé (${_dailyGoals.length} objectifs)');
     } catch (e) {
-      print('❌ Erreur chargement serveur: $e');
+      debugPrint('❌ Erreur chargement serveur: $e');
       _errorMessage = 'Erreur serveur: $e';
       _isLoading = false;
       notifyListeners();
@@ -106,7 +106,7 @@ class NutritionNotifier extends ChangeNotifier {
     // Délai pour ne pas bloquer l'UI
     Future.delayed(const Duration(milliseconds: 100), () async {
       try {
-        print('🔄 Sync background: Récupération depuis serveur...');
+        debugPrint('🔄 Sync background: Récupération depuis serveur...');
 
         // Récupérer les vraies données
         final serverGoals = await DashboardService.getDailyGoals();
@@ -123,13 +123,13 @@ class NutritionNotifier extends ChangeNotifier {
           await LocalCache.saveDailyGoals(_dailyGoals);
 
           notifyListeners();
-          print('✅ Background sync: Dashboard mis à jour');
+          debugPrint('✅ Background sync: Dashboard mis à jour');
         } else {
-          print('📊 Background sync: Données déjà à jour');
+          debugPrint('📊 Background sync: Données déjà à jour');
         }
 
       } catch (e) {
-        print('⚠️ Erreur sync background: $e');
+        debugPrint('⚠️ Erreur sync background: $e');
         // Ne pas casser l'UI, garder les données actuelles
       }
     });
@@ -156,7 +156,7 @@ class NutritionNotifier extends ChangeNotifier {
 
   /// OPTIMISTIC UPDATE: Ajouter de l'eau instantanément
   Future<void> addWaterOptimistic(int amountMl) async {
-    print('💧 Optimistic: Ajout ${amountMl}ml d\'eau...');
+    debugPrint('💧 Optimistic: Ajout ${amountMl}ml d\'eau...');
 
     try {
       // 1. MISE À JOUR UI INSTANTANÉE (0ms)
@@ -189,7 +189,7 @@ class NutritionNotifier extends ChangeNotifier {
       _syncWaterWithServer(amountMl);
 
     } catch (e) {
-      print('❌ Erreur optimistic eau: $e');
+      debugPrint('❌ Erreur optimistic eau: $e');
       // En cas d'erreur, rechargement complet
       await _loadFromServerDirectly();
     }
@@ -214,14 +214,14 @@ class NutritionNotifier extends ChangeNotifier {
           await LocalCache.clearTempWaterEntries();
 
           notifyListeners();
-          print('✅ Eau sync serveur: Success');
+          debugPrint('✅ Eau sync serveur: Success');
         }
       } else {
         throw Exception('Échec sauvegarde serveur');
       }
 
     } catch (e) {
-      print('❌ Erreur sync eau serveur: $e');
+      debugPrint('❌ Erreur sync eau serveur: $e');
 
       // ROLLBACK: Annuler la mise à jour optimiste
       await _rollbackWaterUpdate(amountMl);
@@ -251,10 +251,10 @@ class NutritionNotifier extends ChangeNotifier {
         await LocalCache.clearTempWaterEntries();
 
         notifyListeners();
-        print('🔄 Rollback eau effectué');
+        debugPrint('🔄 Rollback eau effectué');
       }
     } catch (e) {
-      print('❌ Erreur rollback: $e');
+      debugPrint('❌ Erreur rollback: $e');
       // En dernier recours, recharger depuis serveur
       await _loadFromServerDirectly();
     }
@@ -262,7 +262,7 @@ class NutritionNotifier extends ChangeNotifier {
 
   /// OPTIMISTIC UPDATE: Ajouter calories/repas instantanément
   Future<void> addCaloriesOptimistic(double calories, {bool isNewMeal = false}) async {
-    print('🍎 Optimistic: Ajout ${calories}kcal (nouveau repas: $isNewMeal)...');
+    debugPrint('🍎 Optimistic: Ajout ${calories}kcal (nouveau repas: $isNewMeal)...');
 
     try {
       // 1. MISE À JOUR UI INSTANTANÉE
@@ -303,10 +303,10 @@ class NutritionNotifier extends ChangeNotifier {
       // 2. CACHE LOCAL
       await LocalCache.saveDailyGoals(_dailyGoals);
 
-      print('⚡ UI mise à jour instantanément: +${calories}kcal');
+      debugPrint('⚡ UI mise à jour instantanément: +${calories}kcal');
 
     } catch (e) {
-      print('❌ Erreur optimistic calories: $e');
+      debugPrint('❌ Erreur optimistic calories: $e');
       await _loadFromServerDirectly();
     }
   }
@@ -325,10 +325,10 @@ class NutritionNotifier extends ChangeNotifier {
     bool isRecipe = false,
     bool isScanned = false,
   }) async {
-    print('🍽️ Optimistic: Ajout $foodName ($calories kcal) au $mealName...');
+    debugPrint('🍽️ Optimistic: Ajout $foodName ($calories kcal) au $mealName...');
 
     if (!FeatureFlags.USE_OPTIMISTIC_FOOD) {
-      print('⏸️ Feature flag désactivé, utilisation du système classique');
+      debugPrint('⏸️ Feature flag désactivé, utilisation du système classique');
       return;
     }
 
@@ -352,7 +352,7 @@ class NutritionNotifier extends ChangeNotifier {
       );
 
     } catch (e) {
-      print('❌ Erreur optimistic food: $e');
+      debugPrint('❌ Erreur optimistic food: $e');
       await _loadFromServerDirectly();
     }
   }
@@ -401,13 +401,13 @@ class NutritionNotifier extends ChangeNotifier {
       if (success) {
         // Retirer le marqueur "pending"
         _removePendingFlags(['calories', 'meals']);
-        print('✅ Aliment sync serveur: Success');
+        debugPrint('✅ Aliment sync serveur: Success');
       } else {
         throw Exception('Échec sauvegarde serveur');
       }
 
     } catch (e) {
-      print('❌ Erreur sync aliment serveur: $e');
+      debugPrint('❌ Erreur sync aliment serveur: $e');
       // ROLLBACK: Annuler la mise à jour optimiste
       await _rollbackFoodUpdate(calories);
     }
@@ -448,10 +448,10 @@ class NutritionNotifier extends ChangeNotifier {
 
       await LocalCache.saveDailyGoals(_dailyGoals);
       notifyListeners();
-      print('🔄 Rollback aliment effectué');
+      debugPrint('🔄 Rollback aliment effectué');
 
     } catch (e) {
-      print('❌ Erreur rollback aliment: $e');
+      debugPrint('❌ Erreur rollback aliment: $e');
       await _loadFromServerDirectly();
     }
   }
@@ -473,10 +473,10 @@ class NutritionNotifier extends ChangeNotifier {
     int caloriesBurned = 300,
     int durationMinutes = 45,
   }) async {
-    print('🏋️ Optimistic: Workout $workoutType complété (${caloriesBurned}kcal brûlées)...');
+    debugPrint('🏋️ Optimistic: Workout $workoutType complété (${caloriesBurned}kcal brûlées)...');
 
     if (!FeatureFlags.USE_OPTIMISTIC_WORKOUT) {
-      print('⏸️ Feature flag désactivé, utilisation du système classique');
+      debugPrint('⏸️ Feature flag désactivé, utilisation du système classique');
       return;
     }
 
@@ -494,14 +494,14 @@ class NutritionNotifier extends ChangeNotifier {
         notifyListeners(); // UI INSTANTANÉE
         await LocalCache.saveDailyGoals(_dailyGoals);
 
-        print('⚡ Workout marqué comme complété instantanément');
+        debugPrint('⚡ Workout marqué comme complété instantanément');
       }
 
       // 2. SYNC SERVEUR EN ARRIÈRE-PLAN
       _syncWorkoutWithServer(workoutType, caloriesBurned, durationMinutes);
 
     } catch (e) {
-      print('❌ Erreur optimistic workout: $e');
+      debugPrint('❌ Erreur optimistic workout: $e');
       await _loadFromServerDirectly();
     }
   }
@@ -515,10 +515,10 @@ class NutritionNotifier extends ChangeNotifier {
 
       // Retirer le marqueur "pending"
       _removePendingFlags(['workout']);
-      print('✅ Workout sync serveur: Success');
+      debugPrint('✅ Workout sync serveur: Success');
 
     } catch (e) {
-      print('❌ Erreur sync workout serveur: $e');
+      debugPrint('❌ Erreur sync workout serveur: $e');
       // ROLLBACK: Annuler la mise à jour optimiste
       await _rollbackWorkoutUpdate();
     }
@@ -538,10 +538,10 @@ class NutritionNotifier extends ChangeNotifier {
 
         await LocalCache.saveDailyGoals(_dailyGoals);
         notifyListeners();
-        print('🔄 Rollback workout effectué');
+        debugPrint('🔄 Rollback workout effectué');
       }
     } catch (e) {
-      print('❌ Erreur rollback workout: $e');
+      debugPrint('❌ Erreur rollback workout: $e');
       await _loadFromServerDirectly();
     }
   }
@@ -551,10 +551,10 @@ class NutritionNotifier extends ChangeNotifier {
     required double weightKg,
     DateTime? date,
   }) async {
-    print('⚖️ Optimistic: Pesée ${weightKg}kg...');
+    debugPrint('⚖️ Optimistic: Pesée ${weightKg}kg...');
 
     if (!FeatureFlags.USE_OPTIMISTIC_WEIGHT) {
-      print('⏸️ Feature flag désactivé, utilisation du système classique');
+      debugPrint('⏸️ Feature flag désactivé, utilisation du système classique');
       return;
     }
 
@@ -566,10 +566,10 @@ class NutritionNotifier extends ChangeNotifier {
       // 2. SYNC SERVEUR EN ARRIÈRE-PLAN
       _syncWeightWithServer(weightKg, date ?? DateTime.now());
 
-      print('⚡ Pesée enregistrée instantanément');
+      debugPrint('⚡ Pesée enregistrée instantanément');
 
     } catch (e) {
-      print('❌ Erreur optimistic weight: $e');
+      debugPrint('❌ Erreur optimistic weight: $e');
     }
   }
 
@@ -587,17 +587,17 @@ class NutritionNotifier extends ChangeNotifier {
         'recorded_at': date.toIso8601String(),
       });
 
-      print('✅ Poids sync serveur: Success');
+      debugPrint('✅ Poids sync serveur: Success');
 
     } catch (e) {
-      print('❌ Erreur sync poids serveur: $e');
+      debugPrint('❌ Erreur sync poids serveur: $e');
       // Le poids n'affecte pas les objectifs, pas de rollback nécessaire
     }
   }
 
   /// Forcer une synchronisation complète
   Future<void> forceSync() async {
-    print('🔄 Force sync: Rechargement complet...');
+    debugPrint('🔄 Force sync: Rechargement complet...');
 
     await LocalCache.clearDailyGoals();
     await _loadFromServerDirectly();
@@ -605,7 +605,7 @@ class NutritionNotifier extends ChangeNotifier {
 
   /// Recharger les données (pull-to-refresh)
   Future<void> refreshData() async {
-    print('🔄 Refresh: Pull-to-refresh déclenché...');
+    debugPrint('🔄 Refresh: Pull-to-refresh déclenché...');
 
     // Vider le cache et recharger
     await LocalCache.clearDailyGoals();
@@ -624,20 +624,20 @@ class NutritionNotifier extends ChangeNotifier {
 
   /// Debug: Afficher l'état actuel
   void debugPrintState() {
-    print('🔍 NUTRITION NOTIFIER DEBUG:');
-    print('   - Objectifs: ${_dailyGoals.length}');
-    print('   - En attente: $pendingUpdatesCount');
-    print('   - Loading: $_isLoading');
-    print('   - Error: $_errorMessage');
+    debugPrint('🔍 NUTRITION NOTIFIER DEBUG:');
+    debugPrint('   - Objectifs: ${_dailyGoals.length}');
+    debugPrint('   - En attente: $pendingUpdatesCount');
+    debugPrint('   - Loading: $_isLoading');
+    debugPrint('   - Error: $_errorMessage');
 
     for (final goal in _dailyGoals) {
-      print('   - ${goal.label}: ${goal.progress}% (pending: ${goal.isPending})');
+      debugPrint('   - ${goal.label}: ${goal.progress}% (pending: ${goal.isPending})');
     }
   }
 
   @override
   void dispose() {
-    print('🧹 NutritionNotifier: Nettoyage...');
+    debugPrint('🧹 NutritionNotifier: Nettoyage...');
     super.dispose();
   }
 }

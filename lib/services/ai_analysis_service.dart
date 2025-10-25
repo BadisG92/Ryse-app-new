@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -47,7 +48,7 @@ class AIAnalysisService {
 
       return imageBytes;
     } catch (e) {
-      print('Error resizing image: $e');
+      debugPrint('Error resizing image: $e');
       return imageBytes; // Return original if resize fails
     }
   }
@@ -243,7 +244,7 @@ The cultural context is just additional information to help recognize local dish
           );
           detectedFoods.add(detectedFood);
         } catch (e) {
-          print('Error processing food label ${annotation.description}: $e');
+          debugPrint('Error processing food label ${annotation.description}: $e');
           continue;
         }
       }

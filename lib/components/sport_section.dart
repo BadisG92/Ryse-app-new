@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -98,9 +99,9 @@ class _SportSectionState extends State<SportSection>
       _totalGoals = goals.length;
     });
 
-    print('⚡ Sport header chargé INSTANTANÉMENT depuis GlobalStateManager:');
-    print('   - Streak: $_currentStreak jours');
-    print('   - Objectifs: $_completedGoals/$_totalGoals');
+    debugPrint('⚡ Sport header chargé INSTANTANÉMENT depuis GlobalStateManager:');
+    debugPrint('   - Streak: $_currentStreak jours');
+    debugPrint('   - Objectifs: $_completedGoals/$_totalGoals');
   }
 
   @override
@@ -157,7 +158,7 @@ class _SportSectionState extends State<SportSection>
         );
       }
     } catch (e) {
-      print('Erreur lors du rafraîchissement du sport: $e');
+      debugPrint('Erreur lors du rafraîchissement du sport: $e');
     }
   }
 

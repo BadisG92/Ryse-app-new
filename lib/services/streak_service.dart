@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
 import 'global_state_manager.dart';
@@ -19,14 +20,14 @@ class StreakService {
     try {
       final user = _supabase.auth.currentUser;
       if (user == null) {
-        print('❌ StreakService: Utilisateur non connecté');
+        debugPrint('❌ StreakService: Utilisateur non connecté');
         return 0;
       }
       
       final today = DateTime.now();
       final todayString = _formatDate(today);
       
-      print('🔥 StreakService: Calcul streak pour ${user.id} le $todayString');
+      debugPrint('🔥 StreakService: Calcul streak pour ${user.id} le $todayString');
       
       // Récupérer les données de streak actuelles
       final response = await _supabase
@@ -36,18 +37,18 @@ class StreakService {
           .maybeSingle();
           
       if (response == null) {
-        print('❌ StreakService: Utilisateur non trouvé');
+        debugPrint('❌ StreakService: Utilisateur non trouvé');
         return 0;
       }
       
       final currentStreakCount = response['streak_count'] as int? ?? 0;
       final lastStreakDate = response['streak_last_date'] as String?;
       
-      print('📊 État actuel - Streak: $currentStreakCount, Dernière date: $lastStreakDate');
+      debugPrint('📊 État actuel - Streak: $currentStreakCount, Dernière date: $lastStreakDate');
       
       // Premier cas : Première utilisation ou pas de streak
       if (currentStreakCount == 0 || lastStreakDate == null) {
-        print('🆕 Première utilisation - Initialisation de la streak');
+        debugPrint('🆕 Première utilisation - Initialisation de la streak');
         return await _initializeStreak(user.id, todayString);
       }
       
@@ -55,26 +56,26 @@ class StreakService {
       final lastDate = DateTime.parse(lastStreakDate);
       final daysDifference = _daysBetween(lastDate, today);
       
-      print('📅 Différence: $daysDifference jours depuis la dernière activité');
+      debugPrint('📅 Différence: $daysDifference jours depuis la dernière activité');
       
       // Cas 1: Même jour - pas de changement
       if (daysDifference == 0) {
-        print('📅 Même jour - Streak inchangée: $currentStreakCount');
+        debugPrint('📅 Même jour - Streak inchangée: $currentStreakCount');
         return currentStreakCount;
       }
       
       // Cas 2: Dans la tolérance - incrémenter
       if (daysDifference <= _toleranceDays) {
-        print('✅ Dans la tolérance - Incrémentation de la streak');
+        debugPrint('✅ Dans la tolérance - Incrémentation de la streak');
         return await _incrementStreak(user.id, currentStreakCount, todayString);
       }
       
       // Cas 3: Hors tolérance - reset
-      print('🔄 Hors tolérance - Reset de la streak');
+      debugPrint('🔄 Hors tolérance - Reset de la streak');
       return await _resetStreak(user.id, todayString);
       
     } catch (e) {
-      print('❌ StreakService: Erreur lors du calcul de streak: $e');
+      debugPrint('❌ StreakService: Erreur lors du calcul de streak: $e');
       return 0;
     }
   }
@@ -90,18 +91,18 @@ class StreakService {
           })
           .eq('id', userId);
 
-      print('🎯 Streak initialisée: 1 jour');
+      debugPrint('🎯 Streak initialisée: 1 jour');
 
       // NOUVEAU: Notifier GlobalStateManager
       try {
         GlobalStateManager.instance.updateStreak(1);
       } catch (e) {
-        print('⚠️ GlobalStateManager streak update failed: $e');
+        debugPrint('⚠️ GlobalStateManager streak update failed: $e');
       }
 
       return 1;
     } catch (e) {
-      print('❌ Erreur initialisation streak: $e');
+      debugPrint('❌ Erreur initialisation streak: $e');
       return 0;
     }
   }
@@ -119,18 +120,18 @@ class StreakService {
           })
           .eq('id', userId);
 
-      print('📈 Streak incrémentée: $newStreak jours');
+      debugPrint('📈 Streak incrémentée: $newStreak jours');
 
       // NOUVEAU: Notifier GlobalStateManager
       try {
         GlobalStateManager.instance.updateStreak(newStreak);
       } catch (e) {
-        print('⚠️ GlobalStateManager streak update failed: $e');
+        debugPrint('⚠️ GlobalStateManager streak update failed: $e');
       }
 
       return newStreak;
     } catch (e) {
-      print('❌ Erreur incrémentation streak: $e');
+      debugPrint('❌ Erreur incrémentation streak: $e');
       return currentStreak; // Retourner l'ancienne valeur en cas d'erreur
     }
   }
@@ -146,18 +147,18 @@ class StreakService {
           })
           .eq('id', userId);
 
-      print('🔄 Streak reset: 1 jour');
+      debugPrint('🔄 Streak reset: 1 jour');
 
       // NOUVEAU: Notifier GlobalStateManager
       try {
         GlobalStateManager.instance.updateStreak(1);
       } catch (e) {
-        print('⚠️ GlobalStateManager streak update failed: $e');
+        debugPrint('⚠️ GlobalStateManager streak update failed: $e');
       }
 
       return 1;
     } catch (e) {
-      print('❌ Erreur reset streak: $e');
+      debugPrint('❌ Erreur reset streak: $e');
       return 0;
     }
   }
@@ -172,7 +173,7 @@ class StreakService {
       final today = DateTime.now();
       final todayString = _formatDate(today);
       
-      print('🎯 StreakService: Notification d\'activité pour $todayString');
+      debugPrint('🎯 StreakService: Notification d\'activité pour $todayString');
       
       // Mettre à jour la dernière date d'activité si pas déjà fait aujourd'hui
       final response = await _supabase
@@ -189,7 +190,7 @@ class StreakService {
         }
       }
     } catch (e) {
-      print('❌ StreakService: Erreur notification activité: $e');
+      debugPrint('❌ StreakService: Erreur notification activité: $e');
     }
   }
   
@@ -208,7 +209,7 @@ class StreakService {
           
       return response?['streak_count'] as int? ?? 0;
     } catch (e) {
-      print('❌ StreakService: Erreur récupération streak: $e');
+      debugPrint('❌ StreakService: Erreur récupération streak: $e');
       return 0;
     }
   }
@@ -230,7 +231,7 @@ class StreakService {
     try {
       final user = _supabase.auth.currentUser;
       if (user == null) {
-        print('🐛 Debug Streak: Utilisateur non connecté');
+        debugPrint('🐛 Debug Streak: Utilisateur non connecté');
         return;
       }
       
@@ -243,12 +244,12 @@ class StreakService {
       if (response != null) {
         final count = response['streak_count'];
         final date = response['streak_last_date'];
-        print('🐛 Debug Streak - Count: $count, Last Date: $date');
+        debugPrint('🐛 Debug Streak - Count: $count, Last Date: $date');
       } else {
-        print('🐛 Debug Streak: Aucune donnée trouvée');
+        debugPrint('🐛 Debug Streak: Aucune donnée trouvée');
       }
     } catch (e) {
-      print('❌ Debug Streak: Erreur: $e');
+      debugPrint('❌ Debug Streak: Erreur: $e');
     }
   }
 }

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
 import 'localization_service.dart';
@@ -54,7 +55,7 @@ class LocalizedFoodService {
           .order('name$suffix');
       
     } catch (e) {
-      print('Erreur lors de la recherche d\'aliments: $e');
+      debugPrint('Erreur lors de la recherche d\'aliments: $e');
       return [];
     }
   }
@@ -86,7 +87,7 @@ class LocalizedFoodService {
           .order('name$suffix');
       
     } catch (e) {
-      print('Erreur lors de la récupération des aliments par catégorie: $e');
+      debugPrint('Erreur lors de la récupération des aliments par catégorie: $e');
       return [];
     }
   }
@@ -125,7 +126,7 @@ class LocalizedFoodService {
       return result;
       
     } catch (e) {
-      print('Erreur lors de la récupération des détails de l\'aliment: $e');
+      debugPrint('Erreur lors de la récupération des détails de l\'aliment: $e');
       return null;
     }
   }
@@ -167,7 +168,7 @@ class LocalizedFoodService {
           .order('name$suffix');
       
     } catch (e) {
-      print('Erreur lors de la récupération des recettes: $e');
+      debugPrint('Erreur lors de la récupération des recettes: $e');
       return [];
     }
   }
@@ -203,7 +204,7 @@ class LocalizedFoodService {
           .order('display_order');
       
     } catch (e) {
-      print('Erreur lors de la récupération des ingrédients de la recette: $e');
+      debugPrint('Erreur lors de la récupération des ingrédients de la recette: $e');
       return [];
     }
   }
@@ -231,7 +232,7 @@ class LocalizedFoodService {
           .order('created_at', ascending: false);
       
     } catch (e) {
-      print('Erreur lors de la récupération des aliments personnalisés: $e');
+      debugPrint('Erreur lors de la récupération des aliments personnalisés: $e');
       return [];
     }
   }
@@ -319,7 +320,7 @@ class LocalizedFoodService {
       };
       
     } catch (e) {
-      print('Erreur lors du calcul des statistiques nutritionnelles: $e');
+      debugPrint('Erreur lors du calcul des statistiques nutritionnelles: $e');
       return {
         'error': 'Impossible de récupérer les statistiques',
         'current_language': locService.instance.currentLanguageCode,

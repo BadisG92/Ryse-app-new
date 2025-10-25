@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -196,7 +197,7 @@ class _QuickActionsSectionState extends State<QuickActionsSection> {
         final meals = await FoodEntriesService.getFoodEntriesForDate(user.id, DateTime.now());
         existingMeals = meals.where((meal) => meal.items.isNotEmpty).toList();
       } catch (e) {
-        print('Erreur lors de la récupération des repas existants: $e');
+        debugPrint('Erreur lors de la récupération des repas existants: $e');
       }
     }
 

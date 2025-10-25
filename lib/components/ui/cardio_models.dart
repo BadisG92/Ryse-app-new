@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../services/translations.dart';
@@ -215,7 +216,7 @@ class CardioData {
       LocalizationService.instance.addListener(_onLanguageChanged);
       _isListenerSetup = true;
       _lastLanguage = LocalizationService.instance.currentLanguageCode;
-      print('✅ CardioData: Language listener configuré');
+      debugPrint('✅ CardioData: Language listener configuré');
     }
   }
   
@@ -223,7 +224,7 @@ class CardioData {
   static void _onLanguageChanged() {
     final currentLanguage = LocalizationService.instance.currentLanguageCode;
     if (currentLanguage != _lastLanguage) {
-      print('🔄 CardioData: Changement de langue détecté ($currentLanguage)');
+      debugPrint('🔄 CardioData: Changement de langue détecté ($currentLanguage)');
       _lastLanguage = currentLanguage;
       _invalidateCache();
     }

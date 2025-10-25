@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -694,11 +695,11 @@ class _NutritionAnalysisScreenState extends State<NutritionAnalysisScreen> with 
     final recos = widget.analysis.recommendations;
 
     if (recos.isEmpty) {
-      print('⚠️ Aucune recommandation à afficher');
+      debugPrint('⚠️ Aucune recommandation à afficher');
       return SizedBox.shrink();
     }
 
-    print('✅ Affichage de ${recos.length} recommandations');
+    debugPrint('✅ Affichage de ${recos.length} recommandations');
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: Spacing.md),
@@ -784,18 +785,18 @@ class _NutritionAnalysisScreenState extends State<NutritionAnalysisScreen> with 
     final keyword = isFrench ? '**Recommandations**' : '**Recommendations**';
     if (!text.contains(keyword)) {
       // Debug
-      print('❌ Keyword "$keyword" non trouvé dans le texte');
+      debugPrint('❌ Keyword "$keyword" non trouvé dans le texte');
       return [];
     }
 
     final parts = text.split(keyword);
     if (parts.length < 2) {
-      print('❌ Pas assez de parties après split');
+      debugPrint('❌ Pas assez de parties après split');
       return [];
     }
 
     final recoPart = parts[1].trim();
-    print('📝 Partie recommandations: ${recoPart.substring(0, recoPart.length > 100 ? 100 : recoPart.length)}...');
+    debugPrint('📝 Partie recommandations: ${recoPart.substring(0, recoPart.length > 100 ? 100 : recoPart.length)}...');
 
     // Split par double retour à la ligne OU par pattern **Titre**
     final List<String> recos = [];
@@ -811,7 +812,7 @@ class _NutritionAnalysisScreenState extends State<NutritionAnalysisScreen> with 
           recos.add('**$title**\n$description');
         }
       }
-      print('✅ ${recos.length} recommandations trouvées via regex');
+      debugPrint('✅ ${recos.length} recommandations trouvées via regex');
     } else {
       // Fallback: split par double saut de ligne
       final splitRecos = recoPart
@@ -820,7 +821,7 @@ class _NutritionAnalysisScreenState extends State<NutritionAnalysisScreen> with 
           .map((s) => s.trim())
           .toList();
       recos.addAll(splitRecos);
-      print('✅ ${recos.length} recommandations trouvées via split');
+      debugPrint('✅ ${recos.length} recommandations trouvées via split');
     }
 
     return recos;

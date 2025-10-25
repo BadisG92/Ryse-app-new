@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -47,7 +48,7 @@ class GeminiAnalysisService {
 
       return imageBytes;
     } catch (e) {
-      print('Error resizing image: $e');
+      debugPrint('Error resizing image: $e');
       return imageBytes; // Return original if resize fails
     }
   }
@@ -348,13 +349,13 @@ Be precise with your estimations and only include foods you can confidently iden
               detectedFoods.add(detectedFood);
             }
           } catch (e) {
-            print('Error parsing food item: $e');
+            debugPrint('Error parsing food item: $e');
             continue;
           }
         }
       }
     } catch (e) {
-      print('Error parsing Gemini response: $e');
+      debugPrint('Error parsing Gemini response: $e');
       // Fallback: try to extract food names from text response
       final fallbackFoods = _extractFoodsFromText(textResponse);
       return {

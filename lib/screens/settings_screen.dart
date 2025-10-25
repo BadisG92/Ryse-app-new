@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -101,7 +102,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
         _currentStreak = int.tryParse(cachedStats.dailyStreak.split(' ')[0]) ?? 0;
         _loadingStreak = false;
       });
-      print('⚡ Settings header chargé depuis le cache: ${cachedStats.dailyStreak}');
+      debugPrint('⚡ Settings header chargé depuis le cache: ${cachedStats.dailyStreak}');
     }
   }
   
@@ -181,7 +182,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
       await _loadLocalPreferences();
       
     } catch (e) {
-      print('Erreur lors du chargement des paramètres depuis Supabase: $e');
+      debugPrint('Erreur lors du chargement des paramètres depuis Supabase: $e');
       // En cas d'erreur, charger depuis SharedPreferences
       await _loadFromSharedPreferences();
     }
@@ -298,7 +299,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
       await _saveToSharedPreferences();
       
     } catch (e) {
-      print('Erreur lors de la sauvegarde dans Supabase: $e');
+      debugPrint('Erreur lors de la sauvegarde dans Supabase: $e');
       // En cas d'erreur, sauvegarder localement
       await _saveToSharedPreferences();
       
@@ -1017,7 +1018,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
       // Vider le cache pour forcer un rechargement (méthode void)
       HeaderCacheService.clearCache();
     } catch (e) {
-      print('Erreur lors du rafraîchissement des paramètres: $e');
+      debugPrint('Erreur lors du rafraîchissement des paramètres: $e');
     }
   }
 

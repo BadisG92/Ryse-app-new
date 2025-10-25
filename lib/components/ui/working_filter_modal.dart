@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'recipe_models.dart';
@@ -25,7 +26,7 @@ class _WorkingFilterModalState extends State<WorkingFilterModal> {
   @override
   void initState() {
     super.initState();
-    print('💚 WORKING MODAL: initState');
+    debugPrint('💚 WORKING MODAL: initState');
     
     // Copier les filtres actuels
     localFilters = {};
@@ -33,28 +34,28 @@ class _WorkingFilterModalState extends State<WorkingFilterModal> {
       localFilters[key] = Set<String>.from(value);
     });
     
-    print('💚 localFilters initialisé: $localFilters');
+    debugPrint('💚 localFilters initialisé: $localFilters');
   }
 
   void _toggleTag(String category, String tag) {
-    print('💚 _toggleTag: $tag dans $category');
+    debugPrint('💚 _toggleTag: $tag dans $category');
     setState(() {
       localFilters[category] ??= <String>{};
       
       if (localFilters[category]!.contains(tag)) {
         localFilters[category]!.remove(tag);
-        print('💚 RETIRÉ: $tag');
+        debugPrint('💚 RETIRÉ: $tag');
       } else {
         localFilters[category]!.add(tag);
-        print('💚 AJOUTÉ: $tag');
+        debugPrint('💚 AJOUTÉ: $tag');
       }
     });
-    print('💚 État local: $localFilters');
+    debugPrint('💚 État local: $localFilters');
   }
 
   @override
   Widget build(BuildContext context) {
-    print('💚 BUILD modal avec RecipeFilters.advancedFilters');
+    debugPrint('💚 BUILD modal avec RecipeFilters.advancedFilters');
     final availableFilters = RecipeFilters.advancedFilters;
     
     return Container(
@@ -143,7 +144,7 @@ class _WorkingFilterModalState extends State<WorkingFilterModal> {
                           
                           return GestureDetector(
                             onTap: () {
-                              print('💚 GestureDetector tap: $tag');
+                              debugPrint('💚 GestureDetector tap: $tag');
                               _toggleTag(categoryName, tag);
                             },
                             child: Container(
@@ -182,7 +183,7 @@ class _WorkingFilterModalState extends State<WorkingFilterModal> {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
-                  print('💚 VALIDER pressed, applying: $localFilters');
+                  debugPrint('💚 VALIDER pressed, applying: $localFilters');
                   widget.onFiltersChanged(localFilters);
                   Navigator.pop(context);
                 },

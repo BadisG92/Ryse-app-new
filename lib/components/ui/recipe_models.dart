@@ -1,4 +1,5 @@
 // Modèles de données et logique pour les recettes
+import 'package:flutter/foundation.dart';
 import '../../services/recipe_service.dart';
 import '../../services/content_tags_service.dart';
 import '../../config/app_config.dart';
@@ -188,7 +189,7 @@ class Recipe {
         stepsEn: json['steps_en']?.toString(),
       );
     } catch (e) {
-      print('❌ Recipe.fromJson - Erreur: $e');
+      debugPrint('❌ Recipe.fromJson - Erreur: $e');
       rethrow;
     }
   }
@@ -292,8 +293,8 @@ class Recipe {
       bool shouldLog = name.contains("Smoothie") || name.contains("Pancakes") || name.contains("Salade");
       
       if (shouldLog) {
-        print('\n📋 Test de "$name"');
-        print('   Tags recette: $tags');
+        debugPrint('\n📋 Test de "$name"');
+        debugPrint('   Tags recette: $tags');
       }
       
       // Pour chaque catégorie de filtre actif
@@ -305,7 +306,7 @@ class Recipe {
           bool hasMatch = false;
           
           if (shouldLog) {
-            print('   Catégorie "$categoryName": cherche ${selectedOptions.toList()}');
+            debugPrint('   Catégorie "$categoryName": cherche ${selectedOptions.toList()}');
           }
           
           // Vérifier chaque option sélectionnée
@@ -316,7 +317,7 @@ class Recipe {
               if (recipeTag.toLowerCase().trim() == selectedOption.toLowerCase().trim()) {
                 hasMatch = true;
                 if (shouldLog) {
-                  print('   ✅ MATCH: "$recipeTag" == "$selectedOption"');
+                  debugPrint('   ✅ MATCH: "$recipeTag" == "$selectedOption"');
                 }
                 break;
               }
@@ -328,7 +329,7 @@ class Recipe {
           // Si aucun match pour cette catégorie, exclure
           if (!hasMatch) {
             if (shouldLog) {
-              print('   ❌ Pas de match pour "$categoryName"');
+              debugPrint('   ❌ Pas de match pour "$categoryName"');
             }
             return false;
           }
@@ -336,7 +337,7 @@ class Recipe {
       }
       
       if (shouldLog) {
-        print('   ✅ Recette acceptée!');
+        debugPrint('   ✅ Recette acceptée!');
       }
     }
 
@@ -429,7 +430,7 @@ class RecipeFilters {
       LocalizationService.instance.addListener(_onLanguageChanged);
       _isListenerSetup = true;
       _lastLanguage = LocalizationService.instance.currentLanguageCode;
-      print('✅ RecipeFilters: Language listener configuré');
+      debugPrint('✅ RecipeFilters: Language listener configuré');
     }
   }
   
@@ -437,7 +438,7 @@ class RecipeFilters {
   static void _onLanguageChanged() {
     final currentLanguage = LocalizationService.instance.currentLanguageCode;
     if (currentLanguage != _lastLanguage) {
-      print('🔄 RecipeFilters: Changement de langue détecté ($currentLanguage)');
+      debugPrint('🔄 RecipeFilters: Changement de langue détecté ($currentLanguage)');
       _lastLanguage = currentLanguage;
       _resetAndReload();
     }
@@ -457,36 +458,36 @@ class RecipeFilters {
 
   // Initialisation - charge les catégories dynamiquement depuis Supabase
   static void initialize() {
-    print('🟡 RecipeFilters.initialize() called');
-    print('🟡 _isLoaded = $_isLoaded');
+    debugPrint('🟡 RecipeFilters.initialize() called');
+    debugPrint('🟡 _isLoaded = $_isLoaded');
     
     // Configurer le listener une seule fois
     _setupLanguageListener();
     
     if (!_isLoaded) {
-      print('🟡 Starting _loadFiltersFromSupabase()...');
+      debugPrint('🟡 Starting _loadFiltersFromSupabase()...');
       _loadFiltersFromSupabase();
     } else {
-      print('🟡 Filters already loaded: $_advancedFilters');
+      debugPrint('🟡 Filters already loaded: $_advancedFilters');
     }
   }
 
   // Charge les filtres depuis content_tags
   static Future<void> _loadFiltersFromSupabase() async {
     try {
-      print('🔄 Chargement des filtres depuis content_tags...');
+      debugPrint('🔄 Chargement des filtres depuis content_tags...');
       
       // Récupérer les tags organisés depuis content_tags
       final organizedTags = await ContentTagsService.getOrganizedTagsForFilters();
       
       if (organizedTags.isEmpty) {
-        print('⚠️ Aucun tag trouvé dans content_tags, utilisation des filtres par défaut');
+        debugPrint('⚠️ Aucun tag trouvé dans content_tags, utilisation des filtres par défaut');
         _useDefaultFilters();
         _isLoaded = true;
         return;
       }
       
-      print('✅ Tags trouvés dans content_tags: ${organizedTags.keys.length} catégories');
+      debugPrint('✅ Tags trouvés dans content_tags: ${organizedTags.keys.length} catégories');
       
       // Construire la structure de filtres pour l'UI
       _advancedFilters = {};
@@ -500,15 +501,15 @@ class RecipeFilters {
           _advancedFilters[categoryName] = {
             categoryName: tags
           };
-          print('   - Catégorie "$categoryName": ${tags.length} tags');
+          debugPrint('   - Catégorie "$categoryName": ${tags.length} tags');
         }
       }
       
-      print('✅ Filtres chargés depuis content_tags: ${_advancedFilters.keys.toList()}');
+      debugPrint('✅ Filtres chargés depuis content_tags: ${_advancedFilters.keys.toList()}');
       _isLoaded = true;
       
     } catch (e) {
-      print('❌ Erreur lors du chargement: $e');
+      debugPrint('❌ Erreur lors du chargement: $e');
       _useDefaultFilters();
       _isLoaded = true;
     }
@@ -624,12 +625,12 @@ class RecipeFilters {
     Map<String, Set<String>>? selectedFilters,
   }) {
     if (selectedFilters != null && selectedFilters.isNotEmpty) {
-      print('🔍 === DÉBUT FILTRAGE ===');
-      print('🔍 Nombre de recettes: ${recipes.length}');
-      print('🔍 Filtres actifs:');
+      debugPrint('🔍 === DÉBUT FILTRAGE ===');
+      debugPrint('🔍 Nombre de recettes: ${recipes.length}');
+      debugPrint('🔍 Filtres actifs:');
       for (var entry in selectedFilters.entries) {
         if (entry.value.isNotEmpty) {
-          print('   - ${entry.key}: ${entry.value.toList()}');
+          debugPrint('   - ${entry.key}: ${entry.value.toList()}');
         }
       }
     }
@@ -640,10 +641,10 @@ class RecipeFilters {
     )).toList();
     
     if (selectedFilters != null && selectedFilters.isNotEmpty) {
-      print('✅ === FIN FILTRAGE ===');
-      print('✅ Résultat: ${filtered.length} recettes trouvées');
+      debugPrint('✅ === FIN FILTRAGE ===');
+      debugPrint('✅ Résultat: ${filtered.length} recettes trouvées');
       if (filtered.isNotEmpty) {
-        print('✅ Exemples: ${filtered.take(3).map((r) => r.name).toList()}');
+        debugPrint('✅ Exemples: ${filtered.take(3).map((r) => r.name).toList()}');
       }
     }
     
@@ -698,7 +699,7 @@ class RecipeData {
       LocalizationService.instance.addListener(_onLanguageChanged);
       _isListenerSetup = true;
       _lastLanguage = LocalizationService.instance.currentLanguageCode;
-      print('✅ RecipeData: Language listener configuré');
+      debugPrint('✅ RecipeData: Language listener configuré');
     }
   }
   
@@ -706,7 +707,7 @@ class RecipeData {
   static void _onLanguageChanged() {
     final currentLanguage = LocalizationService.instance.currentLanguageCode;
     if (currentLanguage != _lastLanguage) {
-      print('🔄 RecipeData: Changement de langue détecté ($currentLanguage)');
+      debugPrint('🔄 RecipeData: Changement de langue détecté ($currentLanguage)');
       _lastLanguage = currentLanguage;
       _resetAndReload();
     }
@@ -733,19 +734,19 @@ class RecipeData {
   // Charge les données depuis Supabase et met à jour les listes
   static Future<void> _loadRecipesFromSupabase() async {
     if (_isLoading) {
-      print('⏳ RecipeData: Chargement déjà en cours, skip...');
+      debugPrint('⏳ RecipeData: Chargement déjà en cours, skip...');
       return;
     }
 
     _isLoading = true;
-    print('🔄 RecipeData: Début chargement des recettes...');
+    debugPrint('🔄 RecipeData: Début chargement des recettes...');
 
     try {
       // RecipeService.getAllRecipes() charge depuis cache ou DB
       final supabaseAllRecipes = await RecipeService.getAllRecipes();
       final supabaseFeaturedRecipes = await RecipeService.getFeaturedRecipes();
 
-      print('📦 RecipeData: Reçu ${supabaseAllRecipes.length} recettes, ${supabaseFeaturedRecipes.length} featured');
+      debugPrint('📦 RecipeData: Reçu ${supabaseAllRecipes.length} recettes, ${supabaseFeaturedRecipes.length} featured');
 
       // Mettre à jour les listes avec les données Supabase
       _allRecipes = supabaseAllRecipes;
@@ -754,9 +755,9 @@ class RecipeData {
       _isLoaded = true;
       _isLoading = false;
 
-      print('✅ RecipeData: ${_allRecipes.length} recettes chargées, ${_featuredRecipes.length} featured');
+      debugPrint('✅ RecipeData: ${_allRecipes.length} recettes chargées, ${_featuredRecipes.length} featured');
     } catch (e) {
-      print('❌ RecipeData: Erreur chargement: $e');
+      debugPrint('❌ RecipeData: Erreur chargement: $e');
       _isLoading = false;
       // Garder les listes vides en cas d'erreur
     }

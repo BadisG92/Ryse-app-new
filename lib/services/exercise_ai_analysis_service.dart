@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
@@ -35,7 +36,7 @@ class ExerciseAiAnalysisService {
     final cached = prefs.getString(key);
 
     if (cached == null) {
-      print('📊 Pas d\'analyse en cache pour $exerciseName');
+      debugPrint('📊 Pas d\'analyse en cache pour $exerciseName');
       return null;
     }
 
@@ -45,7 +46,7 @@ class ExerciseAiAnalysisService {
       // Vérifier si c'est l'ancien format (text) ou le nouveau (analysis object)
       if (data['text'] != null && data['analysis'] == null) {
         // Ancien format: migrer vers le nouveau
-        print('⚠️ Migration ancien format vers nouveau format');
+        debugPrint('⚠️ Migration ancien format vers nouveau format');
         final analysis = ExerciseAnalysis(
           analysis: data['text'] as String,
           recommendations: [], // Pas de recommandations dans l'ancien format
@@ -62,14 +63,14 @@ class ExerciseAiAnalysisService {
 
       // PAS de vérification d'expiration - le cache reste indéfiniment
       // Il ne sera supprimé que si une nouvelle séance est ajoutée et qu'on régénère
-      print('✅ Analyse trouvée en cache pour $exerciseName (${analysis.sessionCount} séances)');
-      print('   📅 Créée: ${analysis.timestamp}');
-      print('   ⏰ Âge: ${DateTime.now().difference(analysis.timestamp).inDays} jours');
-      print('   💾 Cette analyse persiste jusqu\'à la prochaine séance');
+      debugPrint('✅ Analyse trouvée en cache pour $exerciseName (${analysis.sessionCount} séances)');
+      debugPrint('   📅 Créée: ${analysis.timestamp}');
+      debugPrint('   ⏰ Âge: ${DateTime.now().difference(analysis.timestamp).inDays} jours');
+      debugPrint('   💾 Cette analyse persiste jusqu\'à la prochaine séance');
 
       return analysis;
     } catch (e) {
-      print('⚠️ Erreur décodage cache: $e');
+      debugPrint('⚠️ Erreur décodage cache: $e');
       return null;
     }
   }
@@ -116,35 +117,35 @@ class ExerciseAiAnalysisService {
     );
 
     // LOG: Afficher le prompt envoyé
-    print('🤖 ========== GEMINI PROMPT ==========');
-    print('📝 Exercice: $exerciseName');
-    print('🌍 Langue: $languageCode');
-    print('📊 Nombre de séances: ${sessions.length}');
-    print('');
-    print('📄 PROMPT COMPLET:');
-    print('─' * 50);
-    print(prompt);
-    print('─' * 50);
-    print('');
+    debugPrint('🤖 ========== GEMINI PROMPT ==========');
+    debugPrint('📝 Exercice: $exerciseName');
+    debugPrint('🌍 Langue: $languageCode');
+    debugPrint('📊 Nombre de séances: ${sessions.length}');
+    debugPrint('');
+    debugPrint('📄 PROMPT COMPLET:');
+    debugPrint('─' * 50);
+    debugPrint(prompt);
+    debugPrint('─' * 50);
+    debugPrint('');
 
     // Appeler Gemini
     final content = [Content.text(prompt)];
 
-    print('⏳ Envoi de la requête à Gemini...');
+    debugPrint('⏳ Envoi de la requête à Gemini...');
     final response = await _model.generateContent(content);
 
     // LOG: Afficher la réponse
-    print('');
-    print('✅ ========== GEMINI RESPONSE ==========');
+    debugPrint('');
+    debugPrint('✅ ========== GEMINI RESPONSE ==========');
     if (response.text != null && response.text!.isNotEmpty) {
-      print('📝 Réponse reçue (${response.text!.length} caractères):');
-      print('─' * 50);
-      print(response.text);
-      print('─' * 50);
+      debugPrint('📝 Réponse reçue (${response.text!.length} caractères):');
+      debugPrint('─' * 50);
+      debugPrint(response.text);
+      debugPrint('─' * 50);
     } else {
-      print('❌ Aucune réponse reçue de Gemini');
+      debugPrint('❌ Aucune réponse reçue de Gemini');
     }
-    print('');
+    debugPrint('');
 
     if (response.text == null || response.text!.isEmpty) {
       throw Exception(
@@ -192,14 +193,14 @@ class ExerciseAiAnalysisService {
         }
       }
 
-      print('✅ JSON parsé avec succès: analyse + ${recommendations.length} recommandations');
+      debugPrint('✅ JSON parsé avec succès: analyse + ${recommendations.length} recommandations');
 
       return ExerciseAnalysis(
         analysis: analysisText,
         recommendations: recommendations,
       );
     } catch (e) {
-      print('⚠️ Erreur de parsing JSON, fallback sur texte brut: $e');
+      debugPrint('⚠️ Erreur de parsing JSON, fallback sur texte brut: $e');
       // Fallback: retourner le texte brut comme analyse
       return ExerciseAnalysis(
         analysis: response.text!,
@@ -226,14 +227,14 @@ class ExerciseAiAnalysisService {
 
     await prefs.setString(key, json.encode(cached.toJson()));
 
-    print('💾 ========== ANALYSE SAUVEGARDÉE ==========');
-    print('📊 Exercice: $exerciseName');
-    print('🔢 Basée sur: ${sessionCount} séances');
-    print('⏰ Timestamp: ${DateTime.now()}');
-    print('✅ Persistance: Jusqu\'à la prochaine séance');
-    print('📱 L\'analyse reste disponible même après fermeture de l\'app');
-    print('🔄 Sera régénérée uniquement si nouvelle séance ajoutée');
-    print('─' * 45);
+    debugPrint('💾 ========== ANALYSE SAUVEGARDÉE ==========');
+    debugPrint('📊 Exercice: $exerciseName');
+    debugPrint('🔢 Basée sur: ${sessionCount} séances');
+    debugPrint('⏰ Timestamp: ${DateTime.now()}');
+    debugPrint('✅ Persistance: Jusqu\'à la prochaine séance');
+    debugPrint('📱 L\'analyse reste disponible même après fermeture de l\'app');
+    debugPrint('🔄 Sera régénérée uniquement si nouvelle séance ajoutée');
+    debugPrint('─' * 45);
   }
 
   /// Supprime le cache pour un exercice (utilisé seulement en cas de régénération)

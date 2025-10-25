@@ -1,4 +1,5 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
@@ -182,7 +183,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
         final meals = await FoodEntriesService.getFoodEntriesForDate(user.id, DateTime.now());
         existingMeals = meals.where((meal) => meal.items.isNotEmpty).toList();
       } catch (e) {
-        print('Erreur lors de la récupération des repas existants: $e');
+        debugPrint('Erreur lors de la récupération des repas existants: $e');
       }
     }
 
@@ -193,12 +194,12 @@ class NutritionQuickActionsSection extends StatelessWidget {
       subtitleKey: 'add_search_meal_subtitle',
       existingMeals: existingMeals,
       onExistingMealSelected: (meal) {
-        print('🎯 Repas existant sélectionné: ${meal.id}');
+        debugPrint('🎯 Repas existant sélectionné: ${meal.id}');
         // Afficher les 5 options pour choisir le mode d'ajout
         _showAddFoodOptionsForDashboard(context, meal);
       },
       onCreateNewMeal: () {
-        print('🔄 Nouveau repas demandé');
+        debugPrint('🔄 Nouveau repas demandé');
         // Afficher la sélection de type de nouveau repas
         _showNewMealTypeSelection(context);
       },
@@ -216,7 +217,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
         final meals = await FoodEntriesService.getFoodEntriesForDate(user.id, DateTime.now());
         existingMeals = meals.where((meal) => meal.items.isNotEmpty).toList();
       } catch (e) {
-        print('Erreur lors de la récupération des repas existants: $e');
+        debugPrint('Erreur lors de la récupération des repas existants: $e');
       }
     }
 
@@ -438,7 +439,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
         final meals = await FoodEntriesService.getFoodEntriesForDate(user.id, DateTime.now());
         existingMeals = meals.where((meal) => meal.items.isNotEmpty).toList();
       } catch (e) {
-        print('Erreur lors de la récupération des repas existants: $e');
+        debugPrint('Erreur lors de la récupération des repas existants: $e');
       }
     }
 
@@ -964,7 +965,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
 
   // Méthode statique pour afficher la sélection de nouveau type de repas - FLUX SIMPLIFIÉ COMME LE JOURNAL
   static void _showNewMealTypeSelection(BuildContext context) {
-    print('🔄 _showNewMealTypeSelection appelée');
+    debugPrint('🔄 _showNewMealTypeSelection appelée');
 
     // Stocker une référence au Navigator pour éviter les problèmes de context
     final navigator = Navigator.of(context);
@@ -972,7 +973,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
     NewMealTypeBottomSheet.show(
       context,
       onMealTypeSelected: (mealType, time) {
-        print('🎯 Type de repas sélectionné: $mealType');
+        debugPrint('🎯 Type de repas sélectionné: $mealType');
 
         // Le NewMealTypeBottomSheet fait déjà Navigator.pop() dans ses options
         // Attendre que l'animation se termine puis ouvrir le bottom sheet avec les 5 options
@@ -980,10 +981,10 @@ class NutritionQuickActionsSection extends StatelessWidget {
           // Obtenir le context depuis le navigator stocké
           final newContext = navigator.context;
           if (newContext.mounted) {
-            print('🔍 Ouverture des options d\'ajout pour nouveau repas');
+            debugPrint('🔍 Ouverture des options d\'ajout pour nouveau repas');
             _showAddFoodOptionsForNewMeal(newContext, mealType);
           } else {
-            print('❌ Navigator context invalide');
+            debugPrint('❌ Navigator context invalide');
           }
         });
       },
@@ -1001,7 +1002,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
         final meals = await FoodEntriesService.getFoodEntriesForDate(user.id, DateTime.now());
         existingMeals = meals.where((meal) => meal.items.isNotEmpty).toList();
       } catch (e) {
-        print('Erreur lors de la récupération des repas existants: $e');
+        debugPrint('Erreur lors de la récupération des repas existants: $e');
       }
     }
 
@@ -1012,12 +1013,12 @@ class NutritionQuickActionsSection extends StatelessWidget {
       subtitleKey: 'add_recipe_meal_subtitle',
       existingMeals: existingMeals,
       onExistingMealSelected: (meal) {
-        print('🎯 Repas existant sélectionné pour recette: ${meal.id}');
+        debugPrint('🎯 Repas existant sélectionné pour recette: ${meal.id}');
         // Ouvrir directement la sélection de recettes avec le repas pré-sélectionné (comme le manuel)
         _showRecipeSelectionForMeal(context, meal);
       },
       onCreateNewMeal: () {
-        print('🔄 Nouveau repas demandé pour recette');
+        debugPrint('🔄 Nouveau repas demandé pour recette');
         // Afficher la sélection de type de nouveau repas
         _showNewMealTypeSelectionForRecipe(context);
       },
@@ -1035,7 +1036,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
         final meals = await FoodEntriesService.getFoodEntriesForDate(user.id, DateTime.now());
         existingMeals = meals.where((meal) => meal.items.isNotEmpty).toList();
       } catch (e) {
-        print('Erreur lors de la récupération des repas existants: $e');
+        debugPrint('Erreur lors de la récupération des repas existants: $e');
       }
     }
 
@@ -1046,12 +1047,12 @@ class NutritionQuickActionsSection extends StatelessWidget {
       subtitleKey: 'add_barcode_meal_subtitle',
       existingMeals: existingMeals,
       onExistingMealSelected: (meal) {
-        print('🎯 Repas existant sélectionné pour scanner: ${meal.id}');
+        debugPrint('🎯 Repas existant sélectionné pour scanner: ${meal.id}');
         // Ouvrir directement le scanner avec le repas pré-sélectionné (comme le manuel)
         _showScannerForMeal(context, meal);
       },
       onCreateNewMeal: () {
-        print('🔄 Nouveau repas demandé pour scanner');
+        debugPrint('🔄 Nouveau repas demandé pour scanner');
         // Afficher la sélection de type de nouveau repas
         _showNewMealTypeSelectionForScanner(context);
       },
@@ -1069,7 +1070,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
         final meals = await FoodEntriesService.getFoodEntriesForDate(user.id, DateTime.now());
         existingMeals = meals.where((meal) => meal.items.isNotEmpty).toList();
       } catch (e) {
-        print('Erreur lors de la récupération des repas existants: $e');
+        debugPrint('Erreur lors de la récupération des repas existants: $e');
       }
     }
 
@@ -1080,12 +1081,12 @@ class NutritionQuickActionsSection extends StatelessWidget {
       subtitleKey: 'add_photo_meal_subtitle',
       existingMeals: existingMeals,
       onExistingMealSelected: (meal) {
-        print('🎯 Repas existant sélectionné pour photo: ${meal.id}');
+        debugPrint('🎯 Repas existant sélectionné pour photo: ${meal.id}');
         // Ouvrir directement le scanner photo avec le repas pré-sélectionné
         _showPhotoScannerForMeal(context, meal);
       },
       onCreateNewMeal: () {
-        print('🔄 Nouveau repas demandé pour photo');
+        debugPrint('🔄 Nouveau repas demandé pour photo');
         // Afficher la sélection de type de nouveau repas
         _showNewMealTypeSelectionForPhoto(context);
       },
@@ -1103,7 +1104,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
         final meals = await FoodEntriesService.getFoodEntriesForDate(user.id, DateTime.now());
         existingMeals = meals.where((meal) => meal.items.isNotEmpty).toList();
       } catch (e) {
-        print('Erreur lors de la récupération des repas existants: $e');
+        debugPrint('Erreur lors de la récupération des repas existants: $e');
       }
     }
 
@@ -1114,12 +1115,12 @@ class NutritionQuickActionsSection extends StatelessWidget {
       subtitleKey: 'add_chat_meal_subtitle',
       existingMeals: existingMeals,
       onExistingMealSelected: (meal) {
-        print('🎯 Repas existant sélectionné pour chat IA: ${meal.id}');
+        debugPrint('🎯 Repas existant sélectionné pour chat IA: ${meal.id}');
         // Ouvrir directement le chat IA avec le repas pré-sélectionné
         _showChatForMeal(context, meal);
       },
       onCreateNewMeal: () {
-        print('🔄 Nouveau repas demandé pour chat IA');
+        debugPrint('🔄 Nouveau repas demandé pour chat IA');
         // Afficher la sélection de type de nouveau repas
         _showNewMealTypeSelectionForChat(context);
       },
@@ -1139,14 +1140,14 @@ class NutritionQuickActionsSection extends StatelessWidget {
 
   // Méthode pour sélection de nouveau type de repas puis ouvrir le chat IA
   static void _showNewMealTypeSelectionForChat(BuildContext context) {
-    print('🔄 _showNewMealTypeSelectionForChat appelée');
+    debugPrint('🔄 _showNewMealTypeSelectionForChat appelée');
 
     final navigator = Navigator.of(context);
 
     NewMealTypeBottomSheet.show(
       context,
       onMealTypeSelected: (mealType, time) async {
-        print('🎯 Type de repas sélectionné pour chat IA: $mealType');
+        debugPrint('🎯 Type de repas sélectionné pour chat IA: $mealType');
 
         // Générer un ID de repas pour le chat
         final user = Supabase.instance.client.auth.currentUser;
@@ -1162,7 +1163,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
         Future.delayed(const Duration(milliseconds: 300), () {
           final newContext = navigator.context;
           if (newContext.mounted) {
-            print('🔍 Ouverture chat IA avec nouveau type de repas');
+            debugPrint('🔍 Ouverture chat IA avec nouveau type de repas');
             // Ouvrir le chat IA
             AIChatInputScreen.showAsBottomSheet(
               newContext,
@@ -1171,7 +1172,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
               mealId: mealId ?? 'meal_${DateTime.now().millisecondsSinceEpoch}',
             );
           } else {
-            print('❌ Navigator context invalide pour chat IA');
+            debugPrint('❌ Navigator context invalide pour chat IA');
           }
         });
       },
@@ -1189,7 +1190,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
         final meals = await FoodEntriesService.getFoodEntriesForDate(user.id, DateTime.now());
         existingMeals = meals.where((meal) => meal.items.isNotEmpty).toList();
       } catch (e) {
-        print('Erreur lors de la récupération des repas existants: $e');
+        debugPrint('Erreur lors de la récupération des repas existants: $e');
       }
     }
 
@@ -1405,7 +1406,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
       foodName: "produit scanné",
       existingMeals: existingMeals,
       onExistingMealSelected: (meal) {
-        print('🎯 Repas existant sélectionné pour scanner: ${meal.id}');
+        debugPrint('🎯 Repas existant sélectionné pour scanner: ${meal.id}');
         // Stocker l'ID du repas sélectionné
         _dashboardSelectedMealId = meal.id;
         _dashboardPendingMealType = null;
@@ -1425,7 +1426,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
         );
       },
       onCreateNewMeal: () {
-        print('🔄 Nouveau repas demandé depuis sélection existants');
+        debugPrint('🔄 Nouveau repas demandé depuis sélection existants');
         // Afficher la sélection de type de nouveau repas
         _showNewMealTypeSelectionForScanner(context);
       },
@@ -1434,20 +1435,20 @@ class NutritionQuickActionsSection extends StatelessWidget {
 
   // Méthode pour sélection de nouveau type de repas puis ouvrir les recettes
   static void _showNewMealTypeSelectionForRecipe(BuildContext context) {
-    print('🔄 _showNewMealTypeSelectionForRecipe appelée');
+    debugPrint('🔄 _showNewMealTypeSelectionForRecipe appelée');
     
     final navigator = Navigator.of(context);
     
     NewMealTypeBottomSheet.show(
       context,
       onMealTypeSelected: (mealType, time) {
-        print('🎯 Type de repas sélectionné pour recette: $mealType');
+        debugPrint('🎯 Type de repas sélectionné pour recette: $mealType');
         
         // Attendre que l'animation se termine puis ouvrir la sélection de recettes
         Future.delayed(const Duration(milliseconds: 300), () {
           final newContext = navigator.context;
           if (newContext.mounted) {
-            print('🔍 Ouverture sélection recettes avec nouveau type de repas');
+            debugPrint('🔍 Ouverture sélection recettes avec nouveau type de repas');
             // Ouvrir la sélection de recettes avec callback pour créer nouveau repas
             Navigator.push(
               newContext,
@@ -1462,7 +1463,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
               ),
             );
           } else {
-            print('❌ Navigator context invalide pour recettes');
+            debugPrint('❌ Navigator context invalide pour recettes');
           }
         });
       },
@@ -1471,20 +1472,20 @@ class NutritionQuickActionsSection extends StatelessWidget {
 
   // Méthode pour sélection de nouveau type de repas puis ouvrir le scanner barcode
   static void _showNewMealTypeSelectionForScanner(BuildContext context) {
-    print('🔄 _showNewMealTypeSelectionForScanner appelée');
+    debugPrint('🔄 _showNewMealTypeSelectionForScanner appelée');
 
     final navigator = Navigator.of(context);
 
     NewMealTypeBottomSheet.show(
       context,
       onMealTypeSelected: (mealType, time) {
-        print('🎯 Type de repas sélectionné pour scanner: $mealType');
+        debugPrint('🎯 Type de repas sélectionné pour scanner: $mealType');
 
         // Attendre que l'animation se termine puis ouvrir le scanner
         Future.delayed(const Duration(milliseconds: 300), () {
           final newContext = navigator.context;
           if (newContext.mounted) {
-            print('🔍 Ouverture scanner avec nouveau type de repas');
+            debugPrint('🔍 Ouverture scanner avec nouveau type de repas');
             // Ouvrir le scanner avec callback pour créer nouveau repas
             Navigator.push(
               newContext,
@@ -1498,7 +1499,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
               ),
             );
           } else {
-            print('❌ Navigator context invalide pour scanner');
+            debugPrint('❌ Navigator context invalide pour scanner');
           }
         });
       },
@@ -1507,20 +1508,20 @@ class NutritionQuickActionsSection extends StatelessWidget {
 
   // Méthode pour sélection de nouveau type de repas puis ouvrir le scanner photo
   static void _showNewMealTypeSelectionForPhoto(BuildContext context) {
-    print('🔄 _showNewMealTypeSelectionForPhoto appelée');
+    debugPrint('🔄 _showNewMealTypeSelectionForPhoto appelée');
 
     final navigator = Navigator.of(context);
 
     NewMealTypeBottomSheet.show(
       context,
       onMealTypeSelected: (mealType, time) {
-        print('🎯 Type de repas sélectionné pour photo: $mealType');
+        debugPrint('🎯 Type de repas sélectionné pour photo: $mealType');
 
         // Attendre que l'animation se termine puis ouvrir le scanner photo
         Future.delayed(const Duration(milliseconds: 300), () {
           final newContext = navigator.context;
           if (newContext.mounted) {
-            print('🔍 Ouverture scanner photo avec nouveau type de repas');
+            debugPrint('🔍 Ouverture scanner photo avec nouveau type de repas');
             // Ouvrir le scanner photo - le flux de sélection de repas se fera dans AIAnalysisScreen
             Navigator.push(
               newContext,
@@ -1531,7 +1532,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
               ),
             );
           } else {
-            print('❌ Navigator context invalide pour scanner photo');
+            debugPrint('❌ Navigator context invalide pour scanner photo');
           }
         });
       },
@@ -2171,12 +2172,12 @@ class NutritionQuickActionsSection extends StatelessWidget {
 
   // Méthode statique pour afficher la recherche d'aliments pour un nouveau repas - MÊME FLUX QUE LE JOURNAL
   static void _showManualFoodSearchForNewMeal(BuildContext context, String mealType) {
-    print('🔍 _showManualFoodSearchForNewMeal appelée pour: $mealType');
+    debugPrint('🔍 _showManualFoodSearchForNewMeal appelée pour: $mealType');
     ManualFoodSearchBottomSheet.show(
       context,
       isFromDashboard: true,
       onFoodCreated: (foodItem) {
-        print('🍽️ Aliment créé: ${foodItem.name}');
+        debugPrint('🍽️ Aliment créé: ${foodItem.name}');
         // MÊME FLUX QUE LE JOURNAL - Créer directement le nouveau repas avec l'aliment
         _addFoodToNewMealJournalStyle(context, foodItem, mealType);
       },
@@ -2190,9 +2191,9 @@ class NutritionQuickActionsSection extends StatelessWidget {
 
   // Méthode pour ajouter une recette à un repas existant depuis le dashboard
   static Future<void> _addRecipeToSelectedMealDashboard(BuildContext context, dynamic recipe, String mealId) async {
-    print('🟢 _addRecipeToSelectedMealDashboard appelée');
-    print('🟢 recipe: ${recipe.name}');
-    print('🟢 mealId: $mealId');
+    debugPrint('🟢 _addRecipeToSelectedMealDashboard appelée');
+    debugPrint('🟢 recipe: ${recipe.name}');
+    debugPrint('🟢 mealId: $mealId');
     
     try {
       final user = AuthService().currentUser;
@@ -2209,14 +2210,14 @@ class NutritionQuickActionsSection extends StatelessWidget {
         return;
       }
 
-      print('🔄 Ajout de la recette ${recipe.name} au repas ID: $mealId');
+      debugPrint('🔄 Ajout de la recette ${recipe.name} au repas ID: $mealId');
 
       // Extraire le nom du repas depuis l'ID (ex: "Collation 2" -> "Collation")
       final regex = RegExp(r'^(.+?)(?:\s+\d+)?$');
       final match = regex.firstMatch(mealId);
       final mealName = match?.group(1) ?? mealId;
       
-      print('🔄 mealId: $mealId → mealName: $mealName');
+      debugPrint('🔄 mealId: $mealId → mealName: $mealName');
 
       // Convertir la recette en FoodItem
       final foodItem = nutrition_models.FoodItem(
@@ -2252,10 +2253,10 @@ class NutritionQuickActionsSection extends StatelessWidget {
         );
       }
 
-      print('✅ Recette ajoutée avec succès au repas');
+      debugPrint('✅ Recette ajoutée avec succès au repas');
 
     } catch (e) {
-      print('❌ Erreur lors de l\'ajout de la recette: $e');
+      debugPrint('❌ Erreur lors de l\'ajout de la recette: $e');
       if (context.mounted) {
         final locService = Provider.of<LocalizationService>(context, listen: false);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -2270,9 +2271,9 @@ class NutritionQuickActionsSection extends StatelessWidget {
 
   // Méthode pour ajouter une recette à un nouveau repas (style journal)
   static Future<void> _addRecipeToNewMealJournalStyle(BuildContext context, dynamic recipe, String mealType) async {
-    print('🟠 _addRecipeToNewMealJournalStyle appelée');
-    print('🟠 recipe: ${recipe.name}');
-    print('🟠 mealType: $mealType');
+    debugPrint('🟠 _addRecipeToNewMealJournalStyle appelée');
+    debugPrint('🟠 recipe: ${recipe.name}');
+    debugPrint('🟠 mealType: $mealType');
     
     try {
       final user = AuthService().currentUser;
@@ -2289,7 +2290,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
         return;
       }
 
-      print('🔄 Création nouveau repas $mealType avec recette ${recipe.name}');
+      debugPrint('🔄 Création nouveau repas $mealType avec recette ${recipe.name}');
 
       // Convertir la recette en FoodItem
       final foodItem = nutrition_models.FoodItem(
@@ -2326,10 +2327,10 @@ class NutritionQuickActionsSection extends StatelessWidget {
         );
       }
 
-      print('✅ Recette ajoutée avec succès au nouveau repas');
+      debugPrint('✅ Recette ajoutée avec succès au nouveau repas');
 
     } catch (e) {
-      print('❌ Erreur lors de l\'ajout de la recette au nouveau repas: $e');
+      debugPrint('❌ Erreur lors de l\'ajout de la recette au nouveau repas: $e');
       if (context.mounted) {
         final locService = Provider.of<LocalizationService>(context, listen: false);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -2369,7 +2370,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
         baseMealName = match.group(1)!;
       }
       
-      print('🔄 Ajout de ${foodItem.name} au repas existant ${selectedMeal.name} (type: $baseMealName, ID: ${selectedMeal.id})');
+      debugPrint('🔄 Ajout de ${foodItem.name} au repas existant ${selectedMeal.name} (type: $baseMealName, ID: ${selectedMeal.id})');
 
       // Stocker l'ID du repas sélectionné pour les ajouts suivants
       _dashboardSelectedMealId = selectedMeal.id;
@@ -2386,7 +2387,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
       );
       
       if (success) {
-        print('✅ Aliment ${foodItem.name} ajouté au repas ${selectedMeal.name} avec succès');
+        debugPrint('✅ Aliment ${foodItem.name} ajouté au repas ${selectedMeal.name} avec succès');
         
         // Réinitialiser la sélection de repas après l'ajout
         resetDashboardMealSelection();
@@ -2403,7 +2404,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
         throw Exception('Échec de l\'ajout à la base de données');
       }
     } catch (e) {
-      print('❌ Erreur lors de l\'ajout: $e');
+      debugPrint('❌ Erreur lors de l\'ajout: $e');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -2417,12 +2418,12 @@ class NutritionQuickActionsSection extends StatelessWidget {
 
   // Méthode pour ajouter un aliment à un repas existant par ID (dashboard)
   static Future<void> _addFoodToSelectedMealDashboard(BuildContext context, nutrition_models.FoodItem foodItem, String mealId) async {
-    print('🔄 _addFoodToSelectedMealDashboard appelée avec mealId: $mealId');
+    debugPrint('🔄 _addFoodToSelectedMealDashboard appelée avec mealId: $mealId');
     
     try {
       final user = AuthService().currentUser;
       if (user == null) {
-        print('❌ Utilisateur non authentifié');
+        debugPrint('❌ Utilisateur non authentifié');
         return;
       }
 
@@ -2439,7 +2440,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
         foodItem: foodItem,
       );
 
-      print('✅ Aliment ajouté avec succès au repas $mealId');
+      debugPrint('✅ Aliment ajouté avec succès au repas $mealId');
       
       // Réinitialiser la sélection dashboard après ajout
       resetDashboardMealSelection();
@@ -2457,7 +2458,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
       }
       
     } catch (e) {
-      print('❌ Erreur lors de l\'ajout de l\'aliment: $e');
+      debugPrint('❌ Erreur lors de l\'ajout de l\'aliment: $e');
       if (context.mounted) {
         final locService = Provider.of<LocalizationService>(context, listen: false);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -2563,17 +2564,17 @@ class NutritionQuickActionsSection extends StatelessWidget {
         final match = regex.firstMatch(_dashboardSelectedMealId!);
         targetMealType = match?.group(1) ?? _dashboardSelectedMealId!;
         
-        print('🔄 Ajout de ${foodItem.name} au repas existant (ID: $targetMealId)');
+        debugPrint('🔄 Ajout de ${foodItem.name} au repas existant (ID: $targetMealId)');
       } else if (_dashboardPendingMealId != null && _dashboardPendingMealType != null) {
         // Cas nouveau repas : utiliser l'ID pré-généré
         targetMealId = _dashboardPendingMealId;
         targetMealType = _dashboardPendingMealType;
         targetMealName = _dashboardPendingMealId;
         
-        print('🔄 Ajout de ${foodItem.name} au nouveau repas (ID: $targetMealId, type: $targetMealType)');
+        debugPrint('🔄 Ajout de ${foodItem.name} au nouveau repas (ID: $targetMealId, type: $targetMealType)');
       } else {
         // Aucun repas sélectionné : demander la sélection
-        print('⚠️ Aucun repas sélectionné, demande de sélection');
+        debugPrint('⚠️ Aucun repas sélectionné, demande de sélection');
         showMealSelectionForDashboard(context);
         return;
       }
@@ -2588,7 +2589,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
       );
       
       if (success) {
-        print('✅ Aliment ${foodItem.name} ajouté avec succès');
+        debugPrint('✅ Aliment ${foodItem.name} ajouté avec succès');
         
         // Réinitialiser la sélection de repas après l'ajout
         resetDashboardMealSelection();
@@ -2605,7 +2606,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
         throw Exception('Échec de l\'ajout à la base de données');
       }
     } catch (e) {
-      print('❌ Erreur lors de l\'ajout: $e');
+      debugPrint('❌ Erreur lors de l\'ajout: $e');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -2622,7 +2623,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
     _dashboardSelectedMealId = null;
     _dashboardPendingMealType = null;
     _dashboardPendingMealId = null;
-    print('🔄 Sélection de repas réinitialisée');
+    debugPrint('🔄 Sélection de repas réinitialisée');
   }
 
   // Méthode publique pour ajouter un aliment au repas actuellement sélectionné depuis le dashboard

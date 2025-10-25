@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -747,7 +748,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
         }
       }
     } catch (e) {
-      print('❌ Erreur lors du chargement des stats d\'exercices: $e');
+      debugPrint('❌ Erreur lors du chargement des stats d\'exercices: $e');
     }
     
     // Trier les exercices par fréquence
@@ -1775,9 +1776,9 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
       widget.onSessionCompleted!(completedSession);
     }
     
-    print('Séance validée: ${completedSession.name}');
-    print('- Durée totale: ${_formatDuration(completedSession.duration)}');
-    print('- ${completedSession.completedSets}/${completedSession.totalSets} séries terminées');
+    debugPrint('Séance validée: ${completedSession.name}');
+    debugPrint('- Durée totale: ${_formatDuration(completedSession.duration)}');
+    debugPrint('- ${completedSession.completedSets}/${completedSession.totalSets} séries terminées');
   }
 
   // Si la session vient d'un programme, tenter d'extraire l'id depuis le nom (format optionnel) sinon null

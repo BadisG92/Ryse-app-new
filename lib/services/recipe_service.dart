@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
@@ -20,7 +21,7 @@ class RecipeService {
       // 1. Essayer de charger depuis le cache
       final cachedRecipes = await _loadRecipesFromCache(_cacheKeyAllRecipes);
       if (cachedRecipes != null && cachedRecipes.isNotEmpty) {
-        print('⚡ RecipeService: ${cachedRecipes.length} recettes chargées depuis le cache');
+        debugPrint('⚡ RecipeService: ${cachedRecipes.length} recettes chargées depuis le cache');
 
         // Lancer le rechargement en arrière-plan pour mettre à jour le cache
         _refreshRecipesInBackground();
@@ -29,7 +30,7 @@ class RecipeService {
       }
 
       // 2. Si pas de cache, charger depuis Supabase
-      print('🔄 RecipeService: Chargement des recettes depuis Supabase...');
+      debugPrint('🔄 RecipeService: Chargement des recettes depuis Supabase...');
       final recipes = await _fetchAllRecipesFromDB();
 
       // 3. Sauvegarder dans le cache pour la prochaine fois
@@ -39,7 +40,7 @@ class RecipeService {
 
       return recipes;
     } catch (e) {
-      print('❌ RecipeService: Erreur lors de la récupération des recettes: $e');
+      debugPrint('❌ RecipeService: Erreur lors de la récupération des recettes: $e');
 
       // En cas d'erreur, essayer de charger le cache même expiré
       final cachedRecipes = await _loadRecipesFromCache(_cacheKeyAllRecipes, ignoreExpiry: true);
@@ -59,20 +60,20 @@ class RecipeService {
         final isExpired = cacheAge > _cacheValidDuration.inMilliseconds;
 
         if (!isExpired) {
-          print('✅ RecipeService: Cache encore valide, pas de refresh');
+          debugPrint('✅ RecipeService: Cache encore valide, pas de refresh');
           return;
         }
       }
 
-      print('🔄 RecipeService: Rafraîchissement en arrière-plan...');
+      debugPrint('🔄 RecipeService: Rafraîchissement en arrière-plan...');
       final freshRecipes = await _fetchAllRecipesFromDB();
 
       if (freshRecipes.isNotEmpty) {
         await _saveRecipesToCache(_cacheKeyAllRecipes, freshRecipes);
-        print('✅ RecipeService: Cache mis à jour avec ${freshRecipes.length} recettes');
+        debugPrint('✅ RecipeService: Cache mis à jour avec ${freshRecipes.length} recettes');
       }
     } catch (e) {
-      print('⚠️ RecipeService: Erreur refresh arrière-plan (non-bloquant): $e');
+      debugPrint('⚠️ RecipeService: Erreur refresh arrière-plan (non-bloquant): $e');
     }
   }
 
@@ -91,7 +92,7 @@ class RecipeService {
         final recipe = Recipe.fromJson(recipeData);
         recipes.add(recipe);
       } catch (e) {
-        print('❌ Erreur pour recette $i (${recipeData['name_fr'] ?? recipeData['name_en'] ?? 'Nom inconnu'}): $e');
+        debugPrint('❌ Erreur pour recette $i (${recipeData['name_fr'] ?? recipeData['name_en'] ?? 'Nom inconnu'}): $e');
       }
     }
 
@@ -111,9 +112,9 @@ class RecipeService {
       await prefs.setString(key, jsonString);
       await prefs.setInt(_cacheKeyTimestamp, DateTime.now().millisecondsSinceEpoch);
 
-      print('💾 RecipeService: ${recipes.length} recettes sauvegardées en cache');
+      debugPrint('💾 RecipeService: ${recipes.length} recettes sauvegardées en cache');
     } catch (e) {
-      print('⚠️ RecipeService: Erreur sauvegarde cache: $e');
+      debugPrint('⚠️ RecipeService: Erreur sauvegarde cache: $e');
     }
   }
 
@@ -128,7 +129,7 @@ class RecipeService {
         if (timestamp != null) {
           final cacheAge = DateTime.now().millisecondsSinceEpoch - timestamp;
           if (cacheAge > _cacheValidDuration.inMilliseconds) {
-            print('⏰ RecipeService: Cache expiré (${(cacheAge / 3600000).toStringAsFixed(1)}h)');
+            debugPrint('⏰ RecipeService: Cache expiré (${(cacheAge / 3600000).toStringAsFixed(1)}h)');
             return null;
           }
         }
@@ -143,7 +144,7 @@ class RecipeService {
 
       return recipes;
     } catch (e) {
-      print('⚠️ RecipeService: Erreur chargement cache: $e');
+      debugPrint('⚠️ RecipeService: Erreur chargement cache: $e');
       return null;
     }
   }
@@ -155,9 +156,9 @@ class RecipeService {
       await prefs.remove(_cacheKeyAllRecipes);
       await prefs.remove(_cacheKeyFeaturedRecipes);
       await prefs.remove(_cacheKeyTimestamp);
-      print('🗑️ RecipeService: Cache invalidé');
+      debugPrint('🗑️ RecipeService: Cache invalidé');
     } catch (e) {
-      print('⚠️ RecipeService: Erreur invalidation cache: $e');
+      debugPrint('⚠️ RecipeService: Erreur invalidation cache: $e');
     }
   }
 
@@ -220,7 +221,7 @@ class RecipeService {
         currentPortions: recipeResponse['servings'],
       );
     } catch (e) {
-      print('Erreur lors de la récupération du détail de recette: $e');
+      debugPrint('Erreur lors de la récupération du détail de recette: $e');
       return null;
     }
   }
@@ -342,7 +343,7 @@ class RecipeService {
   /// Récupère tous les tags uniques depuis les recettes pour les organiser dans content_tags
   static Future<Set<String>> getAllUniqueTags() async {
     try {
-      print('🔍 RecipeService.getAllUniqueTags - Récupération des tags...');
+      debugPrint('🔍 RecipeService.getAllUniqueTags - Récupération des tags...');
       
       // Récupérer toutes les recettes
       final recipesResponse = await _supabase
@@ -350,7 +351,7 @@ class RecipeService {
           .select('tags_fr, tags_en')
           .eq('is_public', true);
 
-      print('🔍 Found ${recipesResponse.length} recipes to extract tags from');
+      debugPrint('🔍 Found ${recipesResponse.length} recipes to extract tags from');
 
       final locService = LocalizationService.instance;
       Set<String> allTags = {};
@@ -371,10 +372,10 @@ class RecipeService {
         }
       }
       
-      print('✅ Extracted ${allTags.length} unique tags: ${allTags.take(10).toList()}...');
+      debugPrint('✅ Extracted ${allTags.length} unique tags: ${allTags.take(10).toList()}...');
       return allTags;
     } catch (e) {
-      print('❌ Erreur lors de la récupération des tags: $e');
+      debugPrint('❌ Erreur lors de la récupération des tags: $e');
       return {};
     }
   }

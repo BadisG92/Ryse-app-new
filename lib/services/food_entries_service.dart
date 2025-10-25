@@ -576,18 +576,18 @@ class FoodEntriesService {
     required double totalWeight,
   }) async {
     try {
-      print('🎯 Création custom_food avec données IA:');
-      print('   - name: $mealName');
-      print('   - totalWeight: ${totalWeight}g');
-      print('   - totalCalories: $totalCalories');
-      print('   - totalProteins: $totalProteins');
-      print('   - totalCarbs: $totalCarbs');  
-      print('   - totalFats: $totalFats');
-      print('   - calories (pour 100g): ${((totalCalories / totalWeight) * 100).round()}');
-      print('   - proteins (pour 100g): ${((totalProteins / totalWeight) * 100).round()}');
-      print('   - carbs (pour 100g): ${((totalCarbs / totalWeight) * 100).round()}');
-      print('   - fats (pour 100g): ${((totalFats / totalWeight) * 100).round()}');
-      print('   - user_id: $userId');
+      debugPrint('🎯 Création custom_food avec données IA:');
+      debugPrint('   - name: $mealName');
+      debugPrint('   - totalWeight: ${totalWeight}g');
+      debugPrint('   - totalCalories: $totalCalories');
+      debugPrint('   - totalProteins: $totalProteins');
+      debugPrint('   - totalCarbs: $totalCarbs');  
+      debugPrint('   - totalFats: $totalFats');
+      debugPrint('   - calories (pour 100g): ${((totalCalories / totalWeight) * 100).round()}');
+      debugPrint('   - proteins (pour 100g): ${((totalProteins / totalWeight) * 100).round()}');
+      debugPrint('   - carbs (pour 100g): ${((totalCarbs / totalWeight) * 100).round()}');
+      debugPrint('   - fats (pour 100g): ${((totalFats / totalWeight) * 100).round()}');
+      debugPrint('   - user_id: $userId');
       
       // Insérer dans custom_foods avec les bons noms de colonnes
       final response = await _supabase
@@ -605,10 +605,10 @@ class FoodEntriesService {
           .select()
           .single();
 
-      print('✅ Custom food créé avec succès: ${response['id']}');
+      debugPrint('✅ Custom food créé avec succès: ${response['id']}');
       return response['id'].toString();
     } catch (e) {
-      print('❌ Erreur lors de la création de l\'aliment personnalisé IA: $e');
+      debugPrint('❌ Erreur lors de la création de l\'aliment personnalisé IA: $e');
       return null;
     }
   }
@@ -694,17 +694,17 @@ class FoodEntriesService {
           ? 'ml'
           : 'g';
 
-      print('🍽️ Création entrée food_entries:');
-      print('   - user_id: $userId');
-      print('   - meal_type: $mealType');
-      print('   - meal_id: $finalMealId');
-      print('   - custom_food_id: $customFoodId');
-      print('   - quantity: $totalWeight');
-      print('   - unit: $unit');
-      print('   - calories: $totalCalories');
-      print('   - proteins: $totalProteins');
-      print('   - carbs: $totalCarbs');
-      print('   - fats: $totalFats');
+      debugPrint('🍽️ Création entrée food_entries:');
+      debugPrint('   - user_id: $userId');
+      debugPrint('   - meal_type: $mealType');
+      debugPrint('   - meal_id: $finalMealId');
+      debugPrint('   - custom_food_id: $customFoodId');
+      debugPrint('   - quantity: $totalWeight');
+      debugPrint('   - unit: $unit');
+      debugPrint('   - calories: $totalCalories');
+      debugPrint('   - proteins: $totalProteins');
+      debugPrint('   - carbs: $totalCarbs');
+      debugPrint('   - fats: $totalFats');
 
       // Insérer dans food_entries avec les bonnes colonnes
       // NOUVEAU: Mise à jour instantanée via GlobalStateManager
@@ -729,7 +729,7 @@ class FoodEntriesService {
         'consumed_at': targetDate.toIso8601String(),
       });
 
-      print('✅ Entrée food_entries créée avec succès');
+      debugPrint('✅ Entrée food_entries créée avec succès');
 
       // Recompter les repas uniques depuis la base pour avoir le bon nombre
       await GlobalStateManager.instance.refreshMealsCount();

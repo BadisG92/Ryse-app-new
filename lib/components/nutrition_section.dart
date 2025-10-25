@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -129,7 +130,7 @@ class _NutritionSectionState extends State<NutritionSection>
         );
       }
     } catch (e) {
-      print('Erreur lors du rafraîchissement de la nutrition: $e');
+      debugPrint('Erreur lors du rafraîchissement de la nutrition: $e');
     }
   }
 

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../components/ui/global_progress_models.dart';
 
 /// Service de cache global pour le header
@@ -17,7 +18,7 @@ class HeaderCacheService {
     _cachedHeaderStats = headerStats;
     _lastUpdate = DateTime.now();
     final age = _lastUpdate != null ? DateTime.now().difference(_lastUpdate!).inSeconds : 0;
-    print('💾 Header cache mis à jour: ${headerStats.dailyStreak} (age: ${age}s)');
+    debugPrint('💾 Header cache mis à jour: ${headerStats.dailyStreak} (age: ${age}s)');
   }
 
   /// Vérifie si le cache est encore valide
@@ -30,7 +31,7 @@ class HeaderCacheService {
   static void clearCache() {
     _cachedHeaderStats = null;
     _lastUpdate = null;
-    print('🗑️ Header cache vidé');
+    debugPrint('🗑️ Header cache vidé');
   }
   
   /// Vérifie si on a des données en cache

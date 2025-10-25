@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
@@ -94,7 +95,7 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
           .limit(1);
       
       if (recipesResponse.isEmpty) {
-        print('Recette non trouvée: ${widget.recipe.name}');
+        debugPrint('Recette non trouvée: ${widget.recipe.name}');
         setState(() => isLoadingIngredients = false);
         return;
       }
@@ -103,7 +104,7 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
       _realRecipeId = recipeId; // Stocker l'ID réel
       
       if (recipeId == null) {
-        print('ID de recette null pour: ${widget.recipe.name}');
+        debugPrint('ID de recette null pour: ${widget.recipe.name}');
         setState(() => isLoadingIngredients = false);
         return;
       }
@@ -147,7 +148,7 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
         isLoadingIngredients = false;
       });
     } catch (e) {
-      print('Erreur lors du chargement des ingrédients: $e');
+      debugPrint('Erreur lors du chargement des ingrédients: $e');
       setState(() => isLoadingIngredients = false);
     }
   }
@@ -882,9 +883,9 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
   }
 
   Future<void> _handleAddRecipeToMeal() async {
-    print('🔵 _handleAddRecipeToMeal appelée');
-    print('🔵 onRecipeSelected: ${widget.onRecipeSelected != null}');
-    print('🔵 isFromDashboard: ${widget.isFromDashboard}');
+    debugPrint('🔵 _handleAddRecipeToMeal appelée');
+    debugPrint('🔵 onRecipeSelected: ${widget.onRecipeSelected != null}');
+    debugPrint('🔵 isFromDashboard: ${widget.isFromDashboard}');
     
     // Utiliser les valeurs actuelles (avec modifications si applicable)
     final nutrition = _calculateCurrentNutrition();
@@ -907,17 +908,17 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
       hasModifiedMacros: hasModifications, // Utiliser la détection automatique des modifications
     );
     
-    print('🔵 FoodItem créé: ${foodItem.name}, calories: ${foodItem.calories}');
+    debugPrint('🔵 FoodItem créé: ${foodItem.name}, calories: ${foodItem.calories}');
     
     if (widget.onRecipeSelected != null) {
-      print('🔵 Utilisation du callback onRecipeSelected');
+      debugPrint('🔵 Utilisation du callback onRecipeSelected');
       // Si on a un callback (dashboard avec repas présélectionné ou journal), l'utiliser
       Navigator.pop(context); // Ferme RecipeDetailsScreen
       Navigator.pop(context); // Ferme SelectRecipeScreen
       
       // Ajouter la recette via le callback
       widget.onRecipeSelected!(foodItem);
-      print('🔵 Callback appelé avec succès');
+      debugPrint('🔵 Callback appelé avec succès');
     } else {
       // Si on vient de l'onglet recettes ou dashboard sans callback, afficher la sélection de repas
       await _showMealSelectionBottomSheet(foodItem);
@@ -934,7 +935,7 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
         final meals = await FoodEntriesService.getFoodEntriesForDate(user.id, DateTime.now());
         existingMeals = meals.where((meal) => meal.items.isNotEmpty).toList();
       } catch (e) {
-        print('Erreur lors de la récupération des repas existants: $e');
+        debugPrint('Erreur lors de la récupération des repas existants: $e');
       }
     }
 
@@ -945,14 +946,14 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
       foodName: foodItem.name,
       existingMeals: existingMeals,
       onExistingMealSelected: (meal) async {
-        print('🍽️ Ajouter ${foodItem.name} au repas ${meal.name}');
+        debugPrint('🍽️ Ajouter ${foodItem.name} au repas ${meal.name}');
         await _addRecipeToExistingMeal(foodItem, meal);
       },
       onCreateNewMeal: () {
         NewMealTypeBottomSheet.show(
           context,
           onMealTypeSelected: (mealType, time) async {
-            print('🆕 Créer un nouveau repas $mealType avec ${foodItem.name}');
+            debugPrint('🆕 Créer un nouveau repas $mealType avec ${foodItem.name}');
             await _addRecipeToNewMeal(foodItem, mealType);
           },
         );
@@ -997,7 +998,7 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
       }
 
     } catch (e) {
-      print('❌ Erreur lors de l\'ajout au repas existant: $e');
+      debugPrint('❌ Erreur lors de l\'ajout au repas existant: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -1047,7 +1048,7 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
       }
 
     } catch (e) {
-      print('❌ Erreur lors de la création du nouveau repas: $e');
+      debugPrint('❌ Erreur lors de la création du nouveau repas: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

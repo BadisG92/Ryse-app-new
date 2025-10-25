@@ -52,13 +52,13 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
   @override
   void initState() {
     super.initState();
-    print('🔥 [FLUX AI] 📸 ===== VERSION AVEC ZOOM ET NOTE =====');
-    print('🔥 [FLUX AI] 📸 PAS d\'écran de choix - Caméra DIRECTE !');
+    debugPrint('🔥 [FLUX AI] 📸 ===== VERSION AVEC ZOOM ET NOTE =====');
+    debugPrint('🔥 [FLUX AI] 📸 PAS d\'écran de choix - Caméra DIRECTE !');
     _initializeCamera();
   }
 
   Future<void> _initializeCamera() async {
-    print('🔥 [FLUX AI] 📹 Initialisation caméra native');
+    debugPrint('🔥 [FLUX AI] 📹 Initialisation caméra native');
     try {
       final cameras = await availableCameras();
       if (cameras.isEmpty) {
@@ -82,7 +82,7 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
       _maxZoomLevel = await _cameraController!.getMaxZoomLevel();
       _currentZoomLevel = _minZoomLevel;
       _baseZoomLevel = _minZoomLevel;
-      print('🔥 [FLUX AI] ✅ Caméra initialisée - Zoom: ${_minZoomLevel}x - ${_maxZoomLevel}x');
+      debugPrint('🔥 [FLUX AI] ✅ Caméra initialisée - Zoom: ${_minZoomLevel}x - ${_maxZoomLevel}x');
 
       if (mounted) {
         setState(() {
@@ -91,7 +91,7 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
         });
       }
     } catch (e) {
-      print('🔥 [FLUX AI] ❌ Erreur caméra: $e');
+      debugPrint('🔥 [FLUX AI] ❌ Erreur caméra: $e');
       setState(() {
         _errorMessage = 'Erreur caméra: $e';
         _isLoading = false;
@@ -111,14 +111,14 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
   }
 
   Future<void> _takePicture() async {
-    print('🔥 [FLUX AI] 📸 Prise de photo');
+    debugPrint('🔥 [FLUX AI] 📸 Prise de photo');
     if (_cameraController == null || !_cameraController!.value.isInitialized) {
       return;
     }
 
     try {
       final image = await _cameraController!.takePicture();
-      print('🔥 [FLUX AI] ✅ Photo prise: ${image.path}');
+      debugPrint('🔥 [FLUX AI] ✅ Photo prise: ${image.path}');
 
       // Aller au preview screen avec note
       Navigator.of(context).push(
@@ -132,7 +132,7 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
         ),
       );
     } catch (e) {
-      print('🔥 [FLUX AI] ❌ Erreur photo: $e');
+      debugPrint('🔥 [FLUX AI] ❌ Erreur photo: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Erreur: $e')),
       );
@@ -140,7 +140,7 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
   }
 
   Future<void> _pickFromGallery() async {
-    print('🔥 [FLUX AI] 🖼️ Ouverture galerie');
+    debugPrint('🔥 [FLUX AI] 🖼️ Ouverture galerie');
     try {
       final XFile? image = await _picker.pickImage(
         source: ImageSource.gallery,
@@ -148,7 +148,7 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
       );
 
       if (image != null) {
-        print('🔥 [FLUX AI] ✅ Image depuis galerie: ${image.path}');
+        debugPrint('🔥 [FLUX AI] ✅ Image depuis galerie: ${image.path}');
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (context) => AIPreviewScreen(
@@ -161,7 +161,7 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
         );
       }
     } catch (e) {
-      print('🔥 [FLUX AI] ❌ Erreur galerie: $e');
+      debugPrint('🔥 [FLUX AI] ❌ Erreur galerie: $e');
     }
   }
 
@@ -282,7 +282,7 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
                   });
                 },
                 onScaleEnd: (ScaleEndDetails details) {
-                  print('🔥 [FLUX AI] 🔍 Zoom final: ${_currentZoomLevel.toStringAsFixed(1)}x');
+                  debugPrint('🔥 [FLUX AI] 🔍 Zoom final: ${_currentZoomLevel.toStringAsFixed(1)}x');
                 },
                 child: CameraPreview(_cameraController!),
               ),
@@ -412,7 +412,7 @@ class _AIPreviewScreenState extends State<AIPreviewScreen> {
   }
 
   void _analyzePhoto() {
-    print('🔥 [FLUX AI] 📝 Note: ${_noteController.text}');
+    debugPrint('🔥 [FLUX AI] 📝 Note: ${_noteController.text}');
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => AIAnalysisScreen(
@@ -646,9 +646,9 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
   @override
   void initState() {
     super.initState();
-    print('🔥 [FLUX AI] 🤖 Démarrage analyse IA pour: ${widget.imagePath}');
+    debugPrint('🔥 [FLUX AI] 🤖 Démarrage analyse IA pour: ${widget.imagePath}');
     if (widget.note != null && widget.note!.isNotEmpty) {
-      print('🔥 [FLUX AI] 📝 Note utilisateur: ${widget.note}');
+      debugPrint('🔥 [FLUX AI] 📝 Note utilisateur: ${widget.note}');
     }
     _capturedImage = File(widget.imagePath);
     _startAnalysis();
@@ -685,16 +685,16 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
             _errorMessage = null;
             // Mettre à jour le nom du repas avec le nom généré par l'IA
             _mealNameController.text = result.mealName ?? 'coach_detected_dish'.tr(LocalizationService.instance.currentLanguageCode);
-            print('🔥 [FLUX AI] ✅ Analyse terminée avec succès');
+            debugPrint('🔥 [FLUX AI] ✅ Analyse terminée avec succès');
           } else {
             _hasResult = false;
             _errorMessage = result.error ?? 'Aucun aliment détecté';
-            print('🔥 [FLUX AI] ❌ Erreur d\'analyse: ${result.error}');
+            debugPrint('🔥 [FLUX AI] ❌ Erreur d\'analyse: ${result.error}');
           }
         });
       }
     } catch (e) {
-      print('🔥 [FLUX AI] ❌ Exception lors de l\'analyse: $e');
+      debugPrint('🔥 [FLUX AI] ❌ Exception lors de l\'analyse: $e');
       if (mounted) {
         setState(() {
           _isAnalyzing = false;
@@ -1414,7 +1414,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
       quantity: quantity,
       isModified: false,
       onFoodSaved: (foodItem) {
-        print('Aliment ${foodItem.name} enregistré avec modifications');
+        debugPrint('Aliment ${foodItem.name} enregistré avec modifications');
       },
     );
   }
@@ -1478,7 +1478,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
       }
 
     } catch (e) {
-      print('Erreur lors de l\'ajout au repas spécifique: $e');
+      debugPrint('Erreur lors de l\'ajout au repas spécifique: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -1532,7 +1532,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
       );
 
     } catch (e) {
-      print('Erreur lors de l\'affichage de la sélection de repas: $e');
+      debugPrint('Erreur lors de l\'affichage de la sélection de repas: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -1587,7 +1587,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
       }
 
     } catch (e) {
-      print('Erreur lors de l\'ajout au repas existant: $e');
+      debugPrint('Erreur lors de l\'ajout au repas existant: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -1639,7 +1639,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
       }
 
     } catch (e) {
-      print('Erreur lors de l\'ajout au nouveau repas: $e');
+      debugPrint('Erreur lors de l\'ajout au nouveau repas: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

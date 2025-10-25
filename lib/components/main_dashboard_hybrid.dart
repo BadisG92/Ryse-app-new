@@ -94,7 +94,7 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
     // Démarrer l'animation du score
     _startScoreAnimation();
 
-    print('⚡ Dashboard: Données initiales chargées en mode synchrone');
+    debugPrint('⚡ Dashboard: Données initiales chargées en mode synchrone');
   }
 
   @override
@@ -143,10 +143,10 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
         setState(() {
           dailyGoals = newGoals;
         });
-        print('🔄 Objectifs dashboard principal rechargés instantanément depuis GlobalState');
+        debugPrint('🔄 Objectifs dashboard principal rechargés instantanément depuis GlobalState');
       }
     } catch (e) {
-      print('❌ Erreur rechargement objectifs: $e');
+      debugPrint('❌ Erreur rechargement objectifs: $e');
     }
   }
 
@@ -213,7 +213,7 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
       _startScoreAnimation();
     }
 
-    print('⚡ Dashboard: Affichage instantané depuis GlobalState');
+    debugPrint('⚡ Dashboard: Affichage instantané depuis GlobalState');
 
     // En arrière-plan, charger le vrai profil utilisateur depuis la DB pour les infos complémentaires
     try {
@@ -234,7 +234,7 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
         _startScoreAnimation();
       }
     } catch (e) {
-      print('⚠️ Erreur chargement profil DB (non-bloquant): $e');
+      debugPrint('⚠️ Erreur chargement profil DB (non-bloquant): $e');
       // On garde le profil basique du GlobalState - pas d'erreur affichée
     }
   }
@@ -261,12 +261,12 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
     final score = (completedCount / goals.length * 100).round();
 
     // DEBUG: Afficher les objectifs et le score
-    print('🎯 DEBUG Score:');
-    print('   - Objectifs complétés: $completedCount/${goals.length}');
+    debugPrint('🎯 DEBUG Score:');
+    debugPrint('   - Objectifs complétés: $completedCount/${goals.length}');
     for (var goal in goals) {
-      print('   - ${goal['label']}: ${goal['completed'] ? '✅' : '❌'} (${goal['progress']}%)');
+      debugPrint('   - ${goal['label']}: ${goal['completed'] ? '✅' : '❌'} (${goal['progress']}%)');
     }
-    print('   - Score final: $score%');
+    debugPrint('   - Score final: $score%');
 
     return score;
   }
@@ -542,11 +542,11 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
   @override
   void onGlobalStateUpdate(StateChangeEvent event) {
     // Mise à jour instantanée quand l'état global change
-    print('🔄 Dashboard: Mise à jour reçue du GlobalState - ${event.type}');
+    debugPrint('🔄 Dashboard: Mise à jour reçue du GlobalState - ${event.type}');
 
     // Si c'est un nouveau jour, recharger toutes les données
     if (event.type == ChangeType.dayReset) {
-      print('🌅 Dashboard: Nouveau jour détecté, rechargement complet...');
+      debugPrint('🌅 Dashboard: Nouveau jour détecté, rechargement complet...');
       _loadDashboardData();
       return;
     }

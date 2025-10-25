@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'dashboard_service.dart';
 import 'recipe_service.dart';
@@ -12,7 +13,7 @@ class PreloadService {
   
   /// Initialise le préchargement au démarrage de l'app
   static void initialize() {
-    print('🚀 PreloadService: Initialisation du préchargement');
+    debugPrint('🚀 PreloadService: Initialisation du préchargement');
     
     // Précharger immédiatement les données essentielles
     _preloadEssentialData();
@@ -27,35 +28,35 @@ class PreloadService {
     _isPreloading = true;
     
     try {
-      print('📦 Préchargement des données essentielles...');
+      debugPrint('📦 Préchargement des données essentielles...');
       
       // Lancer tous les préchargements en parallèle
       await Future.wait([
         // Dashboard et objectifs
         DashboardService.getDailyGoals().catchError((e) {
-          print('⚠️ Erreur préchargement goals: $e');
+          debugPrint('⚠️ Erreur préchargement goals: $e');
         }),
         
         // Profil utilisateur
         DashboardService.getUserProfile().catchError((e) {
-          print('⚠️ Erreur préchargement profil: $e');
+          debugPrint('⚠️ Erreur préchargement profil: $e');
         }),
         
         // Modules dashboard
         DashboardService.getModulePreviews().catchError((e) {
-          print('⚠️ Erreur préchargement modules: $e');
+          debugPrint('⚠️ Erreur préchargement modules: $e');
         }),
         
         // Données sport (si l'utilisateur utilise cette fonctionnalité)
         SportDashboardService.getDashboardData().catchError((e) {
-          print('⚠️ Erreur préchargement sport: $e');
+          debugPrint('⚠️ Erreur préchargement sport: $e');
         }),
       ]);
       
-      print('✅ Préchargement initial terminé');
+      debugPrint('✅ Préchargement initial terminé');
       
     } catch (e) {
-      print('❌ Erreur préchargement global: $e');
+      debugPrint('❌ Erreur préchargement global: $e');
     } finally {
       _isPreloading = false;
     }
@@ -69,7 +70,7 @@ class PreloadService {
     // Précharger toutes les 30 secondes
     _preloadTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
       if (!_isPreloading) {
-        print('🔄 Préchargement périodique...');
+        debugPrint('🔄 Préchargement périodique...');
         _preloadLightData();
       }
     });
@@ -81,13 +82,13 @@ class PreloadService {
       // Juste rafraîchir les goals en arrière-plan
       await DashboardService.getDailyGoals();
     } catch (e) {
-      print('⚠️ Erreur préchargement léger: $e');
+      debugPrint('⚠️ Erreur préchargement léger: $e');
     }
   }
   
   /// Précharge les données d'une page spécifique avant navigation
   static Future<void> preloadPageData(String pageName) async {
-    print('📦 Préchargement pour page: $pageName');
+    debugPrint('📦 Préchargement pour page: $pageName');
     
     try {
       switch (pageName) {
@@ -114,10 +115,10 @@ class PreloadService {
           break;
           
         default:
-          print('⚠️ Page non reconnue pour préchargement: $pageName');
+          debugPrint('⚠️ Page non reconnue pour préchargement: $pageName');
       }
     } catch (e) {
-      print('⚠️ Erreur préchargement page $pageName: $e');
+      debugPrint('⚠️ Erreur préchargement page $pageName: $e');
     }
   }
   

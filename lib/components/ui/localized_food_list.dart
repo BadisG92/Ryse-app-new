@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/localized_database_service.dart';
@@ -49,7 +50,7 @@ class _LocalizedFoodListState extends State<LocalizedFoodList> {
         isLoading = false;
       });
     } catch (e) {
-      print('Erreur lors du chargement des aliments: $e');
+      debugPrint('Erreur lors du chargement des aliments: $e');
       setState(() => isLoading = false);
     }
   }

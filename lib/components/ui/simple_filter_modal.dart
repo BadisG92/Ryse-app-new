@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'recipe_models.dart';
@@ -24,34 +25,34 @@ class _SimpleFilterModalState extends State<SimpleFilterModal> {
   @override
   void initState() {
     super.initState();
-    print('🔵 MODAL INIT STATE');
-    print('🔵 Initial filters from parent: ${widget.initialFilters}');
+    debugPrint('🔵 MODAL INIT STATE');
+    debugPrint('🔵 Initial filters from parent: ${widget.initialFilters}');
     
     // Copier les filtres initiaux
     selectedFilters = {};
     for (var entry in widget.initialFilters.entries) {
       selectedFilters[entry.key] = Set<String>.from(entry.value);
     }
-    print('🔵 Local selectedFilters copy: $selectedFilters');
+    debugPrint('🔵 Local selectedFilters copy: $selectedFilters');
   }
 
   void _toggleFilter(String category, String option) {
-    print('🔴 _toggleFilter CALLED: category=$category, option=$option');
-    print('🔴 BEFORE setState: selectedFilters=$selectedFilters');
+    debugPrint('🔴 _toggleFilter CALLED: category=$category, option=$option');
+    debugPrint('🔴 BEFORE setState: selectedFilters=$selectedFilters');
     
     setState(() {
       selectedFilters[category] ??= <String>{};
       
       if (selectedFilters[category]!.contains(option)) {
         selectedFilters[category]!.remove(option);
-        print('🔴 REMOVED: $option from $category');
+        debugPrint('🔴 REMOVED: $option from $category');
       } else {
         selectedFilters[category]!.add(option);
-        print('🔴 ADDED: $option to $category');
+        debugPrint('🔴 ADDED: $option to $category');
       }
     });
     
-    print('🔴 AFTER setState: selectedFilters=$selectedFilters');
+    debugPrint('🔴 AFTER setState: selectedFilters=$selectedFilters');
   }
 
   @override
@@ -59,8 +60,8 @@ class _SimpleFilterModalState extends State<SimpleFilterModal> {
     // Récupérer les filtres disponibles
     final availableFilters = RecipeFilters.advancedFilters;
     
-    print('🔴 MODAL BUILD: availableFilters = $availableFilters');
-    print('🔴 MODAL BUILD: selectedFilters = $selectedFilters');
+    debugPrint('🔴 MODAL BUILD: availableFilters = $availableFilters');
+    debugPrint('🔴 MODAL BUILD: selectedFilters = $selectedFilters');
     
     return Container(
       height: MediaQuery.of(context).size.height * 0.75,
@@ -92,7 +93,7 @@ class _SimpleFilterModalState extends State<SimpleFilterModal> {
               children: [
                 Consumer<LocalizationService>(
                   builder: (context, locService, child) {
-                    print('🔵 MODAL DEBUG: currentLanguageCode = ${locService.currentLanguageCode}');
+                    debugPrint('🔵 MODAL DEBUG: currentLanguageCode = ${locService.currentLanguageCode}');
                     return Text(
                       'filters'.tr(locService.currentLanguageCode),
                       style: const TextStyle(
@@ -146,12 +147,12 @@ class _SimpleFilterModalState extends State<SimpleFilterModal> {
                       children: options.map((option) {
                         final isSelected = selectedFilters[category]?.contains(option) ?? false;
                         
-                        print('🟣 Building tag: $option, isSelected=$isSelected');
+                        debugPrint('🟣 Building tag: $option, isSelected=$isSelected');
                         
                         return InkWell(
                           onTap: () {
-                            print('🔥 INKWELL TAP DETECTED: $option in $category');
-                            print('🔥 Current isSelected: $isSelected');
+                            debugPrint('🔥 INKWELL TAP DETECTED: $option in $category');
+                            debugPrint('🔥 Current isSelected: $isSelected');
                             _toggleFilter(category, option);
                           },
                           child: Container(
@@ -201,7 +202,7 @@ class _SimpleFilterModalState extends State<SimpleFilterModal> {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
-                  print('🚀 APPLYING FILTERS: $selectedFilters');
+                  debugPrint('🚀 APPLYING FILTERS: $selectedFilters');
                   widget.onApply(selectedFilters);
                   Navigator.pop(context);
                 },

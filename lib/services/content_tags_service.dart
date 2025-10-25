@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
 import '../config/app_config.dart';
@@ -10,7 +11,7 @@ class ContentTagsService {
   /// Vérifie que content_tags contient des tags de recettes
   static Future<bool> checkRecipeTagsExist() async {
     try {
-      print('🔍 ContentTagsService: Vérification des tags de recettes dans content_tags...');
+      debugPrint('🔍 ContentTagsService: Vérification des tags de recettes dans content_tags...');
       
       final response = await _supabase
           .from('content_tags')
@@ -21,14 +22,14 @@ class ContentTagsService {
       bool hasRecipeTags = response.isNotEmpty;
       
       if (hasRecipeTags) {
-        print('✅ Tags de recettes trouvés dans content_tags');
+        debugPrint('✅ Tags de recettes trouvés dans content_tags');
       } else {
-        print('⚠️ Aucun tag de recette trouvé dans content_tags');
+        debugPrint('⚠️ Aucun tag de recette trouvé dans content_tags');
       }
       
       return hasRecipeTags;
     } catch (e) {
-      print('❌ Erreur lors de la vérification des tags: $e');
+      debugPrint('❌ Erreur lors de la vérification des tags: $e');
       return false;
     }
   }
@@ -83,8 +84,8 @@ class ContentTagsService {
     
     // Afficher les résultats pour debug
     for (final category in organized.keys) {
-      print('📂 ${_getCategoryDisplayName(category)}: ${organized[category]!.length} tags');
-      print('   ${organized[category]!.take(5).toList()}...');
+      debugPrint('📂 ${_getCategoryDisplayName(category)}: ${organized[category]!.length} tags');
+      debugPrint('   ${organized[category]!.take(5).toList()}...');
     }
     
     return organized;
@@ -204,12 +205,12 @@ class ContentTagsService {
               'app part': 'recettes',
               // Pas de couleur comme demandé
             });
-        print('✅ Tag ajouté: $tagName ($category) [${isFrench ? 'FR' : 'EN'}]');
+        debugPrint('✅ Tag ajouté: $tagName ($category) [${isFrench ? 'FR' : 'EN'}]');
       } else {
-        print('⚪ Tag existe déjà: $tagName');
+        debugPrint('⚪ Tag existe déjà: $tagName');
       }
     } catch (e) {
-      print('❌ Erreur lors de l\'insertion du tag "$tagName": $e');
+      debugPrint('❌ Erreur lors de l\'insertion du tag "$tagName": $e');
     }
   }
 
@@ -228,7 +229,7 @@ class ContentTagsService {
     try {
       final locService = LocalizationService.instance;
       final language = locService.currentLanguageCode;
-      print('🔍 Récupération des tags depuis content_tags (langue: $language)...');
+      debugPrint('🔍 Récupération des tags depuis content_tags (langue: $language)...');
       
       // Sélectionner les colonnes selon la langue
       final suffix = locService.getColumnSuffix();
@@ -240,9 +241,9 @@ class ContentTagsService {
           .select('$nameColumn, $categoryColumn, name_fr, name_en, category_fr, category_en')
           .eq('app part', 'recettes');
 
-      print('🔍 Données brutes récupérées: ${response.length} tags');
+      debugPrint('🔍 Données brutes récupérées: ${response.length} tags');
       if (response.isNotEmpty) {
-        print('🔍 Premier tag exemple: ${response[0]}');
+        debugPrint('🔍 Premier tag exemple: ${response[0]}');
       }
       
       Map<String, List<String>> organizedTags = {};
@@ -258,18 +259,18 @@ class ContentTagsService {
             organizedTags[categoryName] = [];
           }
           organizedTags[categoryName]!.add(tagName);
-          print('   + Tag ajouté: "$tagName" dans catégorie "$categoryName"');
+          debugPrint('   + Tag ajouté: "$tagName" dans catégorie "$categoryName"');
         }
       }
 
-      print('✅ ${organizedTags.keys.length} catégories trouvées avec ${organizedTags.values.fold(0, (sum, list) => sum + list.length)} tags total');
+      debugPrint('✅ ${organizedTags.keys.length} catégories trouvées avec ${organizedTags.values.fold(0, (sum, list) => sum + list.length)} tags total');
       for (final category in organizedTags.keys) {
-        print('   - $category: ${organizedTags[category]!.length} tags');
+        debugPrint('   - $category: ${organizedTags[category]!.length} tags');
       }
 
       return organizedTags;
     } catch (e) {
-      print('❌ Erreur lors de la récupération des tags organisés: $e');
+      debugPrint('❌ Erreur lors de la récupération des tags organisés: $e');
       return {};
     }
   }

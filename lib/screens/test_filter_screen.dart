@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 class TestFilterScreen extends StatefulWidget {
@@ -52,16 +53,16 @@ class _TestFilterScreenState extends State<TestFilterScreen> {
                   
                   return GestureDetector(
                     onTap: () {
-                      print('CLIC SUR: $tag (actuellement: $isSelected)');
+                      debugPrint('CLIC SUR: $tag (actuellement: $isSelected)');
                       setState(() {
                         if (isSelected) {
                           selectedTags.remove(tag);
-                          print('RETRAIT: $tag');
+                          debugPrint('RETRAIT: $tag');
                         } else {
                           selectedTags.add(tag);
-                          print('AJOUT: $tag');
+                          debugPrint('AJOUT: $tag');
                         }
-                        print('ÉTAT ACTUEL: $selectedTags');
+                        debugPrint('ÉTAT ACTUEL: $selectedTags');
                       });
                     },
                     child: Container(
@@ -100,7 +101,7 @@ class _TestFilterScreenState extends State<TestFilterScreen> {
                     onApply: (newTags) {
                       setState(() {
                         selectedTags = newTags;
-                        print('TAGS APPLIQUÉS DEPUIS MODAL: $selectedTags');
+                        debugPrint('TAGS APPLIQUÉS DEPUIS MODAL: $selectedTags');
                       });
                     },
                   ),
@@ -160,14 +161,14 @@ class _TestModalState extends State<_TestModal> {
               
               return GestureDetector(
                 onTap: () {
-                  print('MODAL CLIC: $tag');
+                  debugPrint('MODAL CLIC: $tag');
                   setState(() {
                     if (isSelected) {
                       tempTags.remove(tag);
                     } else {
                       tempTags.add(tag);
                     }
-                    print('MODAL ÉTAT: $tempTags');
+                    debugPrint('MODAL ÉTAT: $tempTags');
                   });
                 },
                 child: Chip(

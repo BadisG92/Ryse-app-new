@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'ui/recipe_models.dart';
@@ -46,7 +47,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
         _isLoading = false;
       });
     } catch (e) {
-      print('Erreur lors du chargement du détail: $e');
+      debugPrint('Erreur lors du chargement du détail: $e');
       setState(() {
         _isLoading = false;
       });

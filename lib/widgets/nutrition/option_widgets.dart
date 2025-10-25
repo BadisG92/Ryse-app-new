@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
@@ -262,13 +263,13 @@ class FoodSuggestionWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     // Debug: Vérifier les paramètres reçus et la logique (focus sur Nutella)
     if (name.toLowerCase().contains('nutella')) {
-      print('🎨 DEBUG FoodSuggestionWidget - NUTELLA:');
-      print('   - isCustom: $isCustom');
-      print('   - origin: "$origin"');
-      print('   - hasModifiedMacros: $hasModifiedMacros');
-      print('   - isRecipe: $isRecipe');
-      print('   - Icône sélectionnée: ${_getIconBasedOnRules()}');
-      print('   - Texte sélectionné: ${_getTextBasedOnRules('fr')}');
+      debugPrint('🎨 DEBUG FoodSuggestionWidget - NUTELLA:');
+      debugPrint('   - isCustom: $isCustom');
+      debugPrint('   - origin: "$origin"');
+      debugPrint('   - hasModifiedMacros: $hasModifiedMacros');
+      debugPrint('   - isRecipe: $isRecipe');
+      debugPrint('   - Icône sélectionnée: ${_getIconBasedOnRules()}');
+      debugPrint('   - Texte sélectionné: ${_getTextBasedOnRules('fr')}');
     }
     
     return GestureDetector(

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'ui/recipe_models.dart';
@@ -48,7 +49,7 @@ class _NutritionRecipesHybridState extends State<NutritionRecipesHybrid> {
     // Forcer un rebuild quand les recettes sont chargées
     if (mounted && RecipeData.allRecipes.isNotEmpty) {
       setState(() {});
-      print('✅ Recettes affichées: ${RecipeData.allRecipes.length} recettes');
+      debugPrint('✅ Recettes affichées: ${RecipeData.allRecipes.length} recettes');
     }
   }
 
@@ -137,7 +138,7 @@ class _NutritionRecipesHybridState extends State<NutritionRecipesHybrid> {
   }
 
   void _onRecipeTap(Recipe recipe) {
-    print('🔥 Clic sur recette: ${recipe.name}');
+    debugPrint('🔥 Clic sur recette: ${recipe.name}');
     // Navigation vers les détails de la recette depuis l'onglet recettes
     Navigator.push(
       context,

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
@@ -56,11 +57,11 @@ class RecipeSearchSection extends StatelessWidget {
         const SizedBox(width: 12),
         IconButton(
           onPressed: () {
-            print('🔴 OUVERTURE MODAL BOTTOM SHEET 🔴');
+            debugPrint('🔴 OUVERTURE MODAL BOTTOM SHEET 🔴');
             
             // Récupérer les filtres depuis content_tags
             final availableFilters = RecipeFilters.advancedFilters;
-            print('🔴 Filtres disponibles: ${availableFilters.keys}');
+            debugPrint('🔴 Filtres disponibles: ${availableFilters.keys}');
             
             // État persistant pour tous les tags
             Map<String, bool> selectedTags = {};
@@ -71,7 +72,7 @@ class RecipeSearchSection extends StatelessWidget {
               }
             }
             
-            print('🔴 CALLBACK onFiltersApplied: ${onFiltersApplied.runtimeType}');
+            debugPrint('🔴 CALLBACK onFiltersApplied: ${onFiltersApplied.runtimeType}');
             
             showModalBottomSheet(
               context: context,
@@ -126,10 +127,10 @@ class RecipeSearchSection extends StatelessWidget {
                                           final isSelected = selectedTags[tag] ?? false;
                                           return GestureDetector(
                                             onTap: () {
-                                              print('🔴 TAG CLIQUÉ: $tag dans $categoryName (était $isSelected)');
+                                              debugPrint('🔴 TAG CLIQUÉ: $tag dans $categoryName (était $isSelected)');
                                               setModalState(() {
                                                 selectedTags[tag] = !isSelected;
-                                                print('🔴 TAG MAINTENANT: $tag = ${selectedTags[tag]}');
+                                                debugPrint('🔴 TAG MAINTENANT: $tag = ${selectedTags[tag]}');
                                               });
                                             },
                                             child: Container(
@@ -167,8 +168,8 @@ class RecipeSearchSection extends StatelessWidget {
                               child: ElevatedButton(
                                 onPressed: () {
                                   final selectedTagsList = selectedTags.entries.where((e) => e.value).map((e) => e.key).toList();
-                                  print('🔴 VALIDER: ${selectedTagsList.length} filtres sélectionnés');
-                                  print('🔴 Tags sélectionnés: $selectedTagsList');
+                                  debugPrint('🔴 VALIDER: ${selectedTagsList.length} filtres sélectionnés');
+                                  debugPrint('🔴 Tags sélectionnés: $selectedTagsList');
                                   
                                   // Organiser les tags par catégorie pour le callback
                                   Map<String, Set<String>> filtersForCallback = {};
@@ -183,15 +184,15 @@ class RecipeSearchSection extends StatelessWidget {
                                     }
                                   }
                                   
-                                  print('🔴 Filtres organisés par catégorie: $filtersForCallback');
+                                  debugPrint('🔴 Filtres organisés par catégorie: $filtersForCallback');
                                   
                                   // Appeler le callback pour appliquer les filtres
                                   if (onFiltersApplied != null) {
                                     try {
                                       onFiltersApplied!(filtersForCallback);
-                                      print('🔴 Callback onFiltersApplied appelé avec: $filtersForCallback');
+                                      debugPrint('🔴 Callback onFiltersApplied appelé avec: $filtersForCallback');
                                     } catch (e) {
-                                      print('🔴 ERREUR callback: $e');
+                                      debugPrint('🔴 ERREUR callback: $e');
                                     }
                                   }
                                   

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../../../features/nutrition/domain/repositories/nutrition_repository.dart';
 import '../../../features/nutrition/data/repositories/nutrition_repository_impl.dart';
 import '../../../features/nutrition/data/datasources/nutrition_remote_datasource.dart';
@@ -35,7 +36,7 @@ class DashboardMigrationAdapter {
     );
     
     _isInitialized = true;
-    print('🔄 DashboardMigrationAdapter initialisé');
+    debugPrint('🔄 DashboardMigrationAdapter initialisé');
   }
   
   /// Récupère les objectifs journaliers
@@ -48,18 +49,18 @@ class DashboardMigrationAdapter {
     
     try {
       // Utiliser le nouveau système
-      print('🆕 Utilisation du nouveau système Repository');
+      debugPrint('🆕 Utilisation du nouveau système Repository');
       final result = await _nutritionRepository.getDailyGoals(DateTime.now());
       
       if (result.isSuccess) {
         return result.data ?? [];
       } else {
         // Fallback sur l'ancien système en cas d'erreur
-        print('⚠️ Erreur nouveau système, fallback sur ancien: ${result.error}');
+        debugPrint('⚠️ Erreur nouveau système, fallback sur ancien: ${result.error}');
         return DashboardService.getDailyGoals();
       }
     } catch (e) {
-      print('❌ Exception dans nouveau système: $e');
+      debugPrint('❌ Exception dans nouveau système: $e');
       // Fallback sur l'ancien système
       return DashboardService.getDailyGoals();
     }
@@ -88,7 +89,7 @@ class DashboardMigrationAdapter {
       
       return result.isSuccess && (result.data ?? false);
     } catch (e) {
-      print('❌ Erreur ajout eau: $e');
+      debugPrint('❌ Erreur ajout eau: $e');
       return false;
     }
   }
@@ -109,7 +110,7 @@ class DashboardMigrationAdapter {
       // Recharger les objectifs
       await getDailyGoals();
     } catch (e) {
-      print('❌ Erreur invalidation: $e');
+      debugPrint('❌ Erreur invalidation: $e');
       // Fallback sur l'ancien système
       await DashboardService.invalidateAndRefreshGoals();
     }
@@ -118,31 +119,31 @@ class DashboardMigrationAdapter {
   /// Active progressivement le nouveau système
   static void enableNewArchitecture() {
     useNewArchitecture = true;
-    print('✅ Nouvelle architecture activée');
+    debugPrint('✅ Nouvelle architecture activée');
   }
   
   /// Désactive le nouveau système (pour rollback si nécessaire)
   static void disableNewArchitecture() {
     useNewArchitecture = false;
-    print('🔙 Retour à l\'ancienne architecture');
+    debugPrint('🔙 Retour à l\'ancienne architecture');
   }
   
   /// Test pour vérifier que le nouveau système fonctionne
   Future<bool> testNewArchitecture() async {
     try {
-      print('🧪 Test du nouveau système...');
+      debugPrint('🧪 Test du nouveau système...');
       
       // Tester la récupération des objectifs
       final result = await _nutritionRepository.getDailyGoals(DateTime.now());
       if (!result.isSuccess) {
-        print('❌ Test échoué: ${result.error}');
+        debugPrint('❌ Test échoué: ${result.error}');
         return false;
       }
       
-      print('✅ Test réussi: ${result.data?.length} objectifs récupérés');
+      debugPrint('✅ Test réussi: ${result.data?.length} objectifs récupérés');
       return true;
     } catch (e) {
-      print('❌ Test échoué avec exception: $e');
+      debugPrint('❌ Test échoué avec exception: $e');
       return false;
     }
   }
@@ -150,7 +151,7 @@ class DashboardMigrationAdapter {
   /// Compare les résultats entre ancien et nouveau système
   Future<void> compareSystemsOutput() async {
     try {
-      print('📊 Comparaison ancien vs nouveau système...');
+      debugPrint('📊 Comparaison ancien vs nouveau système...');
       
       // Récupérer avec l'ancien système
       final oldGoals = await DashboardService.getDailyGoals();
@@ -159,9 +160,9 @@ class DashboardMigrationAdapter {
       final newResult = await _nutritionRepository.getDailyGoals(DateTime.now());
       final newGoals = newResult.data ?? [];
       
-      print('📊 Résultats:');
-      print('   Ancien système: ${oldGoals.length} objectifs');
-      print('   Nouveau système: ${newGoals.length} objectifs');
+      debugPrint('📊 Résultats:');
+      debugPrint('   Ancien système: ${oldGoals.length} objectifs');
+      debugPrint('   Nouveau système: ${newGoals.length} objectifs');
       
       // Comparer chaque objectif
       for (int i = 0; i < oldGoals.length && i < newGoals.length; i++) {
@@ -171,15 +172,15 @@ class DashboardMigrationAdapter {
         if (old.id == new_.id) {
           final match = old.currentValue == new_.currentValue &&
                        old.targetValue == new_.targetValue;
-          print('   ${old.id}: ${match ? "✅ MATCH" : "❌ DIFF"}');
+          debugPrint('   ${old.id}: ${match ? "✅ MATCH" : "❌ DIFF"}');
           if (!match) {
-            print('      Ancien: ${old.currentValue}/${old.targetValue}');
-            print('      Nouveau: ${new_.currentValue}/${new_.targetValue}');
+            debugPrint('      Ancien: ${old.currentValue}/${old.targetValue}');
+            debugPrint('      Nouveau: ${new_.currentValue}/${new_.targetValue}');
           }
         }
       }
     } catch (e) {
-      print('❌ Erreur comparaison: $e');
+      debugPrint('❌ Erreur comparaison: $e');
     }
   }
 }

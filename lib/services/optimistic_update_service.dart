@@ -43,13 +43,13 @@ class OptimisticUpdateService {
       
       // 3. Mettre à jour immédiatement le notifier (UI se rafraîchit instantanément)
       GoalsNotifier.instance.update(updatedGoals);
-      print('💧 Mise à jour optimiste de l\'eau: +${amountMl}ml');
+      debugPrint('💧 Mise à jour optimiste de l\'eau: +${amountMl}ml');
       
       // 4. Lancer la vraie mise à jour en arrière-plan (non-bloquant)
       _syncWithBackend();
       
     } catch (e) {
-      print('❌ Erreur mise à jour optimiste: $e');
+      debugPrint('❌ Erreur mise à jour optimiste: $e');
     }
   }
   
@@ -99,13 +99,13 @@ class OptimisticUpdateService {
       
       // 3. Mise à jour instantanée
       GoalsNotifier.instance.update(updatedGoals);
-      print('🍎 Mise à jour optimiste calories: +${calories}kcal');
+      debugPrint('🍎 Mise à jour optimiste calories: +${calories}kcal');
       
       // 4. Sync en arrière-plan
       _syncWithBackend();
       
     } catch (e) {
-      print('❌ Erreur mise à jour optimiste: $e');
+      debugPrint('❌ Erreur mise à jour optimiste: $e');
     }
   }
   
@@ -131,12 +131,12 @@ class OptimisticUpdateService {
       }).toList();
       
       GoalsNotifier.instance.update(updatedGoals);
-      print('🏋️ Mise à jour optimiste workout complété');
+      debugPrint('🏋️ Mise à jour optimiste workout complété');
       
       _syncWithBackend();
       
     } catch (e) {
-      print('❌ Erreur mise à jour optimiste: $e');
+      debugPrint('❌ Erreur mise à jour optimiste: $e');
     }
   }
   
@@ -149,9 +149,9 @@ class OptimisticUpdateService {
         final freshGoals = await DashboardService.getDailyGoalsFromSource();
         // Mettre à jour seulement si les données ont changé
         GoalsNotifier.instance.update(freshGoals);
-        print('🔄 Sync backend terminée - données actualisées');
+        debugPrint('🔄 Sync backend terminée - données actualisées');
       } catch (e) {
-        print('⚠️ Erreur sync backend: $e');
+        debugPrint('⚠️ Erreur sync backend: $e');
         // L'UI reste avec les données optimistes si erreur
       }
     });

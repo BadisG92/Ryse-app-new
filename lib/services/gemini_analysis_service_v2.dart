@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -58,7 +59,7 @@ class GeminiAnalysisServiceV2 {
 
       return imageBytes;
     } catch (e) {
-      print('Error resizing image: $e');
+      debugPrint('Error resizing image: $e');
       return imageBytes; // Return original if resize fails
     }
   }
@@ -377,13 +378,13 @@ Be precise with your estimations and only include foods you can confidently iden
               detectedFoods.add(detectedFood);
             }
           } catch (e) {
-            print('Error parsing food item: $e');
+            debugPrint('Error parsing food item: $e');
             continue;
           }
         }
       }
     } catch (e) {
-      print('Error parsing Gemini response: $e');
+      debugPrint('Error parsing Gemini response: $e');
       // Fallback: try to extract food names from text response
       final fallbackFoods = _extractFoodsFromText(textResponse);
       return {
@@ -425,29 +426,29 @@ Be precise with your estimations and only include foods you can confidently iden
         languageCode: languageCode,
       );
 
-      print('🔍 DEBUG: Sending text analysis request to Gemini...');
+      debugPrint('🔍 DEBUG: Sending text analysis request to Gemini...');
       final response = await _makeGeminiRequest(prompt, null);
-      print('🔍 DEBUG: Got response: ${response != null ? "YES" : "NULL"}');
+      debugPrint('🔍 DEBUG: Got response: ${response != null ? "YES" : "NULL"}');
 
       stopwatch.stop();
       final processingTime = stopwatch.elapsedMilliseconds / 1000.0;
 
       if (response == null) {
-        print('❌ DEBUG: Response is null');
+        debugPrint('❌ DEBUG: Response is null');
         return AIAnalysisResult.error(
           error: 'gemini_no_response',
           processingTime: processingTime,
         );
       }
 
-      print('🔍 DEBUG: Response content: ${response.toString()}');
+      debugPrint('🔍 DEBUG: Response content: ${response.toString()}');
 
       // Parse the response directly - _makeGeminiRequest already returns parsed JSON
       final parseResult = _parseTextResponseFromJson(response);
 
       // Check for non-food input error
       if (parseResult.containsKey('error') && parseResult['error'] == 'non_food_input') {
-        print('❌ DEBUG: Non-food input detected');
+        debugPrint('❌ DEBUG: Non-food input detected');
         return AIAnalysisResult.error(
           error: parseResult['suggestion'] ?? 'Please describe food items with quantities. Examples: "250ml orange juice", "2 eggs with 50g cheese", "1 apple and 200ml milk"',
           processingTime: processingTime,
@@ -455,7 +456,7 @@ Be precise with your estimations and only include foods you can confidently iden
       }
 
       if (parseResult['foods'].isEmpty) {
-        print('❌ DEBUG: No foods detected in response');
+        debugPrint('❌ DEBUG: No foods detected in response');
         return AIAnalysisResult.error(
           error: 'gemini_no_foods_detected',
           processingTime: processingTime,
@@ -470,8 +471,8 @@ Be precise with your estimations and only include foods you can confidently iden
 
     } catch (e, stackTrace) {
       stopwatch.stop();
-      print('❌ DEBUG: Error analyzing text: $e');
-      print('❌ DEBUG: Stack trace: $stackTrace');
+      debugPrint('❌ DEBUG: Error analyzing text: $e');
+      debugPrint('❌ DEBUG: Stack trace: $stackTrace');
       return AIAnalysisResult.error(
         error: 'gemini_analysis_failed',
         processingTime: stopwatch.elapsedMilliseconds / 1000.0,
@@ -533,12 +534,12 @@ Be precise with your estimations and only include foods you can confidently iden
             detectedFoods.add(detectedFood);
           }
         } catch (e) {
-          print('Error parsing food item: $e');
+          debugPrint('Error parsing food item: $e');
           continue;
         }
       }
     } catch (e) {
-      print('Error parsing JSON response: $e');
+      debugPrint('Error parsing JSON response: $e');
     }
 
     return {
@@ -622,7 +623,7 @@ IMPORTANT:
     File? imageFile,
   ) async {
     try {
-      print('🔍 DEBUG: Creating Gemini model with key: ${GeminiConfig.geminiApiKey.substring(0, 10)}...');
+      debugPrint('🔍 DEBUG: Creating Gemini model with key: ${GeminiConfig.geminiApiKey.substring(0, 10)}...');
 
       final model = GenerativeModel(
         model: GeminiConfig.modelName, // Utilise gemini-2.0-flash comme le coach
@@ -636,26 +637,26 @@ IMPORTANT:
         ),
       );
 
-      print('🔍 DEBUG: Preparing content for Gemini...');
+      debugPrint('🔍 DEBUG: Preparing content for Gemini...');
       final List<Part> parts = [
         TextPart(prompt),
       ];
 
       if (imageFile != null) {
-        print('🔍 DEBUG: Adding image to request...');
+        debugPrint('🔍 DEBUG: Adding image to request...');
         final imageBytes = await imageFile.readAsBytes();
         parts.add(DataPart('image/jpeg', imageBytes));
       }
 
       final content = [Content.multi(parts)];
 
-      print('🔍 DEBUG: Sending request to Gemini API...');
+      debugPrint('🔍 DEBUG: Sending request to Gemini API...');
       final response = await model.generateContent(content);
 
-      print('🔍 DEBUG: Response received: ${response.text?.substring(0, 100) ?? "NULL"}...');
+      debugPrint('🔍 DEBUG: Response received: ${response.text?.substring(0, 100) ?? "NULL"}...');
 
       if (response.text == null || response.text!.isEmpty) {
-        print('❌ DEBUG: Response text is null or empty');
+        debugPrint('❌ DEBUG: Response text is null or empty');
         return null;
       }
 
@@ -665,15 +666,15 @@ IMPORTANT:
 
       if (jsonStartIndex >= 0 && jsonEndIndex > jsonStartIndex) {
         final jsonString = response.text!.substring(jsonStartIndex, jsonEndIndex);
-        print('🔍 DEBUG: Extracted JSON: ${jsonString.substring(0, 100)}...');
+        debugPrint('🔍 DEBUG: Extracted JSON: ${jsonString.substring(0, 100)}...');
         return json.decode(jsonString);
       }
 
-      print('❌ DEBUG: Could not find JSON in response');
+      debugPrint('❌ DEBUG: Could not find JSON in response');
       return null;
     } catch (e, stackTrace) {
-      print('❌ DEBUG: Error making Gemini request: $e');
-      print('❌ DEBUG: Stack trace: $stackTrace');
+      debugPrint('❌ DEBUG: Error making Gemini request: $e');
+      debugPrint('❌ DEBUG: Stack trace: $stackTrace');
       return null;
     }
   }

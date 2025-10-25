@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -1012,9 +1013,9 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
       widget.onSessionCompleted!(completedSession);
     }
     
-    print('Séance validée: ${completedSession.name}');
-    print('- Durée totale: ${_formatDuration(completedSession.duration)}');
-    print('- ${completedSession.completedSets}/${completedSession.totalSets} séries terminées');
+    debugPrint('Séance validée: ${completedSession.name}');
+    debugPrint('- Durée totale: ${_formatDuration(completedSession.duration)}');
+    debugPrint('- ${completedSession.completedSets}/${completedSession.totalSets} séries terminées');
   }
 
   void _saveAsProgram(String sessionName) {
@@ -1065,17 +1066,17 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
       widget.onProgramSaved!(workoutProgram);
     }
     
-    print('=== DEBUG SAUVEGARDE ===');
-    print('Séance validée: ${completedSession.name}');
-    print('- Heure début: $_sessionStartTime');
-    print('- Heure fin: $sessionEndTime');
-    print('- Durée en secondes: ${realSessionDuration.inSeconds}');
-    print('- Durée en minutes: ${realSessionDuration.inMinutes}');
-    print('- Durée calculée: $durationInMinutes min');
-    print('- Durée formatée: ${_formatDuration(realSessionDuration)}');
-    print('Programme créé: ${workoutProgram.name}');
-    print('- estimatedDuration: ${workoutProgram.estimatedDuration} min');
-    print('========================');
+    debugPrint('=== DEBUG SAUVEGARDE ===');
+    debugPrint('Séance validée: ${completedSession.name}');
+    debugPrint('- Heure début: $_sessionStartTime');
+    debugPrint('- Heure fin: $sessionEndTime');
+    debugPrint('- Durée en secondes: ${realSessionDuration.inSeconds}');
+    debugPrint('- Durée en minutes: ${realSessionDuration.inMinutes}');
+    debugPrint('- Durée calculée: $durationInMinutes min');
+    debugPrint('- Durée formatée: ${_formatDuration(realSessionDuration)}');
+    debugPrint('Programme créé: ${workoutProgram.name}');
+    debugPrint('- estimatedDuration: ${workoutProgram.estimatedDuration} min');
+    debugPrint('========================');
   }
 
   void _showSessionSummary() {

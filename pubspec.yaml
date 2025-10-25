@@ -41,13 +41,13 @@ dependencies:
   fl_chart: ^0.68.0
   lottie: ^2.7.0
   page_transition: ^2.1.0
-  camera: ^0.10.5+9
-  permission_handler: ^11.3.1
+  camera: ^0.11.2
+  permission_handler: ^12.0.1
   image_picker: ^1.1.2
   image_cropper: ^11.0.0
   # google_ml_kit: ^0.18.0  # Temporairement commenté pour iOS compatibility
   # mobile_scanner: ^7.0.1  # REMOVED - iOS 18 conflict de codes-barres moderne - version la plus récente
-  http: ^1.2.1
+  http: ^1.5.0
   geolocator: ^12.0.0
   
   # Google Cloud Vision API
@@ -73,7 +73,7 @@ dependencies:
   # health: ^10.2.0  # HealthKit integration pour iOS - temporarily commented due to build issues
   
   # Authentication & Supabase
-  supabase_flutter: ^2.3.4
+  supabase_flutter: ^2.10.3
   crypto: ^3.0.3
   uuid: ^4.5.1
   
@@ -84,8 +84,8 @@ dependencies:
   flutter_secure_storage: ^9.2.2
   
   # OAuth & Social Login
-  google_sign_in: ^6.2.1
-  sign_in_with_apple: ^6.1.1
+  google_sign_in: ^7.2.0
+  sign_in_with_apple: ^7.0.1
   
   # Barcode Scanner (using camera + google_ml_kit)
   # mobile_scanner is not allowed

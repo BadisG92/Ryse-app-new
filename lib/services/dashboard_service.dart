@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -28,7 +29,7 @@ class DashboardService {
     _cachedGoalsDate = null;
     _cachedModules = null;
     _cachedModulesDate = null;
-    print('🧹 Cache dashboard vidé');
+    debugPrint('🧹 Cache dashboard vidé');
   }
 
   /// Forcer la suppression complète du cache
@@ -42,7 +43,7 @@ class DashboardService {
       // OPTIMISATION: Cache rapide d'abord
       final cached = FastCacheService.getCachedUserProfile();
       if (cached != null) {
-        print('⚡ Profil depuis cache rapide');
+        debugPrint('⚡ Profil depuis cache rapide');
         return cached;
       }
       
@@ -75,9 +76,9 @@ class DashboardService {
       }
 
       // Calculer la vraie streak avec le service optimisé
-      print('🔥 DashboardService: Calcul de la streak');
+      debugPrint('🔥 DashboardService: Calcul de la streak');
       final realStreak = await StreakService.getCurrentStreak();
-      print('🏆 DashboardService: Streak calculée = $realStreak jours');
+      debugPrint('🏆 DashboardService: Streak calculée = $realStreak jours');
 
       // Capitaliser le nom automatiquement
       final rawName = response['first_name'] ?? 'Utilisateur';
@@ -99,7 +100,7 @@ class DashboardService {
       
       return profile;
     } catch (e) {
-      print('Erreur lors de la récupération du profil: $e');
+      debugPrint('Erreur lors de la récupération du profil: $e');
       return null;
     }
   }
@@ -114,7 +115,7 @@ class DashboardService {
       final fastCached = FastCacheService.getCachedGoals();
       if (fastCached != null) {
         GoalsNotifier.instance.update(fastCached);
-        // print('⚡ Goals depuis cache rapide'); // Commenté pour réduire les logs
+        // debugPrint('⚡ Goals depuis cache rapide'); // Commenté pour réduire les logs
 
         // Lancer une mise à jour en arrière-plan si le cache a plus de 10s ET si on n'est pas déjà en train de rafraîchir
         if (!_isRefreshingInBackground) {
@@ -252,14 +253,14 @@ class DashboardService {
 
       // Mettre à jour le notifier avec la liste finale
       GoalsNotifier.instance.update(result);
-      print('GoalsNotifier mis à jour avec ${result.length} objectifs');
+      debugPrint('GoalsNotifier mis à jour avec ${result.length} objectifs');
       for (var goal in result) {
-        print('Objectif: ${goal.label}, completed: ${goal.completed}, progress: ${goal.progress}');
+        debugPrint('Objectif: ${goal.label}, completed: ${goal.completed}, progress: ${goal.progress}');
       }
 
       return result;
     } catch (e) {
-      print('Erreur lors de la récupération des objectifs: $e');
+      debugPrint('Erreur lors de la récupération des objectifs: $e');
       final defaultGoals = DashboardData.dailyGoals;
       GoalsNotifier.instance.update(defaultGoals);
       return defaultGoals;
@@ -335,7 +336,7 @@ class DashboardService {
       
       return result;
     } catch (e) {
-      print('Erreur lors de la récupération des aperçus modules: $e');
+      debugPrint('Erreur lors de la récupération des aperçus modules: $e');
       return [];
     }
   }
@@ -348,11 +349,11 @@ class DashboardService {
 
   /// Forcer la mise à jour du compteur d'objectifs (sans cache)
   static Future<void> refreshGoalsNotifier() async {
-    print('🔄 Forçage de la mise à jour du GoalsNotifier...');
+    debugPrint('🔄 Forçage de la mise à jour du GoalsNotifier...');
     
     // Récupérer les objectifs (qui mettra à jour le notifier)
     final goals = await getDailyGoals();
-    print('✅ GoalsNotifier mis à jour avec ${goals.length} objectifs');
+    debugPrint('✅ GoalsNotifier mis à jour avec ${goals.length} objectifs');
     
     // Le notifier est déjà mis à jour dans getDailyGoals()
   }
@@ -365,7 +366,7 @@ class DashboardService {
       final totalSessions = sportData.totalTodaySessions;
       final completed = totalSessions >= 1;
       
-      print('🏋️ DEBUG Workout Goal (via SportDashboard): $totalSessions séances, completed: $completed');
+      debugPrint('🏋️ DEBUG Workout Goal (via SportDashboard): $totalSessions séances, completed: $completed');
 
       // Get language for translations
       final locService = LocalizationService.instance;
@@ -382,7 +383,7 @@ class DashboardService {
         unit: '',
       );
     } catch (e) {
-      print('❌ Erreur lors de la récupération de l\'objectif workout: $e');
+      debugPrint('❌ Erreur lors de la récupération de l\'objectif workout: $e');
       // Get language for translations (fallback)
       final locService = LocalizationService.instance;
       final languageCode = locService.currentLanguageCode;
@@ -423,7 +424,7 @@ class DashboardService {
       final today = DateTime.now();
       final todayStr = DateTime(today.year, today.month, today.day).toIso8601String().split('T')[0];
 
-      print('📊 DEBUG Module Sport - Récupération DIRECTE pour: ${user.id}, date: $todayStr');
+      debugPrint('📊 DEBUG Module Sport - Récupération DIRECTE pour: ${user.id}, date: $todayStr');
 
       // D'abord vérifier TOUTES les séances de l'utilisateur pour debug
       final allCardio = await _supabase
@@ -441,13 +442,13 @@ class DashboardService {
           .order('session_date', ascending: false)
           .limit(5);
 
-      print('🔍 DEBUG: Dernières 5 séances cardio dans la base:');
+      debugPrint('🔍 DEBUG: Dernières 5 séances cardio dans la base:');
       for (var s in allCardio) {
-        print('   -> ${s['session_date']}: ${s['calories']}kcal');
+        debugPrint('   -> ${s['session_date']}: ${s['calories']}kcal');
       }
-      print('🔍 DEBUG: Dernières 5 séances muscu dans la base:');
+      debugPrint('🔍 DEBUG: Dernières 5 séances muscu dans la base:');
       for (var s in allMuscu) {
-        print('   -> ${s['session_date']}: ${s['calories_burned']}kcal');
+        debugPrint('   -> ${s['session_date']}: ${s['calories_burned']}kcal');
       }
 
       // Récupérer DIRECTEMENT les mêmes données que le bloc "activité du jour"
@@ -467,27 +468,27 @@ class DashboardService {
           .eq('session_date', todayStr)
           .order('created_at', ascending: false);
 
-      print('📊 DEBUG Sessions trouvées pour TODAY ($todayStr):');
-      print('   - Cardio: ${cardioSessions.length} sessions');
-      print('   - Musculation: ${musculationSessions.length} sessions');
+      debugPrint('📊 DEBUG Sessions trouvées pour TODAY ($todayStr):');
+      debugPrint('   - Cardio: ${cardioSessions.length} sessions');
+      debugPrint('   - Musculation: ${musculationSessions.length} sessions');
       
       // Calculer les calories EXACTEMENT comme le bloc activité du jour
       int totalCalories = 0;
       for (var session in cardioSessions) {
         final calories = (session['calories'] as int?) ?? 0;
         totalCalories += calories;
-        print('     -> Cardio ${session['activity_type']} le ${session['session_date']}: ${calories}kcal');
+        debugPrint('     -> Cardio ${session['activity_type']} le ${session['session_date']}: ${calories}kcal');
       }
       for (var session in musculationSessions) {
         final calories = (session['calories_burned'] as int?) ?? 0;
         totalCalories += calories;
-        print('     -> Musculation ${session['session_name']} le ${session['session_date']}: ${calories}kcal');
+        debugPrint('     -> Musculation ${session['session_name']} le ${session['session_date']}: ${calories}kcal');
       }
       
       final totalSessions = cardioSessions.length + musculationSessions.length;
       
-      print('📊 DEBUG Module Sport FINAL: $totalSessions séances, $totalCalories kcal (devrait être 251)');
-      print('📊 DEBUG Comparaison: Bloc activité = 251kcal, Module = ${totalCalories}kcal');
+      debugPrint('📊 DEBUG Module Sport FINAL: $totalSessions séances, $totalCalories kcal (devrait être 251)');
+      debugPrint('📊 DEBUG Comparaison: Bloc activité = 251kcal, Module = ${totalCalories}kcal');
 
       return ModulePreview(
         title: 'sport'.tr(languageCode),
@@ -499,7 +500,7 @@ class DashboardService {
         gradientColors: const [Color(0xFF0B132B), Color(0xFF1C2951)],
       );
     } catch (e) {
-      print('❌ Erreur lors de la récupération du module Sport: $e');
+      debugPrint('❌ Erreur lors de la récupération du module Sport: $e');
       // Get language for translations (fallback)
       final locService = LocalizationService.instance;
       final languageCode = locService.currentLanguageCode;
@@ -616,7 +617,7 @@ class DashboardService {
       return goals;
       
     } catch (e) {
-      print('❌ Erreur récupération directe objectifs: $e');
+      debugPrint('❌ Erreur récupération directe objectifs: $e');
       return [];
     }
   }
@@ -624,7 +625,7 @@ class DashboardService {
   /// Invalider le cache et mettre à jour les objectifs en temps réel
   /// Appelé après ajout/suppression de nourriture ou d'eau  
   static Future<void> invalidateAndRefreshGoals() async {
-    print('🔄 Invalidation du cache et mise à jour des objectifs...');
+    debugPrint('🔄 Invalidation du cache et mise à jour des objectifs...');
     
     // Vider les caches pour forcer une nouvelle récupération
     _cachedGoals = null;
@@ -637,11 +638,11 @@ class DashboardService {
     // Mettre à jour immédiatement le notifier
     GoalsNotifier.instance.update(goals);
     
-    print('✅ Objectifs mis à jour en temps réel avec ${goals.length} objectifs');
+    debugPrint('✅ Objectifs mis à jour en temps réel avec ${goals.length} objectifs');
     
     // Afficher le détail pour debug
     for (var goal in goals) {
-      print('   - ${goal.label}: ${goal.currentValue}/${goal.targetValue} ${goal.unit} (${goal.progress}%)');
+      debugPrint('   - ${goal.label}: ${goal.currentValue}/${goal.targetValue} ${goal.unit} (${goal.progress}%)');
     }
   }
   
@@ -652,7 +653,7 @@ class DashboardService {
     Future.delayed(const Duration(milliseconds: 100), () async {
       _isRefreshingInBackground = true;
       try {
-        // print('🔄 Début rafraîchissement en arrière-plan...'); // Commenté pour réduire les logs
+        // debugPrint('🔄 Début rafraîchissement en arrière-plan...'); // Commenté pour réduire les logs
 
         // Vider uniquement le cache pour forcer une nouvelle récupération
         _cachedGoals = null;
@@ -670,9 +671,9 @@ class DashboardService {
         // Mettre à jour le notifier
         GoalsNotifier.instance.update(newGoals);
 
-        // print('✅ Données rafraîchies en arrière-plan (${newGoals.length} objectifs)'); // Commenté pour réduire les logs
+        // debugPrint('✅ Données rafraîchies en arrière-plan (${newGoals.length} objectifs)'); // Commenté pour réduire les logs
       } catch (e) {
-        print('⚠️ Erreur refresh background: $e');
+        debugPrint('⚠️ Erreur refresh background: $e');
       } finally {
         _isRefreshingInBackground = false;
       }
@@ -682,7 +683,7 @@ class DashboardService {
   /// Invalider le cache après une séance sport
   /// Appelé après completion d'une séance cardio ou musculation
   static Future<void> invalidateAndRefreshAfterWorkout() async {
-    print('🏋️ Invalidation du cache après séance sport...');
+    debugPrint('🏋️ Invalidation du cache après séance sport...');
     
     // Vider le cache pour forcer une nouvelle récupération
     _cachedGoals = null;
@@ -691,21 +692,21 @@ class DashboardService {
     // Invalider aussi le cache du sport dashboard service
     try {
       SportDashboardService.invalidateCache();
-      print('🏋️ Cache SportDashboardService invalidé');
+      debugPrint('🏋️ Cache SportDashboardService invalidé');
     } catch (e) {
-      print('⚠️ Erreur lors de l\'invalidation du cache sport: $e');
+      debugPrint('⚠️ Erreur lors de l\'invalidation du cache sport: $e');
     }
     
     // Récupérer les nouvelles données
     final goals = await getDailyGoals();
-    print('✅ Dashboard mis à jour après séance avec ${goals.length} objectifs');
+    debugPrint('✅ Dashboard mis à jour après séance avec ${goals.length} objectifs');
     
     // IMPORTANT: Mettre à jour immédiatement le notifier pour la mise à jour visuelle
     GoalsNotifier.instance.update(goals);
     
     // Afficher le détail pour debug
     for (var goal in goals) {
-      print('   - ${goal.label}: ${goal.currentValue}/${goal.targetValue} ${goal.unit} (${goal.progress}%)');
+      debugPrint('   - ${goal.label}: ${goal.currentValue}/${goal.targetValue} ${goal.unit} (${goal.progress}%)');
     }
   }
 

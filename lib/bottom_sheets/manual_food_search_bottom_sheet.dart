@@ -133,14 +133,14 @@ class _ManualFoodSearchBottomSheetState extends State<ManualFoodSearchBottomShee
         limit: 20
       );
       
-      print('🔄 Aliments fréquents récupérés: ${frequentFoods.length}');
+      debugPrint('🔄 Aliments fréquents récupérés: ${frequentFoods.length}');
       for (final food in frequentFoods) {
-        print('   - ${food.getLocalizedName(locService.currentLanguageCode)} (isCustom: ${food.isCustom}, origin: ${food.origin})');
+        debugPrint('   - ${food.getLocalizedName(locService.currentLanguageCode)} (isCustom: ${food.isCustom}, origin: ${food.origin})');
       }
       
       return frequentFoods;
     } catch (e) {
-      print('❌ Erreur lors du chargement des aliments fréquents: $e');
+      debugPrint('❌ Erreur lors du chargement des aliments fréquents: $e');
       return [];
     }
   }
@@ -293,13 +293,13 @@ class _ManualFoodSearchBottomSheetState extends State<ManualFoodSearchBottomShee
 
   List<Food> _getCurrentDisplayFoods() {
     if (_searchQuery.isNotEmpty) {
-      print('🔍 Mode RECHERCHE - Query: "$_searchQuery", ${_filteredFoods.length} résultats');
+      debugPrint('🔍 Mode RECHERCHE - Query: "$_searchQuery", ${_filteredFoods.length} résultats');
       return _filteredFoods; // Résultats de recherche
     } else if (_showingFrequentFoods) {
-      print('⭐ Mode FREQUENTS - ${_frequentFoods.length} aliments fréquents');
+      debugPrint('⭐ Mode FREQUENTS - ${_frequentFoods.length} aliments fréquents');
       return _frequentFoods; // Aliments fréquents
     } else {
-      print('📭 Mode VIDE - Aucun aliment à afficher');
+      debugPrint('📭 Mode VIDE - Aucun aliment à afficher');
       return []; // Liste vide par défaut
     }
   }
@@ -656,13 +656,13 @@ class _ManualFoodSearchBottomSheetState extends State<ManualFoodSearchBottomShee
         
         // Debug: Vérifier les propriétés pour Nutella
         if (food.getLocalizedName(LocalizationService.instance.currentLanguageCode).toLowerCase().contains('nutella')) {
-          print('🎯 DEBUG - Nutella ajouté au journal:');
-          print('   - food.isCustom: ${food.isCustom}');
-          print('   - food.origin: "${food.origin}"');
-          print('   - finalFoodItem.isCustom: ${finalFoodItem.isCustom}');
-          print('   - finalFoodItem.isScanned: ${finalFoodItem.isScanned}');
-          print('   - finalFoodItem.shouldShowCustomIcon: ${finalFoodItem.shouldShowCustomIcon}');
-          print('   - finalFoodItem.displayIcon: ${finalFoodItem.displayIcon}');
+          debugPrint('🎯 DEBUG - Nutella ajouté au journal:');
+          debugPrint('   - food.isCustom: ${food.isCustom}');
+          debugPrint('   - food.origin: "${food.origin}"');
+          debugPrint('   - finalFoodItem.isCustom: ${finalFoodItem.isCustom}');
+          debugPrint('   - finalFoodItem.isScanned: ${finalFoodItem.isScanned}');
+          debugPrint('   - finalFoodItem.shouldShowCustomIcon: ${finalFoodItem.shouldShowCustomIcon}');
+          debugPrint('   - finalFoodItem.displayIcon: ${finalFoodItem.displayIcon}');
         }
             
         // Toujours utiliser le callback - le flux dashboard est maintenant géré en amont

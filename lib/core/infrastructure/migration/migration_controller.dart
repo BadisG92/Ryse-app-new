@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../cache/unified_cache_manager.dart';
 import '../adapters/dashboard_migration_adapter.dart';
 
@@ -16,7 +17,7 @@ class MigrationController {
   
   /// Initialise le système de migration
   Future<void> initialize() async {
-    print('🚀 Initialisation du système de migration...');
+    debugPrint('🚀 Initialisation du système de migration...');
     
     // Toujours initialiser le cache unifié (en parallèle de l'ancien)
     await UnifiedCacheManager.instance.initialize();
@@ -24,55 +25,55 @@ class MigrationController {
     // Initialiser l'adaptateur de migration
     DashboardMigrationAdapter.instance;
     
-    print('✅ Système de migration prêt');
+    debugPrint('✅ Système de migration prêt');
   }
   
   /// Active le cache unifié progressivement
   void enableUnifiedCache() {
     _useUnifiedCache = true;
-    print('✅ Cache unifié activé');
+    debugPrint('✅ Cache unifié activé');
   }
   
   /// Active le Repository Pattern progressivement
   void enableRepositoryPattern() {
     _useRepositoryPattern = true;
     DashboardMigrationAdapter.enableNewArchitecture();
-    print('✅ Repository Pattern activé');
+    debugPrint('✅ Repository Pattern activé');
   }
   
   /// Test complet du nouveau système
   Future<bool> testNewArchitecture() async {
-    print('🧪 Test complet du nouveau système...');
+    debugPrint('🧪 Test complet du nouveau système...');
     
     try {
       // 1. Test du cache unifié
-      print('📦 Test du cache unifié...');
+      debugPrint('📦 Test du cache unifié...');
       UnifiedCacheManager.instance.set('test_key', 'test_value', CacheType.shortLived);
       final cached = UnifiedCacheManager.instance.get<String>('test_key', CacheType.shortLived);
       if (cached != 'test_value') {
-        print('❌ Échec test cache');
+        debugPrint('❌ Échec test cache');
         return false;
       }
-      print('✅ Cache unifié OK');
+      debugPrint('✅ Cache unifié OK');
       
       // 2. Test du Repository Pattern
-      print('🏗️ Test du Repository Pattern...');
+      debugPrint('🏗️ Test du Repository Pattern...');
       final adapterTest = await DashboardMigrationAdapter.instance.testNewArchitecture();
       if (!adapterTest) {
-        print('❌ Échec test Repository');
+        debugPrint('❌ Échec test Repository');
         return false;
       }
-      print('✅ Repository Pattern OK');
+      debugPrint('✅ Repository Pattern OK');
       
       // 3. Comparaison des résultats
-      print('📊 Comparaison ancien vs nouveau...');
+      debugPrint('📊 Comparaison ancien vs nouveau...');
       await DashboardMigrationAdapter.instance.compareSystemsOutput();
       
-      print('✅ Tous les tests passent!');
+      debugPrint('✅ Tous les tests passent!');
       return true;
       
     } catch (e) {
-      print('❌ Erreur pendant les tests: $e');
+      debugPrint('❌ Erreur pendant les tests: $e');
       return false;
     }
   }
@@ -81,7 +82,7 @@ class MigrationController {
   void enableAllNewFeatures() {
     enableUnifiedCache();
     enableRepositoryPattern();
-    print('🎉 Toutes les nouvelles fonctionnalités activées!');
+    debugPrint('🎉 Toutes les nouvelles fonctionnalités activées!');
   }
   
   /// Rollback complet en cas de problème
@@ -89,7 +90,7 @@ class MigrationController {
     _useUnifiedCache = false;
     _useRepositoryPattern = false;
     DashboardMigrationAdapter.disableNewArchitecture();
-    print('🔙 Retour au système ancien');
+    debugPrint('🔙 Retour au système ancien');
   }
   
   /// Status actuel de la migration

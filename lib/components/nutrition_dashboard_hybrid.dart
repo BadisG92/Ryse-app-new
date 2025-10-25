@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'dart:math';
@@ -704,7 +705,7 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
         final meals = await FoodEntriesService.getFoodEntriesForDate(user.id, DateTime.now());
         existingMeals = meals.where((meal) => meal.items.isNotEmpty).toList();
       } catch (e) {
-        print('Erreur lors de la récupération des repas existants: $e');
+        debugPrint('Erreur lors de la récupération des repas existants: $e');
       }
     }
 
@@ -1082,20 +1083,20 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
 
   // Méthode pour la sélection de nouveau type de repas puis ouvrir la sélection de recettes
   void _showNewMealTypeSelectionForRecipe(BuildContext context) {
-    print('🔄 _showNewMealTypeSelectionForRecipe appelée');
+    debugPrint('🔄 _showNewMealTypeSelectionForRecipe appelée');
     
     final navigator = Navigator.of(context);
     
     NewMealTypeBottomSheet.show(
       context,
       onMealTypeSelected: (mealType, time) {
-        print('🎯 Type de repas sélectionné pour recettes: $mealType');
+        debugPrint('🎯 Type de repas sélectionné pour recettes: $mealType');
         
         // Attendre que l'animation se termine puis ouvrir la sélection de recettes
         Future.delayed(const Duration(milliseconds: 300), () {
           final newContext = navigator.context;
           if (newContext.mounted) {
-            print('🔍 Ouverture sélection de recettes avec nouveau type de repas');
+            debugPrint('🔍 Ouverture sélection de recettes avec nouveau type de repas');
             // Ouvrir la sélection de recettes avec callback pour créer nouveau repas
             Navigator.push(
               newContext,
@@ -1110,7 +1111,7 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
               ),
             );
           } else {
-            print('❌ Navigator context invalide pour recettes');
+            debugPrint('❌ Navigator context invalide pour recettes');
           }
         });
       },
@@ -1162,7 +1163,7 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
         final meals = await FoodEntriesService.getFoodEntriesForDate(user.id, DateTime.now());
         existingMeals = meals.where((meal) => meal.items.isNotEmpty).toList();
       } catch (e) {
-        print('Erreur lors de la récupération des repas existants: $e');
+        debugPrint('Erreur lors de la récupération des repas existants: $e');
       }
     }
 
@@ -1540,20 +1541,20 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
 
   // Méthode pour la sélection de nouveau type de repas puis ouvrir le scanner
   void _showNewMealTypeSelectionForScanner(BuildContext context) {
-    print('🔄 _showNewMealTypeSelectionForScanner appelée');
+    debugPrint('🔄 _showNewMealTypeSelectionForScanner appelée');
     
     final navigator = Navigator.of(context);
     
     NewMealTypeBottomSheet.show(
       context,
       onMealTypeSelected: (mealType, time) {
-        print('🎯 Type de repas sélectionné pour scanner: $mealType');
+        debugPrint('🎯 Type de repas sélectionné pour scanner: $mealType');
         
         // Attendre que l'animation se termine puis ouvrir le scanner
         Future.delayed(const Duration(milliseconds: 300), () {
           final newContext = navigator.context;
           if (newContext.mounted) {
-            print('🔍 Ouverture scanner avec nouveau type de repas');
+            debugPrint('🔍 Ouverture scanner avec nouveau type de repas');
             // Ouvrir le scanner avec callback pour créer nouveau repas
             Navigator.push(
               newContext,
@@ -1568,7 +1569,7 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
               ),
             );
           } else {
-            print('❌ Navigator context invalide pour scanner');
+            debugPrint('❌ Navigator context invalide pour scanner');
           }
         });
       },

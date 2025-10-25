@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../components/ui/global_progress_models.dart';
@@ -56,7 +57,7 @@ class ProgressServiceV2 {
   /// Vérifie si on doit rafraîchir le cache (nouvelle semaine, données anciennes, ou si demandé)
   static Future<bool> _shouldRefreshCache({bool forceCheck = false}) async {
     if (!_isWeeklyCacheValid) {
-      print('🔄 Cache invalide : nouvelle semaine détectée');
+      debugPrint('🔄 Cache invalide : nouvelle semaine détectée');
       return true;
     }
     
@@ -64,7 +65,7 @@ class ProgressServiceV2 {
     if (_cacheTimestamp != null) {
       final age = DateTime.now().difference(_cacheTimestamp!);
       if (age.inHours >= 2) {
-        print('🔄 Cache expiré : données de plus de 2h');
+        debugPrint('🔄 Cache expiré : données de plus de 2h');
         return true;
       }
       
@@ -72,7 +73,7 @@ class ProgressServiceV2 {
       if (forceCheck && age.inMinutes >= 1) {
         final hasRecent = await hasRecentActivity();
         if (hasRecent) {
-          print('🔄 Activité récente détectée, rafraîchissement du cache');
+          debugPrint('🔄 Activité récente détectée, rafraîchissement du cache');
           return true;
         }
       }
@@ -86,12 +87,12 @@ class ProgressServiceV2 {
     _weeklyCache.clear();
     _cacheTimestamp = null;
     _cachedWeekNumber = null;
-    print('🗑️ Cache hebdomadaire effacé');
+    debugPrint('🗑️ Cache hebdomadaire effacé');
   }
   
   /// Force le rafraîchissement après une nouvelle activité
   static void refreshAfterActivity() {
-    print('🔄 Rafraîchissement après nouvelle activité');
+    debugPrint('🔄 Rafraîchissement après nouvelle activité');
     forceRefresh();
   }
   
@@ -152,12 +153,12 @@ class ProgressServiceV2 {
     
     // Vérifier si on doit rafraîchir le cache (avec vérification d'activité récente)
     if (!(await _shouldRefreshCache(forceCheck: true)) && _weeklyCache.containsKey(cacheKey)) {
-      print('✅ Bilan hebdomadaire servi depuis le cache (semaine $_cachedWeekNumber)');
+      debugPrint('✅ Bilan hebdomadaire servi depuis le cache (semaine $_cachedWeekNumber)');
       return _weeklyCache[cacheKey] as WeeklyBalance;
     }
 
     try {
-      print('🔄 Chargement du bilan hebdomadaire depuis la base...');
+      debugPrint('🔄 Chargement du bilan hebdomadaire depuis la base...');
       
       // Période de la semaine actuelle (lundi à dimanche)
       final now = DateTime.now();
@@ -209,10 +210,10 @@ class ProgressServiceV2 {
       final balance = WeeklyBalance(items: items);
       _weeklyCache[cacheKey] = balance;
       _updateCacheTimestamp();
-      print('✅ Bilan hebdomadaire mis en cache pour la semaine $_cachedWeekNumber');
+      debugPrint('✅ Bilan hebdomadaire mis en cache pour la semaine $_cachedWeekNumber');
       return balance;
     } catch (e) {
-      print('❌ Erreur récupération bilan hebdomadaire: $e');
+      debugPrint('❌ Erreur récupération bilan hebdomadaire: $e');
       return _getEmptyBalance();
     }
   }
@@ -226,12 +227,12 @@ class ProgressServiceV2 {
 
     final cacheKey = 'weekly_tracking_$userId';
     if (!(await _shouldRefreshCache(forceCheck: true)) && _weeklyCache.containsKey(cacheKey)) {
-      print('✅ Tracking hebdomadaire servi depuis le cache (semaine $_cachedWeekNumber)');
+      debugPrint('✅ Tracking hebdomadaire servi depuis le cache (semaine $_cachedWeekNumber)');
       return List<TrackingDay>.from(_weeklyCache[cacheKey]);
     }
 
     try {
-      print('🔄 Chargement du tracking hebdomadaire depuis la base...');
+      debugPrint('🔄 Chargement du tracking hebdomadaire depuis la base...');
       
       final now = DateTime.now();
       final startOfWeek = _getStartOfWeek(now);
@@ -316,10 +317,10 @@ class ProgressServiceV2 {
 
       _weeklyCache[cacheKey] = trackingDays;
       _updateCacheTimestamp();
-      print('✅ Tracking hebdomadaire mis en cache pour la semaine $_cachedWeekNumber');
+      debugPrint('✅ Tracking hebdomadaire mis en cache pour la semaine $_cachedWeekNumber');
       return trackingDays;
     } catch (e) {
-      print('❌ Erreur récupération tracking hebdomadaire: $e');
+      debugPrint('❌ Erreur récupération tracking hebdomadaire: $e');
       return _getEmptyTracking();
     }
   }
@@ -337,12 +338,12 @@ class ProgressServiceV2 {
 
     final cacheKey = 'header_stats_$userId';
     if (!(await _shouldRefreshCache(forceCheck: true)) && _weeklyCache.containsKey(cacheKey)) {
-      print('✅ Stats d\'en-tête servies depuis le cache (semaine $_cachedWeekNumber)');
+      debugPrint('✅ Stats d\'en-tête servies depuis le cache (semaine $_cachedWeekNumber)');
       return _weeklyCache[cacheKey] as HeaderStats;
     }
 
     try {
-      print('🔄 Chargement des stats d\'en-tête depuis la base...');
+      debugPrint('🔄 Chargement des stats d\'en-tête depuis la base...');
       
       // Récupérer la streak quotidienne avec le service optimisé
       final streak = await StreakService.getCurrentStreak();
@@ -358,10 +359,10 @@ class ProgressServiceV2 {
       
       _weeklyCache[cacheKey] = stats;
       _updateCacheTimestamp();
-      print('✅ Stats d\'en-tête mises en cache pour la semaine $_cachedWeekNumber');
+      debugPrint('✅ Stats d\'en-tête mises en cache pour la semaine $_cachedWeekNumber');
       return stats;
     } catch (e) {
-      print('❌ Erreur récupération statistiques header: $e');
+      debugPrint('❌ Erreur récupération statistiques header: $e');
       return HeaderStats(
         dailyStreak: '0 ${'days'.tr(LocalizationService.instance.currentLanguageCode)}',
         weeklyObjectives: '0/0 ${'objectives'.tr(LocalizationService.instance.currentLanguageCode)}',
@@ -379,12 +380,12 @@ class ProgressServiceV2 {
 
     final cacheKey = 'ai_recommendations_$userId';
     if (!(await _shouldRefreshCache(forceCheck: true)) && _weeklyCache.containsKey(cacheKey)) {
-      print('✅ Recommandations IA servies depuis le cache (semaine $_cachedWeekNumber)');
+      debugPrint('✅ Recommandations IA servies depuis le cache (semaine $_cachedWeekNumber)');
       return List<AIRecommendation>.from(_weeklyCache[cacheKey]);
     }
 
     try {
-      print('🔄 Génération des recommandations IA...');
+      debugPrint('🔄 Génération des recommandations IA...');
       
       final recommendations = <AIRecommendation>[];
       
@@ -411,10 +412,10 @@ class ProgressServiceV2 {
       
       _weeklyCache[cacheKey] = finalRecommendations;
       _updateCacheTimestamp();
-      print('✅ Recommandations IA mises en cache pour la semaine $_cachedWeekNumber');
+      debugPrint('✅ Recommandations IA mises en cache pour la semaine $_cachedWeekNumber');
       return finalRecommendations;
     } catch (e) {
-      print('❌ Erreur génération recommandations IA: $e');
+      debugPrint('❌ Erreur génération recommandations IA: $e');
       return _getFallbackRecommendations();
     }
   }

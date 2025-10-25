@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -32,7 +33,7 @@ class UnifiedCacheManager {
   Future<void> initialize() async {
     _prefs = await SharedPreferences.getInstance();
     _loadFromDisk();
-    print('🎯 UnifiedCacheManager initialisé');
+    debugPrint('🎯 UnifiedCacheManager initialisé');
   }
   
   /// Récupère une donnée du cache
@@ -53,7 +54,7 @@ class UnifiedCacheManager {
     try {
       return entry.data as T;
     } catch (e) {
-      print('⚠️ Erreur de cast dans le cache pour $key: $e');
+      debugPrint('⚠️ Erreur de cast dans le cache pour $key: $e');
       return null;
     }
   }
@@ -97,7 +98,7 @@ class UnifiedCacheManager {
   void clearAll() {
     _memoryCache.clear();
     _prefs?.clear();
-    print('🧹 Tous les caches vidés');
+    debugPrint('🧹 Tous les caches vidés');
   }
   
   /// Nettoie les entrées expirées
@@ -108,7 +109,7 @@ class UnifiedCacheManager {
   /// Précharge des données dans le cache
   void preload<T>(String key, T data, CacheType type) {
     set(key, data, type);
-    print('📦 Données préchargées dans le cache: $key');
+    debugPrint('📦 Données préchargées dans le cache: $key');
   }
   
   /// Récupère ou calcule une valeur (cache-aside pattern)
@@ -120,12 +121,12 @@ class UnifiedCacheManager {
     // Vérifier le cache d'abord
     final cached = get<T>(key, type);
     if (cached != null) {
-      print('⚡ Cache hit pour: $key');
+      debugPrint('⚡ Cache hit pour: $key');
       return cached;
     }
     
     // Calculer la valeur
-    print('🔄 Cache miss pour: $key - calcul en cours...');
+    debugPrint('🔄 Cache miss pour: $key - calcul en cours...');
     final value = await compute();
     
     // Stocker dans le cache
@@ -147,7 +148,7 @@ class UnifiedCacheManager {
       _prefs!.setString('cache_$key', jsonEncode(entry));
     } catch (e) {
       // Pas critique si la persistance échoue
-      print('⚠️ Impossible de persister le cache: $e');
+      debugPrint('⚠️ Impossible de persister le cache: $e');
     }
   }
   
