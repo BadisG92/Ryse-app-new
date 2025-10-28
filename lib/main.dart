@@ -10,6 +10,7 @@ import 'pages/ryze_app.dart';
 import 'services/offline_workout_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/settings_screen.dart';
+import 'screens/pricing_screen.dart';
 import 'services/preload_service.dart';
 import 'services/fast_cache_service.dart';
 import 'core/infrastructure/migration/migration_controller.dart';
@@ -18,6 +19,7 @@ import 'services/global_state_manager.dart';
 import 'services/navigation_preloader.dart';
 import 'services/exercise_ai_analysis_service.dart';
 import 'services/coach_ryze_nutrition_service.dart';
+import 'services/subscription_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -45,6 +47,14 @@ void main() async {
   // Initialiser les services d'analyse IA avec Gemini
   ExerciseAiAnalysisService.initialize();
   CoachRyzeNutritionService.initialize();
+
+  // Initialiser le service d'abonnement (Subscription/Paywall)
+  await SubscriptionService.instance.initialize().timeout(
+    const Duration(seconds: 2),
+    onTimeout: () {
+      debugPrint('⚠️ SubscriptionService timeout - defaulting to free tier');
+    },
+  );
 
   // Phases 2 & 3: Non-bloquantes, en arrière-plan
   unawaited(initializer.initializeImportantServices());
@@ -93,6 +103,7 @@ class MyApp extends StatelessWidget {
         home: const AppInitializer(),
         routes: {
           '/settings': (context) => const SettingsScreen(),
+          '/pricing': (context) => const PricingScreen(),
         },
       ),
     );

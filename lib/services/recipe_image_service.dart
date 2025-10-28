@@ -28,23 +28,27 @@ class RecipeImageService {
     double? height,
     BoxFit fit = BoxFit.cover,
   }) {
+    // Protection contre les valeurs infinies
+    final safeWidth = (width != null && width.isFinite) ? width : null;
+    final safeHeight = (height != null && height.isFinite) ? height : null;
+
     if (hasRecipeImage(imageUrl)) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(12),
         child: CachedNetworkImage(
           imageUrl: imageUrl!,
-          width: width,
-          height: height,
+          width: safeWidth,
+          height: safeHeight,
           fit: fit,
           // Optimisation mémoire et disque
-          memCacheWidth: width != null ? (width * 2).toInt() : 800,
-          memCacheHeight: height != null ? (height * 2).toInt() : 800,
+          memCacheWidth: safeWidth != null ? (safeWidth * 2).toInt() : 800,
+          memCacheHeight: safeHeight != null ? (safeHeight * 2).toInt() : 800,
           maxWidthDiskCache: 1000,
           maxHeightDiskCache: 1000,
           // Indicateur de chargement
           placeholder: (context, url) => Container(
-            width: width,
-            height: height,
+            width: safeWidth,
+            height: safeHeight,
             color: const Color(0xFFF8F8F8),
             child: const Center(
               child: CircularProgressIndicator(
@@ -55,12 +59,12 @@ class RecipeImageService {
           ),
           // Gestion des erreurs
           errorWidget: (context, url, error) {
-            return _buildFallbackImage(width: width, height: height);
+            return _buildFallbackImage(width: safeWidth, height: safeHeight);
           },
         ),
       );
     } else {
-      return _buildFallbackImage(width: width, height: height);
+      return _buildFallbackImage(width: safeWidth, height: safeHeight);
     }
   }
 

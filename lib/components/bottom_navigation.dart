@@ -9,10 +9,20 @@ class BottomNavigation extends StatelessWidget {
   final String activeTab;
   final Function(String) onTabChange;
 
+  // GlobalKeys pour le tutorial (optionnels)
+  final GlobalKey? homeTabKey;
+  final GlobalKey? nutritionTabKey;
+  final GlobalKey? sportTabKey;
+  final GlobalKey? progressTabKey;
+
   const BottomNavigation({
     super.key,
     required this.activeTab,
     required this.onTabChange,
+    this.homeTabKey,
+    this.nutritionTabKey,
+    this.sportTabKey,
+    this.progressTabKey,
   });
 
   @override
@@ -20,10 +30,10 @@ class BottomNavigation extends StatelessWidget {
     return Consumer<LocalizationService>(
       builder: (context, locService, child) {
         final tabs = [
-          {'id': 'home', 'label': 'home_tab'.tr(locService.currentLanguageCode), 'icon': LucideIcons.house},
-          {'id': 'nutrition', 'label': 'nutrition_tab'.tr(locService.currentLanguageCode), 'icon': LucideIcons.apple},
-          {'id': 'sport', 'label': 'sport_tab'.tr(locService.currentLanguageCode), 'icon': LucideIcons.dumbbell},
-          {'id': 'progress', 'label': 'progress_tab'.tr(locService.currentLanguageCode), 'icon': LucideIcons.trendingUp},
+          {'id': 'home', 'label': 'home_tab'.tr(locService.currentLanguageCode), 'icon': LucideIcons.house, 'key': homeTabKey},
+          {'id': 'nutrition', 'label': 'nutrition_tab'.tr(locService.currentLanguageCode), 'icon': LucideIcons.apple, 'key': nutritionTabKey},
+          {'id': 'sport', 'label': 'sport_tab'.tr(locService.currentLanguageCode), 'icon': LucideIcons.dumbbell, 'key': sportTabKey},
+          {'id': 'progress', 'label': 'progress_tab'.tr(locService.currentLanguageCode), 'icon': LucideIcons.trendingUp, 'key': progressTabKey},
         ];
 
     return Container(
@@ -49,10 +59,12 @@ class BottomNavigation extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: tabs.map((tab) {
                 final isActive = activeTab == tab['id'];
+                final tabKey = tab['key'] as GlobalKey?;
 
                 return GestureDetector(
                   onTap: () => onTabChange(tab['id'] as String),
                   child: Container(
+                    key: tabKey, // Attacher la GlobalKey ici
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(12),

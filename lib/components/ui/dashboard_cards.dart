@@ -261,26 +261,31 @@ class CircularScoreWidget extends StatelessWidget {
 // Bouton d'action rapide
 class QuickActionButton extends StatelessWidget {
   final QuickAction action;
+  final GlobalKey? tutorialKey; // Clé pour le tutorial
 
   const QuickActionButton({
     super.key,
     required this.action,
+    this.tutorialKey,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: action.onTap,
-      child: Container(
-        margin: const EdgeInsets.only(right: 16),
+    return Padding(
+      padding: const EdgeInsets.only(right: 16),
+      child: GestureDetector(
+        onTap: action.onTap,
         child: Column(
+          key: tutorialKey, // Key directement sur la Column (sans margin)
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center, // Centrer tous les enfants
           children: [
             // Bouton carré avec gradient bleu
             Container(
               width: 72,
               height: 72,
               decoration: BoxDecoration(
-                gradient: action.isDisabled 
+                gradient: action.isDisabled
                     ? LinearGradient(
                         colors: [
                           const Color(0xFFE2E8F0),
@@ -298,9 +303,9 @@ class QuickActionButton extends StatelessWidget {
                 color: action.isDisabled ? const Color(0xFF64748B) : Colors.white,
               ),
             ),
-            
+
             const SizedBox(height: 8),
-            
+
             // Texte en dessous
             SizedBox(
               width: 80,

@@ -1,0 +1,2074 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'dart:async';
+import 'value_proposition_models.dart';
+
+/// Widget des slides de value proposition à afficher AVANT l'onboarding
+class ValuePropositionSlides extends StatefulWidget {
+  final String languageCode;
+  final VoidCallback onComplete;
+  final VoidCallback? onSkip;
+
+  const ValuePropositionSlides({
+    Key? key,
+    required this.languageCode,
+    required this.onComplete,
+    this.onSkip,
+  }) : super(key: key);
+
+  @override
+  State<ValuePropositionSlides> createState() => _ValuePropositionSlidesState();
+}
+
+class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
+    with TickerProviderStateMixin {
+  final PageController _pageController = PageController();
+  int _currentPage = 0;
+  late AnimationController _fadeController;
+  late Animation<double> _fadeAnimation;
+
+  // Animations stagger pour Slide 1
+  late AnimationController _staggerController;
+  late Animation<Offset> _pandaSlide;
+  late Animation<Offset> _titleSlide;
+  late Animation<Offset> _cardsSlide;
+  late Animation<double> _pandaOpacity;
+  late Animation<double> _titleOpacity;
+  late Animation<double> _cardsOpacity;
+
+  // Animations pour Slide 2
+  late AnimationController _slide2StaggerController;
+  late Animation<double> _slide2CardsOpacity;
+  bool _showCoachResponse = false;
+  Timer? _slide2Timer;
+
+  // Animations pour Slide 3
+  late AnimationController _slide3StaggerController;
+
+  @override
+  void initState() {
+    super.initState();
+    SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.dark);
+
+    _fadeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _fadeAnimation = CurvedAnimation(
+      parent: _fadeController,
+      curve: Curves.easeInOut,
+    );
+
+    // Stagger animations Slide 1
+    _staggerController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
+
+    // Stagger animations Slide 2
+    _slide2StaggerController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
+    _slide2CardsOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _slide2StaggerController,
+        curve: Curves.easeIn,
+      ),
+    );
+
+    // Stagger animations Slide 3
+    _slide3StaggerController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
+
+    // Panda apparaît en premier (0-400ms)
+    _pandaSlide = Tween<Offset>(
+      begin: const Offset(0, -0.3),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _staggerController,
+      curve: const Interval(0.0, 0.33, curve: Curves.easeOut),
+    ));
+    _pandaOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _staggerController,
+        curve: const Interval(0.0, 0.33, curve: Curves.easeIn),
+      ),
+    );
+
+    // Titre apparaît ensuite (200-600ms)
+    _titleSlide = Tween<Offset>(
+      begin: const Offset(0, -0.2),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _staggerController,
+      curve: const Interval(0.2, 0.6, curve: Curves.easeOut),
+    ));
+    _titleOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _staggerController,
+        curve: const Interval(0.2, 0.6, curve: Curves.easeIn),
+      ),
+    );
+
+    // Cards apparaissent en dernier (400-1000ms)
+    _cardsSlide = Tween<Offset>(
+      begin: const Offset(0, -0.15),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _staggerController,
+      curve: const Interval(0.4, 1.0, curve: Curves.easeOut),
+    ));
+    _cardsOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _staggerController,
+        curve: const Interval(0.4, 1.0, curve: Curves.easeIn),
+      ),
+    );
+
+    _fadeController.forward();
+    _staggerController.forward();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    _fadeController.dispose();
+    _staggerController.dispose();
+    _slide2StaggerController.dispose();
+    _slide3StaggerController.dispose();
+    _slide2Timer?.cancel();
+    SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
+    super.dispose();
+  }
+
+  void _onPageChanged(int page) {
+    setState(() {
+      _currentPage = page;
+      _showCoachResponse = false;
+    });
+
+    // Reset animations
+    _fadeController.reset();
+    _fadeController.forward();
+
+    // Reset stagger animation si on revient à slide 1
+    if (page == 0) {
+      _staggerController.reset();
+      _staggerController.forward();
+    }
+
+    // Animation automatique pour slide 2
+    if (page == 1) {
+      _slide2StaggerController.reset();
+      _slide2StaggerController.forward();
+
+      _slide2Timer?.cancel();
+      _slide2Timer = Timer(const Duration(milliseconds: 1500), () {
+        if (mounted && _currentPage == 1) {
+          setState(() {
+            _showCoachResponse = true;
+          });
+        }
+      });
+    }
+
+    // Animation automatique pour slide 3
+    if (page == 2) {
+      _slide3StaggerController.reset();
+      _slide3StaggerController.forward();
+    }
+  }
+
+  void _nextPage() {
+    if (_currentPage < 2) {
+      _pageController.nextPage(
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOut,
+      );
+    } else {
+      widget.onComplete();
+    }
+  }
+
+  void _previousPage() {
+    if (_currentPage > 0) {
+      _pageController.previousPage(
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isFrench = widget.languageCode == 'fr';
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Header avec bouton Skip
+            _buildHeader(isFrench),
+
+            // Slides
+            Expanded(
+              child: PageView(
+                controller: _pageController,
+                onPageChanged: _onPageChanged,
+                children: [
+                  _buildSlide1(isFrench),
+                  _buildSlide2(isFrench),
+                  _buildSlide3(isFrench),
+                ],
+              ),
+            ),
+
+            // Footer avec navigation
+            _buildFooter(isFrench),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Header avec bouton Skip
+  Widget _buildHeader(bool isFrench) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          if (widget.onSkip != null)
+            TextButton(
+              onPressed: widget.onSkip,
+              child: Text(
+                isFrench ? 'Passer' : 'Skip',
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: Color(0xFF64748B),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// Footer avec pagination et navigation
+  Widget _buildFooter(bool isFrench) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+      child: Column(
+        children: [
+          // Dots de pagination
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(3, (index) {
+              return Container(
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                width: _currentPage == index ? 24 : 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: _currentPage == index
+                      ? const Color(0xFF0B132B)
+                      : const Color(0xFFE2E8F0),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              );
+            }),
+          ),
+
+          const SizedBox(height: 24),
+
+          // Boutons de navigation
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Bouton Retour
+              if (_currentPage > 0)
+                TextButton.icon(
+                  onPressed: _previousPage,
+                  icon: const Icon(Icons.arrow_back, size: 20),
+                  label: Text(isFrench ? 'Retour' : 'Back'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFF64748B),
+                    textStyle: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                )
+              else
+                const SizedBox(width: 80),
+
+              // Bouton Suivant / Commencer
+              ElevatedButton(
+                onPressed: _nextPage,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0B132B),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 0,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _currentPage < 2
+                          ? (isFrench ? 'Suivant' : 'Next')
+                          : (isFrench ? Slide3Data.ctaButtonFr : Slide3Data.ctaButtonEn),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Icon(Icons.arrow_forward, size: 20),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// SLIDE 1 : Simplicité d'input
+  Widget _buildSlide1(bool isFrench) {
+    return FadeTransition(
+      opacity: _fadeAnimation,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          children: [
+            const SizedBox(height: 20),
+
+            // Panda ÉNORME + Message à côté (avec animation)
+            SlideTransition(
+              position: _pandaSlide,
+              child: FadeTransition(
+                opacity: _pandaOpacity,
+                child: Column(
+                  children: [
+                    // Nom du coach (style SMS)
+                    // Row avec bulle à gauche + panda à droite
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        // Bulle à GAUCHE avec nom au-dessus
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // Nom "Coach Ryze" au-dessus de la bulle
+                              Padding(
+                                padding: const EdgeInsets.only(left: 8, bottom: 6),
+                                child: Text(
+                                  isFrench ? Slide1Data.coachNameFr : Slide1Data.coachNameEn,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF64748B),
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ),
+                              // Bulle de message
+                              Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+                                  ),
+                                  borderRadius: BorderRadius.circular(20),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFF0B132B).withOpacity(0.3),
+                                      blurRadius: 20,
+                                      offset: const Offset(0, 8),
+                                    ),
+                                  ],
+                                ),
+                                child: Text(
+                                  isFrench ? Slide1Data.coachMessageFr : Slide1Data.coachMessageEn,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                    height: 1.5,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(width: 16),
+
+                        // Panda géant à DROITE
+                        Container(
+                          width: 180,
+                          height: 180,
+                          child: Image.asset(
+                            'assets/images/coach_ryze_welcome.png',
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                decoration: const BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: LinearGradient(
+                                    colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+                                  ),
+                                ),
+                                child: const Center(
+                                  child: Text('🐼', style: TextStyle(fontSize: 80)),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 32),
+
+            // Titre benefit-driven (avec animation)
+            SlideTransition(
+              position: _titleSlide,
+              child: FadeTransition(
+                opacity: _titleOpacity,
+                child: Text(
+              isFrench ? Slide1Data.titleFr : Slide1Data.titleEn,
+              style: const TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF0B132B),
+                height: 1.2,
+                letterSpacing: -0.5,
+              ),
+              textAlign: TextAlign.center,
+            ),
+              ),
+            ),
+
+            const SizedBox(height: 36),
+
+            // 3 méthodes d'input (avec animations stagger une par une)
+            Row(
+              children: [
+                // Photo (apparaît en premier)
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: TweenAnimationBuilder<double>(
+                      duration: const Duration(milliseconds: 400),
+                      tween: Tween(begin: 0.0, end: 1.0),
+                      curve: const Interval(0.0, 1.0, curve: Curves.easeOut),
+                      builder: (context, value, child) {
+                        return Transform.translate(
+                          offset: Offset(0, 20 * (1 - value)),
+                          child: Opacity(
+                            opacity: value,
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: _buildMethodCard(
+                        iconData: LucideIcons.camera,
+                        label: isFrench ? Slide1Data.methods[0].labelFr : Slide1Data.methods[0].labelEn,
+                        description: isFrench ? Slide1Data.methods[0].descriptionFr : Slide1Data.methods[0].descriptionEn,
+                        index: 0,
+                      ),
+                    ),
+                  ),
+                ),
+                // Voix (apparaît en second avec délai)
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 3),
+                    child: TweenAnimationBuilder<double>(
+                      duration: const Duration(milliseconds: 400),
+                      tween: Tween(begin: 0.0, end: 1.0),
+                      curve: const Interval(0.15, 1.0, curve: Curves.easeOut),
+                      builder: (context, value, child) {
+                        return Transform.translate(
+                          offset: Offset(0, 20 * (1 - value)),
+                          child: Opacity(
+                            opacity: value,
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: _buildMethodCard(
+                        iconData: LucideIcons.mic,
+                        label: isFrench ? Slide1Data.methods[1].labelFr : Slide1Data.methods[1].labelEn,
+                        description: isFrench ? Slide1Data.methods[1].descriptionFr : Slide1Data.methods[1].descriptionEn,
+                        index: 1,
+                      ),
+                    ),
+                  ),
+                ),
+                // Texte (apparaît en dernier avec plus de délai)
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 6),
+                    child: TweenAnimationBuilder<double>(
+                      duration: const Duration(milliseconds: 400),
+                      tween: Tween(begin: 0.0, end: 1.0),
+                      curve: const Interval(0.3, 1.0, curve: Curves.easeOut),
+                      builder: (context, value, child) {
+                        return Transform.translate(
+                          offset: Offset(0, 20 * (1 - value)),
+                          child: Opacity(
+                            opacity: value,
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: _buildMethodCard(
+                        iconData: LucideIcons.keyboard,
+                        label: isFrench ? Slide1Data.methods[2].labelFr : Slide1Data.methods[2].labelEn,
+                        description: isFrench ? Slide1Data.methods[2].descriptionFr : Slide1Data.methods[2].descriptionEn,
+                        index: 2,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 40),
+
+            // Bénéfice
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    const Color(0xFF1C2951).withOpacity(0.08),
+                    const Color(0xFF1C2951).withOpacity(0.04),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: const Color(0xFF1C2951).withOpacity(0.2),
+                  width: 1.5,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1C2951),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      LucideIcons.check,
+                      color: Colors.white,
+                      size: 14,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      isFrench ? Slide1Data.benefitFr : Slide1Data.benefitEn,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        color: Color(0xFF0B132B),
+                        fontWeight: FontWeight.w600,
+                        height: 1.4,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 40),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// SLIDE 2 : Coach sur demande
+  Widget _buildSlide2(bool isFrench) {
+    return FadeTransition(
+      opacity: _fadeAnimation,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          children: [
+            const SizedBox(height: 5),
+
+            // Section panda + bulle (même layout que slide 1)
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Texte à GAUCHE
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Nom "Coach Ryze" au-dessus
+                      const Padding(
+                        padding: EdgeInsets.only(left: 8, bottom: 6),
+                        child: Text(
+                          'Coach Ryze',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF64748B),
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                      // Bulle de message
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+                          ),
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF0B132B).withOpacity(0.3),
+                              blurRadius: 20,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        child: Text(
+                          isFrench
+                            ? Slide2Data.coachMessageFr
+                            : Slide2Data.coachMessageEn,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            height: 1.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(width: 16),
+
+                // Panda docteur nutrition à DROITE
+                Container(
+                  width: 180,
+                  height: 180,
+                  child: Image.asset(
+                    'assets/images/coach_ryze_ai_chat_nutrition.png',
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+                          ),
+                        ),
+                        child: const Center(
+                          child: Text('🐼', style: TextStyle(fontSize: 80)),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 10),
+
+            // Titre benefit-driven
+            Text(
+              isFrench ? Slide2Data.titleFr : Slide2Data.titleEn,
+              style: const TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF0B132B),
+                height: 1.2,
+                letterSpacing: -0.5,
+              ),
+              textAlign: TextAlign.center,
+            ),
+
+            const SizedBox(height: 12),
+
+            // Mockup du journal nutrition + bouton (réduits ensemble)
+            Transform.scale(
+              scale: 0.70,
+              child: Column(
+                children: [
+                  _buildNutritionJournalMockup(isFrench),
+                  const SizedBox(height: 20),
+                  _buildAnalyzeButton(isFrench),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 10),
+
+            // 3 features en cards blanches (résultats, pas features) avec animations
+            AnimatedBuilder(
+              animation: _slide2StaggerController,
+              builder: (context, child) {
+                return Row(
+                  children: [
+                    // Analyse (apparaît en premier)
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: Transform.translate(
+                          offset: Offset(
+                            0,
+                            20 * (1 - Curves.easeOut.transform(
+                              Interval(0.0, 0.4, curve: Curves.easeOut)
+                                .transform(_slide2StaggerController.value)
+                            )),
+                          ),
+                          child: Opacity(
+                            opacity: Interval(0.0, 0.4, curve: Curves.easeIn)
+                              .transform(_slide2StaggerController.value),
+                            child: _buildFeatureCard(
+                              icon: LucideIcons.search,
+                              title: isFrench ? "Analyse" : "Analyze",
+                              isFrench: isFrench,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Ajuste (apparaît en second avec délai)
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 3),
+                        child: Transform.translate(
+                          offset: Offset(
+                            0,
+                            20 * (1 - Curves.easeOut.transform(
+                              Interval(0.3, 0.7, curve: Curves.easeOut)
+                                .transform(_slide2StaggerController.value)
+                            )),
+                          ),
+                          child: Opacity(
+                            opacity: Interval(0.3, 0.7, curve: Curves.easeIn)
+                              .transform(_slide2StaggerController.value),
+                            child: _buildFeatureCard(
+                              icon: LucideIcons.settings,
+                              title: isFrench ? "Ajuste" : "Adjust",
+                              isFrench: isFrench,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Contrôle (apparaît en dernier avec plus de délai)
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 6),
+                        child: Transform.translate(
+                          offset: Offset(
+                            0,
+                            20 * (1 - Curves.easeOut.transform(
+                              Interval(0.6, 1.0, curve: Curves.easeOut)
+                                .transform(_slide2StaggerController.value)
+                            )),
+                          ),
+                          child: Opacity(
+                            opacity: Interval(0.6, 1.0, curve: Curves.easeIn)
+                              .transform(_slide2StaggerController.value),
+                            child: _buildFeatureCard(
+                              icon: LucideIcons.handMetal,
+                              title: isFrench ? "Contrôle" : "Control",
+                              isFrench: isFrench,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+
+            const SizedBox(height: 16),
+
+            // Bénéfice en bas (comme Slide 1)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    const Color(0xFF1C2951).withOpacity(0.08),
+                    const Color(0xFF1C2951).withOpacity(0.04),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: const Color(0xFF1C2951).withOpacity(0.2),
+                  width: 1.5,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 24,
+                    height: 24,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF1C2951),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      LucideIcons.check,
+                      color: Colors.white,
+                      size: 14,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      isFrench ? Slide2Data.benefitFr : Slide2Data.benefitEn,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        color: Color(0xFF0B132B),
+                        fontWeight: FontWeight.w600,
+                        height: 1.4,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// SLIDE 3 : Analyse sport
+  Widget _buildSlide3(bool isFrench) {
+    return FadeTransition(
+      opacity: _fadeAnimation,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          children: [
+            const SizedBox(height: 5),
+
+            // Section panda + bulle (même layout que slides 1 et 2)
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Texte à GAUCHE
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Nom "Coach Ryze" au-dessus
+                      const Padding(
+                        padding: EdgeInsets.only(left: 8, bottom: 6),
+                        child: Text(
+                          'Coach Ryze',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF64748B),
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                      // Bulle de message
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+                          ),
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF0B132B).withOpacity(0.3),
+                              blurRadius: 20,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        child: Text(
+                          isFrench
+                            ? Slide3Data.coachMessageFr
+                            : Slide3Data.coachMessageEn,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            height: 1.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(width: 16),
+
+                // Panda sport à DROITE
+                Container(
+                  width: 180,
+                  height: 180,
+                  child: Image.asset(
+                    'assets/images/coach_ryze_sport_avatar.png',
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+                          ),
+                        ),
+                        child: const Center(
+                          child: Text('🐼', style: TextStyle(fontSize: 80)),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 10),
+
+            // Titre benefit-driven
+            Text(
+              isFrench ? Slide3Data.titleFr : Slide3Data.titleEn,
+              style: const TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF0B132B),
+                height: 1.2,
+                letterSpacing: -0.5,
+              ),
+              textAlign: TextAlign.center,
+            ),
+
+            const SizedBox(height: 12),
+
+            // Mockup graphique de progression (réduit)
+            Transform.scale(
+              scale: 0.70,
+              child: _buildProgressGraph(isFrench),
+            ),
+
+            const SizedBox(height: 10),
+
+            // 3 features en cards blanches avec animations
+            AnimatedBuilder(
+              animation: _slide3StaggerController,
+              builder: (context, child) {
+                return Row(
+                  children: [
+                    // Plus fort
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: Transform.translate(
+                          offset: Offset(
+                            0,
+                            20 * (1 - Curves.easeOut.transform(
+                              Interval(0.0, 0.4, curve: Curves.easeOut)
+                                .transform(_slide3StaggerController.value)
+                            )),
+                          ),
+                          child: Opacity(
+                            opacity: Interval(0.0, 0.4, curve: Curves.easeIn)
+                              .transform(_slide3StaggerController.value),
+                            child: _buildFeatureCard(
+                              icon: LucideIcons.zap,
+                              title: isFrench ? "Plus fort" : "Stronger",
+                              isFrench: isFrench,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Plus confiant
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 3),
+                        child: Transform.translate(
+                          offset: Offset(
+                            0,
+                            20 * (1 - Curves.easeOut.transform(
+                              Interval(0.3, 0.7, curve: Curves.easeOut)
+                                .transform(_slide3StaggerController.value)
+                            )),
+                          ),
+                          child: Opacity(
+                            opacity: Interval(0.3, 0.7, curve: Curves.easeIn)
+                              .transform(_slide3StaggerController.value),
+                            child: _buildFeatureCard(
+                              icon: LucideIcons.award,
+                              title: isFrench ? "Plus confiant" : "Confident",
+                              isFrench: isFrench,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Résultats réels
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 6),
+                        child: Transform.translate(
+                          offset: Offset(
+                            0,
+                            20 * (1 - Curves.easeOut.transform(
+                              Interval(0.6, 1.0, curve: Curves.easeOut)
+                                .transform(_slide3StaggerController.value)
+                            )),
+                          ),
+                          child: Opacity(
+                            opacity: Interval(0.6, 1.0, curve: Curves.easeIn)
+                              .transform(_slide3StaggerController.value),
+                            child: _buildFeatureCard(
+                              icon: LucideIcons.trendingUp,
+                              title: isFrench ? "Résultats réels" : "Real results",
+                              isFrench: isFrench,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+
+            const SizedBox(height: 16),
+
+            // Bénéfice en bas (comme Slides 1 et 2)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    const Color(0xFF1C2951).withOpacity(0.08),
+                    const Color(0xFF1C2951).withOpacity(0.04),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: const Color(0xFF1C2951).withOpacity(0.2),
+                  width: 1.5,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 24,
+                    height: 24,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF1C2951),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      LucideIcons.check,
+                      color: Colors.white,
+                      size: 14,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      isFrench ? Slide3Data.benefitFr : Slide3Data.benefitEn,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        color: Color(0xFF0B132B),
+                        fontWeight: FontWeight.w600,
+                        height: 1.4,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Widget Coach Ryze avec bulle de dialogue
+  Widget _buildCoachWithBubble({
+    required String message,
+    required String imagePath,
+  }) {
+    return Column(
+      children: [
+        // Avatar Coach Ryze (sans fond blanc)
+        Container(
+          width: 160,
+          height: 160,
+          child: Image.asset(
+            imagePath,
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) {
+              // Fallback si l'image n'existe pas
+              return Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+                  ),
+                ),
+                child: const Center(
+                  child: Text(
+                    '🐼',
+                    style: TextStyle(fontSize: 64),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+
+        const SizedBox(height: 24),
+
+        // Bulle de dialogue avec gradient
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+            ),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF0B132B).withOpacity(0.3),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Text(
+            message,
+            style: const TextStyle(
+              fontSize: 15,
+              color: Colors.white,
+              fontWeight: FontWeight.w500,
+              height: 1.5,
+              letterSpacing: 0.2,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Card pour méthode d'input
+  Widget _buildMethodCard({
+    required IconData iconData,
+    required String label,
+    required String description,
+    required int index,
+  }) {
+    return Container(
+      height: 200,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: const Color(0xFF0B132B).withOpacity(0.08),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0B132B).withOpacity(0.06),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Icône avec VRAI gradient de l'app
+          Container(
+            width: 68,
+            height: 68,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+              ),
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Center(
+              child: Icon(
+                iconData,
+                size: 32,
+                color: Colors.white,
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Label
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF0B132B),
+              letterSpacing: 0.3,
+            ),
+            textAlign: TextAlign.center,
+          ),
+
+          const SizedBox(height: 6),
+
+          // Description
+          Text(
+            description,
+            style: const TextStyle(
+              fontSize: 13,
+              color: Color(0xFF64748B),
+              height: 1.4,
+              fontWeight: FontWeight.w500,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Mockup du journal nutrition (Slide 2) - Version compacte
+  Widget _buildNutritionJournalMockup(bool isFrench) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Titre
+          Row(
+            children: [
+              const Icon(
+                LucideIcons.flame,
+                size: 18,
+                color: Color(0xFF0B132B),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                isFrench ? "Bilan calorique" : "Calorie summary",
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF0B132B),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          // Calories
+          Center(
+            child: RichText(
+              text: const TextSpan(
+                children: [
+                  TextSpan(
+                    text: "1248 kcal",
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF0B132B),
+                      height: 1,
+                    ),
+                  ),
+                  TextSpan(
+                    text: " / 2723 kcal consommées",
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF64748B),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          // Barre de progression
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: LinearProgressIndicator(
+              value: 0.46, // 1248/2723
+              backgroundColor: const Color(0xFFE2E8F0),
+              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF0B132B)),
+              minHeight: 6,
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Macronutriments
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildMacroSimple("34g", isFrench ? "Protéines" : "Protein"),
+              _buildMacroSimple("119g", isFrench ? "Glucides" : "Carbs"),
+              _buildMacroSimple("71g", isFrench ? "Lipides" : "Fats"),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Macro simple (sans couleur ni bordure)
+  Widget _buildMacroSimple(String value, String label) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+            color: Color(0xFF0B132B),
+            height: 1,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            color: Color(0xFF64748B),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Feature card simple (Slide 2 & 3)
+  Widget _buildFeatureCard({
+    required IconData icon,
+    required String title,
+    required bool isFrench,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0B132B).withOpacity(0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Icône avec gradient
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+              ),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              icon,
+              size: 24,
+              color: Colors.white,
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          // Titre
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF0B132B),
+              letterSpacing: 0.2,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Bouton "Analyser ma journée" avec logo Ryze (Slide 2)
+  Widget _buildAnalyzeButton(bool isFrench) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0B132B).withOpacity(0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Logo Ryze
+          Container(
+            width: 40,
+            height: 40,
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: SvgPicture.asset(
+              'assets/images/logo_solo.svg',
+              colorFilter: const ColorFilter.mode(
+                Colors.white,
+                BlendMode.srcIn,
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          // Texte
+          Text(
+            isFrench ? Slide2Data.buttonTextFr : Slide2Data.buttonTextEn,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+              letterSpacing: 0.3,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Mockup interface nutrition (Slide 2)
+  Widget _buildNutritionMockup(bool isFrench) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE2E8F0), width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0B132B).withOpacity(0.08),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Données nutrition
+          _buildMockupRow(
+            'Calories',
+            isFrench ? Slide2Data.mockupCaloriesFr : Slide2Data.mockupCaloriesEn,
+          ),
+          const SizedBox(height: 12),
+          _buildMockupRow(
+            isFrench ? 'Protéines' : 'Protein',
+            isFrench ? Slide2Data.mockupProteinsFr : Slide2Data.mockupProteinsEn,
+          ),
+
+          const SizedBox(height: 20),
+
+          // Bouton CTA
+          ElevatedButton(
+            onPressed: () {
+              setState(() {
+                _showCoachResponse = true;
+              });
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0B132B),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 0,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.analytics_outlined, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  isFrench ? Slide2Data.buttonTextFr : Slide2Data.buttonTextEn,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMockupRow(String label, String value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 15,
+            color: Color(0xFF64748B),
+          ),
+        ),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF1A1A1A),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Card réponse Coach (Slide 2)
+  Widget _buildCoachResponseCard(String message) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            const Color(0xFF0B132B).withOpacity(0.05),
+            Colors.transparent,
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0xFF0B132B).withOpacity(0.1),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Mini avatar Coach Ryze
+          Container(
+            width: 56,
+            height: 56,
+            child: Image.asset(
+              'assets/images/coach_ryze_ai_chat_nutrition.png',
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+                    ),
+                  ),
+                  child: const Center(
+                    child: Text('🐼', style: TextStyle(fontSize: 28)),
+                  ),
+                );
+              },
+            ),
+          ),
+
+          const SizedBox(width: 16),
+
+          // Message
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Coach Ryze',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF0B132B),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  message,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    color: Color(0xFF1A1A1A),
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Mockup programme d'entraînement (Slide 3)
+  Widget _buildProgressGraph(bool isFrench) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0B132B).withOpacity(0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                isFrench ? "Coach Ryze - Jambes" : "Coach Ryze - Legs",
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF0B132B),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 4),
+
+          Text(
+            isFrench ? "5 exercices" : "5 exercises",
+            style: const TextStyle(
+              fontSize: 13,
+              color: Color(0xFF64748B),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Exercices
+          _buildExerciseRow("1", "Squat", isFrench ? "Jambes" : "Legs", "4×10", "12.5kg"),
+          const SizedBox(height: 10),
+          _buildExerciseRow("2", isFrench ? "Développé couché" : "Bench Press", isFrench ? "Pectoraux" : "Chest", "4×10", "10kg"),
+          const SizedBox(height: 10),
+          _buildExerciseRow("3", isFrench ? "Rowing à la barre" : "Barbell Row", isFrench ? "Dos" : "Back", "4×10", "12.5kg"),
+
+          const SizedBox(height: 16),
+
+          // Conseils Coach
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  const Color(0xFF0B132B).withOpacity(0.95),
+                  const Color(0xFF1C2951).withOpacity(0.95),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  LucideIcons.sparkles,
+                  color: Colors.white,
+                  size: 18,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    isFrench
+                      ? "Conseils de Coach Ryze"
+                      : "Coach Ryze's Tips",
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Widget pour une ligne d'exercice
+  Widget _buildExerciseRow(String number, String name, String muscle, String sets, String weight) {
+    return Row(
+      children: [
+        // Numéro
+        Container(
+          width: 28,
+          height: 28,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+            ),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Center(
+            child: Text(
+              number,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ),
+
+        const SizedBox(width: 12),
+
+        // Nom et muscle
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                name,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF0B132B),
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                muscle,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF64748B),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Sets et poids
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              sets,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF0B132B),
+              ),
+            ),
+            const SizedBox(height: 2),
+            Row(
+              children: [
+                const Icon(
+                  LucideIcons.dumbbell,
+                  size: 12,
+                  color: Color(0xFF64748B),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  weight,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF64748B),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  /// Card analyse sport (Slide 3)
+  Widget _buildSportAnalysisCard(bool isFrench) {
+    final recommendations = isFrench
+        ? Slide3Data.recommendationsFr
+        : Slide3Data.recommendationsEn;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            const Color(0xFF0B132B).withOpacity(0.05),
+            Colors.transparent,
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0xFF0B132B).withOpacity(0.1),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header Coach
+          Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                child: Image.asset(
+                  'assets/images/coach_ryze_workout_avatar.png',
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+                        ),
+                      ),
+                      child: const Center(
+                        child: Text('🐼', style: TextStyle(fontSize: 24)),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'Coach Ryze',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF0B132B),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
+          // Analyse
+          Text(
+            isFrench ? Slide3Data.analysisSummaryFr : Slide3Data.analysisSummaryEn,
+            style: const TextStyle(
+              fontSize: 15,
+              color: Color(0xFF1A1A1A),
+              fontWeight: FontWeight.w500,
+              height: 1.4,
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Recommandations
+          ...recommendations.map((reco) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(
+                    Icons.check_circle,
+                    color: Color(0xFF22C55E),
+                    size: 18,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      reco,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF1A1A1A),
+                        height: 1.3,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+        ],
+      ),
+    );
+  }
+}
+
+/// Painter pour graphique simple ligne
+class _SimpleLineGraphPainter extends CustomPainter {
+  final List<double> dataPoints;
+
+  _SimpleLineGraphPainter({required this.dataPoints});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFF0B132B)
+      ..strokeWidth = 3
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    final pointPaint = Paint()
+      ..color = const Color(0xFF0B132B)
+      ..style = PaintingStyle.fill;
+
+    if (dataPoints.isEmpty) return;
+
+    // Normaliser les données
+    final maxValue = dataPoints.reduce((a, b) => a > b ? a : b);
+    final minValue = dataPoints.reduce((a, b) => a < b ? a : b);
+    final range = maxValue - minValue;
+
+    // Calculer les points
+    final path = Path();
+    final points = <Offset>[];
+
+    for (int i = 0; i < dataPoints.length; i++) {
+      final x = (size.width / (dataPoints.length - 1)) * i;
+      final normalized = range > 0 ? (dataPoints[i] - minValue) / range : 0.5;
+      final y = size.height - (size.height * normalized);
+
+      points.add(Offset(x, y));
+
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+
+    // Dessiner la ligne
+    canvas.drawPath(path, paint);
+
+    // Dessiner les points
+    for (final point in points) {
+      canvas.drawCircle(point, 6, pointPaint);
+      // Point blanc au centre
+      canvas.drawCircle(point, 3, Paint()..color = Colors.white);
+    }
+
+    // Labels de poids
+    final textPainter = TextPainter(
+      textDirection: TextDirection.ltr,
+      textAlign: TextAlign.center,
+    );
+
+    for (int i = 0; i < points.length; i++) {
+      textPainter.text = TextSpan(
+        text: '${dataPoints[i].toInt()}kg',
+        style: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: Color(0xFF0B132B),
+        ),
+      );
+      textPainter.layout();
+      textPainter.paint(
+        canvas,
+        Offset(points[i].dx - textPainter.width / 2, points[i].dy - 24),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}

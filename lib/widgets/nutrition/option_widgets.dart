@@ -10,6 +10,7 @@ class FoodOptionWidget extends StatelessWidget {
   final String title;
   final String subtitle;
   final VoidCallback onTap;
+  final GlobalKey? tutorialKey; // Clé pour le tutorial
 
   const FoodOptionWidget({
     super.key,
@@ -17,6 +18,7 @@ class FoodOptionWidget extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.onTap,
+    this.tutorialKey,
   });
 
   @override
@@ -24,6 +26,7 @@ class FoodOptionWidget extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
+        key: tutorialKey, // Appliquer la key pour le tutorial
         width: double.infinity,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(

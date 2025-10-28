@@ -309,9 +309,9 @@ class _SelectRecipeScreenState extends State<SelectRecipeScreen> {
                   // Résumé (durée, portions, calories)
                   Consumer<LocalizationService>(
                     builder: (context, locService, child) => Text(
-                      locService.currentLanguageCode == 'fr' 
-                        ? '${recipe.duration} min • ${recipe.servings} pers. • ${recipe.calories} kcal'
-                        : '${recipe.duration} min • ${recipe.servings} servings • ${recipe.calories} kcal',
+                      locService.currentLanguageCode == 'fr'
+                        ? '${recipe.duration} min • ${recipe.safeServings} pers. • ${recipe.safeCalories} kcal'
+                        : '${recipe.duration} min • ${recipe.safeServings} servings • ${recipe.safeCalories} kcal',
                       style: const TextStyle(
                         fontSize: 13,
                         color: Color(0xFF64748B),
@@ -324,9 +324,9 @@ class _SelectRecipeScreenState extends State<SelectRecipeScreen> {
                   // Ligne macros
                   Consumer<LocalizationService>(
                     builder: (context, locService, child) => Text(
-                      locService.currentLanguageCode == 'fr' 
-                        ? 'P : ${recipe.proteins}g • G : ${recipe.carbs}g • L : ${recipe.fats}g'
-                        : 'P: ${recipe.proteins}g • C: ${recipe.carbs}g • F: ${recipe.fats}g',
+                      locService.currentLanguageCode == 'fr'
+                        ? 'P : ${recipe.safeProteins}g • G : ${recipe.safeCarbs}g • L : ${recipe.safeFats}g'
+                        : 'P: ${recipe.safeProteins}g • C: ${recipe.safeCarbs}g • F: ${recipe.safeFats}g',
                       style: const TextStyle(
                         fontSize: 12,
                         color: Color(0xFF94A3B8),

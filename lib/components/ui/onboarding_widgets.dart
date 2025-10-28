@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -933,6 +934,9 @@ class LoadingStep extends StatefulWidget {
 class _LoadingStepState extends State<LoadingStep> {
   @override
   Widget build(BuildContext context) {
+    final languageCode = Provider.of<LocalizationService>(context, listen: false).currentLanguageCode;
+    final isFrench = languageCode == 'fr';
+
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -950,39 +954,16 @@ class _LoadingStepState extends State<LoadingStep> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Logo Ryze stylisé
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF0B132B).withOpacity(0.3),
-                      blurRadius: 20,
-                      spreadRadius: 2,
-                      offset: const Offset(0, 5),
-                    ),
-                  ],
-                ),
-                child: SvgPicture.asset(
-                  'assets/images/logo_seul.svg',
-                  width: 56,
-                  height: 56,
-                  fit: BoxFit.contain,
-                  colorFilter: const ColorFilter.mode(
-                    Colors.white,
-                    BlendMode.srcIn,
-                  ),
-                ),
+              // Panda statique mignon
+              Image.asset(
+                'assets/images/coach_ryze_loading.png',
+                width: 200,
+                height: 200,
+                fit: BoxFit.contain,
               ),
               const SizedBox(height: 40),
               Text(
-                'ryze_preparing_plan'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
+                isFrench ? 'Coach Ryze prépare ton plan...' : 'Coach Ryze is preparing your plan...',
                 style: const TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -1016,8 +997,8 @@ class _LoadingStepState extends State<LoadingStep> {
               ),
               const SizedBox(height: 16),
               Text(
-                'personalization_in_progress'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
-                style: TextStyle(
+                isFrench ? 'Encore quelques secondes...' : 'Just a few more seconds...',
+                style: const TextStyle(
                   fontSize: 14,
                   color: Color(0xFF64748B),
                   fontStyle: FontStyle.italic,

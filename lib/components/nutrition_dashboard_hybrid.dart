@@ -21,18 +21,21 @@ import '../services/auth_service.dart';
 import '../services/localization_service.dart';
 import '../services/translations.dart';
 import '../services/global_state_manager.dart'; // NOUVEAU: GlobalStateManager
+import '../services/tutorial_service.dart'; // Tutorial système
 import '../models/nutrition_models.dart' as nutrition_models;
 import '../screens/select_recipe_screen.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class NutritionDashboardHybrid extends StatefulWidget {
   const NutritionDashboardHybrid({super.key});
 
   @override
-  State<NutritionDashboardHybrid> createState() => _NutritionDashboardHybridState();
+  State<NutritionDashboardHybrid> createState() => NutritionDashboardHybridState();
 }
 
-class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
+// State publique pour permettre l'accès depuis NutritionSection
+class NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
     with TickerProviderStateMixin, GlobalStateListener {
 
   // State variables
@@ -49,6 +52,12 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
   // Real meal data
   List<Meal> realMeals = [];
 
+  // Tutorial GlobalKeys pour les éléments du dashboard
+  final GlobalKey _caloriesCardKey = GlobalKey();
+  final GlobalKey _macrosCardKey = GlobalKey();
+  final GlobalKey _hydrationMealsKey = GlobalKey();
+  final GlobalKey _quickActionsKey = GlobalKey();
+
   @override
   void initState() {
     super.initState();
@@ -59,19 +68,66 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
 
     // Puis charger les vraies données en arrière-plan
     _loadNutritionData();
+
+    // NE PAS lancer le tutorial automatiquement ici
+    // Il sera lancé par la Section Nutrition après le welcome screen
   }
+
+  /// Affiche le tutorial du Dashboard Nutrition
+  /// Méthode publique appelée par la Section Nutrition après le welcome screen
+  Future<void> showDashboardTutorial({
+    required GlobalKey dashboardTabKey,
+    required GlobalKey journalTabKey,
+    required GlobalKey recipesTabKey,
+  }) async {
+    // Vérifier si déjà complété (en mode debug, toujours afficher)
+    const debugMode = true; // Mettre à false en production
+    if (!debugMode) {
+      final prefs = await SharedPreferences.getInstance();
+      final completed = prefs.getBool('nutrition_dashboard_tutorial_completed') ?? false;
+      if (completed) {
+        debugPrint('ℹ️ Tutorial Dashboard Nutrition déjà complété');
+        return;
+      }
+    }
+
+    final locService = LocalizationService.instance;
+    final languageCode = locService.currentLanguageCode;
+
+    // Petit délai pour s'assurer que tout est bien rendu (même timing que Dashboard principal)
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    // Lancer le tutorial avec les 3 onglets + 4 éléments du dashboard
+    await TutorialService().showNutritionDashboardTutorial(
+      context: context,
+      caloriesKey: _caloriesCardKey,
+      macrosKey: _macrosCardKey,
+      hydrationMealsKey: _hydrationMealsKey,
+      quickActionsKey: _quickActionsKey,
+      dashboardTabKey: dashboardTabKey,
+      journalTabKey: journalTabKey,
+      recipesTabKey: recipesTabKey,
+      languageCode: languageCode,
+    );
+
+    // Marquer comme complété
+    if (!debugMode) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('nutrition_dashboard_tutorial_completed', true);
+    }
+    debugPrint('✅ Tutorial Dashboard Nutrition terminé');
+  }
+
 
   /// Chargement synchrone instantané pour éviter tout flash
   void _loadInitialDataSync() {
     final globalState = GlobalStateManager.instance;
-    final locService = LocalizationService.instance;
 
-    // Créer le profil nutrition instantanément avec les vraies données
-    // Calculer les objectifs de macros basés sur l'objectif calorique (30% protéines, 40% glucides, 30% lipides)
+    // Créer le profil nutrition avec les vraies données
     final calorieGoal = globalState.calorieGoal;
-    final proteinGoal = (calorieGoal * 0.30 / 4).toInt(); // 4 kcal par gramme
-    final carbsGoal = (calorieGoal * 0.40 / 4).toInt();   // 4 kcal par gramme
-    final fatsGoal = (calorieGoal * 0.30 / 9).toInt();    // 9 kcal par gramme
+    final proteinGoal = (calorieGoal * 0.30 / 4).toInt();
+    final carbsGoal = (calorieGoal * 0.40 / 4).toInt();
+    final fatsGoal = (calorieGoal * 0.30 / 9).toInt();
 
     nutritionProfile = NutritionProfile(
       targetCalories: globalState.calorieGoal.toInt(),
@@ -89,10 +145,10 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
     // Créer les repas avec les données de base
     realMeals = _createMealsWithTranslations({});
 
+    debugPrint('⚡ Nutrition Dashboard: Données initiales chargées en mode synchrone');
+
     // Démarrer les animations immédiatement
     _startAnimations();
-
-    debugPrint('⚡ Nutrition Dashboard: Données initiales chargées en mode synchrone');
   }
 
   Future<void> _loadNutritionData() async {
@@ -303,40 +359,52 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
           child: Column(
             children: [
               // Suppression du header avec "C'est parti" - on passe directement aux calories
-              MainCaloriesCard(
-                profile: nutritionProfile,
-                animatedCalories: animatedCalories,
-              ),
-              
-              const SizedBox(height: 16),
-              
-              // Macronutriments avec animations - sans pourcentages et sans icônes
-              Consumer<LocalizationService>(
-                builder: (context, locService, child) => MacronutrientsCard(
-                  macros: NutritionData.getMacros(nutritionProfile, locService.currentLanguageCode),
-                  animatedValues: {
-                    'protein': animatedProtein,
-                    'carbs': animatedCarbs,
-                    'fats': animatedFat,
-                  },
+              Container(
+                key: _caloriesCardKey, // GlobalKey pour tutorial
+                child: MainCaloriesCard(
+                  profile: nutritionProfile,
+                  animatedCalories: animatedCalories,
                 ),
               ),
-              
+
               const SizedBox(height: 16),
-              
-              // Hydratation + Repas (2 colonnes) - utiliser les vrais repas
-              HydrationAndMealsSection(
-                profile: nutritionProfile,
-                meals: realMeals,
-                onAddWater: _onAddWater,
-                onAddMeal: _onAddMeal,
+
+              // Macronutriments avec animations - sans pourcentages et sans icônes
+              Container(
+                key: _macrosCardKey, // GlobalKey pour tutorial
+                child: Consumer<LocalizationService>(
+                  builder: (context, locService, child) => MacronutrientsCard(
+                    macros: NutritionData.getMacros(nutritionProfile, locService.currentLanguageCode),
+                    animatedValues: {
+                      'protein': animatedProtein,
+                      'carbs': animatedCarbs,
+                      'fats': animatedFat,
+                    },
+                  ),
+                ),
               ),
-              
+
               const SizedBox(height: 16),
-              
+
+              // Hydratation + Repas (2 colonnes) - utiliser les vrais repas
+              Container(
+                key: _hydrationMealsKey, // GlobalKey pour tutorial
+                child: HydrationAndMealsSection(
+                  profile: nutritionProfile,
+                  meals: realMeals,
+                  onAddWater: _onAddWater,
+                  onAddMeal: _onAddMeal,
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
               // Quick Actions - avec recette et swipe
-              NutritionQuickActionsSection(
-                actions: NutritionData.quickActions,
+              Container(
+                key: _quickActionsKey, // GlobalKey pour tutorial
+                child: NutritionQuickActionsSection(
+                  actions: NutritionData.quickActions,
+                ),
               ),
             ],
           ),
@@ -618,9 +686,9 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
                   },
                 ),
               ),
-              
+
               const SizedBox(height: 12),
-              
+
               Consumer<LocalizationService>(
                 builder: (context, locService, child) => FoodOptionWidget(
                   icon: LucideIcons.camera,
@@ -640,9 +708,9 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
                   },
                 ),
               ),
-              
+
               const SizedBox(height: 12),
-              
+
               Consumer<LocalizationService>(
                 builder: (context, locService, child) => FoodOptionWidget(
                   icon: LucideIcons.scan,
@@ -655,9 +723,9 @@ class _NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
                   },
                 ),
               ),
-              
+
               const SizedBox(height: 12),
-              
+
               Consumer<LocalizationService>(
                 builder: (context, locService, child) => FoodOptionWidget(
                   icon: LucideIcons.chefHat,

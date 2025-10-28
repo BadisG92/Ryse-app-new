@@ -64,6 +64,28 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
         }
       }
     });
+
+    // Tutorial Journal désactivé - déjà expliqué dans le tutorial principal
+    // WidgetsBinding.instance.addPostFrameCallback((_) {
+    //   _showJournalTutorial();
+    // });
+  }
+
+  /// Affiche le tutorial du Journal lors de la première visite
+  Future<void> _showJournalTutorial() async {
+    // Accéder au parent NutritionSection pour afficher le tutorial
+    final nutritionSection = context.findAncestorStateOfType<State<StatefulWidget>>();
+    if (nutritionSection != null && nutritionSection is State) {
+      try {
+        final method = nutritionSection.runtimeType.toString();
+        if (method.contains('NutritionSection')) {
+          final parent = nutritionSection as dynamic;
+          await parent.showTabTutorial('journal');
+        }
+      } catch (e) {
+        debugPrint('⚠️ Erreur lors de l\'affichage du tutorial Journal: $e');
+      }
+    }
   }
 
   @override

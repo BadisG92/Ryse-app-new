@@ -69,7 +69,7 @@ class RecipeListCard extends StatelessWidget {
                   Row(
                     children: [
                       Text(
-                        '${recipe.duration} min • ${recipe.servings} pers.',
+                        '${recipe.duration} min • ${recipe.safeServings} pers.',
                         style: const TextStyle(
                           fontSize: 13,
                           color: Color(0xFF666666),
@@ -83,7 +83,7 @@ class RecipeListCard extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        '${recipe.calories} kcal',
+                        '${recipe.safeCalories} kcal',
                         style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
@@ -99,7 +99,7 @@ class RecipeListCard extends StatelessWidget {
                   if (useSimpleMacros) 
                     // Macros en ligne simple
                     Text(
-                      'P : ${recipe.proteins}g • G : ${recipe.carbs}g • L : ${recipe.fats}g',
+                      'P : ${recipe.safeProteins}g • G : ${recipe.safeCarbs}g • L : ${recipe.safeFats}g',
                       style: const TextStyle(
                         fontSize: 12,
                         color: Color(0xFF94A3B8),
@@ -111,19 +111,19 @@ class RecipeListCard extends StatelessWidget {
                       children: [
                         _MacroChip(
                           label: 'P',
-                          value: '${recipe.proteins}g',
+                          value: '${recipe.safeProteins}g',
                           color: const Color(0xFF10B981),
                         ),
                         const SizedBox(width: 8),
                         _MacroChip(
                           label: 'G',
-                          value: '${recipe.carbs}g',
+                          value: '${recipe.safeCarbs}g',
                           color: const Color(0xFF3B82F6),
                         ),
                         const SizedBox(width: 8),
                         _MacroChip(
                           label: 'L',
-                          value: '${recipe.fats}g',
+                          value: '${recipe.safeFats}g',
                           color: const Color(0xFFF59E0B),
                         ),
                       ],
@@ -170,13 +170,15 @@ class RecipeCarouselCard extends StatelessWidget {
         child: Stack(
           children: [
             // Image de fond
-            ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: RecipeImageService.buildRecipeImage(
-                imageUrl: recipe.image,
-                width: double.infinity,
-                height: double.infinity,
-                fit: BoxFit.cover,
+            Positioned.fill(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: RecipeImageService.buildRecipeImage(
+                  imageUrl: recipe.image,
+                  width: null, // Laisse le widget s'adapter au container parent
+                  height: null,
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
             
@@ -198,7 +200,7 @@ class RecipeCarouselCard extends StatelessWidget {
                   ],
                 ),
                 child: Text(
-                  '${recipe.calories} kcal',
+                  '${recipe.safeCalories} kcal',
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -245,7 +247,7 @@ class RecipeCarouselCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${recipe.duration} min • ${recipe.servings} pers.',
+                      '${recipe.duration} min • ${recipe.safeServings} pers.',
                       style: const TextStyle(
                         fontSize: 12,
                         color: Colors.white70,

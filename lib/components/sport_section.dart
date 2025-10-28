@@ -18,6 +18,9 @@ import 'ui/refresh_wrapper.dart';
 import '../services/fast_cache_service.dart';
 import '../services/sport_dashboard_service.dart';
 import '../services/global_state_manager.dart';
+import 'ui/sport_tutorial_welcome.dart'; // Welcome screen sport
+import 'ui/cardio_tutorial_welcome.dart'; // Welcome screen cardio
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SportSection extends StatefulWidget {
   const SportSection({super.key});
@@ -35,6 +38,15 @@ class _SportSectionState extends State<SportSection>
   int _totalGoals = 0;
   int _currentStreak = 0;
   final GlobalKey<SportDashboardState> _dashboardKey = GlobalKey<SportDashboardState>();
+  final GlobalKey<SportCardioHybridState> _cardioKey = GlobalKey<SportCardioHybridState>();
+
+  // Tutorial GlobalKeys pour les 3 onglets
+  final GlobalKey _dashboardTabKey = GlobalKey();
+  final GlobalKey _cardioTabKey = GlobalKey();
+  final GlobalKey _musculationTabKey = GlobalKey();
+
+  // Suivre si le tutorial Cardio a déjà été lancé
+  bool _cardioTutorialLaunched = false;
 
   void _openSportCalendar() {
     // Naviguer vers le dashboard (index 0) si on n'y est pas déjà
@@ -83,6 +95,132 @@ class _SportSectionState extends State<SportSection>
 
     // Forcer la mise à jour du compteur d'objectifs
     DashboardService.refreshGoalsNotifier();
+
+    // Lancer le tutorial après le build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _showSportTutorial();
+    });
+  }
+
+  /// Affiche l'écran de bienvenue Sport si c'est la première visite
+  Future<void> _showSportTutorial() async {
+    // Vérifier si déjà complété (en mode debug, toujours afficher)
+    const debugMode = true; // Mettre à false en production
+    if (!debugMode) {
+      final prefs = await SharedPreferences.getInstance();
+      final completed = prefs.getBool('sport_welcome_shown') ?? false;
+      if (completed) {
+        debugPrint('ℹ️ Welcome Sport déjà affiché');
+        return;
+      }
+    }
+
+    final locService = LocalizationService.instance;
+    final globalState = GlobalStateManager.instance;
+
+    // Afficher uniquement l'écran de bienvenue
+    final shouldContinue = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => SportTutorialWelcome(
+        languageCode: locService.currentLanguageCode,
+        userName: globalState.userName,
+        onStart: () => Navigator.of(context).pop(true),
+        onSkip: () => Navigator.of(context).pop(false),
+      ),
+    );
+
+    // Marquer le welcome comme affiché
+    if (!debugMode) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('sport_welcome_shown', true);
+    }
+
+    if (shouldContinue == true) {
+      debugPrint('✅ Welcome Sport terminé - Lancement du tutorial Dashboard');
+
+      // Lancer le tutorial du Dashboard APRÈS le welcome
+      await _launchDashboardTutorial();
+    } else {
+      debugPrint('⏭️ Welcome Sport skippé');
+    }
+  }
+
+  /// Lance le tutorial du Dashboard Sport en accédant au widget enfant
+  Future<void> _launchDashboardTutorial() async {
+    // Petit délai pour que le welcome screen se ferme complètement (même timing que Dashboard principal)
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    // Appeler la méthode publique showDashboardTutorial() du Dashboard
+    // En passant les GlobalKeys des onglets
+    final dashboardState = _dashboardKey.currentState;
+    if (dashboardState != null) {
+      await dashboardState.showDashboardTutorial(
+        dashboardTabKey: _dashboardTabKey,
+        cardioTabKey: _cardioTabKey,
+        musculationTabKey: _musculationTabKey,
+      );
+    } else {
+      debugPrint('⚠️ Impossible d\'accéder au state du Dashboard Sport pour lancer le tutorial');
+    }
+  }
+
+  /// Affiche l'écran de bienvenue Cardio si c'est la première visite
+  Future<void> _showCardioTutorial() async {
+    // Vérifier si déjà complété (en mode debug, toujours afficher)
+    const debugMode = true; // Mettre à false en production
+    if (!debugMode) {
+      final prefs = await SharedPreferences.getInstance();
+      final completed = prefs.getBool('cardio_welcome_shown') ?? false;
+      if (completed) {
+        debugPrint('ℹ️ Welcome Cardio déjà affiché');
+        return;
+      }
+    }
+
+    final locService = LocalizationService.instance;
+    final globalState = GlobalStateManager.instance;
+
+    // Afficher uniquement l'écran de bienvenue
+    final shouldContinue = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => CardioTutorialWelcome(
+        languageCode: locService.currentLanguageCode,
+        userName: globalState.userName,
+        onStart: () => Navigator.of(context).pop(true),
+        onSkip: () => Navigator.of(context).pop(false),
+      ),
+    );
+
+    // Marquer le welcome comme affiché
+    if (!debugMode) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('cardio_welcome_shown', true);
+    }
+
+    if (shouldContinue == true) {
+      debugPrint('✅ Welcome Cardio terminé - Lancement du tutorial');
+
+      // Lancer le tutorial Cardio APRÈS le welcome
+      await _launchCardioTutorial();
+    } else {
+      debugPrint('⏭️ Welcome Cardio skippé');
+    }
+  }
+
+  /// Lance le tutorial Cardio en accédant au widget enfant
+  Future<void> _launchCardioTutorial() async {
+    // Petit délai pour que le welcome screen se ferme complètement
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    // Appeler la méthode publique showCardioTutorial() du widget Cardio
+    final cardioState = _cardioKey.currentState;
+    if (cardioState != null) {
+      await cardioState.showCardioTutorial();
+    } else {
+      debugPrint('⚠️ Impossible d\'accéder au state de Cardio pour lancer le tutorial');
+    }
   }
 
   /// NOUVEAU: Chargement synchrone instantané depuis GlobalStateManager
@@ -121,6 +259,14 @@ class _SportSectionState extends State<SportSection>
       _currentIndex = index;
     });
     _tabController.animateTo(index);
+
+    // Lancer le tutorial Cardio si on navigue vers l'onglet Cardio (index 1) pour la première fois
+    if (index == 1 && !_cardioTutorialLaunched) {
+      _cardioTutorialLaunched = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _showCardioTutorial();
+      });
+    }
   }
 
   void _onTabTapped(int index) {
@@ -212,7 +358,7 @@ class _SportSectionState extends State<SportSection>
                         onPageChanged: _onPageChanged,
                         children: [
                           SportDashboard(key: _dashboardKey, onOpenCalendar: _openSportCalendar),
-                          SportCardioHybrid(onOpenCalendar: _openSportCalendar),
+                          SportCardioHybrid(key: _cardioKey, onOpenCalendar: _openSportCalendar),
                           SportMusculationHybrid(onOpenCalendar: _openSportCalendar),
                         ],
                       ),
@@ -255,9 +401,15 @@ class _SportSectionState extends State<SportSection>
                 // Flex personnalisés : plus d'espace pour "Tableau de bord"
                 final flex = index == 0 ? 3 : 2;
                 
+                // Sélectionner la GlobalKey appropriée
+                final GlobalKey? tutorialKey = index == 0
+                    ? _dashboardTabKey
+                    : (index == 1 ? _cardioTabKey : _musculationTabKey);
+
                 return Expanded(
                   flex: flex,
                   child: GestureDetector(
+                    key: tutorialKey, // Attacher la key pour le tutorial
                     onTap: () => _onTabTapped(index),
                     child: Container(
                       margin: EdgeInsets.only(

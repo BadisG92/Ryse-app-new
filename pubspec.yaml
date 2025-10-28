@@ -103,6 +103,9 @@ dependencies:
   # AI Analysis
   google_generative_ai: ^0.4.6
 
+  # Tutorial / Feature Discovery
+  tutorial_coach_mark: ^1.2.11
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

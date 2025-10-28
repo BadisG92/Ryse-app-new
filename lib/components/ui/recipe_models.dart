@@ -28,10 +28,25 @@ class RecipeIngredient {
   });
 
   // Calculer les valeurs nutritionnelles pour cette quantité d'ingrédient
-  double get totalCalories => (caloriesPer100g * quantity) / 100;
-  double get totalProteins => (proteinsPer100g * quantity) / 100;
-  double get totalCarbs => (carbsPer100g * quantity) / 100;
-  double get totalFats => (fatsPer100g * quantity) / 100;
+  double get totalCalories {
+    final result = (caloriesPer100g * quantity) / 100;
+    return result.isFinite ? result : 0;
+  }
+
+  double get totalProteins {
+    final result = (proteinsPer100g * quantity) / 100;
+    return result.isFinite ? result : 0;
+  }
+
+  double get totalCarbs {
+    final result = (carbsPer100g * quantity) / 100;
+    return result.isFinite ? result : 0;
+  }
+
+  double get totalFats {
+    final result = (fatsPer100g * quantity) / 100;
+    return result.isFinite ? result : 0;
+  }
 
   // Créer une copie avec une nouvelle quantité
   RecipeIngredient copyWith({
@@ -79,12 +94,15 @@ class RecipeDetailModel {
       totalFats += ingredient.totalFats;
     }
 
+    // Protection contre la division par zéro
+    final portions = currentPortions > 0 ? currentPortions : 1;
+
     // Diviser par le nombre de portions actuelles pour obtenir la valeur par portion
     return {
-      'calories': (totalCalories / currentPortions).round(),
-      'proteins': (totalProteins / currentPortions).round(),
-      'carbs': (totalCarbs / currentPortions).round(),
-      'fats': (totalFats / currentPortions).round(),
+      'calories': (totalCalories / portions).round(),
+      'proteins': (totalProteins / portions).round(),
+      'carbs': (totalCarbs / portions).round(),
+      'fats': (totalFats / portions).round(),
     };
   }
 
@@ -162,7 +180,25 @@ class Recipe {
     try {
       final id = json['id'] is int ? json['id'] : int.tryParse(json['id'].toString()) ?? 0;
       final name = LocalizationService.instance.getTextFromColumns(json['name_fr'], json['name_en']);
-      final calories = json['calories per portion'] ?? 0;
+
+      // Protection contre les valeurs infinies ou invalides
+      int _safeInt(dynamic value, int defaultValue) {
+        if (value == null) return defaultValue;
+        if (value is int) return value;
+        if (value is double) {
+          if (value.isFinite) return value.round();
+          return defaultValue;
+        }
+        final parsed = int.tryParse(value.toString());
+        return parsed ?? defaultValue;
+      }
+
+      final calories = _safeInt(json['calories per portion'], 0);
+      final servings = _safeInt(json['servings'], 1);
+      final proteins = _safeInt(json['proteins per portion'], 0);
+      final carbs = _safeInt(json['carbs per portion'], 0);
+      final fats = _safeInt(json['fat per portion'], 0);
+
       final tags = _parseTagsFromJson(json);
       final steps = _parseStepsFromJson(json);
 
@@ -172,11 +208,11 @@ class Recipe {
         image: json['image_url'] ?? "/placeholder.svg?height=200&width=200",
         duration: json['duration']?.toString() ?? "0 min",
         calories: calories,
-        servings: json['servings'] ?? 1,
+        servings: servings > 0 ? servings : 1, // Assurer qu'on a au moins 1 portion
         tags: tags,
-        proteins: json['proteins per portion'] ?? 0,
-        carbs: json['carbs per portion'] ?? 0,
-        fats: json['fat per portion'] ?? 0,
+        proteins: proteins,
+        carbs: carbs,
+        fats: fats,
         ingredients: [], // Les ingrédients seront chargés séparément
         steps: steps,
         difficulty: json['difficulty'] ?? 'Facile',
@@ -261,6 +297,13 @@ class Recipe {
   // Helpers pour compatibilité avec l'écran de détails
   String get time => duration;
   int get portions => servings;
+
+  // Getters sûrs pour éviter les erreurs d'affichage avec Infinity
+  int get safeCalories => calories.isFinite ? calories : 0;
+  int get safeProteins => proteins.isFinite ? proteins : 0;
+  int get safeCarbs => carbs.isFinite ? carbs : 0;
+  int get safeFats => fats.isFinite ? fats : 0;
+  int get safeServings => servings > 0 ? servings : 1;
   
   // Helper pour normaliser les strings pour comparaison
   static String _normalizeString(String str) {

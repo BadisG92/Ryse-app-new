@@ -348,11 +348,11 @@ class AppTranslations {
       'en': 'Your plan is ready',
     },
     'daily_goal': {
-      'fr': 'Votre objectif quotidien',
+      'fr': 'Ton objectif quotidien',
       'en': 'Your daily goal',
     },
     'calculated_specially': {
-      'fr': 'Calculé spécialement pour vous',
+      'fr': 'Calculé spécialement pour toi',
       'en': 'Calculated specially for you',
     },
     'start_journey': {
@@ -4156,6 +4156,332 @@ class AppTranslations {
     'per_portion_of': {
       'fr': 'par portion de',
       'en': 'per portion of',
+    },
+
+    // Tutorial / Feature Discovery
+    'understood': {
+      'fr': 'Compris',
+      'en': 'Got it',
+    },
+    'skip': {
+      'fr': 'Passer',
+      'en': 'Skip',
+    },
+
+    // Tutorial Dashboard (tutoiement + pédagogique)
+    'tutorial_dashboard_add_food_title': {
+      'fr': 'Ajouter un repas',
+      'en': 'Add a Meal',
+    },
+    'tutorial_dashboard_add_food_desc': {
+      'fr': 'Ajoute tes repas avec 5 méthodes : description, photo, code-barres, recherche ou recettes.',
+      'en': 'Add your meals with 5 methods: description, photo, barcode, search or recipes.',
+    },
+    'tutorial_dashboard_add_exercise_title': {
+      'fr': 'Ajouter un exercice',
+      'en': 'Add an Exercise',
+    },
+    'tutorial_dashboard_add_exercise_desc': {
+      'fr': 'Enregistre tes séances : musculation, cardio, HIIT et plus encore.',
+      'en': 'Log your sessions: weight training, cardio, HIIT and more.',
+    },
+    'tutorial_dashboard_calories_title': {
+      'fr': 'Tes objectifs du jour',
+      'en': 'Your Daily Goals',
+    },
+    'tutorial_dashboard_calories_desc': {
+      'fr': 'Tes 4 objectifs quotidiens : calories, nutrition, sport et hydratation.',
+      'en': 'Your 4 daily goals: calories, nutrition, sport and hydration.',
+    },
+    'tutorial_dashboard_nutrition_tab_title': {
+      'fr': 'Onglet Nutrition',
+      'en': 'Nutrition Tab',
+    },
+    'tutorial_dashboard_nutrition_tab_desc': {
+      'fr': 'Accède à la page nutrition : ajoute tes aliments, consulte ton journal et tes recettes.',
+      'en': 'Access the nutrition page: add foods, view your journal and recipes.',
+    },
+    'tutorial_dashboard_sport_tab_title': {
+      'fr': 'Onglet Sport',
+      'en': 'Sport Tab',
+    },
+    'tutorial_dashboard_sport_tab_desc': {
+      'fr': 'Gère tes entraînements, sessions de cardio et suis ta progression sportive.',
+      'en': 'Manage your workouts, cardio sessions and track your sports progress.',
+    },
+
+    // Tutorial Nutrition
+    'tutorial_nutrition_dashboard_tab_title': {
+      'fr': 'Tableau de bord',
+      'en': 'Dashboard',
+    },
+    'tutorial_nutrition_dashboard_tab_desc': {
+      'fr': 'Vue d\'ensemble de tes calories, macros et objectifs nutritionnels.',
+      'en': 'Overview of your calories, macros and nutrition goals.',
+    },
+    'tutorial_nutrition_journal_tab_title': {
+      'fr': 'Journal alimentaire',
+      'en': 'Food Journal',
+    },
+    'tutorial_nutrition_journal_tab_desc': {
+      'fr': 'Historique de tes repas avec analyses du Coach Ryze en temps réel.',
+      'en': 'Meal history with real-time Coach Ryze analyses.',
+    },
+    'tutorial_nutrition_recipes_tab_title': {
+      'fr': 'Mes recettes',
+      'en': 'My Recipes',
+    },
+    'tutorial_nutrition_recipes_tab_desc': {
+      'fr': 'Tes recettes favorites à ajouter en un clic dans tes repas.',
+      'en': 'Your favorite recipes to add with one click to your meals.',
+    },
+
+    // Tutorial Dashboard Nutrition - Éléments détaillés (tutoiement + pédagogique)
+    'tutorial_nutrition_calories_title': {
+      'fr': 'Tes calories du jour',
+      'en': 'Your Daily Calories',
+    },
+    'tutorial_nutrition_calories_desc': {
+      'fr': 'Suis tes calories consommées et ton objectif quotidien en un coup d\'œil.',
+      'en': 'Track your consumed calories and daily goal at a glance.',
+    },
+    'tutorial_nutrition_macros_title': {
+      'fr': 'Tes macronutriments',
+      'en': 'Your Macronutrients',
+    },
+    'tutorial_nutrition_macros_desc': {
+      'fr': 'Protéines, glucides et lipides : vérifie l\'équilibre de ton alimentation.',
+      'en': 'Proteins, carbs and fats: check your diet balance.',
+    },
+    'tutorial_nutrition_hydration_meals_title': {
+      'fr': 'Hydratation & Repas',
+      'en': 'Hydration & Meals',
+    },
+    'tutorial_nutrition_hydration_meals_desc': {
+      'fr': 'Ton eau quotidienne à gauche, la répartition de tes calories par repas à droite.',
+      'en': 'Your daily water on the left, calorie distribution by meal on the right.',
+    },
+    'tutorial_nutrition_quick_actions_title': {
+      'fr': 'Ajouter tes aliments',
+      'en': 'Add Your Foods',
+    },
+    'tutorial_nutrition_quick_actions_desc': {
+      'fr': '5 méthodes : description textuelle, photo, code-barres, recherche ou recettes.',
+      'en': '5 methods: text description, photo, barcode, search or recipes.',
+    },
+
+    // Tutorial Sport
+    'tutorial_sport_dashboard_tab_title': {
+      'fr': 'Tableau de bord',
+      'en': 'Dashboard',
+    },
+    'tutorial_sport_dashboard_tab_desc': {
+      'fr': 'Tes statistiques sportives de la semaine : calories, séances et historique.',
+      'en': 'Your weekly sports stats: calories, sessions and history.',
+    },
+    'tutorial_sport_cardio_tab_title': {
+      'fr': 'Cardio',
+      'en': 'Cardio',
+    },
+    'tutorial_sport_cardio_tab_desc': {
+      'fr': 'Tracke tes séances cardio en temps réel : course, vélo, marche, HIIT...',
+      'en': 'Track your cardio sessions in real time: running, cycling, walking, HIIT...',
+    },
+    'tutorial_sport_musculation_tab_title': {
+      'fr': 'Musculation',
+      'en': 'Strength Training',
+    },
+    'tutorial_sport_musculation_tab_desc': {
+      'fr': 'Séances personnalisées par Coach Ryze, exercices avec séries et reps.',
+      'en': 'Personalized sessions by Coach Ryze, exercises with sets and reps.',
+    },
+    'tutorial_sport_calories_title': {
+      'fr': 'Calories brûlées',
+      'en': 'Calories Burned',
+    },
+    'tutorial_sport_calories_desc': {
+      'fr': 'Calories brûlées cette semaine : musculation et cardio combinés.',
+      'en': 'Calories burned this week: strength training and cardio combined.',
+    },
+    'tutorial_sport_sessions_title': {
+      'fr': 'Progression hebdomadaire',
+      'en': 'Weekly Progress',
+    },
+    'tutorial_sport_sessions_desc': {
+      'fr': 'Nombre de séances, streak de semaines consécutives et temps total.',
+      'en': 'Number of sessions, consecutive weeks streak and total time.',
+    },
+    'tutorial_sport_split_title': {
+      'fr': 'Activités du jour',
+      'en': 'Today\'s Activities',
+    },
+    'tutorial_sport_split_desc': {
+      'fr': 'Toutes tes activités du jour : musculation et cardio avec leurs détails.',
+      'en': 'All your activities today: strength training and cardio with details.',
+    },
+    'tutorial_sport_actions_title': {
+      'fr': 'Démarrer une activité',
+      'en': 'Start an Activity',
+    },
+    'tutorial_sport_actions_desc': {
+      'fr': 'Lance une séance : Cardio (course, vélo, HIIT) ou Musculation (guidée ou libre).',
+      'en': 'Start a session: Cardio (running, cycling, HIIT) or Strength (guided or free).',
+    },
+
+    // Tutorial Cardio
+    'tutorial_cardio_stats_title': {
+      'fr': 'Statistiques de la semaine',
+      'en': 'Weekly Statistics',
+    },
+    'tutorial_cardio_stats_desc': {
+      'fr': 'Performances cardio de la semaine : calories, distance, séances et temps.',
+      'en': 'Weekly cardio performance: calories, distance, sessions and time.',
+    },
+    'tutorial_cardio_activities_title': {
+      'fr': 'Choisir une activité',
+      'en': 'Choose an Activity',
+    },
+    'tutorial_cardio_activities_desc': {
+      'fr': 'Choisis ton activité : course, vélo, marche, natation, HIIT...',
+      'en': 'Choose your activity: running, cycling, walking, swimming, HIIT...',
+    },
+    'tutorial_cardio_last_session_title': {
+      'fr': 'Dernière séance',
+      'en': 'Last Session',
+    },
+    'tutorial_cardio_last_session_desc': {
+      'fr': 'Détails de ta dernière séance : activité, durée, distance, calories.',
+      'en': 'Last session details: activity, duration, distance, calories.',
+    },
+    'tutorial_cardio_week_sessions_title': {
+      'fr': 'Séances de la semaine',
+      'en': 'Week Sessions',
+    },
+    'tutorial_cardio_week_sessions_desc': {
+      'fr': 'Toutes tes séances cardio de la semaine en cours.',
+      'en': 'All your cardio sessions for the current week.',
+    },
+    'tutorial_cardio_history_title': {
+      'fr': 'Historique complet',
+      'en': 'Complete History',
+    },
+    'tutorial_cardio_history_desc': {
+      'fr': 'Historique complet de toutes tes séances pour suivre ta progression.',
+      'en': 'Complete history of all your sessions to track your progress.',
+    },
+
+    // Legacy nutrition tutorial (non utilisé mais conservé)
+    'tutorial_nutrition_ai_scanner_title': {
+      'fr': 'Scanner IA',
+      'en': 'AI Scanner',
+    },
+    'tutorial_nutrition_ai_scanner_desc': {
+      'fr': 'Prenez une photo de votre assiette et l\'IA analysera automatiquement les aliments et leurs calories.',
+      'en': 'Take a picture of your plate and the AI will automatically analyze the foods and their calories.',
+    },
+    'tutorial_nutrition_barcode_title': {
+      'fr': 'Scanner barcode',
+      'en': 'Barcode Scanner',
+    },
+    'tutorial_nutrition_barcode_desc': {
+      'fr': 'Scannez le code-barres d\'un produit pour obtenir instantanément ses informations nutritionnelles.',
+      'en': 'Scan a product barcode to instantly get its nutritional information.',
+    },
+    'tutorial_nutrition_manual_title': {
+      'fr': 'Recherche manuelle',
+      'en': 'Manual Search',
+    },
+    'tutorial_nutrition_manual_desc': {
+      'fr': 'Recherchez un aliment dans notre base de données et ajoutez-le à votre journal.',
+      'en': 'Search for a food in our database and add it to your journal.',
+    },
+    'tutorial_nutrition_recipes_title': {
+      'fr': 'Recettes',
+      'en': 'Recipes',
+    },
+    'tutorial_nutrition_recipes_desc': {
+      'fr': 'Créez et sauvegardez vos recettes favorites pour les ajouter rapidement.',
+      'en': 'Create and save your favorite recipes to add them quickly.',
+    },
+    'tutorial_nutrition_water_title': {
+      'fr': 'Suivi de l\'eau',
+      'en': 'Water Tracking',
+    },
+    'tutorial_nutrition_water_desc': {
+      'fr': 'Suivez votre hydratation quotidienne. Restez hydraté pour maximiser vos performances !',
+      'en': 'Track your daily hydration. Stay hydrated to maximize your performance!',
+    },
+
+    // Tutorial Sport
+    'tutorial_sport_start_workout_title': {
+      'fr': 'Démarrer un entraînement',
+      'en': 'Start Workout',
+    },
+    'tutorial_sport_start_workout_desc': {
+      'fr': 'Lancez une session de musculation et enregistrez vos séries, répétitions et poids.',
+      'en': 'Start a weight training session and record your sets, reps and weights.',
+    },
+    'tutorial_sport_add_cardio_title': {
+      'fr': 'Ajouter du cardio',
+      'en': 'Add Cardio',
+    },
+    'tutorial_sport_add_cardio_desc': {
+      'fr': 'Enregistrez vos sessions de cardio (course, vélo, natation...) avec durée et calories brûlées.',
+      'en': 'Record your cardio sessions (running, cycling, swimming...) with duration and calories burned.',
+    },
+    'tutorial_sport_history_title': {
+      'fr': 'Historique',
+      'en': 'History',
+    },
+    'tutorial_sport_history_desc': {
+      'fr': 'Consultez l\'historique de vos entraînements et suivez votre progression au fil du temps.',
+      'en': 'View your workout history and track your progress over time.',
+    },
+
+    // Tutorial Welcome Screen (Écran de bienvenue Coach Ryze)
+    'tutorial_welcome_title': {
+      'fr': 'Bonjour, je suis Coach Ryze ! 👋',
+      'en': 'Hello, I\'m Coach Ryze! 👋',
+    },
+    'tutorial_welcome_subtitle': {
+      'fr': 'Ton coach personnel pour t\'accompagner dans ta transformation physique.',
+      'en': 'Your personal coach to support you in your physical transformation.',
+    },
+    'tutorial_welcome_capabilities': {
+      'fr': 'Voici ce que je peux faire pour toi :',
+      'en': 'Here\'s what I can do for you:',
+    },
+    'tutorial_welcome_feature_1': {
+      'fr': 'Analyser tes repas en photo et calculer les calories',
+      'en': 'Analyze your meals from photos and calculate calories',
+    },
+    'tutorial_welcome_feature_text': {
+      'fr': 'Et si tu n\'as pas de photo, décris-moi ton repas et je m\'en occupe',
+      'en': 'And if you don\'t have a photo, describe your meal and I\'ll handle it',
+    },
+    'tutorial_welcome_feature_2': {
+      'fr': 'Te conseiller sur ta nutrition personnalisée',
+      'en': 'Advise you on your personalized nutrition',
+    },
+    'tutorial_welcome_feature_3': {
+      'fr': 'Créer des séances de sport adaptées à ton niveau',
+      'en': 'Create workout sessions adapted to your level',
+    },
+    'tutorial_welcome_feature_4': {
+      'fr': 'Analyser tes performances et ta progression',
+      'en': 'Analyze your performance and progress',
+    },
+    'tutorial_welcome_feature_5': {
+      'fr': 'T\'aider à t\'améliorer sur chaque exercice',
+      'en': 'Help you improve on each exercise',
+    },
+    'tutorial_welcome_start': {
+      'fr': 'Commencer la visite',
+      'en': 'Start the tour',
+    },
+    'tutorial_skip_intro': {
+      'fr': 'Passer l\'introduction',
+      'en': 'Skip introduction',
     },
   };
 

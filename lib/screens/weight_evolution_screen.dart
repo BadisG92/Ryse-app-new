@@ -524,17 +524,110 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
           ),
           const SizedBox(height: 16),
           SizedBox(
-            height: 250,
-            child: filteredProgress.entries.length > 10 
+            height: 200, // Réduit de 250 à 200
+            child: filteredProgress.entries.length > 10
               ? SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: SizedBox(
                     width: math.max(400, filteredProgress.entries.length * 50.0),
-                    height: 250,
+                    height: 200,
                     child: LineChart(_buildLineChartData(filteredProgress)),
                   ),
                 )
               : LineChart(_buildLineChartData(filteredProgress)),
+          ),
+
+          // Statistique de tendance
+          if (filteredProgress.entries.length > 1) ...[
+            const SizedBox(height: 12),
+            _buildTrendStats(filteredProgress),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// Widget affichant les statistiques de tendance
+  Widget _buildTrendStats(WeightProgress weightProgress) {
+    final entries = weightProgress.entries;
+    if (entries.length < 2) return const SizedBox.shrink();
+
+    // Calculer la différence entre première et dernière pesée
+    final firstWeight = entries.first.weight;
+    final lastWeight = entries.last.weight;
+    final totalChange = lastWeight - firstWeight;
+
+    // Calculer le nombre de jours
+    final daysDifference = entries.last.date.difference(entries.first.date).inDays;
+    if (daysDifference <= 0) return const SizedBox.shrink();
+
+    // Calculer la tendance par semaine
+    final changePerWeek = (totalChange / daysDifference) * 7;
+
+    // Déterminer l'objectif utilisateur (perte, gain, ou maintien)
+    final currentWeight = weightProgress.currentWeight;
+    final targetWeight = weightProgress.targetWeight;
+    final isLosingWeight = targetWeight < currentWeight; // Objectif de perte
+    final isGainingWeight = targetWeight > currentWeight; // Objectif de gain
+
+    // Adapter la couleur selon l'objectif ET la tendance
+    Color trendColor;
+    IconData trendIcon;
+
+    if (changePerWeek.abs() < 0.1) {
+      // Maintien (±0.1 kg/sem)
+      trendColor = const Color(0xFF64748B); // Gris
+      trendIcon = LucideIcons.minus;
+    } else if (changePerWeek < 0) {
+      // Perte de poids
+      if (isLosingWeight) {
+        // Objectif perte + perte réelle = 🟢 BIEN
+        trendColor = Colors.green;
+        trendIcon = LucideIcons.trendingDown;
+      } else if (isGainingWeight) {
+        // Objectif gain + perte réelle = 🔴 MAUVAIS
+        trendColor = Colors.red;
+        trendIcon = LucideIcons.trendingDown;
+      } else {
+        // Maintien + perte = 🟠 ATTENTION
+        trendColor = Colors.orange;
+        trendIcon = LucideIcons.trendingDown;
+      }
+    } else {
+      // Gain de poids
+      if (isGainingWeight) {
+        // Objectif gain + gain réel = 🟢 BIEN
+        trendColor = Colors.green;
+        trendIcon = LucideIcons.trendingUp;
+      } else if (isLosingWeight) {
+        // Objectif perte + gain réel = 🔴 MAUVAIS
+        trendColor = Colors.red;
+        trendIcon = LucideIcons.trendingUp;
+      } else {
+        // Maintien + gain = 🟠 ATTENTION
+        trendColor = Colors.orange;
+        trendIcon = LucideIcons.trendingUp;
+      }
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: trendColor.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(trendIcon, size: 16, color: trendColor),
+          const SizedBox(width: 6),
+          Text(
+            'Tendance: ${changePerWeek >= 0 ? '+' : ''}${changePerWeek.toStringAsFixed(2)} kg/sem',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: trendColor,
+            ),
           ),
         ],
       ),
@@ -623,7 +716,7 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
     // Étendre seulement la ligne d'objectif, pas les données de poids
     final dataPointsCount = weightProgress.entries.length;
     final extendedWidth = dataPointsCount + 3; // Étendre un peu l'axe X pour la ligne d'objectif
-    
+
     return LineChartData(
       gridData: FlGridData(
         show: true,
@@ -631,8 +724,8 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
         horizontalInterval: _calculateYInterval(),
         getDrawingHorizontalLine: (value) {
           return FlLine(
-            color: const Color(0xFFE2E8F0),
-            strokeWidth: 1,
+            color: const Color(0xFFCBD5E1), // Grille plus visible
+            strokeWidth: 1.5,
           );
         },
       ),
@@ -666,14 +759,18 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
           sideTitles: SideTitles(
             showTitles: true,
             interval: _calculateYInterval(),
-            reservedSize: 40,
+            reservedSize: 50, // Plus d'espace pour les labels
             getTitlesWidget: (value, meta) {
               if (_shouldShowYLabel(value)) {
-                return Text(
-                  '${value.toStringAsFixed(0)}',
-                  style: const TextStyle(
-                    color: Color(0xFF64748B),
-                    fontSize: 10,
+                return Container(
+                  padding: const EdgeInsets.only(right: 4),
+                  child: Text(
+                    '${value.toStringAsFixed(0)} kg',
+                    style: const TextStyle(
+                      color: Color(0xFF0B132B), // Plus sombre et visible
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 );
               }
@@ -699,9 +796,8 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
           tooltipMargin: 8,
           getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
             return touchedBarSpots.map((barSpot) {
-              // Afficher le tooltip seulement pour la première ligne (données réelles, barDataIndex = 0)
-              if (barSpot.barIndex == 0 && barSpot.x.toInt() < weightProgress.entries.length) {
-                final entry = weightProgress.entries[barSpot.x.toInt()];
+              // Afficher le tooltip seulement pour la ligne de tendance (barDataIndex = 1)
+              if (barSpot.barIndex == 1 && barSpot.x.toInt() < weightProgress.entries.length) {
                 return LineTooltipItem(
                   '${barSpot.y.toStringAsFixed(1)} ${'kg'.tr(LocalizationService.instance.currentLanguageCode)}',
                   const TextStyle(
@@ -723,11 +819,22 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
       minY: weightProgress.minY,
       maxY: weightProgress.maxY,
       lineBarsData: [
-        // Ligne de données - seulement les points réels
+        // 1. Ligne des données brutes (gris clair, fine) - pour contexte
+        if (weightProgress.entries.length > 3)
+          LineChartBarData(
+            spots: weightProgress.entries.asMap().entries.map((entry) {
+              return FlSpot(entry.key.toDouble(), entry.value.weight);
+            }).toList(),
+            isCurved: true,
+            color: const Color(0xFF94A3B8).withValues(alpha: 0.5), // Gris clair
+            barWidth: 1.5,
+            dotData: const FlDotData(show: false),
+            belowBarData: BarAreaData(show: false),
+          ),
+
+        // 2. Ligne de tendance (moyenne mobile 7 jours) - couleur principale
         LineChartBarData(
-          spots: weightProgress.entries.asMap().entries.map((entry) {
-            return FlSpot(entry.key.toDouble(), entry.value.weight);
-          }).toList(),
+          spots: _calculateMovingAverage(weightProgress.entries),
           isCurved: true,
           color: const Color(0xFF0B132B),
           barWidth: 3,
@@ -736,7 +843,7 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
             show: true,
             getDotPainter: (spot, percent, barData, index) {
               return FlDotCirclePainter(
-                radius: 3,
+                radius: 4,
                 color: const Color(0xFF0B132B),
                 strokeWidth: 2,
                 strokeColor: Colors.white,
@@ -745,10 +852,18 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
           ),
           belowBarData: BarAreaData(
             show: true,
-            color: const Color(0xFF0B132B).withOpacity(0.1),
+            gradient: LinearGradient(
+              colors: [
+                const Color(0xFF0B132B).withValues(alpha: 0.15),
+                const Color(0xFF0B132B).withValues(alpha: 0.0),
+              ],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
           ),
         ),
-        // Ligne d'objectif - Étendre sur toute la largeur du graphique
+
+        // 3. Ligne d'objectif - Étendre sur toute la largeur du graphique
         if (weightProgress.targetWeight > 0)
           LineChartBarData(
             spots: [
@@ -764,6 +879,37 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
           ),
       ],
     );
+  }
+
+  /// Calcule la moyenne mobile sur 7 jours pour lisser les fluctuations
+  List<FlSpot> _calculateMovingAverage(List<WeightEntry> entries) {
+    if (entries.length <= 3) {
+      // Si peu de données, retourner les points originaux
+      return entries.asMap().entries.map((entry) {
+        return FlSpot(entry.key.toDouble(), entry.value.weight);
+      }).toList();
+    }
+
+    final windowSize = math.min(7, entries.length);
+    final List<FlSpot> smoothedSpots = [];
+
+    for (int i = 0; i < entries.length; i++) {
+      // Calculer la moyenne des points dans la fenêtre
+      final startIndex = math.max(0, i - windowSize ~/ 2);
+      final endIndex = math.min(entries.length, i + windowSize ~/ 2 + 1);
+
+      double sum = 0;
+      int count = 0;
+      for (int j = startIndex; j < endIndex; j++) {
+        sum += entries[j].weight;
+        count++;
+      }
+
+      final average = sum / count;
+      smoothedSpots.add(FlSpot(i.toDouble(), average));
+    }
+
+    return smoothedSpots;
   }
 
   // Historique des pesées

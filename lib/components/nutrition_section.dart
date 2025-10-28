@@ -18,6 +18,11 @@ import 'ui/refresh_wrapper.dart';
 import 'ui/custom_snackbar.dart';
 import 'ui/global_state_header.dart';
 import '../services/fast_cache_service.dart';
+import 'ui/nutrition_tutorial_welcome.dart'; // Welcome screen nutrition
+import 'tutorial/tutorial_overlay_system.dart'; // Nouveau système tutorial avec page mockée
+import 'tutorial/tutorial_nutrition_dashboard.dart'; // Page nutrition mockée pour tutorial
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:tutorial_coach_mark/tutorial_coach_mark.dart'; // Pour ContentAlign et ShapeLightFocus
 
 class NutritionSection extends StatefulWidget {
   const NutritionSection({super.key});
@@ -38,6 +43,14 @@ class _NutritionSectionState extends State<NutritionSection>
   bool _loadingStreak = true;
   String _objectivesText(String languageCode) => _loadingObjectives ? '...' : '$_completedGoals/$_totalGoals ${'objectives'.tr(languageCode)}';
   String _streakText(String languageCode) => _loadingStreak ? '...' : '$_currentStreak ${'days'.tr(languageCode)}';
+
+  // Tutorial GlobalKeys pour les 3 onglets
+  final GlobalKey _dashboardTabKey = GlobalKey();
+  final GlobalKey _journalTabKey = GlobalKey();
+  final GlobalKey _recipesTabKey = GlobalKey();
+
+  // GlobalKey pour accéder au state du Dashboard et lancer son tutorial
+  final GlobalKey<NutritionDashboardHybridState> _dashboardWidgetKey = GlobalKey<NutritionDashboardHybridState>();
 
   List<String> _getPageNames(String languageCode) {
     return [
@@ -63,6 +76,149 @@ class _NutritionSectionState extends State<NutritionSection>
 
     // Forcer la mise à jour du compteur d'objectifs (en arrière-plan)
     DashboardService.refreshGoalsNotifier();
+
+    // Lancer le tutorial après le build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _showNutritionTutorial();
+    });
+  }
+
+  /// Affiche l'écran de bienvenue Nutrition si c'est la première visite
+  Future<void> _showNutritionTutorial() async {
+    // Vérifier si déjà complété (en mode debug, toujours afficher)
+    const debugMode = true; // Mettre à false en production
+    if (!debugMode) {
+      final prefs = await SharedPreferences.getInstance();
+      final completed = prefs.getBool('nutrition_welcome_shown') ?? false;
+      if (completed) {
+        debugPrint('ℹ️ Welcome Nutrition déjà affiché');
+        return;
+      }
+    }
+
+    final locService = LocalizationService.instance;
+    final globalState = GlobalStateManager.instance;
+
+    // Afficher uniquement l'écran de bienvenue
+    final shouldContinue = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => NutritionTutorialWelcome(
+        languageCode: locService.currentLanguageCode,
+        userName: globalState.userName,
+        onStart: () => Navigator.of(context).pop(true),
+        onSkip: () => Navigator.of(context).pop(false),
+      ),
+    );
+
+    // Marquer le welcome comme affiché
+    if (!debugMode) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('nutrition_welcome_shown', true);
+    }
+
+    if (shouldContinue == true) {
+      debugPrint('✅ Welcome Nutrition terminé - Lancement du tutorial Dashboard');
+
+      // Lancer le tutorial du Dashboard APRÈS le welcome
+      await _launchDashboardTutorial();
+    } else {
+      debugPrint('⏭️ Welcome Nutrition skippé');
+    }
+  }
+
+  /// Lance le tutorial du Dashboard Nutrition avec page mockée
+  Future<void> _launchDashboardTutorial() async {
+    // Petit délai pour que le welcome screen se ferme complètement
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    if (!mounted) return;
+
+    final locService = LocalizationService.instance;
+
+    // Créer les GlobalKeys pour la page mockée
+    final caloriesKey = GlobalKey();
+    final macrosKey = GlobalKey();
+    final hydrationMealsKey = GlobalKey();
+    final quickActionsKey = GlobalKey();
+
+    // Créer la page mockée avec données vierges
+    final mockPage = TutorialNutritionDashboard(
+      caloriesKey: caloriesKey,
+      macrosKey: macrosKey,
+      hydrationMealsKey: hydrationMealsKey,
+      quickActionsKey: quickActionsKey,
+    );
+
+    // Créer les targets pour le tutorial
+    final targets = [
+      TutorialOverlaySystem.createTarget(
+        identify: 'calories',
+        keyTarget: caloriesKey,
+        title: 'tutorial_nutrition_calories_title'.tr(locService.currentLanguageCode),
+        description: 'tutorial_nutrition_calories_desc'.tr(locService.currentLanguageCode),
+        align: ContentAlign.bottom,
+        shape: ShapeLightFocus.RRect,
+        radius: 24,
+        avatarPath: 'assets/images/coach_ryze_nutrition_avatar.png',
+        nextTargetKey: macrosKey, // Scroll vers macros après
+      ),
+      TutorialOverlaySystem.createTarget(
+        identify: 'macros',
+        keyTarget: macrosKey,
+        title: 'tutorial_nutrition_macros_title'.tr(locService.currentLanguageCode),
+        description: 'tutorial_nutrition_macros_desc'.tr(locService.currentLanguageCode),
+        align: ContentAlign.bottom,
+        shape: ShapeLightFocus.RRect,
+        radius: 24,
+        avatarPath: 'assets/images/coach_ryze_nutrition_avatar.png',
+        nextTargetKey: hydrationMealsKey, // Scroll vers hydratation après
+      ),
+      TutorialOverlaySystem.createTarget(
+        identify: 'hydration_meals',
+        keyTarget: hydrationMealsKey,
+        title: 'tutorial_nutrition_hydration_meals_title'.tr(locService.currentLanguageCode),
+        description: 'tutorial_nutrition_hydration_meals_desc'.tr(locService.currentLanguageCode),
+        align: ContentAlign.top, // ✅ Bulle en haut comme demandé
+        shape: ShapeLightFocus.RRect,
+        radius: 24,
+        avatarPath: 'assets/images/coach_ryze_nutrition_avatar.png',
+        nextTargetKey: quickActionsKey, // Scroll vers quick actions après
+      ),
+      TutorialOverlaySystem.createTarget(
+        identify: 'quick_actions',
+        keyTarget: quickActionsKey,
+        title: 'tutorial_nutrition_quick_actions_title'.tr(locService.currentLanguageCode),
+        description: 'tutorial_nutrition_quick_actions_desc'.tr(locService.currentLanguageCode),
+        align: ContentAlign.top, // ✅ Bulle en haut comme demandé
+        shape: ShapeLightFocus.RRect,
+        radius: 24,
+        avatarPath: 'assets/images/coach_ryze_nutrition_avatar.png',
+        // Pas de nextTargetKey, c'est la dernière étape
+      ),
+    ];
+
+    // Lancer le tutorial avec la page mockée
+    await TutorialOverlaySystem().showTutorial(
+      context: context,
+      mockPage: mockPage,
+      targets: targets,
+      onFinish: () {
+        debugPrint('✅ Tutorial Nutrition terminé');
+        // Le Navigator.pop() sera appelé automatiquement par tutorial_coach_mark
+      },
+      onSkip: () {
+        debugPrint('⏭️ Tutorial Nutrition skippé');
+        // Le Navigator.pop() sera appelé automatiquement par tutorial_coach_mark
+      },
+    );
+  }
+
+  /// [OBSOLÈTE] Ancien système de tutorial par onglet - remplacé par TutorialLiveOverlay
+  /// Les tutorials d'onglets individuels ne sont plus utilisés avec le nouveau système
+  Future<void> showTabTutorial(String tabName) async {
+    debugPrint('⚠️ showTabTutorial() est obsolète - utilise TutorialLiveOverlay à la place');
+    // Méthode vide - ne fait plus rien
   }
 
   /// Chargement synchrone instantané depuis GlobalStateManager
@@ -156,10 +312,10 @@ class _NutritionSectionState extends State<NutritionSection>
                       child: PageView(
                         controller: _pageController,
                         onPageChanged: _onPageChanged,
-                        children: const [
-                          NutritionDashboardHybrid(),
-                          NutritionJournalHybrid(),
-                          NutritionRecipesHybrid(),
+                        children: [
+                          NutritionDashboardHybrid(key: _dashboardWidgetKey),
+                          const NutritionJournalHybrid(),
+                          const NutritionRecipesHybrid(),
                         ],
                       ),
                     ),
@@ -200,10 +356,16 @@ class _NutritionSectionState extends State<NutritionSection>
                 final isSelected = _currentIndex == index;
                 // Flex personnalisés : plus d'espace pour "Tableau de bord"
                 final flex = index == 0 ? 3 : 2;
-                
+
+                // Sélectionner la GlobalKey appropriée
+                final GlobalKey? tutorialKey = index == 0
+                    ? _dashboardTabKey
+                    : (index == 1 ? _journalTabKey : _recipesTabKey);
+
                 return Expanded(
                   flex: flex,
                   child: GestureDetector(
+                    key: tutorialKey, // Attacher la key pour le tutorial
                     onTap: () => _onTabTapped(index),
                     child: Container(
                       margin: EdgeInsets.only(

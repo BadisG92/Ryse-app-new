@@ -17,7 +17,7 @@ class AuthService extends ChangeNotifier {
 
   SupabaseClient get _supabase => SupabaseConfig.client;
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
-  GoogleSignIn? _googleSignIn;
+  bool _googleSignInInitialized = false;
 
   UserModel? _currentUser;
   bool _isLoading = false;
@@ -162,31 +162,25 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  /// Initialize Google Sign-In safely (lazy loading)
-  GoogleSignIn _getGoogleSignIn() {
-    if (_googleSignIn == null) {
-      try {
-        // Only initialize if not on web or if properly configured
-        if (kIsWeb) {
-          // Check if Google Client ID is configured for web
-          _googleSignIn = GoogleSignIn(
-            scopes: ['email', 'profile'],
-            // Web will use meta tag configuration
-          );
-        } else {
-          _googleSignIn = GoogleSignIn(
-            scopes: ['email', 'profile'],
-          );
-        }
-      } catch (e) {
-        debugPrint('⚠️ GoogleSignIn init failed: $e');
-        rethrow;
-      }
+  /// Initialize Google Sign-In (V7 API)
+  Future<void> _ensureGoogleSignInInitialized() async {
+    if (_googleSignInInitialized) return;
+
+    try {
+      await GoogleSignIn.instance.initialize(
+        // serverClientId is needed to get server auth code for Supabase
+        // This should be your web client ID from Google Cloud Console
+        // Platform-specific configs are handled in platform files
+      );
+      _googleSignInInitialized = true;
+      debugPrint('✅ GoogleSignIn initialized');
+    } catch (e) {
+      debugPrint('⚠️ GoogleSignIn init failed: $e');
+      rethrow;
     }
-    return _googleSignIn!;
   }
 
-  /// Sign in with Google (with web protection)
+  /// Sign in with Google (V7 API)
   Future<bool> signInWithGoogle() async {
     _setLoading(true);
     _clearError();
@@ -198,15 +192,44 @@ class AuthService extends ChangeNotifier {
         return false;
       }
 
-      final GoogleSignInAccount? googleUser = await _getGoogleSignIn().signIn();
-      if (googleUser == null) return false;
+      // Ensure GoogleSignIn is initialized
+      await _ensureGoogleSignInInitialized();
 
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      // Check if platform supports authenticate()
+      if (!GoogleSignIn.instance.supportsAuthenticate()) {
+        _setError('Google Sign-In not supported on this platform');
+        return false;
+      }
+
+      // V7 API: Use authenticate() to get user account
+      final GoogleSignInAccount googleUser = await GoogleSignIn.instance.authenticate(
+        scopeHint: ['email', 'profile'],
+      );
+
+      // Get ID token for authentication
+      final GoogleSignInAuthentication googleAuth = googleUser.authentication;
+
+      // Verify we have an ID token (required for Supabase)
+      if (googleAuth.idToken == null) {
+        _setError('Failed to get Google ID token');
+        return false;
+      }
+
+      // V7 API: Get server auth code for Supabase backend
+      // This is optional - Supabase can work with just idToken
+      String? serverAuthCode;
+      try {
+        final serverAuth = await googleUser.authorizationClient.authorizeServer(['email', 'profile']);
+        serverAuthCode = serverAuth?.serverAuthCode;
+      } catch (e) {
+        debugPrint('⚠️ Could not get server auth code: $e');
+        // Continue anyway - Supabase can work with just idToken
+      }
 
       final response = await _supabase.auth.signInWithIdToken(
         provider: OAuthProvider.google,
         idToken: googleAuth.idToken!,
-        accessToken: googleAuth.accessToken,
+        accessToken: serverAuthCode,
       );
 
       if (response.user != null) {
@@ -275,9 +298,9 @@ class AuthService extends ChangeNotifier {
     _setLoading(true);
     try {
       await _supabase.auth.signOut();
-      // Only sign out from Google if initialized
-      if (_googleSignIn != null) {
-        await _googleSignIn!.signOut();
+      // V7 API: Sign out from Google if initialized
+      if (_googleSignInInitialized) {
+        await GoogleSignIn.instance.signOut();
       }
       await _secureStorage.delete(key: 'access_token');
       _currentUser = null;

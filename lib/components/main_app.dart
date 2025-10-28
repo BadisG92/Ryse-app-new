@@ -16,6 +16,10 @@ class MainApp extends StatefulWidget {
 class _MainAppState extends State<MainApp> {
   String _activeTab = 'home';
 
+  // GlobalKeys pour le tutorial (partagées entre Dashboard et BottomNavigation)
+  final GlobalKey _nutritionTabKey = GlobalKey();
+  final GlobalKey _sportTabKey = GlobalKey();
+
   void _onTabChange(String tab) {
     setState(() {
       _activeTab = tab;
@@ -25,7 +29,11 @@ class _MainAppState extends State<MainApp> {
   Widget _renderContent() {
     switch (_activeTab) {
       case 'home':
-        return MainDashboardHybrid(onTabChange: _onTabChange);
+        return MainDashboardHybrid(
+          onTabChange: _onTabChange,
+          nutritionTabKey: _nutritionTabKey,
+          sportTabKey: _sportTabKey,
+        );
       case 'nutrition':
         return const NutritionSection();
       case 'sport':
@@ -33,7 +41,11 @@ class _MainAppState extends State<MainApp> {
       case 'progress':
         return const GlobalProgress();
       default:
-        return MainDashboardHybrid(onTabChange: _onTabChange);
+        return MainDashboardHybrid(
+          onTabChange: _onTabChange,
+          nutritionTabKey: _nutritionTabKey,
+          sportTabKey: _sportTabKey,
+        );
     }
   }
 
@@ -62,6 +74,8 @@ class _MainAppState extends State<MainApp> {
             child: BottomNavigation(
               activeTab: _activeTab,
               onTabChange: _onTabChange,
+              nutritionTabKey: _nutritionTabKey,
+              sportTabKey: _sportTabKey,
             ),
           ),
         ],

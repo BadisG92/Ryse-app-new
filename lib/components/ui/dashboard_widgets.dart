@@ -43,10 +43,14 @@ import '../../services/auth_service.dart';
 // Section des actions rapides
 class QuickActionsSection extends StatefulWidget {
   final List<QuickAction> actions;
+  final GlobalKey? addFoodKey; // Pour le tutorial
+  final GlobalKey? addExerciseKey; // Pour le tutorial
 
   const QuickActionsSection({
     super.key,
     required this.actions,
+    this.addFoodKey,
+    this.addExerciseKey,
   });
 
   @override
@@ -106,7 +110,19 @@ class _QuickActionsSectionState extends State<QuickActionsSection> {
                           isPremiumRequired: action.isPremiumRequired,
                           onTap: () => _handleQuickAction(context, action),
                         );
-                        return QuickActionButton(action: actionWithCallback);
+
+                        // Attacher les tutorial keys aux bons boutons
+                        GlobalKey? tutorialKey;
+                        if (action.id == 'add_meal' && widget.addFoodKey != null) {
+                          tutorialKey = widget.addFoodKey;
+                        } else if ((action.id == 'musculation' || action.id == 'workout') && widget.addExerciseKey != null) {
+                          tutorialKey = widget.addExerciseKey;
+                        }
+
+                        return QuickActionButton(
+                          action: actionWithCallback,
+                          tutorialKey: tutorialKey,
+                        );
                       }).toList(),
                     ),
                   )
@@ -131,7 +147,19 @@ class _QuickActionsSectionState extends State<QuickActionsSection> {
                           isPremiumRequired: action.isPremiumRequired,
                           onTap: () => _handleQuickAction(context, action),
                         );
-                        return QuickActionButton(action: actionWithCallback);
+
+                        // Attacher les tutorial keys aux bons boutons
+                        GlobalKey? tutorialKey;
+                        if (action.id == 'add_meal' && widget.addFoodKey != null) {
+                          tutorialKey = widget.addFoodKey;
+                        } else if ((action.id == 'musculation' || action.id == 'workout') && widget.addExerciseKey != null) {
+                          tutorialKey = widget.addExerciseKey;
+                        }
+
+                        return QuickActionButton(
+                          action: actionWithCallback,
+                          tutorialKey: tutorialKey,
+                        );
                       },
                     ),
                   ),

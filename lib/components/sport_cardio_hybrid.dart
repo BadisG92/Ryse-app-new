@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'ui/cardio_models.dart';
 import 'ui/cardio_widgets.dart';
 import '../models/hiit_models.dart';
@@ -11,6 +12,7 @@ import '../screens/manual_cardio_entry_screen.dart';
 import '../services/translations.dart';
 import '../services/localization_service.dart';
 import '../services/cardio_service.dart';
+import '../services/tutorial_service.dart';
 import '../widgets/sport/sport_calendar_view.dart';
 
 class SportCardioHybrid extends StatefulWidget {
@@ -19,19 +21,46 @@ class SportCardioHybrid extends StatefulWidget {
   const SportCardioHybrid({super.key, this.onOpenCalendar});
 
   @override
-  State<SportCardioHybrid> createState() => _SportCardioHybridState();
+  State<SportCardioHybrid> createState() => SportCardioHybridState();
 }
 
-class _SportCardioHybridState extends State<SportCardioHybrid> {
+class SportCardioHybridState extends State<SportCardioHybrid> {
   // Clé unique pour forcer le rafraîchissement des sections
   Key _refreshKey = UniqueKey();
   bool _showCalendar = false;
+
+  // GlobalKeys pour le tutorial
+  final GlobalKey _weeklyStatsKey = GlobalKey();
+  final GlobalKey _activitySelectionKey = GlobalKey();
+  final GlobalKey _lastSessionKey = GlobalKey();
+  final GlobalKey _weekSessionsKey = GlobalKey();
+  final GlobalKey _historyAccessKey = GlobalKey();
 
   void _refreshPage() {
     setState(() {
       _refreshKey = UniqueKey();
     });
     debugPrint('🔄 Page cardio rafraîchie');
+  }
+
+  /// Méthode publique pour lancer le tutorial depuis le parent
+  Future<void> showCardioTutorial() async {
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    final locService = LocalizationService.instance;
+    final languageCode = locService.currentLanguageCode;
+
+    if (!mounted) return;
+
+    await TutorialService().showCardioTutorial(
+      context: context,
+      weeklyStatsKey: _weeklyStatsKey,
+      activitySelectionKey: _activitySelectionKey,
+      lastSessionKey: _lastSessionKey,
+      weekSessionsKey: _weekSessionsKey,
+      historyAccessKey: _historyAccessKey,
+      languageCode: languageCode,
+    );
   }
 
   @override
@@ -61,36 +90,51 @@ class _SportCardioHybridState extends State<SportCardioHybrid> {
         child: Column(
           children: [
             // 1. Bloc "Cette semaine" avec statistiques (connecté à Supabase)
-            WeeklyStatsSection(key: ValueKey('weekly_$_refreshKey')),
+            Container(
+              key: _weeklyStatsKey,
+              child: WeeklyStatsSection(key: ValueKey('weekly_$_refreshKey')),
+            ),
 
             const SizedBox(height: 16),
 
             // 2. Bloc "Choisir une activité"
-            ActivitySelectionSection(
-              onActivitySelected: (activity) =>
-                  _showActivityFormatsModal(context, activity),
+            Container(
+              key: _activitySelectionKey,
+              child: ActivitySelectionSection(
+                onActivitySelected: (activity) =>
+                    _showActivityFormatsModal(context, activity),
+              ),
             ),
 
             const SizedBox(height: 16),
 
             // 3. Bloc "Dernière séance enregistrée" (connecté à Supabase)
-            LastSessionSection(
-              key: ValueKey('last_$_refreshKey'),
-              onDetailsTap: () => _showSessionDetails(context),
+            Container(
+              key: _lastSessionKey,
+              child: LastSessionSection(
+                key: ValueKey('last_$_refreshKey'),
+                onDetailsTap: () => _showSessionDetails(context),
+              ),
             ),
 
             const SizedBox(height: 16),
 
             // 4. Bloc "Vos séances de la semaine" (connecté à Supabase)
-            WeekSessionsSection(key: ValueKey('sessions_$_refreshKey')),
-            
-            const SizedBox(height: 16),
-            
-            // 5. Footer / CTA
-            HistoryAccessWidget(
-              onTap: () => _openCardioJournal(context),
+            Container(
+              key: _weekSessionsKey,
+              child: WeekSessionsSection(key: ValueKey('sessions_$_refreshKey')),
             ),
-            
+
+            const SizedBox(height: 16),
+
+            // 5. Footer / CTA
+            Container(
+              key: _historyAccessKey,
+              child: HistoryAccessWidget(
+                onTap: () => _openCardioJournal(context),
+              ),
+            ),
+
             // Padding bottom pour éviter la coupure
             const SizedBox(height: 100),
           ],

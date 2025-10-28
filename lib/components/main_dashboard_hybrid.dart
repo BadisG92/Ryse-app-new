@@ -15,11 +15,19 @@ import '../services/localization_service.dart';
 import '../services/translations.dart';
 import '../providers/goals_notifier.dart';
 import '../services/global_state_manager.dart';
+import '../services/tutorial_service.dart';
 
 class MainDashboardHybrid extends StatefulWidget {
   final Function(String)? onTabChange;
-  
-  const MainDashboardHybrid({super.key, this.onTabChange});
+  final GlobalKey? nutritionTabKey; // Pour le tutorial
+  final GlobalKey? sportTabKey; // Pour le tutorial
+
+  const MainDashboardHybrid({
+    super.key,
+    this.onTabChange,
+    this.nutritionTabKey,
+    this.sportTabKey,
+  });
 
   @override
   State<MainDashboardHybrid> createState() => _MainDashboardHybridState();
@@ -27,7 +35,7 @@ class MainDashboardHybrid extends StatefulWidget {
 
 class _MainDashboardHybridState extends State<MainDashboardHybrid>
     with TickerProviderStateMixin, GlobalStateListener {
-  
+
   // State variables
   UserProfile? userProfile;
   List<DailyGoal> dailyGoals = [];
@@ -36,6 +44,11 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
   late Timer _scoreTimer;
   int animatedScore = 0;
   bool isLoading = false; // Ne jamais bloquer l'affichage - toujours afficher le squelette
+
+  // Tutorial GlobalKeys
+  final GlobalKey _addFoodKey = GlobalKey();
+  final GlobalKey _addExerciseKey = GlobalKey();
+  final GlobalKey _caloriesCardKey = GlobalKey();
 
   @override
   void initState() {
@@ -54,6 +67,29 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
 
     // Listen to goals changes for instant updates
     GoalsNotifier.instance.addListener(_onGoalsChanged);
+
+    // NOUVEAU: Afficher le tutorial après que la page soit construite
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _showDashboardTutorial();
+    });
+  }
+
+  /// Affiche le tutorial du Dashboard
+  Future<void> _showDashboardTutorial() async {
+    final locService = LocalizationService.instance;
+    final globalState = GlobalStateManager.instance;
+
+    await TutorialService().showDashboardTutorial(
+      context: context,
+      addFoodKey: _addFoodKey,
+      addExerciseKey: _addExerciseKey,
+      caloriesCardKey: _caloriesCardKey,
+      nutritionTabKey: widget.nutritionTabKey ?? GlobalKey(), // Utiliser les keys passées par main_app
+      sportTabKey: widget.sportTabKey ?? GlobalKey(),
+      languageCode: locService.currentLanguageCode,
+      pandaImagePath: 'assets/images/coach_ryze_welcome.png', // Image du Coach Ryze pour le Welcome Screen
+      userName: globalState.userName, // Prénom de l'utilisateur (déjà formaté avec majuscule)
+    );
   }
 
   /// Chargement synchrone instantané pour éviter tout flash
@@ -336,10 +372,13 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
                       const SizedBox(height: 16),
 
                           // Objectifs du jour - Toujours affiché
-                          EnhancedDailyGoalsSection(
-                            goals: dailyGoals.isNotEmpty ? dailyGoals : DashboardData.dailyGoals,
-                            profile: userProfile!,
-                            isPremium: userProfile!.isPremium,
+                          Container(
+                            key: _caloriesCardKey, // Tutorial: Carte des calories
+                            child: EnhancedDailyGoalsSection(
+                              goals: dailyGoals.isNotEmpty ? dailyGoals : DashboardData.dailyGoals,
+                              profile: userProfile!,
+                              isPremium: userProfile!.isPremium,
+                            ),
                           ),
 
                           const SizedBox(height: 16),
@@ -348,6 +387,8 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
                           Consumer<LocalizationService>(
                             builder: (context, locService, child) => QuickActionsSection(
                               actions: DashboardData.getOriginalActionsWithWeight(userProfile!, locService.currentLanguageCode),
+                              addFoodKey: _addFoodKey,
+                              addExerciseKey: _addExerciseKey,
                             ),
                           ),
 

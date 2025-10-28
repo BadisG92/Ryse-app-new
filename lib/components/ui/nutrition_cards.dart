@@ -272,11 +272,13 @@ class CaloriesStatItem extends StatelessWidget {
 class MacronutrientsCard extends StatelessWidget {
   final List<MacroNutrient> macros;
   final Map<String, int> animatedValues;
+  final GlobalKey? titleKey; // GlobalKey optionnel pour cibler le titre dans le tutorial
 
   const MacronutrientsCard({
     super.key,
     required this.macros,
     required this.animatedValues,
+    this.titleKey,
   });
 
   @override
@@ -287,6 +289,7 @@ class MacronutrientsCard extends StatelessWidget {
         child: Column(
           children: [
             Row(
+              key: titleKey, // GlobalKey sur le titre uniquement
               children: [
                 const Icon(
                   LucideIcons.trendingUp,

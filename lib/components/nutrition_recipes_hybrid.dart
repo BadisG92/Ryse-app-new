@@ -30,6 +30,28 @@ class _NutritionRecipesHybridState extends State<NutritionRecipesHybrid> {
     super.initState();
     // Initialiser les données des recettes ET attendre le chargement
     _loadRecipes();
+
+    // Tutorial Recettes désactivé - déjà expliqué dans le tutorial principal
+    // WidgetsBinding.instance.addPostFrameCallback((_) {
+    //   _showRecipesTutorial();
+    // });
+  }
+
+  /// Affiche le tutorial des Recettes lors de la première visite
+  Future<void> _showRecipesTutorial() async {
+    // Accéder au parent NutritionSection pour afficher le tutorial
+    final nutritionSection = context.findAncestorStateOfType<State<StatefulWidget>>();
+    if (nutritionSection != null && nutritionSection is State) {
+      try {
+        final method = nutritionSection.runtimeType.toString();
+        if (method.contains('NutritionSection')) {
+          final parent = nutritionSection as dynamic;
+          await parent.showTabTutorial('recipes');
+        }
+      } catch (e) {
+        debugPrint('⚠️ Erreur lors de l\'affichage du tutorial Recettes: $e');
+      }
+    }
   }
 
   Future<void> _loadRecipes() async {

@@ -27,26 +27,27 @@ class OnboardingGamifiedHybrid extends StatefulWidget {
   State<OnboardingGamifiedHybrid> createState() => _OnboardingGamifiedHybridState();
 }
 
-class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid> 
+class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
     with TickerProviderStateMixin {
-  int currentStep = 0;
+  int currentStep = 0; // 5 étapes au total (0-4)
   bool isLoading = false;
   bool showResults = false;
+  bool showGoodKarma1 = false; // Après Step 1
+  bool showGoodKarma2 = false; // Après Step 3
   
   // User data - INTÉGRÉ (état complexe, tight coupling)
   Map<String, dynamic> userData = {
     'gender': '',
-    'age': '',
-    'weight': '',
-    'height': '',
+    'age': null,          // ← null pour forcer la saisie
+    'weight': null,       // ← null pour forcer la saisie
+    'height': null,       // ← null pour forcer la saisie
     'birthMonth': '',
     'birthDay': '',
     'birthYear': '',
     'isMetric': true,
     'activity': '',
     'goal': '',
-    'targetWeight': '', // Nouveau champ pour le poids objectif
-    'obstacles': <String>[],
+    'targetWeight': null, // ← null pour forcer la saisie (si requis)
     'restrictions': <String>[],
   };
 
@@ -60,14 +61,11 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
   int _loadingTextIndex = 0;
   List<String> get _loadingMessages {
     final languageCode = Provider.of<LocalizationService>(context, listen: false).currentLanguageCode;
+    final isFrench = languageCode == 'fr';
     return [
-      'loading_nutritional_analysis'.tr(languageCode),
-      'loading_activity_level'.tr(languageCode),
-      'loading_metabolism'.tr(languageCode),
-      'loading_adjustment'.tr(languageCode),
-      'loading_macronutrients'.tr(languageCode),
-      'loading_preferences'.tr(languageCode),
-      'loading_plan_ready'.tr(languageCode)
+      isFrench ? 'Analyse de ton profil...' : 'Analyzing your profile...',
+      isFrench ? 'Calcul de tes besoins nutritionnels...' : 'Calculating your nutritional needs...',
+      isFrench ? 'Création de ton plan personnalisé...' : 'Creating your personalized plan...',
     ];
   }
   String _currentLoadingMessage = '';
@@ -78,6 +76,12 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
   double fatPercentage = 0.30;     // 30% par défaut
   int customCalories = 0;
   bool hasCustomMacros = false;
+
+  // TextEditingControllers persistants pour éviter la perte de focus
+  late TextEditingController _ageController;
+  late TextEditingController _heightController;
+  late TextEditingController _weightController;
+  late TextEditingController _targetWeightController;
 
   @override
   void initState() {
@@ -93,28 +97,26 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
       duration: const Duration(milliseconds: 1500),
       vsync: this,
     );
-    
+
+    // Initialiser les contrôleurs de texte
+    _ageController = TextEditingController();
+    _heightController = TextEditingController();
+    _weightController = TextEditingController();
+    _targetWeightController = TextEditingController();
+
     // Pré-remplir les valeurs par défaut
     _initializeDefaultValues();
-    
+
     _animationController.forward();
     _currentLoadingMessage = _loadingMessages.isNotEmpty ? _loadingMessages[0] : '';
   }
 
   void _initializeDefaultValues() {
-    // Valeurs par défaut pour la date de naissance (24 ans - né en 2000)
-    userData['birthMonth'] = '1'; // Janvier
-    userData['birthDay'] = '1'; // 1er
-    userData['birthYear'] = '2000'; // 24 ans
-    userData['age'] = '24';
-    
-    // Valeurs par défaut pour taille et poids (métrique par défaut)
-    userData['height'] = '170'; // 170 cm
-    userData['weight'] = '70'; // 70 kg
+    // Initialiser uniquement isMetric (pas de pré-remplissage des champs visibles)
     userData['isMetric'] = true;
-    
-    // Initialiser le poids objectif au poids actuel par défaut
-    userData['targetWeight'] = userData['weight'];
+
+    // birthMonth, birthDay, birthYear, age, height, weight, targetWeight
+    // restent null pour forcer l'utilisateur à les renseigner
   }
 
   @override
@@ -122,6 +124,10 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
     _animationController.dispose();
     _caloriesAnimationController.dispose();
     _loadingTextTimer?.cancel();
+    _ageController.dispose();
+    _heightController.dispose();
+    _weightController.dispose();
+    _targetWeightController.dispose();
     super.dispose();
   }
 
@@ -130,7 +136,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
     _loadingTextIndex = 0;
     _currentLoadingMessage = _loadingMessages.isNotEmpty ? _loadingMessages[0] : '';
     _loadingTextTimer?.cancel();
-    _loadingTextTimer = Timer.periodic(const Duration(milliseconds: 2500), (timer) {
+    _loadingTextTimer = Timer.periodic(const Duration(milliseconds: 1000), (timer) {
       if (mounted) {
         setState(() {
           _loadingTextIndex = (_loadingTextIndex + 1) % _loadingMessages.length;
@@ -148,98 +154,947 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
 
   List<Map<String, dynamic>> getSteps(BuildContext context) {
     final languageCode = Provider.of<LocalizationService>(context, listen: false).currentLanguageCode;
+    final isFrench = languageCode == 'fr';
+
     return [
+      // Step 0: Genre + Âge (fusionné)
       {
-        'title': '',
+        'title': isFrench ? 'Parle-moi un peu de toi' : 'Tell me a bit about yourself',
+        'subtitle': isFrench ? 'Pour personnaliser tes conseils' : 'To personalize your advice',
+        'content': _buildGenderAndAgeStep(),
+      },
+      // Step 1: Objectif SEULEMENT (séparé des restrictions)
+      {
+        'title': isFrench ? 'Quel est ton objectif ?' : 'What\'s your goal?',
+        'subtitle': isFrench ? 'Que veux-tu accomplir en priorité ?' : 'What do you want to achieve as a priority?',
+        'content': _buildGoalStep(),
+      },
+      // Step 2: Taille + Poids + Target Weight (conditionnel)
+      {
+        'title': isFrench ? 'Dis-moi ta taille et ton poids' : 'Tell me your height and weight',
+        'subtitle': isFrench ? 'Pour calculer tes besoins précis' : 'To calculate your precise needs',
+        'content': _buildHeightWeightAndTargetStep(),
+      },
+      // Step 3: Fréquence d'entraînement
+      {
+        'title': isFrench ? 'Actuellement, tu fais du sport combien de fois par semaine ?' : 'How many times per week do you currently work out?',
         'subtitle': '',
-        'content': const WelcomeStep(), // FACTORISÉ
+        'content': _buildActivityStep(),
       },
+      // Step 4: Restrictions alimentaires (remplace Obstacles)
       {
-        'title': 'onboarding_choose_gender'.tr(languageCode),
-        'subtitle': 'onboarding_calibrate_plan'.tr(languageCode),
-        'content': _buildGenderStep(), // NOUVEAU
-      },
-      {
-        'title': 'onboarding_when_born'.tr(languageCode),
-        'subtitle': 'onboarding_calibrate_plan'.tr(languageCode),
-        'content': _buildBirthDateStep(), // NOUVEAU
-      },
-      {
-        'title': 'onboarding_height_weight'.tr(languageCode),
-        'subtitle': 'onboarding_calibrate_plan'.tr(languageCode),
-        'content': _buildHeightWeightStep(), // NOUVEAU
-      },
-      {
-        'title': 'onboarding_activity_level'.tr(languageCode),
-        'subtitle': 'onboarding_adjust_energy'.tr(languageCode),
-        'content': _buildActivityStep(), // INTÉGRÉ
-      },
-      {
-        'title': 'onboarding_goal'.tr(languageCode),
-        'subtitle': 'onboarding_personalize_experience'.tr(languageCode),
-        'content': _buildGoalStep(), // INTÉGRÉ
-      },
-      {
-        'title': 'onboarding_obstacles'.tr(languageCode),
-        'subtitle': 'onboarding_personalize_experience'.tr(languageCode),
-        'content': _buildObstaclesStep(), // INTÉGRÉ
-      },
-      {
-        'title': 'onboarding_dietary_restrictions'.tr(languageCode),
-        'subtitle': 'onboarding_personalize_experience'.tr(languageCode),
-        'content': _buildRestrictionsStep(), // INTÉGRÉ
+        'title': isFrench ? 'As-tu des préférences alimentaires ?' : 'Do you have any dietary preferences?',
+        'subtitle': isFrench ? 'Allergies, régimes spéciaux, etc.' : 'Allergies, special diets, etc.',
+        'content': _buildRestrictionsStep(),
       },
     ];
   }
 
-  // Page Genre - Style moderne unifié avec SelectableCard
-  Widget _buildGenderStep() {
+  // Step 0: Genre + Âge (fusionné avec affichage compact)
+  Widget _buildGenderAndAgeStep() {
+    final languageCode = Provider.of<LocalizationService>(context, listen: false).currentLanguageCode;
+    final isFrench = languageCode == 'fr';
+    final hasSelectedGender = userData['gender'].isNotEmpty;
+
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 60),
+
+            // Section Genre
+            Text(
+              isFrench ? 'Tu es...' : 'You are...',
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF64748B),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Si genre PAS sélectionné → Afficher toutes les options
+            if (!hasSelectedGender) ...[
+              _buildGenderOption('Homme', LucideIcons.mars, languageCode),
+              const SizedBox(height: 12),
+              _buildGenderOption('Femme', LucideIcons.venus, languageCode),
+            ],
+
+            // Si genre sélectionné → Afficher CHIP COMPACT + option de modification
+            if (hasSelectedGender) ...[
+              _buildCompactGenderChip(languageCode, isFrench),
+
+              const SizedBox(height: 32),
+
+              // Section Âge (apparaît après sélection du genre)
+              AnimatedOpacity(
+                opacity: 1.0,
+                duration: const Duration(milliseconds: 400),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isFrench ? 'Quel âge as-tu ?' : 'How old are you?',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF64748B),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    Container(
+                      width: 120,
+                      child: TextField(
+                        controller: _ageController,
+                        keyboardType: TextInputType.number,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF0B132B),
+                        ),
+                        decoration: InputDecoration(
+                          hintText: '24',
+                          hintStyle: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF64748B).withOpacity(0.4),
+                          ),
+                          suffixText: isFrench ? 'ans' : 'years',
+                          suffixStyle: const TextStyle(
+                            fontSize: 16,
+                            color: Color(0xFF64748B),
+                            fontWeight: FontWeight.w500,
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Color(0xFF0B132B), width: 2),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        ),
+                        onChanged: (value) {
+                          setState(() {
+                            if (value.isEmpty) {
+                              userData['age'] = null; // ← Mettre null si vide
+                            } else {
+                              final age = int.tryParse(value);
+                              if (age != null && age >= 13 && age <= 100) {
+                                userData['age'] = value;
+                                // Calculer une date de naissance approximative
+                                final year = 2025 - age;
+                                userData['birthYear'] = year.toString();
+                                userData['birthMonth'] = '1';
+                                userData['birthDay'] = '1';
+                              }
+                            }
+                          });
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
+            const SizedBox(height: 60),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Widget option de genre (version complète)
+  Widget _buildGenderOption(String genderKey, IconData icon, String languageCode) {
+    final isSelected = userData['gender'] == genderKey;
+    final isFrench = languageCode == 'fr';
+
+    String label;
+    if (genderKey == 'Homme') {
+      label = isFrench ? 'Homme' : 'Male';
+    } else if (genderKey == 'Femme') {
+      label = isFrench ? 'Femme' : 'Female';
+    } else {
+      label = isFrench ? 'Autre' : 'Other';
+    }
+
+    return SelectableCard(
+      title: label,
+      icon: icon,
+      isSelected: isSelected,
+      onTap: () => setState(() => userData['gender'] = genderKey),
+    );
+  }
+
+  // Widget chip compact pour le genre sélectionné
+  Widget _buildCompactGenderChip(String languageCode, bool isFrench) {
+    String label;
+    IconData icon;
+
+    if (userData['gender'] == 'Homme') {
+      label = isFrench ? 'Homme' : 'Male';
+      icon = LucideIcons.mars;
+    } else if (userData['gender'] == 'Femme') {
+      label = isFrench ? 'Femme' : 'Female';
+      icon = LucideIcons.venus;
+    } else {
+      label = isFrench ? 'Autre' : 'Other';
+      icon = LucideIcons.users;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0B132B).withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF0B132B).withOpacity(0.2)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(height: 80),
-          
-          // Option Homme
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: SelectableCard(
-              title: 'male'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
-              icon: LucideIcons.mars,
-              isSelected: userData['gender'] == 'Homme',
-              onTap: () => setState(() => userData['gender'] = 'Homme'),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0B132B),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 16, color: Colors.white),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF0B132B),
             ),
           ),
-          
-          // Option Femme
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: SelectableCard(
-              title: 'female'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
-              icon: LucideIcons.venus,
-              isSelected: userData['gender'] == 'Femme',
-              onTap: () => setState(() => userData['gender'] = 'Femme'),
+          const Spacer(),
+          InkWell(
+            onTap: () => setState(() => userData['gender'] = ''),
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              padding: const EdgeInsets.all(6),
+              child: Text(
+                isFrench ? 'Modifier' : 'Change',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF0B132B).withOpacity(0.6),
+                ),
+              ),
             ),
           ),
-          
-          // Option Autre
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: SelectableCard(
-              title: 'other'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
-              icon: LucideIcons.users,
-              isSelected: userData['gender'] == 'Autre',
-              onTap: () => setState(() => userData['gender'] = 'Autre'),
-            ),
-          ),
-        
-        const SizedBox(height: 80),
         ],
       ),
     );
   }
 
-  // Page Date de naissance avec roues de sélection
+  // Step 1: Objectif SEULEMENT (simplifié, pas de compact chip)
+  Widget _buildGoalStep() {
+    final languageCode = Provider.of<LocalizationService>(context, listen: false).currentLanguageCode;
+    final isFrench = languageCode == 'fr';
+
+    final goals = [
+      {
+        'key': 'lose',
+        'title': isFrench ? 'Perdre du poids' : 'Lose weight',
+        'description': isFrench ? 'Brûler de la graisse' : 'Burn fat',
+        'icon': LucideIcons.trendingDown,
+      },
+      {
+        'key': 'maintain',
+        'title': isFrench ? 'Maintenir mon poids' : 'Maintain weight',
+        'description': isFrench ? 'Rester stable' : 'Stay stable',
+        'icon': LucideIcons.target,
+      },
+      {
+        'key': 'gain',
+        'title': isFrench ? 'Prendre du poids' : 'Gain weight',
+        'description': isFrench ? 'Construire du muscle' : 'Build muscle',
+        'icon': LucideIcons.trendingUp,
+      },
+    ];
+
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 60),
+
+            // Afficher toutes les options d'objectif
+            ...goals.map((goal) =>
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: SelectableCard(
+                  title: goal['title'] as String,
+                  description: goal['description'] as String,
+                  icon: goal['icon'] as IconData,
+                  isSelected: userData['goal'] == goal['key'],
+                  onTap: () => setState(() {
+                    userData['goal'] = goal['key'];
+                    // Reset target weight if switching to maintain
+                    if (goal['key'] == 'maintain') {
+                      userData['targetWeight'] = userData['weight'];
+                    }
+                  }),
+                ),
+              ),
+            ).toList(),
+
+            const SizedBox(height: 60),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Helper methods pour le Height Picker impérial
+  String _getHeightImperialFormatted() {
+    if (userData['height'] == null) return '5\' 7"'; // Placeholder grisé
+    final totalInches = int.tryParse(userData['height'].toString()) ?? 0;
+    if (totalInches == 0) return '5\' 7"'; // Placeholder si invalide
+    final feet = totalInches ~/ 12;
+    final inches = totalInches % 12;
+    return '$feet\' $inches"';
+  }
+
+  // Helper pour savoir si c'est juste un placeholder
+  bool _isHeightPlaceholder() {
+    return userData['height'] == null;
+  }
+
+  void _showHeightPicker(BuildContext context) {
+    final languageCode = Provider.of<LocalizationService>(context, listen: false).currentLanguageCode;
+    final isFrench = languageCode == 'fr';
+
+    // Générer toutes les hauteurs de 4'0" à 7'0" (48 à 84 inches)
+    final heights = <String>[];
+    final heightsInInches = <int>[];
+    for (int feet = 4; feet <= 7; feet++) {
+      for (int inches = 0; inches < 12; inches++) {
+        final totalInches = feet * 12 + inches;
+        if (totalInches > 84) break; // Arrêter à 7'0"
+        heights.add('$feet\' $inches"');
+        heightsInInches.add(totalInches);
+      }
+    }
+
+    // Trouver l'index actuel
+    final currentHeight = int.tryParse(userData['height'] ?? '67') ?? 67;
+    int initialIndex = heightsInInches.indexOf(currentHeight);
+    if (initialIndex == -1) initialIndex = heightsInInches.indexOf(67); // Défaut 5'7"
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        height: 300,
+        child: Column(
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text(
+                      isFrench ? 'Annuler' : 'Cancel',
+                      style: const TextStyle(
+                        color: Color(0xFF64748B),
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    isFrench ? 'Taille' : 'Height',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF0B132B),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text(
+                      isFrench ? 'OK' : 'Done',
+                      style: const TextStyle(
+                        color: Color(0xFF0B132B),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            // Picker
+            Expanded(
+              child: CupertinoPicker(
+                scrollController: FixedExtentScrollController(initialItem: initialIndex),
+                itemExtent: 40,
+                onSelectedItemChanged: (index) {
+                  setState(() {
+                    userData['height'] = heightsInInches[index].toString();
+                  });
+                },
+                children: heights.map((height) => Center(
+                  child: Text(
+                    height,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF0B132B),
+                    ),
+                  ),
+                )).toList(),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Widget chip compact pour l'objectif sélectionné
+  Widget _buildCompactGoalChip(String languageCode, bool isFrench, List<Map<String, dynamic>> goals) {
+    final selectedGoal = goals.firstWhere((g) => g['key'] == userData['goal']);
+    final label = selectedGoal['title'] as String;
+    final icon = selectedGoal['icon'] as IconData;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0B132B).withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF0B132B).withOpacity(0.2)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0B132B),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 16, color: Colors.white),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF0B132B),
+            ),
+          ),
+          const Spacer(),
+          InkWell(
+            onTap: () => setState(() {
+              userData['goal'] = '';
+              (userData['restrictions'] as List<String>).clear(); // Reset restrictions aussi
+            }),
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              padding: const EdgeInsets.all(6),
+              child: Text(
+                isFrench ? 'Modifier' : 'Change',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF0B132B).withOpacity(0.6),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Step 2: Taille + Poids + Target Weight (fusionné avec target conditionnel)
+  Widget _buildHeightWeightAndTargetStep() {
+    final languageCode = Provider.of<LocalizationService>(context, listen: false).currentLanguageCode;
+    final isFrench = languageCode == 'fr';
+    bool showTargetWeight = userData['goal'] == 'lose' || userData['goal'] == 'gain';
+
+    return Center(
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const SizedBox(height: 40),
+
+            // Toggle Impérial/Métrique avec conversion automatique
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(25),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          if (userData['isMetric'] == true) {
+                            // Conversion Métrique → Impérial (seulement si valeurs existent)
+                            if (userData['height'] != null) {
+                              final heightCm = double.tryParse(userData['height'].toString()) ?? 0;
+                              if (heightCm > 0) {
+                                userData['height'] = (heightCm / 2.54).round().toString(); // cm → inches
+                                _heightController.text = userData['height'].toString();
+                              }
+                            }
+
+                            if (userData['weight'] != null) {
+                              final weightKg = double.tryParse(userData['weight'].toString()) ?? 0;
+                              if (weightKg > 0) {
+                                userData['weight'] = (weightKg * 2.20462).toStringAsFixed(1); // kg → lbs
+                                _weightController.text = userData['weight'].toString();
+                              }
+                            }
+
+                            if (userData['targetWeight'] != null) {
+                              final targetKg = double.tryParse(userData['targetWeight'].toString()) ?? 0;
+                              if (targetKg > 0) {
+                                userData['targetWeight'] = (targetKg * 2.20462).toStringAsFixed(1);
+                                _targetWeightController.text = userData['targetWeight'].toString();
+                              }
+                            }
+
+                            userData['isMetric'] = false;
+                          }
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: userData['isMetric'] == false ? Colors.white : Colors.transparent,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: userData['isMetric'] == false
+                              ? [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.1),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ]
+                              : null,
+                        ),
+                        child: Center(
+                          child: Text(
+                            isFrench ? 'Impérial' : 'Imperial',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: userData['isMetric'] == false ? Colors.black : Colors.grey,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          if (userData['isMetric'] == false) {
+                            // Conversion Impérial → Métrique (seulement si valeurs existent)
+                            if (userData['height'] != null) {
+                              final heightIn = double.tryParse(userData['height'].toString()) ?? 0;
+                              if (heightIn > 0) {
+                                userData['height'] = (heightIn * 2.54).round().toString(); // inches → cm
+                                _heightController.text = userData['height'].toString();
+                              }
+                            }
+
+                            if (userData['weight'] != null) {
+                              final weightLbs = double.tryParse(userData['weight'].toString()) ?? 0;
+                              if (weightLbs > 0) {
+                                userData['weight'] = (weightLbs / 2.20462).toStringAsFixed(1); // lbs → kg
+                                _weightController.text = userData['weight'].toString();
+                              }
+                            }
+
+                            if (userData['targetWeight'] != null) {
+                              final targetLbs = double.tryParse(userData['targetWeight'].toString()) ?? 0;
+                              if (targetLbs > 0) {
+                                userData['targetWeight'] = (targetLbs / 2.20462).toStringAsFixed(1);
+                                _targetWeightController.text = userData['targetWeight'].toString();
+                              }
+                            }
+
+                            userData['isMetric'] = true;
+                          }
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: userData['isMetric'] == true ? Colors.white : Colors.transparent,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: userData['isMetric'] == true
+                              ? [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.1),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ]
+                              : null,
+                        ),
+                        child: Center(
+                          child: Text(
+                            isFrench ? 'Métrique' : 'Metric',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: userData['isMetric'] == true ? Colors.black : Colors.grey,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // Champs taille et poids
+            if (userData['isMetric']) ...[
+              // Mode MÉTRIQUE : cm et kg
+              Row(
+                children: [
+                  // Champ Taille (cm)
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          isFrench ? 'Taille' : 'Height',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF64748B),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: _heightController,
+                          keyboardType: TextInputType.number,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF0B132B),
+                          ),
+                          decoration: InputDecoration(
+                            hintText: '170',
+                            hintStyle: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF64748B).withOpacity(0.4),
+                            ),
+                            suffixText: 'cm',
+                            suffixStyle: const TextStyle(
+                              fontSize: 14,
+                              color: Color(0xFF64748B),
+                              fontWeight: FontWeight.w500,
+                            ),
+                            filled: true,
+                            fillColor: Colors.white,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: Color(0xFF0B132B), width: 2),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          ),
+                          onChanged: (value) => setState(() {
+                            userData['height'] = value.isEmpty ? null : value;
+                          }),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(width: 16),
+
+                  // Champ Poids (kg)
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          isFrench ? 'Poids' : 'Weight',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF64748B),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: _weightController,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF0B132B),
+                          ),
+                          decoration: InputDecoration(
+                            hintText: '70',
+                            hintStyle: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF64748B).withOpacity(0.4),
+                            ),
+                            suffixText: 'kg',
+                            suffixStyle: const TextStyle(
+                              fontSize: 14,
+                              color: Color(0xFF64748B),
+                              fontWeight: FontWeight.w500,
+                            ),
+                            filled: true,
+                            fillColor: Colors.white,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: Color(0xFF0B132B), width: 2),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          ),
+                          onChanged: (value) => setState(() {
+                            userData['weight'] = value.isEmpty ? null : value;
+                          }),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ] else ...[
+              // Mode IMPÉRIAL : Wheel Picker pour taille (format "5' 7"") + TextField pour poids
+              Row(
+                children: [
+                  // Champ Taille (Wheel Picker avec format "5' 7"")
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          isFrench ? 'Taille' : 'Height',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF64748B),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        GestureDetector(
+                          onTap: () => _showHeightPicker(context),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: const Color(0xFFE2E8F0)),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  _getHeightImperialFormatted(),
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                    color: _isHeightPlaceholder()
+                                        ? Color(0xFF64748B).withOpacity(0.4)
+                                        : const Color(0xFF0B132B),
+                                  ),
+                                ),
+                                Icon(
+                                  LucideIcons.chevronDown,
+                                  size: 20,
+                                  color: Color(0xFF64748B),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(width: 16),
+
+                  // Champ Poids (lbs)
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          isFrench ? 'Poids' : 'Weight',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF64748B),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: _weightController,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF0B132B),
+                          ),
+                          decoration: InputDecoration(
+                            hintText: '154',
+                            hintStyle: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF64748B).withOpacity(0.4),
+                            ),
+                            suffixText: 'lbs',
+                            suffixStyle: const TextStyle(
+                              fontSize: 14,
+                              color: Color(0xFF64748B),
+                              fontWeight: FontWeight.w500,
+                            ),
+                            filled: true,
+                            fillColor: Colors.white,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: Color(0xFF0B132B), width: 2),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          ),
+                          onChanged: (value) => setState(() {
+                            userData['weight'] = value.isEmpty ? null : value;
+                          }),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+
+            // Champ poids objectif conditionnel
+            if (showTargetWeight) ...[
+              const SizedBox(height: 24),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    isFrench ? 'Poids objectif' : 'Target weight',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF64748B),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _targetWeightController,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF0B132B),
+                    ),
+                    decoration: InputDecoration(
+                      hintText: userData['goal'] == 'lose'
+                          ? (userData['isMetric'] ? '65' : '143')
+                          : (userData['isMetric'] ? '75' : '165'),
+                      hintStyle: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF64748B).withOpacity(0.4),
+                      ),
+                      suffixText: userData['isMetric'] ? 'kg' : 'lbs',
+                      suffixStyle: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF64748B),
+                        fontWeight: FontWeight.w500,
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFF0B132B), width: 2),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    ),
+                    onChanged: (value) => setState(() {
+                      userData['targetWeight'] = value.isEmpty ? null : value;
+                    }),
+                  ),
+                ],
+              ),
+            ],
+
+            const SizedBox(height: 40),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Page Date de naissance avec roues de sélection (ancienne méthode, peut être supprimée)
   Widget _buildBirthDateStep() {
     return Column(
       children: [
@@ -517,26 +1372,34 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
     );
   }
 
-  // INTÉGRÉ - Logique spécifique pour les activités
+  // Step 3: Fréquence d'entraînement (avec tutoiement)
   Widget _buildActivityStep() {
     final languageCode = Provider.of<LocalizationService>(context, listen: false).currentLanguageCode;
+    final isFrench = languageCode == 'fr';
+
     final activities = [
       {
         'key': 'low',
-        'title': 'onboarding_low_activity'.tr(languageCode),
-        'description': 'onboarding_low_activity_desc'.tr(languageCode),
+        'title': isFrench ? 'Rarement' : 'Rarely',
+        'description': '',
         'icon': LucideIcons.house,
       },
       {
+        'key': 'light',
+        'title': isFrench ? 'Quelques fois' : 'A few times',
+        'description': '',
+        'icon': LucideIcons.footprints,
+      },
+      {
         'key': 'moderate',
-        'title': 'onboarding_moderate_activity'.tr(languageCode),
-        'description': 'onboarding_moderate_activity_desc'.tr(languageCode),
+        'title': isFrench ? 'Régulièrement' : 'Regularly',
+        'description': '',
         'icon': LucideIcons.bike,
       },
       {
         'key': 'high',
-        'title': 'onboarding_high_activity'.tr(languageCode),
-        'description': 'onboarding_high_activity_desc'.tr(languageCode),
+        'title': isFrench ? 'Très souvent' : 'Very often',
+        'description': '',
         'icon': LucideIcons.dumbbell,
       },
     ];
@@ -546,7 +1409,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const SizedBox(height: 80),
-          ...activities.map((activity) => 
+          ...activities.map((activity) =>
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: SelectableCard(
@@ -564,158 +1427,25 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
     );
   }
 
-  // INTÉGRÉ - Logique spécifique pour les objectifs
-  Widget _buildGoalStep() {
-    final languageCode = Provider.of<LocalizationService>(context, listen: false).currentLanguageCode;
-    final goals = [
-      {
-        'key': 'lose',
-        'title': 'onboarding_lose_weight'.tr(languageCode),
-        'description': 'onboarding_lose_weight_desc'.tr(languageCode),
-        'icon': LucideIcons.trendingDown,
-      },
-      {
-        'key': 'maintain',
-        'title': 'onboarding_maintain_weight'.tr(languageCode),
-        'description': 'onboarding_maintain_weight_desc'.tr(languageCode),
-        'icon': LucideIcons.target,
-      },
-      {
-        'key': 'gain',
-        'title': 'onboarding_gain_weight'.tr(languageCode),
-        'description': 'onboarding_gain_weight_desc'.tr(languageCode),
-        'icon': LucideIcons.trendingUp,
-      },
-    ];
-
-    // Déterminer si on doit afficher le champ poids objectif
-    bool showTargetWeight = userData['goal'] == 'lose' || userData['goal'] == 'gain';
-
-    return Center(
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const SizedBox(height: 80),
-            ...goals.map((goal) => 
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: SelectableCard(
-                  title: goal['title'] as String,
-                  description: goal['description'] as String,
-                  icon: goal['icon'] as IconData,
-                  isSelected: userData['goal'] == goal['key'],
-                  onTap: () => setState(() {
-                    userData['goal'] = goal['key'];
-                    // Reset target weight if switching to maintain
-                    if (goal['key'] == 'maintain') {
-                      userData['targetWeight'] = userData['weight'];
-                    }
-                  }),
-                ),
-              ),
-            ).toList(),
-            
-            // Champ poids objectif conditionnel
-            if (showTargetWeight) ...[
-              const SizedBox(height: 24),
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 24),
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'target_weight'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF1E293B),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      userData['goal'] == 'lose' 
-                        ? 'target_weight_question_lose'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode)
-                        : 'target_weight_question_gain'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Color(0xFF64748B),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: NumericTextField(
-                            controller: TextEditingController(text: userData['targetWeight']?.toString() ?? ''),
-                            allowDecimals: true,
-                            onChanged: (value) => userData['targetWeight'] = value,
-                            decoration: InputDecoration(
-                              hintText: 'Ex: 70',
-                              filled: true,
-                              fillColor: Colors.white,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(color: Color(0xFF0B132B), width: 2),
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          userData['isMetric'] ? 'kg' : 'lbs',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF64748B),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-            
-            const SizedBox(height: 80),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // INTÉGRÉ - Logique multi-sélection pour obstacles
+  // Step 4: Obstacles (avec tutoiement et empathie)
   Widget _buildObstaclesStep() {
     final languageCode = Provider.of<LocalizationService>(context, listen: false).currentLanguageCode;
+    final isFrench = languageCode == 'fr';
+
     final obstacles = [
-      {'title': 'onboarding_lack_of_time'.tr(languageCode), 'icon': LucideIcons.clock},
-      {'title': 'onboarding_lack_of_motivation'.tr(languageCode), 'icon': LucideIcons.battery},
-      {'title': 'onboarding_fatigue'.tr(languageCode), 'icon': LucideIcons.moon},
-      {'title': 'onboarding_lack_of_knowledge'.tr(languageCode), 'icon': LucideIcons.bookOpen},
-      {'title': 'onboarding_other_priorities'.tr(languageCode), 'icon': LucideIcons.calendar},
+      {'title': isFrench ? 'Manque de temps' : 'Lack of time', 'icon': LucideIcons.clock},
+      {'title': isFrench ? 'Manque de motivation' : 'Lack of motivation', 'icon': LucideIcons.battery},
+      {'title': isFrench ? 'Fatigue' : 'Fatigue', 'icon': LucideIcons.moon},
+      {'title': isFrench ? 'Manque de connaissances' : 'Lack of knowledge', 'icon': LucideIcons.bookOpen},
+      {'title': isFrench ? 'Autres priorités' : 'Other priorities', 'icon': LucideIcons.calendar},
     ];
 
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const SizedBox(height: 20), // Réduit de 60 à 20
-          ...obstacles.map((obstacle) => 
+          const SizedBox(height: 20),
+          ...obstacles.map((obstacle) =>
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: SelectableCard(
@@ -784,45 +1514,223 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
     );
   }
 
-  // INTÉGRÉ - Logique de validation spécifique
+  // Afficher Good Karma bottom sheet avec animation
+  void _showGoodKarmaBottomSheet(int karmaNumber) {
+    final languageCode = Provider.of<LocalizationService>(context, listen: false).currentLanguageCode;
+    final isFrench = languageCode == 'fr';
+
+    String message;
+    String pandaImage;
+
+    if (karmaNumber == 1) {
+      // Après Step 2 (Restrictions)
+      message = isFrench ? 'Super ! Je commence à voir ton profil...' : 'Great! I\'m starting to see your profile...';
+      pandaImage = 'assets/images/coach_ryze_karma_1.png';
+    } else {
+      // Après Step 4 (Activité)
+      message = isFrench ? 'Parfait ! Plus qu\'une question...' : 'Perfect! Just one more question...';
+      pandaImage = 'assets/images/coach_ryze_karma_2.png';
+    }
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isDismissible: true,
+      enableDrag: true,
+      builder: (context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(24),
+            topRight: Radius.circular(24),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 20,
+              offset: const Offset(0, -5),
+            ),
+          ],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Bulle + nom Coach Ryze à GAUCHE
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Nom "Coach Ryze" au-dessus de la bulle
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8, bottom: 6),
+                    child: Text(
+                      'Coach Ryze',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF64748B),
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                  // Bulle de message avec gradient
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF0B132B).withOpacity(0.3),
+                          blurRadius: 20,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: Text(
+                      message,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        height: 1.5,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(width: 16),
+
+            // Panda animé à DROITE
+            TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0.0, end: 1.0),
+              duration: const Duration(milliseconds: 600),
+              curve: Curves.elasticOut,
+              builder: (context, value, child) {
+                return Transform.scale(
+                  scale: value,
+                  child: Container(
+                    width: 180,
+                    height: 180,
+                    child: Image.asset(
+                      pandaImage,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+
+    // Fermer automatiquement après 1.25 secondes et passer au step suivant
+    Timer(const Duration(milliseconds: 1250), () {
+      if (mounted) {
+        Navigator.pop(context); // Fermer le bottom sheet
+        setState(() {
+          if (karmaNumber == 1) {
+            showGoodKarma1 = false;
+          } else {
+            showGoodKarma2 = false;
+          }
+          currentStep++;
+        });
+        _animationController.reset();
+        _animationController.forward();
+      }
+    });
+  }
+
+  // Logique de validation pour les 5 étapes
   bool canProceed() {
     switch (currentStep) {
       case 0:
-        return true; // Welcome step
+        // Step 0: Genre + Âge - doit avoir sélectionné le genre ET rempli l'âge
+        final age = userData['age'];
+        return userData['gender'].isNotEmpty &&
+               age != null &&
+               age.toString().isNotEmpty &&
+               (int.tryParse(age.toString()) ?? 0) >= 13;
       case 1:
-        return userData['gender'].isNotEmpty; // Genre
+        // Step 1: Objectif SEULEMENT - doit avoir sélectionné l'objectif
+        return userData['goal'].isNotEmpty;
       case 2:
-        return true; // Date de naissance - activé par défaut
+        // Step 2: Taille + Poids requis, Target Weight optionnel (si objectif = lose/gain)
+        final height = userData['height'];
+        final weight = userData['weight'];
+
+        final hasHeight = height != null &&
+                          height.toString().isNotEmpty &&
+                          (double.tryParse(height.toString()) ?? 0) > 0;
+        final hasWeight = weight != null &&
+                          weight.toString().isNotEmpty &&
+                          (double.tryParse(weight.toString()) ?? 0) > 0;
+
+        // Si objectif = perdre/prendre, vérifier aussi le poids objectif
+        if (userData['goal'] == 'lose' || userData['goal'] == 'gain') {
+          final targetWeight = userData['targetWeight'];
+          final hasTargetWeight = targetWeight != null &&
+                                  targetWeight.toString().isNotEmpty &&
+                                  (double.tryParse(targetWeight.toString()) ?? 0) > 0;
+          return hasHeight && hasWeight && hasTargetWeight;
+        }
+
+        return hasHeight && hasWeight;
       case 3:
-        return true; // Taille & Poids - activé par défaut  
+        // Step 3: Fréquence d'entraînement - doit avoir sélectionné l'activité
+        return userData['activity'].isNotEmpty;
       case 4:
-        return userData['activity'].isNotEmpty; // Activité
-      case 5:
-        return userData['goal'].isNotEmpty; // Objectif
-      case 6:
-        return (userData['obstacles'] as List<String>).isNotEmpty; // Obstacles obligatoires
-      case 7:
-        return (userData['restrictions'] as List<String>).isNotEmpty; // Restrictions obligatoires
+        // Step 4: Restrictions alimentaires - doit avoir sélectionné au moins une restriction
+        return (userData['restrictions'] as List<String>).isNotEmpty;
       default:
         return false;
     }
   }
 
-  // INTÉGRÉ - Navigation et workflow spécifique
+  // Navigation et workflow - 5 étapes + Good Karma bottom sheets
   void nextStep() {
-    if (currentStep < 7) { // 8 étapes au total (0-7)
+    // Step 1 complété (Objectif) → Afficher Good Karma 1 (bottom sheet)
+    if (currentStep == 1 && !showGoodKarma1) {
+      setState(() {
+        showGoodKarma1 = true;
+      });
+      _showGoodKarmaBottomSheet(1);
+      return;
+    }
+
+    // Step 3 complété (Activité) → Afficher Good Karma 2 (bottom sheet)
+    if (currentStep == 3 && !showGoodKarma2) {
+      setState(() {
+        showGoodKarma2 = true;
+      });
+      _showGoodKarmaBottomSheet(2);
+      return;
+    }
+
+    // Navigation normale entre les steps
+    if (currentStep < 4) { // 5 étapes au total (0-4)
       setState(() {
         currentStep++;
       });
       _animationController.reset();
       _animationController.forward();
     } else {
-      // Dernière étape - démarrer le chargement
+      // Dernière étape (Step 4 - Restrictions) - démarrer le chargement
       setState(() {
         isLoading = true;
       });
       _startLoadingAnimation();
-      
+
       // Simuler le traitement
       Timer(const Duration(seconds: 8), () {
         if (mounted) {
@@ -878,7 +1786,6 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
         'is_metric': userData['isMetric'] ?? true,
         'activity_level': userData['activity'],
         'fitness_goal': userData['goal'],
-        'obstacles': userData['obstacles'],
         'dietary_restrictions': userData['restrictions'],
         'daily_calories': calories,
         'daily_protein': macros['protein'],
@@ -935,17 +1842,20 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
 
   @override
   Widget build(BuildContext context) {
+    // Afficher les résultats finaux
     if (showResults) {
-      return _buildResultsScreen(); // HYBRIDE
+      return _buildResultsScreen();
     }
 
+    // Afficher l'écran de chargement
     if (isLoading) {
       return Scaffold(
-        body: LoadingStep(currentMessage: _currentLoadingMessage), // FACTORISÉ
+        body: LoadingStep(currentMessage: _currentLoadingMessage),
       );
     }
 
-    return _buildStepScreen(); // INTÉGRÉ
+    // Afficher l'étape normale (Good Karma sont maintenant des bottom sheets)
+    return _buildStepScreen();
   }
 
   // INTÉGRÉ - Logique de navigation complexe
@@ -970,14 +1880,17 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
               )
             : null,
         title: Consumer<LocalizationService>(
-          builder: (context, locService, _) => Text(
-            '${'step'.tr(locService.currentLanguageCode)} ${currentStep + 1} ${'on'.tr(locService.currentLanguageCode)} ${steps.length}',
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: Color(0xFF64748B),
-            ),
-          ),
+          builder: (context, locService, _) {
+            final isFrench = locService.currentLanguageCode == 'fr';
+            return Text(
+              isFrench ? 'Étape ${currentStep + 1} sur ${steps.length}' : 'Step ${currentStep + 1} of ${steps.length}',
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF64748B),
+              ),
+            );
+          },
         ),
         centerTitle: true,
         actions: [
@@ -1064,16 +1977,21 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
       ),
       bottomNavigationBar: Padding(
         padding: const EdgeInsets.all(24.0),
-        child: CustomButton(
-          text: currentStep == steps.length - 1 
-            ? 'finish'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode)
-            : 'continue'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode),
-          onPressed: canProceed() ? nextStep : null,
-          icon: currentStep == steps.length - 1 
-            ? const Icon(LucideIcons.check, color: Colors.white) 
-            : const Icon(LucideIcons.arrowRight, color: Colors.white),
-          isPrimary: canProceed(),
-          isDisabled: !canProceed(),
+        child: Consumer<LocalizationService>(
+          builder: (context, locService, _) {
+            final isFrench = locService.currentLanguageCode == 'fr';
+            return CustomButton(
+              text: currentStep == steps.length - 1
+                  ? (isFrench ? 'Terminer' : 'Finish')
+                  : (isFrench ? 'Continuer' : 'Continue'),
+              onPressed: canProceed() ? nextStep : null,
+              icon: currentStep == steps.length - 1
+                  ? const Icon(LucideIcons.check, color: Colors.white)
+                  : const Icon(LucideIcons.arrowRight, color: Colors.white),
+              isPrimary: canProceed(),
+              isDisabled: !canProceed(),
+            );
+          },
         ),
       ),
     );
@@ -1118,61 +2036,75 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
             padding: const EdgeInsets.all(24),
             child: Column(
               children: [
-                // En-tête de félicitations - Réduit
+                // En-tête Coach Ryze avec panda félicitations
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Color(0xFF0B132B),
-                        Color(0xFF1C2951),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF0B132B).withOpacity(0.2),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
                   child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      const Icon(
-                        LucideIcons.sparkles,
-                        color: Colors.white,
-                        size: 24,
-                      ),
-                      const SizedBox(width: 12),
+                      // Bulle + nom Coach Ryze à GAUCHE
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Consumer<LocalizationService>(
-                              builder: (context, locService, _) => Text(
-                                'congratulations'.tr(locService.currentLanguageCode),
-                                style: const TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
+                            // Nom "Coach Ryze" au-dessus de la bulle
+                            const Padding(
+                              padding: EdgeInsets.only(left: 8, bottom: 6),
+                              child: Text(
+                                'Coach Ryze',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF64748B),
+                                  letterSpacing: 0.5,
                                 ),
                               ),
                             ),
-                            Consumer<LocalizationService>(
-                              builder: (context, locService, _) => Text(
-                                'your_plan_ready'.tr(locService.currentLanguageCode),
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.white70,
+                            // Bulle de message avec gradient
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
                                 ),
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFF0B132B).withOpacity(0.3),
+                                    blurRadius: 20,
+                                    offset: const Offset(0, 8),
+                                  ),
+                                ],
+                              ),
+                              child: Consumer<LocalizationService>(
+                                builder: (context, locService, _) {
+                                  final isFrench = locService.currentLanguageCode == 'fr';
+                                  return Text(
+                                    isFrench ? 'Voici ce que j\'ai préparé pour toi !' : 'Here\'s what I prepared for you!',
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                      height: 1.5,
+                                    ),
+                                  );
+                                },
                               ),
                             ),
                           ],
                         ),
+                      ),
+                      const SizedBox(width: 16),
+                      // Panda félicitations à DROITE
+                      Image.asset(
+                        'assets/images/coach_ryze_congratulations.png',
+                        width: 180,
+                        height: 180,
+                        fit: BoxFit.contain,
                       ),
                     ],
                   ),

@@ -19,6 +19,8 @@ import '../services/translations.dart';
 import '../services/localization_service.dart';
 import 'package:provider/provider.dart';
 import '../services/global_state_manager.dart';
+import '../services/tutorial_service.dart'; // Tutorial système
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SportDashboard extends StatefulWidget {
   final VoidCallback? onOpenCalendar;
@@ -51,6 +53,12 @@ class SportDashboardState extends State<SportDashboard> with TickerProviderState
   final List<Timer> _timers = [];
   Timer? _caloriesTimer;
 
+  // Tutorial GlobalKeys pour les éléments du dashboard
+  final GlobalKey _caloriesCardKey = GlobalKey();
+  final GlobalKey _sessionsCardKey = GlobalKey();
+  final GlobalKey _splitCardKey = GlobalKey();
+  final GlobalKey _quickActionsKey = GlobalKey();
+
   @override
   void initState() {
     super.initState();
@@ -60,6 +68,54 @@ class SportDashboardState extends State<SportDashboard> with TickerProviderState
 
     // Enrichissement en arrière-plan (non-bloquant)
     _loadDashboardData();
+
+    // NE PAS lancer le tutorial automatiquement ici
+    // Il sera lancé par la Section Sport après le welcome screen
+  }
+
+  /// Affiche le tutorial du Dashboard Sport
+  /// Méthode publique appelée par la Section Sport après le welcome screen
+  Future<void> showDashboardTutorial({
+    required GlobalKey dashboardTabKey,
+    required GlobalKey cardioTabKey,
+    required GlobalKey musculationTabKey,
+  }) async {
+    // Vérifier si déjà complété (en mode debug, toujours afficher)
+    const debugMode = true; // Mettre à false en production
+    if (!debugMode) {
+      final prefs = await SharedPreferences.getInstance();
+      final completed = prefs.getBool('sport_dashboard_tutorial_completed') ?? false;
+      if (completed) {
+        debugPrint('ℹ️ Tutorial Dashboard Sport déjà complété');
+        return;
+      }
+    }
+
+    final locService = LocalizationService.instance;
+    final languageCode = locService.currentLanguageCode;
+
+    // Petit délai pour s'assurer que tout est bien rendu (même timing que Dashboard principal)
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    // Lancer le tutorial avec les 3 onglets + 4 éléments du dashboard
+    await TutorialService().showSportDashboardTutorial(
+      context: context,
+      caloriesKey: _caloriesCardKey,
+      sessionsKey: _sessionsCardKey,
+      splitKey: _splitCardKey,
+      quickActionsKey: _quickActionsKey,
+      dashboardTabKey: dashboardTabKey,
+      cardioTabKey: cardioTabKey,
+      musculationTabKey: musculationTabKey,
+      languageCode: languageCode,
+    );
+
+    // Marquer comme complété
+    if (!debugMode) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('sport_dashboard_tutorial_completed', true);
+    }
+    debugPrint('✅ Tutorial Dashboard Sport terminé');
   }
 
   /// Force le rafraîchissement des données
@@ -226,27 +282,39 @@ class SportDashboardState extends State<SportDashboard> with TickerProviderState
             // 1. Bloc calories (objectif / brûlées / progression)
             // OPTIMISATION: Affichage immédiat sans condition de loading
             if (_dashboardData != null)
-              _buildWeeklyCalories(_dashboardData!, locService),
-            
+              Container(
+                key: _caloriesCardKey, // GlobalKey pour tutorial
+                child: _buildWeeklyCalories(_dashboardData!, locService),
+              ),
+
             const SizedBox(height: 16),
-            
+
             // 2. Bloc "Progression" (ex-Résumé de la semaine)
-            _buildWeeklySummary(locService),
-            
+            Container(
+              key: _sessionsCardKey, // GlobalKey pour tutorial
+              child: _buildWeeklySummary(locService),
+            ),
+
             const SizedBox(height: 16),
-            
+
             // 3. Bloc "Activité du jour"
-            _buildDailyActivities(locService),
-            
+            Container(
+              key: _splitCardKey, // GlobalKey pour tutorial (réutilisé pour daily activities)
+              child: _buildDailyActivities(locService),
+            ),
+
             const SizedBox(height: 16),
-            
+
             // 4. Bloc "Séances récentes"
             _buildRecentWorkouts(locService),
-            
+
             const SizedBox(height: 16),
-            
+
             // 5. Bloc "Démarrer une activité"
-            _buildQuickStart(locService),
+            Container(
+              key: _quickActionsKey, // GlobalKey pour tutorial
+              child: _buildQuickStart(locService),
+            ),
             
             // Padding bottom pour éviter la coupure
             const SizedBox(height: 100),
