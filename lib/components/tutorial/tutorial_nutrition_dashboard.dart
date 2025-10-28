@@ -3,7 +3,9 @@ import 'package:provider/provider.dart';
 import '../ui/nutrition_models.dart';
 import '../ui/nutrition_cards.dart';
 import '../ui/nutrition_widgets.dart';
+import '../ui/custom_card.dart';
 import '../../services/localization_service.dart';
+import '../../services/translations.dart';
 
 /// Page Nutrition Dashboard mockée pour le tutorial
 /// Affiche des données vierges (0 calories, 0 repas) pour guider l'utilisateur
@@ -12,6 +14,7 @@ class TutorialNutritionDashboard extends StatelessWidget {
   final GlobalKey macrosKey;
   final GlobalKey hydrationMealsKey;
   final GlobalKey quickActionsKey;
+  final ScrollController? scrollController;
 
   const TutorialNutritionDashboard({
     super.key,
@@ -19,6 +22,7 @@ class TutorialNutritionDashboard extends StatelessWidget {
     required this.macrosKey,
     required this.hydrationMealsKey,
     required this.quickActionsKey,
+    this.scrollController,
   });
 
   /// Données mockées vierges pour le tutorial
@@ -91,56 +95,49 @@ class TutorialNutritionDashboard extends StatelessWidget {
               ),
             ),
             child: SingleChildScrollView(
-              padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 120),
+              controller: scrollController,
+              padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 40),
               child: Column(
                 children: [
                   // 1. Carte des calories
-                  Container(
+                  MainCaloriesCard(
                     key: caloriesKey,
-                    child: MainCaloriesCard(
-                      profile: profile,
-                      animatedCalories: 0,
-                    ),
+                    profile: profile,
+                    animatedCalories: 0,
                   ),
 
                   const SizedBox(height: 16),
 
                   // 2. Macronutriments
-                  Container(
-                    key: macrosKey,
-                    child: Consumer<LocalizationService>(
-                      builder: (context, locService, child) => MacronutrientsCard(
-                        macros: NutritionData.getMacros(profile, locService.currentLanguageCode),
-                        animatedValues: {
-                          'protein': 0,
-                          'carbs': 0,
-                          'fats': 0,
-                        },
-                      ),
+                  Consumer<LocalizationService>(
+                    builder: (context, locService, child) => MacronutrientsCard(
+                      key: macrosKey,
+                      macros: NutritionData.getMacros(profile, locService.currentLanguageCode),
+                      animatedValues: {
+                        'protein': 0,
+                        'carbs': 0,
+                        'fats': 0,
+                      },
                     ),
                   ),
 
                   const SizedBox(height: 16),
 
                   // 3. Hydratation + Repas
-                  Container(
+                  HydrationAndMealsSection(
                     key: hydrationMealsKey,
-                    child: HydrationAndMealsSection(
-                      profile: profile,
-                      meals: meals,
-                      onAddWater: () {}, // Désactivé en mode tutorial
-                      onAddMeal: () {}, // Désactivé en mode tutorial
-                    ),
+                    profile: profile,
+                    meals: meals,
+                    onAddWater: () {}, // Désactivé en mode tutorial
+                    onAddMeal: () {}, // Désactivé en mode tutorial
                   ),
 
                   const SizedBox(height: 16),
 
                   // 4. Quick Actions
-                  Container(
+                  NutritionQuickActionsSection(
                     key: quickActionsKey,
-                    child: NutritionQuickActionsSection(
-                      actions: NutritionData.quickActions,
-                    ),
+                    actions: NutritionData.quickActions,
                   ),
                 ],
               ),

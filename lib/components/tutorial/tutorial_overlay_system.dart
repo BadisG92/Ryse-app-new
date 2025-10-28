@@ -6,6 +6,7 @@ import '../../services/translations.dart';
 /// Remplace complètement l'écran actuel pendant le tutorial
 class TutorialOverlaySystem {
   TutorialCoachMark? _tutorialCoachMark;
+  static ScrollController? _scrollController;
 
   /// Lance un tutorial avec une page mockée en arrière-plan
   Future<void> showTutorial({
@@ -14,13 +15,19 @@ class TutorialOverlaySystem {
     required List<TargetFocus> targets,
     required VoidCallback onFinish,
     VoidCallback? onSkip,
+    ScrollController? scrollController,
   }) async {
-    // Créer le tutorial avec les targets
+    // Stocker le ScrollController pour l'utiliser dans _ensureWidgetVisible
+    _scrollController = scrollController;
+
+    // Créer le tutorial avec les targets - avec scroll initial
     _tutorialCoachMark = TutorialCoachMark(
       targets: targets,
       colorShadow: const Color(0xFF0B132B),
       paddingFocus: 8,
-      opacityShadow: 0.8,
+      opacityShadow: 0.8, // Même opacité que la page d'accueil
+      alignSkip: Alignment.topRight,
+      hideSkip: false,
       textSkip: "Passer",
       textStyleSkip: const TextStyle(
         color: Colors.white,
@@ -47,6 +54,7 @@ class TutorialOverlaySystem {
           builder: (context) => _TutorialScreen(
             mockPage: mockPage,
             tutorialCoachMark: _tutorialCoachMark!,
+            scrollController: scrollController,
           ),
         ),
       );
@@ -90,101 +98,73 @@ class TutorialOverlaySystem {
                   ),
                 ],
               ),
-              child: Row(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Zone GAUCHE : Titre + Description
-                  Expanded(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Titre
-                        Text(
-                          title,
-                          style: const TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF0B132B),
-                            height: 1.3,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
+                  // Titre
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF0B132B),
+                      height: 1.3,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
 
-                        // Description
-                        Text(
-                          description,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Color(0xFF64748B),
-                            height: 1.4,
-                          ),
-                        ),
-                      ],
+                  // Description
+                  Text(
+                    description,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF64748B),
+                      height: 1.4,
                     ),
                   ),
 
-                  const SizedBox(width: 8),
+                  const SizedBox(height: 16),
 
-                  // Zone DROITE : Panda + Bouton en dessous
-                  if (avatarPath != null)
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Panda (128px fixe)
-                        SizedBox(
-                          width: 128,
-                          height: 128,
-                          child: Image.asset(
-                            avatarPath,
-                            fit: BoxFit.contain,
-                            errorBuilder: (context, error, stackTrace) {
-                              return const Icon(
-                                Icons.sports_martial_arts,
-                                size: 35,
-                                color: Color(0xFF0B132B),
-                              );
-                            },
-                          ),
+                  // Bouton "Compris" en bas
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () async {
+                        // Passer au prochain target (lance la transition plein écran)
+                        controller.next();
+
+                        // Si on a un prochain target, attendre que la transition plein écran commence
+                        // puis scroller pendant que c'est en plein écran
+                        if (nextTargetKey != null) {
+                          // Attendre 50ms que la transition plein écran démarre
+                          await Future.delayed(const Duration(milliseconds: 50));
+                          // Scroller maintenant (pendant que c'est en plein écran)
+                          await _ensureWidgetVisible(nextTargetKey, context);
+                        }
+                      },
+                      style: TextButton.styleFrom(
+                        backgroundColor: const Color(0xFF0B132B),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
                         ),
-                        const SizedBox(height: 8),
-
-                        // Bouton "Compris" juste en dessous du panda
-                        TextButton(
-                          onPressed: () {
-                            // Passer au prochain step immédiatement
-                            controller.next();
-
-                            // Scroll vers le prochain target si nécessaire
-                            if (nextTargetKey != null) {
-                              Future.delayed(const Duration(milliseconds: 500), () {
-                                _ensureWidgetVisible(nextTargetKey, context);
-                              });
-                            }
-                          },
-                          style: TextButton.styleFrom(
-                            backgroundColor: const Color(0xFF0B132B),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 12,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            minimumSize: Size.zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                          child: const Text(
-                            'Compris',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14,
-                            ),
-                          ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                      ],
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: const Text(
+                        'Compris',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
                     ),
+                  ),
                 ],
               ),
             );
@@ -195,27 +175,16 @@ class TutorialOverlaySystem {
   }
 
   /// Assure qu'un widget est visible en scrollant si nécessaire
-  static void _ensureWidgetVisible(GlobalKey key, BuildContext context) {
+  /// Retourne un Future qui se termine quand le scroll est fini
+  static Future<void> _ensureWidgetVisible(GlobalKey key, BuildContext context) async {
     final currentContext = key.currentContext;
     if (currentContext == null) return;
 
     final renderObject = currentContext.findRenderObject();
     if (renderObject == null || renderObject is! RenderBox) return;
 
-    // Trouver le Scrollable parent
-    Scrollable? scrollable;
-    context.visitAncestorElements((element) {
-      if (element.widget is Scrollable) {
-        scrollable = element.widget as Scrollable;
-        return false;
-      }
-      return true;
-    });
-
-    if (scrollable == null) return;
-
-    final scrollController = scrollable!.controller;
-    if (scrollController == null) return;
+    // Utiliser le ScrollController passé au tutorial
+    if (_scrollController == null) return;
 
     // Calculer la position du widget
     final box = renderObject as RenderBox;
@@ -230,14 +199,18 @@ class TutorialOverlaySystem {
 
     if (!isVisible) {
       // Calculer la position de scroll nécessaire
-      final targetScroll = scrollController.offset + position.dy - (screenHeight / 3);
+      // Utiliser screenHeight / 3 pour avoir plus de marge en haut
+      final targetScroll = _scrollController!.offset + position.dy - (screenHeight / 3);
 
-      // Scroller vers la position
-      scrollController.animateTo(
-        targetScroll.clamp(0.0, scrollController.position.maxScrollExtent),
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
+      // Scroller vers la position (quasi instantané) et attendre la fin
+      await _scrollController!.animateTo(
+        targetScroll.clamp(0.0, _scrollController!.position.maxScrollExtent),
+        duration: const Duration(milliseconds: 100),
+        curve: Curves.easeOut,
       );
+
+      // Petit délai supplémentaire pour que la position soit stabilisée
+      await Future.delayed(const Duration(milliseconds: 50));
     }
   }
 }
@@ -246,10 +219,12 @@ class TutorialOverlaySystem {
 class _TutorialScreen extends StatefulWidget {
   final Widget mockPage;
   final TutorialCoachMark tutorialCoachMark;
+  final ScrollController? scrollController;
 
   const _TutorialScreen({
     required this.mockPage,
     required this.tutorialCoachMark,
+    this.scrollController,
   });
 
   @override
@@ -261,8 +236,12 @@ class _TutorialScreenState extends State<_TutorialScreen> {
   void initState() {
     super.initState();
     // Lancer le tutorial après que la page soit rendue
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      widget.tutorialCoachMark.show(context: context);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // Délai supplémentaire pour s'assurer que tout est bien rendu
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (mounted) {
+        widget.tutorialCoachMark.show(context: context);
+      }
     });
   }
 

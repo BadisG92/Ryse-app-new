@@ -67,55 +67,98 @@ class _TutorialWelcomeScreenState extends State<TutorialWelcomeScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: Container(
-        color: const Color(0xFF0B132B).withOpacity(0.95),
-        child: SafeArea(
-          child: Stack(
-            children: [
-              // Bouton "Passer" en haut à droite
-              Positioned(
-                top: 16,
-                right: 16,
-                child: TextButton(
-                  onPressed: widget.onSkip,
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 10,
-                    ),
-                  ),
-                  child: Text(
-                    'skip'.tr(widget.languageCode),
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.7),
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ),
+    return Scaffold(
+      backgroundColor: const Color(0xFF0B132B).withOpacity(0.95),
+      body: Stack(
+        children: [
+          // Contenu principal
+          SafeArea(
+            bottom: false,
+            child: Center(
+              child: FadeTransition(
+                opacity: _fadeAnimation,
+                child: SlideTransition(
+                  position: _slideAnimation,
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 32),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Section panda + bulle (même style que value proposition slides)
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            // Bulle de dialogue à GAUCHE
+                            Expanded(
+                              flex: 3,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  // Nom "Coach Ryze" au-dessus de la bulle
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 8, bottom: 6),
+                                    child: Text(
+                                      'Coach Ryze',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.white.withOpacity(0.7),
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                  ),
+                                  // Bulle de message
+                                  Container(
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(20),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.2),
+                                          blurRadius: 20,
+                                          offset: const Offset(0, 8),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Text(
+                                      widget.languageCode == 'fr'
+                                          ? 'Bienvenue dans le tutoriel ! Je vais te montrer où je peux t\'aider.'
+                                          : 'Welcome to the tutorial! I\'ll show you where I can help.',
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        color: Color(0xFF0B132B),
+                                        fontWeight: FontWeight.w600,
+                                        height: 1.5,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
 
-              // Contenu principal centré
-              Center(
-                child: FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: SlideTransition(
-                    position: _slideAnimation,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 32),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Image du Panda (grande)
-                          _buildPandaImage(),
+                            const SizedBox(width: 20),
 
-                          const SizedBox(height: 32),
+                            // Panda à DROITE
+                            Expanded(
+                              flex: 2,
+                              child: Container(
+                                width: 140,
+                                height: 140,
+                                child: _buildPandaImage(),
+                              ),
+                            ),
+                          ],
+                        ),
 
-                          // Titre de bienvenue personnalisé
-                          Text(
-                            _getPersonalizedTitle(),
+                        const SizedBox(height: 32),
+
+                        // Titre du tutoriel
+                        Text(
+                          widget.languageCode == 'fr'
+                              ? 'Mon accompagnement'
+                              : 'My coaching',
                             style: const TextStyle(
                               fontSize: 28,
                               fontWeight: FontWeight.bold,
@@ -125,126 +168,77 @@ class _TutorialWelcomeScreenState extends State<TutorialWelcomeScreen>
                             textAlign: TextAlign.center,
                           ),
 
-                          const SizedBox(height: 16),
+                        const SizedBox(height: 24),
 
-                          // Sous-titre
-                          Text(
-                            widget.languageCode == 'fr'
-                                ? 'Ensemble, on va booster ton énergie et tes habitudes !'
-                                : 'Together, we\'ll boost your energy and habits!',
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.white.withOpacity(0.85),
-                              height: 1.5,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
+                        // Liste des capacités du coach
+                        _buildCapabilitiesList(),
 
-                          const SizedBox(height: 32),
+                        const SizedBox(height: 32),
 
-                          // Liste des capacités du coach
-                          _buildCapabilitiesList(),
+                        // Bouton "Commencer"
+                        _buildStartButton(),
 
-                          const SizedBox(height: 40),
-
-                          // Bouton "Commencer"
-                          _buildStartButton(),
-
-                          const SizedBox(height: 16),
-
-                          // Texte "Passer le tutorial" (discret)
-                          TextButton(
-                            onPressed: widget.onSkip,
-                            child: Text(
-                              'tutorial_skip_intro'.tr(widget.languageCode),
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.5),
-                                fontSize: 14,
-                                decoration: TextDecoration.underline,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                        const SizedBox(height: 16),
+                      ],
                     ),
                   ),
                 ),
               ),
-            ],
+            ),
           ),
-        ),
+
+          // Bouton "Passer" en haut à droite
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 16,
+            right: 16,
+            child: TextButton(
+              onPressed: widget.onSkip,
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 10,
+                ),
+              ),
+              child: Text(
+                'skip'.tr(widget.languageCode),
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.7),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildPandaImage() {
-    // Utiliser l'image fournie ou l'image par défaut de bienvenue
     final imagePath = widget.pandaImagePath ?? 'assets/images/coach_ryze_welcome.png';
 
-    // Vérifier si c'est un SVG
-    if (imagePath.endsWith('.svg')) {
-      return Container(
-        width: 160,
-        height: 160,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.white.withOpacity(0.1),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 20,
-              spreadRadius: 5,
+    return Image.asset(
+      imagePath,
+      fit: BoxFit.contain,
+      errorBuilder: (context, error, stackTrace) {
+        return Container(
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              colors: [Colors.white, Color(0xFFF1F5F9)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-          ],
-        ),
-        padding: const EdgeInsets.all(30),
-        child: SvgPicture.asset(
-          imagePath,
-          fit: BoxFit.contain,
-        ),
-      );
-    } else {
-      // PNG par défaut
-      return Container(
-        width: 160,
-        height: 160,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.white.withOpacity(0.1),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 20,
-              spreadRadius: 5,
-            ),
-          ],
-        ),
-        child: ClipOval(
-          child: Image.asset(
-            imagePath,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) {
-              // Fallback en cas d'erreur : Icône par défaut
-              return Container(
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    colors: [Colors.white, Color(0xFFF1F5F9)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                ),
-                child: const Icon(
-                  LucideIcons.bot,
-                  size: 80,
-                  color: Color(0xFF0B132B),
-                ),
-              );
-            },
           ),
-        ),
-      );
-    }
+          child: const Center(
+            child: Text(
+              '🐼',
+              style: TextStyle(fontSize: 60),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Widget _buildCapabilitiesList() {
@@ -295,7 +289,9 @@ class _TutorialWelcomeScreenState extends State<TutorialWelcomeScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'tutorial_welcome_capabilities'.tr(widget.languageCode),
+            widget.languageCode == 'fr'
+                ? 'Voici ce que je peux faire pour toi :'
+                : 'Here\'s what I can do for you:',
             style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -351,26 +347,6 @@ class _TutorialWelcomeScreenState extends State<TutorialWelcomeScreen>
         ],
       ),
     );
-  }
-
-  /// Générer le titre personnalisé avec le prénom de l'utilisateur
-  String _getPersonalizedTitle() {
-    final isFrench = widget.languageCode == 'fr';
-
-    if (widget.userName != null && widget.userName!.isNotEmpty) {
-      // Capitaliser la première lettre du prénom
-      final name = widget.userName!;
-      final capitalizedName = name[0].toUpperCase() + name.substring(1);
-
-      return isFrench
-          ? 'Salut $capitalizedName ! Moi c\'est Ryze !'
-          : 'Hi $capitalizedName! I\'m Ryze!';
-    } else {
-      // Fallback si pas de prénom
-      return isFrench
-          ? 'Salut ! Moi c\'est Ryze !'
-          : 'Hi! I\'m Ryze!';
-    }
   }
 
   Widget _buildStartButton() {

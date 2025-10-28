@@ -27,8 +27,8 @@ class _RyzeAppState extends State<RyzeApp> {
   Widget? _targetScreen;
 
   // Flag de debug pour forcer certains écrans (utile en développement)
-  static const bool _forceOnboarding = true;
-  static const bool _forceValueProp = true;
+  static const bool _forceOnboarding = false;
+  static const bool _forceValueProp = false;
 
   @override
   void initState() {
@@ -75,7 +75,10 @@ class _RyzeAppState extends State<RyzeApp> {
           } else {
             // ⚠️ Compte existe mais onboarding incomplet
             debugPrint('📋 Onboarding incomplet → Reprendre onboarding');
-            targetScreen = OnboardingWithValueProp(onComplete: _completeOnboarding);
+            targetScreen = OnboardingWithValueProp(
+              onComplete: _completeOnboarding,
+              isUserLoggedIn: true,
+            );
           }
         } catch (e) {
           debugPrint('❌ Erreur vérification onboarding: $e');
@@ -86,7 +89,10 @@ class _RyzeAppState extends State<RyzeApp> {
           if (isOnboarded && !_forceOnboarding) {
             targetScreen = const MainApp();
           } else {
-            targetScreen = OnboardingWithValueProp(onComplete: _completeOnboarding);
+            targetScreen = OnboardingWithValueProp(
+              onComplete: _completeOnboarding,
+              isUserLoggedIn: true,
+            );
           }
         }
       }
@@ -102,11 +108,12 @@ class _RyzeAppState extends State<RyzeApp> {
           debugPrint('🔄 Utilisateur revient → Login direct (sans slides)');
           targetScreen = const LoginScreen();
         } else {
-          // 🎬 PREMIÈRE FOIS → Welcome + Slides value proposition
-          debugPrint('🎬 Première ouverture → Welcome + Value proposition slides');
+          // 🎬 PREMIÈRE FOIS → Welcome + Slides value proposition → Login
+          debugPrint('🎬 Première ouverture → Welcome + Value proposition slides → Login');
           targetScreen = OnboardingWithValueProp(
             onComplete: _completeOnboarding,
             showValuePropFirst: false, // Toujours montrer le Welcome screen
+            isUserLoggedIn: false, // Pas connecté → aller vers Login après slides
           );
         }
       }

@@ -4238,36 +4238,36 @@ class AppTranslations {
 
     // Tutorial Dashboard Nutrition - Éléments détaillés (tutoiement + pédagogique)
     'tutorial_nutrition_calories_title': {
-      'fr': 'Tes calories du jour',
-      'en': 'Your Daily Calories',
+      'fr': 'Ton objectif calorique',
+      'en': 'Your calorie goal',
     },
     'tutorial_nutrition_calories_desc': {
-      'fr': 'Suis tes calories consommées et ton objectif quotidien en un coup d\'œil.',
-      'en': 'Track your consumed calories and daily goal at a glance.',
+      'fr': 'Visualise en temps réel tes calories consommées, ce qu\'il te reste, et ton objectif quotidien.',
+      'en': 'See in real-time your consumed calories, what\'s left, and your daily goal.',
     },
     'tutorial_nutrition_macros_title': {
-      'fr': 'Tes macronutriments',
-      'en': 'Your Macronutrients',
+      'fr': 'Équilibre tes macros',
+      'en': 'Balance your macros',
     },
     'tutorial_nutrition_macros_desc': {
-      'fr': 'Protéines, glucides et lipides : vérifie l\'équilibre de ton alimentation.',
-      'en': 'Proteins, carbs and fats: check your diet balance.',
+      'fr': 'Protéines pour les muscles, glucides pour l\'énergie, lipides pour la santé : je t\'aide à trouver le bon équilibre.',
+      'en': 'Proteins for muscles, carbs for energy, fats for health: I help you find the right balance.',
     },
     'tutorial_nutrition_hydration_meals_title': {
       'fr': 'Hydratation & Repas',
       'en': 'Hydration & Meals',
     },
     'tutorial_nutrition_hydration_meals_desc': {
-      'fr': 'Ton eau quotidienne à gauche, la répartition de tes calories par repas à droite.',
-      'en': 'Your daily water on the left, calorie distribution by meal on the right.',
+      'fr': 'Reste hydraté avec ton suivi d\'eau et organise tes repas pour mieux répartir tes calories.',
+      'en': 'Stay hydrated with water tracking and organize your meals to better distribute calories.',
     },
     'tutorial_nutrition_quick_actions_title': {
-      'fr': 'Ajouter tes aliments',
-      'en': 'Add Your Foods',
+      'fr': '5 façons d\'ajouter tes aliments',
+      'en': '5 ways to add your foods',
     },
     'tutorial_nutrition_quick_actions_desc': {
-      'fr': '5 méthodes : description textuelle, photo, code-barres, recherche ou recettes.',
-      'en': '5 methods: text description, photo, barcode, search or recipes.',
+      'fr': 'Décris ton repas, prends une photo de ton assiette, scanne un produit, cherche dans la base ou ajoute une recette.',
+      'en': 'Describe your meal, take a photo of your plate, scan a product, search the database, or add a recipe.',
     },
 
     // Tutorial Sport
@@ -4296,78 +4296,78 @@ class AppTranslations {
       'en': 'Personalized sessions by Coach Ryze, exercises with sets and reps.',
     },
     'tutorial_sport_calories_title': {
-      'fr': 'Calories brûlées',
-      'en': 'Calories Burned',
+      'fr': 'Ton énergie dépensée',
+      'en': 'Your energy burned',
     },
     'tutorial_sport_calories_desc': {
-      'fr': 'Calories brûlées cette semaine : musculation et cardio combinés.',
-      'en': 'Calories burned this week: strength training and cardio combined.',
+      'fr': 'Visualise toutes les calories brûlées cette semaine avec ta musculation et ton cardio.',
+      'en': 'See all calories burned this week with your strength training and cardio.',
     },
     'tutorial_sport_sessions_title': {
-      'fr': 'Progression hebdomadaire',
-      'en': 'Weekly Progress',
+      'fr': 'Ta progression hebdo',
+      'en': 'Your weekly progress',
     },
     'tutorial_sport_sessions_desc': {
-      'fr': 'Nombre de séances, streak de semaines consécutives et temps total.',
-      'en': 'Number of sessions, consecutive weeks streak and total time.',
+      'fr': 'Suis tes séances complétées, ton streak de semaines d\'entraînement et ton temps total d\'activité.',
+      'en': 'Track your completed sessions, training weeks streak, and total activity time.',
     },
     'tutorial_sport_split_title': {
-      'fr': 'Activités du jour',
-      'en': 'Today\'s Activities',
+      'fr': 'Tes activités du jour',
+      'en': 'Your daily activities',
     },
     'tutorial_sport_split_desc': {
-      'fr': 'Toutes tes activités du jour : musculation et cardio avec leurs détails.',
-      'en': 'All your activities today: strength training and cardio with details.',
+      'fr': 'Retrouve toutes tes activités réalisées aujourd\'hui : séances de muscu et cardio avec leurs détails.',
+      'en': 'Find all your completed activities for today: strength and cardio sessions with their details.',
     },
     'tutorial_sport_actions_title': {
-      'fr': 'Démarrer une activité',
-      'en': 'Start an Activity',
+      'fr': 'Lance ton entraînement',
+      'en': 'Start your workout',
     },
     'tutorial_sport_actions_desc': {
-      'fr': 'Lance une séance : Cardio (course, vélo, HIIT) ou Musculation (guidée ou libre).',
-      'en': 'Start a session: Cardio (running, cycling, HIIT) or Strength (guided or free).',
+      'fr': 'Démarre une séance de cardio (course, vélo, HIIT), de musculation ou un programme personnalisé par Coach Ryze.',
+      'en': 'Start a cardio session (running, cycling, HIIT), strength training, or a personalized program by Coach Ryze.',
     },
 
     // Tutorial Cardio
     'tutorial_cardio_stats_title': {
-      'fr': 'Statistiques de la semaine',
-      'en': 'Weekly Statistics',
+      'fr': 'Tes performances hebdo',
+      'en': 'Your weekly performance',
     },
     'tutorial_cardio_stats_desc': {
-      'fr': 'Performances cardio de la semaine : calories, distance, séances et temps.',
-      'en': 'Weekly cardio performance: calories, distance, sessions and time.',
+      'fr': 'Suis toutes tes stats cardio de la semaine : calories brûlées, distance parcourue et temps total d\'activité.',
+      'en': 'Track all your weekly cardio stats: calories burned, distance covered and total activity time.',
     },
     'tutorial_cardio_activities_title': {
-      'fr': 'Choisir une activité',
-      'en': 'Choose an Activity',
+      'fr': 'Lance une activité',
+      'en': 'Start an activity',
     },
     'tutorial_cardio_activities_desc': {
-      'fr': 'Choisis ton activité : course, vélo, marche, natation, HIIT...',
-      'en': 'Choose your activity: running, cycling, walking, swimming, HIIT...',
+      'fr': 'Sélectionne ton activité cardio : course, vélo, marche, natation, HIIT ou autre, puis démarre ta séance.',
+      'en': 'Select your cardio activity: running, cycling, walking, swimming, HIIT or other, then start your session.',
     },
     'tutorial_cardio_last_session_title': {
-      'fr': 'Dernière séance',
-      'en': 'Last Session',
+      'fr': 'Ta dernière séance',
+      'en': 'Your last session',
     },
     'tutorial_cardio_last_session_desc': {
-      'fr': 'Détails de ta dernière séance : activité, durée, distance, calories.',
-      'en': 'Last session details: activity, duration, distance, calories.',
+      'fr': 'Retrouve tous les détails de ta dernière activité cardio : type d\'activité, durée, distance parcourue et calories brûlées.',
+      'en': 'Find all details of your last cardio activity: activity type, duration, distance covered and calories burned.',
     },
     'tutorial_cardio_week_sessions_title': {
-      'fr': 'Séances de la semaine',
-      'en': 'Week Sessions',
+      'fr': 'Toutes tes séances',
+      'en': 'All your sessions',
     },
     'tutorial_cardio_week_sessions_desc': {
-      'fr': 'Toutes tes séances cardio de la semaine en cours.',
-      'en': 'All your cardio sessions for the current week.',
+      'fr': 'Visualise toutes tes séances cardio complétées cette semaine pour suivre ta régularité.',
+      'en': 'View all your completed cardio sessions this week to track your consistency.',
     },
     'tutorial_cardio_history_title': {
-      'fr': 'Historique complet',
-      'en': 'Complete History',
+      'fr': 'Ton historique complet',
+      'en': 'Your full history',
     },
     'tutorial_cardio_history_desc': {
-      'fr': 'Historique complet de toutes tes séances pour suivre ta progression.',
-      'en': 'Complete history of all your sessions to track your progress.',
+      'fr': 'Accède à l\'historique complet de toutes tes séances cardio passées pour analyser ta progression sur le long terme.',
+      'en': 'Access the complete history of all your past cardio sessions to analyze your long-term progress.',
     },
 
     // Legacy nutrition tutorial (non utilisé mais conservé)

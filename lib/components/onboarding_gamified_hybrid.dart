@@ -1408,7 +1408,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const SizedBox(height: 80),
+          const SizedBox(height: 20),
           ...activities.map((activity) =>
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
@@ -1553,102 +1553,128 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
             ),
           ],
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // Bulle + nom Coach Ryze à GAUCHE
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Nom "Coach Ryze" au-dessus de la bulle
-                  Padding(
-                    padding: const EdgeInsets.only(left: 8, bottom: 6),
-                    child: Text(
-                      'Coach Ryze',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF64748B),
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ),
-                  // Bulle de message avec gradient
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
-                      ),
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF0B132B).withOpacity(0.3),
-                          blurRadius: 20,
-                          offset: const Offset(0, 8),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Bulle + nom Coach Ryze à GAUCHE
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Nom "Coach Ryze" au-dessus de la bulle
+                      Padding(
+                        padding: const EdgeInsets.only(left: 8, bottom: 6),
+                        child: Text(
+                          'Coach Ryze',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF64748B),
+                            letterSpacing: 0.5,
+                          ),
                         ),
-                      ],
-                    ),
-                    child: Text(
-                      message,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                        height: 1.5,
                       ),
-                    ),
+                      // Bulle de message avec gradient
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+                          ),
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF0B132B).withOpacity(0.3),
+                              blurRadius: 20,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        child: Text(
+                          message,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            height: 1.5,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+
+                const SizedBox(width: 16),
+
+                // Panda animé à DROITE
+                TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  duration: const Duration(milliseconds: 600),
+                  curve: Curves.elasticOut,
+                  builder: (context, value, child) {
+                    return Transform.scale(
+                      scale: value,
+                      child: Container(
+                        width: 180,
+                        height: 180,
+                        child: Image.asset(
+                          pandaImage,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
             ),
 
-            const SizedBox(width: 16),
+            const SizedBox(height: 24),
 
-            // Panda animé à DROITE
-            TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0.0, end: 1.0),
-              duration: const Duration(milliseconds: 600),
-              curve: Curves.elasticOut,
-              builder: (context, value, child) {
-                return Transform.scale(
-                  scale: value,
-                  child: Container(
-                    width: 180,
-                    height: 180,
-                    child: Image.asset(
-                      pandaImage,
-                      fit: BoxFit.contain,
-                    ),
+            // Bouton "Continuer"
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    if (karmaNumber == 1) {
+                      showGoodKarma1 = false;
+                    } else {
+                      showGoodKarma2 = false;
+                    }
+                    currentStep++;
+                  });
+                  _animationController.reset();
+                  _animationController.forward();
+                  Navigator.pop(context);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0B132B),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                );
-              },
+                  elevation: 0,
+                ),
+                child: const Text(
+                  'Continuer',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
             ),
           ],
         ),
       ),
     );
-
-    // Fermer automatiquement après 1.25 secondes et passer au step suivant
-    Timer(const Duration(milliseconds: 1250), () {
-      if (mounted) {
-        Navigator.pop(context); // Fermer le bottom sheet
-        setState(() {
-          if (karmaNumber == 1) {
-            showGoodKarma1 = false;
-          } else {
-            showGoodKarma2 = false;
-          }
-          currentStep++;
-        });
-        _animationController.reset();
-        _animationController.forward();
-      }
-    });
   }
 
   // Logique de validation pour les 5 étapes
@@ -1879,70 +1905,24 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                 },
               )
             : null,
-        title: Consumer<LocalizationService>(
-          builder: (context, locService, _) {
-            final isFrench = locService.currentLanguageCode == 'fr';
-            return Text(
-              isFrench ? 'Étape ${currentStep + 1} sur ${steps.length}' : 'Step ${currentStep + 1} of ${steps.length}',
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF64748B),
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: List.generate(steps.length, (index) {
+            return Container(
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              width: currentStep == index ? 24 : 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: currentStep == index
+                    ? const Color(0xFF0B132B)
+                    : const Color(0xFFE2E8F0),
+                borderRadius: BorderRadius.circular(4),
               ),
             );
-          },
+          }),
         ),
         centerTitle: true,
-        actions: [
-          // Boutons de changement de langue
-          Consumer<LocalizationService>(
-            builder: (context, locService, _) => Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                GestureDetector(
-                  onTap: () => locService.setLanguage('fr'),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: locService.isFrench ? const Color(0xFF0B132B) : Colors.transparent,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFF0B132B)),
-                    ),
-                    child: Text(
-                      'FR',
-                      style: TextStyle(
-                        color: locService.isFrench ? Colors.white : const Color(0xFF0B132B),
-                        fontWeight: FontWeight.w600,
-                        fontSize: 10,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 4),
-                GestureDetector(
-                  onTap: () => locService.setLanguage('en'),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: locService.isEnglish ? const Color(0xFF0B132B) : Colors.transparent,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFF0B132B)),
-                    ),
-                    child: Text(
-                      'EN',
-                      style: TextStyle(
-                        color: locService.isEnglish ? Colors.white : const Color(0xFF0B132B),
-                        fontWeight: FontWeight.w600,
-                        fontSize: 10,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-              ],
-            ),
-          ),
-        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
@@ -2043,8 +2023,9 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      // Bulle + nom Coach Ryze à GAUCHE
+                      // Bulle + nom Coach Ryze à GAUCHE (augmenté en largeur)
                       Expanded(
+                        flex: 3,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
@@ -2098,13 +2079,15 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                           ],
                         ),
                       ),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: 20),
                       // Panda félicitations à DROITE
-                      Image.asset(
-                        'assets/images/coach_ryze_congratulations.png',
-                        width: 180,
-                        height: 180,
-                        fit: BoxFit.contain,
+                      Container(
+                        width: 140,
+                        height: 140,
+                        child: Image.asset(
+                          'assets/images/coach_ryze_congratulations.png',
+                          fit: BoxFit.contain,
+                        ),
                       ),
                     ],
                   ),

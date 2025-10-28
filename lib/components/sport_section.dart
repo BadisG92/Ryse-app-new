@@ -20,7 +20,10 @@ import '../services/sport_dashboard_service.dart';
 import '../services/global_state_manager.dart';
 import 'ui/sport_tutorial_welcome.dart'; // Welcome screen sport
 import 'ui/cardio_tutorial_welcome.dart'; // Welcome screen cardio
+import 'tutorial/tutorial_overlay_system.dart'; // Système tutorial avec mockup
+import 'tutorial/tutorial_cardio_page.dart'; // Page Cardio mockée pour tutorial
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:tutorial_coach_mark/tutorial_coach_mark.dart'; // Pour ContentAlign et ShapeLightFocus
 
 class SportSection extends StatefulWidget {
   const SportSection({super.key});
@@ -118,15 +121,16 @@ class _SportSectionState extends State<SportSection>
     final locService = LocalizationService.instance;
     final globalState = GlobalStateManager.instance;
 
-    // Afficher uniquement l'écran de bienvenue
-    final shouldContinue = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => SportTutorialWelcome(
-        languageCode: locService.currentLanguageCode,
-        userName: globalState.userName,
-        onStart: () => Navigator.of(context).pop(true),
-        onSkip: () => Navigator.of(context).pop(false),
+    // Afficher l'écran de bienvenue en PLEIN ÉCRAN (pas en dialog)
+    final shouldContinue = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (context) => SportTutorialWelcome(
+          languageCode: locService.currentLanguageCode,
+          userName: globalState.userName,
+          onStart: () => Navigator.of(context).pop(true),
+          onSkip: () => Navigator.of(context).pop(false),
+        ),
       ),
     );
 
@@ -181,15 +185,16 @@ class _SportSectionState extends State<SportSection>
     final locService = LocalizationService.instance;
     final globalState = GlobalStateManager.instance;
 
-    // Afficher uniquement l'écran de bienvenue
-    final shouldContinue = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => CardioTutorialWelcome(
-        languageCode: locService.currentLanguageCode,
-        userName: globalState.userName,
-        onStart: () => Navigator.of(context).pop(true),
-        onSkip: () => Navigator.of(context).pop(false),
+    // Afficher l'écran de bienvenue en PLEIN ÉCRAN (pas en dialog)
+    final shouldContinue = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (context) => CardioTutorialWelcome(
+          languageCode: locService.currentLanguageCode,
+          userName: globalState.userName,
+          onStart: () => Navigator.of(context).pop(true),
+          onSkip: () => Navigator.of(context).pop(false),
+        ),
       ),
     );
 
@@ -209,18 +214,111 @@ class _SportSectionState extends State<SportSection>
     }
   }
 
-  /// Lance le tutorial Cardio en accédant au widget enfant
+  /// Lance le tutorial Cardio avec page mockée (nouvelle approche)
   Future<void> _launchCardioTutorial() async {
     // Petit délai pour que le welcome screen se ferme complètement
     await Future.delayed(const Duration(milliseconds: 300));
 
-    // Appeler la méthode publique showCardioTutorial() du widget Cardio
-    final cardioState = _cardioKey.currentState;
-    if (cardioState != null) {
-      await cardioState.showCardioTutorial();
-    } else {
-      debugPrint('⚠️ Impossible d\'accéder au state de Cardio pour lancer le tutorial');
-    }
+    if (!mounted) return;
+
+    final locService = LocalizationService.instance;
+
+    // Créer les GlobalKeys pour la page mockée
+    final weeklyStatsKey = GlobalKey();
+    final activitySelectionKey = GlobalKey();
+    final lastSessionKey = GlobalKey();
+    final weekSessionsKey = GlobalKey();
+    final historyAccessKey = GlobalKey();
+
+    // Créer un ScrollController pour le mockup
+    final scrollController = ScrollController();
+
+    // Créer la page mockée avec données vierges
+    final mockPage = TutorialCardioPage(
+      weeklyStatsKey: weeklyStatsKey,
+      activitySelectionKey: activitySelectionKey,
+      lastSessionKey: lastSessionKey,
+      weekSessionsKey: weekSessionsKey,
+      historyAccessKey: historyAccessKey,
+      scrollController: scrollController,
+    );
+
+    // Créer les targets pour le tutorial
+    final targets = [
+      TutorialOverlaySystem.createTarget(
+        identify: 'weekly_stats',
+        keyTarget: weeklyStatsKey,
+        title: 'tutorial_cardio_stats_title'.tr(locService.currentLanguageCode),
+        description: 'tutorial_cardio_stats_desc'.tr(locService.currentLanguageCode),
+        align: ContentAlign.bottom,
+        shape: ShapeLightFocus.RRect,
+        radius: 16,
+        avatarPath: 'assets/images/coach_ryze_workout_avatar.png',
+        nextTargetKey: activitySelectionKey, // Scroll vers sélection d'activité
+      ),
+      TutorialOverlaySystem.createTarget(
+        identify: 'activity_selection',
+        keyTarget: activitySelectionKey,
+        title: 'tutorial_cardio_activities_title'.tr(locService.currentLanguageCode),
+        description: 'tutorial_cardio_activities_desc'.tr(locService.currentLanguageCode),
+        align: ContentAlign.bottom, // ✅ Bulle en dessous comme demandé
+        shape: ShapeLightFocus.RRect,
+        radius: 16,
+        avatarPath: 'assets/images/coach_ryze_workout_avatar.png',
+        nextTargetKey: lastSessionKey, // Scroll vers dernière séance
+      ),
+      TutorialOverlaySystem.createTarget(
+        identify: 'last_session',
+        keyTarget: lastSessionKey,
+        title: 'tutorial_cardio_last_session_title'.tr(locService.currentLanguageCode),
+        description: 'tutorial_cardio_last_session_desc'.tr(locService.currentLanguageCode),
+        align: ContentAlign.top,
+        shape: ShapeLightFocus.RRect,
+        radius: 16,
+        avatarPath: 'assets/images/coach_ryze_workout_avatar.png',
+        nextTargetKey: weekSessionsKey, // Scroll vers séances de la semaine
+      ),
+      TutorialOverlaySystem.createTarget(
+        identify: 'week_sessions',
+        keyTarget: weekSessionsKey,
+        title: 'tutorial_cardio_week_sessions_title'.tr(locService.currentLanguageCode),
+        description: 'tutorial_cardio_week_sessions_desc'.tr(locService.currentLanguageCode),
+        align: ContentAlign.top,
+        shape: ShapeLightFocus.RRect,
+        radius: 16,
+        avatarPath: 'assets/images/coach_ryze_workout_avatar.png',
+        nextTargetKey: historyAccessKey, // Scroll vers accès historique
+      ),
+      TutorialOverlaySystem.createTarget(
+        identify: 'history_access',
+        keyTarget: historyAccessKey,
+        title: 'tutorial_cardio_history_title'.tr(locService.currentLanguageCode),
+        description: 'tutorial_cardio_history_desc'.tr(locService.currentLanguageCode),
+        align: ContentAlign.top,
+        shape: ShapeLightFocus.RRect,
+        radius: 16,
+        avatarPath: 'assets/images/coach_ryze_workout_avatar.png',
+        // Pas de nextTargetKey, c'est la dernière étape
+      ),
+    ];
+
+    // Lancer le tutorial avec la page mockée
+    await TutorialOverlaySystem().showTutorial(
+      context: context,
+      mockPage: mockPage,
+      targets: targets,
+      scrollController: scrollController,
+      onFinish: () {
+        debugPrint('✅ Tutorial Cardio terminé');
+        // Nettoyer le ScrollController
+        scrollController.dispose();
+      },
+      onSkip: () {
+        debugPrint('⏭️ Tutorial Cardio skippé');
+        // Nettoyer le ScrollController
+        scrollController.dispose();
+      },
+    );
   }
 
   /// NOUVEAU: Chargement synchrone instantané depuis GlobalStateManager

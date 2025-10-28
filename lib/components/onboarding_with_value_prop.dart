@@ -5,6 +5,7 @@ import 'ui/welcome_screen.dart';
 import 'ui/value_proposition_slides.dart';
 import 'onboarding_gamified_hybrid.dart';
 import '../services/localization_service.dart';
+import '../screens/auth/login_screen.dart';
 
 /// Widget qui encapsule Welcome Screen + Value Proposition Slides + Onboarding
 /// Flow: Welcome → 3 Slides de Value Prop → Onboarding
@@ -12,11 +13,13 @@ import '../services/localization_service.dart';
 class OnboardingWithValueProp extends StatefulWidget {
   final VoidCallback onComplete;
   final bool showValuePropFirst;
+  final bool isUserLoggedIn;
 
   const OnboardingWithValueProp({
     Key? key,
     required this.onComplete,
     this.showValuePropFirst = false,
+    this.isUserLoggedIn = false,
   }) : super(key: key);
 
   @override
@@ -68,6 +71,17 @@ class _OnboardingWithValuePropState extends State<OnboardingWithValueProp>
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('has_seen_intro', true);
 
+    // Si l'utilisateur n'est PAS connecté → aller vers Login
+    if (!widget.isUserLoggedIn) {
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
+        );
+      }
+      return;
+    }
+
+    // Si l'utilisateur EST connecté → continuer vers Onboarding
     _fadeController.reverse().then((_) {
       if (mounted) {
         setState(() {
@@ -79,6 +93,17 @@ class _OnboardingWithValuePropState extends State<OnboardingWithValueProp>
   }
 
   void _onSkipValueProp() {
+    // Si l'utilisateur n'est PAS connecté → aller vers Login
+    if (!widget.isUserLoggedIn) {
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
+        );
+      }
+      return;
+    }
+
+    // Si l'utilisateur EST connecté → continuer vers Onboarding
     _fadeController.reverse().then((_) {
       if (mounted) {
         setState(() {

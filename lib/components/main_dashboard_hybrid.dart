@@ -76,6 +76,15 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
 
   /// Affiche le tutorial du Dashboard
   Future<void> _showDashboardTutorial() async {
+    // Vérifier que le context est toujours monté
+    if (!mounted) {
+      debugPrint('⚠️ Widget not mounted, cannot show tutorial');
+      return;
+    }
+
+    // DEBUG: Réinitialiser le tutoriel pour forcer l'affichage en mode test
+    await TutorialService().resetAllTutorials();
+
     final locService = LocalizationService.instance;
     final globalState = GlobalStateManager.instance;
 

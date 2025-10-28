@@ -5,6 +5,7 @@ import '../../services/auth_service.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../widgets/social_login_button.dart';
+import '../../pages/ryze_app.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -82,7 +83,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final success = await authService.signInWithGoogle();
 
     if (success && mounted) {
-      Navigator.of(context).pushReplacementNamed('/main');
+      // Laisser RyzeApp gérer le routing automatique (onboarding ou app)
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const RyzeApp()),
+      );
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -98,7 +102,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final success = await authService.signInWithApple();
 
     if (success && mounted) {
-      Navigator.of(context).pushReplacementNamed('/main');
+      // Laisser RyzeApp gérer le routing automatique (onboarding ou app)
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const RyzeApp()),
+      );
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

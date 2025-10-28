@@ -10,6 +10,7 @@ import 'register_screen.dart';
 import 'forgot_password_screen.dart';
 import '../../services/translations.dart';
 import '../../services/localization_service.dart';
+import '../../pages/ryze_app.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -60,8 +61,11 @@ class _LoginScreenState extends State<LoginScreen> {
       // Marquer que l'utilisateur s'est connecté
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('has_logged_in_before', true);
-      
-      Navigator.of(context).pushReplacementNamed('/main');
+
+      // Laisser RyzeApp gérer le routing automatique (onboarding ou app)
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const RyzeApp()),
+      );
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -77,7 +81,10 @@ class _LoginScreenState extends State<LoginScreen> {
     final success = await authService.signInWithGoogle();
 
     if (success && mounted) {
-      Navigator.of(context).pushReplacementNamed('/main');
+      // Laisser RyzeApp gérer le routing automatique (onboarding ou app)
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const RyzeApp()),
+      );
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -93,7 +100,10 @@ class _LoginScreenState extends State<LoginScreen> {
     final success = await authService.signInWithApple();
 
     if (success && mounted) {
-      Navigator.of(context).pushReplacementNamed('/main');
+      // Laisser RyzeApp gérer le routing automatique (onboarding ou app)
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const RyzeApp()),
+      );
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -111,78 +121,71 @@ class _LoginScreenState extends State<LoginScreen> {
       body: SafeArea(
         child: Consumer<AuthService>(
           builder: (context, authService, child) {
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: 60),
-                  
-                  // Logo and Welcome Text
-                  Column(
-                    children: [
-                      // Logo Ryze propre et centré (même style que l'onboarding)
-                      Container(
-                        width: 120,
-                        height: 120,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: const Color(0xFF0B132B), // Bleu principal de l'app
-                          boxShadow: [
-                            // Ombre principale plus douce
-                            BoxShadow(
-                              color: const Color(0xFF0B132B).withOpacity(0.15),
-                              blurRadius: 24,
-                              spreadRadius: 0,
-                              offset: const Offset(0, 8),
-                            ),
-                            // Ombre secondaire pour plus de profondeur
-                            BoxShadow(
-                              color: const Color(0xFF0B132B).withOpacity(0.08),
-                              blurRadius: 12,
-                              spreadRadius: -2,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(20),
-                            child: SvgPicture.asset(
-                              'assets/images/logo_seul.svg',
-                              colorFilter: const ColorFilter.mode(
-                                Colors.white,
-                                BlendMode.srcIn,
-                              ),
+                  // Logo compact en haut
+                  Center(
+                    child: Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: const Color(0xFF0B132B),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF0B132B).withOpacity(0.15),
+                            blurRadius: 20,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: SvgPicture.asset(
+                            'assets/images/logo_seul.svg',
+                            colorFilter: const ColorFilter.mode(
+                              Colors.white,
+                              BlendMode.srcIn,
                             ),
                           ),
                         ),
                       ),
-                      const SizedBox(height: 24),
-                      Consumer<LocalizationService>(
-                        builder: (context, locService, _) => Text(
-                          (_isReturningUser ? 'welcome_back' : 'welcome').tr(locService.currentLanguageCode),
-                          style: const TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF0B132B),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Consumer<LocalizationService>(
-                        builder: (context, locService, _) => Text(
-                          'sign_in_subtitle'.tr(locService.currentLanguageCode),
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                  
-                  const SizedBox(height: 48),
+
+                  const SizedBox(height: 24),
+
+                  // Titre
+                  Consumer<LocalizationService>(
+                    builder: (context, locService, _) => Text(
+                      (_isReturningUser ? 'welcome_back' : 'welcome').tr(locService.currentLanguageCode),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF0B132B),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 6),
+
+                  Consumer<LocalizationService>(
+                    builder: (context, locService, _) => Text(
+                      'sign_in_subtitle'.tr(locService.currentLanguageCode),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 32),
                   
                   // Login Form
                   Form(
@@ -206,7 +209,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             },
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12),
                         Consumer<LocalizationService>(
                           builder: (context, locService, _) => CustomTextField(
                             controller: _passwordController,
@@ -231,12 +234,15 @@ class _LoginScreenState extends State<LoginScreen> {
                             },
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        
+                        const SizedBox(height: 4),
+
                         // Forgot Password
                         Align(
                           alignment: Alignment.centerRight,
                           child: TextButton(
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            ),
                             onPressed: () {
                               Navigator.push(
                                 context,
@@ -251,14 +257,15 @@ class _LoginScreenState extends State<LoginScreen> {
                                 style: const TextStyle(
                                   color: Color(0xFF0B132B),
                                   fontWeight: FontWeight.w500,
+                                  fontSize: 14,
                                 ),
                               ),
                             ),
                           ),
                         ),
-                        
-                        const SizedBox(height: 24),
-                        
+
+                        const SizedBox(height: 20),
+
                         // Login Button
                         Consumer<LocalizationService>(
                           builder: (context, locService, _) => CustomButton(
@@ -270,21 +277,21 @@ class _LoginScreenState extends State<LoginScreen> {
                       ],
                     ),
                   ),
-                  
-                  const SizedBox(height: 32),
-                  
+
+                  const SizedBox(height: 24),
+
                   // Divider
                   Row(
                     children: [
                       Expanded(child: Divider(color: Colors.grey[300])),
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
                         child: Consumer<LocalizationService>(
                           builder: (context, locService, _) => Text(
                             'or_continue_with'.tr(locService.currentLanguageCode),
                             style: TextStyle(
                               color: Colors.grey[600],
-                              fontSize: 14,
+                              fontSize: 13,
                             ),
                           ),
                         ),
@@ -292,9 +299,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       Expanded(child: Divider(color: Colors.grey[300])),
                     ],
                   ),
-                  
-                  const SizedBox(height: 24),
-                  
+
+                  const SizedBox(height: 20),
+
                   // Social Login Buttons
                   Row(
                     children: [
@@ -305,7 +312,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           onPressed: authService.isLoading ? null : _handleGoogleLogin,
                         ),
                       ),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: 12),
                       Expanded(
                         child: SocialLoginButton(
                           icon: 'assets/icons/apple.png',
@@ -315,9 +322,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ],
                   ),
-                  
-                  const SizedBox(height: 32),
-                  
+
+                  const Spacer(),
+
                   // Sign Up Link
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -331,6 +338,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                       ),
+                      const SizedBox(width: 4),
                       GestureDetector(
                         onTap: () {
                           Navigator.push(
@@ -353,6 +361,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ],
                   ),
+
+                  const SizedBox(height: 20),
                 ],
               ),
             );

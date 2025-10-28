@@ -83,109 +83,70 @@ class TutorialService {
                   ),
                 ],
               ),
-              child: Row(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Zone GAUCHE : Titre + Description
-                  Expanded(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Titre
-                        Text(
-                          title,
-                          style: const TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF0B132B),
-                            height: 1.3,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-
-                        // Description
-                        Text(
-                          description,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Color(0xFF64748B),
-                            height: 1.4,
-                          ),
-                        ),
-                      ],
+                  // Titre
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF0B132B),
+                      height: 1.3,
                     ),
                   ),
+                  const SizedBox(height: 8),
 
-                  const SizedBox(width: 8),
+                  // Description
+                  Text(
+                    description,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF64748B),
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
 
-                  // Zone DROITE : Panda + Bouton en dessous
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Panda (128px fixe)
-                      SizedBox(
-                        width: 128,
-                        height: 128,
-                        child: Image.asset(
-                          avatarPath ?? 'assets/images/coach_ryze_tutorial_bubble.png',
-                          fit: BoxFit.contain,
-                          errorBuilder: (context, error, stackTrace) {
-                            debugPrint('❌ Erreur chargement image tutorial: $error');
-                            // Fallback : essayer l'image de bienvenue
-                            return Image.asset(
-                              'assets/images/coach_ryze_welcome.png',
-                              fit: BoxFit.contain,
-                              errorBuilder: (context, e2, s2) {
-                                debugPrint('❌ Erreur chargement image welcome: $e2');
-                                return const Icon(
-                                  Icons.sports_martial_arts,
-                                  size: 35,
-                                  color: Color(0xFF0B132B),
-                                );
-                              },
-                            );
-                          },
+                  // Bouton "Compris" en bas à droite
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () {
+                        // Passer au prochain step immédiatement
+                        controller.next();
+
+                        // 🎯 SCROLL vers le prochain target APRÈS l'animation de transition
+                        if (nextTargetKey != null) {
+                          // Attendre que l'animation de transition soit terminée (~500ms)
+                          Future.delayed(const Duration(milliseconds: 500), () {
+                            _ensureWidgetVisible(nextTargetKey, context);
+                          });
+                        }
+                      },
+                      style: TextButton.styleFrom(
+                        backgroundColor: const Color(0xFF0B132B),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: Text(
+                        'understood'.tr('fr'), // Par défaut FR, sera dynamique
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
                         ),
                       ),
-                      const SizedBox(height: 8),
-
-                      // Bouton "Compris" juste en dessous du panda
-                      TextButton(
-                        onPressed: () {
-                          // Passer au prochain step immédiatement
-                          controller.next();
-
-                          // 🎯 SCROLL vers le prochain target APRÈS l'animation de transition
-                          if (nextTargetKey != null) {
-                            // Attendre que l'animation de transition soit terminée (~500ms)
-                            Future.delayed(const Duration(milliseconds: 500), () {
-                              _ensureWidgetVisible(nextTargetKey, context);
-                            });
-                          }
-                        },
-                        style: TextButton.styleFrom(
-                          backgroundColor: const Color(0xFF0B132B),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 24,
-                            vertical: 12,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        child: Text(
-                          'understood'.tr('fr'), // Par défaut FR, sera dynamique
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ],
               ),
@@ -242,7 +203,7 @@ class TutorialService {
         keyTarget: addFoodKey,
         title: 'tutorial_dashboard_add_food_title'.tr(languageCode),
         description: 'tutorial_dashboard_add_food_desc'.tr(languageCode),
-        align: ContentAlign.bottom,
+        align: ContentAlign.top,
         shape: ShapeLightFocus.RRect,
         radius: 16,
       ),
@@ -253,7 +214,7 @@ class TutorialService {
         keyTarget: addExerciseKey,
         title: 'tutorial_dashboard_add_exercise_title'.tr(languageCode),
         description: 'tutorial_dashboard_add_exercise_desc'.tr(languageCode),
-        align: ContentAlign.bottom,
+        align: ContentAlign.top,
         shape: ShapeLightFocus.RRect,
         radius: 16,
       ),
@@ -499,27 +460,32 @@ class TutorialService {
   }) async {
     bool shouldContinue = false;
 
-    await showDialog(
-      context: context,
-      barrierDismissible: false,
-      barrierColor: Colors.transparent, // Le widget gère son propre fond
-      builder: (BuildContext dialogContext) {
-        return TutorialWelcomeScreen(
-          languageCode: languageCode,
-          pandaImagePath: pandaImagePath,
-          userName: userName,
-          onStart: () {
-            shouldContinue = true;
-            Navigator.of(dialogContext).pop();
-          },
-          onSkip: () {
-            shouldContinue = false;
-            Navigator.of(dialogContext).pop();
-          },
-        );
-      },
+    // Vérifier que le context est monté
+    if (!context.mounted) {
+      print('⚠️ Context not mounted, cannot show welcome screen');
+      return false;
+    }
+
+    final result = await Navigator.of(context, rootNavigator: true).push<bool>(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (BuildContext context) {
+          return TutorialWelcomeScreen(
+            languageCode: languageCode,
+            pandaImagePath: pandaImagePath,
+            userName: userName,
+            onStart: () {
+              Navigator.of(context).pop(true);
+            },
+            onSkip: () {
+              Navigator.of(context).pop(false);
+            },
+          );
+        },
+      ),
     );
 
+    shouldContinue = result ?? false;
     return shouldContinue;
   }
 
@@ -910,10 +876,16 @@ class TutorialService {
     _tutorialCoachMark = TutorialCoachMark(
       targets: targets,
       colorShadow: const Color(0xFF0B132B),
-      textSkip: 'skip'.tr(languageCode),
       paddingFocus: 10,
       opacityShadow: 0.8,
+      alignSkip: Alignment.topRight,
       hideSkip: false,
+      textSkip: 'skip'.tr(languageCode),
+      textStyleSkip: const TextStyle(
+        color: Colors.white,
+        fontSize: 16,
+        fontWeight: FontWeight.w600,
+      ),
       onSkip: () {
         debugPrint('⏭️ Tutorial Cardio sauté');
         return true;

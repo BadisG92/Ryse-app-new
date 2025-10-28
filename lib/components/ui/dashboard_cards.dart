@@ -262,71 +262,79 @@ class CircularScoreWidget extends StatelessWidget {
 class QuickActionButton extends StatelessWidget {
   final QuickAction action;
   final GlobalKey? tutorialKey; // Clé pour le tutorial
+  final bool isInRow; // Si dans une Row, pas de padding right
 
   const QuickActionButton({
     super.key,
     required this.action,
     this.tutorialKey,
+    this.isInRow = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 16),
-      child: GestureDetector(
-        onTap: action.onTap,
-        child: Column(
-          key: tutorialKey, // Key directement sur la Column (sans margin)
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center, // Centrer tous les enfants
-          children: [
-            // Bouton carré avec gradient bleu
-            Container(
-              width: 72,
-              height: 72,
-              decoration: BoxDecoration(
-                gradient: action.isDisabled
-                    ? LinearGradient(
-                        colors: [
-                          const Color(0xFFE2E8F0),
-                          const Color(0xFFE2E8F0),
-                        ],
-                      )
-                    : const LinearGradient(
-                        colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
-                      ),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                action.icon,
-                size: 28,
-                color: action.isDisabled ? const Color(0xFF64748B) : Colors.white,
-              ),
+    final child = GestureDetector(
+      onTap: action.onTap,
+      child: Column(
+        key: tutorialKey, // Key directement sur la Column (sans margin)
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center, // Centrer tous les enfants
+        children: [
+          // Bouton carré avec gradient bleu
+          Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              gradient: action.isDisabled
+                  ? LinearGradient(
+                      colors: [
+                        const Color(0xFFE2E8F0),
+                        const Color(0xFFE2E8F0),
+                      ],
+                    )
+                  : const LinearGradient(
+                      colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+                    ),
+              borderRadius: BorderRadius.circular(12),
             ),
-
-            const SizedBox(height: 8),
-
-            // Texte en dessous
-            SizedBox(
-              width: 80,
-              child: Text(
-                action.label,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: action.isDisabled
-                      ? const Color(0xFF64748B)
-                      : const Color(0xFF1A1A1A),
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
+            child: Icon(
+              action.icon,
+              size: 28,
+              color: action.isDisabled ? const Color(0xFF64748B) : Colors.white,
             ),
-          ],
-        ),
+          ),
+
+          const SizedBox(height: 8),
+
+          // Texte en dessous
+          SizedBox(
+            width: 80,
+            height: 36, // Hauteur fixe pour 2 lignes de texte
+            child: Text(
+              action.label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: action.isDisabled
+                    ? const Color(0xFF64748B)
+                    : const Color(0xFF1A1A1A),
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
       ),
     );
+
+    // Si dans une Row, pas de padding. Sinon padding right pour le ListView
+    return isInRow
+        ? child
+        : Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: child,
+          );
   }
 }
 

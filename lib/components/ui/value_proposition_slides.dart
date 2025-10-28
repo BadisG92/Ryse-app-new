@@ -156,11 +156,9 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
     _fadeController.reset();
     _fadeController.forward();
 
-    // Reset stagger animation si on revient à slide 1
-    if (page == 0) {
-      _staggerController.reset();
-      _staggerController.forward();
-    }
+    // Reset stagger animation pour toutes les slides (panda, titre, mockup)
+    _staggerController.reset();
+    _staggerController.forward();
 
     // Animation automatique pour slide 2
     if (page == 1) {
@@ -240,7 +238,7 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
   /// Header avec bouton Skip
   Widget _buildHeader(bool isFrench) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
@@ -264,7 +262,7 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
   /// Footer avec pagination et navigation
   Widget _buildFooter(bool isFrench) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
       child: Column(
         children: [
           // Dots de pagination
@@ -285,7 +283,7 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
             }),
           ),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
 
           // Boutons de navigation
           Row(
@@ -346,13 +344,16 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
 
   /// SLIDE 1 : Simplicité d'input
   Widget _buildSlide1(bool isFrench) {
+    // Slide 1 : pas de mockup, donc beaucoup plus d'espace
+    const double spacing = 20.0;
+
     return FadeTransition(
       opacity: _fadeAnimation,
       child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Column(
           children: [
-            const SizedBox(height: 20),
+            const SizedBox(height: spacing),
 
             // Panda ÉNORME + Message à côté (avec animation)
             SlideTransition(
@@ -366,8 +367,9 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        // Bulle à GAUCHE avec nom au-dessus
+                        // Bulle à GAUCHE avec nom au-dessus (augmentée en largeur)
                         Expanded(
+                          flex: 3,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisSize: MainAxisSize.min,
@@ -417,28 +419,31 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
                           ),
                         ),
 
-                        const SizedBox(width: 16),
+                        const SizedBox(width: 20),
 
-                        // Panda géant à DROITE
-                        Container(
-                          width: 180,
-                          height: 180,
-                          child: Image.asset(
-                            'assets/images/coach_ryze_welcome.png',
-                            fit: BoxFit.contain,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                decoration: const BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  gradient: LinearGradient(
-                                    colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+                        // Panda géant à DROITE (décalé plus à droite avec flex: 2)
+                        Expanded(
+                          flex: 2,
+                          child: Container(
+                            width: 140,
+                            height: 140,
+                            child: Image.asset(
+                              'assets/images/coach_ryze_welcome.png',
+                              fit: BoxFit.contain,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  decoration: const BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    gradient: LinearGradient(
+                                      colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+                                    ),
                                   ),
-                                ),
-                                child: const Center(
-                                  child: Text('🐼', style: TextStyle(fontSize: 80)),
-                                ),
-                              );
-                            },
+                                  child: const Center(
+                                    child: Text('🐼', style: TextStyle(fontSize: 60)),
+                                  ),
+                                );
+                              },
+                            ),
                           ),
                         ),
                       ],
@@ -448,7 +453,7 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
               ),
             ),
 
-            const SizedBox(height: 32),
+            const SizedBox(height: spacing),
 
             // Titre benefit-driven (avec animation)
             SlideTransition(
@@ -458,7 +463,7 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
                 child: Text(
               isFrench ? Slide1Data.titleFr : Slide1Data.titleEn,
               style: const TextStyle(
-                fontSize: 28,
+                fontSize: 24,
                 fontWeight: FontWeight.w800,
                 color: Color(0xFF0B132B),
                 height: 1.2,
@@ -469,7 +474,7 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
               ),
             ),
 
-            const SizedBox(height: 36),
+            const SizedBox(height: spacing),
 
             // 3 méthodes d'input (avec animations stagger une par une)
             Row(
@@ -555,11 +560,11 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
               ],
             ),
 
-            const SizedBox(height: 40),
+            const SizedBox(height: spacing),
 
             // Bénéfice
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
@@ -596,10 +601,10 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
                     child: Text(
                       isFrench ? Slide1Data.benefitFr : Slide1Data.benefitEn,
                       style: const TextStyle(
-                        fontSize: 15,
+                        fontSize: 14,
                         color: Color(0xFF0B132B),
                         fontWeight: FontWeight.w600,
-                        height: 1.4,
+                        height: 1.3,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -608,7 +613,7 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
               ),
             ),
 
-            const SizedBox(height: 40),
+            const SizedBox(height: spacing),
           ],
         ),
       ),
@@ -617,21 +622,28 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
 
   /// SLIDE 2 : Coach sur demande
   Widget _buildSlide2(bool isFrench) {
+    const double minSpacing = 8.0;
+
     return FadeTransition(
       opacity: _fadeAnimation,
       child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Column(
           children: [
-            const SizedBox(height: 5),
+            const SizedBox(height: minSpacing),
 
-            // Section panda + bulle (même layout que slide 1)
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // Texte à GAUCHE
-                Expanded(
-                  child: Column(
+            // Section panda + bulle (même layout que slide 1) - avec animation
+            SlideTransition(
+              position: _pandaSlide,
+              child: FadeTransition(
+                opacity: _pandaOpacity,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // Texte à GAUCHE (augmenté en largeur)
+                    Expanded(
+                      flex: 3,
+                      child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -682,63 +694,84 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
                   ),
                 ),
 
-                const SizedBox(width: 16),
+                const SizedBox(width: 20),
 
-                // Panda docteur nutrition à DROITE
-                Container(
-                  width: 180,
-                  height: 180,
-                  child: Image.asset(
-                    'assets/images/coach_ryze_ai_chat_nutrition.png',
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+                // Panda docteur nutrition à DROITE (décalé plus à droite)
+                Expanded(
+                  flex: 2,
+                  child: Container(
+                    width: 140,
+                    height: 140,
+                    child: Image.asset(
+                      'assets/images/coach_ryze_ai_chat_nutrition.png',
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: LinearGradient(
+                              colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+                            ),
                           ),
-                        ),
-                        child: const Center(
-                          child: Text('🐼', style: TextStyle(fontSize: 80)),
-                        ),
-                      );
-                    },
+                          child: const Center(
+                            child: Text('🐼', style: TextStyle(fontSize: 60)),
+                          ),
+                        );
+                      },
+                    ),
                   ),
                 ),
               ],
-            ),
-
-            const SizedBox(height: 10),
-
-            // Titre benefit-driven
-            Text(
-              isFrench ? Slide2Data.titleFr : Slide2Data.titleEn,
-              style: const TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF0B132B),
-                height: 1.2,
-                letterSpacing: -0.5,
-              ),
-              textAlign: TextAlign.center,
-            ),
-
-            const SizedBox(height: 12),
-
-            // Mockup du journal nutrition + bouton (réduits ensemble)
-            Transform.scale(
-              scale: 0.70,
-              child: Column(
-                children: [
-                  _buildNutritionJournalMockup(isFrench),
-                  const SizedBox(height: 20),
-                  _buildAnalyzeButton(isFrench),
-                ],
+                ),
               ),
             ),
 
-            const SizedBox(height: 10),
+            const SizedBox(height: minSpacing),
+
+            // Titre benefit-driven (avec animation)
+            SlideTransition(
+              position: _titleSlide,
+              child: FadeTransition(
+                opacity: _titleOpacity,
+                child: Text(
+                  isFrench ? Slide2Data.titleFr : Slide2Data.titleEn,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF0B132B),
+                    height: 1.2,
+                    letterSpacing: -0.5,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+
+            const SizedBox(height: minSpacing),
+
+            // Mockup du journal nutrition + bouton (réduits ensemble) - avec animation
+            SlideTransition(
+              position: _cardsSlide,
+              child: FadeTransition(
+                opacity: _cardsOpacity,
+                child:
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Transform.scale(
+                    scale: 0.85,
+                    child: Column(
+                      children: [
+                        _buildNutritionJournalMockup(isFrench),
+                        const SizedBox(height: 12),
+                        _buildAnalyzeButton(isFrench),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: minSpacing),
 
             // 3 features en cards blanches (résultats, pas features) avec animations
             AnimatedBuilder(
@@ -823,11 +856,11 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
               },
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: minSpacing),
 
             // Bénéfice en bas (comme Slide 1)
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
@@ -864,10 +897,10 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
                     child: Text(
                       isFrench ? Slide2Data.benefitFr : Slide2Data.benefitEn,
                       style: const TextStyle(
-                        fontSize: 15,
+                        fontSize: 14,
                         color: Color(0xFF0B132B),
                         fontWeight: FontWeight.w600,
-                        height: 1.4,
+                        height: 1.3,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -876,7 +909,7 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
               ),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: minSpacing),
           ],
         ),
       ),
@@ -885,21 +918,28 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
 
   /// SLIDE 3 : Analyse sport
   Widget _buildSlide3(bool isFrench) {
+    const double minSpacing = 8.0;
+
     return FadeTransition(
       opacity: _fadeAnimation,
       child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Column(
           children: [
-            const SizedBox(height: 5),
+            const SizedBox(height: minSpacing),
 
-            // Section panda + bulle (même layout que slides 1 et 2)
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // Texte à GAUCHE
-                Expanded(
-                  child: Column(
+            // Section panda + bulle (même layout que slides 1 et 2) - avec animation
+            SlideTransition(
+              position: _pandaSlide,
+              child: FadeTransition(
+                opacity: _pandaOpacity,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // Texte à GAUCHE (augmenté en largeur)
+                    Expanded(
+                      flex: 3,
+                      child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -950,57 +990,78 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
                   ),
                 ),
 
-                const SizedBox(width: 16),
+                const SizedBox(width: 20),
 
-                // Panda sport à DROITE
-                Container(
-                  width: 180,
-                  height: 180,
-                  child: Image.asset(
-                    'assets/images/coach_ryze_sport_avatar.png',
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+                // Panda sport à DROITE (décalé plus à droite)
+                Expanded(
+                  flex: 2,
+                  child: Container(
+                    width: 140,
+                    height: 140,
+                    child: Image.asset(
+                      'assets/images/coach_ryze_sport_avatar.png',
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: LinearGradient(
+                              colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+                            ),
                           ),
-                        ),
-                        child: const Center(
-                          child: Text('🐼', style: TextStyle(fontSize: 80)),
-                        ),
-                      );
-                    },
+                          child: const Center(
+                            child: Text('🐼', style: TextStyle(fontSize: 60)),
+                          ),
+                        );
+                      },
+                    ),
                   ),
                 ),
               ],
-            ),
-
-            const SizedBox(height: 10),
-
-            // Titre benefit-driven
-            Text(
-              isFrench ? Slide3Data.titleFr : Slide3Data.titleEn,
-              style: const TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF0B132B),
-                height: 1.2,
-                letterSpacing: -0.5,
+                ),
               ),
-              textAlign: TextAlign.center,
             ),
 
-            const SizedBox(height: 12),
+            const SizedBox(height: minSpacing),
 
-            // Mockup graphique de progression (réduit)
-            Transform.scale(
-              scale: 0.70,
-              child: _buildProgressGraph(isFrench),
+            // Titre benefit-driven (avec animation)
+            SlideTransition(
+              position: _titleSlide,
+              child: FadeTransition(
+                opacity: _titleOpacity,
+                child: Text(
+                  isFrench ? Slide3Data.titleFr : Slide3Data.titleEn,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF0B132B),
+                    height: 1.2,
+                    letterSpacing: -0.5,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
             ),
 
-            const SizedBox(height: 10),
+            const SizedBox(height: 4),
+
+            // Mockup graphique de progression (réduit) - avec animation
+            SlideTransition(
+              position: _cardsSlide,
+              child: FadeTransition(
+                opacity: _cardsOpacity,
+                child:
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Transform.scale(
+                    scale: 0.75,
+                    child: _buildProgressGraph(isFrench),
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 4),
 
             // 3 features en cards blanches avec animations
             AnimatedBuilder(
@@ -1085,11 +1146,11 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
               },
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: minSpacing),
 
             // Bénéfice en bas (comme Slides 1 et 2)
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
@@ -1126,10 +1187,10 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
                     child: Text(
                       isFrench ? Slide3Data.benefitFr : Slide3Data.benefitEn,
                       style: const TextStyle(
-                        fontSize: 15,
+                        fontSize: 14,
                         color: Color(0xFF0B132B),
                         fontWeight: FontWeight.w600,
-                        height: 1.4,
+                        height: 1.3,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -1138,7 +1199,7 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
               ),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: minSpacing),
           ],
         ),
       ),
@@ -1223,11 +1284,11 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
     required int index,
   }) {
     return Container(
-      height: 200,
-      padding: const EdgeInsets.all(16),
+      height: 160,
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: const Color(0xFF0B132B).withOpacity(0.08),
           width: 1,
@@ -1245,32 +1306,32 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
         children: [
           // Icône avec VRAI gradient de l'app
           Container(
-            width: 68,
-            height: 68,
+            width: 56,
+            height: 56,
             decoration: BoxDecoration(
               gradient: const LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
               ),
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(14),
             ),
             child: Center(
               child: Icon(
                 iconData,
-                size: 32,
+                size: 28,
                 color: Colors.white,
               ),
             ),
           ),
 
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
 
           // Label
           Text(
             label,
             style: const TextStyle(
-              fontSize: 17,
+              fontSize: 15,
               fontWeight: FontWeight.w700,
               color: Color(0xFF0B132B),
               letterSpacing: 0.3,
@@ -1278,15 +1339,15 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
             textAlign: TextAlign.center,
           ),
 
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
 
           // Description
           Text(
             description,
             style: const TextStyle(
-              fontSize: 13,
+              fontSize: 12,
               color: Color(0xFF64748B),
-              height: 1.4,
+              height: 1.3,
               fontWeight: FontWeight.w500,
             ),
             textAlign: TextAlign.center,
@@ -1302,7 +1363,7 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
   Widget _buildNutritionJournalMockup(bool isFrench) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -1322,14 +1383,14 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
             children: [
               const Icon(
                 LucideIcons.flame,
-                size: 18,
+                size: 16,
                 color: Color(0xFF0B132B),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
               Text(
                 isFrench ? "Bilan calorique" : "Calorie summary",
                 style: const TextStyle(
-                  fontSize: 13,
+                  fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: Color(0xFF0B132B),
                 ),
@@ -1337,14 +1398,14 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
             ],
           ),
 
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
 
           // Calories
           Center(
             child: RichText(
-              text: const TextSpan(
+              text: TextSpan(
                 children: [
-                  TextSpan(
+                  const TextSpan(
                     text: "1248 kcal",
                     style: TextStyle(
                       fontSize: 24,
@@ -1354,8 +1415,8 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
                     ),
                   ),
                   TextSpan(
-                    text: " / 2723 kcal consommées",
-                    style: TextStyle(
+                    text: isFrench ? " / 2723 kcal consommées" : " / 2723 kcal consumed",
+                    style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
                       color: Color(0xFF64748B),
@@ -1366,7 +1427,7 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
             ),
           ),
 
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
 
           // Barre de progression
           ClipRRect(
@@ -1375,11 +1436,11 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
               value: 0.46, // 1248/2723
               backgroundColor: const Color(0xFFE2E8F0),
               valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF0B132B)),
-              minHeight: 6,
+              minHeight: 5,
             ),
           ),
 
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
 
           // Macronutriments
           Row(
@@ -1464,16 +1525,23 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
 
           const SizedBox(height: 12),
 
-          // Titre
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF0B132B),
-              letterSpacing: 0.2,
+          // Titre avec hauteur minimale pour 2 lignes
+          SizedBox(
+            height: 40, // Hauteur fixe pour garantir 2 lignes
+            child: Center(
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF0B132B),
+                  letterSpacing: 0.2,
+                  height: 1.4,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+              ),
             ),
-            textAlign: TextAlign.center,
           ),
         ],
       ),
@@ -1484,19 +1552,19 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
   Widget _buildAnalyzeButton(bool isFrench) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
             color: const Color(0xFF0B132B).withOpacity(0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -1505,12 +1573,12 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
         children: [
           // Logo Ryze
           Container(
-            width: 40,
-            height: 40,
-            padding: const EdgeInsets.all(8),
+            width: 32,
+            height: 32,
+            padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: SvgPicture.asset(
               'assets/images/logo_solo.svg',
@@ -1520,12 +1588,12 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
               ),
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 12),
           // Texte
           Text(
             isFrench ? Slide2Data.buttonTextFr : Slide2Data.buttonTextEn,
             style: const TextStyle(
-              fontSize: 18,
+              fontSize: 16,
               fontWeight: FontWeight.w700,
               color: Colors.white,
               letterSpacing: 0.3,
@@ -1703,10 +1771,10 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
   /// Mockup programme d'entraînement (Slide 3)
   Widget _buildProgressGraph(bool isFrench) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
             color: const Color(0xFF0B132B).withOpacity(0.08),
@@ -1725,7 +1793,7 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
               Text(
                 isFrench ? "Coach Ryze - Jambes" : "Coach Ryze - Legs",
                 style: const TextStyle(
-                  fontSize: 16,
+                  fontSize: 14,
                   fontWeight: FontWeight.w700,
                   color: Color(0xFF0B132B),
                 ),
@@ -1733,31 +1801,31 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
             ],
           ),
 
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
 
           Text(
             isFrench ? "5 exercices" : "5 exercises",
             style: const TextStyle(
-              fontSize: 13,
+              fontSize: 12,
               color: Color(0xFF64748B),
               fontWeight: FontWeight.w500,
             ),
           ),
 
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
 
           // Exercices
           _buildExerciseRow("1", "Squat", isFrench ? "Jambes" : "Legs", "4×10", "12.5kg"),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           _buildExerciseRow("2", isFrench ? "Développé couché" : "Bench Press", isFrench ? "Pectoraux" : "Chest", "4×10", "10kg"),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           _buildExerciseRow("3", isFrench ? "Rowing à la barre" : "Barbell Row", isFrench ? "Dos" : "Back", "4×10", "12.5kg"),
 
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
 
           // Conseils Coach
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
@@ -1767,23 +1835,23 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
                   const Color(0xFF1C2951).withOpacity(0.95),
                 ],
               ),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(10),
             ),
             child: Row(
               children: [
                 const Icon(
                   LucideIcons.sparkles,
                   color: Colors.white,
-                  size: 18,
+                  size: 16,
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 Expanded(
                   child: Text(
                     isFrench
                       ? "Conseils de Coach Ryze"
                       : "Coach Ryze's Tips",
                     style: const TextStyle(
-                      fontSize: 13,
+                      fontSize: 12,
                       fontWeight: FontWeight.w700,
                       color: Colors.white,
                     ),
@@ -1803,19 +1871,19 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
       children: [
         // Numéro
         Container(
-          width: 28,
-          height: 28,
+          width: 24,
+          height: 24,
           decoration: BoxDecoration(
             gradient: const LinearGradient(
               colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
             ),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(6),
           ),
           child: Center(
             child: Text(
               number,
               style: const TextStyle(
-                fontSize: 13,
+                fontSize: 12,
                 fontWeight: FontWeight.w700,
                 color: Colors.white,
               ),
@@ -1823,7 +1891,7 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
           ),
         ),
 
-        const SizedBox(width: 12),
+        const SizedBox(width: 10),
 
         // Nom et muscle
         Expanded(
@@ -1833,16 +1901,16 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
               Text(
                 name,
                 style: const TextStyle(
-                  fontSize: 14,
+                  fontSize: 13,
                   fontWeight: FontWeight.w600,
                   color: Color(0xFF0B132B),
                 ),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 1),
               Text(
                 muscle,
                 style: const TextStyle(
-                  fontSize: 12,
+                  fontSize: 11,
                   color: Color(0xFF64748B),
                 ),
               ),
@@ -1857,24 +1925,24 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
             Text(
               sets,
               style: const TextStyle(
-                fontSize: 14,
+                fontSize: 13,
                 fontWeight: FontWeight.w700,
                 color: Color(0xFF0B132B),
               ),
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 1),
             Row(
               children: [
                 const Icon(
                   LucideIcons.dumbbell,
-                  size: 12,
+                  size: 11,
                   color: Color(0xFF64748B),
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: 3),
                 Text(
                   weight,
                   style: const TextStyle(
-                    fontSize: 12,
+                    fontSize: 11,
                     color: Color(0xFF64748B),
                   ),
                 ),

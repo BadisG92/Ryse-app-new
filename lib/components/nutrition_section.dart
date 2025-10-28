@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -99,15 +100,16 @@ class _NutritionSectionState extends State<NutritionSection>
     final locService = LocalizationService.instance;
     final globalState = GlobalStateManager.instance;
 
-    // Afficher uniquement l'écran de bienvenue
-    final shouldContinue = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => NutritionTutorialWelcome(
-        languageCode: locService.currentLanguageCode,
-        userName: globalState.userName,
-        onStart: () => Navigator.of(context).pop(true),
-        onSkip: () => Navigator.of(context).pop(false),
+    // Afficher l'écran de bienvenue en PLEIN ÉCRAN (pas en dialog)
+    final shouldContinue = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (context) => NutritionTutorialWelcome(
+          languageCode: locService.currentLanguageCode,
+          userName: globalState.userName,
+          onStart: () => Navigator.of(context).pop(true),
+          onSkip: () => Navigator.of(context).pop(false),
+        ),
       ),
     );
 
@@ -118,16 +120,274 @@ class _NutritionSectionState extends State<NutritionSection>
     }
 
     if (shouldContinue == true) {
-      debugPrint('✅ Welcome Nutrition terminé - Lancement du tutorial Dashboard');
+      debugPrint('✅ Welcome Nutrition terminé - Lancement du tutorial');
 
-      // Lancer le tutorial du Dashboard APRÈS le welcome
-      await _launchDashboardTutorial();
+      // Lancer d'abord le tutorial des onglets (sur la vraie page)
+      final tabsCompleted = await _launchTabsTutorial();
+
+      // Puis lancer le tutorial du Dashboard SEULEMENT si les onglets n'ont pas été skippés
+      if (tabsCompleted) {
+        await _launchDashboardTutorial();
+      } else {
+        debugPrint('⏭️ Tutorial onglets skippé - Arrêt complet du tutorial');
+      }
     } else {
       debugPrint('⏭️ Welcome Nutrition skippé');
     }
   }
 
-  /// Lance le tutorial du Dashboard Nutrition avec page mockée
+  /// Lance le tutorial des onglets Nutrition (partie 1)
+  /// Retourne true si le tutorial est terminé, false si skippé
+  Future<bool> _launchTabsTutorial() async {
+    // Petit délai pour s'assurer que tout est rendu
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    if (!mounted) return false;
+
+    final locService = LocalizationService.instance;
+
+    // Completer pour attendre la fin du tutorial (true = terminé, false = skippé)
+    final completer = Completer<bool>();
+
+    // Créer les targets pour les 3 onglets
+    final tabsTargets = [
+      TargetFocus(
+        identify: 'dashboard_tab',
+        keyTarget: _dashboardTabKey,
+        alignSkip: Alignment.topRight,
+        shape: ShapeLightFocus.RRect,
+        radius: 8,
+        contents: [
+          TargetContent(
+            align: ContentAlign.bottom,
+            builder: (context, controller) {
+              return Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'tutorial_nutrition_dashboard_tab_title'.tr(locService.currentLanguageCode),
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF0B132B),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'tutorial_nutrition_dashboard_tab_desc'.tr(locService.currentLanguageCode),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF64748B),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: () => controller.next(),
+                        style: TextButton.styleFrom(
+                          backgroundColor: const Color(0xFF0B132B),
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: const Text(
+                          'Compris',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+      TargetFocus(
+        identify: 'journal_tab',
+        keyTarget: _journalTabKey,
+        alignSkip: Alignment.topRight,
+        shape: ShapeLightFocus.RRect,
+        radius: 8,
+        contents: [
+          TargetContent(
+            align: ContentAlign.bottom,
+            builder: (context, controller) {
+              return Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'tutorial_nutrition_journal_tab_title'.tr(locService.currentLanguageCode),
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF0B132B),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'tutorial_nutrition_journal_tab_desc'.tr(locService.currentLanguageCode),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF64748B),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: () => controller.next(),
+                        style: TextButton.styleFrom(
+                          backgroundColor: const Color(0xFF0B132B),
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: const Text(
+                          'Compris',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+      TargetFocus(
+        identify: 'recipes_tab',
+        keyTarget: _recipesTabKey,
+        alignSkip: Alignment.topRight,
+        shape: ShapeLightFocus.RRect,
+        radius: 8,
+        contents: [
+          TargetContent(
+            align: ContentAlign.bottom,
+            builder: (context, controller) {
+              return Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'tutorial_nutrition_recipes_tab_title'.tr(locService.currentLanguageCode),
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF0B132B),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'tutorial_nutrition_recipes_tab_desc'.tr(locService.currentLanguageCode),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF64748B),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: () => controller.next(),
+                        style: TextButton.styleFrom(
+                          backgroundColor: const Color(0xFF0B132B),
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: const Text(
+                          'Compris',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    ];
+
+    // Créer et afficher le tutorial des onglets
+    final tabsTutorial = TutorialCoachMark(
+      targets: tabsTargets,
+      colorShadow: const Color(0xFF0B132B),
+      paddingFocus: 8,
+      opacityShadow: 0.8, // Même opacité que la page d'accueil
+      alignSkip: Alignment.topRight,
+      hideSkip: false,
+      textSkip: 'skip'.tr(locService.currentLanguageCode),
+      textStyleSkip: const TextStyle(
+        color: Colors.white,
+        fontSize: 16,
+        fontWeight: FontWeight.w600,
+      ),
+      onSkip: () {
+        debugPrint('⏭️ Tutorial onglets skippé');
+        completer.complete(false); // Retourner false = skippé
+        return true;
+      },
+      onFinish: () {
+        debugPrint('✅ Tutorial onglets terminé');
+        completer.complete(true); // Retourner true = terminé normalement
+      },
+    );
+
+    if (mounted) {
+      tabsTutorial.show(context: context);
+    }
+
+    // Attendre que le tutorial soit terminé avant de continuer
+    return completer.future;
+  }
+
+  /// Lance le tutorial du Dashboard Nutrition avec page mockée (partie 2)
   Future<void> _launchDashboardTutorial() async {
     // Petit délai pour que le welcome screen se ferme complètement
     await Future.delayed(const Duration(milliseconds: 300));
@@ -142,12 +402,16 @@ class _NutritionSectionState extends State<NutritionSection>
     final hydrationMealsKey = GlobalKey();
     final quickActionsKey = GlobalKey();
 
+    // Créer un ScrollController pour le mockup
+    final scrollController = ScrollController();
+
     // Créer la page mockée avec données vierges
     final mockPage = TutorialNutritionDashboard(
       caloriesKey: caloriesKey,
       macrosKey: macrosKey,
       hydrationMealsKey: hydrationMealsKey,
       quickActionsKey: quickActionsKey,
+      scrollController: scrollController,
     );
 
     // Créer les targets pour le tutorial
@@ -203,12 +467,17 @@ class _NutritionSectionState extends State<NutritionSection>
       context: context,
       mockPage: mockPage,
       targets: targets,
+      scrollController: scrollController,
       onFinish: () {
         debugPrint('✅ Tutorial Nutrition terminé');
+        // Nettoyer le ScrollController
+        scrollController.dispose();
         // Le Navigator.pop() sera appelé automatiquement par tutorial_coach_mark
       },
       onSkip: () {
         debugPrint('⏭️ Tutorial Nutrition skippé');
+        // Nettoyer le ScrollController
+        scrollController.dispose();
         // Le Navigator.pop() sera appelé automatiquement par tutorial_coach_mark
       },
     );

@@ -122,6 +122,7 @@ class _QuickActionsSectionState extends State<QuickActionsSection> {
                         return QuickActionButton(
                           action: actionWithCallback,
                           tutorialKey: tutorialKey,
+                          isInRow: true, // Indique qu'on est dans une Row
                         );
                       }).toList(),
                     ),

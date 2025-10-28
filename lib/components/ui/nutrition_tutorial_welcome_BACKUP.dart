@@ -114,25 +114,26 @@ class _NutritionTutorialWelcomeState extends State<NutritionTutorialWelcome>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0B132B), // Fond opaque (pas de transparence)
-      body: Stack(
-        children: [
-          // Contenu principal
-          SafeArea(
-            bottom: false,
-            child: FadeTransition(
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF0B132B).withOpacity(0.8),
+        ),
+        child: SafeArea(
+          child: FadeTransition(
               opacity: _fadeAnimation,
               child: SlideTransition(
                 position: _slideAnimation,
                 child: Padding(
                   padding: const EdgeInsets.all(24.0),
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.start,
                     children: [
+                  const SizedBox(height: 40),
 
-                    // Bulle de dialogue avec avatar
-                    Container(
+                  // Bulle de dialogue avec avatar
+                  Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: Colors.white,
@@ -231,36 +232,30 @@ class _NutritionTutorialWelcomeState extends State<NutritionTutorialWelcome>
                         ],
                       ),
                     ),
+
+                    const Spacer(),
+
+                    // Bouton Passer (discret)
+                    TextButton(
+                      onPressed: widget.onSkip,
+                      child: Text(
+                        widget.languageCode == 'fr' ? 'Passer' : 'Skip',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.6),
+                          fontSize: 14,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+
+                      const SizedBox(height: 40),
                     ],
                   ),
                 ),
               ),
             ),
           ),
-
-          // Bouton "Passer" en haut à droite
-          Positioned(
-            top: MediaQuery.of(context).padding.top + 16,
-            right: 16,
-            child: TextButton(
-              onPressed: widget.onSkip,
-              style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 10,
-                ),
-              ),
-              child: Text(
-                widget.languageCode == 'fr' ? 'Passer' : 'Skip',
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.7),
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

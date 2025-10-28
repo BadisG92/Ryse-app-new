@@ -62,23 +62,22 @@ class _CardioTutorialWelcomeState extends State<CardioTutorialWelcome>
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFF0B132B).withOpacity(0.8),
-        ),
-        child: SafeArea(
-          child: FadeTransition(
-            opacity: _fadeAnimation,
-            child: SlideTransition(
-              position: _slideAnimation,
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 40),
+    return Scaffold(
+      backgroundColor: const Color(0xFF0B132B),
+      body: Stack(
+        children: [
+          SafeArea(
+            bottom: false,
+            child: Center(
+              child: FadeTransition(
+                opacity: _fadeAnimation,
+                child: SlideTransition(
+                  position: _slideAnimation,
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 32),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
 
                     // Bulle de dialogue avec avatar
                     Container(
@@ -167,28 +166,37 @@ class _CardioTutorialWelcomeState extends State<CardioTutorialWelcome>
                       ),
                     ),
 
-                    const Spacer(),
-
-                    // Bouton Passer (discret)
-                    TextButton(
-                      onPressed: widget.onSkip,
-                      child: Text(
-                        widget.languageCode == 'fr' ? 'Passer' : 'Skip',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.6),
-                          fontSize: 14,
-                          decoration: TextDecoration.underline,
-                        ),
-                      ),
+                      ],
                     ),
-
-                    const SizedBox(height: 40),
-                  ],
+                  ),
                 ),
               ),
             ),
           ),
-        ),
+
+          // Bouton "Passer" en haut à droite
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 16,
+            right: 16,
+            child: TextButton(
+              onPressed: widget.onSkip,
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 10,
+                ),
+              ),
+              child: Text(
+                widget.languageCode == 'fr' ? 'Passer' : 'Skip',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.7),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

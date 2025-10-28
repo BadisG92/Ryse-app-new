@@ -90,49 +90,40 @@ class SportCardioHybridState extends State<SportCardioHybrid> {
         child: Column(
           children: [
             // 1. Bloc "Cette semaine" avec statistiques (connecté à Supabase)
-            Container(
+            WeeklyStatsSection(
               key: _weeklyStatsKey,
-              child: WeeklyStatsSection(key: ValueKey('weekly_$_refreshKey')),
             ),
 
             const SizedBox(height: 16),
 
             // 2. Bloc "Choisir une activité"
-            Container(
+            ActivitySelectionSection(
               key: _activitySelectionKey,
-              child: ActivitySelectionSection(
-                onActivitySelected: (activity) =>
-                    _showActivityFormatsModal(context, activity),
-              ),
+              onActivitySelected: (activity) =>
+                  _showActivityFormatsModal(context, activity),
             ),
 
             const SizedBox(height: 16),
 
             // 3. Bloc "Dernière séance enregistrée" (connecté à Supabase)
-            Container(
+            LastSessionSection(
               key: _lastSessionKey,
-              child: LastSessionSection(
-                key: ValueKey('last_$_refreshKey'),
-                onDetailsTap: () => _showSessionDetails(context),
-              ),
+              onDetailsTap: () => _showSessionDetails(context),
             ),
 
             const SizedBox(height: 16),
 
             // 4. Bloc "Vos séances de la semaine" (connecté à Supabase)
-            Container(
+            WeekSessionsSection(
               key: _weekSessionsKey,
-              child: WeekSessionsSection(key: ValueKey('sessions_$_refreshKey')),
             ),
 
             const SizedBox(height: 16),
 
             // 5. Footer / CTA
-            Container(
+            HistoryAccessWidget(
               key: _historyAccessKey,
-              child: HistoryAccessWidget(
-                onTap: () => _openCardioJournal(context),
-              ),
+              onTap: () => _openCardioJournal(context),
             ),
 
             // Padding bottom pour éviter la coupure
