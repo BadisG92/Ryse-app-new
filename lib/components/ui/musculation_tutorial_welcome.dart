@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-/// Écran de bienvenue du tutorial Nutrition
-class NutritionTutorialWelcome extends StatefulWidget {
+/// Écran de bienvenue du tutorial Musculation
+class MusculationTutorialWelcome extends StatefulWidget {
   final String languageCode;
   final String? userName;
   final VoidCallback onStart;
   final VoidCallback onSkip;
 
-  const NutritionTutorialWelcome({
+  const MusculationTutorialWelcome({
     Key? key,
     required this.languageCode,
     this.userName,
@@ -17,10 +17,10 @@ class NutritionTutorialWelcome extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  State<NutritionTutorialWelcome> createState() => _NutritionTutorialWelcomeState();
+  State<MusculationTutorialWelcome> createState() => _MusculationTutorialWelcomeState();
 }
 
-class _NutritionTutorialWelcomeState extends State<NutritionTutorialWelcome>
+class _MusculationTutorialWelcomeState extends State<MusculationTutorialWelcome>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -56,14 +56,14 @@ class _NutritionTutorialWelcomeState extends State<NutritionTutorialWelcome>
 
   String _getRyzeMessage() {
     return widget.languageCode == 'fr'
-        ? 'Bienvenue dans la partie Nutrition ! Je vais te montrer comment suivre tes repas facilement.'
-        : 'Welcome to the Nutrition section! I\'ll show you how to track your meals easily.';
+        ? 'Bienvenue dans ton espace Musculation ! Crée tes programmes sur mesure.'
+        : 'Welcome to your Strength Training space! Create your custom programs.';
   }
 
   String _getDescription() {
     return widget.languageCode == 'fr'
-        ? 'Ici, je t\'aide à suivre tes habitudes alimentaires et t\'accompagne pour avoir un régime équilibré et cohérent avec tes objectifs.'
-        : 'Here, I help you track your eating habits and guide you towards a balanced diet that matches your goals.';
+        ? 'Ici, je t\'aide à créer et suivre tes séances de musculation. Tu pourras enregistrer tes exercices, suivre ta progression et même créer des programmes personnalisés !'
+        : 'Here, I help you create and track your strength training sessions. You can record your exercises, track your progress, and even create personalized programs!';
   }
 
   @override
@@ -146,11 +146,11 @@ class _NutritionTutorialWelcomeState extends State<NutritionTutorialWelcome>
                                 width: 140,
                                 height: 140,
                                 child: Image.asset(
-                                  'assets/images/coach_ryze_nutrition_avatar.png',
+                                  'assets/images/coach_ryze_workout_avatar.png',
                                   fit: BoxFit.contain,
                                   errorBuilder: (context, error, stackTrace) {
                                     return const Icon(
-                                      LucideIcons.chefHat,
+                                      LucideIcons.dumbbell,
                                       size: 70,
                                       color: Colors.white,
                                     );

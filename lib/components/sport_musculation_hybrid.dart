@@ -12,6 +12,7 @@ import '../screens/ai_workout_generator_screen.dart';
 import '../services/workout_service.dart';
 import '../services/translations.dart';
 import '../services/localization_service.dart';
+import '../services/tutorial_service.dart';
 import 'package:provider/provider.dart';
 import '../widgets/sport/sport_calendar_view.dart';
 
@@ -21,10 +22,10 @@ class SportMusculationHybrid extends StatefulWidget {
   const SportMusculationHybrid({super.key, this.onOpenCalendar});
 
   @override
-  State<SportMusculationHybrid> createState() => _SportMusculationHybridState();
+  State<SportMusculationHybrid> createState() => SportMusculationHybridState();
 }
 
-class _SportMusculationHybridState extends State<SportMusculationHybrid> {
+class SportMusculationHybridState extends State<SportMusculationHybrid> {
   bool _isSessionActive = false;
   bool _isSessionCompleted = false;
   WorkoutSession? _currentSession;
@@ -37,11 +38,44 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
   // Clé unique pour forcer le rafraîchissement des sections
   Key _refreshKey = UniqueKey();
 
+  // GlobalKeys pour le tutorial (avec identifiants uniques pour éviter les conflits)
+  final GlobalKey _weeklyStatsKey = GlobalKey(debugLabel: 'musculation_weekly_stats');
+  final GlobalKey _sessionTypesBlockKey = GlobalKey(debugLabel: 'musculation_session_types_block'); // Bloc contenant les 3 boutons
+  final GlobalKey _manualButtonKey = GlobalKey(debugLabel: 'musculation_manual_button');
+  final GlobalKey _guidedButtonKey = GlobalKey(debugLabel: 'musculation_guided_button');
+  final GlobalKey _coachRyzeButtonKey = GlobalKey(debugLabel: 'musculation_coach_button');
+  final GlobalKey _weekHistoryKey = GlobalKey(debugLabel: 'musculation_week_history');
+  final GlobalKey _viewJournalKey = GlobalKey(debugLabel: 'musculation_view_journal');
+  final GlobalKey _progressKey = GlobalKey(debugLabel: 'musculation_progress');
+
   void _refreshPage() {
     setState(() {
       _refreshKey = UniqueKey();
     });
     debugPrint('🔄 Page musculation rafraîchie');
+  }
+
+  /// Méthode publique pour lancer le tutorial depuis le parent
+  Future<void> showMusculationTutorial() async {
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    final locService = LocalizationService.instance;
+    final languageCode = locService.currentLanguageCode;
+
+    if (!mounted) return;
+
+    await TutorialService().showMusculationTutorial(
+      context: context,
+      weeklyStatsKey: _weeklyStatsKey,
+      sessionTypesBlockKey: _sessionTypesBlockKey,
+      manualButtonKey: _manualButtonKey,
+      guidedButtonKey: _guidedButtonKey,
+      coachRyzeButtonKey: _coachRyzeButtonKey,
+      weekHistoryKey: _weekHistoryKey,
+      viewJournalKey: _viewJournalKey,
+      progressKey: _progressKey,
+      languageCode: languageCode,
+    );
   }
 
   List<String> _getSessionTypes(String languageCode) {
@@ -77,6 +111,7 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
                   // Bouton séance manuelle
                   Expanded(
                     child: _buildSessionTypeButton(
+                      key: _manualButtonKey,
                       icon: LucideIcons.pencil,
                       title: 'workout_manual_session'.tr(locService.currentLanguageCode),
                       subtitle: '',
@@ -89,6 +124,7 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
                   // Bouton séance guidée
                   Expanded(
                     child: _buildSessionTypeButton(
+                      key: _guidedButtonKey,
                       icon: LucideIcons.bookOpen,
                       title: 'workout_guided_session'.tr(locService.currentLanguageCode),
                       subtitle: '',
@@ -101,6 +137,7 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
                   // Bouton Coach Ryze (avec logo SVG)
                   Expanded(
                     child: _buildCoachRyzeButton(
+                      key: _coachRyzeButtonKey,
                       title: locService.isFrench ? 'Coach Ryze' : 'Coach Ryze',
                       onTap: _navigateToAIWorkoutGenerator,
                     ),
@@ -115,6 +152,7 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
   }
 
   Widget _buildSessionTypeButton({
+    Key? key,
     required IconData icon,
     required String title,
     required String subtitle,
@@ -123,6 +161,7 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
+        key: key,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: const Color(0xFFF8FAFC),
@@ -143,18 +182,19 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
             ),
             const SizedBox(height: 12),
             SizedBox(
-              height: 36,
+              height: 40,
               child: Center(
                 child: Text(
                   title,
                   style: const TextStyle(
-                    fontSize: 14,
+                    fontSize: 13,
                     fontWeight: FontWeight.w600,
                     color: Color(0xFF1A1A1A),
-                    height: 1.2,
+                    height: 1.3,
                   ),
                   textAlign: TextAlign.center,
                   maxLines: 2,
+                  overflow: TextOverflow.visible,
                 ),
               ),
             ),
@@ -165,6 +205,7 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
   }
 
   Widget _buildCoachRyzeButton({
+    Key? key,
     required String title,
     required VoidCallback onTap,
   }) {
@@ -176,6 +217,7 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
           children: [
             // Bouton principal
             Container(
+              key: key,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: const Color(0xFFF8FAFC),
@@ -284,13 +326,18 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
         child: Column(
           children: [
             // 1. Bloc "Cette semaine" (FACTORISÉ)
-            WeeklyStatsSection(key: ValueKey('weekly_$_refreshKey')),
+            WeeklyStatsSection(
+              key: _weeklyStatsKey,
+            ),
 
             const SizedBox(height: 16),
-            
-            // 2. Bloc principal "Types de séance" (2 boutons côte à côte)
+
+            // 2. Bloc principal "Types de séance" (3 boutons côte à côte)
             if (!_isSessionActive && !_isSessionCompleted) ...[
-              _buildSessionTypeButtons(),
+              Container(
+                key: _sessionTypesBlockKey,
+                child: _buildSessionTypeButtons(),
+              ),
               const SizedBox(height: 16),
             ],
             
@@ -314,7 +361,10 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
             ],
             
             // 5. Bloc "Historique de la semaine" (FACTORISÉ)
-            WeekHistorySection(key: ValueKey('history_$_refreshKey')),
+            Container(
+              key: _weekHistoryKey,
+              child: const WeekHistorySection(),
+            ),
 
             const SizedBox(height: 16),
 
@@ -324,7 +374,10 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
             const SizedBox(height: 16),
 
             // 6. Bloc "Progression par exercice" (FACTORISÉ)
-            ExerciseProgressSection(key: ValueKey('progress_$_refreshKey')),
+            // On passe la clé directement au header du widget
+            ExerciseProgressSection(
+              headerKey: _progressKey,
+            ),
             
             // Padding bottom
             const SizedBox(height: 100),
@@ -1106,6 +1159,7 @@ class _SportMusculationHybridState extends State<SportMusculationHybrid> {
     return Consumer<LocalizationService>(
       builder: (context, locService, _) => Center(
         child: TextButton(
+          key: _viewJournalKey,
           onPressed: _openMusculationJournal,
           child: Row(
             mainAxisSize: MainAxisSize.min,

@@ -723,6 +723,48 @@ class GlobalStateManager {
     }
   }
 
+  /// Réinitialise complètement l'état global (pour déconnexion)
+  void reset() {
+    debugPrint('🔄 GlobalState: Réinitialisation complète...');
+
+    // Réinitialiser toutes les valeurs
+    _currentCalories = 0;
+    _currentWaterL = 0;
+    _mealsCount = 0;
+    _workoutCompleted = false;
+    _currentProteins = 0;
+    _currentCarbs = 0;
+    _currentFats = 0;
+    _sportSessions = 0;
+    _sportCaloriesBurned = 0;
+
+    // Réinitialiser les objectifs par défaut
+    _calorieGoal = 2000;
+    _waterGoalL = 2.0;
+    _currentStreak = 0;
+    _userName = 'User';
+
+    // Vider les données hebdomadaires
+    _weeklyBalance = null;
+    _weeklyTracking = null;
+    _weeklyDataLastUpdate = null;
+
+    // Vider le cache global
+    _globalCache.clear();
+
+    // Annuler le timer
+    _midnightCheckTimer?.cancel();
+    _lastCheckedDate = null;
+
+    // Notifier tous les listeners
+    _notifyChange(StateChangeEvent(
+      type: ChangeType.batch,
+      value: null,
+    ));
+
+    debugPrint('✅ GlobalState: Réinitialisation terminée');
+  }
+
   /// Nettoie les ressources
   void dispose() {
     _midnightCheckTimer?.cancel();

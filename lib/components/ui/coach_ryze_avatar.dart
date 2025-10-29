@@ -62,13 +62,13 @@ class CoachRyzeAvatar extends StatelessWidget {
   String get _imagePath {
     switch (type) {
       case CoachRyzeAvatarType.workout:
-        return 'images/coach_ryze_workout_avatar.png';
+        return 'assets/images/coach_ryze_workout_avatar.png';
       case CoachRyzeAvatarType.nutrition:
-        return 'images/coach_ryze_nutrition_avatar.png'; // Avec pomme
+        return 'assets/images/coach_ryze_nutrition_avatar.png'; // Avec pomme
       case CoachRyzeAvatarType.nutritionChat:
-        return 'images/coach_ryze_ai_chat_nutrition.png'; // Sans pomme
+        return 'assets/images/coach_ryze_ai_chat_nutrition.png'; // Sans pomme
       case CoachRyzeAvatarType.chef:
-        return 'images/coach_ryze_chef_avatar.png';
+        return 'assets/images/coach_ryze_chef_avatar.png';
     }
   }
 

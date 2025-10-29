@@ -337,6 +337,7 @@ class _LastSessionSectionState extends State<LastSessionSection> {
   Widget build(BuildContext context) {
     return Consumer<LocalizationService>(
       builder: (context, locService, _) => CustomCard(
+        key: widget.key, // ✅ Transférer la key à la CustomCard pour le tutorial
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(

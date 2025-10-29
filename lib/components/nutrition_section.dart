@@ -20,8 +20,6 @@ import 'ui/custom_snackbar.dart';
 import 'ui/global_state_header.dart';
 import '../services/fast_cache_service.dart';
 import 'ui/nutrition_tutorial_welcome.dart'; // Welcome screen nutrition
-import 'tutorial/tutorial_overlay_system.dart'; // Nouveau système tutorial avec page mockée
-import 'tutorial/tutorial_nutrition_dashboard.dart'; // Page nutrition mockée pour tutorial
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart'; // Pour ContentAlign et ShapeLightFocus
 
@@ -87,7 +85,7 @@ class _NutritionSectionState extends State<NutritionSection>
   /// Affiche l'écran de bienvenue Nutrition si c'est la première visite
   Future<void> _showNutritionTutorial() async {
     // Vérifier si déjà complété (en mode debug, toujours afficher)
-    const debugMode = true; // Mettre à false en production
+    const debugMode = false; // Mode production : tutoriels une seule fois
     if (!debugMode) {
       final prefs = await SharedPreferences.getInstance();
       final completed = prefs.getBool('nutrition_welcome_shown') ?? false;
@@ -387,100 +385,21 @@ class _NutritionSectionState extends State<NutritionSection>
     return completer.future;
   }
 
-  /// Lance le tutorial du Dashboard Nutrition avec page mockée (partie 2)
+  /// Lance le tutorial du Dashboard Nutrition sur la vraie page (partie 2)
   Future<void> _launchDashboardTutorial() async {
-    // Petit délai pour que le welcome screen se ferme complètement
+    // Petit délai pour que le tutorial des onglets se ferme complètement
     await Future.delayed(const Duration(milliseconds: 300));
 
     if (!mounted) return;
 
-    final locService = LocalizationService.instance;
-
-    // Créer les GlobalKeys pour la page mockée
-    final caloriesKey = GlobalKey();
-    final macrosKey = GlobalKey();
-    final hydrationMealsKey = GlobalKey();
-    final quickActionsKey = GlobalKey();
-
-    // Créer un ScrollController pour le mockup
-    final scrollController = ScrollController();
-
-    // Créer la page mockée avec données vierges
-    final mockPage = TutorialNutritionDashboard(
-      caloriesKey: caloriesKey,
-      macrosKey: macrosKey,
-      hydrationMealsKey: hydrationMealsKey,
-      quickActionsKey: quickActionsKey,
-      scrollController: scrollController,
+    // Appeler la méthode du Dashboard qui lance le tutorial sur la vraie page
+    await _dashboardWidgetKey.currentState?.showDashboardTutorial(
+      dashboardTabKey: _dashboardTabKey,
+      journalTabKey: _journalTabKey,
+      recipesTabKey: _recipesTabKey,
     );
 
-    // Créer les targets pour le tutorial
-    final targets = [
-      TutorialOverlaySystem.createTarget(
-        identify: 'calories',
-        keyTarget: caloriesKey,
-        title: 'tutorial_nutrition_calories_title'.tr(locService.currentLanguageCode),
-        description: 'tutorial_nutrition_calories_desc'.tr(locService.currentLanguageCode),
-        align: ContentAlign.bottom,
-        shape: ShapeLightFocus.RRect,
-        radius: 24,
-        avatarPath: 'assets/images/coach_ryze_nutrition_avatar.png',
-        nextTargetKey: macrosKey, // Scroll vers macros après
-      ),
-      TutorialOverlaySystem.createTarget(
-        identify: 'macros',
-        keyTarget: macrosKey,
-        title: 'tutorial_nutrition_macros_title'.tr(locService.currentLanguageCode),
-        description: 'tutorial_nutrition_macros_desc'.tr(locService.currentLanguageCode),
-        align: ContentAlign.bottom,
-        shape: ShapeLightFocus.RRect,
-        radius: 24,
-        avatarPath: 'assets/images/coach_ryze_nutrition_avatar.png',
-        nextTargetKey: hydrationMealsKey, // Scroll vers hydratation après
-      ),
-      TutorialOverlaySystem.createTarget(
-        identify: 'hydration_meals',
-        keyTarget: hydrationMealsKey,
-        title: 'tutorial_nutrition_hydration_meals_title'.tr(locService.currentLanguageCode),
-        description: 'tutorial_nutrition_hydration_meals_desc'.tr(locService.currentLanguageCode),
-        align: ContentAlign.top, // ✅ Bulle en haut comme demandé
-        shape: ShapeLightFocus.RRect,
-        radius: 24,
-        avatarPath: 'assets/images/coach_ryze_nutrition_avatar.png',
-        nextTargetKey: quickActionsKey, // Scroll vers quick actions après
-      ),
-      TutorialOverlaySystem.createTarget(
-        identify: 'quick_actions',
-        keyTarget: quickActionsKey,
-        title: 'tutorial_nutrition_quick_actions_title'.tr(locService.currentLanguageCode),
-        description: 'tutorial_nutrition_quick_actions_desc'.tr(locService.currentLanguageCode),
-        align: ContentAlign.top, // ✅ Bulle en haut comme demandé
-        shape: ShapeLightFocus.RRect,
-        radius: 24,
-        avatarPath: 'assets/images/coach_ryze_nutrition_avatar.png',
-        // Pas de nextTargetKey, c'est la dernière étape
-      ),
-    ];
-
-    // Lancer le tutorial avec la page mockée
-    await TutorialOverlaySystem().showTutorial(
-      context: context,
-      mockPage: mockPage,
-      targets: targets,
-      scrollController: scrollController,
-      onFinish: () {
-        debugPrint('✅ Tutorial Nutrition terminé');
-        // Nettoyer le ScrollController
-        scrollController.dispose();
-        // Le Navigator.pop() sera appelé automatiquement par tutorial_coach_mark
-      },
-      onSkip: () {
-        debugPrint('⏭️ Tutorial Nutrition skippé');
-        // Nettoyer le ScrollController
-        scrollController.dispose();
-        // Le Navigator.pop() sera appelé automatiquement par tutorial_coach_mark
-      },
-    );
+    debugPrint('✅ Tutorial Dashboard Nutrition terminé');
   }
 
   /// [OBSOLÈTE] Ancien système de tutorial par onglet - remplacé par TutorialLiveOverlay

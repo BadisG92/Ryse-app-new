@@ -522,8 +522,10 @@ class SportCalendarGrid extends StatelessWidget {
               
               // En-têtes des jours de la semaine
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: ['day_mon', 'day_tue', 'day_wed', 'day_thu', 'day_fri', 'day_sat', 'day_sun'].map((dayKey) {
-                  return Expanded(
+                  return SizedBox(
+                    width: 40,
                     child: Center(
                       child: Text(
                         dayKey.tr(locService.currentLanguageCode),
@@ -593,7 +595,10 @@ class SportCalendarGrid extends StatelessWidget {
       weeks.add(
         Padding(
           padding: const EdgeInsets.only(bottom: 8),
-          child: Row(children: weekDays),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: weekDays,
+          ),
         ),
       );
     }
@@ -613,45 +618,44 @@ class SportCalendarGrid extends StatelessWidget {
     final bool hasActivities = dayData != null &&
                                (dayData['activities'] as List).isNotEmpty;
 
-    return Expanded(
-      child: GestureDetector(
-        onTap: hasActivities && isCurrentMonth ? () => onDayTapped(dateKey, dayDate) : null,
-        child: Container(
-          height: 40,
-          margin: const EdgeInsets.all(1),
-          child: dayData != null && isCurrentMonth && hasActivities
-              ? SportDayIcon(
-                  activities: List<String>.from(dayData['activities']),
-                  dayNumber: dayDate.day,
-                  isCurrentDay: isCurrentDay,
-                )
-              : Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    // Fond transparent pour jours futurs, gris clair pour jours passés sans activité
-                    color: isFutureDay && isCurrentMonth
-                        ? Colors.white.withOpacity(0.1)
-                        : (isCurrentMonth ? const Color(0xFFE5E7EB) : Colors.transparent),
-                    border: isCurrentDay
-                        ? Border.all(color: const Color(0xFF1C2951), width: 2)
-                        : null,
-                  ),
-                  child: Center(
-                    child: Text(
-                      dayDate.day.toString(),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: isCurrentMonth
-                            ? const Color(0xFF374151)
-                            : const Color(0xFFCCCCCC), // Même couleur que nutrition pour autres mois
-                        fontWeight: isCurrentDay ? FontWeight.bold : FontWeight.normal,
-                      ),
+    return GestureDetector(
+      onTap: hasActivities && isCurrentMonth ? () => onDayTapped(dateKey, dayDate) : null,
+      child: Container(
+        width: 40,
+        height: 40,
+        margin: const EdgeInsets.all(1),
+        child: dayData != null && isCurrentMonth && hasActivities
+            ? SportDayIcon(
+                activities: List<String>.from(dayData['activities']),
+                dayNumber: dayDate.day,
+                isCurrentDay: isCurrentDay,
+              )
+            : Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  // Fond transparent pour jours futurs, gris clair pour jours passés sans activité
+                  color: isFutureDay && isCurrentMonth
+                      ? Colors.white.withOpacity(0.1)
+                      : (isCurrentMonth ? const Color(0xFFE5E7EB) : Colors.transparent),
+                  border: isCurrentDay
+                      ? Border.all(color: const Color(0xFF1C2951), width: 2)
+                      : null,
+                ),
+                child: Center(
+                  child: Text(
+                    dayDate.day.toString(),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isCurrentMonth
+                          ? const Color(0xFF374151)
+                          : const Color(0xFFCCCCCC), // Même couleur que nutrition pour autres mois
+                      fontWeight: isCurrentDay ? FontWeight.bold : FontWeight.normal,
                     ),
                   ),
                 ),
-        ),
+              ),
       ),
     );
   }

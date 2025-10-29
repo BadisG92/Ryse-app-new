@@ -23,9 +23,9 @@ class WelcomeScreen extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             children: [
-              const SizedBox(height: 80),
+              const SizedBox(height: 24),
 
-              // Logo Ryze en haut
+              // Logo Ryze en haut (taille originale)
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -67,10 +67,10 @@ class WelcomeScreen extends StatelessWidget {
                 ],
               ),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
 
-              // Avatar panda ÉNORME au centre
-              Container(
+              // Avatar panda au centre (taille originale)
+              SizedBox(
                 width: 280,
                 height: 280,
                 child: Image.asset(
@@ -92,7 +92,7 @@ class WelcomeScreen extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(height: 32),
+              const SizedBox(height: 16),
 
               // Titre principal
               Text(
@@ -109,13 +109,29 @@ class WelcomeScreen extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 12),
+
+              // Sous-titre (type de coach)
+              Text(
+                isFrench
+                    ? 'Ton coach nutrition & sport'
+                    : 'Your nutrition & fitness coach',
+                style: const TextStyle(
+                  fontSize: 18,
+                  color: Color(0xFF64748B),
+                  fontWeight: FontWeight.w600,
+                  height: 1.3,
+                ),
+                textAlign: TextAlign.center,
+              ),
+
+              const SizedBox(height: 24),
 
               // Message d'intro
               Text(
                 isFrench
-                    ? 'Ton coach personnel pour progresser en\nnutrition et fitness, à ton rythme'
-                    : 'Your personal coach to progress in\nnutrition and fitness, at your pace',
+                    ? 'Je vais te montrer comment atteindre\ntes objectifs sans te compliquer la vie'
+                    : 'Let me show you how to reach your goals\nwithout overcomplicating things',
                 style: const TextStyle(
                   fontSize: 17,
                   color: Color(0xFF64748B),
@@ -126,6 +142,26 @@ class WelcomeScreen extends StatelessWidget {
               ),
 
               const Spacer(),
+
+              // Indicateurs de progression (4 points: Welcome + 3 slides)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(4, (index) {
+                  return Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    width: index == 0 ? 24 : 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: index == 0
+                        ? const Color(0xFF0B132B)
+                        : const Color(0xFFE2E8F0),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  );
+                }),
+              ),
+
+              const SizedBox(height: 24),
 
               // Bouton Continuer en bas
               SizedBox(
@@ -145,7 +181,7 @@ class WelcomeScreen extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        isFrench ? 'Commencer' : 'Get Started',
+                        isFrench ? 'C\'est parti !' : 'Let\'s go!',
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
@@ -159,7 +195,7 @@ class WelcomeScreen extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
             ],
           ),
         ),

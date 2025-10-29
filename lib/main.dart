@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'config/supabase_config.dart';
 import 'services/auth_service.dart';
 import 'services/localization_service.dart';
@@ -117,37 +118,106 @@ class AppInitializer extends StatefulWidget {
   State<AppInitializer> createState() => _AppInitializerState();
 }
 
-class _AppInitializerState extends State<AppInitializer> {
+class _AppInitializerState extends State<AppInitializer> with SingleTickerProviderStateMixin {
+  bool _showSplash = true;
+  late AnimationController _animationController;
+  late Animation<double> _logoFadeAnimation;
+  late Animation<double> _logoScaleAnimation;
+  late Animation<double> _textFadeAnimation;
+  late Animation<double> _splashFadeOutAnimation;
+
   @override
   void initState() {
     super.initState();
-    _initializeAuth();
+
+    // Précharger la police Inter avant de démarrer les animations
+    _preloadFont();
+
+    // Animation controller pour toute la séquence (2 secondes)
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2000),
+    );
+
+    // Logo : fade in + scale avec rebond (0ms -> 600ms) - apparition dynamique
+    _logoFadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: const Interval(0.0, 0.4, curve: Curves.easeOut),
+      ),
+    );
+
+    _logoScaleAnimation = Tween<double>(begin: 0.6, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: const Interval(0.0, 0.4, curve: Curves.easeOutBack), // Rebond
+      ),
+    );
+
+    // Texte : fade in légèrement décalé (100ms -> 600ms) pour un effet de séquence
+    _textFadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: const Interval(0.1, 0.4, curve: Curves.easeOut),
+      ),
+    );
+
+    // Tout disparaît (1400ms -> 2000ms) - disparition en douceur
+    _splashFadeOutAnimation = Tween<double>(begin: 1.0, end: 0.0).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: const Interval(0.7, 1.0, curve: Curves.easeInOut),
+      ),
+    );
+
+    _animationController.forward();
+    _initializeApp();
   }
 
-  Future<void> _initializeAuth() async {
-    // SOLUTION: Délayer l'auth pour éviter le freeze pendant build
-    await Future.delayed(const Duration(milliseconds: 100));
-
-    if (!mounted) return;
-
-    final authService = Provider.of<AuthService>(context, listen: false);
-
+  /// Précharger la police Inter pour éviter le changement de police visible
+  Future<void> _preloadFont() async {
     try {
-      debugPrint('🔄 AppInitializer: Starting auth initialization...');
-
-      // Exécuter auth complètement hors du build cycle
-      unawaited(_performAuthInitialization(authService));
-
-      debugPrint('✅ AppInitializer: Auth initialization scheduled');
+      // Précharger Inter avec tous les weights utilisés
+      await Future.wait([
+        GoogleFonts.pendingFonts([
+          GoogleFonts.inter(fontWeight: FontWeight.w400),
+          GoogleFonts.inter(fontWeight: FontWeight.w500),
+          GoogleFonts.inter(fontWeight: FontWeight.w600),
+          GoogleFonts.inter(fontWeight: FontWeight.w700),
+          GoogleFonts.inter(fontWeight: FontWeight.w800),
+          GoogleFonts.inter(fontWeight: FontWeight.w900),
+        ]),
+      ]);
     } catch (e) {
-      debugPrint('❌ AppInitializer: Auth scheduling error: $e');
+      debugPrint('⚠️ Erreur préchargement police Inter: $e');
+    }
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _initializeApp() async {
+    // Initialiser l'auth en parallèle de l'animation
+    final authService = Provider.of<AuthService>(context, listen: false);
+    await _performAuthInitialization(authService);
+
+    // Attendre la fin de l'animation (2 secondes)
+    await Future.delayed(const Duration(milliseconds: 2000));
+
+    if (mounted) {
+      setState(() {
+        _showSplash = false;
+      });
     }
   }
 
   Future<void> _performAuthInitialization(AuthService authService) async {
     try {
-      // Délai supplémentaire pour s'assurer qu'on est hors du build
-      await Future.delayed(const Duration(milliseconds: 200));
+      // Délai pour éviter le freeze pendant build
+      await Future.delayed(const Duration(milliseconds: 100));
 
       // CRITICAL: Timeout court pour mode avion (3s max au lieu de 15s)
       await authService.initialize().timeout(
@@ -157,7 +227,7 @@ class _AppInitializerState extends State<AppInitializer> {
         },
       );
 
-      debugPrint('✅ Auth really initialized');
+      debugPrint('✅ Auth initialized successfully');
     } catch (e) {
       debugPrint('❌ Auth initialization failed (app continues): $e');
       // L'app continue même si l'auth échoue
@@ -166,20 +236,85 @@ class _AppInitializerState extends State<AppInitializer> {
 
   @override
   Widget build(BuildContext context) {
+    if (_showSplash) {
+      return _buildAnimatedSplash();
+    }
+
+    // Après le splash, afficher le contenu
     return Consumer<AuthService>(
       builder: (context, authService, child) {
         if (authService.isLoading) {
-          return const Scaffold(
-            body: Center(
-              child: CircularProgressIndicator(
-                color: Color(0xFF0B132B),
-              ),
-            ),
-          );
+          return _buildAnimatedSplash(); // Continuer le splash si auth en cours
         }
 
         return const RyzeApp();
       },
     );
   }
+
+  Widget _buildAnimatedSplash() {
+    return Scaffold(
+      body: FadeTransition(
+        opacity: _splashFadeOutAnimation,
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+            ),
+          ),
+          child: SafeArea(
+            child: Column(
+              children: [
+                // Logo seul au centre
+                Expanded(
+                  child: Center(
+                    child: ScaleTransition(
+                      scale: _logoScaleAnimation,
+                      child: FadeTransition(
+                        opacity: _logoFadeAnimation,
+                        child: SizedBox(
+                          width: 120,
+                          height: 120,
+                          child: Center(
+                            child: SvgPicture.asset(
+                              'assets/images/logo_solo.svg',
+                              width: 72,
+                              height: 72,
+                              colorFilter: const ColorFilter.mode(
+                                Colors.white,
+                                BlendMode.srcIn,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+                // Texte "Ryze" en bas
+                FadeTransition(
+                  opacity: _logoFadeAnimation,
+                  child: const Text(
+                    'Ryze',
+                    style: TextStyle(
+                      fontSize: 48,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                      letterSpacing: -1.5,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 80),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
 }

@@ -233,7 +233,37 @@ class AuthService extends ChangeNotifier {
       );
 
       if (response.user != null) {
+        // Extraire le nom depuis Google (si disponible)
+        String? firstName;
+        String? lastName;
+
+        if (googleUser.displayName != null && googleUser.displayName!.isNotEmpty) {
+          final nameParts = googleUser.displayName!.split(' ');
+          firstName = nameParts.first;
+          if (nameParts.length > 1) {
+            lastName = nameParts.sublist(1).join(' ');
+          }
+          debugPrint('📝 Google name extracted: $firstName $lastName');
+        }
+
         await _loadUserProfile(response.user!.id);
+
+        // Mettre à jour le profil avec le nom si disponible et si pas déjà renseigné
+        if (firstName != null && _currentUser != null) {
+          final needsUpdate = _currentUser!.firstName.isEmpty ||
+                             _currentUser!.firstName == 'User' ||
+                             _currentUser!.lastName.isEmpty;
+
+          if (needsUpdate) {
+            debugPrint('📝 Updating user profile with Google name...');
+            await _updateUserNameFromSocial(
+              response.user!.id,
+              firstName,
+              lastName ?? '',
+            );
+          }
+        }
+
         await _storeTokenSecurely(response.session?.accessToken);
 
         // NOUVEAU: Réinitialiser GlobalStateManager après connexion Google
@@ -275,7 +305,38 @@ class AuthService extends ChangeNotifier {
       );
 
       if (response.user != null) {
+        // Extraire le nom depuis Apple (si disponible)
+        // IMPORTANT: Apple ne donne le nom QU'À LA PREMIÈRE connexion !
+        String? firstName;
+        String? lastName;
+
+        if (credential.givenName != null && credential.givenName!.isNotEmpty) {
+          firstName = credential.givenName;
+          debugPrint('📝 Apple firstName extracted: $firstName');
+        }
+        if (credential.familyName != null && credential.familyName!.isNotEmpty) {
+          lastName = credential.familyName;
+          debugPrint('📝 Apple lastName extracted: $lastName');
+        }
+
         await _loadUserProfile(response.user!.id);
+
+        // Mettre à jour le profil avec le nom si disponible et si pas déjà renseigné
+        if (firstName != null && _currentUser != null) {
+          final needsUpdate = _currentUser!.firstName.isEmpty ||
+                             _currentUser!.firstName == 'User' ||
+                             _currentUser!.lastName.isEmpty;
+
+          if (needsUpdate) {
+            debugPrint('📝 Updating user profile with Apple name...');
+            await _updateUserNameFromSocial(
+              response.user!.id,
+              firstName,
+              lastName ?? '',
+            );
+          }
+        }
+
         await _storeTokenSecurely(response.session?.accessToken);
 
         // NOUVEAU: Réinitialiser GlobalStateManager après connexion Apple
@@ -482,5 +543,41 @@ class AuthService extends ChangeNotifier {
     const charset = '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
     final random = List.generate(length, (_) => charset[(DateTime.now().millisecondsSinceEpoch * 1000) % charset.length]);
     return random.join();
+  }
+
+  /// Met à jour le nom de l'utilisateur depuis les données du social login
+  Future<void> _updateUserNameFromSocial(
+    String userId,
+    String firstName,
+    String lastName,
+  ) async {
+    try {
+      await _supabase.from('users').update({
+        'first_name': firstName,
+        'last_name': lastName,
+      }).eq('id', userId);
+
+      // Mettre à jour le modèle local
+      if (_currentUser != null) {
+        _currentUser = _currentUser!.copyWith(
+          firstName: firstName,
+          lastName: lastName,
+        );
+        _safeNotifyListeners();
+      }
+
+      debugPrint('✅ User name updated from social login: $firstName $lastName');
+    } catch (e) {
+      debugPrint('⚠️ Failed to update user name from social login: $e');
+      // Ne pas bloquer le flow si ça échoue
+    }
+  }
+
+  /// Vérifie si l'utilisateur a un nom complet
+  bool get hasCompleteName {
+    if (_currentUser == null) return false;
+    return _currentUser!.firstName.isNotEmpty &&
+           _currentUser!.firstName != 'User' &&
+           _currentUser!.lastName.isNotEmpty;
   }
 } 

@@ -117,75 +117,80 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF8FAFC), // Fond gris cohérent avec onboarding
       body: SafeArea(
         child: Consumer<AuthService>(
           builder: (context, authService, child) {
-            return Padding(
+            return SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20),
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Logo compact en haut
+                  const SizedBox(height: 20),
+
+                  // Logo + Nom Ryze
                   Center(
-                    child: Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: const Color(0xFF0B132B),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF0B132B).withOpacity(0.15),
-                            blurRadius: 20,
-                            offset: const Offset(0, 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Logo carré avec dégradé
+                        Container(
+                          width: 50,
+                          height: 50,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+                            ),
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                        ],
-                      ),
-                      child: Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: SvgPicture.asset(
-                            'assets/images/logo_seul.svg',
-                            colorFilter: const ColorFilter.mode(
-                              Colors.white,
-                              BlendMode.srcIn,
+                          child: Center(
+                            child: SvgPicture.asset(
+                              'assets/images/logo_solo.svg',
+                              width: 28,
+                              height: 28,
+                              colorFilter: const ColorFilter.mode(
+                                Colors.white,
+                                BlendMode.srcIn,
+                              ),
                             ),
                           ),
                         ),
-                      ),
+                        const SizedBox(width: 12),
+                        // Nom "Ryze"
+                        const Text(
+                          'Ryze',
+                          style: TextStyle(
+                            fontSize: 32,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFF0B132B),
+                            letterSpacing: -1,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
 
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 32),
 
-                  // Titre
+                  // Titre principal
                   Consumer<LocalizationService>(
                     builder: (context, locService, _) => Text(
                       (_isReturningUser ? 'welcome_back' : 'welcome').tr(locService.currentLanguageCode),
                       textAlign: TextAlign.center,
                       style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
+                        fontSize: 32,
+                        fontWeight: FontWeight.w800,
                         color: Color(0xFF0B132B),
+                        height: 1.2,
+                        letterSpacing: -0.5,
                       ),
                     ),
                   ),
 
-                  const SizedBox(height: 6),
-
-                  Consumer<LocalizationService>(
-                    builder: (context, locService, _) => Text(
-                      'sign_in_subtitle'.tr(locService.currentLanguageCode),
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 40),
                   
                   // Login Form
                   Form(
@@ -278,20 +283,21 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
 
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 28),
 
                   // Divider
                   Row(
                     children: [
                       Expanded(child: Divider(color: Colors.grey[300])),
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Consumer<LocalizationService>(
                           builder: (context, locService, _) => Text(
                             'or_continue_with'.tr(locService.currentLanguageCode),
                             style: TextStyle(
                               color: Colors.grey[600],
-                              fontSize: 13,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
                         ),
@@ -300,7 +306,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ],
                   ),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 24),
 
                   // Social Login Buttons
                   Row(
@@ -323,7 +329,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ],
                   ),
 
-                  const Spacer(),
+                  const SizedBox(height: 40),
 
                   // Sign Up Link
                   Row(
@@ -334,11 +340,12 @@ class _LoginScreenState extends State<LoginScreen> {
                           'dont_have_account'.tr(locService.currentLanguageCode),
                           style: TextStyle(
                             color: Colors.grey[600],
-                            fontSize: 14,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: 6),
                       GestureDetector(
                         onTap: () {
                           Navigator.push(
@@ -353,8 +360,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             'sign_up'.tr(locService.currentLanguageCode),
                             style: const TextStyle(
                               color: Color(0xFF0B132B),
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
                         ),
@@ -362,7 +369,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ],
                   ),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 24),
                 ],
               ),
             );

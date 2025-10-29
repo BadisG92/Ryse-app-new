@@ -54,10 +54,16 @@ class _CardioTutorialWelcomeState extends State<CardioTutorialWelcome>
     super.dispose();
   }
 
-  String _getWelcomeMessage() {
+  String _getRyzeMessage() {
     return widget.languageCode == 'fr'
-        ? 'Bienvenue dans la partie Cardio ! Ici, je vais t\'aider à suivre toutes tes activités cardio : course, vélo, marche, HIIT... Découvre comment enregistrer tes séances et suivre tes progrès !'
-        : 'Welcome to the Cardio section! Here, I\'ll help you track all your cardio activities: running, cycling, walking, HIIT... Discover how to record your sessions and track your progress!';
+        ? 'Bienvenue dans ton espace Cardio ! Toutes tes activités au même endroit.'
+        : 'Welcome to your Cardio space! All your activities in one place.';
+  }
+
+  String _getDescription() {
+    return widget.languageCode == 'fr'
+        ? 'Ici, je t\'aide à suivre toutes tes activités cardio : course, vélo, marche, HIIT... Découvre comment enregistrer tes séances et suivre tes progrès !'
+        : 'Here, I help you track all your cardio activities: running, cycling, walking, HIIT... Discover how to record your sessions and track your progress!';
   }
 
   @override
@@ -66,6 +72,7 @@ class _CardioTutorialWelcomeState extends State<CardioTutorialWelcome>
       backgroundColor: const Color(0xFF0B132B),
       body: Stack(
         children: [
+          // Contenu principal
           SafeArea(
             bottom: false,
             child: Center(
@@ -78,31 +85,66 @@ class _CardioTutorialWelcomeState extends State<CardioTutorialWelcome>
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        // Section panda + bulle (même style que page d'accueil)
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            // Bulle de dialogue à GAUCHE
+                            Expanded(
+                              flex: 3,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  // Nom "Coach Ryze" au-dessus de la bulle
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 8, bottom: 6),
+                                    child: Text(
+                                      'Coach Ryze',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.white.withOpacity(0.7),
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                  ),
+                                  // Bulle de message
+                                  Container(
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(20),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.2),
+                                          blurRadius: 20,
+                                          offset: const Offset(0, 8),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Text(
+                                      _getRyzeMessage(),
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        color: Color(0xFF0B132B),
+                                        fontWeight: FontWeight.w600,
+                                        height: 1.5,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
 
-                    // Bulle de dialogue avec avatar
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.3),
-                            blurRadius: 20,
-                            spreadRadius: 2,
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        children: [
-                          // Avatar + Message
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Avatar du panda workout
-                              SizedBox(
-                                width: 128,
-                                height: 128,
+                            const SizedBox(width: 20),
+
+                            // Panda à DROITE
+                            Expanded(
+                              flex: 2,
+                              child: SizedBox(
+                                width: 140,
+                                height: 140,
                                 child: Image.asset(
                                   'assets/images/coach_ryze_workout_avatar.png',
                                   fit: BoxFit.contain,
@@ -110,62 +152,64 @@ class _CardioTutorialWelcomeState extends State<CardioTutorialWelcome>
                                     return const Icon(
                                       LucideIcons.activity,
                                       size: 70,
-                                      color: Color(0xFF0B132B),
+                                      color: Colors.white,
                                     );
                                   },
                                 ),
                               ),
+                            ),
+                          ],
+                        ),
 
-                              const SizedBox(width: 12),
+                        const SizedBox(height: 32),
 
-                              // Message
-                              Expanded(
-                                child: Padding(
-                                  padding: const EdgeInsets.only(top: 8),
-                                  child: Text(
-                                    _getWelcomeMessage(),
-                                    style: const TextStyle(
-                                      fontSize: 15,
-                                      color: Color(0xFF0B132B),
-                                      height: 1.5,
-                                    ),
+                        // Description
+                        Text(
+                          _getDescription(),
+                          style: TextStyle(
+                            fontSize: 15,
+                            color: Colors.white.withOpacity(0.85),
+                            height: 1.5,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+
+                        const SizedBox(height: 32),
+
+                        // Bouton Commencer
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: widget.onStart,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: const Color(0xFF0B132B),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  widget.languageCode == 'fr'
+                                      ? 'Commencer la visite'
+                                      : 'Start the tour',
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
-
-                          const SizedBox(height: 20),
-
-                          // Bouton Commencer
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              onPressed: widget.onStart,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF0B132B),
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 14),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                elevation: 0,
-                              ),
-                              child: Text(
-                                widget.languageCode == 'fr'
-                                    ? 'Commencer'
-                                    : 'Start',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
+                                const SizedBox(width: 8),
+                                const Icon(LucideIcons.arrowRight, size: 20),
+                              ],
                             ),
                           ),
-                        ],
-                      ),
-                    ),
+                        ),
 
+                        const SizedBox(height: 16),
                       ],
                     ),
                   ),
@@ -191,7 +235,7 @@ class _CardioTutorialWelcomeState extends State<CardioTutorialWelcome>
                 style: TextStyle(
                   color: Colors.white.withOpacity(0.7),
                   fontSize: 16,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),

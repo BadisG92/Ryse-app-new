@@ -24,79 +24,19 @@ class ValuePropositionSlides extends StatefulWidget {
   State<ValuePropositionSlides> createState() => _ValuePropositionSlidesState();
 }
 
-class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
-    with TickerProviderStateMixin {
+class _ValuePropositionSlidesState extends State<ValuePropositionSlides> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
-  late AnimationController _fadeController;
-  late Animation<double> _fadeAnimation;
-
-  // Animations stagger pour Slide 1
-  late AnimationController _staggerController;
-  late Animation<Offset> _pandaSlide;
-  late Animation<Offset> _titleSlide;
-  late Animation<Offset> _cardsSlide;
-  late Animation<double> _pandaOpacity;
-  late Animation<double> _titleOpacity;
-  late Animation<double> _cardsOpacity;
-
-  // Animations pour Slide 2
-  late AnimationController _slide2StaggerController;
-  late Animation<double> _slide2CardsOpacity;
-  bool _showCoachResponse = false;
-  Timer? _slide2Timer;
-
-  // Animations pour Slide 3
-  late AnimationController _slide3StaggerController;
 
   @override
   void initState() {
     super.initState();
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.dark);
-
-    // Désactiver toutes les animations internes - uniquement l'animation de slide entre les pages
-    _fadeController = AnimationController(
-      vsync: this,
-      duration: Duration.zero, // Pas d'animation
-    );
-    _fadeAnimation = const AlwaysStoppedAnimation(1.0); // Toujours visible
-
-    // Stagger animations Slide 1 - désactivées
-    _staggerController = AnimationController(
-      vsync: this,
-      duration: Duration.zero,
-    );
-
-    // Stagger animations Slide 2 - désactivées
-    _slide2StaggerController = AnimationController(
-      vsync: this,
-      duration: Duration.zero,
-    );
-    _slide2CardsOpacity = const AlwaysStoppedAnimation(1.0);
-
-    // Stagger animations Slide 3 - désactivées
-    _slide3StaggerController = AnimationController(
-      vsync: this,
-      duration: Duration.zero,
-    );
-
-    // Pas de mouvement - tout visible dès le départ
-    _pandaSlide = const AlwaysStoppedAnimation(Offset.zero);
-    _pandaOpacity = const AlwaysStoppedAnimation(1.0);
-    _titleSlide = const AlwaysStoppedAnimation(Offset.zero);
-    _titleOpacity = const AlwaysStoppedAnimation(1.0);
-    _cardsSlide = const AlwaysStoppedAnimation(Offset.zero);
-    _cardsOpacity = const AlwaysStoppedAnimation(1.0);
   }
 
   @override
   void dispose() {
     _pageController.dispose();
-    _fadeController.dispose();
-    _staggerController.dispose();
-    _slide2StaggerController.dispose();
-    _slide3StaggerController.dispose();
-    _slide2Timer?.cancel();
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
     super.dispose();
   }
@@ -104,44 +44,14 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
   void _onPageChanged(int page) {
     setState(() {
       _currentPage = page;
-      _showCoachResponse = false;
     });
-
-    // Reset animations
-    _fadeController.reset();
-    _fadeController.forward();
-
-    // Reset stagger animation pour toutes les slides (panda, titre, mockup)
-    _staggerController.reset();
-    _staggerController.forward();
-
-    // Animation automatique pour slide 2 (anciennement slide 1)
-    if (page == 2) {
-      _slide2StaggerController.reset();
-      _slide2StaggerController.forward();
-
-      _slide2Timer?.cancel();
-      _slide2Timer = Timer(const Duration(milliseconds: 1500), () {
-        if (mounted && _currentPage == 2) {
-          setState(() {
-            _showCoachResponse = true;
-          });
-        }
-      });
-    }
-
-    // Animation automatique pour slide 3 (anciennement slide 2)
-    if (page == 3) {
-      _slide3StaggerController.reset();
-      _slide3StaggerController.forward();
-    }
   }
 
   void _nextPage() {
-    if (_currentPage < 3) {
+    if (_currentPage < 2) {
       _pageController.nextPage(
-        duration: const Duration(milliseconds: 400),
-        curve: Curves.easeInOut,
+        duration: const Duration(milliseconds: 900),
+        curve: Curves.fastOutSlowIn,
       );
     } else {
       widget.onComplete();
@@ -154,8 +64,6 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
         duration: const Duration(milliseconds: 900),
         curve: Curves.fastOutSlowIn,
       );
-    } else if (widget.onBack != null) {
-      widget.onBack!();
     }
   }
 
@@ -177,7 +85,6 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
                 controller: _pageController,
                 onPageChanged: _onPageChanged,
                 children: [
-                  _buildWelcomeSlide(isFrench),
                   _buildSlide1(isFrench),
                   _buildSlide2(isFrench),
                   _buildSlide3(isFrench),
@@ -196,22 +103,17 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
   /// Header avec bouton Skip
   Widget _buildHeader(bool isFrench) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 2, 20, 2),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           if (widget.onSkip != null)
             TextButton(
               onPressed: widget.onSkip,
-              style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
               child: Text(
                 isFrench ? 'Passer' : 'Skip',
                 style: const TextStyle(
-                  fontSize: 14,
+                  fontSize: 16,
                   color: Color(0xFF64748B),
                   fontWeight: FontWeight.w500,
                 ),
@@ -225,48 +127,51 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
   /// Footer avec pagination et navigation
   Widget _buildFooter(bool isFrench) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
       child: Column(
         children: [
-          // Dots de pagination (4 slides maintenant)
+          // Dots de pagination (4 au total: Welcome + 3 slides)
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: List.generate(4, (index) {
+              // Index 0 = Welcome screen (passé, mais grisé)
+              // Index 1-3 = Les 3 slides actuelles
+              // Index 0 reste petit et gris pour indiquer qu'on l'a passé
+              final isCurrent = index == _currentPage + 1; // +1 car Welcome = 0
+
               return Container(
-                margin: const EdgeInsets.symmetric(horizontal: 3),
-                width: _currentPage == index ? 20 : 6,
-                height: 6,
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                width: isCurrent ? 24 : 8,
+                height: 8,
                 decoration: BoxDecoration(
-                  color: _currentPage == index
+                  color: isCurrent
                       ? const Color(0xFF0B132B)
                       : const Color(0xFFE2E8F0),
-                  borderRadius: BorderRadius.circular(3),
+                  borderRadius: BorderRadius.circular(4),
                 ),
               );
             }),
           ),
 
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
 
           // Boutons de navigation
           Row(
-            mainAxisAlignment: _currentPage == 0 ? MainAxisAlignment.end : MainAxisAlignment.spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // Bouton Retour (masqué sur la page welcome)
-              if (_currentPage > 0)
-                TextButton.icon(
-                  onPressed: _previousPage,
-                  icon: const Icon(Icons.arrow_back, size: 18),
-                  label: Text(isFrench ? 'Retour' : 'Back'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: const Color(0xFF64748B),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    textStyle: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                    ),
+              // Bouton Retour
+              TextButton.icon(
+                onPressed: _currentPage > 0 ? _previousPage : widget.onBack,
+                icon: const Icon(Icons.arrow_back, size: 20),
+                label: Text(isFrench ? 'Retour' : 'Back'),
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFF64748B),
+                  textStyle: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
+              ),
 
               // Bouton Suivant / Commencer
               ElevatedButton(
@@ -274,9 +179,9 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF0B132B),
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   elevation: 0,
                 ),
@@ -284,151 +189,21 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      _currentPage < 3
+                      _currentPage < 2
                           ? (isFrench ? 'Suivant' : 'Next')
                           : (isFrench ? Slide3Data.ctaButtonFr : Slide3Data.ctaButtonEn),
                       style: const TextStyle(
-                        fontSize: 15,
+                        fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(width: 6),
-                    const Icon(Icons.arrow_forward, size: 18),
+                    const SizedBox(width: 8),
+                    const Icon(Icons.arrow_forward, size: 20),
                   ],
                 ),
               ),
             ],
           ),
-        ],
-      ),
-    );
-  }
-
-  /// SLIDE WELCOME : Écran de bienvenue avec Coach Ryze (première slide)
-  Widget _buildWelcomeSlide(bool isFrench) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Column(
-        children: [
-          const SizedBox(height: 24),
-
-          // Logo Ryze en haut
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Logo
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Center(
-                  child: SvgPicture.asset(
-                    'assets/images/logo_solo.svg',
-                    width: 28,
-                    height: 28,
-                    colorFilter: const ColorFilter.mode(
-                      Colors.white,
-                      BlendMode.srcIn,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              // Nom "Ryze"
-              const Text(
-                'Ryze',
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.w900,
-                  color: Color(0xFF0B132B),
-                  letterSpacing: -1,
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 16),
-
-          // Avatar panda au centre
-          SizedBox(
-            width: 280,
-            height: 280,
-            child: Image.asset(
-              'assets/images/coach_ryze_welcome_arms.png',
-              fit: BoxFit.contain,
-              errorBuilder: (context, error, stackTrace) {
-                return Container(
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
-                    ),
-                  ),
-                  child: const Center(
-                    child: Text('🐼', style: TextStyle(fontSize: 120)),
-                  ),
-                );
-              },
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // Titre principal
-          Text(
-            isFrench
-                ? 'Salut, je suis Coach Ryze !'
-                : 'Hi, I\'m Coach Ryze!',
-            style: const TextStyle(
-              fontSize: 32,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF0B132B),
-              height: 1.2,
-              letterSpacing: -0.5,
-            ),
-            textAlign: TextAlign.center,
-          ),
-
-          const SizedBox(height: 12),
-
-          // Sous-titre (type de coach)
-          Text(
-            isFrench
-                ? 'Ton coach nutrition & sport'
-                : 'Your nutrition & fitness coach',
-            style: const TextStyle(
-              fontSize: 18,
-              color: Color(0xFF64748B),
-              fontWeight: FontWeight.w600,
-              height: 1.3,
-            ),
-            textAlign: TextAlign.center,
-          ),
-
-          const SizedBox(height: 24),
-
-          // Message d'intro
-          Text(
-            isFrench
-                ? 'Je vais te montrer comment atteindre\ntes objectifs sans te compliquer la vie'
-                : 'Let me show you how to reach your goals\nwithout overcomplicating things',
-            style: const TextStyle(
-              fontSize: 17,
-              color: Color(0xFF64748B),
-              fontWeight: FontWeight.w500,
-              height: 1.5,
-            ),
-            textAlign: TextAlign.center,
-          ),
-
-          const Spacer(),
         ],
       ),
     );
@@ -576,11 +351,17 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
                   child: Padding(
                     padding: const EdgeInsets.only(right: 6),
                     child: TweenAnimationBuilder<double>(
-                      duration: Duration.zero, // Pas d'animation
-                      tween: Tween(begin: 1.0, end: 1.0), // Toujours visible
-                      curve: Curves.linear,
+                      duration: const Duration(milliseconds: 400),
+                      tween: Tween(begin: 0.0, end: 1.0),
+                      curve: const Interval(0.0, 1.0, curve: Curves.easeOut),
                       builder: (context, value, child) {
-                        return child!; // Pas de transformation
+                        return Transform.translate(
+                          offset: Offset(0, 20 * (1 - value)),
+                          child: Opacity(
+                            opacity: value,
+                            child: child,
+                          ),
+                        );
                       },
                       child: _buildMethodCard(
                         iconData: LucideIcons.camera,

@@ -45,12 +45,14 @@ class QuickActionsSection extends StatefulWidget {
   final List<QuickAction> actions;
   final GlobalKey? addFoodKey; // Pour le tutorial
   final GlobalKey? addExerciseKey; // Pour le tutorial
+  final GlobalKey? addWaterKey; // Pour le tutorial
 
   const QuickActionsSection({
     super.key,
     required this.actions,
     this.addFoodKey,
     this.addExerciseKey,
+    this.addWaterKey,
   });
 
   @override
@@ -117,6 +119,8 @@ class _QuickActionsSectionState extends State<QuickActionsSection> {
                           tutorialKey = widget.addFoodKey;
                         } else if ((action.id == 'musculation' || action.id == 'workout') && widget.addExerciseKey != null) {
                           tutorialKey = widget.addExerciseKey;
+                        } else if (action.id == 'add_water' && widget.addWaterKey != null) {
+                          tutorialKey = widget.addWaterKey;
                         }
 
                         return QuickActionButton(
@@ -155,6 +159,8 @@ class _QuickActionsSectionState extends State<QuickActionsSection> {
                           tutorialKey = widget.addFoodKey;
                         } else if ((action.id == 'musculation' || action.id == 'workout') && widget.addExerciseKey != null) {
                           tutorialKey = widget.addExerciseKey;
+                        } else if (action.id == 'add_water' && widget.addWaterKey != null) {
+                          tutorialKey = widget.addWaterKey;
                         }
 
                         return QuickActionButton(

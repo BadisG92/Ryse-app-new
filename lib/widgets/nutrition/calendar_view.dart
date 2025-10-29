@@ -553,7 +553,7 @@ class CalendarGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     final List<String> dayNames = [
       'mon_short',
-      'tue_short', 
+      'tue_short',
       'wed_short',
       'thu_short',
       'fri_short',
@@ -561,14 +561,21 @@ class CalendarGrid extends StatelessWidget {
       'sun_short'
     ];
     final days = _getDaysInMonth(currentMonth);
-    
+
+    // Calculer la taille des cellules pour qu'elles restent carrées
+    final screenWidth = MediaQuery.of(context).size.width;
+    final availableWidth = screenWidth - 64; // padding horizontal (16*2) + card padding (16*2)
+    final cellSize = (availableWidth / 7).clamp(36.0, 48.0); // Taille entre 36 et 48
+
     return Column(
           children: [
             // Jours de la semaine
             Consumer<LocalizationService>(
               builder: (context, localizationService, child) {
                 return Row(
-                  children: dayNames.map((dayKey) => Expanded(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: dayNames.map((dayKey) => SizedBox(
+                    width: cellSize,
                     child: Center(
                       child: Text(
                         dayKey.tr(localizationService.currentLanguageCode),
@@ -583,39 +590,39 @@ class CalendarGrid extends StatelessWidget {
                 );
               },
             ),
-            
+
             const SizedBox(height: 8),
-            
+
             // Grille du calendrier
             ...List.generate(6, (weekIndex) {
               return Padding(
                 padding: const EdgeInsets.only(bottom: 4),
                 child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: List.generate(7, (dayIndex) {
                     final index = weekIndex * 7 + dayIndex;
-                    if (index >= days.length) return const Expanded(child: SizedBox());
-                    
+                    if (index >= days.length) return SizedBox(width: cellSize);
+
                     final day = days[index];
                     final data = _getNutritionData(nutritionData, day.date);
                     final isToday = _isSameDay(day.date, DateTime.now());
                     final isSelected = _isSameDay(day.date, selectedDate);
-                    
-                    return Expanded(
-                      child: GestureDetector(
-                        onTap: () => _onDayTap(day.date),
-                        child: Container(
-                      height: isToday ? 42 : 36,
-                      margin: EdgeInsets.all(isToday ? 1 : 2),
-                          decoration: _getDayDecoration(day, data, isToday, isSelected),
-                      child: Center(
-                        child: Text(
-                                '${day.date.day}',
-                                style: TextStyle(
-                            fontSize: isToday ? 16 : 14,
-                            fontWeight: isToday ? FontWeight.bold : FontWeight.w500,
-                                  color: _getDayTextColor(day, data, isToday, isSelected),
-                                ),
-                              ),
+
+                    return GestureDetector(
+                      onTap: () => _onDayTap(day.date),
+                      child: Container(
+                        width: cellSize,
+                        height: cellSize,
+                        margin: EdgeInsets.all(isToday ? 1 : 2),
+                        decoration: _getDayDecoration(day, data, isToday, isSelected),
+                        child: Center(
+                          child: Text(
+                            '${day.date.day}',
+                            style: TextStyle(
+                              fontSize: isToday ? 16 : 14,
+                              fontWeight: isToday ? FontWeight.bold : FontWeight.w500,
+                              color: _getDayTextColor(day, data, isToday, isSelected),
+                            ),
                           ),
                         ),
                       ),

@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 class AppTranslations {
   static const Map<String, Map<String, String>> _translations = {
     // Dashboard
@@ -514,6 +516,10 @@ class AppTranslations {
     'logout_confirmation': {
       'fr': 'Êtes-vous sûr de vouloir vous déconnecter ?',
       'en': 'Are you sure you want to log out?',
+    },
+    'error_during_logout': {
+      'fr': 'Erreur lors de la déconnexion',
+      'en': 'Error during logout',
     },
     'daily_reminder': {
       'fr': 'Rappel quotidien',
@@ -1881,6 +1887,18 @@ class AppTranslations {
     'continue': {
       'fr': 'Continuer',
       'en': 'Continue',
+    },
+    'complete_profile_title': {
+      'fr': 'Complétez votre profil',
+      'en': 'Complete your profile',
+    },
+    'complete_profile_subtitle': {
+      'fr': 'Nous avons besoin de votre nom pour personnaliser votre expérience',
+      'en': 'We need your name to personalize your experience',
+    },
+    'complete_profile_privacy': {
+      'fr': 'Vos informations sont sécurisées et ne seront jamais partagées',
+      'en': 'Your information is secure and will never be shared',
     },
     'create_new_meal_title': {
       'fr': 'Créer un nouveau repas',
@@ -3387,8 +3405,8 @@ class AppTranslations {
       'en': 'Progress by exercise',
     },
     'workout_see_all': {
-      'fr': 'Voir tout',
-      'en': 'See all',
+      'fr': 'Voir',
+      'en': 'View',
     },
     'workout_no_exercise_found': {
       'fr': 'Aucun exercice trouvé',
@@ -4209,6 +4227,22 @@ class AppTranslations {
       'fr': 'Gère tes entraînements, sessions de cardio et suis ta progression sportive.',
       'en': 'Manage your workouts, cardio sessions and track your sports progress.',
     },
+    'tutorial_dashboard_add_water_title': {
+      'fr': 'Ajouter de l\'eau',
+      'en': 'Add water',
+    },
+    'tutorial_dashboard_add_water_desc': {
+      'fr': 'Enregistre ta consommation d\'eau pour suivre ton hydratation quotidienne.',
+      'en': 'Record your water intake to track your daily hydration.',
+    },
+    'tutorial_dashboard_progress_tab_title': {
+      'fr': 'Onglet Progression',
+      'en': 'Progress Tab',
+    },
+    'tutorial_dashboard_progress_tab_desc': {
+      'fr': 'Consulte ton évolution de poids, ton bilan hebdomadaire et ton suivi jour par jour.',
+      'en': 'View your weight progress, weekly balance and daily tracking.',
+    },
 
     // Tutorial Nutrition
     'tutorial_nutrition_dashboard_tab_title': {
@@ -4370,6 +4404,98 @@ class AppTranslations {
       'en': 'Access the complete history of all your past cardio sessions to analyze your long-term progress.',
     },
 
+    // Tutorial Musculation
+    'tutorial_musculation_stats_title': {
+      'fr': 'Tes performances hebdo',
+      'en': 'Your weekly performance',
+    },
+    'tutorial_musculation_stats_desc': {
+      'fr': 'Retrouve ici tes statistiques de musculation : nombre de séances, volume total et calories brûlées cette semaine.',
+      'en': 'Find here your strength training stats: number of sessions, total volume and calories burned this week.',
+    },
+    'tutorial_musculation_manual_title': {
+      'fr': 'Séance manuelle',
+      'en': 'Manual session',
+    },
+    'tutorial_musculation_manual_desc': {
+      'fr': 'Crée ta séance librement en ajoutant les exercices de ton choix au fur et à mesure.',
+      'en': 'Create your session freely by adding exercises of your choice as you go.',
+    },
+    'tutorial_musculation_guided_title': {
+      'fr': 'Séance guidée',
+      'en': 'Guided session',
+    },
+    'tutorial_musculation_guided_desc': {
+      'fr': 'Suis un programme prédéfini avec exercices, séries et répétitions suggérées.',
+      'en': 'Follow a predefined program with suggested exercises, sets and reps.',
+    },
+    'tutorial_musculation_coach_title': {
+      'fr': 'Coach Ryze',
+      'en': 'Coach Ryze',
+    },
+    'tutorial_musculation_coach_desc': {
+      'fr': 'Ton coach personnel qui peut analyser tes séances, créer un programme adapté et te guider pour progresser.',
+      'en': 'Your personal coach that can analyze your sessions, create a tailored program and guide you to progress.',
+    },
+    'tutorial_musculation_history_title': {
+      'fr': 'Historique de la semaine',
+      'en': 'Week history',
+    },
+    'tutorial_musculation_history_desc': {
+      'fr': 'Consulte toutes tes séances de musculation de la semaine : exercices effectués, séries et poids utilisés.',
+      'en': 'View all your strength training sessions of the week: exercises performed, sets and weights used.',
+    },
+    'tutorial_musculation_journal_title': {
+      'fr': 'Ton journal complet',
+      'en': 'Your complete journal',
+    },
+    'tutorial_musculation_journal_desc': {
+      'fr': 'Accède à l\'historique complet de toutes tes séances passées pour suivre ta progression sur le long terme.',
+      'en': 'Access the complete history of all your past sessions to track your long-term progress.',
+    },
+    'tutorial_musculation_progress_title': {
+      'fr': 'Progression par exercice',
+      'en': 'Progress by exercise',
+    },
+    'tutorial_musculation_progress_desc': {
+      'fr': 'Visualise ta progression sur chaque exercice : charge maximale, volume total et évolution. Coach Ryze peut analyser ces données pour te guider.',
+      'en': 'Visualize your progress on each exercise: maximum load, total volume and evolution. Coach Ryze can analyze this data to guide you.',
+    },
+
+    // Tutorial Progression Globale
+    'tutorial_global_progress_settings_title': {
+      'fr': 'Paramètres',
+      'en': 'Settings',
+    },
+    'tutorial_global_progress_settings_desc': {
+      'fr': 'Accède à tes paramètres pour modifier ton profil, tes objectifs et tes préférences.',
+      'en': 'Access your settings to modify your profile, goals and preferences.',
+    },
+    'tutorial_global_progress_weight_title': {
+      'fr': 'Évolution du poids',
+      'en': 'Weight evolution',
+    },
+    'tutorial_global_progress_weight_desc': {
+      'fr': 'Suis l\'évolution de ton poids avec un graphique et tes indicateurs clés. Clique pour voir plus de détails.',
+      'en': 'Track your weight progress with a chart and key metrics. Click to see more details.',
+    },
+    'tutorial_global_progress_balance_title': {
+      'fr': 'Bilan hebdomadaire',
+      'en': 'Weekly balance',
+    },
+    'tutorial_global_progress_balance_desc': {
+      'fr': 'Retrouve ici ton bilan de la semaine : objectifs caloriques atteints, hydratation, repas enregistrés et séances de sport.',
+      'en': 'Find here your weekly balance: calorie targets achieved, hydration, meals recorded and sport sessions.',
+    },
+    'tutorial_global_progress_tracking_title': {
+      'fr': 'Suivi par jour',
+      'en': 'Daily tracking',
+    },
+    'tutorial_global_progress_tracking_desc': {
+      'fr': 'Visualise ton activité jour par jour : nutrition enregistrée et séances de sport réalisées.',
+      'en': 'View your daily activity: recorded nutrition and completed sport sessions.',
+    },
+
     // Legacy nutrition tutorial (non utilisé mais conservé)
     'tutorial_nutrition_ai_scanner_title': {
       'fr': 'Scanner IA',
@@ -4483,6 +4609,128 @@ class AppTranslations {
       'fr': 'Passer l\'introduction',
       'en': 'Skip introduction',
     },
+
+    // Register screen
+    'register.title': {
+      'fr': 'Rejoins l\'aventure !',
+      'en': 'Join the adventure!',
+    },
+    'register.subtitle': {
+      'fr': 'Rejoignez-nous et commencez votre parcours fitness aujourd\'hui',
+      'en': 'Join us and start your fitness journey today',
+    },
+    'register.firstName': {
+      'fr': 'Prénom',
+      'en': 'First Name',
+    },
+    'register.lastName': {
+      'fr': 'Nom',
+      'en': 'Last Name',
+    },
+    'register.email': {
+      'fr': 'Email',
+      'en': 'Email',
+    },
+    'register.password': {
+      'fr': 'Mot de passe',
+      'en': 'Password',
+    },
+    'register.confirmPassword': {
+      'fr': 'Confirmer le mot de passe',
+      'en': 'Confirm Password',
+    },
+    'register.firstNameRequired': {
+      'fr': 'Veuillez entrer votre prénom',
+      'en': 'Please enter your first name',
+    },
+    'register.lastNameRequired': {
+      'fr': 'Veuillez entrer votre nom',
+      'en': 'Please enter your last name',
+    },
+    'register.nameMinLength': {
+      'fr': 'Le nom doit contenir au moins 2 caractères',
+      'en': 'Name must be at least 2 characters',
+    },
+    'register.emailRequired': {
+      'fr': 'Veuillez entrer votre email',
+      'en': 'Please enter your email',
+    },
+    'register.emailInvalid': {
+      'fr': 'Veuillez entrer un email valide',
+      'en': 'Please enter a valid email',
+    },
+    'register.passwordRequired': {
+      'fr': 'Veuillez entrer un mot de passe',
+      'en': 'Please enter a password',
+    },
+    'register.passwordMinLength': {
+      'fr': 'Le mot de passe doit contenir au moins 8 caractères',
+      'en': 'Password must be at least 8 characters',
+    },
+    'register.passwordComplexity': {
+      'fr': 'Le mot de passe doit contenir une majuscule, une minuscule et un chiffre',
+      'en': 'Password must contain uppercase, lowercase, and number',
+    },
+    'register.confirmPasswordRequired': {
+      'fr': 'Veuillez confirmer votre mot de passe',
+      'en': 'Please confirm your password',
+    },
+    'register.passwordsDoNotMatch': {
+      'fr': 'Les mots de passe ne correspondent pas',
+      'en': 'Passwords do not match',
+    },
+    'register.iAgreeTo': {
+      'fr': 'J\'accepte les ',
+      'en': 'I agree to the ',
+    },
+    'register.termsOfService': {
+      'fr': 'Conditions d\'utilisation',
+      'en': 'Terms of Service',
+    },
+    'register.and': {
+      'fr': ' et la ',
+      'en': ' and ',
+    },
+    'register.privacyPolicy': {
+      'fr': 'Politique de confidentialité',
+      'en': 'Privacy Policy',
+    },
+    'register.pleaseAcceptTerms': {
+      'fr': 'Veuillez accepter les conditions d\'utilisation',
+      'en': 'Please accept the terms and conditions',
+    },
+    'register.createAccount': {
+      'fr': 'C\'est parti !',
+      'en': 'Let\'s go!',
+    },
+    'register.orSignUpWith': {
+      'fr': 'Ou s\'inscrire avec',
+      'en': 'Or sign up with',
+    },
+    'register.alreadyHaveAccount': {
+      'fr': 'Vous avez déjà un compte ? ',
+      'en': 'Already have an account? ',
+    },
+    'register.signIn': {
+      'fr': 'Se connecter',
+      'en': 'Sign In',
+    },
+    'register.successMessage': {
+      'fr': 'Compte créé avec succès ! Veuillez vérifier votre email pour confirmer votre compte.',
+      'en': 'Account created successfully! Please check your email to verify your account.',
+    },
+    'register.registrationFailed': {
+      'fr': 'L\'inscription a échoué',
+      'en': 'Registration failed',
+    },
+    'register.googleFailed': {
+      'fr': 'L\'inscription avec Google a échoué',
+      'en': 'Google registration failed',
+    },
+    'register.appleFailed': {
+      'fr': 'L\'inscription avec Apple a échoué',
+      'en': 'Apple registration failed',
+    },
   };
 
   static String get(String key, String languageCode) {
@@ -4501,4 +4749,10 @@ extension StringTranslation on String {
   String tr(String languageCode) {
     return AppTranslations.get(this, languageCode);
   }
+}
+
+// Helper function to get translations with BuildContext
+String tr(BuildContext context, String key) {
+  final languageCode = Localizations.localeOf(context).languageCode;
+  return AppTranslations.get(key, languageCode);
 }

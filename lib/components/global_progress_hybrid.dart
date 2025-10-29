@@ -7,6 +7,7 @@ import 'dart:convert';
 import 'ui/global_progress_models.dart';
 import 'ui/global_progress_widgets.dart';
 import 'ui/global_state_header.dart';
+import 'ui/progression_tutorial_welcome.dart';
 import '../services/dashboard_service.dart';
 import '../services/progress_service_v2.dart';
 import '../services/weight_service.dart';
@@ -15,6 +16,7 @@ import '../providers/weight_notifier.dart';
 import '../services/translations.dart';
 import '../services/localization_service.dart';
 import '../services/global_state_manager.dart';
+import '../services/tutorial_service.dart';
 
 class GlobalProgress extends StatefulWidget {
   const GlobalProgress({super.key});
@@ -38,6 +40,15 @@ class _GlobalProgressState extends State<GlobalProgress> {
   static const String _weightCacheTimestampKey = 'progress_weight_cache_timestamp';
   static const Duration _cacheDuration = Duration(hours: 24);
 
+  // ScrollController pour le tutorial
+  final ScrollController _scrollController = ScrollController();
+
+  // GlobalKeys pour le tutorial
+  final GlobalKey _settingsIconKey = GlobalKey(debugLabel: 'progress_settings_icon');
+  final GlobalKey _weightSectionKey = GlobalKey(debugLabel: 'progress_weight_section');
+  final GlobalKey _balanceSectionKey = GlobalKey(debugLabel: 'progress_balance_section');
+  final GlobalKey _trackingSectionKey = GlobalKey(debugLabel: 'progress_tracking_section');
+
   @override
   void initState() {
     super.initState();
@@ -55,6 +66,104 @@ class _GlobalProgressState extends State<GlobalProgress> {
 
     // Écouter les changements de poids
     WeightNotifier.instance.addListener(_onWeightChanged);
+
+    // Lancer le tutorial automatiquement la première fois
+    _checkAndLaunchTutorial();
+  }
+
+  /// Vérifie si c'est la première visite et lance le tutorial
+  Future<void> _checkAndLaunchTutorial() async {
+    // Mode production : tutoriels une seule fois
+    const bool debugMode = false;
+
+    final prefs = await SharedPreferences.getInstance();
+    final tutorialShown = prefs.getBool('global_progress_tutorial_shown') ?? false;
+
+    if ((debugMode || !tutorialShown) && mounted) {
+      // Petit délai pour que la page soit montée (welcome page s'affiche rapidement)
+      await Future.delayed(const Duration(milliseconds: 300));
+
+      if (mounted) {
+        await _showProgressTutorial();
+        // Marquer le tutorial comme vu (sauf en mode debug)
+        if (!debugMode) {
+          await prefs.setBool('global_progress_tutorial_shown', true);
+        }
+      }
+    }
+  }
+
+  /// Méthode pour lancer le tutorial
+  Future<void> _showProgressTutorial() async {
+    final locService = LocalizationService.instance;
+    final languageCode = locService.currentLanguageCode;
+
+    if (!mounted) return;
+
+    // Étape 1 : Afficher la welcome page
+    final shouldContinue = await _showProgressionWelcomeScreen(
+      languageCode: languageCode,
+    );
+
+    // Si l'utilisateur a skippé, on arrête
+    if (!shouldContinue || !mounted) return;
+
+    // Petit délai avant de lancer le tutorial principal
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    // Reset le scroll en haut pour avoir un état constant
+    if (_scrollController.hasClients) {
+      _scrollController.jumpTo(0);
+    }
+
+    // Attendre que le scroll soit bien à 0 et que tout soit rendu
+    await Future.delayed(const Duration(milliseconds: 100));
+
+    // Force un rebuild pour s'assurer que tout est stable
+    if (mounted) {
+      setState(() {});
+    }
+
+    // Délai supplémentaire pour garantir que tout est rendu
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    if (!mounted) return;
+
+    await TutorialService().showGlobalProgressTutorial(
+      context: context,
+      settingsIconKey: _settingsIconKey,
+      weightSectionKey: _weightSectionKey,
+      balanceSectionKey: _balanceSectionKey,
+      trackingSectionKey: _trackingSectionKey,
+      languageCode: languageCode,
+    );
+  }
+
+  /// Affiche l'écran de bienvenue Progression
+  /// Retourne true si l'utilisateur veut continuer le tutorial, false s'il skip
+  Future<bool> _showProgressionWelcomeScreen({
+    required String languageCode,
+  }) async {
+    if (!mounted) return false;
+
+    final result = await Navigator.of(context, rootNavigator: true).push<bool>(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (BuildContext context) {
+          return ProgressionTutorialWelcome(
+            languageCode: languageCode,
+            onStart: () {
+              Navigator.of(context).pop(true);
+            },
+            onSkip: () {
+              Navigator.of(context).pop(false);
+            },
+          );
+        },
+      ),
+    );
+
+    return result ?? false;
   }
 
   /// Helper pour obtenir le label du jour
@@ -147,6 +256,7 @@ class _GlobalProgressState extends State<GlobalProgress> {
   void dispose() {
     // Arrêter d'écouter les changements
     WeightNotifier.instance.removeListener(_onWeightChanged);
+    _scrollController.dispose();
     super.dispose();
   }
   
@@ -258,24 +368,31 @@ class _GlobalProgressState extends State<GlobalProgress> {
                   onRefresh: _onRefresh,
                   color: const Color(0xFF0B132B),
                   child: SingleChildScrollView(
+                    controller: _scrollController,
                     padding: const EdgeInsets.all(16),
                     physics: const AlwaysScrollableScrollPhysics(),
                     child: Column(
                       children: [
                         // Section d'évolution du poids avec graphique
-                        _weightProgress != null 
-                          ? GlobalProgressSectionBuilder.buildWeightSection(
-                              _weightProgress!,
-                              _onEditWeight,
-                            )
-                          : _buildLoadingSection(),
-                        
+                        Container(
+                          key: _weightSectionKey,
+                          child: _weightProgress != null
+                            ? GlobalProgressSectionBuilder.buildWeightSection(
+                                _weightProgress!,
+                                _onEditWeight,
+                              )
+                            : _buildLoadingSection(),
+                        ),
+
                         // Section du bilan global hebdomadaire
                         const SizedBox(height: 16),
                         if (!_dataLoaded)
                           _buildBalanceLoadingSection()
                         else if (_weeklyBalance.items.isNotEmpty)
-                          GlobalProgressSectionBuilder.buildBalanceSection(_weeklyBalance),
+                          Container(
+                            key: _balanceSectionKey,
+                            child: GlobalProgressSectionBuilder.buildBalanceSection(_weeklyBalance),
+                          ),
 
                         // Section de tracking hebdomadaire (nutrition + sport)
                         if (!_dataLoaded) ...[
@@ -283,7 +400,10 @@ class _GlobalProgressState extends State<GlobalProgress> {
                           _buildBalanceLoadingSection(),  // Réutiliser le même skeleton
                         ] else if (_trackingDays.isNotEmpty) ...[
                           const SizedBox(height: 16),
-                          GlobalProgressSectionBuilder.buildTrackingSection(_trackingDays),
+                          Container(
+                            key: _trackingSectionKey,
+                            child: GlobalProgressSectionBuilder.buildTrackingSection(_trackingDays),
+                          ),
                         ],
                         
                         // Espace en bas pour éviter que le contenu soit coupé
@@ -341,6 +461,7 @@ class _GlobalProgressState extends State<GlobalProgress> {
                 right: 12,
                 top: topInset + 14,
                 child: GestureDetector(
+                  key: _settingsIconKey,
                   onTap: () {
                     Navigator.pushNamed(context, '/settings');
                   },

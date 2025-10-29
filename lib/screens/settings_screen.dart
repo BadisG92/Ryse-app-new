@@ -1470,38 +1470,73 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                   title: 'logout'.tr(locService.currentLanguageCode),
                                   textColor: Colors.red,
                                   onTap: () async {
-                                  if (_hapticFeedback) HapticFeedback.mediumImpact();
-                                  
+                                    if (_hapticFeedback) HapticFeedback.mediumImpact();
+
                                     final confirm = await showDialog<bool>(
                                       context: context,
                                       builder: (context) => AlertDialog(
                                         title: Text('logout'.tr(locService.currentLanguageCode)),
                                         content: Text('logout_confirmation'.tr(locService.currentLanguageCode)),
-                                      actions: [
+                                        actions: [
                                           TextButton(
                                             onPressed: () => Navigator.pop(context, false),
                                             child: Text('cancel'.tr(locService.currentLanguageCode)),
-                                        ),
+                                          ),
                                           TextButton(
                                             onPressed: () => Navigator.pop(context, true),
                                             style: TextButton.styleFrom(
                                               foregroundColor: Colors.red,
                                             ),
                                             child: Text('logout'.tr(locService.currentLanguageCode)),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                  
-                                  if (confirm == true && mounted) {
-                                    final authService = context.read<AuthService>();
-                                    await authService.signOut();
-                                    
-                                    if (mounted) {
-                                      Navigator.of(context).pushNamedAndRemoveUntil(
-                                        '/login',
-                                        (route) => false,
-                                      );
+                                          ),
+                                        ],
+                                      ),
+                                    );
+
+                                    if (confirm == true && mounted) {
+                                      try {
+                                        // Afficher un indicateur de chargement
+                                        showDialog(
+                                          context: context,
+                                          barrierDismissible: false,
+                                          builder: (context) => const Center(
+                                            child: CircularProgressIndicator(),
+                                          ),
+                                        );
+
+                                        // Effectuer la déconnexion
+                                        final authService = Provider.of<AuthService>(context, listen: false);
+                                        await authService.signOut();
+
+                                        // Réinitialiser GlobalStateManager
+                                        GlobalStateManager.instance.reset();
+
+                                        // Vider les caches
+                                        HeaderCacheService.clearCache();
+
+                                        if (mounted) {
+                                          // Fermer le dialog de chargement
+                                          Navigator.of(context).pop();
+
+                                          // Naviguer vers la page de login et supprimer toutes les routes
+                                          Navigator.of(context).pushNamedAndRemoveUntil(
+                                            '/login',
+                                            (route) => false,
+                                          );
+                                        }
+                                      } catch (e) {
+                                        debugPrint('Erreur lors de la déconnexion: $e');
+                                        if (mounted) {
+                                          // Fermer le dialog de chargement si erreur
+                                          Navigator.of(context).pop();
+
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: Text('error_during_logout'.tr(locService.currentLanguageCode)),
+                                              backgroundColor: Colors.red,
+                                            ),
+                                          );
+                                        }
                                       }
                                     }
                                   },

@@ -19,6 +19,7 @@ class _MainAppState extends State<MainApp> {
   // GlobalKeys pour le tutorial (partagées entre Dashboard et BottomNavigation)
   final GlobalKey _nutritionTabKey = GlobalKey();
   final GlobalKey _sportTabKey = GlobalKey();
+  final GlobalKey _progressTabKey = GlobalKey();
 
   void _onTabChange(String tab) {
     setState(() {
@@ -33,6 +34,7 @@ class _MainAppState extends State<MainApp> {
           onTabChange: _onTabChange,
           nutritionTabKey: _nutritionTabKey,
           sportTabKey: _sportTabKey,
+          progressTabKey: _progressTabKey,
         );
       case 'nutrition':
         return const NutritionSection();
@@ -45,6 +47,7 @@ class _MainAppState extends State<MainApp> {
           onTabChange: _onTabChange,
           nutritionTabKey: _nutritionTabKey,
           sportTabKey: _sportTabKey,
+          progressTabKey: _progressTabKey,
         );
     }
   }
@@ -76,6 +79,7 @@ class _MainAppState extends State<MainApp> {
               onTabChange: _onTabChange,
               nutritionTabKey: _nutritionTabKey,
               sportTabKey: _sportTabKey,
+              progressTabKey: _progressTabKey,
             ),
           ),
         ],

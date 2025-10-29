@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../services/auth_service.dart';
+import '../../services/translations.dart';
+import '../../services/localization_service.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../widgets/social_login_button.dart';
@@ -37,11 +39,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _handleRegister() async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     if (!_acceptTerms) {
+      final locService = Provider.of<LocalizationService>(context, listen: false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please accept the terms and conditions'),
+        SnackBar(
+          content: Text('register.pleaseAcceptTerms'.tr(locService.currentLanguageCode)),
           backgroundColor: Colors.red,
         ),
       );
@@ -57,21 +60,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
 
     if (success && mounted) {
+      final locService = Provider.of<LocalizationService>(context, listen: false);
       // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Account created successfully! Please check your email to verify your account.'),
+        SnackBar(
+          content: Text('register.successMessage'.tr(locService.currentLanguageCode)),
           backgroundColor: Colors.green,
           duration: Duration(seconds: 5),
         ),
       );
-      
+
       // Navigate back to login
       Navigator.of(context).pop();
     } else if (mounted) {
+      final locService = Provider.of<LocalizationService>(context, listen: false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(authService.errorMessage ?? 'Registration failed'),
+          content: Text(authService.errorMessage ?? 'register.registrationFailed'.tr(locService.currentLanguageCode)),
           backgroundColor: Colors.red,
         ),
       );
@@ -88,9 +93,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
         MaterialPageRoute(builder: (context) => const RyzeApp()),
       );
     } else if (mounted) {
+      final locService = Provider.of<LocalizationService>(context, listen: false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(authService.errorMessage ?? 'Google registration failed'),
+          content: Text(authService.errorMessage ?? 'register.googleFailed'.tr(locService.currentLanguageCode)),
           backgroundColor: Colors.red,
         ),
       );
@@ -107,9 +113,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
         MaterialPageRoute(builder: (context) => const RyzeApp()),
       );
     } else if (mounted) {
+      final locService = Provider.of<LocalizationService>(context, listen: false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(authService.errorMessage ?? 'Apple registration failed'),
+          content: Text(authService.errorMessage ?? 'register.appleFailed'.tr(locService.currentLanguageCode)),
           backgroundColor: Colors.red,
         ),
       );
@@ -119,7 +126,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF8FAFC), // Fond gris cohérent avec onboarding
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -129,45 +136,38 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
       ),
       body: SafeArea(
-        child: Consumer<AuthService>(
-          builder: (context, authService, child) {
+        child: Consumer2<AuthService, LocalizationService>(
+          builder: (context, authService, locService, child) {
             return SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Header
-                  Column(
-                    children: [
-                      // Logo Ryze propre et centré (même style que l'onboarding)
-                      Container(
-                        width: 120,
-                        height: 120,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: const Color(0xFF0B132B), // Bleu principal de l'app
-                          boxShadow: [
-                            // Ombre principale plus douce
-                            BoxShadow(
-                              color: const Color(0xFF0B132B).withOpacity(0.15),
-                              blurRadius: 24,
-                              spreadRadius: 0,
-                              offset: const Offset(0, 8),
+                  const SizedBox(height: 20),
+
+                  // Logo + Nom Ryze
+                  Center(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Logo carré avec dégradé
+                        Container(
+                          width: 50,
+                          height: 50,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
                             ),
-                            // Ombre secondaire pour plus de profondeur
-                            BoxShadow(
-                              color: const Color(0xFF0B132B).withOpacity(0.08),
-                              blurRadius: 12,
-                              spreadRadius: -2,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(20),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Center(
                             child: SvgPicture.asset(
-                              'assets/images/logo_seul.svg',
+                              'assets/images/logo_solo.svg',
+                              width: 28,
+                              height: 28,
                               colorFilter: const ColorFilter.mode(
                                 Colors.white,
                                 BlendMode.srcIn,
@@ -175,28 +175,37 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 24),
-                      const Text(
-                        'Create Account',
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF0B132B),
+                        const SizedBox(width: 12),
+                        // Nom "Ryze"
+                        const Text(
+                          'Ryze',
+                          style: TextStyle(
+                            fontSize: 32,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFF0B132B),
+                            letterSpacing: -1,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Join us and start your fitness journey today',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                  
+
                   const SizedBox(height: 32),
+
+                  // Titre principal
+                  Text(
+                    'register.title'.tr(locService.currentLanguageCode),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF0B132B),
+                      height: 1.2,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+
+                  const SizedBox(height: 40),
                   
                   // Registration Form
                   Form(
@@ -208,14 +217,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             Expanded(
                               child: CustomTextField(
                                 controller: _firstNameController,
-                                label: 'First Name',
+                                label: 'register.firstName'.tr(locService.currentLanguageCode),
                                 prefixIcon: Icons.person_outline,
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
-                                    return 'Please enter your first name';
+                                    return 'register.firstNameRequired'.tr(locService.currentLanguageCode);
                                   }
                                   if (value.length < 2) {
-                                    return 'Name must be at least 2 characters';
+                                    return 'register.nameMinLength'.tr(locService.currentLanguageCode);
                                   }
                                   return null;
                                 },
@@ -225,14 +234,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             Expanded(
                               child: CustomTextField(
                                 controller: _lastNameController,
-                                label: 'Last Name',
+                                label: 'register.lastName'.tr(locService.currentLanguageCode),
                                 prefixIcon: Icons.person_outline,
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
-                                    return 'Please enter your last name';
+                                    return 'register.lastNameRequired'.tr(locService.currentLanguageCode);
                                   }
                                   if (value.length < 2) {
-                                    return 'Name must be at least 2 characters';
+                                    return 'register.nameMinLength'.tr(locService.currentLanguageCode);
                                   }
                                   return null;
                                 },
@@ -243,15 +252,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         const SizedBox(height: 16),
                         CustomTextField(
                           controller: _emailController,
-                          label: 'Email',
+                          label: 'register.email'.tr(locService.currentLanguageCode),
                           keyboardType: TextInputType.emailAddress,
                           prefixIcon: Icons.email_outlined,
                           validator: (value) {
                             if (value == null || value.isEmpty) {
-                              return 'Please enter your email';
+                              return 'register.emailRequired'.tr(locService.currentLanguageCode);
                             }
                             if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                              return 'Please enter a valid email';
+                              return 'register.emailInvalid'.tr(locService.currentLanguageCode);
                             }
                             return null;
                           },
@@ -259,7 +268,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         const SizedBox(height: 16),
                         CustomTextField(
                           controller: _passwordController,
-                          label: 'Password',
+                          label: 'register.password'.tr(locService.currentLanguageCode),
                           obscureText: _obscurePassword,
                           prefixIcon: Icons.lock_outline,
                           suffixIcon: IconButton(
@@ -274,13 +283,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
-                              return 'Please enter a password';
+                              return 'register.passwordRequired'.tr(locService.currentLanguageCode);
                             }
                             if (value.length < 8) {
-                              return 'Password must be at least 8 characters';
+                              return 'register.passwordMinLength'.tr(locService.currentLanguageCode);
                             }
                             if (!RegExp(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)').hasMatch(value)) {
-                              return 'Password must contain uppercase, lowercase, and number';
+                              return 'register.passwordComplexity'.tr(locService.currentLanguageCode);
                             }
                             return null;
                           },
@@ -288,7 +297,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         const SizedBox(height: 16),
                         CustomTextField(
                           controller: _confirmPasswordController,
-                          label: 'Confirm Password',
+                          label: 'register.confirmPassword'.tr(locService.currentLanguageCode),
                           obscureText: _obscureConfirmPassword,
                           prefixIcon: Icons.lock_outline,
                           suffixIcon: IconButton(
@@ -303,10 +312,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
-                              return 'Please confirm your password';
+                              return 'register.confirmPasswordRequired'.tr(locService.currentLanguageCode);
                             }
                             if (value != _passwordController.text) {
-                              return 'Passwords do not match';
+                              return 'register.passwordsDoNotMatch'.tr(locService.currentLanguageCode);
                             }
                             return null;
                           },
@@ -332,19 +341,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     fontSize: 14,
                                     color: Colors.grey[600],
                                   ),
-                                  children: const [
-                                    TextSpan(text: 'I agree to the '),
+                                  children: [
+                                    TextSpan(text: 'register.iAgreeTo'.tr(locService.currentLanguageCode)),
                                     TextSpan(
-                                      text: 'Terms of Service',
-                                      style: TextStyle(
+                                      text: 'register.termsOfService'.tr(locService.currentLanguageCode),
+                                      style: const TextStyle(
                                         color: Color(0xFF0B132B),
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
-                                    TextSpan(text: ' and '),
+                                    TextSpan(text: 'register.and'.tr(locService.currentLanguageCode)),
                                     TextSpan(
-                                      text: 'Privacy Policy',
-                                      style: TextStyle(
+                                      text: 'register.privacyPolicy'.tr(locService.currentLanguageCode),
+                                      style: const TextStyle(
                                         color: Color(0xFF0B132B),
                                         fontWeight: FontWeight.w600,
                                       ),
@@ -357,19 +366,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                         
                         const SizedBox(height: 24),
-                        
+
                         // Register Button
                         CustomButton(
-                          text: 'Create Account',
+                          text: 'register.createAccount'.tr(locService.currentLanguageCode),
                           onPressed: authService.isLoading ? null : _handleRegister,
                           isLoading: authService.isLoading,
                         ),
                       ],
                     ),
                   ),
-                  
-                  const SizedBox(height: 32),
-                  
+
+                  const SizedBox(height: 28),
+
                   // Divider
                   Row(
                     children: [
@@ -377,17 +386,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Text(
-                          'Or sign up with',
+                          'register.orSignUpWith'.tr(locService.currentLanguageCode),
                           style: TextStyle(
                             color: Colors.grey[600],
                             fontSize: 14,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
                       Expanded(child: Divider(color: Colors.grey[300])),
                     ],
                   ),
-                  
+
                   const SizedBox(height: 24),
                   
                   // Social Registration Buttons
@@ -411,32 +421,36 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ],
                   ),
                   
-                  const SizedBox(height: 32),
-                  
+                  const SizedBox(height: 28),
+
                   // Sign In Link
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        'Already have an account? ',
+                        'register.alreadyHaveAccount'.tr(locService.currentLanguageCode),
                         style: TextStyle(
                           color: Colors.grey[600],
-                          fontSize: 14,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
+                      const SizedBox(width: 6),
                       GestureDetector(
                         onTap: () => Navigator.of(context).pop(),
-                        child: const Text(
-                          'Sign In',
-                          style: TextStyle(
+                        child: Text(
+                          'register.signIn'.tr(locService.currentLanguageCode),
+                          style: const TextStyle(
                             color: Color(0xFF0B132B),
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ),
                     ],
                   ),
+
+                  const SizedBox(height: 24),
                 ],
               ),
             );

@@ -92,5 +92,22 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+
+	<!-- Google Sign-In Configuration -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<!-- Reversed Client ID for Google Sign-In -->
+				<string>com.googleusercontent.apps.992101491811-meask250jrb56gkpmkqkqs4gu3i9isn6</string>
+			</array>
+		</dict>
+	</array>
+	<!-- Google Client ID -->
+	<key>GIDClientID</key>
+	<string>992101491811-meask250jrb56gkpmkqkqs4gu3i9isn6.apps.googleusercontent.com</string>
 </dict>
 </plist>

@@ -101,6 +101,9 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
   String _recognizedText = '';
   bool _voiceInitialized = false;
   bool _voiceHasError = false; // État d'erreur pour afficher bouton rouge
+  bool _isProcessingVoiceResult = false; // ⚡ Guard pour éviter appels multiples
+  Timer? _voiceAutoStopTimer; // ⚡ Timer pour auto-stop après détection
+  DateTime? _lastValidDataDetectedAt; // ⚡ Timestamp dernière détection valide
 
   // Système Undo
   Timer? _undoTimer;
@@ -179,6 +182,8 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     _voiceService.dispose();
     // Dispose undo timer
     _undoTimer?.cancel();
+    // Dispose voice auto-stop timer
+    _voiceAutoStopTimer?.cancel();
     super.dispose();
   }
 
@@ -3624,25 +3629,37 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
   Widget _buildVoiceListeningOverlay() {
     // Couleur selon le retry count
     final micColor = _voiceRetryCount == 0
-        ? Colors.red
+        ? const Color(0xFFEF4444) // Rouge vif
         : _voiceRetryCount == 1
-            ? Colors.orange
-            : Colors.deepOrange;
+            ? const Color(0xFFF97316) // Orange
+            : const Color(0xFFDC2626); // Rouge foncé
+
+    // Parser les données en temps réel pour feedback visuel
+    final parsedData = _recognizedText.isNotEmpty
+        ? _voiceService.parseVoiceInput(_recognizedText)
+        : null;
 
     return Positioned(
       left: 0,
       right: 0,
       bottom: 0,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
         decoration: BoxDecoration(
-          color: const Color(0xFF1C2951),
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              const Color(0xFF1C2951).withOpacity(0.98),
+              const Color(0xFF0F172A),
+            ],
+          ),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.3),
-              blurRadius: 10,
-              offset: const Offset(0, -2),
+              color: micColor.withOpacity(0.2),
+              blurRadius: 20,
+              offset: const Offset(0, -4),
             ),
           ],
         ),
@@ -3652,63 +3669,124 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
             // En-tête avec micro animé et bouton fermer
             Row(
               children: [
-                // Animation micro pulsante avec couleur dynamique
-                Container(
-                  width: 50,
-                  height: 50,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: micColor.withOpacity(0.2),
-                  ),
-                  child: Center(
-                    child: Icon(
-                      LucideIcons.mic,
-                      size: 28,
-                      color: micColor,
+                // Animation micro pulsante avec effet de pulsation
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Cercle extérieur pulsant
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: micColor.withOpacity(0.15),
+                      ),
                     ),
+                    // Cercle intérieur
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: micColor.withOpacity(0.3),
+                      ),
+                      child: Center(
+                        child: Icon(
+                          LucideIcons.mic,
+                          size: 24,
+                          color: micColor,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(width: 16),
+
+                // Texte principal et statut
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Consumer<LocalizationService>(
+                        builder: (context, locService, _) {
+                          String mainText;
+                          if (_voiceRetryCount == 0) {
+                            mainText = locService.currentLanguageCode == 'fr'
+                                ? "En écoute..."
+                                : "Listening...";
+                          } else {
+                            mainText = locService.currentLanguageCode == 'fr'
+                                ? "Réessayez ($_voiceRetryCount/$_maxRetries)"
+                                : "Try again ($_voiceRetryCount/$_maxRetries)";
+                          }
+
+                          return Text(
+                            mainText,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              shadows: _voiceRetryCount > 0
+                                  ? [
+                                      Shadow(
+                                        color: micColor.withOpacity(0.5),
+                                        blurRadius: 10,
+                                      )
+                                    ]
+                                  : null,
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 4),
+                      // Indicateur de ce qui est compris
+                      Consumer<LocalizationService>(
+                        builder: (context, locService, _) {
+                          if (parsedData != null && parsedData.hasData) {
+                            final repsText = parsedData.reps != null
+                                ? '${parsedData.reps} reps'
+                                : '';
+                            final weightText = parsedData.weight != null
+                                ? '${parsedData.weight}kg'
+                                : '';
+                            final separator = repsText.isNotEmpty && weightText.isNotEmpty ? ' • ' : '';
+
+                            return Text(
+                              '✓ $repsText$separator$weightText',
+                              style: const TextStyle(
+                                color: Color(0xFF10B981), // Vert success
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            );
+                          } else {
+                            return Text(
+                              locService.currentLanguageCode == 'fr'
+                                  ? 'Dites "10 reps 80 kilos"'
+                                  : 'Say "10 reps 80 kilos"',
+                              style: const TextStyle(
+                                color: Colors.white54,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w400,
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                    ],
                   ),
                 ),
 
                 const SizedBox(width: 12),
 
-                // Texte principal
-                Expanded(
-                  child: Consumer<LocalizationService>(
-                    builder: (context, locService, _) {
-                      String mainText;
-                      if (_voiceRetryCount == 0) {
-                        mainText = locService.currentLanguageCode == 'fr'
-                            ? "Dictez vos reps et poids..."
-                            : "Dictate your reps and weight...";
-                      } else {
-                        mainText = locService.currentLanguageCode == 'fr'
-                            ? "Réessayez ($_voiceRetryCount/$_maxRetries)"
-                            : "Try again ($_voiceRetryCount/$_maxRetries)";
-                      }
-
-                      return Text(
-                        mainText,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                          shadows: _voiceRetryCount > 0
-                              ? [
-                                  Shadow(
-                                    color: micColor.withOpacity(0.5),
-                                    blurRadius: 10,
-                                  )
-                                ]
-                              : null,
-                        ),
-                      );
-                    },
-                  ),
-                ),
-
-                // Bouton arrêter le micro
+                // Bouton arrêter le micro (plus gros et visible)
                 GestureDetector(
                   onTap: () async {
+                    // Annuler les timers
+                    _voiceAutoStopTimer?.cancel();
+                    _lastValidDataDetectedAt = null;
+
                     await _voiceService.stopListening();
                     if (mounted) {
                       setState(() {
@@ -3721,16 +3799,19 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                     }
                   },
                   child: Container(
-                    width: 36,
-                    height: 36,
+                    width: 44,
+                    height: 44,
                     decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.red, width: 1),
+                      color: Colors.red.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Colors.red.withOpacity(0.5),
+                        width: 1.5,
+                      ),
                     ),
                     child: const Icon(
                       LucideIcons.x,
-                      size: 20,
+                      size: 22,
                       color: Colors.red,
                     ),
                   ),
@@ -3738,38 +3819,35 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
               ],
             ),
 
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
 
-            // Texte reconnu en temps réel
+            // Texte reconnu en temps réel - plus grand et clair
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
+                color: Colors.black.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: parsedData != null && parsedData.hasData
+                      ? const Color(0xFF10B981).withOpacity(0.3)
+                      : Colors.white.withOpacity(0.1),
+                  width: 1.5,
+                ),
               ),
               child: Text(
                 _recognizedText.isEmpty ? "..." : _recognizedText,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
+                style: TextStyle(
+                  color: parsedData != null && parsedData.hasData
+                      ? const Color(0xFF10B981)
+                      : Colors.white,
+                  fontSize: 22,
                   fontWeight: FontWeight.w700,
+                  letterSpacing: 0.5,
                 ),
                 textAlign: TextAlign.center,
-              ),
-            ),
-
-            const SizedBox(height: 8),
-
-            Consumer<LocalizationService>(
-              builder: (context, locService, _) => Text(
-                locService.currentLanguageCode == 'fr'
-                    ? 'Exemple: "10 reps 80 kilos"'
-                    : 'Example: "10 reps 80 kilos"',
-                style: const TextStyle(
-                  color: Colors.white60,
-                  fontSize: 12,
-                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
@@ -3922,6 +4000,11 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
   Future<void> _startVoiceInputForSet(int setIndex) async {
     if (_exercises.isEmpty) return;
 
+    // ⚡ IMPORTANT: Reset TOUS les états pour éviter blocage
+    _isProcessingVoiceResult = false;
+    _voiceAutoStopTimer?.cancel();
+    _lastValidDataDetectedAt = null;
+
     // Marquer cette série comme active
     setState(() {
       _activeSetIndex = setIndex;
@@ -3963,20 +4046,65 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
         if (mounted) {
           setState(() => _recognizedText = text);
         }
+
+        // ⚡ NOUVEAU: Détecter si on a des données valides
+        final parsedData = _voiceService.parseVoiceInput(text);
+        if (parsedData != null && parsedData.hasData) {
+          final now = DateTime.now();
+
+          // Si c'est la première détection OU si plus d'1 sec depuis la dernière
+          if (_lastValidDataDetectedAt == null ||
+              now.difference(_lastValidDataDetectedAt!).inMilliseconds > 1000) {
+            _lastValidDataDetectedAt = now;
+            debugPrint('✅ Données valides détectées, démarrage timer auto-stop (1.5s)');
+
+            // Annuler le timer précédent
+            _voiceAutoStopTimer?.cancel();
+
+            // Nouveau timer de 1.5 secondes
+            _voiceAutoStopTimer = Timer(const Duration(milliseconds: 1500), () async {
+              if (_isVoiceListening && !_isProcessingVoiceResult) {
+                debugPrint('⏱️ Auto-stop timer déclenché');
+                await _stopVoiceInputForSet(setIndex);
+              }
+            });
+          }
+        }
       },
       onFinalResult: (text) async {
+        // ⚡ Guard: éviter appels multiples (bug speech_to_text)
+        if (_isProcessingVoiceResult) {
+          debugPrint('⚠️ Already processing voice result, ignoring duplicate call');
+          return;
+        }
+
+        _isProcessingVoiceResult = true;
+
         if (mounted) {
           setState(() => _recognizedText = text);
         }
 
+        // Annuler le timer auto-stop si on arrive ici
+        _voiceAutoStopTimer?.cancel();
+
         // Auto-stop et traiter immédiatement
         await _stopVoiceInputForSet(setIndex);
+
+        // Reset guard after processing
+        _isProcessingVoiceResult = false;
       },
     );
   }
 
   /// Arrêter l'écoute vocale pour une série spécifique
   Future<void> _stopVoiceInputForSet(int setIndex) async {
+    // ⚡ IMPORTANT: Reset guard immédiatement pour éviter blocage
+    _isProcessingVoiceResult = false;
+
+    // Annuler le timer auto-stop
+    _voiceAutoStopTimer?.cancel();
+    _lastValidDataDetectedAt = null;
+
     await _voiceService.stopListening();
 
     // Parser le résultat

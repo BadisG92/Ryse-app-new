@@ -29,12 +29,15 @@ class SportCardioHybridState extends State<SportCardioHybrid> {
   Key _refreshKey = UniqueKey();
   bool _showCalendar = false;
 
-  // GlobalKeys pour le tutorial
-  final GlobalKey _weeklyStatsKey = GlobalKey();
-  final GlobalKey _activitySelectionKey = GlobalKey();
-  final GlobalKey _lastSessionKey = GlobalKey();
-  final GlobalKey _weekSessionsKey = GlobalKey();
-  final GlobalKey _historyAccessKey = GlobalKey();
+  // ScrollController pour contrôler le scroll du tutorial
+  final ScrollController _scrollController = ScrollController();
+
+  // GlobalKeys pour le tutorial avec debugLabels uniques
+  final GlobalKey _weeklyStatsKey = GlobalKey(debugLabel: 'cardio_weekly_stats');
+  final GlobalKey _activitySelectionKey = GlobalKey(debugLabel: 'cardio_activity_selection');
+  final GlobalKey _lastSessionKey = GlobalKey(debugLabel: 'cardio_last_session');
+  final GlobalKey _weekSessionsKey = GlobalKey(debugLabel: 'cardio_week_sessions');
+  final GlobalKey _historyAccessKey = GlobalKey(debugLabel: 'cardio_history_access');
 
   void _refreshPage() {
     setState(() {
@@ -43,9 +46,29 @@ class SportCardioHybridState extends State<SportCardioHybrid> {
     debugPrint('🔄 Page cardio rafraîchie');
   }
 
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
   /// Méthode publique pour lancer le tutorial depuis le parent
   Future<void> showCardioTutorial() async {
-    await Future.delayed(const Duration(milliseconds: 300));
+    // Reset le scroll en haut pour avoir un état constant
+    if (_scrollController.hasClients) {
+      _scrollController.jumpTo(0);
+    }
+
+    // Attendre que le scroll soit bien à 0 et que tout soit rendu
+    await Future.delayed(const Duration(milliseconds: 100));
+
+    // Force un rebuild pour s'assurer que tout est stable
+    if (mounted) {
+      setState(() {});
+    }
+
+    // Délai supplémentaire pour garantir que tout est rendu
+    await Future.delayed(const Duration(milliseconds: 500));
 
     final locService = LocalizationService.instance;
     final languageCode = locService.currentLanguageCode;
@@ -86,44 +109,53 @@ class SportCardioHybridState extends State<SportCardioHybrid> {
         ),
       ),
       child: SingleChildScrollView(
+        controller: _scrollController,
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
             // 1. Bloc "Cette semaine" avec statistiques (connecté à Supabase)
-            WeeklyStatsSection(
+            Container(
               key: _weeklyStatsKey,
+              child: const WeeklyStatsSection(),
             ),
 
             const SizedBox(height: 16),
 
             // 2. Bloc "Choisir une activité"
-            ActivitySelectionSection(
+            Container(
               key: _activitySelectionKey,
-              onActivitySelected: (activity) =>
-                  _showActivityFormatsModal(context, activity),
+              child: ActivitySelectionSection(
+                onActivitySelected: (activity) =>
+                    _showActivityFormatsModal(context, activity),
+              ),
             ),
 
             const SizedBox(height: 16),
 
             // 3. Bloc "Dernière séance enregistrée" (connecté à Supabase)
-            LastSessionSection(
+            Container(
               key: _lastSessionKey,
-              onDetailsTap: () => _showSessionDetails(context),
+              child: LastSessionSection(
+                onDetailsTap: () => _showSessionDetails(context),
+              ),
             ),
 
             const SizedBox(height: 16),
 
             // 4. Bloc "Vos séances de la semaine" (connecté à Supabase)
-            WeekSessionsSection(
+            Container(
               key: _weekSessionsKey,
+              child: const WeekSessionsSection(),
             ),
 
             const SizedBox(height: 16),
 
             // 5. Footer / CTA
-            HistoryAccessWidget(
+            Container(
               key: _historyAccessKey,
-              onTap: () => _openCardioJournal(context),
+              child: HistoryAccessWidget(
+                onTap: () => _openCardioJournal(context),
+              ),
             ),
 
             // Padding bottom pour éviter la coupure

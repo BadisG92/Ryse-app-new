@@ -81,7 +81,7 @@ class NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
     required GlobalKey recipesTabKey,
   }) async {
     // Vérifier si déjà complété (en mode debug, toujours afficher)
-    const debugMode = true; // Mettre à false en production
+    const debugMode = false; // Mode production : tutoriels une seule fois
     if (!debugMode) {
       final prefs = await SharedPreferences.getInstance();
       final completed = prefs.getBool('nutrition_dashboard_tutorial_completed') ?? false;
@@ -359,52 +359,44 @@ class NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
           child: Column(
             children: [
               // Suppression du header avec "C'est parti" - on passe directement aux calories
-              Container(
+              MainCaloriesCard(
                 key: _caloriesCardKey, // GlobalKey pour tutorial
-                child: MainCaloriesCard(
-                  profile: nutritionProfile,
-                  animatedCalories: animatedCalories,
-                ),
+                profile: nutritionProfile,
+                animatedCalories: animatedCalories,
               ),
 
               const SizedBox(height: 16),
 
               // Macronutriments avec animations - sans pourcentages et sans icônes
-              Container(
-                key: _macrosCardKey, // GlobalKey pour tutorial
-                child: Consumer<LocalizationService>(
-                  builder: (context, locService, child) => MacronutrientsCard(
-                    macros: NutritionData.getMacros(nutritionProfile, locService.currentLanguageCode),
-                    animatedValues: {
-                      'protein': animatedProtein,
-                      'carbs': animatedCarbs,
-                      'fats': animatedFat,
-                    },
-                  ),
+              Consumer<LocalizationService>(
+                builder: (context, locService, child) => MacronutrientsCard(
+                  key: _macrosCardKey, // GlobalKey pour tutorial
+                  macros: NutritionData.getMacros(nutritionProfile, locService.currentLanguageCode),
+                  animatedValues: {
+                    'protein': animatedProtein,
+                    'carbs': animatedCarbs,
+                    'fats': animatedFat,
+                  },
                 ),
               ),
 
               const SizedBox(height: 16),
 
               // Hydratation + Repas (2 colonnes) - utiliser les vrais repas
-              Container(
+              HydrationAndMealsSection(
                 key: _hydrationMealsKey, // GlobalKey pour tutorial
-                child: HydrationAndMealsSection(
-                  profile: nutritionProfile,
-                  meals: realMeals,
-                  onAddWater: _onAddWater,
-                  onAddMeal: _onAddMeal,
-                ),
+                profile: nutritionProfile,
+                meals: realMeals,
+                onAddWater: _onAddWater,
+                onAddMeal: _onAddMeal,
               ),
 
               const SizedBox(height: 16),
 
               // Quick Actions - avec recette et swipe
-              Container(
+              NutritionQuickActionsSection(
                 key: _quickActionsKey, // GlobalKey pour tutorial
-                child: NutritionQuickActionsSection(
-                  actions: NutritionData.quickActions,
-                ),
+                actions: NutritionData.quickActions,
               ),
             ],
           ),

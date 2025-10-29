@@ -84,7 +84,9 @@ class _WeeklyStatsSectionState extends State<WeeklyStatsSection> with GlobalStat
 
 // Section historique des séances de la semaine
 class WeekHistorySection extends StatefulWidget {
-  const WeekHistorySection({super.key});
+  final GlobalKey? headerKey; // Clé optionnelle pour cibler le header dans les tutorials
+
+  const WeekHistorySection({super.key, this.headerKey});
 
   @override
   State<WeekHistorySection> createState() => _WeekHistorySectionState();
@@ -259,6 +261,7 @@ class _WeekHistorySectionState extends State<WeekHistorySection> with GlobalStat
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              key: widget.headerKey, // Clé pour le tutorial
               children: [
                 const Icon(
                   LucideIcons.calendar,
@@ -301,7 +304,9 @@ class _WeekHistorySectionState extends State<WeekHistorySection> with GlobalStat
 
 // Section progression des exercices
 class ExerciseProgressSection extends StatefulWidget {
-  const ExerciseProgressSection({super.key});
+  final GlobalKey? headerKey; // Clé optionnelle pour cibler le header dans les tutorials
+
+  const ExerciseProgressSection({super.key, this.headerKey});
 
   @override
   State<ExerciseProgressSection> createState() => _ExerciseProgressSectionState();
@@ -371,6 +376,7 @@ class _ExerciseProgressSectionState extends State<ExerciseProgressSection> with 
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              key: widget.headerKey, // Clé pour le tutorial
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Row(

@@ -21,12 +21,14 @@ class MainDashboardHybrid extends StatefulWidget {
   final Function(String)? onTabChange;
   final GlobalKey? nutritionTabKey; // Pour le tutorial
   final GlobalKey? sportTabKey; // Pour le tutorial
+  final GlobalKey? progressTabKey; // Pour le tutorial
 
   const MainDashboardHybrid({
     super.key,
     this.onTabChange,
     this.nutritionTabKey,
     this.sportTabKey,
+    this.progressTabKey,
   });
 
   @override
@@ -48,6 +50,7 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
   // Tutorial GlobalKeys
   final GlobalKey _addFoodKey = GlobalKey();
   final GlobalKey _addExerciseKey = GlobalKey();
+  final GlobalKey _addWaterKey = GlobalKey();
   final GlobalKey _caloriesCardKey = GlobalKey();
 
   @override
@@ -82,9 +85,6 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
       return;
     }
 
-    // DEBUG: Réinitialiser le tutoriel pour forcer l'affichage en mode test
-    await TutorialService().resetAllTutorials();
-
     final locService = LocalizationService.instance;
     final globalState = GlobalStateManager.instance;
 
@@ -92,9 +92,11 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
       context: context,
       addFoodKey: _addFoodKey,
       addExerciseKey: _addExerciseKey,
+      addWaterKey: _addWaterKey,
       caloriesCardKey: _caloriesCardKey,
       nutritionTabKey: widget.nutritionTabKey ?? GlobalKey(), // Utiliser les keys passées par main_app
       sportTabKey: widget.sportTabKey ?? GlobalKey(),
+      progressTabKey: widget.progressTabKey ?? GlobalKey(), // Ajouter le bouton Progression
       languageCode: locService.currentLanguageCode,
       pandaImagePath: 'assets/images/coach_ryze_welcome.png', // Image du Coach Ryze pour le Welcome Screen
       userName: globalState.userName, // Prénom de l'utilisateur (déjà formaté avec majuscule)
@@ -398,6 +400,7 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
                               actions: DashboardData.getOriginalActionsWithWeight(userProfile!, locService.currentLanguageCode),
                               addFoodKey: _addFoodKey,
                               addExerciseKey: _addExerciseKey,
+                              addWaterKey: _addWaterKey,
                             ),
                           ),
 

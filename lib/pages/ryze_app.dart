@@ -7,6 +7,7 @@ import '../components/onboarding_with_value_prop.dart';
 import '../components/main_app.dart';
 import '../services/auth_service.dart';
 import '../screens/auth/login_screen.dart';
+import '../screens/auth/complete_profile_screen.dart';
 
 /// RyzeApp - Implémentation du flow AAA (style MyFitnessPal, Headspace, etc.)
 ///
@@ -55,44 +56,59 @@ class _RyzeAppState extends State<RyzeApp> {
       if (session != null && !_forceValueProp) {
         debugPrint('✅ Session détectée pour: ${session.user.email}');
 
-        try {
-          final response = await supabase
-              .from('users')
-              .select('is_onboarded')
-              .eq('id', session.user.id)
-              .single()
-              .timeout(const Duration(seconds: 5));
+        // Vérifier si l'utilisateur a un nom complet
+        final authService = Provider.of<AuthService>(context, listen: false);
+        final hasCompleteName = authService.hasCompleteName;
 
-          final isOnboarded = _forceOnboarding ? false : (response['is_onboarded'] ?? false);
+        // Si pas de nom complet → écran de complétion de profil
+        if (!hasCompleteName) {
+          debugPrint('⚠️ Nom manquant → CompleteProfileScreen');
+          targetScreen = CompleteProfileScreen(
+            onComplete: () {
+              // Après avoir complété le nom, redéterminer le routing
+              _determineInitialRoute();
+            },
+          );
+        } else {
+          try {
+            final response = await supabase
+                .from('users')
+                .select('is_onboarded')
+                .eq('id', session.user.id)
+                .single()
+                .timeout(const Duration(seconds: 5));
 
-          // Synchroniser avec SharedPreferences
-          await prefs.setBool('is_onboarded', isOnboarded);
+            final isOnboarded = _forceOnboarding ? false : (response['is_onboarded'] ?? false);
 
-          if (isOnboarded) {
-            // ✨ Utilisateur complet → APP DIRECTEMENT (jamais de slides)
-            debugPrint('🎯 Utilisateur onboardé → App directement');
-            targetScreen = const MainApp();
-          } else {
-            // ⚠️ Compte existe mais onboarding incomplet
-            debugPrint('📋 Onboarding incomplet → Reprendre onboarding');
-            targetScreen = OnboardingWithValueProp(
-              onComplete: _completeOnboarding,
-              isUserLoggedIn: true,
-            );
-          }
-        } catch (e) {
-          debugPrint('❌ Erreur vérification onboarding: $e');
+            // Synchroniser avec SharedPreferences
+            await prefs.setBool('is_onboarded', isOnboarded);
 
-          // Fallback vers SharedPreferences
-          final isOnboarded = prefs.getBool('is_onboarded') ?? false;
+            if (isOnboarded) {
+              // ✨ Utilisateur complet → APP DIRECTEMENT (jamais de slides)
+              debugPrint('🎯 Utilisateur onboardé → App directement');
+              targetScreen = const MainApp();
+            } else {
+              // ⚠️ Compte existe mais onboarding incomplet
+              debugPrint('📋 Onboarding incomplet → Reprendre onboarding');
+              targetScreen = OnboardingWithValueProp(
+                onComplete: _completeOnboarding,
+                isUserLoggedIn: true,
+              );
+            }
+          } catch (e) {
+            debugPrint('❌ Erreur vérification onboarding: $e');
 
-          if (isOnboarded && !_forceOnboarding) {
-            targetScreen = const MainApp();
-          } else {
-            targetScreen = OnboardingWithValueProp(
-              onComplete: _completeOnboarding,
-              isUserLoggedIn: true,
-            );
+            // Fallback vers SharedPreferences
+            final isOnboarded = prefs.getBool('is_onboarded') ?? false;
+
+            if (isOnboarded && !_forceOnboarding) {
+              targetScreen = const MainApp();
+            } else {
+              targetScreen = OnboardingWithValueProp(
+                onComplete: _completeOnboarding,
+                isUserLoggedIn: true,
+              );
+            }
           }
         }
       }
@@ -183,23 +199,19 @@ class _RyzeAppState extends State<RyzeApp> {
   @override
   Widget build(BuildContext context) {
     // Écran de chargement pendant la détermination du routing
+    // IMPORTANT: On utilise un Container transparent pour que le SplashScreen
+    // de main.dart continue d'être visible pendant le chargement
     if (_isLoading) {
       return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(
-            color: Color(0xFF0B132B),
-          ),
-        ),
+        backgroundColor: Color(0xFFF8FAFC), // Même couleur que le splash
+        body: SizedBox.shrink(), // Widget vide pour éviter le flash
       );
     }
 
     // Afficher l'écran cible déterminé
     return _targetScreen ?? const Scaffold(
-      body: Center(
-        child: CircularProgressIndicator(
-          color: Color(0xFF0B132B),
-        ),
-      ),
+      backgroundColor: Color(0xFFF8FAFC),
+      body: SizedBox.shrink(),
     );
   }
 }

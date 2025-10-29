@@ -53,6 +53,9 @@ class SportDashboardState extends State<SportDashboard> with TickerProviderState
   final List<Timer> _timers = [];
   Timer? _caloriesTimer;
 
+  // ScrollController pour contrôler le scroll du tutorial
+  final ScrollController _scrollController = ScrollController();
+
   // Tutorial GlobalKeys pour les éléments du dashboard
   final GlobalKey _caloriesCardKey = GlobalKey();
   final GlobalKey _sessionsCardKey = GlobalKey();
@@ -81,7 +84,7 @@ class SportDashboardState extends State<SportDashboard> with TickerProviderState
     required GlobalKey musculationTabKey,
   }) async {
     // Vérifier si déjà complété (en mode debug, toujours afficher)
-    const debugMode = true; // Mettre à false en production
+    const debugMode = false; // Mode production : tutoriels une seule fois
     if (!debugMode) {
       final prefs = await SharedPreferences.getInstance();
       final completed = prefs.getBool('sport_dashboard_tutorial_completed') ?? false;
@@ -94,8 +97,21 @@ class SportDashboardState extends State<SportDashboard> with TickerProviderState
     final locService = LocalizationService.instance;
     final languageCode = locService.currentLanguageCode;
 
-    // Petit délai pour s'assurer que tout est bien rendu (même timing que Dashboard principal)
-    await Future.delayed(const Duration(milliseconds: 300));
+    // Reset le scroll en haut pour avoir un état constant
+    if (_scrollController.hasClients) {
+      _scrollController.jumpTo(0);
+    }
+
+    // Attendre que le scroll soit bien à 0 et que tout soit rendu
+    await Future.delayed(const Duration(milliseconds: 100));
+
+    // Force un rebuild pour s'assurer que tout est stable
+    if (mounted) {
+      setState(() {});
+    }
+
+    // Délai supplémentaire pour garantir que tout est rendu
+    await Future.delayed(const Duration(milliseconds: 500));
 
     // Lancer le tutorial avec les 3 onglets + 4 éléments du dashboard
     await TutorialService().showSportDashboardTutorial(
@@ -216,6 +232,7 @@ class SportDashboardState extends State<SportDashboard> with TickerProviderState
       timer.cancel();
     }
     _timers.clear();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -276,6 +293,7 @@ class SportDashboardState extends State<SportDashboard> with TickerProviderState
           ),
         ),
         child: SingleChildScrollView(
+        controller: _scrollController,
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
@@ -298,10 +316,7 @@ class SportDashboardState extends State<SportDashboard> with TickerProviderState
             const SizedBox(height: 16),
 
             // 3. Bloc "Activité du jour"
-            Container(
-              key: _splitCardKey, // GlobalKey pour tutorial (réutilisé pour daily activities)
-              child: _buildDailyActivities(locService),
-            ),
+            _buildDailyActivities(locService),
 
             const SizedBox(height: 16),
 
@@ -953,6 +968,7 @@ class SportDashboardState extends State<SportDashboard> with TickerProviderState
   Widget _buildDailyActivities(LocalizationService locService) {
     if (_dashboardData == null) {
     return CustomCard(
+      key: _splitCardKey, // GlobalKey pour tutorial
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -992,6 +1008,7 @@ class SportDashboardState extends State<SportDashboard> with TickerProviderState
     // Si aucune activité aujourd'hui
     if (cardioSessions.isEmpty && musculationSessions.isEmpty) {
       return CustomCard(
+        key: _splitCardKey, // GlobalKey pour tutorial
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -1030,6 +1047,7 @@ class SportDashboardState extends State<SportDashboard> with TickerProviderState
     }
 
     return CustomCard(
+      key: _splitCardKey, // GlobalKey pour tutorial
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -1053,9 +1071,9 @@ class SportDashboardState extends State<SportDashboard> with TickerProviderState
                 ),
               ],
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Liste des activités
             Column(
               children: [

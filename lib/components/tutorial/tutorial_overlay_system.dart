@@ -137,10 +137,14 @@ class TutorialOverlaySystem {
                         // Si on a un prochain target, attendre que la transition plein écran commence
                         // puis scroller pendant que c'est en plein écran
                         if (nextTargetKey != null) {
-                          // Attendre 50ms que la transition plein écran démarre
-                          await Future.delayed(const Duration(milliseconds: 50));
-                          // Scroller maintenant (pendant que c'est en plein écran)
-                          await _ensureWidgetVisible(nextTargetKey, context);
+                          // Attendre que la transition plein écran soit terminée
+                          // (~500ms pour tutorial_coach_mark par défaut)
+                          await Future.delayed(const Duration(milliseconds: 500));
+                          // Vérifier que le widget est toujours monté avant d'utiliser context
+                          if (context.mounted) {
+                            // Scroller maintenant (pendant que c'est en plein écran)
+                            await _ensureWidgetVisible(nextTargetKey, context);
+                          }
                         }
                       },
                       style: TextButton.styleFrom(
@@ -176,41 +180,45 @@ class TutorialOverlaySystem {
 
   /// Assure qu'un widget est visible en scrollant si nécessaire
   /// Retourne un Future qui se termine quand le scroll est fini
+  /// Version ROBUSTE qui positionne la box EN BAS de l'écran pour que le texte soit visible
   static Future<void> _ensureWidgetVisible(GlobalKey key, BuildContext context) async {
+    // Attendre que le prochain frame soit rendu (plus fiable que 50ms hardcodé)
+    await Future.delayed(Duration.zero);
+
+    // Vérifier que le context est toujours monté après le délai
+    if (!context.mounted) {
+      debugPrint('⚠️ Context démonté, annulation du scroll');
+      return;
+    }
+
     final currentContext = key.currentContext;
-    if (currentContext == null) return;
+    if (currentContext == null) {
+      debugPrint('⚠️ Widget context non trouvé pour le scroll');
+      return;
+    }
 
-    final renderObject = currentContext.findRenderObject();
-    if (renderObject == null || renderObject is! RenderBox) return;
-
-    // Utiliser le ScrollController passé au tutorial
-    if (_scrollController == null) return;
-
-    // Calculer la position du widget
-    final box = renderObject as RenderBox;
-    final position = box.localToGlobal(Offset.zero);
-    final size = box.size;
-
-    // Obtenir la hauteur de l'écran
-    final screenHeight = MediaQuery.of(context).size.height;
-
-    // Calculer si le widget est visible
-    final isVisible = position.dy >= 0 && position.dy + size.height <= screenHeight;
-
-    if (!isVisible) {
-      // Calculer la position de scroll nécessaire
-      // Utiliser screenHeight / 3 pour avoir plus de marge en haut
-      final targetScroll = _scrollController!.offset + position.dy - (screenHeight / 3);
-
-      // Scroller vers la position (quasi instantané) et attendre la fin
-      await _scrollController!.animateTo(
-        targetScroll.clamp(0.0, _scrollController!.position.maxScrollExtent),
-        duration: const Duration(milliseconds: 100),
-        curve: Curves.easeOut,
+    // Utiliser Scrollable.ensureVisible avec un alignement EN BAS
+    // 0.75 = positionne le haut du bloc à 75% du haut de l'écran
+    // Résultat : la box est EN BAS avec le texte du tooltip VISIBLE AU-DESSUS
+    // Cette méthode gère automatiquement :
+    // - Les nested scrollables
+    // - Les SliverAppBar qui se collapse
+    // - Les calculs de position complexes
+    try {
+      await Scrollable.ensureVisible(
+        currentContext,
+        duration: const Duration(milliseconds: 400), // Animation smooth
+        curve: Curves.easeInOut,
+        alignment: 0.75, // Position à 75% = box en bas avec texte visible au-dessus
+        alignmentPolicy: ScrollPositionAlignmentPolicy.explicit,
       );
 
-      // Petit délai supplémentaire pour que la position soit stabilisée
-      await Future.delayed(const Duration(milliseconds: 50));
+      // Attendre la fin complète de l'animation + marge de sécurité
+      await Future.delayed(const Duration(milliseconds: 450));
+
+      debugPrint('✅ Widget scrollé avec succès (box en bas)');
+    } catch (e) {
+      debugPrint('⚠️ Erreur lors du scroll: $e');
     }
   }
 }

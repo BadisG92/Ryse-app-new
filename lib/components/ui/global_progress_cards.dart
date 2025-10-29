@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
+import 'dart:math' as math;
 import 'custom_card.dart';
 import 'global_progress_models.dart';
 import '../../services/translations.dart';
@@ -20,11 +23,40 @@ class WeightEvolutionCard extends StatelessWidget {
     this.onGraphTap,
   });
 
+  /// Calculer la moyenne mobile pour lisser les fluctuations
+  List<FlSpot> _calculateMovingAverage(List<WeightEntry> entries) {
+    if (entries.length <= 3) {
+      return entries.asMap().entries.map((entry) {
+        return FlSpot(entry.key.toDouble(), entry.value.weight);
+      }).toList();
+    }
+
+    final windowSize = math.min(7, entries.length);
+    final List<FlSpot> smoothedSpots = [];
+
+    for (int i = 0; i < entries.length; i++) {
+      final startIndex = math.max(0, i - windowSize ~/ 2);
+      final endIndex = math.min(entries.length, i + windowSize ~/ 2 + 1);
+
+      double sum = 0;
+      int count = 0;
+      for (int j = startIndex; j < endIndex; j++) {
+        sum += entries[j].weight;
+        count++;
+      }
+
+      final average = sum / count;
+      smoothedSpots.add(FlSpot(i.toDouble(), average));
+    }
+
+    return smoothedSpots;
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 400;
-    
+
     return CustomCard(
       child: Padding(
         padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
@@ -54,9 +86,12 @@ class WeightEvolutionCard extends StatelessWidget {
                     },
                   ),
                 ),
-                // Bouton d'expansion style DA
+                // Bouton d'expansion style DA avec haptic feedback
                 GestureDetector(
-                  onTap: onGraphTap,
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    onGraphTap?.call();
+                  },
                   child: Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
@@ -72,17 +107,17 @@ class WeightEvolutionCard extends StatelessWidget {
                 ),
               ],
             ),
-            
+
             const SizedBox(height: 16),
-            
-            // Graphique agrandi
+
+            // Graphique agrandi avec hauteur augmentée
             Container(
-                height: isSmallScreen ? 160 : 180,
+                height: isSmallScreen ? 200 : 220,
                 decoration: BoxDecoration(
                   color: const Color(0xFFF8FAFC),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: const Color(0xFF0B132B).withOpacity(0.08),
+                    color: const Color(0xFF0B132B).withValues(alpha: 0.08),
                     width: 1,
                   ),
                 ),
@@ -91,39 +126,61 @@ class WeightEvolutionCard extends StatelessWidget {
                   child: Stack(
                     children: [
                       Padding(
-                        padding: const EdgeInsets.all(8),
+                        padding: const EdgeInsets.fromLTRB(8, 16, 8, 0),
                         child: LineChart(
                           LineChartData(
                             minY: progress.minY,
                             maxY: progress.maxY,
-                            // Étendre légèrement l'axe X pour la ligne d'objectif
-                            minX: 0,
-                            maxX: (progress.entries.length + 1).toDouble(),
+                            minX: -0.5,
+                            maxX: math.max(6, progress.entries.length - 1).toDouble() + 0.5,
                             gridData: FlGridData(
                               show: true,
                               drawVerticalLine: false,
                               getDrawingHorizontalLine: (value) {
                                 return FlLine(
-                                  color: const Color(0xFF0B132B).withOpacity(0.1),
-                                  strokeWidth: 0.5,
+                                  color: const Color(0xFF0B132B).withValues(alpha: 0.08),
+                                  strokeWidth: 1,
                                 );
                               },
                             ),
                             titlesData: FlTitlesData(
                               leftTitles: AxisTitles(
                                 sideTitles: SideTitles(
-                                  showTitles: !isSmallScreen,
-                                  reservedSize: 30,
+                                  showTitles: true,
+                                  reservedSize: isSmallScreen ? 32 : 35,
                                   interval: (progress.maxY - progress.minY) > 10 ? 5 : 2,
                                   getTitlesWidget: (value, meta) {
+                                    // Marquer l'objectif sur l'axe Y
+                                    if (progress.targetWeight > 0 &&
+                                        (value - progress.targetWeight).abs() < 0.5) {
+                                      return Container(
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: isSmallScreen ? 2 : 4,
+                                          vertical: 2
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF64748B).withValues(alpha: 0.1),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          '${value.toInt()}',
+                                          style: TextStyle(
+                                            color: const Color(0xFF64748B),
+                                            fontSize: isSmallScreen ? 9 : 10,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      );
+                                    }
+
                                     if (value % ((progress.maxY - progress.minY) > 10 ? 5 : 2) != 0) {
                                       return const SizedBox.shrink();
                                     }
                                     return Text(
                                       '${value.toInt()}',
-                                      style: const TextStyle(
-                                        color: Color(0xFF64748B),
-                                        fontSize: 9,
+                                      style: TextStyle(
+                                        color: const Color(0xFF64748B),
+                                        fontSize: isSmallScreen ? 8 : 9,
                                         fontWeight: FontWeight.w500,
                                       ),
                                     );
@@ -135,18 +192,26 @@ class WeightEvolutionCard extends StatelessWidget {
                               bottomTitles: AxisTitles(
                                 sideTitles: SideTitles(
                                   showTitles: true,
-                                  reservedSize: 18,
-                                  interval: isSmallScreen ? 2 : 1,
+                                  reservedSize: 28,
+                                  interval: progress.entries.length > 7 ? 2.0 : 1.0,
                                   getTitlesWidget: (value, meta) {
-                                    int index = value.toInt();
+                                    // Arrondir proprement pour éviter les doublons
+                                    int index = value.round();
+                                    // Vérifier que c'est exactement un entier (pas -0.5, 0.5, etc)
+                                    if ((value - index).abs() > 0.1) {
+                                      return const SizedBox.shrink();
+                                    }
                                     if (index >= 0 && index < progress.entries.length) {
                                       final entry = progress.entries[index];
-                                      return Text(
-                                        '${entry.date.day}/${entry.date.month}',
-                                        style: const TextStyle(
-                                          color: Color(0xFF64748B),
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.w500,
+                                      return Padding(
+                                        padding: const EdgeInsets.only(top: 8),
+                                        child: Text(
+                                          '${entry.date.day}/${entry.date.month}',
+                                          style: const TextStyle(
+                                            color: Color(0xFF64748B),
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w500,
+                                          ),
                                         ),
                                       );
                                     }
@@ -156,25 +221,44 @@ class WeightEvolutionCard extends StatelessWidget {
                               ),
                             ),
                             borderData: FlBorderData(show: false),
-                            // Gestion des tooltips améliorée
+                            // Tooltips améliorés avec plus d'infos
                             lineTouchData: LineTouchData(
                               enabled: true,
+                              handleBuiltInTouches: true,
+                              touchCallback: (FlTouchEvent event, LineTouchResponse? response) {
+                                if (event is FlTapUpEvent) {
+                                  HapticFeedback.selectionClick();
+                                }
+                              },
                               touchTooltipData: LineTouchTooltipData(
                                 getTooltipColor: (touchedSpot) => const Color(0xFF0B132B),
-                                tooltipRoundedRadius: 8,
-                                tooltipPadding: const EdgeInsets.all(8),
-                                tooltipMargin: 8,
+                                tooltipRoundedRadius: 10,
+                                tooltipPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                tooltipMargin: 12,
                                 getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
                                   return touchedBarSpots.map((barSpot) {
-                                    // Afficher le tooltip seulement pour la première ligne (données réelles, barDataIndex = 0)
-                                    if (barSpot.barIndex == 0 && barSpot.x.toInt() < progress.entries.length) {
-                                      final entry = progress.entries[barSpot.x.toInt()];
+                                    final index = barSpot.x.toInt();
+
+                                    // Afficher tooltip pour la ligne de tendance (moyenne mobile)
+                                    if (barSpot.barIndex == 1 && index >= 0 && index < progress.entries.length) {
+                                      final entry = progress.entries[index];
+                                      final weight = entry.weight;
+
+                                      // Calculer la différence avec le poids précédent
+                                      String diffText = '';
+                                      if (index > 0) {
+                                        final prevWeight = progress.entries[index - 1].weight;
+                                        final diff = weight - prevWeight;
+                                        diffText = '\n${diff >= 0 ? '+' : ''}${diff.toStringAsFixed(1)} kg';
+                                      }
+
                                       return LineTooltipItem(
-                                        '${barSpot.y.toStringAsFixed(1)} kg',
+                                        '${DateFormat('dd/MM/yyyy').format(entry.date)}\n${weight.toStringAsFixed(1)} kg$diffText',
                                         const TextStyle(
                                           color: Colors.white,
-                                          fontWeight: FontWeight.w500,
-                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 11,
+                                          height: 1.4,
                                         ),
                                       );
                                     }
@@ -186,53 +270,126 @@ class WeightEvolutionCard extends StatelessWidget {
                               ),
                             ),
                             lineBarsData: [
-                              // Ligne principale des données - seulement points réels
+                              // 1. Ligne des données brutes (gris clair, pour contexte)
+                              if (progress.entries.length > 3)
+                                LineChartBarData(
+                                  spots: progress.entries.asMap().entries.map((entry) {
+                                    return FlSpot(entry.key.toDouble(), entry.value.weight);
+                                  }).toList(),
+                                  isCurved: true,
+                                  color: const Color(0xFF94A3B8).withValues(alpha: 0.4),
+                                  barWidth: 1.5,
+                                  dotData: const FlDotData(show: false),
+                                  belowBarData: BarAreaData(show: false),
+                                ),
+
+                              // 2. Ligne de tendance (moyenne mobile) - ligne principale
                               LineChartBarData(
-                                spots: progress.entries.asMap().entries.map((entry) {
-                                  return FlSpot(entry.key.toDouble(), entry.value.weight);
-                                }).toList(),
+                                spots: _calculateMovingAverage(progress.entries),
                                 isCurved: true,
                                 color: const Color(0xFF0B132B),
-                                barWidth: 2,
+                                barWidth: 3,
                                 isStrokeCapRound: true,
                                 dotData: FlDotData(
                                   show: true,
                                   getDotPainter: (spot, percent, barData, index) {
+                                    final isLastPoint = index == progress.entries.length - 1;
+                                    // Point plus gros et avec animation pour le dernier
                                     return FlDotCirclePainter(
-                                      radius: 3,
+                                      radius: isLastPoint ? 5 : 3.5,
                                       color: const Color(0xFF0B132B),
-                                      strokeWidth: 2,
+                                      strokeWidth: isLastPoint ? 3 : 2,
                                       strokeColor: Colors.white,
                                     );
                                   },
                                 ),
                                 belowBarData: BarAreaData(
                                   show: true,
-                                  color: const Color(0xFF0B132B).withOpacity(0.1),
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      const Color(0xFF0B132B).withValues(alpha: 0.15),
+                                      const Color(0xFF0B132B).withValues(alpha: 0.0),
+                                    ],
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                  ),
                                 ),
                               ),
-                              // Ligne d'objectif - étendue sur toute la largeur
+
+                              // 3. Zone de confort autour de l'objectif (±2kg)
                               if (progress.targetWeight > 0)
                                 LineChartBarData(
                                   spots: [
-                                    FlSpot(0, progress.targetWeight),
-                                    FlSpot((progress.entries.length + 1).toDouble(), progress.targetWeight),
+                                    FlSpot(-0.5, progress.targetWeight - 2),
+                                    FlSpot(math.max(6, progress.entries.length - 1).toDouble() + 0.5, progress.targetWeight - 2),
                                   ],
                                   isCurved: false,
-                                  color: const Color(0xFF64748B), // Gris pour l'objectif
-                                  barWidth: 2,
+                                  color: Colors.transparent,
+                                  barWidth: 0,
                                   dotData: const FlDotData(show: false),
-                                  dashArray: [8, 4], // Ligne pointillée plus visible
+                                  belowBarData: BarAreaData(
+                                    show: true,
+                                    applyCutOffY: true,
+                                    cutOffY: progress.targetWeight + 2,
+                                    color: const Color(0xFF64748B).withValues(alpha: 0.05),
+                                  ),
+                                ),
+
+                              // 4. Ligne d'objectif - plus épaisse et visible
+                              if (progress.targetWeight > 0)
+                                LineChartBarData(
+                                  spots: [
+                                    FlSpot(-0.5, progress.targetWeight),
+                                    FlSpot(math.max(6, progress.entries.length - 1).toDouble() + 0.5, progress.targetWeight),
+                                  ],
+                                  isCurved: false,
+                                  color: const Color(0xFF64748B),
+                                  barWidth: 2.5,
+                                  dotData: const FlDotData(show: false),
+                                  dashArray: [6, 3],
                                 ),
                             ],
                           ),
                         ),
                       ),
+
+                      // Label "Objectif" sur le graphique
+                      if (progress.targetWeight > 0)
+                        Positioned(
+                          right: 16,
+                          top: 20,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF64748B).withValues(alpha: 0.9),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  LucideIcons.target,
+                                  size: 10,
+                                  color: Colors.white,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${progress.targetWeight.toStringAsFixed(1)} kg',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
               ),
-            
+
           ],
         ),
       ),

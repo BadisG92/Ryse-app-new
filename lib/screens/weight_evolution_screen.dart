@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
@@ -257,19 +258,19 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
                       children: [
                         // Sélecteur de période (3 boutons) en premier
                         _buildPeriodSelector(),
-                        
+
                         const SizedBox(height: 20),
-                        
+
                         // 3 KPI en haut
                         _buildKPICards(),
-                        
+
                         const SizedBox(height: 20),
-                        
-                        // Graphique 
+
+                        // Graphique
                         _buildChart(),
-                        
+
                         const SizedBox(height: 20),
-                        
+
                         // Historique des pesées
                         _buildWeightHistory(),
                         
@@ -524,17 +525,65 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
           ),
           const SizedBox(height: 16),
           SizedBox(
-            height: 200, // Réduit de 250 à 200
-            child: filteredProgress.entries.length > 10
-              ? SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: SizedBox(
-                    width: math.max(400, filteredProgress.entries.length * 50.0),
-                    height: 200,
-                    child: LineChart(_buildLineChartData(filteredProgress)),
+            height: 220,
+            child: Stack(
+              children: [
+                // Graphique
+                SizedBox(
+                  height: 220,
+                  child: filteredProgress.entries.length > 10
+                    ? SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: SizedBox(
+                          width: math.max(400, filteredProgress.entries.length * 50.0),
+                          height: 220,
+                          child: LineChart(_buildLineChartData(filteredProgress)),
+                        ),
+                      )
+                    : LineChart(_buildLineChartData(filteredProgress)),
+                ),
+
+                // Label "Objectif" positionné sur le graphique
+                if (filteredProgress.targetWeight > 0)
+                  Positioned(
+                    right: 16,
+                    top: 16,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF64748B).withValues(alpha: 0.9),
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            LucideIcons.target,
+                            size: 12,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            '${'target'.tr(LocalizationService.instance.currentLanguageCode)}: ${filteredProgress.targetWeight.toStringAsFixed(1)} kg',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                )
-              : LineChart(_buildLineChartData(filteredProgress)),
+              ],
+            ),
           ),
 
           // Statistique de tendance
@@ -759,15 +808,41 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
           sideTitles: SideTitles(
             showTitles: true,
             interval: _calculateYInterval(),
-            reservedSize: 50, // Plus d'espace pour les labels
+            reservedSize: 55, // Plus d'espace pour les labels et le label objectif
             getTitlesWidget: (value, meta) {
+              // Marquer l'objectif sur l'axe Y avec un style spécial
+              final filteredProgress = _filteredWeightProgress;
+              if (filteredProgress != null &&
+                  filteredProgress.targetWeight > 0 &&
+                  (value - filteredProgress.targetWeight).abs() < 0.5) {
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF64748B).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(
+                      color: const Color(0xFF64748B),
+                      width: 1,
+                    ),
+                  ),
+                  child: Text(
+                    '${value.toStringAsFixed(0)}',
+                    style: const TextStyle(
+                      color: Color(0xFF64748B),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                );
+              }
+
               if (_shouldShowYLabel(value)) {
                 return Container(
                   padding: const EdgeInsets.only(right: 4),
                   child: Text(
                     '${value.toStringAsFixed(0)} kg',
                     style: const TextStyle(
-                      color: Color(0xFF0B132B), // Plus sombre et visible
+                      color: Color(0xFF0B132B),
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
@@ -786,24 +861,54 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
           bottom: BorderSide(color: Color(0xFFE2E8F0)),
         ),
       ),
-      // Gestion des tooltips améliorée
+      // Gestion des tooltips améliorée avec plus d'infos
       lineTouchData: LineTouchData(
         enabled: true,
+        handleBuiltInTouches: true,
+        touchCallback: (FlTouchEvent event, LineTouchResponse? response) {
+          if (event is FlTapUpEvent) {
+            HapticFeedback.selectionClick();
+          }
+        },
         touchTooltipData: LineTouchTooltipData(
           getTooltipColor: (touchedSpot) => const Color(0xFF0B132B),
-          tooltipRoundedRadius: 8,
-          tooltipPadding: const EdgeInsets.all(12),
-          tooltipMargin: 8,
+          tooltipRoundedRadius: 10,
+          tooltipPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          tooltipMargin: 12,
           getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
             return touchedBarSpots.map((barSpot) {
+              final index = barSpot.x.toInt();
+
               // Afficher le tooltip seulement pour la ligne de tendance (barDataIndex = 1)
-              if (barSpot.barIndex == 1 && barSpot.x.toInt() < weightProgress.entries.length) {
+              if (barSpot.barIndex == 1 && index >= 0 && index < weightProgress.entries.length) {
+                final entry = weightProgress.entries[index];
+                final weight = entry.weight;
+
+                // Calculer la différence avec le poids précédent
+                String diffText = '';
+                if (index > 0) {
+                  final prevWeight = weightProgress.entries[index - 1].weight;
+                  final diff = weight - prevWeight;
+                  diffText = '\n${diff >= 0 ? '+' : ''}${diff.toStringAsFixed(1)} kg';
+                }
+
+                // Calculer la distance à l'objectif
+                String targetDiff = '';
+                if (weightProgress.targetWeight > 0) {
+                  final diffToTarget = weight - weightProgress.targetWeight;
+                  final isClose = diffToTarget.abs() < 2;
+                  if (isClose) {
+                    targetDiff = '\n🎯 ${diffToTarget.abs().toStringAsFixed(1)} kg de l\'objectif';
+                  }
+                }
+
                 return LineTooltipItem(
-                  '${barSpot.y.toStringAsFixed(1)} ${'kg'.tr(LocalizationService.instance.currentLanguageCode)}',
+                  '${DateFormat('dd/MM/yyyy').format(entry.date)}\n${weight.toStringAsFixed(1)} kg$diffText$targetDiff',
                   const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w600,
-                    fontSize: 14,
+                    fontSize: 12,
+                    height: 1.5,
                   ),
                 );
               }
@@ -842,10 +947,12 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
           dotData: FlDotData(
             show: true,
             getDotPainter: (spot, percent, barData, index) {
+              final isLastPoint = index == weightProgress.entries.length - 1;
+              // Point plus gros pour le dernier
               return FlDotCirclePainter(
-                radius: 4,
+                radius: isLastPoint ? 5.5 : 4,
                 color: const Color(0xFF0B132B),
-                strokeWidth: 2,
+                strokeWidth: isLastPoint ? 3 : 2,
                 strokeColor: Colors.white,
               );
             },
@@ -863,7 +970,26 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
           ),
         ),
 
-        // 3. Ligne d'objectif - Étendre sur toute la largeur du graphique
+        // 3. Zone de confort autour de l'objectif (±2kg)
+        if (weightProgress.targetWeight > 0)
+          LineChartBarData(
+            spots: [
+              FlSpot(0, weightProgress.targetWeight - 2),
+              FlSpot(extendedWidth.toDouble() - 1, weightProgress.targetWeight - 2),
+            ],
+            isCurved: false,
+            color: Colors.transparent,
+            barWidth: 0,
+            dotData: const FlDotData(show: false),
+            belowBarData: BarAreaData(
+              show: true,
+              applyCutOffY: true,
+              cutOffY: weightProgress.targetWeight + 2,
+              color: const Color(0xFF64748B).withValues(alpha: 0.06),
+            ),
+          ),
+
+        // 4. Ligne d'objectif - Étendre sur toute la largeur avec meilleure visibilité
         if (weightProgress.targetWeight > 0)
           LineChartBarData(
             spots: [
@@ -872,8 +998,8 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
             ],
             isCurved: false,
             color: const Color(0xFF64748B),
-            barWidth: 2,
-            dashArray: [8, 4],
+            barWidth: 2.5,
+            dashArray: [6, 3],
             dotData: const FlDotData(show: false),
             belowBarData: BarAreaData(show: false),
           ),
