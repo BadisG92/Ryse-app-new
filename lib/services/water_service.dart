@@ -4,6 +4,7 @@ import '../config/supabase_config.dart';
 import 'dashboard_service.dart';
 import 'optimistic_update_service.dart';
 import 'global_state_manager.dart';
+import 'supabase_error_handler.dart';
 
 /// Service pour gérer le suivi d'hydratation
 class WaterService {
@@ -76,77 +77,80 @@ class WaterService {
 
   /// Récupérer le progrès d'hydratation du jour
   static Future<WaterProgress?> getDailyWaterProgress({DateTime? date}) async {
-    try {
-      final user = _supabase.auth.currentUser;
-      if (user == null) throw Exception('Utilisateur non connecté');
+    return await SupabaseErrorHandler.executeWithRetry(
+      operation: () async {
+        final user = _supabase.auth.currentUser;
+        if (user == null) throw Exception('Utilisateur non connecté');
 
-      final targetDate = date ?? DateTime.now();
-      final response = await _supabase.rpc('get_daily_water_progress', params: {
-        'target_user_id': user.id,
-        'target_date': targetDate.toIso8601String().split('T')[0], // YYYY-MM-DD
-      });
+        final targetDate = date ?? DateTime.now();
+        final response = await _supabase.rpc('get_daily_water_progress', params: {
+          'target_user_id': user.id,
+          'target_date': targetDate.toIso8601String().split('T')[0], // YYYY-MM-DD
+        });
 
-      if (response.isNotEmpty) {
-        final data = response[0];
-        return WaterProgress.fromJson(data);
-      }
+        if (response.isNotEmpty) {
+          final data = response[0];
+          return WaterProgress.fromJson(data);
+        }
 
-      return null;
-    } catch (e) {
-      debugPrint('Erreur lors de la récupération du progrès: $e');
-      return null;
-    }
+        return null;
+      },
+      operationName: 'getDailyWaterProgress',
+      fallbackValue: null,
+    );
   }
 
   /// Récupérer les entrées d'eau du jour
   static Future<List<WaterEntry>> getTodayWaterEntries() async {
-    try {
-      final user = _supabase.auth.currentUser;
-      if (user == null) throw Exception('Utilisateur non connecté');
+    return await SupabaseErrorHandler.executeWithRetry(
+      operation: () async {
+        final user = _supabase.auth.currentUser;
+        if (user == null) throw Exception('Utilisateur non connecté');
 
-      final today = DateTime.now();
-      final startOfDay = DateTime(today.year, today.month, today.day);
-      final endOfDay = startOfDay.add(const Duration(days: 1));
+        final today = DateTime.now();
+        final startOfDay = DateTime(today.year, today.month, today.day);
+        final endOfDay = startOfDay.add(const Duration(days: 1));
 
-      final response = await _supabase
-          .from('water_entries')
-          .select('*')
-          .eq('user_id', user.id)
-          .gte('consumed_at', startOfDay.toIso8601String())
-          .lt('consumed_at', endOfDay.toIso8601String())
-          .order('consumed_at', ascending: false);
+        final response = await _supabase
+            .from('water_entries')
+            .select('*')
+            .eq('user_id', user.id)
+            .gte('consumed_at', startOfDay.toIso8601String())
+            .lt('consumed_at', endOfDay.toIso8601String())
+            .order('consumed_at', ascending: false);
 
-      return response.map((data) => WaterEntry.fromJson(data)).toList();
-    } catch (e) {
-      debugPrint('Erreur lors de la récupération des entrées: $e');
-      return [];
-    }
+        return response.map((data) => WaterEntry.fromJson(data)).toList();
+      },
+      operationName: 'getTodayWaterEntries',
+      fallbackValue: [],
+    );
   }
 
   /// Récupérer l'historique d'hydratation sur plusieurs jours
   static Future<List<DailyWaterSummary>> getWaterHistory({
     required int days,
   }) async {
-    try {
-      final user = _supabase.auth.currentUser;
-      if (user == null) throw Exception('Utilisateur non connecté');
+    return await SupabaseErrorHandler.executeWithRetry(
+      operation: () async {
+        final user = _supabase.auth.currentUser;
+        if (user == null) throw Exception('Utilisateur non connecté');
 
-      final endDate = DateTime.now();
-      final startDate = endDate.subtract(Duration(days: days));
+        final endDate = DateTime.now();
+        final startDate = endDate.subtract(Duration(days: days));
 
-      final response = await _supabase
-          .from('daily_water_stats')
-          .select('*')
-          .eq('user_id', user.id)
-          .gte('date', startDate.toIso8601String().split('T')[0])
-          .lte('date', endDate.toIso8601String().split('T')[0])
-          .order('date', ascending: false);
+        final response = await _supabase
+            .from('daily_water_stats')
+            .select('*')
+            .eq('user_id', user.id)
+            .gte('date', startDate.toIso8601String().split('T')[0])
+            .lte('date', endDate.toIso8601String().split('T')[0])
+            .order('date', ascending: false);
 
-      return response.map((data) => DailyWaterSummary.fromJson(data)).toList();
-    } catch (e) {
-      debugPrint('Erreur lors de la récupération de l\'historique: $e');
-      return [];
-    }
+        return response.map((data) => DailyWaterSummary.fromJson(data)).toList();
+      },
+      operationName: 'getWaterHistory',
+      fallbackValue: [],
+    );
   }
 
   /// Supprimer une entrée d'eau avec mise à jour optimiste

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/subscription_models.dart';
+import '../config/env_config.dart';
 
 /// Service de gestion des abonnements
 class SubscriptionService extends ChangeNotifier {
@@ -15,9 +16,10 @@ class SubscriptionService extends ChangeNotifier {
   UserSubscription? _currentSubscription;
   bool _isLoading = false;
 
-  /// ⚠️ MODE TEST ACTIVÉ PAR DÉFAUT
-  /// Change à false pour activer le vrai système de paiement
-  static const bool TEST_MODE = true;
+  /// ✅ MODE TEST CONTRÔLÉ PAR VARIABLE D'ENVIRONNEMENT
+  /// En développement: TEST_MODE=true (.env.local)
+  /// En production: TEST_MODE=false (.env.production)
+  static bool get TEST_MODE => EnvConfig.testMode;
 
   UserSubscription? get currentSubscription => _currentSubscription;
   bool get isLoading => _isLoading;

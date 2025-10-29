@@ -76,10 +76,10 @@ DerivedData/
 .env.production
 .env.staging
 
-# API Keys - NEVER COMMIT THESE FILES
-lib/config/gemini_config.dart
-lib/config/google_vision_config.dart
-lib/config/supabase_config.dart
+# ⚠️ SECURITY - API Keys & Secrets - NEVER COMMIT
+# Les anciennes configurations hardcodées sont maintenant migrées
+# vers EnvConfig qui utilise --dart-define-from-file
+lib/config/API_KEYS_BACKUP.txt
 
 # Claude settings (may contain sensitive permissions)
 .claude/settings.local.json

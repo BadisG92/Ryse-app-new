@@ -3,8 +3,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'cardio_service.dart';
 import 'workout_cache_service.dart';
 import 'calorie_target_service.dart';
-import 'streak_service.dart';
 import 'global_state_manager.dart';
+import 'supabase_error_handler.dart';
 
 /// Service unifié pour les données du tableau de bord Sport
 /// Combine les données cardio et musculation
@@ -172,115 +172,117 @@ class SportDashboardService {
 
   /// Récupère les activités du jour
   static Future<Map<String, dynamic>> _getDailyActivitiesData(String userId) async {
-    try {
-      final today = DateTime.now();
-      final startOfDay = DateTime(today.year, today.month, today.day);
+    return await SupabaseErrorHandler.executeWithRetry(
+      operation: () async {
+        final today = DateTime.now();
+        final startOfDay = DateTime(today.year, today.month, today.day);
 
-      // Sessions cardio du jour
-      final cardioSessions = await _client
-          .from('cardio_sessions')
-          .select()
-          .eq('user_id', userId)
-          .gte('session_date', startOfDay.toIso8601String().split('T')[0])
-          .eq('is_completed', true)
-          .order('created_at', ascending: false);
-      
-      debugPrint('🏋️ DEBUG SportDashboard: ${cardioSessions.length} sessions cardio trouvées');
-      for (int i = 0; i < cardioSessions.length; i++) {
-        final session = cardioSessions[i];
-        debugPrint('   [$i] ID: ${session['id']}, Type: ${session['activity_type']}, Date: ${session['session_date']}, Completed: ${session['is_completed']}');
-      }
+        // Sessions cardio du jour
+        final cardioSessions = await _client
+            .from('cardio_sessions')
+            .select()
+            .eq('user_id', userId)
+            .gte('session_date', startOfDay.toIso8601String().split('T')[0])
+            .eq('is_completed', true)
+            .order('created_at', ascending: false);
 
-      // Sessions musculation du jour
-      final musculationSessions = await _client
-          .from('workout_session_summaries')
-          .select()
-          .eq('user_id', userId)
-          .gte('session_date', startOfDay.toIso8601String().split('T')[0])
-          .order('created_at', ascending: false);
+        debugPrint('🏋️ DEBUG SportDashboard: ${cardioSessions.length} sessions cardio trouvées');
+        for (int i = 0; i < cardioSessions.length; i++) {
+          final session = cardioSessions[i];
+          debugPrint('   [$i] ID: ${session['id']}, Type: ${session['activity_type']}, Date: ${session['session_date']}, Completed: ${session['is_completed']}');
+        }
 
-      return {
-        'cardioSessions': cardioSessions,
-        'musculationSessions': musculationSessions,
-        'totalTodaySessions': cardioSessions.length + musculationSessions.length,
-      };
-    } catch (e) {
-      debugPrint('❌ Error loading daily activities: $e');
-      return {
+        // Sessions musculation du jour
+        final musculationSessions = await _client
+            .from('workout_session_summaries')
+            .select()
+            .eq('user_id', userId)
+            .gte('session_date', startOfDay.toIso8601String().split('T')[0])
+            .order('created_at', ascending: false);
+
+        return {
+          'cardioSessions': cardioSessions,
+          'musculationSessions': musculationSessions,
+          'totalTodaySessions': cardioSessions.length + musculationSessions.length,
+        };
+      },
+      operationName: 'getDailyActivities',
+      fallbackValue: {
         'cardioSessions': [],
         'musculationSessions': [],
         'totalTodaySessions': 0,
-      };
-    }
+      },
+    );
   }
 
   /// Récupère les séances récentes (7 derniers jours)
   static Future<Map<String, dynamic>> _getRecentWorkoutsData(String userId) async {
-    try {
-      final now = DateTime.now();
-      final sevenDaysAgo = now.subtract(const Duration(days: 6)); // 6 jours + aujourd'hui = 7 jours
+    return await SupabaseErrorHandler.executeWithRetry(
+      operation: () async {
+        final now = DateTime.now();
+        final sevenDaysAgo = now.subtract(const Duration(days: 6)); // 6 jours + aujourd'hui = 7 jours
 
-      debugPrint('📊 _getRecentWorkoutsData: Récupération séances récentes depuis ${sevenDaysAgo.toIso8601String().split('T')[0]}');
+        debugPrint('📊 _getRecentWorkoutsData: Récupération séances récentes depuis ${sevenDaysAgo.toIso8601String().split('T')[0]}');
 
-      // Sessions cardio récentes
-      final recentCardio = await _client
-          .from('cardio_sessions')
-          .select('session_date, activity_type')
-          .eq('user_id', userId)
-          .gte('session_date', sevenDaysAgo.toIso8601String().split('T')[0])
-          .eq('is_completed', true);
+        // Sessions cardio récentes
+        final recentCardio = await _client
+            .from('cardio_sessions')
+            .select('session_date, activity_type')
+            .eq('user_id', userId)
+            .gte('session_date', sevenDaysAgo.toIso8601String().split('T')[0])
+            .eq('is_completed', true);
 
-      debugPrint('📊 _getRecentWorkoutsData: ${recentCardio.length} sessions cardio récentes');
+        debugPrint('📊 _getRecentWorkoutsData: ${recentCardio.length} sessions cardio récentes');
 
-      // Sessions musculation récentes
-      final recentMusculation = await _client
-          .from('workout_session_summaries')
-          .select('session_date')
-          .eq('user_id', userId)
-          .gte('session_date', sevenDaysAgo.toIso8601String().split('T')[0]);
+        // Sessions musculation récentes
+        final recentMusculation = await _client
+            .from('workout_session_summaries')
+            .select('session_date')
+            .eq('user_id', userId)
+            .gte('session_date', sevenDaysAgo.toIso8601String().split('T')[0]);
 
-      debugPrint('📊 _getRecentWorkoutsData: ${recentMusculation.length} sessions musculation récentes');
+        debugPrint('📊 _getRecentWorkoutsData: ${recentMusculation.length} sessions musculation récentes');
 
-      // Créer la structure des 7 derniers jours (Lundi à Dimanche)
-      final weekDays = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
-      final recentDays = <Map<String, dynamic>>[];
+        // Créer la structure des 7 derniers jours (Lundi à Dimanche)
+        final weekDays = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+        final recentDays = <Map<String, dynamic>>[];
 
-      // Trouver le lundi de cette semaine
-      final today = DateTime.now();
-      final mondayOfWeek = today.subtract(Duration(days: today.weekday - 1));
+        // Trouver le lundi de cette semaine
+        final today = DateTime.now();
+        final mondayOfWeek = today.subtract(Duration(days: today.weekday - 1));
 
-      for (int i = 0; i < 7; i++) {
-        final date = mondayOfWeek.add(Duration(days: i));
-        final dateStr = date.toIso8601String().split('T')[0];
-        
-        // Vérifier les activités de ce jour
-        final cardioOfDay = recentCardio.where((session) => 
-          session['session_date'] == dateStr).toList();
-        final musculationOfDay = recentMusculation.where((session) => 
-          session['session_date'] == dateStr).toList();
+        for (int i = 0; i < 7; i++) {
+          final date = mondayOfWeek.add(Duration(days: i));
+          final dateStr = date.toIso8601String().split('T')[0];
 
-        final activities = <String>[];
-        if (musculationOfDay.isNotEmpty) activities.add('musculation');
-        if (cardioOfDay.isNotEmpty) activities.add('cardio');
+          // Vérifier les activités de ce jour
+          final cardioOfDay = recentCardio.where((session) =>
+            session['session_date'] == dateStr).toList();
+          final musculationOfDay = recentMusculation.where((session) =>
+            session['session_date'] == dateStr).toList();
 
-        recentDays.add({
-          'date': weekDays[i],
-          'fullDate': dateStr,
-          'hasWorkout': activities.isNotEmpty,
-          'activities': activities,
-          'cardioTypes': cardioOfDay.map((s) => s['activity_type']).toSet().toList(),
-        });
-      }
+          final activities = <String>[];
+          if (musculationOfDay.isNotEmpty) activities.add('musculation');
+          if (cardioOfDay.isNotEmpty) activities.add('cardio');
 
-      return {
-        'recentDays': recentDays,
-      };
-    } catch (e) {
-      debugPrint('❌ Error loading recent workouts: $e');
-      return {
+          recentDays.add({
+            'date': weekDays[i],
+            'fullDate': dateStr,
+            'hasWorkout': activities.isNotEmpty,
+            'activities': activities,
+            'cardioTypes': cardioOfDay.map((s) => s['activity_type']).toSet().toList(),
+          });
+        }
+
+        return {
+          'recentDays': recentDays,
+        };
+      },
+      operationName: 'getRecentWorkouts',
+      fallbackValue: {
         'recentDays': [],
-      };
-    }
+      },
+    );
   }
 
   /// Récupère le résumé hebdomadaire

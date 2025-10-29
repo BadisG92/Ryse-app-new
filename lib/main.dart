@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'config/supabase_config.dart';
+import 'config/env_config.dart';
 import 'services/auth_service.dart';
 import 'services/localization_service.dart';
 import 'components/ui/recipe_models.dart';
@@ -24,6 +25,16 @@ import 'services/subscription_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // ✅ VALIDATION DE LA CONFIGURATION AU DÉMARRAGE
+  try {
+    EnvConfig.validateConfiguration();
+    EnvConfig.logConfiguration();
+  } catch (e) {
+    debugPrint('❌ Configuration Error: $e');
+    // En production, on pourrait afficher un écran d'erreur
+    // Pour l'instant, on continue (mode dégradé)
+  }
 
   // OPTIMISATION: Initialisation par priorités pour performance maximale
   final initializer = PriorityServiceInitializer.instance;
