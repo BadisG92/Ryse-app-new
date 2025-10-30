@@ -31,10 +31,15 @@ target 'Runner' do
   use_frameworks!
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+
   target 'RunnerTests' do
     inherit! :search_paths
   end
 end
+
+# Note: RyseMealWidgetExtension is not managed by CocoaPods
+# It's a native SwiftUI widget that doesn't require Flutter pods
+# Dependencies are managed manually in Xcode Build Settings
 
 post_install do |installer|
   installer.pods_project.targets.each do |target|
@@ -50,6 +55,9 @@ post_install do |installer|
 
       # ML Kit compatibility: exclude 32-bit architectures
       config.build_settings["EXCLUDED_ARCHS[sdk=*]"] = "armv7"
+
+      # IMPORTANT: Exclude arm64 for simulator builds to fix ML Kit compatibility
+      config.build_settings["EXCLUDED_ARCHS[sdk=iphonesimulator*]"] = "arm64"
 
       # Ensure minimum deployment target for ML Kit
       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '16.0'

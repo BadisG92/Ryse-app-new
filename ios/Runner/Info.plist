@@ -30,8 +30,6 @@
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
 		<false/>
-		<key>NSAllowsLocalNetworking</key>
-		<true/>
 	</dict>
 	<key>NSCameraUsageDescription</key>
 	<string>Cette application utilise la caméra pour scanner les aliments et analyser les plats avec l'IA nutritionnelle.</string>
