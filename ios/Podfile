@@ -47,6 +47,12 @@ post_install do |installer|
         'PERMISSION_CAMERA=1',
         'PERMISSION_PHOTOS=1',
       ]
+
+      # ML Kit compatibility: exclude 32-bit architectures
+      config.build_settings["EXCLUDED_ARCHS[sdk=*]"] = "armv7"
+
+      # Ensure minimum deployment target for ML Kit
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '16.0'
     end
   end
 end

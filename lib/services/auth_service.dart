@@ -37,10 +37,10 @@ class AuthService extends ChangeNotifier {
       if (_supabase != null) {
         return operation(_supabase!);
       }
-      debugPrint('⚠️ Supabase not available (offline mode)');
+      if (kDebugMode) debugPrint('⚠️ Supabase not available (offline mode)');
       return null;
     } catch (e) {
-      debugPrint('⚠️ Supabase operation failed: $e');
+      if (kDebugMode) debugPrint('⚠️ Supabase operation failed: $e');
       return null;
     }
   }
@@ -50,11 +50,11 @@ class AuthService extends ChangeNotifier {
   Future<void> initialize() async {
     _setLoading(true);
     try {
-      debugPrint('🚀 Initializing AuthService...');
+      if (kDebugMode) debugPrint('🚀 Initializing AuthService...');
 
       // CRITICAL: Vérifier si Supabase est disponible avant d'accéder au client
       if (!SupabaseConfig.isAvailable) {
-        debugPrint('⚠️ Supabase not available - working in offline mode');
+        if (kDebugMode) debugPrint('⚠️ Supabase not available - working in offline mode');
         _setLoading(false);
         return;
       }
@@ -65,25 +65,25 @@ class AuthService extends ChangeNotifier {
           .timeout(const Duration(milliseconds: 500), onTimeout: () => null);
 
       if (session != null) {
-        debugPrint('🔍 Found existing session, loading profile...');
+        if (kDebugMode) debugPrint('🔍 Found existing session, loading profile...');
         // Timeout court pour le chargement du profil
         await _loadUserProfile(session.user.id)
             .timeout(const Duration(seconds: 3), onTimeout: () {
-          debugPrint('⚠️ Profile loading timeout - continuing with cached data');
+          if (kDebugMode) debugPrint('⚠️ Profile loading timeout - continuing with cached data');
         });
 
         // NOUVEAU: Réinitialiser GlobalStateManager si session existante
-        debugPrint('🔄 Réinitialisation GlobalStateManager (session existante)...');
+        if (kDebugMode) debugPrint('🔄 Réinitialisation GlobalStateManager (session existante)...');
         await GlobalStateManager.instance.initialize()
             .timeout(const Duration(seconds: 2), onTimeout: () {
-          debugPrint('⚠️ GlobalStateManager timeout - using defaults');
+          if (kDebugMode) debugPrint('⚠️ GlobalStateManager timeout - using defaults');
         });
       } else {
-        debugPrint('📱 No existing session found');
+        if (kDebugMode) debugPrint('📱 No existing session found');
       }
-      debugPrint('✅ AuthService initialized successfully');
+      if (kDebugMode) debugPrint('✅ AuthService initialized successfully');
     } catch (e) {
-      debugPrint('❌ AuthService initialization failed: $e');
+      if (kDebugMode) debugPrint('❌ AuthService initialization failed: $e');
       _setError('Failed to initialize auth service: $e');
       // Ne pas bloquer l'app même si l'auth échoue
     } finally {
@@ -145,7 +145,7 @@ class AuthService extends ChangeNotifier {
         await _storeTokenSecurely(response.session?.accessToken);
 
         // NOUVEAU: Réinitialiser GlobalStateManager après connexion réussie
-        debugPrint('🔄 Réinitialisation GlobalStateManager après connexion...');
+        if (kDebugMode) debugPrint('🔄 Réinitialisation GlobalStateManager après connexion...');
         await GlobalStateManager.instance.initialize();
 
         return true;
@@ -173,9 +173,9 @@ class AuthService extends ChangeNotifier {
         // Platform-specific configs are handled in platform files
       );
       _googleSignInInitialized = true;
-      debugPrint('✅ GoogleSignIn initialized');
+      if (kDebugMode) debugPrint('✅ GoogleSignIn initialized');
     } catch (e) {
-      debugPrint('⚠️ GoogleSignIn init failed: $e');
+      if (kDebugMode) debugPrint('⚠️ GoogleSignIn init failed: $e');
       rethrow;
     }
   }
@@ -222,7 +222,7 @@ class AuthService extends ChangeNotifier {
         final serverAuth = await googleUser.authorizationClient.authorizeServer(['email', 'profile']);
         serverAuthCode = serverAuth?.serverAuthCode;
       } catch (e) {
-        debugPrint('⚠️ Could not get server auth code: $e');
+        if (kDebugMode) debugPrint('⚠️ Could not get server auth code: $e');
         // Continue anyway - Supabase can work with just idToken
       }
 
@@ -243,7 +243,7 @@ class AuthService extends ChangeNotifier {
           if (nameParts.length > 1) {
             lastName = nameParts.sublist(1).join(' ');
           }
-          debugPrint('📝 Google name extracted: $firstName $lastName');
+          if (kDebugMode) debugPrint('📝 Google name extracted: $firstName $lastName');
         }
 
         await _loadUserProfile(response.user!.id);
@@ -255,7 +255,7 @@ class AuthService extends ChangeNotifier {
                              _currentUser!.lastName.isEmpty;
 
           if (needsUpdate) {
-            debugPrint('📝 Updating user profile with Google name...');
+            if (kDebugMode) debugPrint('📝 Updating user profile with Google name...');
             await _updateUserNameFromSocial(
               response.user!.id,
               firstName,
@@ -267,7 +267,7 @@ class AuthService extends ChangeNotifier {
         await _storeTokenSecurely(response.session?.accessToken);
 
         // NOUVEAU: Réinitialiser GlobalStateManager après connexion Google
-        debugPrint('🔄 Réinitialisation GlobalStateManager après connexion Google...');
+        if (kDebugMode) debugPrint('🔄 Réinitialisation GlobalStateManager après connexion Google...');
         await GlobalStateManager.instance.initialize();
 
         return true;
@@ -312,11 +312,11 @@ class AuthService extends ChangeNotifier {
 
         if (credential.givenName != null && credential.givenName!.isNotEmpty) {
           firstName = credential.givenName;
-          debugPrint('📝 Apple firstName extracted: $firstName');
+          if (kDebugMode) debugPrint('📝 Apple firstName extracted: $firstName');
         }
         if (credential.familyName != null && credential.familyName!.isNotEmpty) {
           lastName = credential.familyName;
-          debugPrint('📝 Apple lastName extracted: $lastName');
+          if (kDebugMode) debugPrint('📝 Apple lastName extracted: $lastName');
         }
 
         await _loadUserProfile(response.user!.id);
@@ -328,7 +328,7 @@ class AuthService extends ChangeNotifier {
                              _currentUser!.lastName.isEmpty;
 
           if (needsUpdate) {
-            debugPrint('📝 Updating user profile with Apple name...');
+            if (kDebugMode) debugPrint('📝 Updating user profile with Apple name...');
             await _updateUserNameFromSocial(
               response.user!.id,
               firstName,
@@ -340,7 +340,7 @@ class AuthService extends ChangeNotifier {
         await _storeTokenSecurely(response.session?.accessToken);
 
         // NOUVEAU: Réinitialiser GlobalStateManager après connexion Apple
-        debugPrint('🔄 Réinitialisation GlobalStateManager après connexion Apple...');
+        if (kDebugMode) debugPrint('🔄 Réinitialisation GlobalStateManager après connexion Apple...');
         await GlobalStateManager.instance.initialize();
 
         return true;
@@ -490,7 +490,7 @@ class AuthService extends ChangeNotifier {
         try {
           notifyListeners();
         } catch (e) {
-          debugPrint('⚠️ Failed to notify listeners: $e');
+          if (kDebugMode) debugPrint('⚠️ Failed to notify listeners: $e');
         }
         _isNotifying = false;
       }
@@ -505,7 +505,7 @@ class AuthService extends ChangeNotifier {
 
   Future<void> _loadUserProfile(String userId) async {
     try {
-      debugPrint('🔄 Loading user profile for: $userId');
+      if (kDebugMode) debugPrint('🔄 Loading user profile for: $userId');
       
       // CORRECTION: Ajouter timeout de 5 secondes
       final response = await _supabase
@@ -517,9 +517,9 @@ class AuthService extends ChangeNotifier {
 
       _currentUser = UserModel.fromJson(response);
       _safeNotifyListeners();
-      debugPrint('✅ User profile loaded successfully');
+      if (kDebugMode) debugPrint('✅ User profile loaded successfully');
     } catch (e) {
-      debugPrint('❌ Failed to load user profile: $e');
+      if (kDebugMode) debugPrint('❌ Failed to load user profile: $e');
       // Ne pas bloquer l'app, continuer avec un profil minimal
       _currentUser = UserModel(
         id: userId,
@@ -566,9 +566,9 @@ class AuthService extends ChangeNotifier {
         _safeNotifyListeners();
       }
 
-      debugPrint('✅ User name updated from social login: $firstName $lastName');
+      if (kDebugMode) debugPrint('✅ User name updated from social login: $firstName $lastName');
     } catch (e) {
-      debugPrint('⚠️ Failed to update user name from social login: $e');
+      if (kDebugMode) debugPrint('⚠️ Failed to update user name from social login: $e');
       // Ne pas bloquer le flow si ça échoue
     }
   }

@@ -29,7 +29,7 @@ class DashboardService {
     _cachedGoalsDate = null;
     _cachedModules = null;
     _cachedModulesDate = null;
-    debugPrint('🧹 Cache dashboard vidé');
+    if (kDebugMode) debugPrint('🧹 Cache dashboard vidé');
   }
 
   /// Forcer la suppression complète du cache
@@ -43,7 +43,7 @@ class DashboardService {
       // OPTIMISATION: Cache rapide d'abord
       final cached = FastCacheService.getCachedUserProfile();
       if (cached != null) {
-        debugPrint('⚡ Profil depuis cache rapide');
+        if (kDebugMode) debugPrint('⚡ Profil depuis cache rapide');
         return cached;
       }
       
@@ -76,9 +76,9 @@ class DashboardService {
       }
 
       // Calculer la vraie streak avec le service optimisé
-      debugPrint('🔥 DashboardService: Calcul de la streak');
+      if (kDebugMode) debugPrint('🔥 DashboardService: Calcul de la streak');
       final realStreak = await StreakService.getCurrentStreak();
-      debugPrint('🏆 DashboardService: Streak calculée = $realStreak jours');
+      if (kDebugMode) debugPrint('🏆 DashboardService: Streak calculée = $realStreak jours');
 
       // Capitaliser le nom automatiquement
       final rawName = response['first_name'] ?? 'Utilisateur';
@@ -100,7 +100,7 @@ class DashboardService {
       
       return profile;
     } catch (e) {
-      debugPrint('Erreur lors de la récupération du profil: $e');
+      if (kDebugMode) debugPrint('Erreur lors de la récupération du profil: $e');
       return null;
     }
   }
@@ -253,14 +253,14 @@ class DashboardService {
 
       // Mettre à jour le notifier avec la liste finale
       GoalsNotifier.instance.update(result);
-      debugPrint('GoalsNotifier mis à jour avec ${result.length} objectifs');
+      if (kDebugMode) debugPrint('GoalsNotifier mis à jour avec ${result.length} objectifs');
       for (var goal in result) {
-        debugPrint('Objectif: ${goal.label}, completed: ${goal.completed}, progress: ${goal.progress}');
+        if (kDebugMode) debugPrint('Objectif: ${goal.label}, completed: ${goal.completed}, progress: ${goal.progress}');
       }
 
       return result;
     } catch (e) {
-      debugPrint('Erreur lors de la récupération des objectifs: $e');
+      if (kDebugMode) debugPrint('Erreur lors de la récupération des objectifs: $e');
       final defaultGoals = DashboardData.dailyGoals;
       GoalsNotifier.instance.update(defaultGoals);
       return defaultGoals;
@@ -336,7 +336,7 @@ class DashboardService {
       
       return result;
     } catch (e) {
-      debugPrint('Erreur lors de la récupération des aperçus modules: $e');
+      if (kDebugMode) debugPrint('Erreur lors de la récupération des aperçus modules: $e');
       return [];
     }
   }
@@ -349,11 +349,11 @@ class DashboardService {
 
   /// Forcer la mise à jour du compteur d'objectifs (sans cache)
   static Future<void> refreshGoalsNotifier() async {
-    debugPrint('🔄 Forçage de la mise à jour du GoalsNotifier...');
+    if (kDebugMode) debugPrint('🔄 Forçage de la mise à jour du GoalsNotifier...');
     
     // Récupérer les objectifs (qui mettra à jour le notifier)
     final goals = await getDailyGoals();
-    debugPrint('✅ GoalsNotifier mis à jour avec ${goals.length} objectifs');
+    if (kDebugMode) debugPrint('✅ GoalsNotifier mis à jour avec ${goals.length} objectifs');
     
     // Le notifier est déjà mis à jour dans getDailyGoals()
   }
@@ -366,7 +366,7 @@ class DashboardService {
       final totalSessions = sportData.totalTodaySessions;
       final completed = totalSessions >= 1;
       
-      debugPrint('🏋️ DEBUG Workout Goal (via SportDashboard): $totalSessions séances, completed: $completed');
+      if (kDebugMode) debugPrint('🏋️ DEBUG Workout Goal (via SportDashboard): $totalSessions séances, completed: $completed');
 
       // Get language for translations
       final locService = LocalizationService.instance;
@@ -383,7 +383,7 @@ class DashboardService {
         unit: '',
       );
     } catch (e) {
-      debugPrint('❌ Erreur lors de la récupération de l\'objectif workout: $e');
+      if (kDebugMode) debugPrint('❌ Erreur lors de la récupération de l\'objectif workout: $e');
       // Get language for translations (fallback)
       final locService = LocalizationService.instance;
       final languageCode = locService.currentLanguageCode;
@@ -424,7 +424,7 @@ class DashboardService {
       final today = DateTime.now();
       final todayStr = DateTime(today.year, today.month, today.day).toIso8601String().split('T')[0];
 
-      debugPrint('📊 DEBUG Module Sport - Récupération DIRECTE pour: ${user.id}, date: $todayStr');
+      if (kDebugMode) debugPrint('📊 DEBUG Module Sport - Récupération DIRECTE pour: ${user.id}, date: $todayStr');
 
       // D'abord vérifier TOUTES les séances de l'utilisateur pour debug
       final allCardio = await _supabase
@@ -442,13 +442,13 @@ class DashboardService {
           .order('session_date', ascending: false)
           .limit(5);
 
-      debugPrint('🔍 DEBUG: Dernières 5 séances cardio dans la base:');
+      if (kDebugMode) debugPrint('🔍 DEBUG: Dernières 5 séances cardio dans la base:');
       for (var s in allCardio) {
-        debugPrint('   -> ${s['session_date']}: ${s['calories']}kcal');
+        if (kDebugMode) debugPrint('   -> ${s['session_date']}: ${s['calories']}kcal');
       }
-      debugPrint('🔍 DEBUG: Dernières 5 séances muscu dans la base:');
+      if (kDebugMode) debugPrint('🔍 DEBUG: Dernières 5 séances muscu dans la base:');
       for (var s in allMuscu) {
-        debugPrint('   -> ${s['session_date']}: ${s['calories_burned']}kcal');
+        if (kDebugMode) debugPrint('   -> ${s['session_date']}: ${s['calories_burned']}kcal');
       }
 
       // Récupérer DIRECTEMENT les mêmes données que le bloc "activité du jour"
@@ -468,27 +468,27 @@ class DashboardService {
           .eq('session_date', todayStr)
           .order('created_at', ascending: false);
 
-      debugPrint('📊 DEBUG Sessions trouvées pour TODAY ($todayStr):');
-      debugPrint('   - Cardio: ${cardioSessions.length} sessions');
-      debugPrint('   - Musculation: ${musculationSessions.length} sessions');
+      if (kDebugMode) debugPrint('📊 DEBUG Sessions trouvées pour TODAY ($todayStr):');
+      if (kDebugMode) debugPrint('   - Cardio: ${cardioSessions.length} sessions');
+      if (kDebugMode) debugPrint('   - Musculation: ${musculationSessions.length} sessions');
       
       // Calculer les calories EXACTEMENT comme le bloc activité du jour
       int totalCalories = 0;
       for (var session in cardioSessions) {
         final calories = (session['calories'] as int?) ?? 0;
         totalCalories += calories;
-        debugPrint('     -> Cardio ${session['activity_type']} le ${session['session_date']}: ${calories}kcal');
+        if (kDebugMode) debugPrint('     -> Cardio ${session['activity_type']} le ${session['session_date']}: ${calories}kcal');
       }
       for (var session in musculationSessions) {
         final calories = (session['calories_burned'] as int?) ?? 0;
         totalCalories += calories;
-        debugPrint('     -> Musculation ${session['session_name']} le ${session['session_date']}: ${calories}kcal');
+        if (kDebugMode) debugPrint('     -> Musculation ${session['session_name']} le ${session['session_date']}: ${calories}kcal');
       }
       
       final totalSessions = cardioSessions.length + musculationSessions.length;
       
-      debugPrint('📊 DEBUG Module Sport FINAL: $totalSessions séances, $totalCalories kcal (devrait être 251)');
-      debugPrint('📊 DEBUG Comparaison: Bloc activité = 251kcal, Module = ${totalCalories}kcal');
+      if (kDebugMode) debugPrint('📊 DEBUG Module Sport FINAL: $totalSessions séances, $totalCalories kcal (devrait être 251)');
+      if (kDebugMode) debugPrint('📊 DEBUG Comparaison: Bloc activité = 251kcal, Module = ${totalCalories}kcal');
 
       return ModulePreview(
         title: 'sport'.tr(languageCode),
@@ -500,7 +500,7 @@ class DashboardService {
         gradientColors: const [Color(0xFF0B132B), Color(0xFF1C2951)],
       );
     } catch (e) {
-      debugPrint('❌ Erreur lors de la récupération du module Sport: $e');
+      if (kDebugMode) debugPrint('❌ Erreur lors de la récupération du module Sport: $e');
       // Get language for translations (fallback)
       final locService = LocalizationService.instance;
       final languageCode = locService.currentLanguageCode;
@@ -617,7 +617,7 @@ class DashboardService {
       return goals;
       
     } catch (e) {
-      debugPrint('❌ Erreur récupération directe objectifs: $e');
+      if (kDebugMode) debugPrint('❌ Erreur récupération directe objectifs: $e');
       return [];
     }
   }
@@ -625,7 +625,7 @@ class DashboardService {
   /// Invalider le cache et mettre à jour les objectifs en temps réel
   /// Appelé après ajout/suppression de nourriture ou d'eau  
   static Future<void> invalidateAndRefreshGoals() async {
-    debugPrint('🔄 Invalidation du cache et mise à jour des objectifs...');
+    if (kDebugMode) debugPrint('🔄 Invalidation du cache et mise à jour des objectifs...');
     
     // Vider les caches pour forcer une nouvelle récupération
     _cachedGoals = null;
@@ -638,11 +638,11 @@ class DashboardService {
     // Mettre à jour immédiatement le notifier
     GoalsNotifier.instance.update(goals);
     
-    debugPrint('✅ Objectifs mis à jour en temps réel avec ${goals.length} objectifs');
+    if (kDebugMode) debugPrint('✅ Objectifs mis à jour en temps réel avec ${goals.length} objectifs');
     
     // Afficher le détail pour debug
     for (var goal in goals) {
-      debugPrint('   - ${goal.label}: ${goal.currentValue}/${goal.targetValue} ${goal.unit} (${goal.progress}%)');
+      if (kDebugMode) debugPrint('   - ${goal.label}: ${goal.currentValue}/${goal.targetValue} ${goal.unit} (${goal.progress}%)');
     }
   }
   
@@ -673,7 +673,7 @@ class DashboardService {
 
         // debugPrint('✅ Données rafraîchies en arrière-plan (${newGoals.length} objectifs)'); // Commenté pour réduire les logs
       } catch (e) {
-        debugPrint('⚠️ Erreur refresh background: $e');
+        if (kDebugMode) debugPrint('⚠️ Erreur refresh background: $e');
       } finally {
         _isRefreshingInBackground = false;
       }
@@ -683,7 +683,7 @@ class DashboardService {
   /// Invalider le cache après une séance sport
   /// Appelé après completion d'une séance cardio ou musculation
   static Future<void> invalidateAndRefreshAfterWorkout() async {
-    debugPrint('🏋️ Invalidation du cache après séance sport...');
+    if (kDebugMode) debugPrint('🏋️ Invalidation du cache après séance sport...');
     
     // Vider le cache pour forcer une nouvelle récupération
     _cachedGoals = null;
@@ -692,21 +692,21 @@ class DashboardService {
     // Invalider aussi le cache du sport dashboard service
     try {
       SportDashboardService.invalidateCache();
-      debugPrint('🏋️ Cache SportDashboardService invalidé');
+      if (kDebugMode) debugPrint('🏋️ Cache SportDashboardService invalidé');
     } catch (e) {
-      debugPrint('⚠️ Erreur lors de l\'invalidation du cache sport: $e');
+      if (kDebugMode) debugPrint('⚠️ Erreur lors de l\'invalidation du cache sport: $e');
     }
     
     // Récupérer les nouvelles données
     final goals = await getDailyGoals();
-    debugPrint('✅ Dashboard mis à jour après séance avec ${goals.length} objectifs');
+    if (kDebugMode) debugPrint('✅ Dashboard mis à jour après séance avec ${goals.length} objectifs');
     
     // IMPORTANT: Mettre à jour immédiatement le notifier pour la mise à jour visuelle
     GoalsNotifier.instance.update(goals);
     
     // Afficher le détail pour debug
     for (var goal in goals) {
-      debugPrint('   - ${goal.label}: ${goal.currentValue}/${goal.targetValue} ${goal.unit} (${goal.progress}%)');
+      if (kDebugMode) debugPrint('   - ${goal.label}: ${goal.currentValue}/${goal.targetValue} ${goal.unit} (${goal.progress}%)');
     }
   }
 

@@ -77,7 +77,7 @@ class WorkoutCacheService {
       final weekStartStr = weekStart.toIso8601String().split('T')[0];
       final weekEndStr = weekEnd.toIso8601String().split('T')[0];
 
-      debugPrint('📅 Musculation: Semaine courante (locale utilisateur): $weekStartStr -> $weekEndStr');
+      if (kDebugMode) debugPrint('📅 Musculation: Semaine courante (locale utilisateur): $weekStartStr -> $weekEndStr');
 
       // Utilise la fonction PostgreSQL optimisée avec les dates calculées
       final result = await _client.rpc('get_weekly_dashboard_data',
@@ -151,14 +151,14 @@ class WorkoutCacheService {
       }
 
       // Récupérer les sets de cette session depuis workout_set_history
-      debugPrint('📊 Récupération des exercices pour session $historySessionId');
+      if (kDebugMode) debugPrint('📊 Récupération des exercices pour session $historySessionId');
       final sets = await _client
           .from('workout_set_history')
           .select('exercise_id, custom_exercise_id, exercise_name, weight, reps')
           .eq('history_session_id', historySessionId)
           .order('set_order');
 
-      debugPrint('📊 ${sets.length} sets trouvés pour session $historySessionId');
+      if (kDebugMode) debugPrint('📊 ${sets.length} sets trouvés pour session $historySessionId');
 
       // Agréger par exercice (meilleur set par exercice)
       final Map<String, Map<String, dynamic>> exerciseStats = {};
@@ -206,7 +206,7 @@ class WorkoutCacheService {
 
       // Ajouter la session avec ses exercices
       final exercisesList = exerciseStats.values.toList();
-      debugPrint('📊 Session $historySessionId: ${exercisesList.length} exercice(s) agrégé(s)');
+      if (kDebugMode) debugPrint('📊 Session $historySessionId: ${exercisesList.length} exercice(s) agrégé(s)');
 
       result.add({
         ...session,
@@ -439,32 +439,32 @@ class WorkoutCacheService {
       String? customExerciseId;
       
       // Chercher dans les exercices système
-      debugPrint('🔍 Recherche exercice: "$exerciseName" avec suffix: $suffix');
-      debugPrint('🔍 Requête: exercises table, colonne: name$suffix, valeur: "$exerciseName"');
+      if (kDebugMode) debugPrint('🔍 Recherche exercice: "$exerciseName" avec suffix: $suffix');
+      if (kDebugMode) debugPrint('🔍 Requête: exercises table, colonne: name$suffix, valeur: "$exerciseName"');
       
       final systemExercises = await _client
           .from('exercises')
           .select('id, name$suffix, name_fr, name_en')
           .eq('name$suffix', exerciseName);
       
-      debugPrint('🏋️ Exercices système trouvés: ${systemExercises.length}');
+      if (kDebugMode) debugPrint('🏋️ Exercices système trouvés: ${systemExercises.length}');
       
       // Debug: Afficher quelques exercices pour comparaison si aucun trouvé
       if (systemExercises.isEmpty) {
-        debugPrint('❌ Aucun exercice système trouvé avec le nom "$exerciseName"');
-        debugPrint('🔍 Recherche d\'exercices similaires...');
+        if (kDebugMode) debugPrint('❌ Aucun exercice système trouvé avec le nom "$exerciseName"');
+        if (kDebugMode) debugPrint('🔍 Recherche d\'exercices similaires...');
         final similarExercises = await _client
             .from('exercises')
             .select('id, name_fr, name_en')
             .ilike('name$suffix', '%squat%')
             .limit(5);
-        debugPrint('🔍 Exercices avec "squat" trouvés: $similarExercises');
+        if (kDebugMode) debugPrint('🔍 Exercices avec "squat" trouvés: $similarExercises');
       } else {
-        debugPrint('✅ Exercice système trouvé: ${systemExercises.first}');
+        if (kDebugMode) debugPrint('✅ Exercice système trouvé: ${systemExercises.first}');
       }
       if (systemExercises.isNotEmpty) {
         exerciseId = systemExercises.first['id'];
-        debugPrint('✅ Exercise ID trouvé: $exerciseId');
+        if (kDebugMode) debugPrint('✅ Exercise ID trouvé: $exerciseId');
       } else {
         // Chercher dans les exercices custom
         final customExercises = await _client
@@ -472,10 +472,10 @@ class WorkoutCacheService {
             .select('id, name')
             .eq('name', exerciseName);
         
-        debugPrint('🏋️ Exercices custom trouvés: ${customExercises.length}');
+        if (kDebugMode) debugPrint('🏋️ Exercices custom trouvés: ${customExercises.length}');
         if (customExercises.isNotEmpty) {
           customExerciseId = customExercises.first['id'];
-          debugPrint('✅ Custom Exercise ID trouvé: $customExerciseId');
+          if (kDebugMode) debugPrint('✅ Custom Exercise ID trouvé: $customExerciseId');
         }
       }
       
@@ -485,8 +485,8 @@ class WorkoutCacheService {
       
       List<dynamic> rows;
       if (exerciseId != null) {
-        debugPrint('🔍 Recherche historique avec exercise_id: $exerciseId pour user: $userId');
-        debugPrint('🔍 Date filter: $dateFilter');
+        if (kDebugMode) debugPrint('🔍 Recherche historique avec exercise_id: $exerciseId pour user: $userId');
+        if (kDebugMode) debugPrint('🔍 Date filter: $dateFilter');
         
         rows = await _client
             .from('workout_set_history')
@@ -497,11 +497,11 @@ class WorkoutCacheService {
             .order('performed_at', ascending: true)
             .order('set_order', ascending: true);
         
-        debugPrint('🏋️ Historique trouvé: ${rows.length} lignes');
+        if (kDebugMode) debugPrint('🏋️ Historique trouvé: ${rows.length} lignes');
         if (rows.isNotEmpty) {
-          debugPrint('📊 Premier résultat: ${rows.first}');
+          if (kDebugMode) debugPrint('📊 Premier résultat: ${rows.first}');
         } else {
-          debugPrint('❌ Aucune donnée avec cet exercise_id, essai du fallback par nom...');
+          if (kDebugMode) debugPrint('❌ Aucune donnée avec cet exercise_id, essai du fallback par nom...');
           
           // Si aucune donnée trouvée avec l'exercise_id, essayer le fallback par nom
           var fallbackRows = await _client
@@ -513,7 +513,7 @@ class WorkoutCacheService {
               .order('performed_at', ascending: true)
               .order('set_order', ascending: true);
           
-          debugPrint('🔍 Recherche fallback par exercise_name="$exerciseName": ${fallbackRows.length} résultats');
+          if (kDebugMode) debugPrint('🔍 Recherche fallback par exercise_name="$exerciseName": ${fallbackRows.length} résultats');
           rows = fallbackRows;
         }
       } else if (customExerciseId != null) {
@@ -526,7 +526,7 @@ class WorkoutCacheService {
             .order('performed_at', ascending: true)
             .order('set_order', ascending: true);
       } else {
-        debugPrint('❌ Aucun ID d\'exercice trouvé, utilisation du fallback par nom');
+        if (kDebugMode) debugPrint('❌ Aucun ID d\'exercice trouvé, utilisation du fallback par nom');
         
         // Fallback : utiliser la même logique que getTopExercises()
         // D'abord, essayer avec le nom tel que reçu
@@ -539,7 +539,7 @@ class WorkoutCacheService {
             .order('performed_at', ascending: true)
             .order('set_order', ascending: true);
         
-        debugPrint('🔍 Recherche par exercise_name="$exerciseName": ${fallbackRows.length} résultats');
+        if (kDebugMode) debugPrint('🔍 Recherche par exercise_name="$exerciseName": ${fallbackRows.length} résultats');
         
         if (fallbackRows.isEmpty) {
           // Essayer avec le nom dans l'autre langue (FR si on cherche en EN et vice versa)
@@ -551,7 +551,7 @@ class WorkoutCacheService {
           
           if (possibleExercises.isNotEmpty) {
             final rawName = possibleExercises.first['name$otherSuffix'];
-            debugPrint('🔍 Essai avec nom dans autre langue: "$rawName"');
+            if (kDebugMode) debugPrint('🔍 Essai avec nom dans autre langue: "$rawName"');
             if (rawName != null) {
               fallbackRows = await _client
                   .from('workout_set_history')
@@ -566,10 +566,10 @@ class WorkoutCacheService {
         }
         
         rows = fallbackRows;
-        debugPrint('🔍 Fallback terminé: ${fallbackRows.length} résultats trouvés au total');
+        if (kDebugMode) debugPrint('🔍 Fallback terminé: ${fallbackRows.length} résultats trouvés au total');
       }
       
-      debugPrint('🔍 Données finales pour traitement: ${rows.length} lignes');
+      if (kDebugMode) debugPrint('🔍 Données finales pour traitement: ${rows.length} lignes');
       
       // Traitement côté client (inchangé pour compatibilité)
       final processedData = _processExerciseData(rows, exerciseName);
@@ -751,7 +751,7 @@ class WorkoutCacheService {
 
   /// Méthode de debug pour examiner les données d'exercices
   static Future<void> debugExerciseData(String userId) async {
-    debugPrint('🔍 === DEBUG EXERCISE DATA ===');
+    if (kDebugMode) debugPrint('🔍 === DEBUG EXERCISE DATA ===');
     
     // Vérifier les exercices dans la table exercises
     final exercisesData = await _client
@@ -761,9 +761,9 @@ class WorkoutCacheService {
         .or('name_en.ilike.%squat%')
         .limit(10);
     
-    debugPrint('🏋️ Exercices avec "squat" dans la table exercises:');
+    if (kDebugMode) debugPrint('🏋️ Exercices avec "squat" dans la table exercises:');
     for (final ex in exercisesData) {
-      debugPrint('  - ID: ${ex['id']}, FR: "${ex['name_fr']}", EN: "${ex['name_en']}"');
+      if (kDebugMode) debugPrint('  - ID: ${ex['id']}, FR: "${ex['name_fr']}", EN: "${ex['name_en']}"');
     }
     
     // Vérifier l'historique des workouts pour cet utilisateur avec des noms contenant squat
@@ -774,9 +774,9 @@ class WorkoutCacheService {
         .ilike('exercise_name', '%squat%')
         .limit(10);
     
-    debugPrint('🏋️ Historique avec "squat" pour user $userId:');
+    if (kDebugMode) debugPrint('🏋️ Historique avec "squat" pour user $userId:');
     for (final hist in historyData) {
-      debugPrint('  - Exercise ID: ${hist['exercise_id']}, Name: "${hist['exercise_name']}", Date: ${hist['performed_at']}');
+      if (kDebugMode) debugPrint('  - Exercise ID: ${hist['exercise_id']}, Name: "${hist['exercise_name']}", Date: ${hist['performed_at']}');
     }
     
     // Vérifier les noms d'exercices uniques dans l'historique
@@ -793,12 +793,12 @@ class WorkoutCacheService {
       }
     }
     
-    debugPrint('🏋️ Noms d\'exercices uniques dans l\'historique (${names.length} au total):');
+    if (kDebugMode) debugPrint('🏋️ Noms d\'exercices uniques dans l\'historique (${names.length} au total):');
     for (final name in names.take(20)) {
-      debugPrint('  - "$name"');
+      if (kDebugMode) debugPrint('  - "$name"');
     }
     
-    debugPrint('🔍 === FIN DEBUG ===');
+    if (kDebugMode) debugPrint('🔍 === FIN DEBUG ===');
   }
   
   /// Force le rechargement des données (pour debug/test)

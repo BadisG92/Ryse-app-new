@@ -22,9 +22,40 @@ import 'services/navigation_preloader.dart';
 import 'services/exercise_ai_analysis_service.dart';
 import 'services/coach_ryze_nutrition_service.dart';
 import 'services/subscription_service.dart';
+import 'services/notification_service.dart';
+import 'package:uni_links/uni_links.dart';
+import 'services/widget_deep_link_handler.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // NOUVEAU: Initialize deep link handler for iOS widgets
+  final navigatorKey = GlobalKey<NavigatorState>();
+  WidgetDeepLinkHandler.initialize(navigatorKey);
+
+  // NOUVEAU: Handle initial link (app opened from widget)
+  try {
+    final initialLink = await getInitialLink();
+    if (initialLink != null) {
+      debugPrint('🔗 Initial deep link detected: $initialLink');
+      // Le lien sera géré après que l'app soit complètement initialisée
+      Future.delayed(const Duration(seconds: 2), () {
+        WidgetDeepLinkHandler.handleDeepLink(Uri.parse(initialLink));
+      });
+    }
+  } catch (e) {
+    debugPrint('❌ Error getting initial link: $e');
+  }
+
+  // NOUVEAU: Listen for incoming links (widget tapped while app is running)
+  linkStream.listen((String? link) {
+    if (link != null) {
+      debugPrint('🔗 Deep link received: $link');
+      WidgetDeepLinkHandler.handleDeepLink(Uri.parse(link));
+    }
+  }, onError: (err) {
+    debugPrint('❌ Deep link error: $err');
+  });
 
   // ✅ VALIDATION DE LA CONFIGURATION AU DÉMARRAGE
   try {
@@ -68,6 +99,17 @@ void main() async {
     },
   );
 
+  // Initialiser le service de notifications (non-bloquant)
+  unawaited(NotificationService().initialize().then((_) async {
+    // Demander les permissions iOS
+    await NotificationService().requestPermissions();
+    // Planifier les notifications selon les préférences
+    await NotificationService().scheduleAllNotifications();
+    debugPrint('✅ Notification service initialized and scheduled');
+  }).catchError((e) {
+    debugPrint('⚠️ Notification service error: $e');
+  }));
+
   // Phases 2 & 3: Non-bloquantes, en arrière-plan
   unawaited(initializer.initializeImportantServices());
   unawaited(initializer.initializeOptionalServices());
@@ -76,11 +118,13 @@ void main() async {
   unawaited(NavigationPreloader.instance.preloadForRoute('/dashboard'));
 
   // Lancer l'app immédiatement après les services critiques
-  runApp(const MyApp());
+  runApp(MyApp(navigatorKey: navigatorKey));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final GlobalKey<NavigatorState> navigatorKey;
+
+  const MyApp({super.key, required this.navigatorKey});
 
   @override
   Widget build(BuildContext context) {
@@ -90,6 +134,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider.value(value: LocalizationService.instance),
       ],
       child: MaterialApp(
+        navigatorKey: navigatorKey, // NOUVEAU: Pour les deep links
         title: 'Ryze App',
         debugShowCheckedModeBanner: false,
         builder: (context, child) {

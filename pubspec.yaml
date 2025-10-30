@@ -45,8 +45,9 @@ dependencies:
   permission_handler: ^12.0.1
   image_picker: ^1.1.2
   image_cropper: ^11.0.0
-  # google_ml_kit: ^0.18.0  # Temporairement commenté pour iOS compatibility
-  # mobile_scanner: ^7.0.1  # REMOVED - iOS 18 conflict de codes-barres moderne - version la plus récente
+  # google_ml_kit: ^0.18.0  # ANCIEN - Package monolithique avec conflits
+  # mobile_scanner: ^7.0.1  # REMOVED - iOS 18 conflict
+  google_mlkit_barcode_scanning: ^0.14.0  # NOUVEAU - Version compatible avec GoogleSignIn v9
   http: ^1.5.0
   geolocator: ^12.0.0
   
@@ -76,6 +77,9 @@ dependencies:
   supabase_flutter: ^2.10.3
   crypto: ^3.0.3
   uuid: ^4.5.1
+
+  # Deep Links for iOS Widgets
+  uni_links: ^0.5.1
   
   # State Management
   provider: ^6.1.2
@@ -105,6 +109,11 @@ dependencies:
 
   # Tutorial / Feature Discovery
   tutorial_coach_mark: ^1.2.11
+
+  # Local Notifications
+  flutter_local_notifications: ^18.0.1
+  timezone: ^0.9.4
+  flutter_timezone: ^3.0.1
 
 dev_dependencies:
   flutter_test:

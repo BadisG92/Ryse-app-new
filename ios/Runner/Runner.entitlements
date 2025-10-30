@@ -5,25 +5,13 @@
 	<!-- HealthKit capabilities -->
 	<key>com.apple.developer.healthkit</key>
 	<true/>
-	
-	<!-- Location services -->
-	<key>com.apple.developer.location.services</key>
-	<true/>
-	
-	<!-- Background location updates -->
-	<key>com.apple.developer.location.background</key>
-	<true/>
-	
-	<!-- Motion & Fitness permissions -->
-	<key>com.apple.developer.motion.apple-health-motion-permissions</key>
-	<true/>
-	
+
 	<!-- Associated domains (si besoin pour auth) -->
 	<key>com.apple.developer.associated-domains</key>
 	<array>
 		<string>applinks:ryze-app.com</string>
 	</array>
-	
+
 	<!-- Push notifications capability -->
 	<key>com.apple.developer.aps-environment</key>
 	<string>development</string>

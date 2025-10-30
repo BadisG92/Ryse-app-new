@@ -59,7 +59,7 @@ class GeminiAnalysisServiceV2 {
 
       return imageBytes;
     } catch (e) {
-      debugPrint('Error resizing image: $e');
+      if (kDebugMode) debugPrint('Error resizing image: $e');
       return imageBytes; // Return original if resize fails
     }
   }
@@ -378,13 +378,13 @@ Be precise with your estimations and only include foods you can confidently iden
               detectedFoods.add(detectedFood);
             }
           } catch (e) {
-            debugPrint('Error parsing food item: $e');
+            if (kDebugMode) debugPrint('Error parsing food item: $e');
             continue;
           }
         }
       }
     } catch (e) {
-      debugPrint('Error parsing Gemini response: $e');
+      if (kDebugMode) debugPrint('Error parsing Gemini response: $e');
       // Fallback: try to extract food names from text response
       final fallbackFoods = _extractFoodsFromText(textResponse);
       return {
@@ -426,29 +426,29 @@ Be precise with your estimations and only include foods you can confidently iden
         languageCode: languageCode,
       );
 
-      debugPrint('🔍 DEBUG: Sending text analysis request to Gemini...');
+      if (kDebugMode) debugPrint('🔍 DEBUG: Sending text analysis request to Gemini...');
       final response = await _makeGeminiRequest(prompt, null);
-      debugPrint('🔍 DEBUG: Got response: ${response != null ? "YES" : "NULL"}');
+      if (kDebugMode) debugPrint('🔍 DEBUG: Got response: ${response != null ? "YES" : "NULL"}');
 
       stopwatch.stop();
       final processingTime = stopwatch.elapsedMilliseconds / 1000.0;
 
       if (response == null) {
-        debugPrint('❌ DEBUG: Response is null');
+        if (kDebugMode) debugPrint('❌ DEBUG: Response is null');
         return AIAnalysisResult.error(
           error: 'gemini_no_response',
           processingTime: processingTime,
         );
       }
 
-      debugPrint('🔍 DEBUG: Response content: ${response.toString()}');
+      if (kDebugMode) debugPrint('🔍 DEBUG: Response content: ${response.toString()}');
 
       // Parse the response directly - _makeGeminiRequest already returns parsed JSON
       final parseResult = _parseTextResponseFromJson(response);
 
       // Check for non-food input error
       if (parseResult.containsKey('error') && parseResult['error'] == 'non_food_input') {
-        debugPrint('❌ DEBUG: Non-food input detected');
+        if (kDebugMode) debugPrint('❌ DEBUG: Non-food input detected');
         return AIAnalysisResult.error(
           error: parseResult['suggestion'] ?? 'Please describe food items with quantities. Examples: "250ml orange juice", "2 eggs with 50g cheese", "1 apple and 200ml milk"',
           processingTime: processingTime,
@@ -456,7 +456,7 @@ Be precise with your estimations and only include foods you can confidently iden
       }
 
       if (parseResult['foods'].isEmpty) {
-        debugPrint('❌ DEBUG: No foods detected in response');
+        if (kDebugMode) debugPrint('❌ DEBUG: No foods detected in response');
         return AIAnalysisResult.error(
           error: 'gemini_no_foods_detected',
           processingTime: processingTime,
@@ -471,8 +471,8 @@ Be precise with your estimations and only include foods you can confidently iden
 
     } catch (e, stackTrace) {
       stopwatch.stop();
-      debugPrint('❌ DEBUG: Error analyzing text: $e');
-      debugPrint('❌ DEBUG: Stack trace: $stackTrace');
+      if (kDebugMode) debugPrint('❌ DEBUG: Error analyzing text: $e');
+      if (kDebugMode) debugPrint('❌ DEBUG: Stack trace: $stackTrace');
       return AIAnalysisResult.error(
         error: 'gemini_analysis_failed',
         processingTime: stopwatch.elapsedMilliseconds / 1000.0,
@@ -534,12 +534,12 @@ Be precise with your estimations and only include foods you can confidently iden
             detectedFoods.add(detectedFood);
           }
         } catch (e) {
-          debugPrint('Error parsing food item: $e');
+          if (kDebugMode) debugPrint('Error parsing food item: $e');
           continue;
         }
       }
     } catch (e) {
-      debugPrint('Error parsing JSON response: $e');
+      if (kDebugMode) debugPrint('Error parsing JSON response: $e');
     }
 
     return {
@@ -623,7 +623,7 @@ IMPORTANT:
     File? imageFile,
   ) async {
     try {
-      debugPrint('🔍 DEBUG: Creating Gemini model with key: ${GeminiConfig.geminiApiKey.substring(0, 10)}...');
+      if (kDebugMode) debugPrint('🔍 DEBUG: Creating Gemini model with key: ${GeminiConfig.geminiApiKey.substring(0, 10)}...');
 
       final model = GenerativeModel(
         model: GeminiConfig.modelName, // Utilise gemini-2.0-flash comme le coach
@@ -637,26 +637,26 @@ IMPORTANT:
         ),
       );
 
-      debugPrint('🔍 DEBUG: Preparing content for Gemini...');
+      if (kDebugMode) debugPrint('🔍 DEBUG: Preparing content for Gemini...');
       final List<Part> parts = [
         TextPart(prompt),
       ];
 
       if (imageFile != null) {
-        debugPrint('🔍 DEBUG: Adding image to request...');
+        if (kDebugMode) debugPrint('🔍 DEBUG: Adding image to request...');
         final imageBytes = await imageFile.readAsBytes();
         parts.add(DataPart('image/jpeg', imageBytes));
       }
 
       final content = [Content.multi(parts)];
 
-      debugPrint('🔍 DEBUG: Sending request to Gemini API...');
+      if (kDebugMode) debugPrint('🔍 DEBUG: Sending request to Gemini API...');
       final response = await model.generateContent(content);
 
-      debugPrint('🔍 DEBUG: Response received: ${response.text?.substring(0, 100) ?? "NULL"}...');
+      if (kDebugMode) debugPrint('🔍 DEBUG: Response received: ${response.text?.substring(0, 100) ?? "NULL"}...');
 
       if (response.text == null || response.text!.isEmpty) {
-        debugPrint('❌ DEBUG: Response text is null or empty');
+        if (kDebugMode) debugPrint('❌ DEBUG: Response text is null or empty');
         return null;
       }
 
@@ -666,15 +666,15 @@ IMPORTANT:
 
       if (jsonStartIndex >= 0 && jsonEndIndex > jsonStartIndex) {
         final jsonString = response.text!.substring(jsonStartIndex, jsonEndIndex);
-        debugPrint('🔍 DEBUG: Extracted JSON: ${jsonString.substring(0, 100)}...');
+        if (kDebugMode) debugPrint('🔍 DEBUG: Extracted JSON: ${jsonString.substring(0, 100)}...');
         return json.decode(jsonString);
       }
 
-      debugPrint('❌ DEBUG: Could not find JSON in response');
+      if (kDebugMode) debugPrint('❌ DEBUG: Could not find JSON in response');
       return null;
     } catch (e, stackTrace) {
-      debugPrint('❌ DEBUG: Error making Gemini request: $e');
-      debugPrint('❌ DEBUG: Stack trace: $stackTrace');
+      if (kDebugMode) debugPrint('❌ DEBUG: Error making Gemini request: $e');
+      if (kDebugMode) debugPrint('❌ DEBUG: Stack trace: $stackTrace');
       return null;
     }
   }

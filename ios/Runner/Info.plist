@@ -95,6 +95,17 @@
 				<string>com.googleusercontent.apps.992101491811-meask250jrb56gkpmkqkqs4gu3i9isn6</string>
 			</array>
 		</dict>
+		<!-- Widget Deep Links Configuration -->
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>ryse</string>
+			</array>
+			<key>CFBundleURLName</key>
+			<string>com.ryse.app</string>
+		</dict>
 	</array>
 	<!-- Google Client ID -->
 	<key>GIDClientID</key>

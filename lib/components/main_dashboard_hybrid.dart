@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -81,7 +82,7 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
   Future<void> _showDashboardTutorial() async {
     // Vérifier que le context est toujours monté
     if (!mounted) {
-      debugPrint('⚠️ Widget not mounted, cannot show tutorial');
+      if (kDebugMode) debugPrint('⚠️ Widget not mounted, cannot show tutorial');
       return;
     }
 
@@ -141,7 +142,7 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
     // Démarrer l'animation du score
     _startScoreAnimation();
 
-    debugPrint('⚡ Dashboard: Données initiales chargées en mode synchrone');
+    if (kDebugMode) debugPrint('⚡ Dashboard: Données initiales chargées en mode synchrone');
   }
 
   @override
@@ -190,10 +191,10 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
         setState(() {
           dailyGoals = newGoals;
         });
-        debugPrint('🔄 Objectifs dashboard principal rechargés instantanément depuis GlobalState');
+        if (kDebugMode) debugPrint('🔄 Objectifs dashboard principal rechargés instantanément depuis GlobalState');
       }
     } catch (e) {
-      debugPrint('❌ Erreur rechargement objectifs: $e');
+      if (kDebugMode) debugPrint('❌ Erreur rechargement objectifs: $e');
     }
   }
 
@@ -260,7 +261,7 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
       _startScoreAnimation();
     }
 
-    debugPrint('⚡ Dashboard: Affichage instantané depuis GlobalState');
+    if (kDebugMode) debugPrint('⚡ Dashboard: Affichage instantané depuis GlobalState');
 
     // En arrière-plan, charger le vrai profil utilisateur depuis la DB pour les infos complémentaires
     try {
@@ -281,7 +282,7 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
         _startScoreAnimation();
       }
     } catch (e) {
-      debugPrint('⚠️ Erreur chargement profil DB (non-bloquant): $e');
+      if (kDebugMode) debugPrint('⚠️ Erreur chargement profil DB (non-bloquant): $e');
       // On garde le profil basique du GlobalState - pas d'erreur affichée
     }
   }
@@ -308,12 +309,12 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
     final score = (completedCount / goals.length * 100).round();
 
     // DEBUG: Afficher les objectifs et le score
-    debugPrint('🎯 DEBUG Score:');
-    debugPrint('   - Objectifs complétés: $completedCount/${goals.length}');
+    if (kDebugMode) debugPrint('🎯 DEBUG Score:');
+    if (kDebugMode) debugPrint('   - Objectifs complétés: $completedCount/${goals.length}');
     for (var goal in goals) {
-      debugPrint('   - ${goal['label']}: ${goal['completed'] ? '✅' : '❌'} (${goal['progress']}%)');
+      if (kDebugMode) debugPrint('   - ${goal['label']}: ${goal['completed'] ? '✅' : '❌'} (${goal['progress']}%)');
     }
-    debugPrint('   - Score final: $score%');
+    if (kDebugMode) debugPrint('   - Score final: $score%');
 
     return score;
   }
@@ -595,11 +596,11 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
   @override
   void onGlobalStateUpdate(StateChangeEvent event) {
     // Mise à jour instantanée quand l'état global change
-    debugPrint('🔄 Dashboard: Mise à jour reçue du GlobalState - ${event.type}');
+    if (kDebugMode) debugPrint('🔄 Dashboard: Mise à jour reçue du GlobalState - ${event.type}');
 
     // Si c'est un nouveau jour, recharger toutes les données
     if (event.type == ChangeType.dayReset) {
-      debugPrint('🌅 Dashboard: Nouveau jour détecté, rechargement complet...');
+      if (kDebugMode) debugPrint('🌅 Dashboard: Nouveau jour détecté, rechargement complet...');
       _loadDashboardData();
       return;
     }

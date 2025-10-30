@@ -19,6 +19,7 @@ import '../components/ui/refresh_wrapper.dart';
 import '../components/ui/global_state_header.dart';
 import '../pages/ryze_app.dart';
 import '../core/infrastructure/migration/migration_controller.dart';
+import 'notification_settings_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -1198,57 +1199,79 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                       ),
                     ),
                     
-                    // Section Notifications
+                    // Section Notifications - Lien vers page dédiée
                     Consumer<LocalizationService>(
-                      builder: (context, locService, child) => _buildExpandableSection(
-                        key: 'notifications',
-                        icon: LucideIcons.bell,
-                        title: 'settings_notifications'.tr(locService.currentLanguageCode),
-                        subtitle: _getNotificationSummary(locService.currentLanguageCode),
-                        children: [
-                        _buildSectionContent(
-                          child: Column(
+                      builder: (context, locService, child) => GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const NotificationSettingsScreen(),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 16),
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 10,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Row(
                             children: [
-                              _buildSwitchTile(
-                                title: 'daily_reminder'.tr(locService.currentLanguageCode),
-                                subtitle: 'daily_reminder_subtitle'.tr(locService.currentLanguageCode),
-                                value: _dailyReminder,
-                                onChanged: (value) {
-                                  setState(() => _dailyReminder = value);
-                                  _saveSettings();
-                                },
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF6C63FF).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Icon(
+                                  LucideIcons.bell,
+                                  color: Color(0xFF6C63FF),
+                                  size: 22,
+                                ),
                               ),
-                              _buildSwitchTile(
-                                title: 'workout_reminder'.tr(locService.currentLanguageCode),
-                                subtitle: 'workout_reminder_subtitle'.tr(locService.currentLanguageCode),
-                                value: _workoutReminder,
-                                onChanged: (value) {
-                                  setState(() => _workoutReminder = value);
-                                  _saveSettings();
-                                },
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'settings_notifications'.tr(locService.currentLanguageCode),
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFF1A1A1A),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      locService.currentLanguageCode == 'fr'
+                                          ? 'Gérer les rappels et notifications'
+                                          : 'Manage reminders and notifications',
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        color: Color(0xFF64748B),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                              _buildSwitchTile(
-                                title: 'meal_reminder'.tr(locService.currentLanguageCode),
-                                subtitle: 'meal_reminder_subtitle'.tr(locService.currentLanguageCode),
-                                value: _mealReminder,
-                                onChanged: (value) {
-                                  setState(() => _mealReminder = value);
-                                  _saveSettings();
-                                },
-                              ),
-                              _buildSwitchTile(
-                                title: 'progress_notifications'.tr(locService.currentLanguageCode),
-                                subtitle: 'progress_notifications_subtitle'.tr(locService.currentLanguageCode),
-                                value: _progressNotifications,
-                                onChanged: (value) {
-                                  setState(() => _progressNotifications = value);
-                                  _saveSettings();
-                                },
+                              const Icon(
+                                LucideIcons.chevronRight,
+                                color: Color(0xFF94A3B8),
+                                size: 20,
                               ),
                             ],
                           ),
                         ),
-                      ],
                       ),
                     ),
                     

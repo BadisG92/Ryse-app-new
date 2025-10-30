@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'translations.dart';
 
 /// Gestionnaire centralisé d'erreurs Supabase
 /// Gère les erreurs réseau et fournit des fallbacks appropriés
@@ -53,7 +54,7 @@ class SupabaseErrorHandler {
             }
             debugPrint('❌ [$operationName] Échec définitif après ${attempts} tentatives');
             throw NetworkException(
-              message: 'Impossible de se connecter au serveur. Vérifiez votre connexion internet.',
+              message: 'error_network_connection', // Will be translated by caller
               originalError: e,
               operationName: operationName,
             );
@@ -94,19 +95,20 @@ class SupabaseErrorHandler {
   }
 
   /// Message d'erreur user-friendly en fonction du type d'erreur
-  static String getUserFriendlyMessage(dynamic error) {
+  /// languageCode: 'fr' ou 'en'
+  static String getUserFriendlyMessage(dynamic error, String languageCode) {
     if (isNetworkError(error)) {
-      return 'Impossible de se connecter au serveur. Vérifiez votre connexion internet.';
+      return 'error_network_connection'.tr(languageCode);
     } else if (error.toString().contains('unauthorized') || error.toString().contains('401')) {
-      return 'Session expirée. Veuillez vous reconnecter.';
+      return 'error_session_expired'.tr(languageCode);
     } else if (error.toString().contains('forbidden') || error.toString().contains('403')) {
-      return 'Accès refusé. Vous n\'avez pas les permissions nécessaires.';
+      return 'error_permission_denied'.tr(languageCode);
     } else if (error.toString().contains('not found') || error.toString().contains('404')) {
-      return 'Ressource introuvable.';
+      return 'error_not_found'.tr(languageCode);
     } else if (error.toString().contains('500') || error.toString().contains('internal server')) {
-      return 'Erreur serveur temporaire. Réessayez dans quelques instants.';
+      return 'error_server'.tr(languageCode);
     } else {
-      return 'Une erreur est survenue. Veuillez réessayer.';
+      return 'error_unexpected'.tr(languageCode);
     }
   }
 }

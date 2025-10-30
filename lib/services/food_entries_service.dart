@@ -7,6 +7,7 @@ import 'dashboard_service.dart';
 import 'localization_service.dart';
 import 'translations.dart';
 import 'global_state_manager.dart';
+import 'meal_widget_data_provider.dart';
 
 class FoodEntriesService {
   static final _supabase = Supabase.instance.client;
@@ -371,6 +372,9 @@ class FoodEntriesService {
       // Déclencher la mise à jour des calculs nutritionnels
       await _notifyNutritionUpdate(userId, now);
 
+      // NOUVEAU: Mettre à jour les données du widget iOS
+      await MealWidgetDataProvider.updateWidgetData();
+
       return true;
     } catch (e) {
       debugPrint('Erreur lors de l\'ajout de l\'entrée: $e');
@@ -505,15 +509,18 @@ class FoodEntriesService {
           .eq('id', entryId);
       
       debugPrint('✅ Entrée supprimée avec succès de la base de données');
-      
+
       // Déclencher la mise à jour des calculs nutritionnels
       await _notifyNutritionUpdate(
         entryInfo['user_id'] as String,
         DateTime.parse(entryInfo['consumed_at'] as String),
       );
-      
+
       debugPrint('🔔 Notification de mise à jour envoyée');
-      
+
+      // NOUVEAU: Mettre à jour les données du widget iOS
+      await MealWidgetDataProvider.updateWidgetData();
+
       return true;
     } catch (e) {
       debugPrint('❌ Erreur lors de la suppression: $e');
@@ -745,6 +752,9 @@ class FoodEntriesService {
 
       // Notifier la mise à jour de la nutrition
       await _notifyNutritionUpdate(userId, targetDate);
+
+      // NOUVEAU: Mettre à jour les données du widget iOS
+      await MealWidgetDataProvider.updateWidgetData();
 
       return true;
     } catch (e) {

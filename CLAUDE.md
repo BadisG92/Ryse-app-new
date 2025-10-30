@@ -47,11 +47,41 @@ lib/
 └── utils/                # Utility functions
 ```
 
+## 📱 iOS Widget
+
+### Smart Meal Widget (NEW!)
+**Le widget iOS intelligent qui transforme l'expérience utilisateur**
+
+- **Détection Contextuelle**: Affiche automatiquement le bon repas selon l'heure
+  - 7h-10h → Petit-déjeuner 🌅
+  - 11h-14h → Déjeuner 🌤️
+  - 18h-21h → Dîner 🌙
+- **Actions Rapides**: 5 boutons pour ajouter rapidement (📝 Manuel, 📸 Scanner, 🔍 Barcode, 🍳 Recettes, 💬 Chat)
+- **Progression Temps Réel**: Visualisation instantanée des calories
+- **2 Tailles**: Small (Lock Screen) et Medium (Home Screen)
+- **Deep Links Intelligents**: Navigation directe vers l'app avec contexte pré-sélectionné
+
+**Documentation**:
+- [`WIDGET_INSTALLATION_GUIDE.md`](WIDGET_INSTALLATION_GUIDE.md) - Guide complet d'installation
+- [`WIDGET_README.md`](WIDGET_README.md) - Documentation technique
+- [`WIDGET_IMPLEMENTATION_SUMMARY.md`](WIDGET_IMPLEMENTATION_SUMMARY.md) - Résumé de l'implémentation
+
+**Fichiers**:
+- `lib/services/widget_deep_link_handler.dart` - Gestion des deep links
+- `lib/services/meal_widget_data_provider.dart` - Synchronisation données
+- `ios/RyseMealWidget/RyseMealWidget.swift` - Widget iOS
+
 ## Key Features & Functionality
 
 ### 1. Nutrition Management
 - **AI Food Scanner**: Camera-based food recognition using Google Vision API
-- **Barcode Scanner**: Product identification via barcode
+- **Barcode Scanner**: Product identification via barcode with manual entry option
+  - Tap-to-scan functionality with Google Vision API
+  - Manual barcode entry dialog (without test codes in production)
+  - OpenFoodFacts integration for product nutrition data
+  - Editable nutritional values (per 100g)
+  - Auto-save to custom foods database with duplicate detection
+  - Disclaimer for OpenFoodFacts data accuracy
 - **Manual Food Entry**: Search and add foods manually
 - **Recipe Management**: Create, save, and track recipes
 - **Meal Planning**: Organize meals (breakfast, lunch, dinner, snacks)
@@ -100,7 +130,8 @@ lib/
 - `recipe_service.dart`: Recipe management
 - `water_service.dart`: Water intake tracking
 - `localized_food_service.dart`: Multi-language food data
-- `openfoodfacts_service.dart`: Product database API
+- `openfoodfacts_service.dart`: Product database API integration
+- `barcode_detection_service.dart`: Barcode scanning with Google Vision API and checksum validation
 
 ### Sport & Fitness Services
 - `cardio_service.dart`: Cardio activity tracking
@@ -140,7 +171,14 @@ lib/
 
 ### Nutrition Screens
 - `ai_scanner_screen.dart`: Camera-based food scanner
-- `barcode_scanner_screen.dart`: Barcode scanning
+- `barcode_scanner_screen.dart`: Barcode scanning screen
+  - Live camera preview with tap-to-focus
+  - Animated scan zone overlay
+  - Tap-to-scan button for instant capture
+  - Manual barcode entry dialog
+  - Product details view with editable nutrition values
+  - OpenFoodFacts data disclaimer
+  - Integration with meal selection and custom foods
 - `manual_food_entry_screen.dart`: Manual food search/add
 - `recipe_details_screen.dart`: Recipe information
 - `select_recipe_screen.dart`: Recipe selection
@@ -189,6 +227,60 @@ final ct = 2000; // Bad
 - Keep services focused and single-purpose
 - Use models for data structures
 
+## Detailed Feature Descriptions
+
+### Barcode Scanner (`barcode_scanner_screen.dart`)
+
+The barcode scanner provides a professional scanning experience with multiple entry methods:
+
+#### Features
+1. **Camera-based Scanning**
+   - Live camera preview with high resolution
+   - Tap-to-focus and tap-to-expose functionality
+   - Animated scan zone with visual feedback
+   - Tap-to-scan button for instant capture
+
+2. **Manual Entry**
+   - Manual barcode input dialog for difficult-to-scan products
+   - Clean interface without test barcodes in production
+   - Real-time validation and search
+
+3. **Product Display**
+   - OpenFoodFacts integration for product data
+   - Product image with fallback placeholder
+   - Brand, quantity, and packaging information
+   - Nutritional values (calories, proteins, carbs, fats)
+
+4. **Editable Nutrition Values**
+   - Edit button to modify nutritional values per 100g
+   - Real-time recalculation based on quantity
+   - Validation and formatting
+
+5. **Custom Foods Integration**
+   - Auto-save scanned products to user's custom foods
+   - Duplicate detection via barcode
+   - Optional save with user confirmation
+   - Success/error feedback
+
+6. **Data Accuracy**
+   - OpenFoodFacts disclaimer displayed
+   - User education about community-sourced data
+   - Ability to edit incorrect values
+
+#### Technical Details
+- **Service**: `barcode_detection_service.dart` for Google Vision API
+- **Product Database**: `openfoodfacts_service.dart` for nutrition data
+- **Storage**: Custom foods saved to `custom_foods` table with barcode reference
+- **Validation**: EAN-13/EAN-8 checksum validation
+- **User Flow**: Scan → Display → Edit (optional) → Save to custom foods → Add to meal
+
+#### User Experience
+- Smooth transitions between states (scanning, loading, results)
+- Loading indicators during API calls
+- Error handling with user-friendly messages
+- Snackbar notifications for actions
+- Integration with meal selection bottom sheet
+
 ## Database Schema (Supabase)
 
 ### Key Tables
@@ -202,6 +294,36 @@ final ct = 2000; // Bad
 - `user_goals`: Fitness objectives
 - `localized_foods`: Multi-language food database
 - `localized_exercises`: Multi-language exercise database
+- `custom_foods`: User-created custom foods (includes scanned barcodes)
+  - `barcode` field: Stores product barcode for duplicate detection
+  - `origin` field: Marks source as 'barcode', 'manual', etc.
+
+### CASCADE Delete Configuration
+
+**IMPORTANT**: All user data is automatically deleted when a user account is deleted.
+
+The database uses `ON DELETE CASCADE` constraints to ensure data integrity and GDPR compliance:
+
+- **User Relations (17+ tables)**: All tables with `user_id` have CASCADE delete
+  - `food_entries`, `custom_foods`, `workout_sessions`, `cardio_sessions`, etc.
+  - When a user is deleted from `auth.users`, all their data is automatically removed
+
+- **Table Relations**: Child records are deleted when parent records are deleted
+  - `workout_sessions` → `workout_exercises` → `exercise_sets` (CASCADE)
+  - `recipes` → `recipe_ingredients` (CASCADE)
+  - `cardio_sessions` → `location_points` (CASCADE)
+  - `gps_tracking_sessions` → `gps_tracking_points` (CASCADE)
+
+- **Preserved History**: Some relations use `SET NULL` to keep historical data
+  - `food_entries.food_id` (SET NULL if food deleted, preserves nutrition entry)
+  - `hiit_sessions.workout_id` (SET NULL to keep session data)
+  - `content_reports.reviewed_by` (SET NULL to keep report if reviewer deleted)
+
+**Migrations**:
+- `20250130_add_user_cascade_delete.sql`: User → Tables cascade
+- `20250130_add_table_relation_cascades.sql`: Table → Table relations
+- `verify_cascade.sql`: Verification script for CASCADE constraints
+- See `CASCADE_MIGRATION_README.md` for detailed documentation
 
 ## Testing Strategy
 ```bash

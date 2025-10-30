@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../config/supabase_config.dart';
 import 'localization_service.dart';
@@ -98,29 +99,29 @@ class GlobalStateManager {
     _weeklyTracking = tracking;
     _weeklyDataLastUpdate = DateTime.now();
 
-    debugPrint('📊 GlobalState: Données hebdomadaires mises en cache');
-    debugPrint('   - Balance items: ${balance.items.length}');
-    debugPrint('   - Tracking days: ${tracking.length}');
+    if (kDebugMode) debugPrint('📊 GlobalState: Données hebdomadaires mises en cache');
+    if (kDebugMode) debugPrint('   - Balance items: ${balance.items.length}');
+    if (kDebugMode) debugPrint('   - Tracking days: ${tracking.length}');
   }
 
   // Forcer le rafraîchissement des données hebdomadaires
   void invalidateWeeklyData() {
     _weeklyDataLastUpdate = null;
-    debugPrint('🔄 GlobalState: Cache hebdomadaire invalidé');
+    if (kDebugMode) debugPrint('🔄 GlobalState: Cache hebdomadaire invalidé');
   }
 
   /// Initialiser avec les données existantes de Supabase
   Future<void> initialize() async {
-    debugPrint('🚀 GlobalStateManager: Initialisation DEBUT...');
+    if (kDebugMode) debugPrint('🚀 GlobalStateManager: Initialisation DEBUT...');
 
     try {
       final client = SupabaseConfig.client;
       final user = client.auth.currentUser;
 
-      debugPrint('🔍 User connecté: ${user?.id ?? "AUCUN"}');
+      if (kDebugMode) debugPrint('🔍 User connecté: ${user?.id ?? "AUCUN"}');
 
       if (user != null) {
-        debugPrint('✅ User trouvé, chargement des données...');
+        if (kDebugMode) debugPrint('✅ User trouvé, chargement des données...');
         // Charger les données du jour depuis Supabase
         final today = DateTime.now();
         final startOfDay = DateTime(today.year, today.month, today.day);
@@ -215,7 +216,7 @@ class GlobalStateManager {
         // Traiter les objectifs, streak et infos utilisateur
         final userProfile = futures[4] as Map<String, dynamic>;
 
-        debugPrint('📝 Profil utilisateur brut: $userProfile');
+        if (kDebugMode) debugPrint('📝 Profil utilisateur brut: $userProfile');
 
         final dailyCaloriesGoal = (userProfile['daily_calories'] as num?)?.toDouble() ?? 2000;
         final dailyWaterGoalMl = (userProfile['daily_water_goal'] as num?)?.toDouble() ?? 2000;
@@ -227,11 +228,11 @@ class GlobalStateManager {
             ? rawName[0].toUpperCase() + (rawName.length > 1 ? rawName.substring(1).toLowerCase() : '')
             : 'User';
 
-        debugPrint('📊 Valeurs extraites:');
-        debugPrint('   - dailyCaloriesGoal: $dailyCaloriesGoal (brut: ${userProfile['daily_calories']})');
-        debugPrint('   - dailyWaterGoalMl: $dailyWaterGoalMl (brut: ${userProfile['daily_water_goal']})');
-        debugPrint('   - streakCount: $streakCount');
-        debugPrint('   - name: $name');
+        if (kDebugMode) debugPrint('📊 Valeurs extraites:');
+        if (kDebugMode) debugPrint('   - dailyCaloriesGoal: $dailyCaloriesGoal (brut: ${userProfile['daily_calories']})');
+        if (kDebugMode) debugPrint('   - dailyWaterGoalMl: $dailyWaterGoalMl (brut: ${userProfile['daily_water_goal']})');
+        if (kDebugMode) debugPrint('   - streakCount: $streakCount');
+        if (kDebugMode) debugPrint('   - name: $name');
 
         // Mettre à jour l'état global
         _currentCalories = totalCalories;
@@ -250,23 +251,23 @@ class GlobalStateManager {
         _currentStreak = streakCount;
         _userName = name;
 
-        debugPrint('✅ GlobalState initialisé:');
-        debugPrint('   👤 Nom: $_userName');
-        debugPrint('   📊 ${_currentCalories.toInt()}/${_calorieGoal.toInt()} kcal (${calorieProgress.toInt()}%)');
-        debugPrint('   💧 ${_currentWaterL.toStringAsFixed(1)}L/${_waterGoalL.toStringAsFixed(1)}L (${waterProgress.toInt()}%)');
-        debugPrint('   🍽️  $_mealsCount repas');
-        debugPrint('   🏋️ Sport: ${_workoutCompleted ? "✅" : "❌"} ($_sportSessions séances, $totalCaloriesBurned kcal)');
-        debugPrint('   🔥 Streak: $_currentStreak jours');
+        if (kDebugMode) debugPrint('✅ GlobalState initialisé:');
+        if (kDebugMode) debugPrint('   👤 Nom: $_userName');
+        if (kDebugMode) debugPrint('   📊 ${_currentCalories.toInt()}/${_calorieGoal.toInt()} kcal (${calorieProgress.toInt()}%)');
+        if (kDebugMode) debugPrint('   💧 ${_currentWaterL.toStringAsFixed(1)}L/${_waterGoalL.toStringAsFixed(1)}L (${waterProgress.toInt()}%)');
+        if (kDebugMode) debugPrint('   🍽️  $_mealsCount repas');
+        if (kDebugMode) debugPrint('   🏋️ Sport: ${_workoutCompleted ? "✅" : "❌"} ($_sportSessions séances, $totalCaloriesBurned kcal)');
+        if (kDebugMode) debugPrint('   🔥 Streak: $_currentStreak jours');
       } else {
-        debugPrint('⚠️ AUCUN utilisateur connecté - GlobalState pas initialisé');
+        if (kDebugMode) debugPrint('⚠️ AUCUN utilisateur connecté - GlobalState pas initialisé');
       }
     } catch (e, stackTrace) {
-      debugPrint('⚠️ GlobalStateManager init error (non-critique): $e');
-      debugPrint('Stack trace: $stackTrace');
+      if (kDebugMode) debugPrint('⚠️ GlobalStateManager init error (non-critique): $e');
+      if (kDebugMode) debugPrint('Stack trace: $stackTrace');
       // Continue sans les données, elles seront chargées par les pages
     }
 
-    debugPrint('🏁 GlobalStateManager: Initialisation TERMINEE');
+    if (kDebugMode) debugPrint('🏁 GlobalStateManager: Initialisation TERMINEE');
 
     // Démarrer la vérification du changement de jour
     _startMidnightCheck();
@@ -286,7 +287,7 @@ class GlobalStateManager {
 
     final hours = timeUntilMidnight.inHours;
     final minutes = timeUntilMidnight.inMinutes % 60;
-    debugPrint('⏰ GlobalState: Prochain check à minuit dans ${hours}h${minutes}min (heure locale utilisateur)');
+    if (kDebugMode) debugPrint('⏰ GlobalState: Prochain check à minuit dans ${hours}h${minutes}min (heure locale utilisateur)');
 
     // Timer pour minuit
     _midnightCheckTimer = Timer(timeUntilMidnight, () {
@@ -309,11 +310,11 @@ class GlobalStateManager {
 
       // Si on a changé de jour
       if (currentDay.isAfter(lastDay)) {
-        debugPrint('🌙 GlobalState: Nouveau jour détecté! Réinitialisation des données journalières...');
+        if (kDebugMode) debugPrint('🌙 GlobalState: Nouveau jour détecté! Réinitialisation des données journalières...');
 
         // Vérifier si c'est lundi (changement de semaine)
         if (now.weekday == DateTime.monday) {
-          debugPrint('📅 GlobalState: Nouveau lundi détecté! Réinitialisation des données hebdomadaires...');
+          if (kDebugMode) debugPrint('📅 GlobalState: Nouveau lundi détecté! Réinitialisation des données hebdomadaires...');
           _resetWeeklyData();
         }
 
@@ -344,7 +345,7 @@ class GlobalStateManager {
     // TRIGGER: Invalider tous les caches pour le nouveau jour
     SportDashboardService.invalidateCache();
     HeaderCacheService.clearCache();
-    debugPrint('🗑️ GlobalState: Caches invalidés pour nouveau jour');
+    if (kDebugMode) debugPrint('🗑️ GlobalState: Caches invalidés pour nouveau jour');
 
     // Notifier tous les listeners
     _notifyChange(StateChangeEvent(
@@ -352,7 +353,7 @@ class GlobalStateManager {
       value: DateTime.now(),
     ));
 
-    debugPrint('✨ GlobalState: Données journalières réinitialisées à 0');
+    if (kDebugMode) debugPrint('✨ GlobalState: Données journalières réinitialisées à 0');
   }
 
   /// Réinitialiser les données hebdomadaires
@@ -363,9 +364,9 @@ class GlobalStateManager {
 
     // TRIGGER: Invalider le cache sport pour la nouvelle semaine
     SportDashboardService.invalidateCache();
-    debugPrint('🗑️ GlobalState: Cache sport invalidé pour nouvelle semaine');
+    if (kDebugMode) debugPrint('🗑️ GlobalState: Cache sport invalidé pour nouvelle semaine');
 
-    debugPrint('✨ GlobalState: Données hebdomadaires réinitialisées');
+    if (kDebugMode) debugPrint('✨ GlobalState: Données hebdomadaires réinitialisées');
   }
 
 
@@ -382,7 +383,7 @@ class GlobalStateManager {
       value: _currentWaterL,
     ));
 
-    debugPrint('💧 GlobalState: Eau mise à jour -> ${_currentWaterL}L');
+    if (kDebugMode) debugPrint('💧 GlobalState: Eau mise à jour -> ${_currentWaterL}L');
   }
 
   /// MISE À JOUR INSTANTANÉE - Calories et macros
@@ -398,7 +399,7 @@ class GlobalStateManager {
       value: _currentCalories,
     ));
 
-    debugPrint('🍎 GlobalState: Calories mises à jour -> ${_currentCalories}kcal');
+    if (kDebugMode) debugPrint('🍎 GlobalState: Calories mises à jour -> ${_currentCalories}kcal');
   }
 
   /// MISE À JOUR INSTANTANÉE - Macronutriments
@@ -427,7 +428,7 @@ class GlobalStateManager {
       },
     ));
 
-    debugPrint('🥩 GlobalState: Macros mis à jour -> P:${_currentProteins}g C:${_currentCarbs}g F:${_currentFats}g');
+    if (kDebugMode) debugPrint('🥩 GlobalState: Macros mis à jour -> P:${_currentProteins}g C:${_currentCarbs}g F:${_currentFats}g');
   }
 
   /// MISE À JOUR INSTANTANÉE - Repas
@@ -443,7 +444,7 @@ class GlobalStateManager {
       value: _mealsCount,
     ));
 
-    debugPrint('🍽️ GlobalState: Repas mis à jour -> $_mealsCount');
+    if (kDebugMode) debugPrint('🍽️ GlobalState: Repas mis à jour -> $_mealsCount');
   }
 
   /// MISE À JOUR INSTANTANÉE - Workout
@@ -455,7 +456,7 @@ class GlobalStateManager {
       value: _workoutCompleted,
     ));
 
-    debugPrint('🏋️ GlobalState: Workout mis à jour -> $_workoutCompleted');
+    if (kDebugMode) debugPrint('🏋️ GlobalState: Workout mis à jour -> $_workoutCompleted');
   }
 
   /// MISE À JOUR INSTANTANÉE - Données Sport (séances + calories brûlées)
@@ -482,7 +483,7 @@ class GlobalStateManager {
       },
     ));
 
-    debugPrint('🏋️ GlobalState: Sport mis à jour -> $_sportSessions séances, $_sportCaloriesBurned kcal');
+    if (kDebugMode) debugPrint('🏋️ GlobalState: Sport mis à jour -> $_sportSessions séances, $_sportCaloriesBurned kcal');
   }
 
   /// RECOMPTE INSTANTANÉ - Recharge TOUTES les données Sport du jour depuis la base
@@ -518,10 +519,10 @@ class GlobalStateManager {
       final workoutSessions = futures[0] as List;
       final cardioSessions = futures[1] as List;
 
-      debugPrint('🔍 DEBUG refreshSportData:');
-      debugPrint('   - Séances musculation trouvées: ${workoutSessions.length}');
-      debugPrint('   - Séances cardio trouvées: ${cardioSessions.length}');
-      debugPrint('   - Date recherchée: ${startOfDay.toIso8601String().split('T')[0]}');
+      if (kDebugMode) debugPrint('🔍 DEBUG refreshSportData:');
+      if (kDebugMode) debugPrint('   - Séances musculation trouvées: ${workoutSessions.length}');
+      if (kDebugMode) debugPrint('   - Séances cardio trouvées: ${cardioSessions.length}');
+      if (kDebugMode) debugPrint('   - Date recherchée: ${startOfDay.toIso8601String().split('T')[0]}');
 
       // Compter les séances
       final totalSessions = workoutSessions.length + cardioSessions.length;
@@ -531,15 +532,15 @@ class GlobalStateManager {
       for (var session in workoutSessions) {
         final cals = (session['calories_burned'] as num?)?.toInt() ?? 0;
         totalCalories += cals;
-        debugPrint('   - Musculation: $cals kcal');
+        if (kDebugMode) debugPrint('   - Musculation: $cals kcal');
       }
       for (var session in cardioSessions) {
         final cals = (session['calories'] as num?)?.toInt() ?? 0;
         totalCalories += cals;
-        debugPrint('   - Cardio: $cals kcal');
+        if (kDebugMode) debugPrint('   - Cardio: $cals kcal');
       }
 
-      debugPrint('   - TOTAL: $totalSessions séances, $totalCalories kcal');
+      if (kDebugMode) debugPrint('   - TOTAL: $totalSessions séances, $totalCalories kcal');
 
       // Mettre à jour avec les valeurs absolues
       _sportSessions = totalSessions;
@@ -554,9 +555,9 @@ class GlobalStateManager {
         },
       ));
 
-      debugPrint('🔄 GlobalState: Sport rechargé depuis DB -> $_sportSessions séances, $_sportCaloriesBurned kcal');
+      if (kDebugMode) debugPrint('🔄 GlobalState: Sport rechargé depuis DB -> $_sportSessions séances, $_sportCaloriesBurned kcal');
     } catch (e) {
-      debugPrint('❌ Erreur refresh sport data: $e');
+      if (kDebugMode) debugPrint('❌ Erreur refresh sport data: $e');
     }
   }
 
@@ -569,7 +570,7 @@ class GlobalStateManager {
       value: _currentStreak,
     ));
 
-    debugPrint('🔥 GlobalState: Streak mis à jour -> $_currentStreak jours');
+    if (kDebugMode) debugPrint('🔥 GlobalState: Streak mis à jour -> $_currentStreak jours');
   }
 
   /// MISE À JOUR INSTANTANÉE - Objectifs (si l'utilisateur change ses paramètres)
@@ -585,7 +586,7 @@ class GlobalStateManager {
       },
     ));
 
-    debugPrint('🎯 GlobalState: Objectifs mis à jour -> ${_calorieGoal.toInt()}kcal, ${_waterGoalL.toStringAsFixed(1)}L');
+    if (kDebugMode) debugPrint('🎯 GlobalState: Objectifs mis à jour -> ${_calorieGoal.toInt()}kcal, ${_waterGoalL.toStringAsFixed(1)}L');
   }
 
   /// RECOMPTE INSTANTANÉ - Repas uniques du jour depuis la base
@@ -619,9 +620,9 @@ class GlobalStateManager {
         value: _mealsCount,
       ));
 
-      debugPrint('🍽️ GlobalState: Repas recomptés depuis la base -> $_mealsCount');
+      if (kDebugMode) debugPrint('🍽️ GlobalState: Repas recomptés depuis la base -> $_mealsCount');
     } catch (e) {
-      debugPrint('❌ Erreur refresh meals count: $e');
+      if (kDebugMode) debugPrint('❌ Erreur refresh meals count: $e');
     }
   }
 
@@ -647,7 +648,7 @@ class GlobalStateManager {
       },
     ));
 
-    debugPrint('📊 GlobalState: Batch update effectué');
+    if (kDebugMode) debugPrint('📊 GlobalState: Batch update effectué');
   }
 
   /// Cache une donnée pour accès rapide
@@ -666,11 +667,11 @@ class GlobalStateManager {
     // On retourne une liste de Maps que le dashboard peut convertir en DailyGoal
     final languageCode = LocalizationService.instance.currentLanguageCode;
 
-    debugPrint('📋 getDailyGoalsForDashboard() - État actuel:');
-    debugPrint('   Calories: $_currentCalories / $_calorieGoal kcal');
-    debugPrint('   Eau: $_currentWaterL / $_waterGoalL L');
-    debugPrint('   Repas: $_mealsCount');
-    debugPrint('   Séances sport: $_sportSessions');
+    if (kDebugMode) debugPrint('📋 getDailyGoalsForDashboard() - État actuel:');
+    if (kDebugMode) debugPrint('   Calories: $_currentCalories / $_calorieGoal kcal');
+    if (kDebugMode) debugPrint('   Eau: $_currentWaterL / $_waterGoalL L');
+    if (kDebugMode) debugPrint('   Repas: $_mealsCount');
+    if (kDebugMode) debugPrint('   Séances sport: $_sportSessions');
 
     return [
       {
@@ -725,7 +726,7 @@ class GlobalStateManager {
 
   /// Réinitialise complètement l'état global (pour déconnexion)
   void reset() {
-    debugPrint('🔄 GlobalState: Réinitialisation complète...');
+    if (kDebugMode) debugPrint('🔄 GlobalState: Réinitialisation complète...');
 
     // Réinitialiser toutes les valeurs
     _currentCalories = 0;
@@ -762,7 +763,7 @@ class GlobalStateManager {
       value: null,
     ));
 
-    debugPrint('✅ GlobalState: Réinitialisation terminée');
+    if (kDebugMode) debugPrint('✅ GlobalState: Réinitialisation terminée');
   }
 
   /// Nettoie les ressources

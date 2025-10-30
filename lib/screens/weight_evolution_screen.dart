@@ -970,26 +970,7 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
           ),
         ),
 
-        // 3. Zone de confort autour de l'objectif (±2kg)
-        if (weightProgress.targetWeight > 0)
-          LineChartBarData(
-            spots: [
-              FlSpot(0, weightProgress.targetWeight - 2),
-              FlSpot(extendedWidth.toDouble() - 1, weightProgress.targetWeight - 2),
-            ],
-            isCurved: false,
-            color: Colors.transparent,
-            barWidth: 0,
-            dotData: const FlDotData(show: false),
-            belowBarData: BarAreaData(
-              show: true,
-              applyCutOffY: true,
-              cutOffY: weightProgress.targetWeight + 2,
-              color: const Color(0xFF64748B).withValues(alpha: 0.06),
-            ),
-          ),
-
-        // 4. Ligne d'objectif - Étendre sur toute la largeur avec meilleure visibilité
+        // 3. Ligne d'objectif - Étendre sur toute la largeur avec meilleure visibilité
         if (weightProgress.targetWeight > 0)
           LineChartBarData(
             spots: [

@@ -94,8 +94,8 @@ class _LocalizedFoodListState extends State<LocalizedFoodList> {
               child: isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : foods.isEmpty
-                      ? const Center(
-                          child: Text('Aucun aliment trouvé'),
+                      ? Center(
+                          child: Text('no_food_found'.tr(locService.currentLanguageCode)),
                         )
                       : ListView.builder(
                           itemCount: foods.length,
@@ -181,10 +181,10 @@ class _LocalizedFoodListState extends State<LocalizedFoodList> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Calories: ${food['calories_per_100g']} kcal/100g'),
-            Text('Protéines: ${food['proteins_per_100g']}g/100g'),
-            Text('Glucides: ${food['carbs_per_100g']}g/100g'),
-            Text('Lipides: ${food['fats_per_100g']}g/100g'),
+            Text('${'calories_label'.tr(locService.currentLanguageCode)}: ${food['calories_per_100g']} kcal${'per_100g'.tr(locService.currentLanguageCode)}'),
+            Text('${'proteins_label'.tr(locService.currentLanguageCode)}: ${food['proteins_per_100g']}g${'per_100g'.tr(locService.currentLanguageCode)}'),
+            Text('${'carbs_label'.tr(locService.currentLanguageCode)}: ${food['carbs_per_100g']}g${'per_100g'.tr(locService.currentLanguageCode)}'),
+            Text('${'fats_label'.tr(locService.currentLanguageCode)}: ${food['fats_per_100g']}g${'per_100g'.tr(locService.currentLanguageCode)}'),
             const SizedBox(height: 8),
             Text(
               'Langue actuelle: ${locService.isFrench ? "Français" : "English"}',
@@ -199,7 +199,7 @@ class _LocalizedFoodListState extends State<LocalizedFoodList> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Fermer'),
+            child: Text('close'.tr(locService.currentLanguageCode)),
           ),
         ],
       ),
