@@ -39,8 +39,6 @@
 	<string>Cette application peut synchroniser vos données d'entraînement avec l'app Santé pour un suivi complet de votre activité physique.</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>Cette application peut ajouter vos séances de sport à l'app Santé pour améliorer votre suivi fitness global.</string>
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>Cette application utilise votre localisation pour un suivi GPS précis de vos séances de course, vélo et marche, même en arrière-plan.</string>
 	<key>NSLocationTemporaryUsageDescriptionDictionary</key>
 	<dict>
 		<key>CardioWorkout</key>
@@ -62,22 +60,14 @@
 	<string>Cette app ne suit pas vos données personnelles. Le suivi GPS sert uniquement à mesurer vos performances sportives localement sur votre appareil.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>location</string>
-	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
-		<string>video-camera</string>
 		<string>still-camera</string>
 		<string>armv7</string>
-		<string>gps</string>
-		<string>magnetometer</string>
-		<string>accelerometer</string>
 	</array>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
