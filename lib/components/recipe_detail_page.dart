@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'ui/recipe_models.dart';
 import '../services/recipe_service.dart';
+import '../services/localization_service.dart';
+import '../services/translations.dart';
 
 class RecipeDetailPage extends StatefulWidget {
   final Recipe recipe;
@@ -100,8 +102,8 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
             ),
           ),
         ),
-        body: const Center(
-          child: Text('Erreur lors du chargement de la recette'),
+        body: Center(
+          child: Text('error_loading_recipe'.tr(LocalizationService.instance.currentLanguageCode)),
         ),
       );
     }

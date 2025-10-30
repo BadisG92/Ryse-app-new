@@ -337,7 +337,7 @@ class _MealCardState extends State<MealCard> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erreur lors de la suppression: $e'),
+            content: Text('error_delete_failed'.tr(LocalizationService.instance.currentLanguageCode)),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 3),
           ),

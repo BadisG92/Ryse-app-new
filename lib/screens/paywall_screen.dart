@@ -5,6 +5,7 @@ import '../models/subscription_models.dart';
 import '../services/subscription_service.dart';
 import '../services/paywall_service.dart';
 import '../services/localization_service.dart';
+import '../services/translations.dart';
 import 'pricing_screen.dart';
 
 class PaywallScreen extends StatefulWidget {
@@ -400,7 +401,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('❌ Erreur: $e'),
+            content: Text('error_generic'.tr(LocalizationService.instance.currentLanguageCode)),
             backgroundColor: Colors.red,
           ),
         );
@@ -437,7 +438,7 @@ class _PaywallScreenState extends State<PaywallScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erreur: $e'),
+            content: Text('error_generic'.tr(LocalizationService.instance.currentLanguageCode)),
             backgroundColor: Colors.red,
           ),
         );

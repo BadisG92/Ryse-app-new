@@ -10,6 +10,7 @@ import 'workout_cache_service.dart';
 import 'sport_dashboard_service.dart';
 import 'offline_workout_service.dart';
 import 'localization_service.dart';
+import 'translations.dart';
 import 'global_state_manager.dart';
 import 'food_cache_service.dart';
 
@@ -419,7 +420,7 @@ class DatabaseService {
         proteins: 2.6,
         carbs: 23.0,
         fats: 0.9,
-        category: 'Céréales',
+        category: 'cereals_category'.tr(LocalizationService.instance.currentLanguageCode),
         referenceUnitFr: 'g',
         referenceUnitEn: 'g',
         referenceQuantity: 100.0,
@@ -1053,7 +1054,7 @@ class DatabaseService {
     final templateData = {
       'user_id': userId,
       'name': session.name,
-      'description': 'Programme créé à partir d\'une séance manuelle',
+      'description': 'program_created_from_manual_session'.tr(LocalizationService.instance.currentLanguageCode),
       'is_custom': true,
       'is_from_ai': isFromAI, // ⚡ Mark as Coach Ryze if from AI
       'estimated_duration_minutes': sessionDuration,

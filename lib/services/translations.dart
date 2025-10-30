@@ -4731,6 +4731,467 @@ class AppTranslations {
       'fr': 'L\'inscription avec Apple a échoué',
       'en': 'Apple registration failed',
     },
+
+    // ========================================
+    // ERROR MESSAGES - AI Scanner & Food
+    // Standard AAA: Accessible, Actionable, Appropriate
+    // ========================================
+    'error_generic': {
+      'fr': 'Une erreur est survenue',
+      'en': 'An error occurred',
+    },
+    'error_user_not_authenticated': {
+      'fr': 'Connectez-vous pour continuer',
+      'en': 'Please log in to continue',
+    },
+    'error_adding_food_to_meal': {
+      'fr': 'Impossible d\'ajouter l\'aliment. Vérifiez votre connexion.',
+      'en': 'Could not add food. Check your connection.',
+    },
+    'error_displaying_meal_selection': {
+      'fr': 'Impossible d\'afficher les repas',
+      'en': 'Could not display meals',
+    },
+    'error_adding_to_new_meal': {
+      'fr': 'Impossible de créer le repas',
+      'en': 'Could not create meal',
+    },
+    'error_camera_not_available': {
+      'fr': 'Caméra non disponible',
+      'en': 'Camera not available',
+    },
+    'error_camera_generic': {
+      'fr': 'Erreur d\'accès à la caméra',
+      'en': 'Camera access error',
+    },
+
+    // Food List - using existing 'no_food_found' at line 1747
+    // Note: close already exists earlier
+    'calories_label': {
+      'fr': 'Calories',
+      'en': 'Calories',
+    },
+    'proteins_label': {
+      'fr': 'Protéines',
+      'en': 'Proteins',
+    },
+    'carbs_label': {
+      'fr': 'Glucides',
+      'en': 'Carbs',
+    },
+    'fats_label': {
+      'fr': 'Lipides',
+      'en': 'Fats',
+    },
+    // Note: per_100g already exists at line 1787
+
+    // ========================================
+    // ERROR MESSAGES - Supabase (Backend)
+    // Standard AAA: Clear, actionnable, respectful
+    // ========================================
+    'error_network_connection': {
+      'fr': 'Impossible de se connecter. Vérifiez votre connexion internet.',
+      'en': 'Cannot connect. Check your internet connection.',
+    },
+    'error_session_expired': {
+      'fr': 'Votre session a expiré. Reconnectez-vous.',
+      'en': 'Your session expired. Please log in again.',
+    },
+    'error_permission_denied': {
+      'fr': 'Action non autorisée. Vérifiez vos permissions.',
+      'en': 'Action not allowed. Check your permissions.',
+    },
+    'error_not_found': {
+      'fr': 'Élément introuvable',
+      'en': 'Item not found',
+    },
+    'error_server': {
+      'fr': 'Erreur serveur. Réessayez dans quelques instants.',
+      'en': 'Server error. Try again in a few moments.',
+    },
+    'error_unexpected': {
+      'fr': 'Une erreur inattendue est survenue',
+      'en': 'An unexpected error occurred',
+    },
+
+    // ========================================
+    // COACH RYZE MESSAGES - Ton ludique & motivant
+    // ========================================
+    'coach_ryze_food_added': {
+      'fr': '🎯 Super ! Aliment ajouté à ton journal',
+      'en': '🎯 Nice! Food added to your journal',
+    },
+    'coach_ryze_keep_going': {
+      'fr': '💪 Continue comme ça !',
+      'en': '💪 Keep it up!',
+    },
+    'coach_ryze_scan_success': {
+      'fr': '✨ Scan réussi ! Analyse en cours...',
+      'en': '✨ Scan successful! Analyzing...',
+    },
+    'coach_ryze_try_again': {
+      'fr': '🤔 Hmm, réessayons ensemble',
+      'en': '🤔 Hmm, let\'s try again together',
+    },
+
+    // ========================================
+    // BARCODE SCANNER
+    // ========================================
+    'error_barcode_scan': {
+      'fr': 'Erreur lors du scan du code-barres',
+      'en': 'Error scanning barcode',
+    },
+    'error_barcode_product_not_found': {
+      'fr': 'Produit non trouvé dans la base de données',
+      'en': 'Product not found in database',
+    },
+
+    // ========================================
+    // WORKOUT SESSION
+    // ========================================
+    'error_saving_workout': {
+      'fr': 'Impossible de sauvegarder la séance',
+      'en': 'Could not save workout',
+    },
+    'workout_saved_success': {
+      'fr': '✅ Séance sauvegardée avec succès !',
+      'en': '✅ Workout saved successfully!',
+    },
+    'confirm_discard_workout': {
+      'fr': 'Abandonner cette séance ?',
+      'en': 'Discard this workout?',
+    },
+    'confirm_discard_workout_message': {
+      'fr': 'Vos données seront perdues',
+      'en': 'Your data will be lost',
+    },
+    // Note: yes, no, cancel, confirm already exist earlier in translations
+
+    // Camera and scanner specific
+    'camera_initializing': {
+      'fr': 'Initialisation de la caméra...',
+      'en': 'Initializing camera...',
+    },
+    'error_no_food_detected': {
+      'fr': 'Aucun aliment détecté',
+      'en': 'No food detected',
+    },
+    'analyzed_photo': {
+      'fr': 'Photo analysée',
+      'en': 'Analyzed photo',
+    },
+    'add_details_optional': {
+      'fr': 'Ajoute des précisions (optionnel)',
+      'en': 'Add details (optional)',
+    },
+    'add_ingredients_hint': {
+      'fr': 'Ajoute les ingrédients, la cuisson ou la portion pour guider l\'analyse',
+      'en': 'Add ingredients, cooking method or portion to guide the analysis',
+    },
+    'hint_text_example': {
+      'fr': 'Ex: Salade césar avec poulet grillé, portion moyenne',
+      'en': 'E.g.: Caesar salad with grilled chicken, medium portion',
+    },
+    'meal_dish': {
+      'fr': 'Plat',
+      'en': 'Dish',
+    },
+    'preview': {
+      'fr': 'Prévisualisation',
+      'en': 'Preview',
+    },
+    // Note: retry already exists earlier at line 1185
+    'detected_foods': {
+      'fr': 'Aliments détectés',
+      'en': 'Detected foods',
+    },
+    'detected_foods_colon': {
+      'fr': 'Aliments détectés :',
+      'en': 'Detected foods:',
+    },
+    'error_camera': {
+      'fr': 'Erreur caméra',
+      'en': 'Camera error',
+    },
+    'error_meal_selection_display': {
+      'fr': 'Impossible d\'afficher la sélection de repas',
+      'en': 'Could not display meal selection',
+    },
+
+    // Barcode scanner specific
+    'barcode_not_readable': {
+      'fr': 'Vérifiez que le code-barres est lisible et réessayez.',
+      'en': 'Make sure the barcode is readable and try again.',
+    },
+    'openfoodfacts_disclaimer': {
+      'fr': 'Les données proviennent d\'OpenFoodFacts et peuvent être inexactes. Vérifiez avec l\'emballage et modifiez si nécessaire.',
+      'en': 'Data comes from OpenFoodFacts and may be inaccurate. Check with packaging and modify if needed.',
+    },
+    'for_indicated_quantity': {
+      'fr': 'Pour la quantité indiquée',
+      'en': 'For indicated quantity',
+    },
+    // Note: proteins_label defined at line 4773 (keeping this one, removing duplicate)
+    'quantity_label': {
+      'fr': 'Quantité',
+      'en': 'Quantity',
+    },
+    'no_additional_info': {
+      'fr': 'Aucune information supplémentaire',
+      'en': 'No additional information',
+    },
+    'no_barcode_detected': {
+      'fr': 'Aucun code-barres détecté. Touchez l\'écran pour faire la mise au point et réessayez.',
+      'en': 'No barcode detected. Tap the screen to focus and try again.',
+    },
+    'error_fetching_product': {
+      'fr': 'Erreur lors de la récupération du produit',
+      'en': 'Error fetching product',
+    },
+    'product_added_to_meal': {
+      'fr': 'Produit ajouté au repas',
+      'en': 'Product added to meal',
+    },
+    'product_already_in_custom_foods': {
+      'fr': '{productName} est déjà dans vos aliments personnalisés',
+      'en': '{productName} is already in your custom foods',
+    },
+    'add_to_custom_foods_question': {
+      'fr': 'Souhaitez-vous ajouter "{productName}" à vos aliments personnalisés ?',
+      'en': 'Would you like to add "{productName}" to your custom foods?',
+    },
+    'must_be_logged_in': {
+      'fr': 'Vous devez être connecté pour sauvegarder un aliment',
+      'en': 'You must be logged in to save a food',
+    },
+    'scanned_product': {
+      'fr': 'Produit scanné',
+      'en': 'Scanned product',
+    },
+    'product_added_to_custom_foods': {
+      'fr': '{productName} ajouté à vos aliments personnalisés',
+      'en': '{productName} added to your custom foods',
+    },
+    'this_product': {
+      'fr': 'Ce produit',
+      'en': 'This product',
+    },
+
+    // Workout session specific
+    'complete_set_before': {
+      'fr': 'Veuillez compléter la série {setIndex} avant',
+      'en': 'Please complete set {setIndex} first',
+    },
+    'exercise_found': {
+      'fr': '{count} exercice{plural} trouvé{plural}',
+      'en': '{count} exercise{plural} found',
+    },
+    'series_empty': {
+      'fr': '{count} série{plural} vide{plural}',
+      'en': '{count} empty set{plural}',
+    },
+    'series_incomplete': {
+      'fr': 'Série {setNumber} (poids saisi mais pas de reps)',
+      'en': 'Set {setNumber} (weight entered but no reps)',
+    },
+    'warning_attention': {
+      'fr': '⚠️ Attention',
+      'en': '⚠️ Warning',
+    },
+    'incomplete_sets_detected': {
+      'fr': 'Séries incomplètes détectées :',
+      'en': 'Incomplete sets detected:',
+    },
+    'empty_sets_will_be_removed': {
+      'fr': 'Séries vides seront supprimées :',
+      'en': 'Empty sets will be removed:',
+    },
+    'want_to_finish_anyway': {
+      'fr': 'Voulez-vous quand même terminer la séance ?',
+      'en': 'Do you want to finish the session anyway?',
+    },
+    'values_copied_to_set': {
+      'fr': 'Valeurs copiées vers série {setNumber}',
+      'en': 'Values copied to set {setNumber}',
+    },
+    'new_set_added_same_values': {
+      'fr': 'Nouvelle série ajoutée avec les mêmes valeurs',
+      'en': 'New set added with same values',
+    },
+    'error_microphone_check_permissions': {
+      'fr': 'Erreur micro. Vérifiez les permissions.',
+      'en': 'Microphone error. Check permissions.',
+    },
+    'did_not_understand_retry': {
+      'fr': 'Je n\'ai pas compris. Réessayez.',
+      'en': 'Did not understand. Try again.',
+    },
+    'did_not_understand_press_mic_again': {
+      'fr': 'Je n\'ai pas compris. Appuyez à nouveau sur le micro.',
+      'en': 'Did not understand. Press mic again.',
+    },
+    'replacing_incomplete_set': {
+      'fr': 'Remplacement série incomplète',
+      'en': 'Replacing incomplete set',
+    },
+    'new_set_added': {
+      'fr': 'Nouvelle série ajoutée',
+      'en': 'New set added',
+    },
+    'cancelled': {
+      'fr': 'Annulé',
+      'en': 'Cancelled',
+    },
+
+    // Settings screen specific
+    // Note: vegetarian and vegan already exist earlier
+    'french_language': {
+      'fr': 'Français',
+      'en': 'Français',
+    },
+    'english_language': {
+      'fr': 'English',
+      'en': 'English',
+    },
+    'metric_unit': {
+      'fr': 'Métrique',
+      'en': 'Metric',
+    },
+    'imperial_unit': {
+      'fr': 'Impérial',
+      'en': 'Imperial',
+    },
+    'error_save_changes_local': {
+      'fr': 'Erreur de sauvegarde. Les modifications sont enregistrées localement.',
+      'en': 'Save error. Changes are saved locally.',
+    },
+    'test_architecture': {
+      'fr': '🔧 Test Architecture',
+      'en': '🔧 Test Architecture',
+    },
+    'repository_pattern': {
+      'fr': 'Repository Pattern',
+      'en': 'Repository Pattern',
+    },
+    'unified_cache': {
+      'fr': 'Cache unifié',
+      'en': 'Unified cache',
+    },
+    'performance_optimizations': {
+      'fr': 'Optimisations performances',
+      'en': 'Performance optimizations',
+    },
+    'tests_running': {
+      'fr': '🧪 Tests en cours...',
+      'en': '🧪 Tests running...',
+    },
+    'tests_successful_architecture_ready': {
+      'fr': '✅ Tests réussis! Architecture prête',
+      'en': '✅ Tests successful! Architecture ready',
+    },
+    'tests_failed': {
+      'fr': '❌ Échec des tests',
+      'en': '❌ Tests failed',
+    },
+    'new_architecture_activated': {
+      'fr': '🎉 Nouvelle architecture activée!',
+      'en': '🎉 New architecture activated!',
+    },
+    'pescatarian': {
+      'fr': 'Pescétarien',
+      'en': 'Pescatarian',
+    },
+
+    // Nutrition widgets
+    'add_food_to_which_meal': {
+      'fr': 'À quel repas voulez-vous ajouter cet aliment ?',
+      'en': 'To which meal would you like to add this food?',
+    },
+    'items_count': {
+      'fr': '{count} aliment{plural}',
+      'en': '{count} item{plural}',
+    },
+    'food_added_to_meal_name': {
+      'fr': '{foodName} ajouté au {mealName}',
+      'en': '{foodName} added to {mealName}',
+    },
+    'error_database_add_failed': {
+      'fr': 'Impossible d\'ajouter l\'aliment. Réessayez.',
+      'en': 'Could not add food. Try again.',
+    },
+    'selected_meal': {
+      'fr': 'repas sélectionné',
+      'en': 'selected meal',
+    },
+    'create_custom_meal': {
+      'fr': 'Créer un repas personnalisé',
+      'en': 'Create custom meal',
+    },
+    'or_create_new_meal': {
+      'fr': 'Ou créer un nouveau repas',
+      'en': 'Or create new meal',
+    },
+    'start_day_well': {
+      'fr': 'Commencez bien votre journée',
+      'en': 'Start your day right',
+    },
+    // Note: choose_from_todays_meals already exists at line 1651
+    'existing_meals': {
+      'fr': 'Repas existants',
+      'en': 'Existing meals',
+    },
+    'cereals_category': {
+      'fr': 'Céréales',
+      'en': 'Cereals',
+    },
+    'program_created_from_manual_session': {
+      'fr': 'Programme créé à partir d\'une séance manuelle',
+      'en': 'Program created from manual session',
+    },
+    'custom_food': {
+      'fr': 'Aliment personnalisé',
+      'en': 'Custom food',
+    },
+
+    // Error messages - AAA Standard
+    'error_save_failed': {
+      'fr': 'Impossible de sauvegarder. Vérifiez votre connexion.',
+      'en': 'Could not save. Check your connection.',
+    },
+    'error_delete_failed': {
+      'fr': 'Impossible de supprimer. Réessayez.',
+      'en': 'Could not delete. Try again.',
+    },
+    'error_loading_recipe': {
+      'fr': 'Impossible de charger la recette.',
+      'en': 'Could not load recipe.',
+    },
+    'error_meal_creation': {
+      'fr': 'Impossible de créer le repas. Réessayez.',
+      'en': 'Could not create meal. Try again.',
+    },
+    'error_meal_id_generation': {
+      'fr': 'Erreur technique. Réessayez.',
+      'en': 'Technical error. Try again.',
+    },
+
+    // Permission explanations
+    'permission_camera_needed_title': {
+      'fr': 'Accès à la caméra nécessaire',
+      'en': 'Camera access needed',
+    },
+    'permission_camera_needed_message': {
+      'fr': 'Pour scanner vos aliments et analyser vos repas, l\'app a besoin d\'accéder à votre caméra.\n\nVoulez-vous ouvrir les réglages ?',
+      'en': 'To scan your food and analyze your meals, the app needs access to your camera.\n\nOpen settings?',
+    },
+    'permission_location_denied_info': {
+      'fr': 'Sans accès à votre localisation, nous utilisons des suggestions alimentaires internationales.',
+      'en': 'Without location access, we use international food suggestions.',
+    },
+    'open_settings': {
+      'fr': 'Ouvrir les réglages',
+      'en': 'Open Settings',
+    },
   };
 
   static String get(String key, String languageCode) {

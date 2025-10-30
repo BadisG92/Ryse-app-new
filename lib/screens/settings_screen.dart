@@ -307,7 +307,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erreur de sauvegarde. Les modifications sont enregistrées localement.'),
+            content: Text('error_save_changes_local'.tr(LocalizationService.instance.currentLanguageCode)),
             backgroundColor: Colors.orange,
           ),
         );
@@ -2317,7 +2317,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('🔧 Test Architecture'),
+        title: Text('test_architecture'.tr(LocalizationService.instance.currentLanguageCode)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -2372,22 +2372,22 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
       
       // Lancer les tests
       scaffoldMessenger.showSnackBar(
-        const SnackBar(content: Text('🧪 Tests en cours...')),
+        SnackBar(content: Text('tests_running'.tr(LocalizationService.instance.currentLanguageCode))),
       );
-      
+
       final success = await migrationController.testNewArchitecture();
-      
+
       if (success) {
         scaffoldMessenger.showSnackBar(
-          const SnackBar(
-            content: Text('✅ Tests réussis! Architecture prête'),
+          SnackBar(
+            content: Text('tests_successful_architecture_ready'.tr(LocalizationService.instance.currentLanguageCode)),
             backgroundColor: Colors.green,
           ),
         );
       } else {
         scaffoldMessenger.showSnackBar(
-          const SnackBar(
-            content: Text('❌ Échec des tests'),
+          SnackBar(
+            content: Text('tests_failed'.tr(LocalizationService.instance.currentLanguageCode)),
             backgroundColor: Colors.red,
           ),
         );
@@ -2395,7 +2395,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
     } catch (e) {
       scaffoldMessenger.showSnackBar(
         SnackBar(
-          content: Text('❌ Erreur: $e'),
+          content: Text('error_generic'.tr(LocalizationService.instance.currentLanguageCode)),
           backgroundColor: Colors.red,
         ),
       );
@@ -2413,8 +2413,8 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
       migrationController.enableAllNewFeatures();
       
       scaffoldMessenger.showSnackBar(
-        const SnackBar(
-          content: Text('🎉 Nouvelle architecture activée!'),
+        SnackBar(
+          content: Text('new_architecture_activated'.tr(LocalizationService.instance.currentLanguageCode)),
           backgroundColor: Colors.green,
         ),
       );
@@ -2424,7 +2424,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
     } catch (e) {
       scaffoldMessenger.showSnackBar(
         SnackBar(
-          content: Text('❌ Erreur activation: $e'),
+          content: Text('error_generic'.tr(LocalizationService.instance.currentLanguageCode)),
           backgroundColor: Colors.red,
         ),
       );

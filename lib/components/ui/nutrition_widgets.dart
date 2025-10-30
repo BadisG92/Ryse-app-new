@@ -488,7 +488,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
                 const SizedBox(height: 16),
                 
                 Text(
-                  'À quel repas voulez-vous ajouter cet aliment ?',
+                  'add_food_to_which_meal'.tr(LocalizationService.instance.currentLanguageCode),
                   style: TextStyle(
                     fontSize: 14,
                     color: Color(0xFF64748B),
@@ -546,7 +546,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
                                   ),
                                 ),
                                 Text(
-                                  'Choisir parmi vos repas d\'aujourd\'hui',
+                                  'choose_from_todays_meals'.tr(locService.currentLanguageCode),
                                     style: TextStyle(
                                     fontSize: 12,
                                     color: Color(0xFF64748B),
@@ -767,12 +767,17 @@ class NutritionQuickActionsSection extends StatelessWidget {
                                     color: Color(0xFF0B132B),
                                   ),
                                 ),
-                                Text(
-                                  '${meal.time} • ${meal.items.length} aliment(s)',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Color(0xFF64748B),
-                                  ),
+                                Consumer<LocalizationService>(
+                                  builder: (context, localizationService, child) {
+                                    final plural = meal.items.length > 1 ? 's' : '';
+                                    return Text(
+                                      '${meal.time} • ${'items_count'.tr(localizationService.currentLanguageCode).replaceAll('{count}', '${meal.items.length}').replaceAll('{plural}', plural)}',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Color(0xFF64748B),
+                                      ),
+                                    );
+                                  },
                                 ),
                               ],
                             ),
@@ -933,12 +938,17 @@ class NutritionQuickActionsSection extends StatelessWidget {
                                     color: Color(0xFF0B132B),
                                   ),
                                 ),
-                                Text(
-                                  '${meal.time} • ${meal.items.length} aliment(s)',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Color(0xFF64748B),
-                                  ),
+                                Consumer<LocalizationService>(
+                                  builder: (context, localizationService, child) {
+                                    final plural = meal.items.length > 1 ? 's' : '';
+                                    return Text(
+                                      '${meal.time} • ${'items_count'.tr(localizationService.currentLanguageCode).replaceAll('{count}', '${meal.items.length}').replaceAll('{plural}', plural)}',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Color(0xFF64748B),
+                                      ),
+                                    );
+                                  },
                                 ),
                               ],
                             ),
@@ -2395,7 +2405,11 @@ class NutritionQuickActionsSection extends StatelessWidget {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('${foodItem.name} ajouté au ${selectedMeal.name}'),
+              content: Text(
+                'food_added_to_meal_name'.tr(LocalizationService.instance.currentLanguageCode)
+                  .replaceAll('{foodName}', foodItem.name)
+                  .replaceAll('{mealName}', selectedMeal.name)
+              ),
               backgroundColor: const Color(0xFF0B132B),
             ),
           );
@@ -2408,7 +2422,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erreur lors de l\'ajout: ${e.toString()}'),
+            content: Text('error_database_add_failed'.tr(LocalizationService.instance.currentLanguageCode)),
             backgroundColor: Colors.red,
           ),
         );
@@ -2597,7 +2611,11 @@ class NutritionQuickActionsSection extends StatelessWidget {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('${foodItem.name} ajouté au $targetMealName'),
+              content: Text(
+                'food_added_to_meal_name'.tr(LocalizationService.instance.currentLanguageCode)
+                  .replaceAll('{foodName}', foodItem.name)
+                  .replaceAll('{mealName}', targetMealName ?? 'selected_meal'.tr(LocalizationService.instance.currentLanguageCode))
+              ),
               backgroundColor: const Color(0xFF0B132B),
             ),
           );
@@ -2610,7 +2628,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erreur lors de l\'ajout: ${e.toString()}'),
+            content: Text('error_database_add_failed'.tr(LocalizationService.instance.currentLanguageCode)),
             backgroundColor: Colors.red,
           ),
         );
@@ -3027,13 +3045,17 @@ class MealBottomSheet extends StatelessWidget {
             const SizedBox(height: 16),
             
             // Bouton créer repas personnalisé
-            CustomButton(
-              text: 'Créer un repas personnalisé',
-              icon: const Icon(LucideIcons.plus, size: 16, color: Colors.white),
-              width: double.infinity,
-              onPressed: () {
-                Navigator.of(context).pop();
-                // Navigation vers l'écran de création de repas
+            Consumer<LocalizationService>(
+              builder: (context, localizationService, child) {
+                return CustomButton(
+                  text: 'create_custom_meal'.tr(localizationService.currentLanguageCode),
+                  icon: const Icon(LucideIcons.plus, size: 16, color: Colors.white),
+                  width: double.infinity,
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    // Navigation vers l'écran de création de repas
+                  },
+                );
               },
             ),
           ],
@@ -3284,15 +3306,19 @@ class _AddFoodBottomSheetForQuickActionsState extends State<AddFoodBottomSheetFo
         
         const SizedBox(height: 12),
         
-        _buildFoodOption(
-          icon: LucideIcons.chefHat,
-          title: 'Mes recettes',
-          subtitle: 'Choisir parmi vos recettes sauvegardées',
-          onTap: () {
-            Navigator.pop(context);
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const SelectRecipeScreen()),
+        Consumer<LocalizationService>(
+          builder: (context, localizationService, child) {
+            return _buildFoodOption(
+              icon: LucideIcons.chefHat,
+              title: 'my_recipes'.tr(localizationService.currentLanguageCode),
+              subtitle: 'choose_from_saved_recipes'.tr(localizationService.currentLanguageCode),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const SelectRecipeScreen()),
+                );
+              },
             );
           },
         ),
@@ -3412,50 +3438,69 @@ class _AddFoodBottomSheetForQuickActionsState extends State<AddFoodBottomSheetFo
 
   Widget _buildMealSelection() {
     final existingMeals = [
-      {'name': 'Petit-déjeuner', 'icon': LucideIcons.sunrise, 'time': '8h00'},
-      {'name': 'Déjeuner', 'icon': LucideIcons.sun, 'time': '12h30'},
-      {'name': 'Collation', 'icon': LucideIcons.milk, 'time': '16h00'},
+      {'nameKey': 'breakfast', 'icon': LucideIcons.sunrise, 'time': '8h00'},
+      {'nameKey': 'lunch', 'icon': LucideIcons.sun, 'time': '12h30'},
+      {'nameKey': 'snack', 'icon': LucideIcons.milk, 'time': '16h00'},
     ];
 
     return Column(
       children: [
-        Text(
-          'À quel repas voulez-vous ajouter cet aliment ?',
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF1A1A1A),
-          ),
-          textAlign: TextAlign.center,
+        Consumer<LocalizationService>(
+          builder: (context, localizationService, child) {
+            return Text(
+              'add_food_to_which_meal'.tr(localizationService.currentLanguageCode),
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF1A1A1A),
+              ),
+              textAlign: TextAlign.center,
+            );
+          },
         ),
         
         const SizedBox(height: 24),
         
-        Text(
-          'Repas existants',
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF64748B),
-          ),
+        Consumer<LocalizationService>(
+          builder: (context, localizationService, child) {
+            return Text(
+              'existing_meals'.tr(localizationService.currentLanguageCode),
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF64748B),
+              ),
+            );
+          },
         ),
         
         const SizedBox(height: 12),
         
-        ...existingMeals.map((meal) => Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          child: _buildMealOption(
-            icon: meal['icon'] as IconData,
-            title: meal['name'] as String,
-            subtitle: meal['time'] as String,
-            onTap: () {
-              // Ajouter à ce repas et fermer
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('${_selectedFood} ajouté au ${meal['name']}')),
-              );
-            },
-          ),
+        ...existingMeals.map((meal) => Consumer<LocalizationService>(
+          builder: (context, localizationService, child) {
+            final mealName = (meal['nameKey'] as String).tr(localizationService.currentLanguageCode);
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              child: _buildMealOption(
+                icon: meal['icon'] as IconData,
+                title: mealName,
+                subtitle: meal['time'] as String,
+                onTap: () {
+                  // Ajouter à ce repas et fermer
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'food_added_to_meal_name'.tr(localizationService.currentLanguageCode)
+                          .replaceAll('{foodName}', _selectedFood)
+                          .replaceAll('{mealName}', mealName)
+                      )
+                    ),
+                  );
+                },
+              ),
+            );
+          },
         )),
         
         const SizedBox(height: 16),
@@ -3471,38 +3516,54 @@ class _AddFoodBottomSheetForQuickActionsState extends State<AddFoodBottomSheetFo
         
         const SizedBox(height: 12),
         
-        _buildMealOption(
-          icon: LucideIcons.sunrise,
-          title: 'Petit-déjeuner',
-          subtitle: 'Commencez bien votre journée',
-          onTap: () => _createMealAndAdd('Petit-déjeuner'),
+        Consumer<LocalizationService>(
+          builder: (context, localizationService, child) {
+            return _buildMealOption(
+              icon: LucideIcons.sunrise,
+              title: 'breakfast'.tr(localizationService.currentLanguageCode),
+              subtitle: 'start_day_well'.tr(localizationService.currentLanguageCode),
+              onTap: () => _createMealAndAdd('breakfast'.tr(localizationService.currentLanguageCode)),
+            );
+          },
         ),
         
         const SizedBox(height: 8),
         
-        _buildMealOption(
-          icon: LucideIcons.sun,
-          title: 'Déjeuner',
-          subtitle: 'Votre repas principal de midi',
-          onTap: () => _createMealAndAdd('Déjeuner'),
+        Consumer<LocalizationService>(
+          builder: (context, localizationService, child) {
+            return _buildMealOption(
+              icon: LucideIcons.sun,
+              title: 'lunch'.tr(localizationService.currentLanguageCode),
+              subtitle: 'lunch_description'.tr(localizationService.currentLanguageCode),
+              onTap: () => _createMealAndAdd('lunch'.tr(localizationService.currentLanguageCode)),
+            );
+          },
         ),
         
         const SizedBox(height: 8),
         
-        _buildMealOption(
-          icon: LucideIcons.sunset,
-          title: 'Dîner',
-          subtitle: 'Terminez la journée en beauté',
-          onTap: () => _createMealAndAdd('Dîner'),
+        Consumer<LocalizationService>(
+          builder: (context, localizationService, child) {
+            return _buildMealOption(
+              icon: LucideIcons.sunset,
+              title: 'dinner'.tr(localizationService.currentLanguageCode),
+              subtitle: 'dinner_description'.tr(localizationService.currentLanguageCode),
+              onTap: () => _createMealAndAdd('dinner'.tr(localizationService.currentLanguageCode)),
+            );
+          },
         ),
         
         const SizedBox(height: 8),
         
-                        _buildMealOption(
-                  icon: LucideIcons.milk,
-                  title: 'Collation',
-                  subtitle: 'En-cas entre les repas',
-                  onTap: () => _createMealAndAdd('Collation'),
+                        Consumer<LocalizationService>(
+                  builder: (context, localizationService, child) {
+                    return _buildMealOption(
+                      icon: LucideIcons.milk,
+                      title: 'snack'.tr(localizationService.currentLanguageCode),
+                      subtitle: 'snack_description'.tr(localizationService.currentLanguageCode),
+                      onTap: () => _createMealAndAdd('snack'.tr(localizationService.currentLanguageCode)),
+                    );
+                  },
                 ),
         
         const SizedBox(height: 24),

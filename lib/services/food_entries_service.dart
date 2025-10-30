@@ -5,6 +5,7 @@ import '../models/nutrition_models.dart';
 import '../models/ai_analysis_models.dart';
 import 'dashboard_service.dart';
 import 'localization_service.dart';
+import 'translations.dart';
 import 'global_state_manager.dart';
 
 class FoodEntriesService {
@@ -134,7 +135,7 @@ class FoodEntriesService {
           isScanned = false;
         } else if (entry['custom_foods'] != null) {
           final customFood = entry['custom_foods'];
-          foodName = customFood['name'] ?? 'Aliment personnalisé';
+          foodName = customFood['name'] ?? 'custom_food'.tr(LocalizationService.instance.currentLanguageCode);
           isCustom = true;
           isScanned = customFood['origin'] == 'barcode';
         } else if (entry['food_database'] != null) {
@@ -200,10 +201,17 @@ class FoodEntriesService {
 
       // Ajouter des repas vides si aucun aliment n'a été ajouté
       if (meals.isEmpty) {
-        for (final mealType in ['Petit-déjeuner', 'Déjeuner', 'Collation', 'Dîner']) {
+        final langCode = LocalizationService.instance.currentLanguageCode;
+        final mealTypes = [
+          {'key': 'breakfast', 'dbKey': 'breakfast'},
+          {'key': 'lunch', 'dbKey': 'lunch'},
+          {'key': 'snack', 'dbKey': 'snack'},
+          {'key': 'dinner', 'dbKey': 'dinner'},
+        ];
+        for (final mealType in mealTypes) {
           meals.add(Meal(
-            time: defaultTimes[_mealTypeMapping[mealType]] ?? '00h00',
-            name: mealType,
+            time: defaultTimes[mealType['dbKey']] ?? '00h00',
+            name: mealType['key']!.tr(langCode),
             items: [],
           ));
         }
@@ -540,25 +548,26 @@ class FoodEntriesService {
 
   // Données par défaut en cas d'erreur
   static List<Meal> getDefaultMeals() {
+    final langCode = LocalizationService.instance.currentLanguageCode;
     return [
       Meal(
         time: '8h00',
-        name: 'Petit-déjeuner',
+        name: 'breakfast'.tr(langCode),
         items: [],
       ),
       Meal(
         time: '12h30',
-        name: 'Déjeuner',
+        name: 'lunch'.tr(langCode),
         items: [],
       ),
       Meal(
         time: '16h00',
-        name: 'Collation',
+        name: 'snack'.tr(langCode),
         items: [],
       ),
       Meal(
         time: '19h30',
-        name: 'Dîner',
+        name: 'dinner'.tr(langCode),
         items: [],
       ),
     ];

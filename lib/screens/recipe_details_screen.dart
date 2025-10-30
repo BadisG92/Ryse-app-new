@@ -967,8 +967,8 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
       if (user == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Erreur: utilisateur non connecté'),
+            SnackBar(
+              content: Text('error_user_not_authenticated'.tr(LocalizationService.instance.currentLanguageCode)),
               backgroundColor: Colors.red,
             ),
           );
@@ -1002,7 +1002,7 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erreur lors de l\'ajout: ${e.toString()}'),
+            content: Text('error_database_add_failed'.tr(LocalizationService.instance.currentLanguageCode)),
             backgroundColor: Colors.red,
           ),
         );
@@ -1016,8 +1016,8 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
       if (user == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Erreur: utilisateur non connecté'),
+            SnackBar(
+              content: Text('error_user_not_authenticated'.tr(LocalizationService.instance.currentLanguageCode)),
               backgroundColor: Colors.red,
             ),
           );
@@ -1052,7 +1052,7 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erreur lors de l\'ajout: ${e.toString()}'),
+            content: Text('error_database_add_failed'.tr(LocalizationService.instance.currentLanguageCode)),
             backgroundColor: Colors.red,
           ),
         );

@@ -292,7 +292,7 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erreur lors de la création du repas'),
+            content: Text('error_meal_creation'.tr(LocalizationService.instance.currentLanguageCode)),
             backgroundColor: Colors.red,
           ),
         );
@@ -442,7 +442,7 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text('Erreur lors de l\'ajout'),
+                                content: Text('error_database_add_failed'.tr(LocalizationService.instance.currentLanguageCode)),
                                 backgroundColor: Colors.red,
                               ),
                             );
@@ -526,7 +526,7 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
                             if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text('Erreur lors de la création du repas'),
+                                  content: Text('error_meal_creation'.tr(LocalizationService.instance.currentLanguageCode)),
                                   backgroundColor: Colors.red,
                                 ),
                               );
@@ -536,7 +536,7 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text('Erreur lors de la génération de l\'ID du repas'),
+                                content: Text('error_meal_id_generation'.tr(LocalizationService.instance.currentLanguageCode)),
                                 backgroundColor: Colors.red,
                               ),
                             );

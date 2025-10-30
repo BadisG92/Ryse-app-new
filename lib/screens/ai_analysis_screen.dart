@@ -278,7 +278,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erreur: $e'),
+            content: Text('error_generic'.tr(LocalizationService.instance.currentLanguageCode)),
             backgroundColor: Colors.red,
           ),
         );

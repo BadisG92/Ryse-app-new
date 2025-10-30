@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/subscription_models.dart';
 import '../services/subscription_service.dart';
 import '../services/localization_service.dart';
+import '../services/translations.dart';
 
 class PricingScreen extends StatefulWidget {
   const PricingScreen({Key? key}) : super(key: key);
@@ -447,7 +448,7 @@ class _PricingScreenState extends State<PricingScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('❌ Erreur: $e'),
+            content: Text('error_generic'.tr(LocalizationService.instance.currentLanguageCode)),
             backgroundColor: Colors.red,
           ),
         );
@@ -476,7 +477,7 @@ class _PricingScreenState extends State<PricingScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erreur: $e'),
+            content: Text('error_generic'.tr(LocalizationService.instance.currentLanguageCode)),
             backgroundColor: Colors.red,
           ),
         );

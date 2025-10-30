@@ -9,12 +9,16 @@ class LocationService {
   // Cache pays pour l'existant
   static String? _cachedCountryCode;
   static String? _cachedCountryName;
-  
+  static bool _locationPermissionDenied = false; // Track if permission was denied
+
   // GPS Tracking pour cardio
   static StreamController<LocationPoint>? _locationController;
   static StreamSubscription<Position>? _positionSubscription;
   static List<LocationPoint> _currentRoute = [];
   static DateTime? _lastCalculationTime;
+
+  /// Returns true if location permission was denied and app is using FR default
+  static bool get isUsingDefaultCountry => _locationPermissionDenied;
   
   /// Stream des points de géolocalisation
   static Stream<LocationPoint>? get locationStream => _locationController?.stream;
@@ -38,12 +42,18 @@ class LocationService {
         permission = await Geolocator.requestPermission();
       }
       
-      if (permission == LocationPermission.denied || 
+      if (permission == LocationPermission.denied ||
           permission == LocationPermission.deniedForever) {
-        // Default to France if no permission
-        _cachedCountryCode = 'FR';
-        _cachedCountryName = 'France';
-        return 'FR';
+        // Default to International (no specific country) if no permission
+        _locationPermissionDenied = true;
+        if (kDebugMode) {
+          debugPrint('⚠️ Location permission denied. Using international defaults.');
+          debugPrint('ℹ️ User should be informed via: permission_location_denied_info');
+          debugPrint('ℹ️ Caller can check: LocationService.isUsingDefaultCountry');
+        }
+        _cachedCountryCode = 'INT'; // International code
+        _cachedCountryName = 'International';
+        return 'INT';
       }
 
       // Get current position with timeout
@@ -70,20 +80,20 @@ class LocationService {
       }
       
     } catch (e) {
-      debugPrint('Error getting location: $e');
+      if (kDebugMode) debugPrint('Error getting location: $e');
     }
 
-    // Default fallback
-    _cachedCountryCode = 'FR';
-    _cachedCountryName = 'France';
-    return 'FR';
+    // Default fallback to international if error
+    _cachedCountryCode = 'INT';
+    _cachedCountryName = 'International';
+    return 'INT';
   }
 
   /// Get user's country name for display
   static Future<String> getUserCountryName() async {
     // Ensure country code is loaded
     await getUserCountryCode();
-    return _cachedCountryName ?? 'France';
+    return _cachedCountryName ?? 'International';
   }
 
   /// Get country-specific food context for AI

@@ -123,7 +123,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     // Seules les séances VRAIMENT manuelles (ni program, ni AI) commencent vides
     _exercises = (widget.isFromProgram || widget.isFromAI) ? List.from(widget.exercises) : [];
 
-    debugPrint('🏋️ WorkoutSessionScreen init: ${_exercises.length} exercices (isFromProgram: ${widget.isFromProgram}, isFromAI: ${widget.isFromAI})');
+    if (kDebugMode) debugPrint('🏋️ WorkoutSessionScreen init: ${_exercises.length} exercices (isFromProgram: ${widget.isFromProgram}, isFromAI: ${widget.isFromAI})');
 
     _sessionStartTime = DateTime.now();
     _currentFocusNode = FocusNode();
@@ -334,9 +334,8 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
           SnackBar(
             content: Consumer<LocalizationService>(
               builder: (context, locService, _) => Text(
-                locService.isFrench
-                  ? 'Veuillez compléter la série ${setIndex} avant'
-                  : 'Please complete set ${setIndex} first',
+                'complete_set_before'.tr(locService.currentLanguageCode)
+                    .replaceAll('{setIndex}', setIndex.toString()),
               ),
             ),
             backgroundColor: Colors.orange,
@@ -737,7 +736,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
       }
     }
     availableMuscleGroups = muscleGroupsSet.toList()..sort();
-    debugPrint('✅ ${availableMuscleGroups.length} groupes musculaires extraits: $availableMuscleGroups');
+    if (kDebugMode) debugPrint('✅ ${availableMuscleGroups.length} groupes musculaires extraits: $availableMuscleGroups');
     
     // Charger les statistiques des exercices pour les tags de fréquence
     try {
@@ -753,7 +752,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
         }
       }
     } catch (e) {
-      debugPrint('❌ Erreur lors du chargement des stats d\'exercices: $e');
+      if (kDebugMode) debugPrint('❌ Erreur lors du chargement des stats d\'exercices: $e');
     }
     
     // Trier les exercices par fréquence
@@ -1044,7 +1043,9 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                     Row(
                       children: [
                         Text(
-                          '${filteredExercises.length} ${locService.isFrench ? 'exercice${filteredExercises.length > 1 ? 's' : ''} trouvé${filteredExercises.length > 1 ? 's' : ''}' : 'exercise${filteredExercises.length > 1 ? 's' : ''} found'}',
+                          'exercise_found'.tr(locService.currentLanguageCode)
+                              .replaceAll('{count}', filteredExercises.length.toString())
+                              .replaceAll('{plural}', filteredExercises.length > 1 ? 's' : ''),
                           style: const TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w500,
@@ -1313,7 +1314,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
 
   void _openFilterModal(BuildContext context, StateSetter setModalState, List<String> availableMuscleGroups, Set<String> currentFilters, Function(Set<String>) onFiltersSelected) {
     if (availableMuscleGroups.isEmpty) {
-      debugPrint('⚠️ Aucun groupe musculaire disponible');
+      if (kDebugMode) debugPrint('⚠️ Aucun groupe musculaire disponible');
       return;
     }
 
@@ -1686,7 +1687,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
       // Séance générée par l'IA directement -> traiter comme AI coach
       sessionSource = 'ai_coach';
       guidedTemplateId = null; // Pas de template pour les séances IA directes
-      debugPrint('🤖 Séance IA directe détectée: session_source=ai_coach, guidedTemplateId=null');
+      if (kDebugMode) debugPrint('🤖 Séance IA directe détectée: session_source=ai_coach, guidedTemplateId=null');
     } else if (widget.isFromProgram) {
       // Séance depuis un programme guidé - vérifier si c'est un template IA sauvegardé
       final potentialTemplateId = widget.guidedTemplateId ?? _inferGuidedTemplateId();
@@ -1701,18 +1702,18 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
         // Template généré par l'IA et sauvegardé -> traiter comme AI coach
         sessionSource = 'ai_coach';
         guidedTemplateId = null; // Ne pas référencer le template car il n'existe pas dans workout_templates
-        debugPrint('🤖 Séance IA sauvegardée détectée (template=$potentialTemplateId): session_source=ai_coach, guidedTemplateId=null');
+        if (kDebugMode) debugPrint('🤖 Séance IA sauvegardée détectée (template=$potentialTemplateId): session_source=ai_coach, guidedTemplateId=null');
       } else {
         // Vrai template guidé de l'application
         sessionSource = 'guided_template';
         guidedTemplateId = potentialTemplateId;
-        debugPrint('📋 Séance guidée détectée: session_source=guided_template, guidedTemplateId=$guidedTemplateId');
+        if (kDebugMode) debugPrint('📋 Séance guidée détectée: session_source=guided_template, guidedTemplateId=$guidedTemplateId');
       }
     } else {
       // Séance créée manuellement
       sessionSource = 'manual';
       guidedTemplateId = null;
-      debugPrint('✍️ Séance manuelle détectée: session_source=manual, guidedTemplateId=null');
+      if (kDebugMode) debugPrint('✍️ Séance manuelle détectée: session_source=manual, guidedTemplateId=null');
     }
 
     // Historiser la séance (manuel, guidé, ou IA)
@@ -1732,9 +1733,9 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
         // Recharger TOUTES les données Sport depuis la DB
         await GlobalStateManager.instance.refreshSportData();
 
-        debugPrint('✅ Caches Sport invalidés après séance musculation');
+        if (kDebugMode) debugPrint('✅ Caches Sport invalidés après séance musculation');
       } catch (e) {
-        debugPrint('⚠️ Erreur invalidation caches: $e');
+        if (kDebugMode) debugPrint('⚠️ Erreur invalidation caches: $e');
       }
       
       // Afficher un message différent si on est hors ligne
@@ -1773,7 +1774,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
         );
       }
     }).catchError((e) {
-      debugPrint('❌ persistCompletedWorkoutAsHistory error: $e');
+      if (kDebugMode) debugPrint('❌ persistCompletedWorkoutAsHistory error: $e');
     });
 
     // Appeler le callback pour valider la session
@@ -1781,9 +1782,9 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
       widget.onSessionCompleted!(completedSession);
     }
     
-    debugPrint('Séance validée: ${completedSession.name}');
-    debugPrint('- Durée totale: ${_formatDuration(completedSession.duration)}');
-    debugPrint('- ${completedSession.completedSets}/${completedSession.totalSets} séries terminées');
+    if (kDebugMode) debugPrint('Séance validée: ${completedSession.name}');
+    if (kDebugMode) debugPrint('- Durée totale: ${_formatDuration(completedSession.duration)}');
+    if (kDebugMode) debugPrint('- ${completedSession.completedSets}/${completedSession.totalSets} séries terminées');
   }
 
   // Si la session vient d'un programme, tenter d'extraire l'id depuis le nom (format optionnel) sinon null
@@ -1817,7 +1818,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
         completedSession,
         isFromAI: widget.isFromAI, // ⚡ Pass the Coach Ryze flag
       );
-      debugPrint('✅ Template utilisateur sauvegardé avec ID: $templateId');
+      if (kDebugMode) debugPrint('✅ Template utilisateur sauvegardé avec ID: $templateId');
       
       // Créer le programme à partir de la séance (pour compatibilité avec l'ancien système)
       final programExercises = _exercises.map((workoutExercise) {
@@ -1852,20 +1853,20 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
         widget.onProgramSaved!(workoutProgram);
       }
       
-      debugPrint('=== DEBUG SAUVEGARDE ===');
-      debugPrint('Séance validée: ${completedSession.name}');
-      debugPrint('- Template ID: $templateId');
-      debugPrint('- Heure début: $_sessionStartTime');
-      debugPrint('- Heure fin: $sessionEndTime');
-      debugPrint('- Durée en minutes: $durationInMinutes');
+      if (kDebugMode) debugPrint('=== DEBUG SAUVEGARDE ===');
+      if (kDebugMode) debugPrint('Séance validée: ${completedSession.name}');
+      if (kDebugMode) debugPrint('- Template ID: $templateId');
+      if (kDebugMode) debugPrint('- Heure début: $_sessionStartTime');
+      if (kDebugMode) debugPrint('- Heure fin: $sessionEndTime');
+      if (kDebugMode) debugPrint('- Durée en minutes: $durationInMinutes');
       
     } catch (e) {
-      debugPrint('❌ Erreur lors de la sauvegarde du template: $e');
+      if (kDebugMode) debugPrint('❌ Erreur lors de la sauvegarde du template: $e');
       // Afficher un message d'erreur à l'utilisateur
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erreur lors de la sauvegarde: $e'),
+            content: Text('error_save_failed'.tr(LocalizationService.instance.currentLanguageCode)),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 3),
           ),
@@ -2170,7 +2171,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
         if (lastValidSetIndex >= 0 && lastValidSetIndex < exercise.sets.length - 1) {
           final validSets = exercise.sets.sublist(0, lastValidSetIndex + 1);
           _exercises[i] = exercise.copyWith(sets: validSets);
-          debugPrint('✂️ Auto-suppression de ${exercise.sets.length - validSets.length} série(s) vide(s) pour ${exercise.exercise.name}');
+          if (kDebugMode) debugPrint('✂️ Auto-suppression de ${exercise.sets.length - validSets.length} série(s) vide(s) pour ${exercise.exercise.name}');
         }
       }
     });
@@ -3056,14 +3057,20 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
       // Séries vides en fin (après la dernière série valide)
       if (lastValidSetIndex >= 0 && lastValidSetIndex < exercise.sets.length - 1) {
         final emptyCount = exercise.sets.length - lastValidSetIndex - 1;
-        emptyTrailingSets.add('${exercise.exercise.name}: $emptyCount série${emptyCount > 1 ? 's' : ''} vide${emptyCount > 1 ? 's' : ''}');
+        final plural = emptyCount > 1 ? 's' : '';
+        final message = 'series_empty'.tr(LocalizationService.instance.currentLanguageCode)
+            .replaceAll('{count}', emptyCount.toString())
+            .replaceAll('{plural}', plural);
+        emptyTrailingSets.add('${exercise.exercise.name}: $message');
       }
 
       // Séries incomplètes (avec poids mais sans reps, ou gaps)
       for (int j = 0; j < exercise.sets.length; j++) {
         final set = exercise.sets[j];
         if (set.reps == 0 && set.weight > 0) {
-          incompleteSets.add('${exercise.exercise.name} - Série ${j + 1} (poids saisi mais pas de reps)');
+          final message = 'series_incomplete'.tr(LocalizationService.instance.currentLanguageCode)
+              .replaceAll('{setNumber}', (j + 1).toString());
+          incompleteSets.add('${exercise.exercise.name} - $message');
         }
       }
     }
@@ -3081,7 +3088,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
         title: Consumer<LocalizationService>(
           builder: (context, locService, _) => Text(
             hasIncompleteSets || hasEmptyTrailingSets
-                ? (locService.isFrench ? '⚠️ Attention' : '⚠️ Warning')
+                ? 'warning_attention'.tr(locService.currentLanguageCode)
                 : 'workout_confirm_end_session'.tr(locService.currentLanguageCode),
             style: const TextStyle(
               fontSize: 18,
@@ -3097,9 +3104,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
             children: [
               if (hasIncompleteSets) ...[
                 Text(
-                  locService.isFrench
-                      ? 'Séries incomplètes détectées :'
-                      : 'Incomplete sets detected:',
+                  'incomplete_sets_detected'.tr(locService.currentLanguageCode),
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
@@ -3116,9 +3121,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
               ],
               if (hasEmptyTrailingSets) ...[
                 Text(
-                  locService.isFrench
-                      ? 'Séries vides seront supprimées :'
-                      : 'Empty sets will be removed:',
+                  'empty_sets_will_be_removed'.tr(locService.currentLanguageCode),
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
@@ -3135,9 +3138,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
               ],
               Text(
                 hasIncompleteSets || hasEmptyTrailingSets
-                    ? (locService.isFrench
-                        ? 'Voulez-vous quand même terminer la séance ?'
-                        : 'Do you still want to end the session?')
+                    ? 'want_to_finish_anyway'.tr(locService.currentLanguageCode)
                     : 'workout_confirm_end_session_message'.tr(locService.currentLanguageCode),
                 style: TextStyle(
                   fontSize: 14,
@@ -3935,9 +3936,8 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
         SnackBar(
           content: Consumer<LocalizationService>(
             builder: (context, locService, _) => Text(
-              locService.isFrench
-                  ? 'Valeurs copiées vers série ${setIndex + 2}'
-                  : 'Values copied to set ${setIndex + 2}',
+              'values_copied_to_set'.tr(locService.currentLanguageCode)
+                  .replaceAll('{setNumber}', (setIndex + 2).toString()),
             ),
           ),
           backgroundColor: const Color(0xFF1C2951), // Bleu de l'app
@@ -3985,7 +3985,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
           content: Consumer<LocalizationService>(
             builder: (context, locService, _) => Text(
               locService.isFrench
-                  ? 'Nouvelle série ajoutée avec les mêmes valeurs'
+                  ? 'new_set_added_same_values'.tr(LocalizationService.instance.currentLanguageCode)
                   : 'New set added with same values',
             ),
           ),
@@ -4025,7 +4025,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
               content: Consumer<LocalizationService>(
                 builder: (context, locService, _) => Text(
                   locService.currentLanguageCode == 'fr'
-                      ? 'Erreur micro. Vérifiez les permissions.'
+                      ? 'error_microphone_check_permissions'.tr(LocalizationService.instance.currentLanguageCode)
                       : 'Microphone error. Check permissions.',
                 ),
               ),
@@ -4056,7 +4056,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
           if (_lastValidDataDetectedAt == null ||
               now.difference(_lastValidDataDetectedAt!).inMilliseconds > 1000) {
             _lastValidDataDetectedAt = now;
-            debugPrint('✅ Données valides détectées, démarrage timer auto-stop (1.5s)');
+            if (kDebugMode) debugPrint('✅ Données valides détectées, démarrage timer auto-stop (1.5s)');
 
             // Annuler le timer précédent
             _voiceAutoStopTimer?.cancel();
@@ -4074,7 +4074,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
       onFinalResult: (text) async {
         // ⚡ Guard: éviter appels multiples (bug speech_to_text)
         if (_isProcessingVoiceResult) {
-          debugPrint('⚠️ Already processing voice result, ignoring duplicate call');
+          if (kDebugMode) debugPrint('⚠️ Already processing voice result, ignoring duplicate call');
           return;
         }
 
@@ -4138,9 +4138,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
 
       if (_voiceRetryCount < _maxRetries) {
         final locService = LocalizationService.instance;
-        final retryMsg = locService.currentLanguageCode == 'fr'
-            ? 'Je n\'ai pas compris. Réessayez.'
-            : 'I didn\'t understand. Try again.';
+        final retryMsg = 'did_not_understand_retry'.tr(locService.currentLanguageCode);
 
         await _voiceService.speak(retryMsg);
         _multiSensoryFeedback('warning');
@@ -4192,7 +4190,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
               content: Consumer<LocalizationService>(
                 builder: (context, locService, _) => Text(
                   locService.currentLanguageCode == 'fr'
-                      ? 'Erreur micro. Vérifiez les permissions.'
+                      ? 'error_microphone_check_permissions'.tr(LocalizationService.instance.currentLanguageCode)
                       : 'Microphone error. Check permissions.',
                 ),
               ),
@@ -4248,12 +4246,10 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
 
       if (_voiceRetryCount < _maxRetries) {
         // MANUEL RETRY : Utilisateur doit TAP à nouveau sur le bouton rouge
-        debugPrint('❌ Parse failed. Waiting for manual retry $_voiceRetryCount/$_maxRetries');
+        if (kDebugMode) debugPrint('❌ Parse failed. Waiting for manual retry $_voiceRetryCount/$_maxRetries');
 
         final locService = LocalizationService.instance;
-        final retryMsg = locService.currentLanguageCode == 'fr'
-            ? 'Je n\'ai pas compris. Appuyez à nouveau sur le micro.'
-            : 'I didn\'t understand. Tap the microphone again.';
+        final retryMsg = 'did_not_understand_press_mic_again'.tr(locService.currentLanguageCode);
 
         await _voiceService.speak(retryMsg);
         _multiSensoryFeedback('warning'); // Feedback warning
@@ -4298,7 +4294,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
       });
     }
 
-    debugPrint('❌ Voice input cancelled by user');
+    if (kDebugMode) debugPrint('❌ Voice input cancelled by user');
   }
 
   /// Gérer les données vocales (logique intelligente selon tes specs)
@@ -4332,7 +4328,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
         // Écraser car pas de reps = série incomplète
         final locService = LocalizationService.instance;
         final msg = locService.currentLanguageCode == 'fr'
-            ? 'Remplacement série incomplète'
+            ? 'replacing_incomplete_set'.tr(LocalizationService.instance.currentLanguageCode)
             : 'Replacing incomplete set';
         await _voiceService.speak(msg);
       } else {
@@ -4345,7 +4341,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
 
         final locService = LocalizationService.instance;
         final msg = locService.currentLanguageCode == 'fr'
-            ? 'Nouvelle série ajoutée'
+            ? 'new_set_added'.tr(LocalizationService.instance.currentLanguageCode)
             : 'New set added';
         await _voiceService.speak(msg);
       }
@@ -4436,11 +4432,11 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
 
     final locService = LocalizationService.instance;
     final undoMsg = locService.currentLanguageCode == 'fr'
-        ? 'Annulé'
+        ? 'cancelled'.tr(LocalizationService.instance.currentLanguageCode)
         : 'Undone';
     _voiceService.speak(undoMsg);
 
-    debugPrint('↩️ Undo: série $setIndex réinitialisée');
+    if (kDebugMode) debugPrint('↩️ Undo: série $setIndex réinitialisée');
   }
 
   /// Remplir une série avec les données vocales
@@ -4463,7 +4459,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
       exercise.sets[setIndex] = updatedSet;
     });
 
-    debugPrint('✅ Filled set $setIndex: $reps reps, $weight kg (sans validation)');
+    if (kDebugMode) debugPrint('✅ Filled set $setIndex: $reps reps, $weight kg (sans validation)');
   }
 
   /// Valider EN CASCADE (toutes les séries jusqu'à celle-là incluse)
@@ -4475,7 +4471,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
           final updatedSet = set.copyWith(isCompleted: true);
           exercise.sets[i] = updatedSet;
         });
-        debugPrint('✅ Validated set $i');
+        if (kDebugMode) debugPrint('✅ Validated set $i');
       }
     }
   }
@@ -4501,6 +4497,6 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     _repsFocusNodes[exercise.exercise.id]?[setIndex] = FocusNode();
     _setKeys[exercise.exercise.id]?[setIndex] = GlobalKey();
 
-    debugPrint('➕ Added new set (index $setIndex)');
+    if (kDebugMode) debugPrint('➕ Added new set (index $setIndex)');
   }
 }

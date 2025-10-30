@@ -52,18 +52,18 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
   @override
   void initState() {
     super.initState();
-    debugPrint('🔥 [FLUX AI] 📸 ===== VERSION AVEC ZOOM ET NOTE =====');
-    debugPrint('🔥 [FLUX AI] 📸 PAS d\'écran de choix - Caméra DIRECTE !');
+    if (kDebugMode) debugPrint('🔥 [FLUX AI] 📸 ===== VERSION AVEC ZOOM ET NOTE =====');
+    if (kDebugMode) debugPrint('🔥 [FLUX AI] 📸 PAS d\'écran de choix - Caméra DIRECTE !');
     _initializeCamera();
   }
 
   Future<void> _initializeCamera() async {
-    debugPrint('🔥 [FLUX AI] 📹 Initialisation caméra native');
+    if (kDebugMode) debugPrint('🔥 [FLUX AI] 📹 Initialisation caméra native');
     try {
       final cameras = await availableCameras();
       if (cameras.isEmpty) {
         setState(() {
-          _errorMessage = 'Aucune caméra disponible';
+          _errorMessage = 'error_camera_not_available'.tr(LocalizationService.instance.currentLanguageCode);
           _isLoading = false;
         });
         return;
@@ -82,7 +82,7 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
       _maxZoomLevel = await _cameraController!.getMaxZoomLevel();
       _currentZoomLevel = _minZoomLevel;
       _baseZoomLevel = _minZoomLevel;
-      debugPrint('🔥 [FLUX AI] ✅ Caméra initialisée - Zoom: ${_minZoomLevel}x - ${_maxZoomLevel}x');
+      if (kDebugMode) debugPrint('🔥 [FLUX AI] ✅ Caméra initialisée - Zoom: ${_minZoomLevel}x - ${_maxZoomLevel}x');
 
       if (mounted) {
         setState(() {
@@ -91,9 +91,9 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
         });
       }
     } catch (e) {
-      debugPrint('🔥 [FLUX AI] ❌ Erreur caméra: $e');
+      if (kDebugMode) debugPrint('🔥 [FLUX AI] ❌ Erreur caméra: $e');
       setState(() {
-        _errorMessage = 'Erreur caméra: $e';
+        _errorMessage = '${'error_camera'.tr(LocalizationService.instance.currentLanguageCode)}: $e';
         _isLoading = false;
       });
     }
@@ -111,14 +111,14 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
   }
 
   Future<void> _takePicture() async {
-    debugPrint('🔥 [FLUX AI] 📸 Prise de photo');
+    if (kDebugMode) debugPrint('🔥 [FLUX AI] 📸 Prise de photo');
     if (_cameraController == null || !_cameraController!.value.isInitialized) {
       return;
     }
 
     try {
       final image = await _cameraController!.takePicture();
-      debugPrint('🔥 [FLUX AI] ✅ Photo prise: ${image.path}');
+      if (kDebugMode) debugPrint('🔥 [FLUX AI] ✅ Photo prise: ${image.path}');
 
       // Aller au preview screen avec note
       Navigator.of(context).push(
@@ -132,15 +132,15 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
         ),
       );
     } catch (e) {
-      debugPrint('🔥 [FLUX AI] ❌ Erreur photo: $e');
+      if (kDebugMode) debugPrint('🔥 [FLUX AI] ❌ Erreur photo: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur: $e')),
+        SnackBar(content: Text('error_generic'.tr(LocalizationService.instance.currentLanguageCode))),
       );
     }
   }
 
   Future<void> _pickFromGallery() async {
-    debugPrint('🔥 [FLUX AI] 🖼️ Ouverture galerie');
+    if (kDebugMode) debugPrint('🔥 [FLUX AI] 🖼️ Ouverture galerie');
     try {
       final XFile? image = await _picker.pickImage(
         source: ImageSource.gallery,
@@ -148,7 +148,7 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
       );
 
       if (image != null) {
-        debugPrint('🔥 [FLUX AI] ✅ Image depuis galerie: ${image.path}');
+        if (kDebugMode) debugPrint('🔥 [FLUX AI] ✅ Image depuis galerie: ${image.path}');
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (context) => AIPreviewScreen(
@@ -161,7 +161,7 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
         );
       }
     } catch (e) {
-      debugPrint('🔥 [FLUX AI] ❌ Erreur galerie: $e');
+      if (kDebugMode) debugPrint('🔥 [FLUX AI] ❌ Erreur galerie: $e');
     }
   }
 
@@ -200,9 +200,7 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
             const SizedBox(height: 20),
             Consumer<LocalizationService>(
               builder: (context, locService, child) => Text(
-                locService.currentLanguageCode == 'fr'
-                    ? 'Initialisation de la caméra...'
-                    : 'Initializing camera...',
+                'camera_initializing'.tr(locService.currentLanguageCode),
                 style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
             ),
@@ -242,49 +240,70 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
   Widget _buildCameraScreen() {
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(LucideIcons.arrowLeft, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Consumer<LocalizationService>(
-          builder: (context, locService, child) => Text(
-            'ai_scanner_title'.tr(locService.currentLanguageCode),
-            style: const TextStyle(color: Colors.white),
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              _isFlashOn ? LucideIcons.flashlight : LucideIcons.flashlightOff,
-              color: Colors.white,
-            ),
-            onPressed: _toggleFlash,
-          ),
-        ],
-      ),
-      body: Stack(
-        children: [
-          // Caméra preview plein écran avec zoom
-          if (_isCameraInitialized)
-            Positioned.fill(
-              child: GestureDetector(
-                onScaleStart: (ScaleStartDetails details) {
-                  _baseZoomLevel = _currentZoomLevel;
-                },
-                onScaleUpdate: (ScaleUpdateDetails details) {
-                  final double newZoom = (_baseZoomLevel * details.scale).clamp(_minZoomLevel, _maxZoomLevel);
-                  _cameraController!.setZoomLevel(newZoom);
-                  setState(() {
-                    _currentZoomLevel = newZoom;
-                  });
-                },
-                onScaleEnd: (ScaleEndDetails details) {
-                  debugPrint('🔥 [FLUX AI] 🔍 Zoom final: ${_currentZoomLevel.toStringAsFixed(1)}x');
-                },
-                child: CameraPreview(_cameraController!),
+      body: SafeArea(
+        child: Stack(
+          children: [
+            // Caméra preview plein écran avec zoom
+            if (_isCameraInitialized)
+              Positioned.fill(
+                child: GestureDetector(
+                  onScaleStart: (ScaleStartDetails details) {
+                    _baseZoomLevel = _currentZoomLevel;
+                  },
+                  onScaleUpdate: (ScaleUpdateDetails details) {
+                    final double newZoom = (_baseZoomLevel * details.scale).clamp(_minZoomLevel, _maxZoomLevel);
+                    _cameraController!.setZoomLevel(newZoom);
+                    setState(() {
+                      _currentZoomLevel = newZoom;
+                    });
+                  },
+                  onScaleEnd: (ScaleEndDetails details) {
+                    debugPrint('🔥 [FLUX AI] 🔍 Zoom final: ${_currentZoomLevel.toStringAsFixed(1)}x');
+                  },
+                  child: CameraPreview(_cameraController!),
+                ),
+              ),
+
+            // Header avec bouton retour et flash (même design que barcode scanner)
+            Positioned(
+              top: 16,
+              left: 16,
+              right: 16,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.black54,
+                        borderRadius: BorderRadius.circular(25),
+                      ),
+                      child: const Icon(
+                        LucideIcons.chevronLeft,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                  ),
+                  // Bouton flash avec le même design
+                  GestureDetector(
+                    onTap: _toggleFlash,
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.black54,
+                        borderRadius: BorderRadius.circular(25),
+                      ),
+                      child: Icon(
+                        _isFlashOn ? LucideIcons.zap : LucideIcons.zapOff,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
 
@@ -354,31 +373,32 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
             ),
           ),
 
-          // Indicateur de zoom
-          if (_currentZoomLevel > _minZoomLevel)
-            Positioned(
-              bottom: 140,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.6),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    '${_currentZoomLevel.toStringAsFixed(1)}x',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
+            // Indicateur de zoom
+            if (_currentZoomLevel > _minZoomLevel)
+              Positioned(
+                bottom: 140,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.6),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '${_currentZoomLevel.toStringAsFixed(1)}x',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -412,7 +432,7 @@ class _AIPreviewScreenState extends State<AIPreviewScreen> {
   }
 
   void _analyzePhoto() {
-    debugPrint('🔥 [FLUX AI] 📝 Note: ${_noteController.text}');
+    if (kDebugMode) debugPrint('🔥 [FLUX AI] 📝 Note: ${_noteController.text}');
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => AIAnalysisScreen(
@@ -439,7 +459,7 @@ class _AIPreviewScreenState extends State<AIPreviewScreen> {
         ),
         title: Consumer<LocalizationService>(
           builder: (context, locService, child) => Text(
-            locService.currentLanguageCode == 'fr' ? 'Prévisualisation' : 'Preview',
+            'preview'.tr(locService.currentLanguageCode),
             style: const TextStyle(color: Color(0xFF0B132B)),
           ),
         ),
@@ -479,9 +499,7 @@ class _AIPreviewScreenState extends State<AIPreviewScreen> {
                 children: [
                   Consumer<LocalizationService>(
                     builder: (context, locService, child) => Text(
-                      locService.currentLanguageCode == 'fr'
-                          ? 'Ajoute des précisions (optionnel)'
-                          : 'Add extra details (optional)',
+                      'add_details_optional'.tr(locService.currentLanguageCode),
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
@@ -492,9 +510,7 @@ class _AIPreviewScreenState extends State<AIPreviewScreen> {
                   const SizedBox(height: 8),
                   Consumer<LocalizationService>(
                     builder: (context, locService, child) => Text(
-                      locService.currentLanguageCode == 'fr'
-                          ? 'Ajoute les ingrédients, la cuisson ou la portion pour guider l’analyse'
-                          : 'Mention ingredients, cooking style or portion to guide the analysis',
+                      'add_ingredients_hint'.tr(locService.currentLanguageCode),
                       style: TextStyle(
                         fontSize: 14,
                         color: const Color(0xFF0B132B).withOpacity(0.6),
@@ -502,15 +518,16 @@ class _AIPreviewScreenState extends State<AIPreviewScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  TextField(
-                    controller: _noteController,
-                    maxLength: _maxNoteLength,
-                    maxLines: 3,
-                    decoration: InputDecoration(
-                      hintText: 'Ex: Salade césar avec poulet grillé, portion moyenne',
-                      hintStyle: TextStyle(
-                        color: const Color(0xFF0B132B).withOpacity(0.4),
-                      ),
+                  Consumer<LocalizationService>(
+                    builder: (context, locService, child) => TextField(
+                      controller: _noteController,
+                      maxLength: _maxNoteLength,
+                      maxLines: 3,
+                      decoration: InputDecoration(
+                        hintText: 'hint_text_example'.tr(locService.currentLanguageCode),
+                        hintStyle: TextStyle(
+                          color: const Color(0xFF0B132B).withOpacity(0.4),
+                        ),
                       filled: true,
                       fillColor: Colors.white,
                       border: OutlineInputBorder(
@@ -533,10 +550,11 @@ class _AIPreviewScreenState extends State<AIPreviewScreen> {
                         ),
                       ),
                       contentPadding: const EdgeInsets.all(16),
-                    ),
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: Color(0xFF0B132B),
+                      ),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        color: Color(0xFF0B132B),
+                      ),
                     ),
                   ),
                 ],
@@ -646,9 +664,9 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
   @override
   void initState() {
     super.initState();
-    debugPrint('🔥 [FLUX AI] 🤖 Démarrage analyse IA pour: ${widget.imagePath}');
+    if (kDebugMode) debugPrint('🔥 [FLUX AI] 🤖 Démarrage analyse IA pour: ${widget.imagePath}');
     if (widget.note != null && widget.note!.isNotEmpty) {
-      debugPrint('🔥 [FLUX AI] 📝 Note utilisateur: ${widget.note}');
+      if (kDebugMode) debugPrint('🔥 [FLUX AI] 📝 Note utilisateur: ${widget.note}');
     }
     _capturedImage = File(widget.imagePath);
     _startAnalysis();
@@ -685,16 +703,16 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
             _errorMessage = null;
             // Mettre à jour le nom du repas avec le nom généré par l'IA
             _mealNameController.text = result.mealName ?? 'coach_detected_dish'.tr(LocalizationService.instance.currentLanguageCode);
-            debugPrint('🔥 [FLUX AI] ✅ Analyse terminée avec succès');
+            if (kDebugMode) debugPrint('🔥 [FLUX AI] ✅ Analyse terminée avec succès');
           } else {
             _hasResult = false;
-            _errorMessage = result.error ?? 'Aucun aliment détecté';
-            debugPrint('🔥 [FLUX AI] ❌ Erreur d\'analyse: ${result.error}');
+            _errorMessage = result.error ?? 'error_no_food_detected'.tr(LocalizationService.instance.currentLanguageCode);
+            if (kDebugMode) debugPrint('🔥 [FLUX AI] ❌ Erreur d\'analyse: ${result.error}');
           }
         });
       }
     } catch (e) {
-      debugPrint('🔥 [FLUX AI] ❌ Exception lors de l\'analyse: $e');
+      if (kDebugMode) debugPrint('🔥 [FLUX AI] ❌ Exception lors de l\'analyse: $e');
       if (mounted) {
         setState(() {
           _isAnalyzing = false;
@@ -849,7 +867,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
                 ),
                 child: Consumer<LocalizationService>(
                   builder: (context, locService, child) => Text(
-                    locService.currentLanguageCode == 'fr' ? 'Réessayer' : 'Try Again',
+                    'retry'.tr(locService.currentLanguageCode),
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 16,
@@ -902,7 +920,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
                 Expanded(
                   child: Consumer<LocalizationService>(
                     builder: (context, locService, child) => Text(
-                      locService.currentLanguageCode == 'fr' ? 'Aliments détectés' : 'Detected foods',
+                      'detected_foods'.tr(locService.currentLanguageCode),
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
@@ -997,24 +1015,26 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
                               )
                             : const SizedBox(),
                   )
-                : const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          LucideIcons.image,
-                          size: 48,
-                          color: Color(0xFF64748B),
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          'Photo analysée',
-                          style: TextStyle(
-                            fontSize: 16,
+                : Consumer<LocalizationService>(
+                    builder: (context, locService, child) => Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            LucideIcons.image,
+                            size: 48,
                             color: Color(0xFF64748B),
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 8),
+                          Text(
+                            'analyzed_photo'.tr(locService.currentLanguageCode),
+                            style: const TextStyle(
+                              fontSize: 16,
+                              color: Color(0xFF64748B),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
           ),
@@ -1032,7 +1052,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
 
                 Consumer<LocalizationService>(
                   builder: (context, locService, child) => Text(
-                    locService.currentLanguageCode == 'fr' ? 'Aliments détectés :' : 'Detected foods:',
+                    'detected_foods_colon'.tr(locService.currentLanguageCode),
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -1064,7 +1084,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
                   Center(
                     child: Consumer<LocalizationService>(
                       builder: (context, locService, child) => Text(
-                        locService.currentLanguageCode == 'fr' ? 'Aucun aliment détecté' : 'No food detected',
+                        'error_no_food_detected'.tr(locService.currentLanguageCode),
                         style: const TextStyle(
                           fontSize: 16,
                           color: Color(0xFF64748B),
@@ -1414,7 +1434,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
       quantity: quantity,
       isModified: false,
       onFoodSaved: (foodItem) {
-        debugPrint('Aliment ${foodItem.name} enregistré avec modifications');
+        if (kDebugMode) debugPrint('Aliment ${foodItem.name} enregistré avec modifications');
       },
     );
   }
@@ -1430,9 +1450,9 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
       if (user == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Erreur: utilisateur non connecté'),
-              backgroundColor: Color(0xFFDC2626),
+            SnackBar(
+              content: Text('error_user_not_authenticated'.tr(LocalizationService.instance.currentLanguageCode)),
+              backgroundColor: const Color(0xFFDC2626),
             ),
           );
         }
@@ -1453,9 +1473,13 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
         Navigator.of(context).popUntil((route) => route.isFirst);
 
         if (success) {
+          final foodName = _analysisResult!.mealName ?? 'meal_dish'.tr(LocalizationService.instance.currentLanguageCode);
+          final message = 'food_added_to_meal'.tr(LocalizationService.instance.currentLanguageCode)
+              .replaceAll('{foodName}', foodName)
+              .replaceAll('{mealName}', mealName);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('${_analysisResult!.mealName ?? "Plat IA"} ajouté au $mealName'),
+              content: Text(message),
               backgroundColor: const Color(0xFF0B132B),
               action: SnackBarAction(
                 label: 'Voir',
@@ -1469,21 +1493,21 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Erreur lors de l\'ajout'),
-              backgroundColor: Color(0xFFDC2626),
+            SnackBar(
+              content: Text('error_database_add_failed'.tr(LocalizationService.instance.currentLanguageCode)),
+              backgroundColor: const Color(0xFFDC2626),
             ),
           );
         }
       }
 
     } catch (e) {
-      debugPrint('Erreur lors de l\'ajout au repas spécifique: $e');
+      if (kDebugMode) debugPrint('Erreur lors de l\'ajout au repas spécifique: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Erreur lors de l\'ajout au repas'),
-            backgroundColor: Color(0xFFDC2626),
+            backgroundColor: const Color(0xFFDC2626),
           ),
         );
       }
@@ -1501,9 +1525,9 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
       if (user == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Erreur: utilisateur non connecté'),
-              backgroundColor: Color(0xFFDC2626),
+            SnackBar(
+              content: Text('error_user_not_authenticated'.tr(LocalizationService.instance.currentLanguageCode)),
+              backgroundColor: const Color(0xFFDC2626),
             ),
           );
         }
@@ -1532,12 +1556,12 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
       );
 
     } catch (e) {
-      debugPrint('Erreur lors de l\'affichage de la sélection de repas: $e');
+      if (kDebugMode) debugPrint('Erreur lors de l\'affichage de la sélection de repas: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Erreur lors de l\'affichage de la sélection de repas'),
-            backgroundColor: Color(0xFFDC2626),
+          SnackBar(
+            content: Text('error_meal_selection_display'.tr(LocalizationService.instance.currentLanguageCode)),
+            backgroundColor: const Color(0xFFDC2626),
           ),
         );
       }
@@ -1561,9 +1585,13 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
 
         if (success) {
           // Afficher un message de succès avec action vers le Journal
+          final foodName = _analysisResult!.mealName ?? 'meal_dish'.tr(LocalizationService.instance.currentLanguageCode);
+          final message = 'food_added_to_meal'.tr(LocalizationService.instance.currentLanguageCode)
+              .replaceAll('{foodName}', foodName)
+              .replaceAll('{mealName}', selectedMeal.name);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('${_analysisResult!.mealName ?? "Plat IA"} ajouté au ${selectedMeal.name}'),
+              content: Text(message),
               backgroundColor: const Color(0xFF0B132B),
               action: SnackBarAction(
                 label: 'Voir',
@@ -1578,21 +1606,21 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Erreur lors de l\'ajout'),
-              backgroundColor: Color(0xFFDC2626),
+            SnackBar(
+              content: Text('error_database_add_failed'.tr(LocalizationService.instance.currentLanguageCode)),
+              backgroundColor: const Color(0xFFDC2626),
             ),
           );
         }
       }
 
     } catch (e) {
-      debugPrint('Erreur lors de l\'ajout au repas existant: $e');
+      if (kDebugMode) debugPrint('Erreur lors de l\'ajout au repas existant: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Erreur lors de l\'ajout au repas'),
-            backgroundColor: Color(0xFFDC2626),
+            backgroundColor: const Color(0xFFDC2626),
           ),
         );
       }
@@ -1614,9 +1642,13 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
         Navigator.of(context).popUntil((route) => route.isFirst);
 
         if (success) {
+          final foodName = _analysisResult!.mealName ?? 'meal_dish'.tr(LocalizationService.instance.currentLanguageCode);
+          final message = 'food_added_to_new_meal'.tr(LocalizationService.instance.currentLanguageCode)
+              .replaceAll('{foodName}', foodName)
+              .replaceAll('{mealType}', mealType);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('${_analysisResult!.mealName ?? "Plat IA"} ajouté au $mealType'),
+              content: Text(message),
               backgroundColor: const Color(0xFF0B132B),
               action: SnackBarAction(
                 label: 'Voir',
@@ -1630,21 +1662,21 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Erreur lors de l\'ajout'),
-              backgroundColor: Color(0xFFDC2626),
+            SnackBar(
+              content: Text('error_database_add_failed'.tr(LocalizationService.instance.currentLanguageCode)),
+              backgroundColor: const Color(0xFFDC2626),
             ),
           );
         }
       }
 
     } catch (e) {
-      debugPrint('Erreur lors de l\'ajout au nouveau repas: $e');
+      if (kDebugMode) debugPrint('Erreur lors de l\'ajout au nouveau repas: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Erreur lors de l\'ajout au nouveau repas'),
-            backgroundColor: Color(0xFFDC2626),
+            backgroundColor: const Color(0xFFDC2626),
           ),
         );
       }
