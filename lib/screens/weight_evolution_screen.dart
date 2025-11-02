@@ -12,6 +12,7 @@ import '../components/ui/numeric_text_field.dart';
 import '../services/weight_service.dart';
 import '../services/translations.dart';
 import '../services/localization_service.dart';
+import '../providers/weight_notifier.dart';
 
 class WeightEvolutionScreen extends StatefulWidget {
   const WeightEvolutionScreen({
@@ -41,6 +42,21 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
     // OPTIMISATION: Chargement instantané depuis le cache
     _loadInitialDataSync();
     // Enrichissement en arrière-plan
+    _loadWeightData();
+    // Écouter les changements de poids (y compris target_weight)
+    WeightNotifier.instance.addListener(_onWeightChanged);
+  }
+
+  @override
+  void dispose() {
+    WeightNotifier.instance.removeListener(_onWeightChanged);
+    _weightController.dispose();
+    super.dispose();
+  }
+
+  /// Callback appelé quand le poids ou target_weight change
+  void _onWeightChanged() {
+    debugPrint('🔄 WeightEvolutionScreen: Rechargement des données suite à un changement');
     _loadWeightData();
   }
 
@@ -82,11 +98,6 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
     );
   }
 
-  @override
-  void dispose() {
-    _weightController.dispose();
-    super.dispose();
-  }
 
   /// NOUVEAU: Chargement synchrone instantané depuis le cache
   void _loadInitialDataSync() {

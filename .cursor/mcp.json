@@ -20,10 +20,8 @@
             }
         },
         "supabase": {
-            "command": "C:\\Windows\\System32\\cmd.exe",
+            "command": "npx",
             "args": [
-                "/c",
-                "npx",
                 "-y",
                 "@supabase/mcp-server-supabase@0.4.5",
                 "--project-ref",

@@ -6,9 +6,12 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:crypto/crypto.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
 import '../config/supabase_config.dart';
-import 'global_state_manager.dart'; // NOUVEAU: Pour réinitialiser après connexion
+import 'global_state_manager.dart';
+import 'fast_cache_service.dart';
+import 'analytics_service.dart';
 
 class AuthService extends ChangeNotifier {
   static final AuthService _instance = AuthService._internal();
@@ -112,6 +115,9 @@ class AuthService extends ChangeNotifier {
       );
 
       if (response.user != null) {
+        // 📊 Analytics: Sign up success
+        await AnalyticsService.logSignUp(method: 'email');
+        await AnalyticsService.setUserId(response.user!.id);
         return true;
       }
       return false;
@@ -143,6 +149,10 @@ class AuthService extends ChangeNotifier {
       if (response.user != null) {
         await _loadUserProfile(response.user!.id);
         await _storeTokenSecurely(response.session?.accessToken);
+
+        // 📊 Analytics: Login success
+        await AnalyticsService.logLogin(method: 'email');
+        await AnalyticsService.setUserId(response.user!.id);
 
         // NOUVEAU: Réinitialiser GlobalStateManager après connexion réussie
         if (kDebugMode) debugPrint('🔄 Réinitialisation GlobalStateManager après connexion...');
@@ -287,9 +297,13 @@ class AuthService extends ChangeNotifier {
     _clearError();
 
     try {
+      if (kDebugMode) debugPrint('🍎 Starting Apple Sign In...');
+
       final rawNonce = _generateNonce();
       final hashedNonce = sha256.convert(utf8.encode(rawNonce)).toString();
+      if (kDebugMode) debugPrint('🔐 Generated nonce for Apple Sign In');
 
+      if (kDebugMode) debugPrint('🔑 Requesting Apple credentials...');
       final credential = await SignInWithApple.getAppleIDCredential(
         scopes: [
           AppleIDAuthorizationScopes.email,
@@ -298,11 +312,31 @@ class AuthService extends ChangeNotifier {
         nonce: hashedNonce,
       );
 
+      if (kDebugMode) {
+        debugPrint('✅ Apple credentials received:');
+        debugPrint('   - User ID: ${credential.userIdentifier}');
+        debugPrint('   - Email: ${credential.email ?? "not provided"}');
+        debugPrint('   - Given Name: ${credential.givenName ?? "not provided"}');
+        debugPrint('   - Family Name: ${credential.familyName ?? "not provided"}');
+        debugPrint('   - Identity Token: ${credential.identityToken != null ? "✅ present" : "❌ missing"}');
+      }
+
+      if (credential.identityToken == null) {
+        throw Exception('Apple Sign In failed: No identity token received');
+      }
+
+      if (kDebugMode) debugPrint('🔄 Authenticating with Supabase...');
       final response = await _supabase.auth.signInWithIdToken(
         provider: OAuthProvider.apple,
         idToken: credential.identityToken!,
         nonce: rawNonce,
       );
+
+      if (kDebugMode) {
+        debugPrint('📊 Supabase response:');
+        debugPrint('   - User ID: ${response.user?.id ?? "null"}');
+        debugPrint('   - Session: ${response.session != null ? "✅ created" : "❌ missing"}');
+      }
 
       if (response.user != null) {
         // Extraire le nom depuis Apple (si disponible)
@@ -319,34 +353,31 @@ class AuthService extends ChangeNotifier {
           if (kDebugMode) debugPrint('📝 Apple lastName extracted: $lastName');
         }
 
-        await _loadUserProfile(response.user!.id);
+        if (kDebugMode) debugPrint('👤 Loading user profile...');
+        await _loadUserProfileWithSocialData(
+          response.user!.id,
+          firstName: firstName,
+          lastName: lastName,
+        );
 
-        // Mettre à jour le profil avec le nom si disponible et si pas déjà renseigné
-        if (firstName != null && _currentUser != null) {
-          final needsUpdate = _currentUser!.firstName.isEmpty ||
-                             _currentUser!.firstName == 'User' ||
-                             _currentUser!.lastName.isEmpty;
-
-          if (needsUpdate) {
-            if (kDebugMode) debugPrint('📝 Updating user profile with Apple name...');
-            await _updateUserNameFromSocial(
-              response.user!.id,
-              firstName,
-              lastName ?? '',
-            );
-          }
-        }
-
+        if (kDebugMode) debugPrint('🔐 Storing access token securely...');
         await _storeTokenSecurely(response.session?.accessToken);
 
         // NOUVEAU: Réinitialiser GlobalStateManager après connexion Apple
         if (kDebugMode) debugPrint('🔄 Réinitialisation GlobalStateManager après connexion Apple...');
         await GlobalStateManager.instance.initialize();
 
+        if (kDebugMode) debugPrint('✅ Apple Sign In completed successfully');
         return true;
       }
+
+      if (kDebugMode) debugPrint('❌ Apple Sign In failed: No user returned from Supabase');
       return false;
-    } catch (e) {
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        debugPrint('❌ Apple Sign In error: $e');
+        debugPrint('Stack trace: $stackTrace');
+      }
       _setError('Apple sign in failed: $e');
       return false;
     } finally {
@@ -363,11 +394,76 @@ class AuthService extends ChangeNotifier {
       if (_googleSignInInitialized) {
         await GoogleSignIn.instance.signOut();
       }
-      await _secureStorage.delete(key: 'access_token');
+      await _clearAllLocalData();
       _currentUser = null;
       _safeNotifyListeners();
     } catch (e) {
       _setError('Sign out failed: $e');
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  /// Clear all local data (cache, tokens, preferences)
+  /// Private method used during sign out
+  Future<void> _clearAllLocalData() async {
+    try {
+      if (kDebugMode) debugPrint('🧹 Clearing all local data...');
+
+      // 1. Clear secure storage (tokens)
+      await _secureStorage.deleteAll();
+
+      // 2. Clear SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.clear();
+
+      // 3. Clear fast cache
+      FastCacheService.invalidateDashboard();
+
+      // 4. Clear global state manager
+      GlobalStateManager.instance.reset();
+
+      if (kDebugMode) debugPrint('✅ All local data cleared');
+    } catch (e) {
+      if (kDebugMode) debugPrint('⚠️ Error clearing local data: $e');
+    }
+  }
+
+  /// Force clear all local data and sign out
+  /// Useful when user deleted their account from database directly
+  /// or when app is in inconsistent state
+  Future<void> forceResetApp() async {
+    _setLoading(true);
+    try {
+      if (kDebugMode) debugPrint('🚨 Force reset app...');
+
+      // Sign out from Supabase if possible
+      try {
+        await _supabase.auth.signOut();
+      } catch (e) {
+        if (kDebugMode) debugPrint('⚠️ Could not sign out from Supabase: $e');
+      }
+
+      // Sign out from Google if initialized
+      if (_googleSignInInitialized) {
+        try {
+          await GoogleSignIn.instance.signOut();
+        } catch (e) {
+          if (kDebugMode) debugPrint('⚠️ Could not sign out from Google: $e');
+        }
+      }
+
+      // Clear all local data
+      await _clearAllLocalData();
+
+      // Reset current user
+      _currentUser = null;
+      _safeNotifyListeners();
+
+      if (kDebugMode) debugPrint('✅ App reset complete - please restart');
+    } catch (e) {
+      _setError('Force reset failed: $e');
+      if (kDebugMode) debugPrint('❌ Force reset error: $e');
     } finally {
       _setLoading(false);
     }
@@ -506,30 +602,147 @@ class AuthService extends ChangeNotifier {
   Future<void> _loadUserProfile(String userId) async {
     try {
       if (kDebugMode) debugPrint('🔄 Loading user profile for: $userId');
-      
-      // CORRECTION: Ajouter timeout de 5 secondes
+
+      // Essayer de charger le profil existant
       final response = await _supabase
           .from('users')
           .select()
           .eq('id', userId)
-          .single()
+          .maybeSingle()
           .timeout(const Duration(seconds: 5));
+
+      if (response != null) {
+        // L'utilisateur existe déjà dans la table
+        _currentUser = UserModel.fromJson(response);
+        _safeNotifyListeners();
+        if (kDebugMode) debugPrint('✅ User profile loaded successfully');
+      } else {
+        // L'utilisateur n'existe pas encore → le créer
+        if (kDebugMode) debugPrint('👤 User not found in database, creating...');
+        await _createUserProfile(userId);
+      }
+    } catch (e) {
+      if (kDebugMode) debugPrint('❌ Failed to load user profile: $e');
+      // En cas d'erreur, essayer de créer l'utilisateur
+      try {
+        await _createUserProfile(userId);
+      } catch (createError) {
+        if (kDebugMode) debugPrint('❌ Failed to create user profile: $createError');
+        // Fallback: profil minimal en mémoire seulement
+        _currentUser = UserModel(
+          id: userId,
+          email: _supabase.auth.currentUser?.email ?? 'unknown',
+          firstName: 'User',
+          lastName: '',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+        _safeNotifyListeners();
+      }
+    }
+  }
+
+  /// Load user profile with social login data (Apple, Google)
+  /// If user doesn't exist, create with provided names
+  Future<void> _loadUserProfileWithSocialData(
+    String userId, {
+    String? firstName,
+    String? lastName,
+  }) async {
+    try {
+      if (kDebugMode) debugPrint('🔄 Loading user profile for: $userId');
+
+      // Essayer de charger le profil existant
+      final response = await _supabase
+          .from('users')
+          .select()
+          .eq('id', userId)
+          .maybeSingle()
+          .timeout(const Duration(seconds: 5));
+
+      if (response != null) {
+        // L'utilisateur existe déjà dans la table
+        _currentUser = UserModel.fromJson(response);
+        _safeNotifyListeners();
+        if (kDebugMode) debugPrint('✅ User profile loaded successfully');
+
+        // Mettre à jour le nom si fourni et si le profil a 'User' comme nom
+        if (firstName != null && _currentUser != null) {
+          final needsUpdate = _currentUser!.firstName == 'User' ||
+                             _currentUser!.firstName.isEmpty;
+
+          if (needsUpdate) {
+            if (kDebugMode) debugPrint('📝 Updating user profile with social name...');
+            await _updateUserNameFromSocial(userId, firstName, lastName ?? '');
+          }
+        }
+      } else {
+        // L'utilisateur n'existe pas encore → le créer avec le nom fourni
+        if (kDebugMode) debugPrint('👤 User not found in database, creating with social data...');
+        await _createUserProfile(userId, firstName: firstName, lastName: lastName);
+      }
+    } catch (e) {
+      if (kDebugMode) debugPrint('❌ Failed to load user profile: $e');
+      // En cas d'erreur, essayer de créer l'utilisateur
+      try {
+        await _createUserProfile(userId, firstName: firstName, lastName: lastName);
+      } catch (createError) {
+        if (kDebugMode) debugPrint('❌ Failed to create user profile: $createError');
+        // Fallback: profil minimal en mémoire seulement
+        _currentUser = UserModel(
+          id: userId,
+          email: _supabase.auth.currentUser?.email ?? 'unknown',
+          firstName: firstName ?? 'User',
+          lastName: lastName ?? '',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+        _safeNotifyListeners();
+      }
+    }
+  }
+
+  /// Crée un nouveau profil utilisateur dans la table users
+  Future<void> _createUserProfile(
+    String userId, {
+    String? firstName,
+    String? lastName,
+  }) async {
+    try {
+      final authUser = _supabase.auth.currentUser;
+      if (authUser == null) {
+        throw Exception('No authenticated user found');
+      }
+
+      if (kDebugMode) debugPrint('📝 Creating user profile in database...');
+
+      // Créer l'utilisateur avec les données minimales
+      final newUser = {
+        'id': userId,
+        'email': authUser.email ?? 'unknown',
+        'first_name': firstName ?? 'User',
+        'last_name': lastName ?? '',
+        'created_at': DateTime.now().toIso8601String(),
+        'updated_at': DateTime.now().toIso8601String(),
+        'is_onboarded': false,
+      };
+
+      await _supabase.from('users').insert(newUser);
+
+      // Charger le profil créé
+      final response = await _supabase
+          .from('users')
+          .select()
+          .eq('id', userId)
+          .single();
 
       _currentUser = UserModel.fromJson(response);
       _safeNotifyListeners();
-      if (kDebugMode) debugPrint('✅ User profile loaded successfully');
+
+      if (kDebugMode) debugPrint('✅ User profile created successfully');
     } catch (e) {
-      if (kDebugMode) debugPrint('❌ Failed to load user profile: $e');
-      // Ne pas bloquer l'app, continuer avec un profil minimal
-      _currentUser = UserModel(
-        id: userId,
-        email: _supabase.auth.currentUser?.email ?? 'unknown',
-        firstName: 'User',
-        lastName: '',
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
-      _safeNotifyListeners();
+      if (kDebugMode) debugPrint('❌ Error creating user profile: $e');
+      rethrow;
     }
   }
 

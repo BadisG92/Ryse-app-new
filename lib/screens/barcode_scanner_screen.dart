@@ -10,6 +10,7 @@ import '../models/openfoodfacts_models.dart';
 import '../services/openfoodfacts_service.dart';
 import '../services/auth_service.dart';
 import '../services/database_service.dart';
+import '../services/analytics_service.dart';
 // import '../services/barcode_detection_service.dart'; // ANCIEN - Remplacé par unified_barcode_service
 import '../services/unified_barcode_service.dart'; // NOUVEAU - Switch ML Kit / Vision API
 import '../services/translations.dart';
@@ -1200,10 +1201,26 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
 
       if (barcode != null) {
         if (kDebugMode) debugPrint('✅ Code-barres détecté: $barcode');
+
+        // 📊 Analytics: Barcode scan success
+        AnalyticsService.logFoodScanBarcode(
+          mealType: widget.mealName ?? 'unknown',
+          success: true,
+          source: 'camera',
+        );
+
         // Récupérer les données du produit
         await _fetchProductData(barcode);
       } else {
         if (kDebugMode) debugPrint('⚠️ Aucun code-barres détecté');
+
+        // 📊 Analytics: Barcode scan failed
+        AnalyticsService.logFoodScanBarcode(
+          mealType: widget.mealName ?? 'unknown',
+          success: false,
+          source: 'camera',
+        );
+
         setState(() {
           isProcessing = false;
           isLoadingProduct = false;
@@ -1335,6 +1352,14 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                   onPressed: (barcodeController.text.isNotEmpty && !isLoading)
                       ? () async {
                           setState(() => isLoading = true);
+
+                          // 📊 Analytics: Manual barcode entry
+                          AnalyticsService.logFoodScanBarcode(
+                            mealType: widget.mealName ?? 'unknown',
+                            success: true,
+                            source: 'manual',
+                          );
+
                           Navigator.pop(context);
                           await _fetchProductData(barcodeController.text);
                         }

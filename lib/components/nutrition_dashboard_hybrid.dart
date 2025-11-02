@@ -123,20 +123,16 @@ class NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
   void _loadInitialDataSync() {
     final globalState = GlobalStateManager.instance;
 
-    // Créer le profil nutrition avec les vraies données
-    final calorieGoal = globalState.calorieGoal;
-    final proteinGoal = (calorieGoal * 0.30 / 4).toInt();
-    final carbsGoal = (calorieGoal * 0.40 / 4).toInt();
-    final fatsGoal = (calorieGoal * 0.30 / 9).toInt();
-
+    // Créer le profil nutrition avec les vraies données depuis GlobalState
+    // Utiliser les objectifs réels de la base de données au lieu de les recalculer
     nutritionProfile = NutritionProfile(
       targetCalories: globalState.calorieGoal.toInt(),
       currentCalories: globalState.currentCalories.toInt(),
-      targetProtein: proteinGoal,
+      targetProtein: globalState.proteinGoal,
       currentProtein: globalState.currentProteins.toInt(),
-      targetCarbs: carbsGoal,
+      targetCarbs: globalState.carbsGoal,
       currentCarbs: globalState.currentCarbs.toInt(),
-      targetFat: fatsGoal,
+      targetFat: globalState.fatGoal,
       currentFat: globalState.currentFats.toInt(),
       currentWaterMl: (globalState.currentWaterL * 1000).toInt(),
       targetWaterMl: (globalState.waterGoalL * 1000).toInt(),

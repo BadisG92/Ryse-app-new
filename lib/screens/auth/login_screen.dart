@@ -191,8 +191,48 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
 
                   const SizedBox(height: 40),
-                  
-                  // Login Form
+
+                  // 🔥 SOCIAL LOGINS EN PREMIER - PRIORITÉ
+                  SocialLoginButton(
+                    provider: 'apple',
+                    isLarge: true,
+                    onPressed: authService.isLoading ? null : _handleAppleLogin,
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  SocialLoginButton(
+                    provider: 'google',
+                    isLarge: true,
+                    onPressed: authService.isLoading ? null : _handleGoogleLogin,
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  // Divider subtil
+                  Row(
+                    children: [
+                      Expanded(child: Divider(color: Colors.grey[300])),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Consumer<LocalizationService>(
+                          builder: (context, locService, _) => Text(
+                            'or_continue_with'.tr(locService.currentLanguageCode),
+                            style: TextStyle(
+                              color: Colors.grey[500],
+                              fontSize: 13,
+                              fontWeight: FontWeight.w400,
+                            ),
+                          ),
+                        ),
+                      ),
+                      Expanded(child: Divider(color: Colors.grey[300])),
+                    ],
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Login Form - Secondaire et discret
                   Form(
                     key: _formKey,
                     child: Column(
@@ -281,52 +321,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ],
                     ),
-                  ),
-
-                  const SizedBox(height: 28),
-
-                  // Divider
-                  Row(
-                    children: [
-                      Expanded(child: Divider(color: Colors.grey[300])),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Consumer<LocalizationService>(
-                          builder: (context, locService, _) => Text(
-                            'or_continue_with'.tr(locService.currentLanguageCode),
-                            style: TextStyle(
-                              color: Colors.grey[600],
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ),
-                      Expanded(child: Divider(color: Colors.grey[300])),
-                    ],
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Social Login Buttons
-                  Row(
-                    children: [
-                      Expanded(
-                        child: SocialLoginButton(
-                          icon: 'assets/icons/google.png',
-                          label: 'Google',
-                          onPressed: authService.isLoading ? null : _handleGoogleLogin,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: SocialLoginButton(
-                          icon: 'assets/icons/apple.png',
-                          label: 'Apple',
-                          onPressed: authService.isLoading ? null : _handleAppleLogin,
-                        ),
-                      ),
-                    ],
                   ),
 
                   const SizedBox(height: 40),

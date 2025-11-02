@@ -13,7 +13,11 @@ import 'ui/numeric_text_field.dart';
 import 'caloric_breakdown_bottom_sheet.dart';
 import '../services/translations.dart';
 import '../services/localization_service.dart';
+import '../services/global_state_manager.dart';
+import '../services/fast_cache_service.dart';
+import '../services/dashboard_service.dart';
 import 'package:provider/provider.dart';
+import 'main_app.dart';
 
 class OnboardingGamifiedHybrid extends StatefulWidget {
   final VoidCallback onComplete;
@@ -1786,29 +1790,43 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
     final prefs = await SharedPreferences.getInstance();
     final supabase = Supabase.instance.client;
     final profile = UserProfile.fromMap(userData);
-    
+
     // Utilise les calculs factorisés
     final calories = MetabolicCalculations.calculateDailyGoal(profile);
     final macros = MetabolicCalculations.calculateMacros(profile);
     final bmr = MetabolicCalculations.calculateBMR(profile);
-    
+
+    debugPrint('🔍 Début de sauvegarde des données d\'onboarding');
+    debugPrint('userData complet: $userData');
+    debugPrint('Calories calculées: $calories');
+    debugPrint('BMR calculée: $bmr');
+    debugPrint('Macros calculées: $macros');
+
     try {
+      final userId = supabase.auth.currentUser?.id;
+      if (userId == null) {
+        throw Exception('Utilisateur non connecté - impossible de sauvegarder');
+      }
+
       // Construire la date de naissance
       final birthDate = '${userData['birthYear']}-${userData['birthMonth'].toString().padLeft(2, '0')}-${userData['birthDay'].toString().padLeft(2, '0')}';
-      
+      debugPrint('Date de naissance construite: $birthDate');
+
       // Déterminer le poids objectif
       final targetWeight = userData['targetWeight']?.isNotEmpty == true
           ? double.tryParse(userData['targetWeight']) ?? double.tryParse(userData['weight'] ?? '0')
           : double.tryParse(userData['weight'] ?? '0');
 
-      // Sauvegarder en base de données Supabase
-      await supabase.from('users').update({
+      debugPrint('Poids objectif: $targetWeight');
+
+      // Préparer les données à sauvegarder
+      final updateData = {
         'gender': userData['gender'],
         'birth_date': birthDate,
         'age': int.tryParse(userData['age'] ?? '0'),
         'height': double.tryParse(userData['height'] ?? '0'),
         'weight': double.tryParse(userData['weight'] ?? '0'),
-        'target_weight': targetWeight, // Nouveau champ
+        'target_weight': targetWeight,
         'is_metric': userData['isMetric'] ?? true,
         'activity_level': userData['activity'],
         'fitness_goal': userData['goal'],
@@ -1820,13 +1838,42 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
         'bmr': bmr,
         'is_onboarded': true,
         'updated_at': DateTime.now().toIso8601String(),
-      }).eq('id', supabase.auth.currentUser!.id);
-      
+      };
+
+      debugPrint('Données à sauvegarder dans Supabase:');
+      updateData.forEach((key, value) {
+        debugPrint('  $key: $value');
+      });
+
+      // Sauvegarder en base de données Supabase
+      final response = await supabase
+          .from('users')
+          .update(updateData)
+          .eq('id', userId)
+          .select();
+
+      debugPrint('✅ Réponse Supabase UPDATE: $response');
+
       // Créer une entrée dans l'historique pour marquer le poids initial de l'onboarding
       final weight = double.tryParse(userData['weight'] ?? '0') ?? 0.0;
       if (weight > 0) {
-        await supabase.from('user_profile_history').insert({
-          'user_id': supabase.auth.currentUser!.id,
+        debugPrint('Création de l\'entrée dans user_profile_history...');
+
+        // D'abord, désactiver tous les profils "current" existants pour cet utilisateur
+        try {
+          await supabase
+              .from('user_profile_history')
+              .update({'is_current': false})
+              .eq('user_id', userId)
+              .eq('is_current', true);
+          debugPrint('✅ Anciens profils current désactivés');
+        } catch (e) {
+          debugPrint('⚠️ Erreur désactivation anciens profils (peut-être aucun): $e');
+        }
+
+        // Ensuite, créer le nouveau profil current
+        final historyResponse = await supabase.from('user_profile_history').insert({
+          'user_id': userId,
           'gender': userData['gender'],
           'birth_date': birthDate,
           'age': int.tryParse(userData['age'] ?? '0'),
@@ -1843,26 +1890,37 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
           'valid_from': DateTime.now().toIso8601String(),
           'is_current': true,
           'change_source': 'onboarding_completion',
-          'weight_modified': true, // Marquer comme pesée intentionnelle
-        });
+          'weight_modified': true,
+        }).select();
+        debugPrint('✅ Réponse Supabase INSERT history: $historyResponse');
       }
-      
+
       // Aussi sauvegarder en local pour la compatibilité
       await prefs.setInt('daily_calories', calories);
       await prefs.setInt('daily_protein', macros['protein']!);
       await prefs.setInt('daily_carbs', macros['carbs']!);
       await prefs.setInt('daily_fat', macros['fat']!);
       await prefs.setBool('onboarding_completed', true);
-      
-      debugPrint('✅ Données d\'onboarding sauvegardées avec succès');
-    } catch (e) {
-      debugPrint('❌ Erreur lors de la sauvegarde: $e');
+
+      debugPrint('✅ ✅ ✅ Données d\'onboarding sauvegardées avec SUCCÈS dans Supabase et localement');
+    } catch (e, stackTrace) {
+      debugPrint('❌ ❌ ❌ ERREUR CRITIQUE lors de la sauvegarde: $e');
+      debugPrint('Stack trace: $stackTrace');
+
       // En cas d'erreur, sauvegarder au moins en local
-      await prefs.setInt('daily_calories', calories);
-      await prefs.setInt('daily_protein', macros['protein']!);
-      await prefs.setInt('daily_carbs', macros['carbs']!);
-      await prefs.setInt('daily_fat', macros['fat']!);
-      await prefs.setBool('onboarding_completed', true);
+      try {
+        await prefs.setInt('daily_calories', calories);
+        await prefs.setInt('daily_protein', macros['protein']!);
+        await prefs.setInt('daily_carbs', macros['carbs']!);
+        await prefs.setInt('daily_fat', macros['fat']!);
+        await prefs.setBool('onboarding_completed', true);
+        debugPrint('⚠️ Sauvegarde locale de secours effectuée');
+      } catch (localError) {
+        debugPrint('❌ Impossible de sauvegarder même en local: $localError');
+      }
+
+      // Relancer l'erreur pour que l'utilisateur sache qu'il y a un problème
+      rethrow;
     }
   }
 
@@ -1997,7 +2055,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
     
     // Calcul des ajustements pour l'explication
     final activityMultiplier = _getActivityMultiplier(profile.activity);
-    final goalAdjustment = _getGoalAdjustment(profile.goal);
+    final goalAdjustment = _getGoalAdjustment(profile.goal, tdee: totalNeeds);
 
     return Scaffold(
       body: Container(
@@ -2126,8 +2184,144 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                     color: Colors.transparent,
                     child: InkWell(
                       onTap: () async {
-                        await _saveUserData();
-                        widget.onComplete();
+                        try {
+                          debugPrint('💾 Sauvegarde des données...');
+                          await _saveUserData();
+                          debugPrint('✅ Données sauvegardées');
+
+                          // Appeler le callback parent (pour mettre à jour SharedPrefs et Supabase)
+                          debugPrint('📞 Appel du callback parent...');
+                          widget.onComplete();
+
+                          // Attendre pour que les données Supabase soient bien propagées
+                          debugPrint('⏳ Attente de 500ms pour propagation des données...');
+                          await Future.delayed(const Duration(milliseconds: 500));
+
+                          if (mounted) {
+                            debugPrint('🚀 Navigation directe vers MainApp depuis onboarding...');
+
+                            // Rafraîchir le GlobalState avant de naviguer pour charger les nouvelles données
+                            try {
+                              final globalState = GlobalStateManager.instance;
+                              debugPrint('🔄 Rafraîchissement du GlobalState...');
+                              debugPrint('🔄 Appel de globalState.initialize()...');
+                              await globalState.initialize();
+                              debugPrint('✅ GlobalState rafraîchi - Calories: ${globalState.calorieGoal}');
+
+                              // Invalider les caches pour forcer le rechargement des données
+                              debugPrint('🗑️ Invalidation des caches...');
+                              FastCacheService.invalidateDashboard();
+                              DashboardService.clearAllCache();
+                              debugPrint('✅ Caches invalidés');
+                            } catch (e) {
+                              debugPrint('⚠️ Erreur rafraîchissement GlobalState: $e');
+                              debugPrint('Stack trace: ${StackTrace.current}');
+                            }
+
+                            debugPrint('🧭 Navigation vers MainApp...');
+                            // Naviguer directement en remplaçant toute la stack
+                            Navigator.of(context).pushAndRemoveUntil(
+                              MaterialPageRoute(builder: (context) => const MainApp()),
+                              (route) => false, // Supprimer toutes les routes précédentes
+                            );
+                          } else {
+                            debugPrint('❌ Widget non monté, impossible de naviguer');
+                          }
+                        } catch (e) {
+                          // Afficher un message d'erreur mais permettre de continuer
+                          if (mounted) {
+                            showDialog(
+                              context: context,
+                              barrierDismissible: false,
+                              builder: (context) => AlertDialog(
+                                title: const Text('Erreur de sauvegarde'),
+                                content: Text(
+                                  'Impossible de sauvegarder vos données dans le cloud.\n\n'
+                                  'Vos informations sont sauvegardées localement, mais vous devrez peut-être les ressaisir lors de votre prochaine connexion.\n\n'
+                                  'Erreur: $e'
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () async {
+                                      Navigator.of(context).pop();
+
+                                      // Appeler le callback parent
+                                      widget.onComplete();
+
+                                      // Attendre et rafraîchir
+                                      await Future.delayed(const Duration(milliseconds: 300));
+                                      if (mounted) {
+                                        try {
+                                          await GlobalStateManager.instance.initialize();
+                                          debugPrint('✅ GlobalState rafraîchi');
+                                        } catch (e) {
+                                          debugPrint('⚠️ Erreur rafraîchissement: $e');
+                                        }
+
+                                        Navigator.of(context).pushAndRemoveUntil(
+                                          MaterialPageRoute(builder: (context) => const MainApp()),
+                                          (route) => false,
+                                        );
+                                      }
+                                    },
+                                    child: const Text('Continuer quand même'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () async {
+                                      Navigator.of(context).pop();
+                                      // Réessayer la sauvegarde
+                                      try {
+                                        await _saveUserData();
+
+                                        // Appeler le callback parent
+                                        widget.onComplete();
+
+                                        // Attendre et rafraîchir
+                                        await Future.delayed(const Duration(milliseconds: 300));
+                                        if (mounted) {
+                                          try {
+                                            await GlobalStateManager.instance.initialize();
+                                            debugPrint('✅ GlobalState rafraîchi');
+                                          } catch (e) {
+                                            debugPrint('⚠️ Erreur rafraîchissement: $e');
+                                          }
+
+                                          Navigator.of(context).pushAndRemoveUntil(
+                                            MaterialPageRoute(builder: (context) => const MainApp()),
+                                            (route) => false,
+                                          );
+                                        }
+                                      } catch (retryError) {
+                                        // Si ça échoue encore, continuer quand même
+                                        debugPrint('❌ Échec de la 2ème tentative: $retryError');
+
+                                        // Appeler le callback parent
+                                        widget.onComplete();
+
+                                        // Attendre et rafraîchir
+                                        await Future.delayed(const Duration(milliseconds: 300));
+                                        if (mounted) {
+                                          try {
+                                            await GlobalStateManager.instance.initialize();
+                                            debugPrint('✅ GlobalState rafraîchi');
+                                          } catch (e) {
+                                            debugPrint('⚠️ Erreur rafraîchissement: $e');
+                                          }
+
+                                          Navigator.of(context).pushAndRemoveUntil(
+                                            MaterialPageRoute(builder: (context) => const MainApp()),
+                                            (route) => false,
+                                          );
+                                        }
+                                      }
+                                    },
+                                    child: const Text('Réessayer'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+                        }
                       },
                       borderRadius: BorderRadius.circular(20),
                       child: Row(
@@ -2263,7 +2457,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
           ),
           
           const SizedBox(height: 8),
-          
+
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -2302,6 +2496,65 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                 ),
               ),
             ],
+          ),
+
+          // Estimation du temps pour atteindre le poids cible
+          Builder(
+            builder: (context) {
+              final profile = UserProfile.fromMap(userData);
+              final timeEstimateText = MetabolicCalculations.getTimeEstimateText(
+                profile,
+                isMetric: userData['isMetric'] ?? true,
+              );
+
+              if (timeEstimateText.isEmpty) {
+                return const SizedBox.shrink();
+              }
+
+              return Column(
+                children: [
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          const Color(0xFF0B132B).withOpacity(0.08),
+                          const Color(0xFF1C2951).withOpacity(0.05),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: const Color(0xFF0B132B).withOpacity(0.1),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          LucideIcons.clock,
+                          size: 16,
+                          color: const Color(0xFF0B132B).withOpacity(0.7),
+                        ),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            timeEstimateText,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: const Color(0xFF1A1A1A).withOpacity(0.85),
+                              fontWeight: FontWeight.w500,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         ],
       ),
@@ -2491,19 +2744,40 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
   // Helpers pour les calculs
   double _getActivityMultiplier(String activity) {
     final multipliers = {
-      'low': 1.2,      // 0-2 jours
-      'moderate': 1.55, // 3-5 jours
-      'high': 1.8,     // 6+ jours
+      'low': 1.2,      // Rarement (sédentaire)
+      'light': 1.375,  // Quelques fois (légèrement actif)
+      'moderate': 1.55, // Régulièrement (modérément actif)
+      'high': 1.725,   // Très souvent (très actif)
     };
     return multipliers[activity] ?? 1.2;
   }
 
-  int _getGoalAdjustment(String goal) {
+  int _getGoalAdjustment(String goal, {double? tdee}) {
+    // Si TDEE n'est pas fourni, utiliser les anciennes valeurs par défaut
+    if (tdee == null) {
+      switch (goal) {
+        case 'lose':
+          return -500;
+        case 'gain':
+          return 300;
+        case 'maintain':
+        default:
+          return 0;
+      }
+    }
+
+    // Nouveau calcul adaptatif
     switch (goal) {
       case 'lose':
-        return -500;
+        // Déficit adaptatif : 20% du TDEE (max 500 kcal)
+        final deficit = (tdee * 0.20).round();
+        return -(deficit > 500 ? 500 : deficit);
+
       case 'gain':
-        return 300;
+        // Surplus adaptatif : 15% du TDEE (max 500 kcal)
+        final surplus = (tdee * 0.15).round();
+        return surplus > 500 ? 500 : surplus;
+
       case 'maintain':
       default:
         return 0;

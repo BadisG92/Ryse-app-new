@@ -1,18 +1,49 @@
 # Ryse App - AI-Powered Fitness & Nutrition Coach
 
+## 🔒 Security First
+
+**IMPORTANT** : Never commit API keys! See [SECURITY_API_KEYS.md](SECURITY_API_KEYS.md)
+
+```bash
+# Check API keys security before commit
+./check_api_keys.sh
+
+# Run with environment variables (ALWAYS use this)
+flutter run --dart-define-from-file=.env.local
+```
+
+## 📊 Analytics & Monitoring
+
+**Firebase Analytics & Crashlytics** are integrated for tracking app usage and errors.
+
+- **Setup Guide**: [`FIREBASE_SETUP.md`](FIREBASE_SETUP.md) - Complete Firebase configuration
+- **Summary**: [`FIREBASE_ANALYTICS_SUMMARY.md`](FIREBASE_ANALYTICS_SUMMARY.md) - What's implemented
+- **Service**: [`lib/services/analytics_service.dart`](lib/services/analytics_service.dart) - Analytics API
+
+**Key Features**:
+- 📈 User behavior tracking (food scans, workouts, navigation)
+- 💥 Crash reporting with stack traces
+- 📱 Widget interaction tracking
+- 🎯 Custom events (50+ predefined)
+- 🔐 User identification & properties
+- ⚡ Works in TestFlight & Production
+
 ## Quick Commands
 ```bash
-# Development
-flutter run                    # Run app in debug mode
-flutter run --release         # Run app in release mode
-flutter build apk            # Build Android APK
-flutter build ios            # Build iOS app
-flutter build appbundle      # Build for Play Store
+# Development (with env variables)
+flutter run --dart-define-from-file=.env.local
+flutter run --release --dart-define-from-file=.env.production
+
+# Build
+flutter build apk --dart-define-from-file=.env.production
+flutter build ios --dart-define-from-file=.env.production
+flutter build appbundle --dart-define-from-file=.env.production
 
 # Testing & Analysis
 flutter test                 # Run unit tests
 flutter analyze              # Static code analysis
 flutter doctor              # Check environment setup
+./check_api_keys.sh         # Security check
 
 # Maintenance
 flutter clean               # Clean build artifacts

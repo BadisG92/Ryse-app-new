@@ -13,13 +13,15 @@ import '../services/translations.dart';
 import '../services/global_state_manager.dart';
 import 'package:provider/provider.dart';
 import '../providers/goals_notifier.dart';
+import '../providers/weight_notifier.dart';
 import '../components/ui/onboarding_models.dart';
 import '../components/ui/numeric_text_field.dart';
 import '../components/ui/refresh_wrapper.dart';
 import '../components/ui/global_state_header.dart';
 import '../pages/ryze_app.dart';
 import '../core/infrastructure/migration/migration_controller.dart';
-import 'notification_settings_screen.dart';
+import '../models/notification_models.dart';
+import '../services/notification_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -29,17 +31,20 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProviderStateMixin {
+  // Services
+  final NotificationService _notificationService = NotificationService();
+
   // État des sections expandables
   final Map<String, bool> _expandedSections = {};
-  
+
   // État local pour la V1 - sera migré vers Supabase plus tard
-  
-  // Profil utilisateur  
+
+  // Profil utilisateur
   String _gender = '';
   String _age = '';
   String _height = '';
   String _weight = '';
-  
+
   // Objectifs
   String _activityLevel = ''; // 'low', 'moderate', 'high'
   String _mainGoal = ''; // 'lose', 'maintain', 'gain'
@@ -48,20 +53,16 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   int _carbsTarget = 0;
   int _fatTarget = 0;
   int _caloriesTarget = 0;
-  
+
   // Macros personnalisées
   bool _hasCustomMacros = false;
   double _proteinPercentage = 0.0;
   double _carbsPercentage = 0.0;
   double _fatPercentage = 0.0;
-  
-  // Notifications
-  bool _dailyReminder = false;
-  bool _workoutReminder = false;
-  bool _mealReminder = false;
-  bool _progressNotifications = false;
-  String _reminderTime = '';
-  
+
+  // Notifications - Utilisation du modèle complet
+  late NotificationPreferences _notificationPrefs;
+
   // Préférences
   String _language = '';
   String _measurementUnit = ''; // Utiliser clés de traduction
@@ -81,11 +82,15 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   @override
   void initState() {
     super.initState();
+
+    // Initialiser les préférences de notifications
+    _notificationPrefs = _notificationService.getPreferences();
+
     _loadSettings();
-    
+
     // Essayer de charger depuis le cache d'abord
     _loadFromCache();
-    
+
     _loadStreak();
     // Toutes les sections sont fermées par défaut
     _expandedSections['profile'] = false;
@@ -194,13 +199,9 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
     final locService = LocalizationService.instance;
     
     setState(() {
-      // Préférences locales (non stockées dans Supabase)
-      _dailyReminder = prefs.getBool('daily_reminder') ?? true;
-      _workoutReminder = prefs.getBool('workout_reminder') ?? true;
-      _mealReminder = prefs.getBool('meal_reminder') ?? true;
-      _progressNotifications = prefs.getBool('progress_notifications') ?? true;
-      _reminderTime = prefs.getString('reminder_time') ?? '08:00';
-      
+      // Les notifications sont maintenant gérées via NotificationService
+      // Pas besoin de charger depuis SharedPreferences ici
+
       // Synchroniser avec le service de localisation
       _language = locService.isFrench ? 'Français' : 'English';
       final rawMeasurement = prefs.getString('measurement_unit') ?? 'Métrique';
@@ -235,13 +236,9 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
       _proteinPercentage = prefs.getDouble('protein_percentage') ?? 0.30;
       _carbsPercentage = prefs.getDouble('carbs_percentage') ?? 0.40;
       _fatPercentage = prefs.getDouble('fat_percentage') ?? 0.30;
-      
-      _dailyReminder = prefs.getBool('daily_reminder') ?? true;
-      _workoutReminder = prefs.getBool('workout_reminder') ?? true;
-      _mealReminder = prefs.getBool('meal_reminder') ?? true;
-      _progressNotifications = prefs.getBool('progress_notifications') ?? true;
-      _reminderTime = prefs.getString('reminder_time') ?? '08:00';
-      
+
+      // Les notifications sont maintenant gérées via NotificationService
+
       _language = prefs.getString('language') ?? 'Français';
       final rawMeasurement = prefs.getString('measurement_unit') ?? 'Métrique';
       _measurementUnit = _getMeasurementTranslationKey(rawMeasurement);
@@ -294,10 +291,17 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
 
         // NOUVEAU: Mettre à jour GlobalStateManager pour synchronisation instantanée
         GlobalStateManager.instance.updateGoals(calorieGoal: _caloriesTarget.toDouble());
+
+        // IMPORTANT: Notifier les changements de poids (y compris target_weight)
+        // Cela invalide le cache et rafraîchit le graphique
+        WeightNotifier.instance.notifyWeightChanged();
       }
 
       // Sauvegarder aussi localement pour la synchronisation
       await _saveToSharedPreferences();
+
+      // Invalider le cache du graphique de poids
+      await _invalidateWeightCache();
       
     } catch (e) {
       debugPrint('Erreur lors de la sauvegarde dans Supabase: $e');
@@ -318,13 +322,13 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   
   Future<void> _saveToSharedPreferences() async {
     final prefs = await SharedPreferences.getInstance();
-    
+
     // Sauvegarder toutes les préférences localement
     await prefs.setString('user_gender', _gender);
     await prefs.setString('user_age', _age);
     await prefs.setString('user_height', _height);
     await prefs.setString('user_weight', _weight);
-    
+
     await prefs.setString('user_activity', _activityLevel);
     await prefs.setString('user_goal', _mainGoal);
     await prefs.setString('target_weight', _targetWeight);
@@ -332,28 +336,44 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
     await prefs.setInt('carbs_target', _carbsTarget);
     await prefs.setInt('fat_target', _fatTarget);
     await prefs.setInt('calories_target', _caloriesTarget);
-    
+
     await prefs.setBool('has_custom_macros', _hasCustomMacros);
     await prefs.setDouble('protein_percentage', _proteinPercentage);
     await prefs.setDouble('carbs_percentage', _carbsPercentage);
     await prefs.setDouble('fat_percentage', _fatPercentage);
-    
-    await prefs.setBool('daily_reminder', _dailyReminder);
-    await prefs.setBool('workout_reminder', _workoutReminder);
-    await prefs.setBool('meal_reminder', _mealReminder);
-    await prefs.setBool('progress_notifications', _progressNotifications);
-    await prefs.setString('reminder_time', _reminderTime);
-    
+
+    // Les notifications sont sauvegardées via NotificationService
+    // Ne pas les sauvegarder ici
+
     await prefs.setString('language', _language);
     await prefs.setString('measurement_unit', _measurementUnit);
     await prefs.setString('start_week_day', _startWeekDay);
     await prefs.setBool('dark_mode', _darkMode);
     await prefs.setBool('sound_effects', _soundEffects);
     await prefs.setBool('haptic_feedback', _hapticFeedback);
-    
+
     await prefs.setStringList('dietary_restrictions', _dietaryRestrictions);
   }
-  
+
+  /// Invalide le cache du graphique de poids pour forcer un refresh
+  Future<void> _invalidateWeightCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // Invalider le cache de la page de détail du poids
+      await prefs.remove('weight_progress_cache');
+      await prefs.remove('weight_progress_cache_timestamp');
+
+      // Invalider le cache de la page progression (global_progress_hybrid.dart)
+      await prefs.remove('progress_weight_cache');
+      await prefs.remove('progress_weight_cache_timestamp');
+
+      debugPrint('💾 Cache du graphique de poids invalidé (détail + progression)');
+    } catch (e) {
+      debugPrint('⚠️ Erreur lors de l\'invalidation du cache de poids: $e');
+    }
+  }
+
   void _toggleSection(String section) {
     if (_hapticFeedback) HapticFeedback.lightImpact();
     setState(() {
@@ -1027,19 +1047,18 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Header avec bandeau bleu comme les autres pages
-            _buildHeader(),
-            
-            // Contenu scrollable avec RefreshIndicator
-            Expanded(
-              child: RefreshWrapper(
-                onRefresh: _onRefresh,
-                child: SingleChildScrollView(
-                  child: Column(
-                  children: [
+      body: Column(
+        children: [
+          // Header avec bandeau bleu comme les autres pages (pas de SafeArea ici)
+          _buildHeader(),
+
+          // Contenu scrollable avec RefreshIndicator
+          Expanded(
+            child: RefreshWrapper(
+              onRefresh: _onRefresh,
+              child: SingleChildScrollView(
+                child: Column(
+                children: [
                     // Section Profil
                     Consumer<LocalizationService>(
                       builder: (context, locService, child) => _buildExpandableSection(
@@ -1199,79 +1218,381 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                       ),
                     ),
                     
-                    // Section Notifications - Lien vers page dédiée
+                    // Section Notifications - Version complète
                     Consumer<LocalizationService>(
-                      builder: (context, locService, child) => GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const NotificationSettingsScreen(),
-                            ),
-                          );
-                        },
-                        child: Container(
-                          margin: const EdgeInsets.only(bottom: 16),
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
-                                blurRadius: 10,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Row(
+                      builder: (context, locService, child) => _buildExpandableSection(
+                        key: 'notifications',
+                        icon: LucideIcons.bell,
+                        title: 'settings_notifications'.tr(locService.currentLanguageCode),
+                        subtitle: _getNotificationSummary(locService.currentLanguageCode),
+                        children: [
+                        _buildSectionContent(
+                          child: Column(
                             children: [
-                              Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF6C63FF).withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: const Icon(
-                                  LucideIcons.bell,
-                                  color: Color(0xFF6C63FF),
-                                  size: 22,
-                                ),
+                              // Master Toggle
+                              _buildSwitchTile(
+                                title: locService.currentLanguageCode == 'fr'
+                                    ? 'Toutes les notifications'
+                                    : 'All notifications',
+                                subtitle: locService.currentLanguageCode == 'fr'
+                                    ? 'Active ou désactive toutes les notifications'
+                                    : 'Enable or disable all notifications',
+                                value: _notificationPrefs.notificationsEnabled,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _notificationPrefs = _notificationPrefs.copyWith(
+                                      notificationsEnabled: value,
+                                    );
+                                  });
+                                  _saveNotificationPreferences();
+                                },
                               ),
-                              const SizedBox(width: 16),
-                              Expanded(
+
+                              const SizedBox(height: 16),
+                              const Divider(color: Color(0xFFE2E8F0), height: 1),
+                              const SizedBox(height: 16),
+
+                              // Quiet Hours
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      'settings_notifications'.tr(locService.currentLanguageCode),
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                        color: Color(0xFF1A1A1A),
-                                      ),
+                                    Row(
+                                      children: [
+                                        const Icon(LucideIcons.moonStar, color: Color(0xFF0B132B), size: 18),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          locService.currentLanguageCode == 'fr'
+                                              ? 'Heures silencieuses'
+                                              : 'Quiet hours',
+                                          style: const TextStyle(
+                                            color: Color(0xFF0B132B),
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      locService.currentLanguageCode == 'fr'
-                                          ? 'Gérer les rappels et notifications'
-                                          : 'Manage reminders and notifications',
-                                      style: const TextStyle(
-                                        fontSize: 13,
-                                        color: Color(0xFF64748B),
-                                      ),
+                                    const SizedBox(height: 12),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: _buildTimeSelector(
+                                            label: locService.currentLanguageCode == 'fr' ? 'Début' : 'Start',
+                                            hour: _notificationPrefs.quietHoursStart,
+                                            onChanged: (value) {
+                                              setState(() {
+                                                _notificationPrefs = _notificationPrefs.copyWith(
+                                                  quietHoursStart: value,
+                                                );
+                                              });
+                                              _saveNotificationPreferences();
+                                            },
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: _buildTimeSelector(
+                                            label: locService.currentLanguageCode == 'fr' ? 'Fin' : 'End',
+                                            hour: _notificationPrefs.quietHoursEnd,
+                                            onChanged: (value) {
+                                              setState(() {
+                                                _notificationPrefs = _notificationPrefs.copyWith(
+                                                  quietHoursEnd: value,
+                                                );
+                                              });
+                                              _saveNotificationPreferences();
+                                            },
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),
                               ),
-                              const Icon(
-                                LucideIcons.chevronRight,
-                                color: Color(0xFF94A3B8),
-                                size: 20,
+
+                              const SizedBox(height: 16),
+                              const Divider(color: Color(0xFFE2E8F0), height: 1),
+                              const SizedBox(height: 16),
+
+                              // Meal Reminders avec horaires
+                              _buildNotificationCategory(
+                                icon: LucideIcons.utensils,
+                                title: locService.currentLanguageCode == 'fr'
+                                    ? 'Rappels de repas'
+                                    : 'Meal reminders',
+                                enabled: _notificationPrefs.mealRemindersEnabled,
+                                onToggle: (value) {
+                                  setState(() {
+                                    _notificationPrefs = _notificationPrefs.copyWith(
+                                      mealRemindersEnabled: value,
+                                    );
+                                  });
+                                  _saveNotificationPreferences();
+                                },
+                                children: _notificationPrefs.mealRemindersEnabled
+                                    ? [
+                                        _buildMealTimeRow(
+                                          label: locService.currentLanguageCode == 'fr'
+                                              ? 'Petit-déjeuner'
+                                              : 'Breakfast',
+                                          hour: _notificationPrefs.breakfastTime,
+                                          onChanged: (value) {
+                                            setState(() {
+                                              _notificationPrefs = _notificationPrefs.copyWith(
+                                                breakfastTime: value,
+                                              );
+                                            });
+                                            _saveNotificationPreferences();
+                                          },
+                                        ),
+                                        _buildMealTimeRow(
+                                          label: locService.currentLanguageCode == 'fr'
+                                              ? 'Déjeuner'
+                                              : 'Lunch',
+                                          hour: _notificationPrefs.lunchTime,
+                                          onChanged: (value) {
+                                            setState(() {
+                                              _notificationPrefs = _notificationPrefs.copyWith(
+                                                lunchTime: value,
+                                              );
+                                            });
+                                            _saveNotificationPreferences();
+                                          },
+                                        ),
+                                        _buildMealTimeRow(
+                                          label: locService.currentLanguageCode == 'fr'
+                                              ? 'Dîner'
+                                              : 'Dinner',
+                                          hour: _notificationPrefs.dinnerTime,
+                                          onChanged: (value) {
+                                            setState(() {
+                                              _notificationPrefs = _notificationPrefs.copyWith(
+                                                dinnerTime: value,
+                                              );
+                                            });
+                                            _saveNotificationPreferences();
+                                          },
+                                        ),
+                                      ]
+                                    : null,
+                              ),
+
+                              const SizedBox(height: 12),
+
+                              // Water Reminders avec fréquence
+                              _buildNotificationCategory(
+                                icon: LucideIcons.droplet,
+                                title: locService.currentLanguageCode == 'fr'
+                                    ? 'Hydratation'
+                                    : 'Hydration',
+                                enabled: _notificationPrefs.waterRemindersEnabled,
+                                onToggle: (value) {
+                                  setState(() {
+                                    _notificationPrefs = _notificationPrefs.copyWith(
+                                      waterRemindersEnabled: value,
+                                    );
+                                  });
+                                  _saveNotificationPreferences();
+                                },
+                                children: _notificationPrefs.waterRemindersEnabled
+                                    ? [
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                          child: Row(
+                                            children: [
+                                              Expanded(
+                                                child: Text(
+                                                  locService.currentLanguageCode == 'fr'
+                                                      ? 'Fréquence par jour'
+                                                      : 'Frequency per day',
+                                                  style: const TextStyle(
+                                                    color: Color(0xFF64748B),
+                                                    fontSize: 13,
+                                                  ),
+                                                ),
+                                              ),
+                                              Row(
+                                                children: [
+                                                  for (int i = 1; i <= 4; i++)
+                                                    Padding(
+                                                      padding: const EdgeInsets.only(left: 6),
+                                                      child: GestureDetector(
+                                                        onTap: () {
+                                                          setState(() {
+                                                            _notificationPrefs = _notificationPrefs.copyWith(
+                                                              waterReminderFrequency: i,
+                                                            );
+                                                          });
+                                                          _saveNotificationPreferences();
+                                                        },
+                                                        child: Container(
+                                                          width: 32,
+                                                          height: 32,
+                                                          decoration: BoxDecoration(
+                                                            color: _notificationPrefs.waterReminderFrequency == i
+                                                                ? const Color(0xFF0B132B)
+                                                                : const Color(0xFFF8FAFC),
+                                                            borderRadius: BorderRadius.circular(6),
+                                                            border: Border.all(
+                                                              color: _notificationPrefs.waterReminderFrequency == i
+                                                                  ? const Color(0xFF0B132B)
+                                                                  : const Color(0xFFE2E8F0),
+                                                            ),
+                                                          ),
+                                                          child: Center(
+                                                            child: Text(
+                                                              '$i',
+                                                              style: TextStyle(
+                                                                color: _notificationPrefs.waterReminderFrequency == i
+                                                                    ? Colors.white
+                                                                    : const Color(0xFF64748B),
+                                                                fontSize: 13,
+                                                                fontWeight: FontWeight.w600,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ]
+                                    : null,
+                              ),
+
+                              const SizedBox(height: 12),
+
+                              // Workout Reminders avec horaire
+                              _buildNotificationCategory(
+                                icon: LucideIcons.dumbbell,
+                                title: locService.currentLanguageCode == 'fr'
+                                    ? 'Entraînement'
+                                    : 'Workout',
+                                enabled: _notificationPrefs.workoutRemindersEnabled,
+                                onToggle: (value) {
+                                  setState(() {
+                                    _notificationPrefs = _notificationPrefs.copyWith(
+                                      workoutRemindersEnabled: value,
+                                    );
+                                  });
+                                  _saveNotificationPreferences();
+                                },
+                                children: _notificationPrefs.workoutRemindersEnabled
+                                    ? [
+                                        _buildMealTimeRow(
+                                          label: locService.currentLanguageCode == 'fr'
+                                              ? 'Heure préférée'
+                                              : 'Preferred time',
+                                          hour: _notificationPrefs.workoutReminderTime,
+                                          onChanged: (value) {
+                                            setState(() {
+                                              _notificationPrefs = _notificationPrefs.copyWith(
+                                                workoutReminderTime: value,
+                                              );
+                                            });
+                                            _saveNotificationPreferences();
+                                          },
+                                        ),
+                                      ]
+                                    : null,
+                              ),
+
+                              const SizedBox(height: 12),
+
+                              // Streak Protection
+                              _buildNotificationCategory(
+                                icon: LucideIcons.flame,
+                                title: locService.currentLanguageCode == 'fr'
+                                    ? 'Protection de série'
+                                    : 'Streak protection',
+                                subtitle: locService.currentLanguageCode == 'fr'
+                                    ? 'Te rappelle de log une activité si tu as une série active'
+                                    : 'Reminds you to log an activity if you have an active streak',
+                                enabled: _notificationPrefs.streakProtectionEnabled,
+                                onToggle: (value) {
+                                  setState(() {
+                                    _notificationPrefs = _notificationPrefs.copyWith(
+                                      streakProtectionEnabled: value,
+                                    );
+                                  });
+                                  _saveNotificationPreferences();
+                                },
+                              ),
+
+                              const SizedBox(height: 12),
+
+                              // Daily Goals Summary
+                              _buildNotificationCategory(
+                                icon: LucideIcons.target,
+                                title: locService.currentLanguageCode == 'fr'
+                                    ? 'Résumé quotidien'
+                                    : 'Daily summary',
+                                subtitle: locService.currentLanguageCode == 'fr'
+                                    ? 'Résumé de tes objectifs chaque soir'
+                                    : 'Summary of your goals each evening',
+                                enabled: _notificationPrefs.dailyGoalsSummaryEnabled,
+                                onToggle: (value) {
+                                  setState(() {
+                                    _notificationPrefs = _notificationPrefs.copyWith(
+                                      dailyGoalsSummaryEnabled: value,
+                                    );
+                                  });
+                                  _saveNotificationPreferences();
+                                },
+                              ),
+
+                              const SizedBox(height: 12),
+
+                              // Weekly Recap
+                              _buildNotificationCategory(
+                                icon: LucideIcons.calendar,
+                                title: locService.currentLanguageCode == 'fr'
+                                    ? 'Résumé hebdomadaire'
+                                    : 'Weekly recap',
+                                subtitle: locService.currentLanguageCode == 'fr'
+                                    ? 'Chaque dimanche à 18h'
+                                    : 'Every Sunday at 6 PM',
+                                enabled: _notificationPrefs.weeklyRecapEnabled,
+                                onToggle: (value) {
+                                  setState(() {
+                                    _notificationPrefs = _notificationPrefs.copyWith(
+                                      weeklyRecapEnabled: value,
+                                    );
+                                  });
+                                  _saveNotificationPreferences();
+                                },
+                              ),
+
+                              const SizedBox(height: 12),
+
+                              // Milestones
+                              _buildNotificationCategory(
+                                icon: LucideIcons.trophy,
+                                title: locService.currentLanguageCode == 'fr'
+                                    ? 'Jalons & célébrations'
+                                    : 'Milestones & celebrations',
+                                subtitle: locService.currentLanguageCode == 'fr'
+                                    ? 'Célèbre tes succès (séries, objectifs parfaits)'
+                                    : 'Celebrate your achievements (streaks, perfect goals)',
+                                enabled: _notificationPrefs.milestonesEnabled,
+                                onToggle: (value) {
+                                  setState(() {
+                                    _notificationPrefs = _notificationPrefs.copyWith(
+                                      milestonesEnabled: value,
+                                    );
+                                  });
+                                  _saveNotificationPreferences();
+                                },
                               ),
                             ],
                           ),
                         ),
+                      ],
                       ),
                     ),
                     
@@ -1575,50 +1896,80 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                     // Espace en bas
                     const SizedBox(height: 100),
                   ],
-                  ),
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
   
   Widget _buildHeader() {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Color(0x0A000000),
-            blurRadius: 8,
-            offset: Offset(0, 2),
+    final locService = LocalizationService.instance;
+
+    return Column(
+      children: [
+        // Header avec gradient (bandeau stats)
+        Container(
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+            ),
+            borderRadius: const BorderRadius.only(
+              bottomLeft: Radius.circular(24),
+              bottomRight: Radius.circular(24),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF0B132B).withOpacity(0.3),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // NOUVEAU: Bandeau global avec GlobalStateManager (synchronisé instantanément)
-          Stack(
+          child: const GlobalStateHeaderWidget(),
+        ),
+
+        // Titre et bouton retour (sur fond blanc)
+        Container(
+          color: const Color(0xFFF8FAFC),
+          padding: const EdgeInsets.only(left: 16, right: 16, top: 20, bottom: 16),
+          child: Row(
             children: [
-              const GlobalStateHeaderWidget(),
-              Positioned(
-                left: 12,
-                top: 10,
-                child: GestureDetector(
-                  onTap: () => Navigator.pop(context),
+              // Bouton retour
+              GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
                   child: const Icon(
                     LucideIcons.arrowLeft,
-                    color: Colors.white,
+                    color: Color(0xFF0B132B),
                     size: 20,
                   ),
                 ),
               ),
+              const SizedBox(width: 16),
+              // Titre
+              Text(
+                locService.currentLanguageCode == 'fr' ? 'Paramètres' : 'Settings',
+                style: const TextStyle(
+                  color: Color(0xFF0B132B),
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
   
@@ -1968,9 +2319,201 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
     );
   }
-  
-  
-  
+
+  // ===== MÉTHODES POUR NOTIFICATIONS =====
+
+  /// Sauvegarde les préférences de notifications
+  Future<void> _saveNotificationPreferences() async {
+    await _notificationService.savePreferences(_notificationPrefs);
+  }
+
+  /// Widget pour afficher une catégorie de notification avec toggle
+  Widget _buildNotificationCategory({
+    required IconData icon,
+    required String title,
+    String? subtitle,
+    required bool enabled,
+    required Function(bool) onToggle,
+    List<Widget>? children,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                Icon(icon, color: const Color(0xFF0B132B), size: 18),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          color: Color(0xFF0B132B),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      if (subtitle != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          subtitle,
+                          style: const TextStyle(
+                            color: Color(0xFF64748B),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                Switch(
+                  value: enabled,
+                  onChanged: onToggle,
+                  activeColor: const Color(0xFF0B132B),
+                ),
+              ],
+            ),
+          ),
+          if (children != null && enabled) ...[
+            const Divider(color: Color(0xFFE2E8F0), height: 1),
+            ...children,
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// Widget pour sélectionner une heure de repas
+  Widget _buildMealTimeRow({
+    required String label,
+    required int hour,
+    required Function(int) onChanged,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: Color(0xFF64748B),
+                fontSize: 13,
+              ),
+            ),
+          ),
+          GestureDetector(
+            onTap: () => _showTimePickerDialog(hour, onChanged),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFFFFF),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(LucideIcons.clock, size: 14, color: Color(0xFF64748B)),
+                  const SizedBox(width: 6),
+                  Text(
+                    '${hour.toString().padLeft(2, '0')}:00',
+                    style: const TextStyle(
+                      color: Color(0xFF0B132B),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Widget pour sélectionner une heure (quiet hours)
+  Widget _buildTimeSelector({
+    required String label,
+    required int hour,
+    required Function(int) onChanged,
+  }) {
+    return GestureDetector(
+      onTap: () => _showTimePickerDialog(hour, onChanged),
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFFFFF),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                color: Color(0xFF64748B),
+                fontSize: 11,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(LucideIcons.clock, size: 14, color: Color(0xFF0B132B)),
+                const SizedBox(width: 4),
+                Text(
+                  '${hour.toString().padLeft(2, '0')}:00',
+                  style: const TextStyle(
+                    color: Color(0xFF0B132B),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Dialog pour sélectionner une heure
+  Future<void> _showTimePickerDialog(int currentHour, Function(int) onChanged) async {
+    final TimeOfDay? time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(hour: currentHour, minute: 0),
+      builder: (context, child) {
+        return Theme(
+          data: ThemeData.light().copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF0B132B),
+              surface: Colors.white,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (time != null) {
+      onChanged(time.hour);
+    }
+  }
+
+  // ===== FIN MÉTHODES NOTIFICATIONS =====
+
   Widget _buildNutritionPlan(String languageCode) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -2278,31 +2821,35 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
     return '$goalText • $activityText • $_caloriesTarget ${'kcal_per_day'.tr(languageCode)}';
   }
   
-  String _getNotificationSummary(String languageCode) {
-    int activeCount = 0;
-    if (_dailyReminder) activeCount++;
-    if (_workoutReminder) activeCount++;
-    if (_mealReminder) activeCount++;
-    if (_progressNotifications) activeCount++;
-    
-    if (activeCount == 0) {
-      return 'all_notifications_disabled'.tr(languageCode);
-    } else if (activeCount == 4) {
-      return 'all_notifications_enabled'.tr(languageCode);
-    } else {
-      final enabledText = activeCount > 1 
-        ? 'notifications_enabled_plural'.tr(languageCode)
-        : 'notifications_enabled'.tr(languageCode);
-      return '$activeCount $enabledText';
-    }
-  }
-  
   String _getPreferencesSummary(String languageCode) {
     final language = _language == 'Français' ? 'Français' : 'English';
     final measurement = _measurementUnit.tr(languageCode); // _measurementUnit est maintenant une clé
     return '$language • $measurement';
   }
-  
+
+  String _getNotificationSummary(String languageCode) {
+    if (!_notificationPrefs.notificationsEnabled) {
+      return languageCode == 'fr' ? 'Désactivées' : 'Disabled';
+    }
+
+    int activeCount = 0;
+    if (_notificationPrefs.mealRemindersEnabled) activeCount++;
+    if (_notificationPrefs.waterRemindersEnabled) activeCount++;
+    if (_notificationPrefs.workoutRemindersEnabled) activeCount++;
+    if (_notificationPrefs.streakProtectionEnabled) activeCount++;
+    if (_notificationPrefs.dailyGoalsSummaryEnabled) activeCount++;
+    if (_notificationPrefs.weeklyRecapEnabled) activeCount++;
+    if (_notificationPrefs.milestonesEnabled) activeCount++;
+
+    if (activeCount == 7) {
+      return languageCode == 'fr' ? 'Toutes actives' : 'All enabled';
+    }
+
+    return languageCode == 'fr'
+        ? '$activeCount catégorie${activeCount > 1 ? 's' : ''} active${activeCount > 1 ? 's' : ''}'
+        : '$activeCount categor${activeCount > 1 ? 'ies' : 'y'} enabled';
+  }
+
   List<String> _getMeasurementOptions(String languageCode) {
     return [
       'metric'.tr(languageCode),

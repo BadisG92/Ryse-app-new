@@ -28,7 +28,7 @@ class _RyzeAppState extends State<RyzeApp> {
   Widget? _targetScreen;
 
   // Flag de debug pour forcer certains écrans (utile en développement)
-  static const bool _forceOnboarding = false;
+  static const bool _forceOnboarding = false; // ✅ PRODUCTION: Onboarding normal
   static const bool _forceValueProp = false;
 
   @override
@@ -64,9 +64,54 @@ class _RyzeAppState extends State<RyzeApp> {
         if (!hasCompleteName) {
           debugPrint('⚠️ Nom manquant → CompleteProfileScreen');
           targetScreen = CompleteProfileScreen(
-            onComplete: () {
-              // Après avoir complété le nom, redéterminer le routing
-              _determineInitialRoute();
+            onComplete: () async {
+              // Après avoir complété le nom, naviguer vers l'écran approprié
+              if (!mounted) return;
+
+              try {
+                final response = await supabase
+                    .from('users')
+                    .select('is_onboarded')
+                    .eq('id', session.user.id)
+                    .single()
+                    .timeout(const Duration(seconds: 5));
+
+                final isOnboarded = response['is_onboarded'] ?? false;
+
+                if (mounted) {
+                  if (isOnboarded) {
+                    debugPrint('🎯 Profil complété → App directement');
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(builder: (context) => const MainApp()),
+                    );
+                  } else {
+                    debugPrint('📋 Profil complété → Onboarding (sans slides)');
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(
+                        builder: (context) => OnboardingWithValueProp(
+                          onComplete: _completeOnboarding,
+                          isUserLoggedIn: true,
+                          skipValueProp: true, // Skip les slides, direct onboarding
+                        ),
+                      ),
+                    );
+                  }
+                }
+              } catch (e) {
+                debugPrint('❌ Erreur navigation post-profile: $e');
+                // En cas d'erreur, aller vers l'onboarding par défaut
+                if (mounted) {
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(
+                      builder: (context) => OnboardingWithValueProp(
+                        onComplete: _completeOnboarding,
+                        isUserLoggedIn: true,
+                        skipValueProp: true, // Skip les slides, direct onboarding
+                      ),
+                    ),
+                  );
+                }
+              }
             },
           );
         } else {
@@ -89,10 +134,11 @@ class _RyzeAppState extends State<RyzeApp> {
               targetScreen = const MainApp();
             } else {
               // ⚠️ Compte existe mais onboarding incomplet
-              debugPrint('📋 Onboarding incomplet → Reprendre onboarding');
+              debugPrint('📋 Onboarding incomplet → Onboarding direct (sans slides)');
               targetScreen = OnboardingWithValueProp(
                 onComplete: _completeOnboarding,
                 isUserLoggedIn: true,
+                skipValueProp: true, // IMPORTANT: Jamais de slides après login
               );
             }
           } catch (e) {
@@ -107,6 +153,7 @@ class _RyzeAppState extends State<RyzeApp> {
               targetScreen = OnboardingWithValueProp(
                 onComplete: _completeOnboarding,
                 isUserLoggedIn: true,
+                skipValueProp: true, // IMPORTANT: Jamais de slides après login
               );
             }
           }
@@ -156,19 +203,52 @@ class _RyzeAppState extends State<RyzeApp> {
 
   /// Appelée quand l'onboarding est terminé
   Future<void> _completeOnboarding() async {
-    // Marquer que l'utilisateur a vu l'intro
+    debugPrint('🎯 _completeOnboarding appelé');
+    debugPrint('🎯 Widget mounted: $mounted');
+
+    final supabase = Supabase.instance.client;
+    final user = supabase.auth.currentUser;
+
+    // Marquer que l'utilisateur a vu l'intro (local)
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('has_seen_intro', true);
     await prefs.setBool('is_onboarded', true);
 
+    // IMPORTANT: Mettre à jour Supabase pour persister l'état
+    if (user != null) {
+      try {
+        await supabase.from('users').update({
+          'is_onboarded': true,
+        }).eq('id', user.id);
+        debugPrint('✅ Onboarding marqué comme terminé dans Supabase');
+      } catch (e) {
+        debugPrint('❌ Erreur mise à jour onboarding dans Supabase: $e');
+        // Continue quand même, l'utilisateur a les SharedPreferences
+      }
+    }
+
     debugPrint('✅ Onboarding terminé');
 
-    // Naviguer vers l'app
-    if (mounted) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const MainApp()),
-      );
-    }
+    // Attendre que tous les frames soient rendus avant de naviguer
+    // Cela garantit que le widget est stable
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      debugPrint('🎯 PostFrameCallback - Widget mounted: $mounted');
+
+      if (mounted) {
+        debugPrint('🚀 Navigation vers MainApp...');
+        try {
+          // Utiliser le root navigator pour être sûr de remplacer toute la stack
+          Navigator.of(context, rootNavigator: true).pushReplacement(
+            MaterialPageRoute(builder: (context) => const MainApp()),
+          );
+          debugPrint('✅ Navigation réussie');
+        } catch (e) {
+          debugPrint('❌ Erreur navigation: $e');
+        }
+      } else {
+        debugPrint('❌ Widget non mounted dans PostFrameCallback');
+      }
+    });
   }
 
   /// Méthode utilitaire pour réinitialiser l'onboarding (développement)

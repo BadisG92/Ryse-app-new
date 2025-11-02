@@ -45,22 +45,26 @@ class _WeeklyStatsSectionState extends State<WeeklyStatsSection> {
       debugPrint('📊 WeeklyStatsSection: Chargement des stats hebdomadaires...');
       final stats = await CardioService.getWeeklyStats();
       debugPrint('📊 WeeklyStatsSection: Stats reçues: ${stats.sessionsCount} sessions, ${stats.totalCalories} kcal, ${stats.totalDistance} km');
-      setState(() {
-        _stats = stats;
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _stats = stats;
+          _loading = false;
+        });
+      }
     } catch (e) {
       debugPrint('❌ WeeklyStatsSection: Erreur lors du chargement: $e');
-      setState(() {
-        _loading = false;
-        // Fallback vers des stats vides
-        _stats = const CardioWeeklyStats(
-          totalDistance: 0,
-          totalDuration: Duration.zero,
-          totalCalories: 0,
-          sessionsCount: 0,
-        );
-      });
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          // Fallback vers des stats vides
+          _stats = const CardioWeeklyStats(
+            totalDistance: 0,
+            totalDuration: Duration.zero,
+            totalCalories: 0,
+            sessionsCount: 0,
+          );
+        });
+      }
     }
   }
 
@@ -175,14 +179,18 @@ class _ActivitySelectionSectionState extends State<ActivitySelectionSection> {
     try {
       final locService = LocalizationService.instance;
       final activities = await CardioService.getCardioActivities(language: locService.currentLanguageCode);
-      setState(() {
-        _activities = activities;
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _activities = activities;
+          _loading = false;
+        });
+      }
     } catch (e) {
-      setState(() {
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _loading = false;
+        });
+      }
     }
   }
 
@@ -321,15 +329,19 @@ class _LastSessionSectionState extends State<LastSessionSection> {
       } else {
         debugPrint('🔍 LastSessionSection: Aucune séance trouvée');
       }
-      setState(() {
-        _lastSession = session;
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _lastSession = session;
+          _loading = false;
+        });
+      }
     } catch (e) {
       debugPrint('❌ LastSessionSection: Erreur lors du chargement: $e');
-      setState(() {
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _loading = false;
+        });
+      }
     }
   }
 
@@ -528,15 +540,19 @@ class _WeekSessionsSectionState extends State<WeekSessionsSection> {
         final s = sessions[i];
         debugPrint('   [$i] ${s.activityTitle} - ${s.timeAgo} - ${s.caloriesText}');
       }
-      setState(() {
-        _sessions = sessions;
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _sessions = sessions;
+          _loading = false;
+        });
+      }
     } catch (e) {
       debugPrint('❌ WeekSessionsSection: Erreur lors du chargement: $e');
-      setState(() {
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _loading = false;
+        });
+      }
     }
   }
 

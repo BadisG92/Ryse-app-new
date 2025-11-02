@@ -261,8 +261,25 @@ class _GlobalProgressState extends State<GlobalProgress> {
   }
   
   void _onWeightChanged() {
-    debugPrint('🔄 GlobalProgress: Weight changed, reloading data');
-    _loadProgressData();
+    debugPrint('🔄 GlobalProgress: Weight changed, reloading weight data');
+    // Forcer le rechargement du poids uniquement (ne pas attendre le cache)
+    _reloadWeightOnly();
+  }
+
+  /// Recharge uniquement les données de poids (bypass du cache)
+  Future<void> _reloadWeightOnly() async {
+    try {
+      final weightProgress = await WeightService.getWeightProgress();
+      if (mounted) {
+        setState(() {
+          _weightProgress = weightProgress;
+        });
+        _saveWeightToCache(weightProgress);
+        debugPrint('✅ GlobalProgress: Poids rechargé avec target_weight mis à jour');
+      }
+    } catch (e) {
+      debugPrint('❌ Erreur lors du rechargement du poids: $e');
+    }
   }
 
   Future<void> _loadProgressData() async {

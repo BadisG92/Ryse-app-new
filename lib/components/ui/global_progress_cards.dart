@@ -316,26 +316,7 @@ class WeightEvolutionCard extends StatelessWidget {
                                 ),
                               ),
 
-                              // 3. Zone de confort autour de l'objectif (±2kg)
-                              if (progress.targetWeight > 0)
-                                LineChartBarData(
-                                  spots: [
-                                    FlSpot(-0.5, progress.targetWeight - 2),
-                                    FlSpot(math.max(6, progress.entries.length - 1).toDouble() + 0.5, progress.targetWeight - 2),
-                                  ],
-                                  isCurved: false,
-                                  color: Colors.transparent,
-                                  barWidth: 0,
-                                  dotData: const FlDotData(show: false),
-                                  belowBarData: BarAreaData(
-                                    show: true,
-                                    applyCutOffY: true,
-                                    cutOffY: progress.targetWeight + 2,
-                                    color: const Color(0xFF64748B).withValues(alpha: 0.05),
-                                  ),
-                                ),
-
-                              // 4. Ligne d'objectif - plus épaisse et visible
+                              // 3. Ligne d'objectif - plus épaisse et visible
                               if (progress.targetWeight > 0)
                                 LineChartBarData(
                                   spots: [

@@ -14,6 +14,7 @@ import '../services/offline_workout_service.dart';
 import '../services/workout_cache_service.dart';
 import '../services/sport_dashboard_service.dart';
 import '../services/global_state_manager.dart';
+import '../services/analytics_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/translations.dart';
 import '../services/localization_service.dart';
@@ -924,20 +925,187 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
 
                     const SizedBox(height: 16),
 
-                    // Ligne de filtres de groupes musculaires défilable
-                    Row(
-                      children: [
-                        // Bouton "Tout" pour déselectionner tous les filtres
-                        if (selectedMuscleFilters.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(right: 6),
-                            child: GestureDetector(
+                    // Grille de groupes musculaires si recherche vide et aucun filtre actif
+                    if (searchController.text.isEmpty && selectedMuscleFilters.isEmpty) ...[
+                      Consumer<LocalizationService>(
+                        builder: (context, locService, _) => Text(
+                          locService.isFrench ? 'Choisir par groupe musculaire' : 'Choose by muscle group',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF64748B),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Expanded(
+                        child: GridView.builder(
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 3,
+                            childAspectRatio: 0.95,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                          ),
+                          itemCount: availableMuscleGroups.length + 1, // +1 pour "Personnalisé"
+                          itemBuilder: (context, index) {
+                            // Dernier élément = "Personnalisé"
+                            if (index == availableMuscleGroups.length) {
+                              return GestureDetector(
+                                onTap: () {
+                                  setModalState(() {
+                                    selectedMuscleFilters.add('workout_custom_type'.tr(LocalizationService.instance.currentLanguageCode));
+                                    filterExercises();
+                                  });
+                                },
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Container(
+                                      width: 70,
+                                      height: 70,
+                                      decoration: BoxDecoration(
+                                        gradient: const LinearGradient(
+                                          colors: [Color(0xFF0B132B), Color(0xFF1E293B)],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        ),
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                      padding: const EdgeInsets.all(6),
+                                      child: ColorFiltered(
+                                        colorFilter: const ColorFilter.mode(
+                                          Colors.white,
+                                          BlendMode.srcIn,
+                                        ),
+                                        child: Image.asset(
+                                          'assets/images/muscle_groups/custom.png',
+                                          fit: BoxFit.contain,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Consumer<LocalizationService>(
+                                      builder: (context, locService, _) => Text(
+                                        locService.isFrench ? 'Personnalisé' : 'Custom',
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          color: Color(0xFF1A1A1A),
+                                        ),
+                                        textAlign: TextAlign.center,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }
+
+                            final group = availableMuscleGroups[index];
+
+                            // Images personnalisées par groupe musculaire
+                            String imagePath;
+
+                            switch (group.toLowerCase()) {
+                              case 'cardio':
+                                imagePath = 'assets/images/muscle_groups/cardio.png';
+                                break;
+                              case 'personnalisé':
+                                imagePath = 'assets/images/muscle_groups/custom.png';
+                                break;
+                              case 'pectoraux':
+                                imagePath = 'assets/images/muscle_groups/chest.png';
+                                break;
+                              case 'dos':
+                                imagePath = 'assets/images/muscle_groups/back.png';
+                                break;
+                              case 'jambes':
+                                imagePath = 'assets/images/muscle_groups/legs.png';
+                                break;
+                              case 'épaules':
+                                imagePath = 'assets/images/muscle_groups/shoulders.png';
+                                break;
+                              case 'bras':
+                                imagePath = 'assets/images/muscle_groups/arms.png';
+                                break;
+                              case 'abdos':
+                                imagePath = 'assets/images/muscle_groups/abs.png';
+                                break;
+                              case 'corps complet':
+                                imagePath = 'assets/images/muscle_groups/full_body.png';
+                                break;
+                              default:
+                                imagePath = 'assets/images/muscle_groups/chest.png';
+                            }
+
+                            return GestureDetector(
                               onTap: () {
                                 setModalState(() {
-                                  selectedMuscleFilters.clear();
+                                  selectedMuscleFilters.add(group);
                                   filterExercises();
                                 });
                               },
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Container(
+                                    width: 70,
+                                    height: 70,
+                                    decoration: BoxDecoration(
+                                      gradient: const LinearGradient(
+                                        colors: [Color(0xFF0B132B), Color(0xFF1E293B)],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ),
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    padding: const EdgeInsets.all(6),
+                                    child: ColorFiltered(
+                                      colorFilter: const ColorFilter.mode(
+                                        Colors.white,
+                                        BlendMode.srcIn,
+                                      ),
+                                      child: Image.asset(
+                                        imagePath,
+                                        fit: BoxFit.contain,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    group,
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF1A1A1A),
+                                    ),
+                                    textAlign: TextAlign.center,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ]
+                    else ...[
+                      // Ligne de filtres de groupes musculaires défilable (si filtre actif ou recherche non vide)
+                      Row(
+                        children: [
+                          // Bouton "Tout" pour déselectionner tous les filtres
+                          if (selectedMuscleFilters.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(right: 6),
+                              child: GestureDetector(
+                                onTap: () {
+                                  setModalState(() {
+                                    selectedMuscleFilters.clear();
+                                    filterExercises();
+                                  });
+                                },
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 10,
@@ -1133,175 +1301,171 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                           ),
                         ),
                       ),
-                    
+
                     // Liste des exercices
                     Expanded(
-                      child: ListView.builder(
-                        itemCount: filteredExercises.length,
-                        itemBuilder: (context, index) {
-                          final exercise = filteredExercises[index];
-                          return GestureDetector(
-                            onTap: () {
-                              Navigator.pop(context);
-                              _showSetsCountDialog(
-                                exercise.name,
-                                exercise.muscleGroup,
-                                exerciseId: exercise.id,
-                              );
-                              // Reset après un délai
-                              Timer(const Duration(milliseconds: 200), () {
-                                if (mounted) {
-                                  setState(() {
-                                    _addExercisePressed = false;
-                                  });
-                                }
-                              });
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.all(16),
-                              margin: const EdgeInsets.only(bottom: 8),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF8FAFC),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: const Color(0xFFE2E8F0)),
-                              ),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Row(
-                                          children: [
-                                            Expanded(
-                                              child: Text(
-                                                exercise.name,
-                                                style: const TextStyle(
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: Color(0xFF1A1A1A),
+                        child: ListView.builder(
+                          itemCount: filteredExercises.length,
+                          itemBuilder: (context, index) {
+                            final exercise = filteredExercises[index];
+                            return GestureDetector(
+                              onTap: () {
+                                Navigator.pop(context);
+                                _showSetsCountDialog(
+                                  exercise.name,
+                                  exercise.muscleGroup,
+                                  exerciseId: exercise.id,
+                                );
+                                // Reset après un délai
+                                Timer(const Duration(milliseconds: 200), () {
+                                  if (mounted) {
+                                    setState(() {
+                                      _addExercisePressed = false;
+                                    });
+                                  }
+                                });
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.all(16),
+                                margin: const EdgeInsets.only(bottom: 8),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF8FAFC),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: Text(
+                                                  exercise.name,
+                                                  style: TextStyle(
+                                                    fontSize: exercise.name.length > 30 ? 12 : 14,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: const Color(0xFF1A1A1A),
+                                                    height: 1.3,
+                                                  ),
+                                                  maxLines: 2,
+                                                  overflow: TextOverflow.ellipsis,
                                                 ),
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ),
-                                            if (exercise.isCustom) ...[
-                                              const SizedBox(width: 8),
-                                              Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                                decoration: BoxDecoration(
-                                                  color: const Color(0xFF0B132B).withOpacity(0.08),
-                                                  borderRadius: BorderRadius.circular(8),
-                                                  border: Border.all(color: const Color(0xFF0B132B).withOpacity(0.2)),
                                                 ),
-                                                child: Consumer<LocalizationService>(
-                                                  builder: (context, locService, _) => Text(
-                                                    'workout_custom_badge'.tr(locService.currentLanguageCode),
-                                                    style: TextStyle(fontSize: 10, color: Color(0xFF0B132B), fontWeight: FontWeight.w600),
+                                              if (exercise.isCustom) ...[
+                                                const SizedBox(width: 8),
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                                  decoration: BoxDecoration(
+                                                    color: const Color(0xFF0B132B).withOpacity(0.08),
+                                                    borderRadius: BorderRadius.circular(8),
+                                                    border: Border.all(color: const Color(0xFF0B132B).withOpacity(0.2)),
+                                                  ),
+                                                  child: Consumer<LocalizationService>(
+                                                    builder: (context, locService, _) => Text(
+                                                      'workout_custom_badge'.tr(locService.currentLanguageCode),
+                                                      style: const TextStyle(fontSize: 10, color: Color(0xFF0B132B), fontWeight: FontWeight.w600),
+                                                    ),
                                                   ),
                                                 ),
-                                              ),
+                                              ],
+                                              // Tag de fréquence
+                                              () {
+                                                final sessionCount = exerciseSessionCounts[exercise.name] ?? 0;
+
+                                                if (sessionCount == 0) {
+                                                  // Nouveau - Style comme les kcal dans week history (bleu foncé avec lettres blanches)
+                                                  return Row(
+                                                    children: [
+                                                      const SizedBox(width: 8),
+                                                      Container(
+                                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                                        decoration: BoxDecoration(
+                                                          color: const Color(0xFF0B132B),
+                                                          borderRadius: BorderRadius.circular(8),
+                                                        ),
+                                                        child: Text(
+                                                          LocalizationService.instance.isFrench ? 'Nouveau' : 'New',
+                                                          style: const TextStyle(
+                                                            fontSize: 10,
+                                                            fontWeight: FontWeight.w600,
+                                                            color: Colors.white,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  );
+                                                } else {
+                                                  // Déjà utilisé - Couleur principale de l'app
+                                                  return Row(
+                                                    children: [
+                                                      const SizedBox(width: 8),
+                                                      Container(
+                                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                                        decoration: BoxDecoration(
+                                                          color: const Color(0xFF0B132B).withOpacity(0.1),
+                                                          borderRadius: BorderRadius.circular(8),
+                                                          border: Border.all(color: const Color(0xFF0B132B).withOpacity(0.3), width: 1),
+                                                        ),
+                                                        child: Text(
+                                                          LocalizationService.instance.isFrench
+                                                              ? '$sessionCount ${sessionCount == 1 ? 'fois' : 'fois'}'
+                                                              : '$sessionCount ${sessionCount == 1 ? 'time' : 'times'}',
+                                                          style: const TextStyle(
+                                                            fontSize: 10,
+                                                            fontWeight: FontWeight.w600,
+                                                            color: Color(0xFF0B132B),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  );
+                                                }
+                                              }(),
                                             ],
-                                            // Tag de fréquence
-                                            () {
-                                              final sessionCount = exerciseSessionCounts[exercise.name] ?? 0;
-                                              
-                                              if (sessionCount == 0) {
-                                                // Nouveau - Style comme les kcal dans week history (bleu foncé avec lettres blanches)
-                                                return Row(
-                                                  children: [
-                                                    const SizedBox(width: 8),
-                                                    Container(
-                                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                                      decoration: BoxDecoration(
-                                                        color: const Color(0xFF0B132B),
-                                                        borderRadius: BorderRadius.circular(8),
-                                                      ),
-                                                      child: Text(
-                                                        LocalizationService.instance.isFrench ? 'Nouveau' : 'New',
-                                                        style: const TextStyle(
-                                                          fontSize: 10,
-                                                          fontWeight: FontWeight.w600,
-                                                          color: Colors.white,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                );
-                                              } else {
-                                                // Déjà utilisé - Couleur principale de l'app
-                                                return Row(
-                                                  children: [
-                                                    const SizedBox(width: 8),
-                                                    Container(
-                                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                                      decoration: BoxDecoration(
-                                                        color: const Color(0xFF0B132B).withOpacity(0.1),
-                                                        borderRadius: BorderRadius.circular(8),
-                                                        border: Border.all(color: const Color(0xFF0B132B).withOpacity(0.3), width: 1),
-                                                      ),
-                                                      child: Text(
-                                                        LocalizationService.instance.isFrench 
-                                                            ? '$sessionCount ${sessionCount == 1 ? 'fois' : 'fois'}'
-                                                            : '$sessionCount ${sessionCount == 1 ? 'time' : 'times'}',
-                                                        style: const TextStyle(
-                                                          fontSize: 10,
-                                                          fontWeight: FontWeight.w600,
-                                                          color: Color(0xFF0B132B),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                );
-                                              }
-                                            }(),
-                                          ],
-                                        ),
-                                        Text(
-                                          exercise.muscleGroup,
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            color: Color(0xFF64748B),
                                           ),
-                                        ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                  if (exercise.isCustom)
-                                    IconButton(
-                                      icon: const Icon(LucideIcons.eyeOff, size: 16, color: Color(0xFF64748B)),
-                                      tooltip: 'hide'.tr(LocalizationService.instance.currentLanguageCode),
-                                      onPressed: () async {
-                                        final ok = await db.DatabaseService.hideCustomExercise(exercise.id);
-                                        if (ok) {
-                                          setModalState(() {
-                                            filteredExercises.removeAt(index);
-                                          });
-                                          if (context.mounted) {
-                                            ScaffoldMessenger.of(context).showSnackBar(
-                                              SnackBar(
-                                                content: Consumer<LocalizationService>(
-                                                  builder: (context, locService, _) => Text('workout_exercise_hidden'.tr(locService.currentLanguageCode)),
+                                    if (exercise.isCustom)
+                                      IconButton(
+                                        icon: const Icon(LucideIcons.eyeOff, size: 16, color: Color(0xFF64748B)),
+                                        tooltip: 'hide'.tr(LocalizationService.instance.currentLanguageCode),
+                                        onPressed: () async {
+                                          final ok = await db.DatabaseService.hideCustomExercise(exercise.id);
+                                          if (ok) {
+                                            setModalState(() {
+                                              filteredExercises.removeAt(index);
+                                            });
+                                            if (context.mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(
+                                                  content: Consumer<LocalizationService>(
+                                                    builder: (context, locService, _) => Text('workout_exercise_hidden'.tr(locService.currentLanguageCode)),
+                                                  ),
+                                                  duration: const Duration(seconds: 2)
                                                 ),
-                                                duration: const Duration(seconds: 2)
-                                              ),
-                                            );
+                                              );
+                                            }
                                           }
-                                        }
-                                      },
-                                    )
-                                  else
-                                    const Icon(
-                                      LucideIcons.chevronRight,
-                                      size: 16,
-                                      color: Color(0xFF64748B),
-                                    ),
-                                ],
+                                        },
+                                      )
+                                    else
+                                      const Icon(
+                                        LucideIcons.chevronRight,
+                                        size: 16,
+                                        color: Color(0xFF64748B),
+                                      ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          );
+                            );
                         },
                       ),
                     ),
+                    ],
                   ],
                 ),
               ),
@@ -1715,6 +1879,14 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
       guidedTemplateId = null;
       if (kDebugMode) debugPrint('✍️ Séance manuelle détectée: session_source=manual, guidedTemplateId=null');
     }
+
+    // 📊 Analytics: Workout completed
+    AnalyticsService.logWorkoutCompleted(
+      workoutType: 'strength',
+      durationMinutes: _displayedDuration.inMinutes,
+      exerciseCount: completedSession.exercises.length,
+      caloriesBurned: _estimatedCalories,
+    );
 
     // Historiser la séance (manuel, guidé, ou IA)
     db.DatabaseService.persistCompletedWorkoutAsHistory(
@@ -2932,8 +3104,18 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
+                  gradient: _isVoiceListening && _activeSetIndex == setIndex
+                      ? const LinearGradient(
+                          colors: [
+                            Color(0xFF10B981), // Vert emerald-500
+                            Color(0xFF059669), // Vert emerald-600
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        )
+                      : null,
                   color: _isVoiceListening && _activeSetIndex == setIndex
-                      ? const Color(0xFFEF4444) // Rouge quand actif
+                      ? null
                       : const Color(0xFF1C2951), // Bleu de l'app (visible)
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -3628,12 +3810,12 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
 
   /// Overlay en bas de page pendant l'écoute (plus fullscreen)
   Widget _buildVoiceListeningOverlay() {
-    // Couleur selon le retry count
+    // Couleur verte pour l'écoute active - dégradé selon retry count pour feedback
     final micColor = _voiceRetryCount == 0
-        ? const Color(0xFFEF4444) // Rouge vif
+        ? const Color(0xFF10B981) // Vert emerald-500
         : _voiceRetryCount == 1
-            ? const Color(0xFFF97316) // Orange
-            : const Color(0xFFDC2626); // Rouge foncé
+            ? const Color(0xFF059669) // Vert emerald-600
+            : const Color(0xFF047857); // Vert emerald-700
 
     // Parser les données en temps réel pour feedback visuel
     final parsedData = _recognizedText.isNotEmpty

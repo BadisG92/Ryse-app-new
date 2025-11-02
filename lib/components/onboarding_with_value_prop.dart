@@ -12,12 +12,14 @@ class OnboardingWithValueProp extends StatefulWidget {
   final VoidCallback onComplete;
   final bool showValuePropFirst;
   final bool isUserLoggedIn;
+  final bool skipValueProp; // Nouveau: pour aller directement à l'onboarding
 
   const OnboardingWithValueProp({
     Key? key,
     required this.onComplete,
     this.showValuePropFirst = false,
     this.isUserLoggedIn = false,
+    this.skipValueProp = false, // Par défaut, afficher les slides
   }) : super(key: key);
 
   @override
@@ -30,8 +32,8 @@ class _OnboardingWithValuePropState extends State<OnboardingWithValueProp> {
   @override
   void initState() {
     super.initState();
-    // Toujours commencer par les slides de value prop (qui incluent maintenant le welcome)
-    _currentStep = 1;
+    // Si skipValueProp est true, aller directement à l'onboarding
+    _currentStep = widget.skipValueProp ? 2 : 1;
   }
 
   Future<void> _onValuePropComplete() async {

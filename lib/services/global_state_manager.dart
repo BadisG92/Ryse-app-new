@@ -41,6 +41,9 @@ class GlobalStateManager {
   // Objectifs utilisateur (pour calcul de progression)
   double _calorieGoal = 2000;
   double _waterGoalL = 2.0;
+  int _proteinGoal = 0;
+  int _carbsGoal = 0;
+  int _fatGoal = 0;
 
   // Streak (série de jours consécutifs)
   int _currentStreak = 0;
@@ -72,6 +75,9 @@ class GlobalStateManager {
   // Getters - Objectifs
   double get calorieGoal => _calorieGoal;
   double get waterGoalL => _waterGoalL;
+  int get proteinGoal => _proteinGoal;
+  int get carbsGoal => _carbsGoal;
+  int get fatGoal => _fatGoal;
   int get currentStreak => _currentStreak;
 
   // Getters - Informations utilisateur
@@ -164,7 +170,7 @@ class GlobalStateManager {
           // Récupérer les objectifs, le streak et le prénom de l'utilisateur
           client
               .from('users')
-              .select('daily_calories, daily_water_goal, streak_count, first_name')
+              .select('daily_calories, daily_water_goal, daily_protein, daily_carbs, daily_fat, streak_count, first_name')
               .eq('id', user.id)
               .single(),
         ]);
@@ -220,6 +226,9 @@ class GlobalStateManager {
 
         final dailyCaloriesGoal = (userProfile['daily_calories'] as num?)?.toDouble() ?? 2000;
         final dailyWaterGoalMl = (userProfile['daily_water_goal'] as num?)?.toDouble() ?? 2000;
+        final dailyProteinGoal = (userProfile['daily_protein'] as num?)?.toInt() ?? ((dailyCaloriesGoal * 0.30) / 4).toInt();
+        final dailyCarbsGoal = (userProfile['daily_carbs'] as num?)?.toInt() ?? ((dailyCaloriesGoal * 0.40) / 4).toInt();
+        final dailyFatGoal = (userProfile['daily_fat'] as num?)?.toInt() ?? ((dailyCaloriesGoal * 0.30) / 9).toInt();
         final streakCount = (userProfile['streak_count'] as num?)?.toInt() ?? 0;
 
         // Formater le nom avec la première lettre en majuscule dès le chargement
@@ -231,6 +240,9 @@ class GlobalStateManager {
         if (kDebugMode) debugPrint('📊 Valeurs extraites:');
         if (kDebugMode) debugPrint('   - dailyCaloriesGoal: $dailyCaloriesGoal (brut: ${userProfile['daily_calories']})');
         if (kDebugMode) debugPrint('   - dailyWaterGoalMl: $dailyWaterGoalMl (brut: ${userProfile['daily_water_goal']})');
+        if (kDebugMode) debugPrint('   - dailyProteinGoal: $dailyProteinGoal (brut: ${userProfile['daily_protein']})');
+        if (kDebugMode) debugPrint('   - dailyCarbsGoal: $dailyCarbsGoal (brut: ${userProfile['daily_carbs']})');
+        if (kDebugMode) debugPrint('   - dailyFatGoal: $dailyFatGoal (brut: ${userProfile['daily_fat']})');
         if (kDebugMode) debugPrint('   - streakCount: $streakCount');
         if (kDebugMode) debugPrint('   - name: $name');
 
@@ -248,6 +260,9 @@ class GlobalStateManager {
         // Mettre à jour les objectifs et infos utilisateur
         _calorieGoal = dailyCaloriesGoal;
         _waterGoalL = dailyWaterGoalMl / 1000.0;
+        _proteinGoal = dailyProteinGoal;
+        _carbsGoal = dailyCarbsGoal;
+        _fatGoal = dailyFatGoal;
         _currentStreak = streakCount;
         _userName = name;
 

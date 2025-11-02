@@ -352,9 +352,7 @@ class _AIChatInputScreenState extends State<AIChatInputScreen> {
                           Padding(
                             padding: const EdgeInsets.all(8.0),
                             child: Material(
-                              color: _isListening
-                                  ? const Color(0xFF0B132B)
-                                  : Colors.transparent,
+                              color: Colors.transparent,
                               borderRadius: BorderRadius.circular(12),
                               child: InkWell(
                                 onTap: _isAnalyzing ? null : _toggleListening,
@@ -363,13 +361,21 @@ class _AIChatInputScreenState extends State<AIChatInputScreen> {
                                   duration: const Duration(milliseconds: 200),
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
-                                    color: _isListening
-                                        ? const Color(0xFF0B132B)
-                                        : Colors.transparent,
+                                    gradient: _isListening
+                                        ? const LinearGradient(
+                                            colors: [
+                                              Color(0xFF10B981), // Vert emerald-500
+                                              Color(0xFF059669), // Vert emerald-600
+                                            ],
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                          )
+                                        : null,
+                                    color: _isListening ? null : Colors.transparent,
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: Icon(
-                                    _isListening ? LucideIcons.micOff : LucideIcons.mic,
+                                    LucideIcons.mic,
                                     color: _isListening
                                         ? Colors.white
                                         : (_speechEnabled

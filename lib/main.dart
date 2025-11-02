@@ -3,10 +3,12 @@ import 'dart:async';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'config/supabase_config.dart';
 import 'config/env_config.dart';
 import 'services/auth_service.dart';
 import 'services/localization_service.dart';
+import 'services/analytics_service.dart';
 import 'components/ui/recipe_models.dart';
 import 'pages/ryze_app.dart';
 import 'services/offline_workout_service.dart';
@@ -28,6 +30,16 @@ import 'services/widget_deep_link_handler.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // ===== FIREBASE ANALYTICS =====
+  try {
+    await Firebase.initializeApp();
+    await AnalyticsService.initialize();
+  } catch (e) {
+    debugPrint('⚠️ Firebase initialization failed: $e');
+    // L'app continue même si Firebase échoue
+  }
+  // ==============================
 
   // NOUVEAU: Initialize deep link handler for iOS widgets
   final navigatorKey = GlobalKey<NavigatorState>();

@@ -70,16 +70,24 @@ macos/Podfile.lock
 xcuserdata/
 DerivedData/
 
-# Environment variables
+# Environment variables - NEVER COMMIT THESE
 .env
 .env.local
 .env.production
 .env.staging
+.env.development
+.env.test
+*.env
 
 # ⚠️ SECURITY - API Keys & Secrets - NEVER COMMIT
 # Les anciennes configurations hardcodées sont maintenant migrées
 # vers EnvConfig qui utilise --dart-define-from-file
 lib/config/API_KEYS_BACKUP.txt
+**/API_KEYS*.txt
+**/secrets*.txt
+**/*_secret*.txt
+**/*_credentials*.json
+**/*_private_key*.json
 
 # Claude settings (may contain sensitive permissions)
 .claude/settings.local.json
@@ -87,6 +95,12 @@ lib/config/API_KEYS_BACKUP.txt
 # API documentation (may contain test keys)
 API_STATUS_REPORT.md
 FINAL_API_STATUS.md
+
+# Firebase - NEVER COMMIT CONFIG FILES
+**/GoogleService-Info.plist
+**/google-services.json
+firebase-debug.log
+.firebase/
 
 # Database
 *.sqlite

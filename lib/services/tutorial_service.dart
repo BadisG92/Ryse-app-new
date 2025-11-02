@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'translations.dart';
 import '../components/ui/tutorial_welcome_screen.dart';
 
@@ -19,13 +20,45 @@ class TutorialService {
   static const String _dashboardTutorialKey = 'tutorial_dashboard_completed';
   static const String _nutritionTutorialKey = 'tutorial_nutrition_completed';
   static const String _sportTutorialKey = 'tutorial_sport_completed';
+  static const String _cardioTutorialKey = 'tutorial_cardio_completed';
+  static const String _musculationTutorialKey = 'tutorial_musculation_completed';
+  static const String _progressionTutorialKey = 'tutorial_progression_completed';
 
   TutorialCoachMark? _tutorialCoachMark;
 
   /// Vérifie si un tutorial a déjà été complété
+  /// Vérifie d'abord dans Supabase (source de vérité), puis SharedPreferences en fallback
   Future<bool> _isTutorialCompleted(String key) async {
     if (_debugMode) return false; // En mode debug, toujours afficher
+
     final prefs = await SharedPreferences.getInstance();
+    final supabase = Supabase.instance.client;
+    final user = supabase.auth.currentUser;
+
+    if (user != null) {
+      try {
+        // Vérifier dans Supabase (source de vérité)
+        final response = await supabase
+            .from('users')
+            .select(key)
+            .eq('id', user.id)
+            .single()
+            .timeout(const Duration(seconds: 3));
+
+        final isCompleted = response[key] as bool? ?? false;
+
+        // Synchroniser avec SharedPreferences pour accès offline
+        await prefs.setBool(key, isCompleted);
+
+        return isCompleted;
+      } catch (e) {
+        debugPrint('⚠️ Erreur lecture tutorial depuis Supabase: $e');
+        // Fallback vers SharedPreferences
+        return prefs.getBool(key) ?? false;
+      }
+    }
+
+    // Pas d'utilisateur connecté, utiliser SharedPreferences
     return prefs.getBool(key) ?? false;
   }
 
@@ -49,10 +82,29 @@ class TutorialService {
   }
 
   /// Marque un tutorial comme complété
+  /// Sauvegarde dans Supabase ET SharedPreferences pour persister l'état
   Future<void> _markTutorialAsCompleted(String key) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(key, true);
-    debugPrint('✅ Tutorial marqué comme complété: $key');
+
+    final supabase = Supabase.instance.client;
+    final user = supabase.auth.currentUser;
+
+    if (user != null) {
+      try {
+        // Sauvegarder dans Supabase pour persister entre les sessions
+        await supabase.from('users').update({
+          key: true,
+        }).eq('id', user.id);
+
+        debugPrint('✅ Tutorial marqué comme complété dans Supabase: $key');
+      } catch (e) {
+        debugPrint('❌ Erreur sauvegarde tutorial dans Supabase: $e');
+        // Continue quand même, l'utilisateur a les SharedPreferences
+      }
+    }
+
+    debugPrint('✅ Tutorial marqué comme complété localement: $key');
   }
 
   /// Réinitialise tous les tutoriels (utile pour debug)
@@ -61,6 +113,9 @@ class TutorialService {
     await prefs.remove(_dashboardTutorialKey);
     await prefs.remove(_nutritionTutorialKey);
     await prefs.remove(_sportTutorialKey);
+    await prefs.remove(_cardioTutorialKey);
+    await prefs.remove(_musculationTutorialKey);
+    await prefs.remove(_progressionTutorialKey);
     debugPrint('🔄 Tous les tutoriels ont été réinitialisés');
   }
 
@@ -863,6 +918,12 @@ class TutorialService {
     required GlobalKey historyAccessKey,
     required String languageCode,
   }) async {
+    // Vérifier si le tutoriel a déjà été complété
+    final isCompleted = await _isTutorialCompleted(_cardioTutorialKey);
+    if (isCompleted) {
+      debugPrint('⏭️ Tutorial Cardio déjà complété, ignoré');
+      return;
+    }
     final List<TargetFocus> targets = [
       // 1. Statistiques de la semaine → scroll vers Activités
       _createTarget(
@@ -947,10 +1008,12 @@ class TutorialService {
         fontWeight: FontWeight.w600,
       ),
       onSkip: () {
+        _markTutorialAsCompleted(_cardioTutorialKey);
         debugPrint('⏭️ Tutorial Cardio sauté');
         return true;
       },
       onFinish: () {
+        _markTutorialAsCompleted(_cardioTutorialKey);
         debugPrint('✅ Tutorial Cardio terminé');
       },
     );
@@ -973,6 +1036,12 @@ class TutorialService {
     required GlobalKey progressKey,
     String languageCode = 'fr',
   }) async {
+    // Vérifier si le tutoriel a déjà été complété
+    final isCompleted = await _isTutorialCompleted(_musculationTutorialKey);
+    if (isCompleted) {
+      debugPrint('⏭️ Tutorial Musculation déjà complété, ignoré');
+      return;
+    }
     const workoutAvatarPath = 'assets/images/coach_ryze_workout_avatar.png';
 
     final targets = <TargetFocus>[
@@ -1083,10 +1152,12 @@ class TutorialService {
         fontWeight: FontWeight.w600,
       ),
       onSkip: () {
+        _markTutorialAsCompleted(_musculationTutorialKey);
         debugPrint('⏭️ Tutorial Musculation sauté');
         return true;
       },
       onFinish: () {
+        _markTutorialAsCompleted(_musculationTutorialKey);
         debugPrint('✅ Tutorial Musculation terminé');
       },
     );
@@ -1105,6 +1176,12 @@ class TutorialService {
     required GlobalKey trackingSectionKey,
     required String languageCode,
   }) async {
+    // Vérifier si le tutoriel a déjà été complété
+    final isCompleted = await _isTutorialCompleted(_progressionTutorialKey);
+    if (isCompleted) {
+      debugPrint('⏭️ Tutorial Progression déjà complété, ignoré');
+      return;
+    }
     const progressAvatarPath = 'assets/images/coach_ryze_avatar.png';
 
     final List<TargetFocus> targets = [
@@ -1177,10 +1254,12 @@ class TutorialService {
         fontWeight: FontWeight.w600,
       ),
       onSkip: () {
+        _markTutorialAsCompleted(_progressionTutorialKey);
         debugPrint('⏭️ Tutorial Progression Globale skippé');
         return true;
       },
       onFinish: () {
+        _markTutorialAsCompleted(_progressionTutorialKey);
         debugPrint('✅ Tutorial Progression Globale terminé');
       },
     );

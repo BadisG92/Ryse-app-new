@@ -1,0 +1,33 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Ryze App (Dev)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "args": [
+        "--dart-define-from-file=.env.local"
+      ]
+    },
+    {
+      "name": "Ryze App (Production)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "args": [
+        "--dart-define-from-file=.env.production"
+      ]
+    },
+    {
+      "name": "Ryze App (Profile Mode)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "args": [
+        "--dart-define-from-file=.env.local",
+        "--profile"
+      ]
+    }
+  ]
+}

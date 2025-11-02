@@ -16,11 +16,21 @@ class WeightService {
           throw Exception('Utilisateur non connecté');
         }
 
+        // IMPORTANT: Récupérer le target_weight ACTUEL depuis la table users
+        // (pas depuis l'historique qui n'est mis à jour qu'à chaque pesée)
+        final userResponse = await _supabase
+            .from('users')
+            .select('target_weight')
+            .eq('id', user.id)
+            .single();
+
+        final currentTargetWeight = (userResponse['target_weight'] as num?)?.toDouble();
+
         // Récupérer l'historique des poids triés par date (seulement les pesées intentionnelles)
         // Trier par date ET par heure pour prendre la plus récente en cas de multiples pesées le même jour
         final response = await _supabase
             .from('user_profile_history')
-            .select('weight, valid_from, target_weight')
+            .select('weight, valid_from')
             .eq('user_id', user.id)
             .eq('weight_modified', true)
             .not('weight', 'is', null)
@@ -54,13 +64,12 @@ class WeightService {
             final currentWeight = entries.last.weight;
             final initialWeight = entries.first.weight;
             final previousWeight = entries.length > 1 ? entries[entries.length - 2].weight : currentWeight;
-            final targetWeight = (retryData.last['target_weight'] as num?)?.toDouble() ?? currentWeight;
 
             return WeightProgress(
               currentWeight: currentWeight,
               previousWeight: previousWeight,
               initialWeight: initialWeight,
-              targetWeight: targetWeight,
+              targetWeight: currentTargetWeight ?? currentWeight,
               entries: entries,
             );
           }
@@ -69,27 +78,26 @@ class WeightService {
         }
 
         // Fallback: récupérer depuis la table users avec la date de création
-        final userResponse = await _supabase
+        final fallbackUserResponse = await _supabase
             .from('users')
-            .select('weight, target_weight, created_at')
+            .select('weight, created_at')
             .eq('id', user.id)
             .single();
 
-        final currentWeight = (userResponse['weight'] as num?)?.toDouble() ?? 70.0;
-        final targetWeight = (userResponse['target_weight'] as num?)?.toDouble() ?? currentWeight;
+        final currentWeight = (fallbackUserResponse['weight'] as num?)?.toDouble() ?? 70.0;
 
         // Utiliser la date de création du profil au lieu de DateTime.now()
-        final profileCreatedAt = userResponse['created_at'] != null
-            ? DateTime.parse(userResponse['created_at'])
+        final profileCreatedAt = fallbackUserResponse['created_at'] != null
+            ? DateTime.parse(fallbackUserResponse['created_at'])
             : DateTime.now();
 
-        debugPrint('DEBUG WeightService FALLBACK - currentWeight: $currentWeight, targetWeight: $targetWeight');
-        
+        debugPrint('DEBUG WeightService FALLBACK - currentWeight: $currentWeight, targetWeight: $currentTargetWeight');
+
         return WeightProgress(
           currentWeight: currentWeight,
           previousWeight: currentWeight,
           initialWeight: currentWeight,
-          targetWeight: targetWeight,
+          targetWeight: currentTargetWeight ?? currentWeight,
           entries: [
             WeightEntry(
               date: profileCreatedAt,
@@ -125,15 +133,14 @@ class WeightService {
       final currentWeight = entries.last.weight;
       final initialWeight = entries.first.weight;
       final previousWeight = entries.length > 1 ? entries[entries.length - 2].weight : currentWeight;
-      final targetWeight = (data.last['target_weight'] as num?)?.toDouble() ?? currentWeight;
 
-      debugPrint('DEBUG WeightService - currentWeight: $currentWeight, targetWeight: $targetWeight, entries: ${entries.length}');
+      debugPrint('DEBUG WeightService - currentWeight: $currentWeight, targetWeight: $currentTargetWeight, entries: ${entries.length}');
 
         return WeightProgress(
           currentWeight: currentWeight,
           previousWeight: previousWeight,
           initialWeight: initialWeight,
-          targetWeight: targetWeight,
+          targetWeight: currentTargetWeight ?? currentWeight,
           entries: entries,
         );
       },
