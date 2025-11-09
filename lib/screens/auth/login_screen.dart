@@ -67,10 +67,12 @@ class _LoginScreenState extends State<LoginScreen> {
         MaterialPageRoute(builder: (context) => const RyzeApp()),
       );
     } else if (mounted) {
+      final locService = Provider.of<LocalizationService>(context, listen: false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(authService.errorMessage ?? 'login_failed'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode)),
+          content: Text((authService.errorMessage ?? 'login_failed').tr(locService.currentLanguageCode)),
           backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
         ),
       );
     }
@@ -86,10 +88,12 @@ class _LoginScreenState extends State<LoginScreen> {
         MaterialPageRoute(builder: (context) => const RyzeApp()),
       );
     } else if (mounted) {
+      final locService = Provider.of<LocalizationService>(context, listen: false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(authService.errorMessage ?? 'google_login_failed'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode)),
+          content: Text((authService.errorMessage ?? 'google_login_failed').tr(locService.currentLanguageCode)),
           backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
         ),
       );
     }
@@ -105,10 +109,12 @@ class _LoginScreenState extends State<LoginScreen> {
         MaterialPageRoute(builder: (context) => const RyzeApp()),
       );
     } else if (mounted) {
+      final locService = Provider.of<LocalizationService>(context, listen: false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(authService.errorMessage ?? 'apple_login_failed'.tr(Provider.of<LocalizationService>(context, listen: false).currentLanguageCode)),
+          content: Text((authService.errorMessage ?? 'apple_login_failed').tr(locService.currentLanguageCode)),
           backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
         ),
       );
     }

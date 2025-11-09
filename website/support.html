@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Centre d'aide Ryse - FAQ, guides et support technique">
+  <title>Support & Aide | Ryse - Coach Nutrition & Fitness</title>
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="assets/images/favicon.svg">
+
+  <!-- Google Fonts - Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="assets/css/style.css">
+
+  <style>
+    .support-hero {
+      background: linear-gradient(135deg, var(--primary-dark), var(--primary-medium));
+      color: var(--white);
+      padding: 100px 0 60px 0;
+      text-align: center;
+    }
+
+    .support-hero h1 {
+      color: var(--white);
+    }
+
+    .support-hero p {
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 1.25rem;
+    }
+
+    .faq-section {
+      padding: var(--spacing-2xl) 0;
+    }
+
+    .faq-container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .faq-item {
+      background: var(--white);
+      border-radius: var(--radius-md);
+      margin-bottom: var(--spacing-md);
+      box-shadow: var(--shadow-md);
+      overflow: hidden;
+    }
+
+    .faq-question {
+      padding: var(--spacing-md) var(--spacing-lg);
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 600;
+      color: var(--primary-dark);
+      transition: var(--transition-fast);
+    }
+
+    .faq-question:hover {
+      background: var(--gray-100);
+    }
+
+    .faq-answer {
+      padding: 0 var(--spacing-lg) var(--spacing-md) var(--spacing-lg);
+      display: none;
+      color: var(--gray-600);
+      line-height: 1.7;
+    }
+
+    .faq-answer.active {
+      display: block;
+    }
+
+    .faq-icon {
+      font-size: 1.5rem;
+      transition: var(--transition-fast);
+    }
+
+    .faq-item.active .faq-icon {
+      transform: rotate(45deg);
+    }
+
+    .contact-section {
+      background: var(--gray-100);
+      padding: var(--spacing-2xl) 0;
+    }
+
+    .contact-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: var(--spacing-lg);
+      margin-top: var(--spacing-xl);
+    }
+
+    .contact-card {
+      background: var(--white);
+      padding: var(--spacing-xl);
+      border-radius: var(--radius-lg);
+      text-align: center;
+      box-shadow: var(--shadow-md);
+      transition: var(--transition-normal);
+    }
+
+    .contact-card:hover {
+      transform: translateY(-5px);
+      box-shadow: var(--shadow-xl);
+    }
+
+    .contact-icon {
+      font-size: 3rem;
+      margin-bottom: var(--spacing-md);
+    }
+
+    .contact-form {
+      max-width: 600px;
+      margin: var(--spacing-xl) auto 0 auto;
+      background: var(--white);
+      padding: var(--spacing-xl);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-md);
+    }
+
+    .form-group {
+      margin-bottom: var(--spacing-md);
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: var(--spacing-xs);
+      font-weight: 600;
+      color: var(--primary-dark);
+    }
+
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+      width: 100%;
+      padding: var(--spacing-sm);
+      border: 2px solid var(--gray-200);
+      border-radius: var(--radius-sm);
+      font-family: var(--font-family);
+      font-size: 1rem;
+      transition: var(--transition-fast);
+    }
+
+    .form-group input:focus,
+    .form-group textarea:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: var(--accent-blue);
+    }
+
+    .form-group textarea {
+      resize: vertical;
+      min-height: 120px;
+    }
+
+    .submit-btn {
+      width: 100%;
+      padding: var(--spacing-md);
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-green));
+      color: var(--white);
+      border: none;
+      border-radius: var(--radius-md);
+      font-weight: 600;
+      font-size: 1.125rem;
+      cursor: pointer;
+      transition: var(--transition-normal);
+    }
+
+    .submit-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navigation -->
+  <nav class="navbar">
+    <div class="container">
+      <a href="/" class="navbar-logo">
+        <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="40" height="40" rx="10" fill="url(#gradient)"/>
+          <path d="M20 10L28 16V24L20 30L12 24V16L20 10Z" fill="white"/>
+          <defs>
+            <linearGradient id="gradient" x1="0" y1="0" x2="40" y2="40">
+              <stop offset="0%" stop-color="#3B82F6"/>
+              <stop offset="100%" stop-color="#10B981"/>
+            </linearGradient>
+          </defs>
+        </svg>
+        Ryse
+      </a>
+
+      <ul class="navbar-nav">
+        <li><a href="index.html">Accueil</a></li>
+        <li><a href="#faq">FAQ</a></li>
+        <li><a href="#contact">Contact</a></li>
+        <li><a href="index.html#download" class="navbar-cta">Télécharger</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- Support Hero -->
+  <section class="support-hero">
+    <div class="container">
+      <h1>Centre d'Aide Ryse</h1>
+      <p>Trouvez rapidement des réponses à vos questions</p>
+    </div>
+  </section>
+
+  <!-- FAQ Section -->
+  <section id="faq" class="faq-section">
+    <div class="container">
+      <div class="text-center mb-xl">
+        <h2>Questions <span class="text-gradient">Fréquentes</span></h2>
+      </div>
+
+      <div class="faq-container">
+        <!-- FAQ Item 1 -->
+        <div class="faq-item">
+          <div class="faq-question">
+            <span>Comment fonctionne le scanner IA de repas ?</span>
+            <span class="faq-icon">+</span>
+          </div>
+          <div class="faq-answer">
+            <p>Le scanner IA utilise Google Gemini 2.0 pour analyser vos photos de repas. Il suffit de :</p>
+            <ol>
+              <li>Ouvrir l'application et cliquer sur "Scanner un repas"</li>
+              <li>Prendre une photo de votre assiette</li>
+              <li>L'IA détecte automatiquement les aliments et estime les portions</li>
+              <li>Les valeurs nutritionnelles sont calculées en 5 secondes</li>
+              <li>Vous pouvez ajuster les quantités si nécessaire</li>
+            </ol>
+            <p><strong>Note</strong> : Les estimations peuvent varier de ±20%. Pour plus de précision, vous pouvez éditer manuellement les portions.</p>
+          </div>
+        </div>
+
+        <!-- FAQ Item 2 -->
+        <div class="faq-item">
+          <div class="faq-question">
+            <span>L'application fonctionne-t-elle sans connexion internet ?</span>
+            <span class="faq-icon">+</span>
+          </div>
+          <div class="faq-answer">
+            <p><strong>Oui !</strong> Ryse dispose d'un mode offline complet :</p>
+            <ul>
+              <li><strong>Workouts</strong> : Tous vos exercices de musculation sont disponibles offline</li>
+              <li><strong>Cardio GPS</strong> : Le tracking GPS fonctionne sans internet</li>
+              <li><strong>Nutrition</strong> : Vous pouvez ajouter des aliments depuis votre historique</li>
+              <li><strong>Synchronisation auto</strong> : Dès que vous retrouvez une connexion, tout se synchronise automatiquement</li>
+            </ul>
+            <p><strong>Limitation offline</strong> : Le scanner IA et la recherche de nouveaux aliments nécessitent une connexion internet.</p>
+          </div>
+        </div>
+
+        <!-- FAQ Item 3 -->
+        <div class="faq-item">
+          <div class="faq-question">
+            <span>Comment installer le widget iOS ?</span>
+            <span class="faq-icon">+</span>
+          </div>
+          <div class="faq-answer">
+            <p>Installation du widget smart sur iOS :</p>
+            <ol>
+              <li>Maintenez votre doigt sur l'écran d'accueil jusqu'à ce que les icônes tremblent</li>
+              <li>Appuyez sur le bouton "+" en haut à gauche</li>
+              <li>Recherchez "Ryse" dans la liste des widgets</li>
+              <li>Choisissez la taille (Small pour Lock Screen, Medium pour Home Screen)</li>
+              <li>Appuyez sur "Ajouter le widget"</li>
+              <li>Positionnez-le où vous voulez</li>
+            </ol>
+            <p><strong>Astuce</strong> : Le widget détecte automatiquement le repas selon l'heure (petit-déj, déjeuner, dîner).</p>
+          </div>
+        </div>
+
+        <!-- FAQ Item 4 -->
+        <div class="faq-item">
+          <div class="faq-question">
+            <span>Les données nutritionnelles sont-elles fiables ?</span>
+            <span class="faq-icon">+</span>
+          </div>
+          <div class="faq-answer">
+            <p>Nos données proviennent de plusieurs sources :</p>
+            <ul>
+              <li><strong>Scanner IA Gemini</strong> : Précision de ±20% (excellente pour la plupart des cas)</li>
+              <li><strong>OpenFoodFacts</strong> : Base communautaire de 700 000+ produits (vérifiée mais peut contenir des erreurs)</li>
+              <li><strong>Base interne</strong> : 50 000+ aliments vérifiés en FR/EN</li>
+            </ul>
+            <p><strong>Recommandations</strong> :</p>
+            <ul>
+              <li>Vérifiez toujours les portions estimées par l'IA</li>
+              <li>Pour les produits scannés, comparez avec l'étiquette nutritionnelle</li>
+              <li>Vous pouvez éditer toutes les valeurs manuellement</li>
+              <li>Consultez un professionnel pour des besoins médicaux spécifiques</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- FAQ Item 5 -->
+        <div class="faq-item">
+          <div class="faq-question">
+            <span>Comment définir mes objectifs caloriques ?</span>
+            <span class="faq-icon">+</span>
+          </div>
+          <div class="faq-answer">
+            <p>Configuration de vos objectifs :</p>
+            <ol>
+              <li>Allez dans "Paramètres" → "Profil"</li>
+              <li>Renseignez votre âge, sexe, poids, taille</li>
+              <li>Choisissez votre objectif :
+                <ul>
+                  <li><strong>Perte de poids</strong> : Déficit calorique de 300-500 kcal/jour</li>
+                  <li><strong>Prise de muscle</strong> : Surplus de 200-400 kcal/jour</li>
+                  <li><strong>Maintenance</strong> : Équilibre calories consommées = brûlées</li>
+                </ul>
+              </li>
+              <li>Définissez votre niveau d'activité physique</li>
+              <li>L'app calcule automatiquement vos besoins caloriques et macros</li>
+            </ol>
+            <p><strong>Ajustements</strong> : Vous pouvez modifier manuellement les valeurs si besoin.</p>
+          </div>
+        </div>
+
+        <!-- FAQ Item 6 -->
+        <div class="faq-item">
+          <div class="faq-question">
+            <span>Ryse est-il vraiment gratuit ? Y a-t-il des achats in-app ?</span>
+            <span class="faq-icon">+</span>
+          </div>
+          <div class="faq-answer">
+            <p><strong>100% GRATUIT, sans publicité, sans limite !</strong></p>
+            <ul>
+              <li>✅ Scanner IA illimité</li>
+              <li>✅ Toutes les fonctionnalités débloquées</li>
+              <li>✅ Aucune publicité</li>
+              <li>✅ Historique complet sans limite</li>
+              <li>✅ Suivi GPS cardio sans restriction</li>
+              <li>✅ Base de données complète (50 000+ aliments)</li>
+            </ul>
+            <p><strong>Modèle économique</strong> : Ryse est un projet passion. Nous ne vendons pas vos données et ne vous spammerons jamais.</p>
+            <p><em>Note</em> : Des fonctionnalités premium optionnelles pourraient être ajoutées dans le futur (coaching personnalisé IA, plans d'entraînement avancés), mais les fonctionnalités actuelles resteront toujours gratuites.</p>
+          </div>
+        </div>
+
+        <!-- FAQ Item 7 -->
+        <div class="faq-item">
+          <div class="faq-question">
+            <span>Comment supprimer mon compte et mes données ?</span>
+            <span class="faq-icon">+</span>
+          </div>
+          <div class="faq-answer">
+            <p>Conformément au RGPD, vous avez le droit de supprimer vos données à tout moment :</p>
+            <ol>
+              <li>Ouvrez l'application Ryse</li>
+              <li>Allez dans "Paramètres" → "Compte"</li>
+              <li>Faites défiler jusqu'en bas</li>
+              <li>Appuyez sur "Supprimer mon compte"</li>
+              <li>Confirmez la suppression</li>
+            </ol>
+            <p><strong>Conséquences</strong> :</p>
+            <ul>
+              <li>Toutes vos données seront supprimées dans les 30 jours</li>
+              <li>Cette action est IRRÉVERSIBLE</li>
+              <li>Vous perdrez votre historique de progression</li>
+            </ul>
+            <p><strong>Alternative</strong> : Contactez-nous à <a href="mailto:support@coach-ryze.com">support@coach-ryze.com</a> pour une suppression manuelle.</p>
+          </div>
+        </div>
+
+        <!-- FAQ Item 8 -->
+        <div class="faq-item">
+          <div class="faq-question">
+            <span>L'application est-elle disponible sur Android ?</span>
+            <span class="faq-icon">+</span>
+          </div>
+          <div class="faq-answer">
+            <p><strong>Pas encore, mais c'est prévu !</strong></p>
+            <p>Actuellement, Ryse est disponible uniquement sur iOS (iPhone & iPad). La version Android est en cours de développement et sera lancée prochainement.</p>
+            <p><strong>Inscrivez-vous pour être notifié</strong> :</p>
+            <p>Envoyez un email à <a href="mailto:android@coach-ryze.com">android@coach-ryze.com</a> avec l'objet "Notifiez-moi Android" et nous vous préviendrons dès le lancement.</p>
+          </div>
+        </div>
+
+        <!-- FAQ Item 9 -->
+        <div class="faq-item">
+          <div class="faq-question">
+            <span>Comment changer la langue de l'application (FR/EN) ?</span>
+            <span class="faq-icon">+</span>
+          </div>
+          <div class="faq-answer">
+            <p>Ryse est bilingue natif français/anglais :</p>
+            <ol>
+              <li>Ouvrez "Paramètres"</li>
+              <li>Section "Langue / Language"</li>
+              <li>Choisissez "Français" ou "English"</li>
+              <li>L'application redémarre automatiquement</li>
+            </ol>
+            <p><strong>Ce qui change</strong> :</p>
+            <ul>
+              <li>Interface complète traduite</li>
+              <li>Base de données d'aliments adaptée</li>
+              <li>Exercices avec instructions localisées</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- FAQ Item 10 -->
+        <div class="faq-item">
+          <div class="faq-question">
+            <span>J'ai trouvé un bug, comment le signaler ?</span>
+            <span class="faq-icon">+</span>
+          </div>
+          <div class="faq-answer">
+            <p>Merci de nous aider à améliorer Ryse ! Pour signaler un bug :</p>
+            <ol>
+              <li><strong>Email</strong> : <a href="mailto:support@coach-ryze.com">support@coach-ryze.com</a></li>
+              <li><strong>Inclure</strong> :
+                <ul>
+                  <li>Description détaillée du problème</li>
+                  <li>Étapes pour reproduire le bug</li>
+                  <li>Capture d'écran si possible</li>
+                  <li>Version de l'app (visible dans Paramètres)</li>
+                  <li>Modèle de votre iPhone/iPad</li>
+                </ul>
+              </li>
+              <li>Nous vous répondrons sous 24-48h</li>
+            </ol>
+            <p><strong>Merci pour votre contribution !</strong></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Contact Section -->
+  <section id="contact" class="contact-section">
+    <div class="container">
+      <div class="text-center mb-xl">
+        <h2>Besoin d'<span class="text-gradient">Aide</span> ?</h2>
+        <p>Nous sommes là pour vous aider</p>
+      </div>
+
+      <div class="contact-grid">
+        <div class="contact-card">
+          <div class="contact-icon">✉️</div>
+          <h3>Email Support</h3>
+          <p>Réponse sous 24-48h</p>
+          <a href="mailto:support@coach-ryze.com" style="color: var(--accent-blue); font-weight: 600;">support@coach-ryze.com</a>
+        </div>
+
+        <div class="contact-card">
+          <div class="contact-icon">📷</div>
+          <h3>Instagram</h3>
+          <p>DM pour questions rapides</p>
+          <a href="https://instagram.com/ryse.app" target="_blank" style="color: var(--accent-blue); font-weight: 600;">@ryse.app</a>
+        </div>
+
+        <div class="contact-card">
+          <div class="contact-icon">🐦</div>
+          <h3>Twitter/X</h3>
+          <p>Actualités & support</p>
+          <a href="https://twitter.com/ryseapp" target="_blank" style="color: var(--accent-blue); font-weight: 600;">@ryseapp</a>
+        </div>
+      </div>
+
+      <!-- Contact Form -->
+      <form class="contact-form" id="contactForm">
+        <h3 style="margin-bottom: var(--spacing-md); text-align: center;">Formulaire de Contact</h3>
+
+        <div class="form-group">
+          <label for="name">Nom complet *</label>
+          <input type="text" id="name" name="name" required placeholder="Votre nom">
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email *</label>
+          <input type="email" id="email" name="email" required placeholder="votre@email.com">
+        </div>
+
+        <div class="form-group">
+          <label for="subject">Sujet *</label>
+          <select id="subject" name="subject" required>
+            <option value="">Choisissez un sujet</option>
+            <option value="bug">Signaler un bug</option>
+            <option value="feature">Demande de fonctionnalité</option>
+            <option value="account">Problème de compte</option>
+            <option value="data">Question sur mes données</option>
+            <option value="nutrition">Question nutrition</option>
+            <option value="workout">Question workout</option>
+            <option value="other">Autre</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="message">Message *</label>
+          <textarea id="message" name="message" required placeholder="Décrivez votre question ou problème en détail..."></textarea>
+        </div>
+
+        <button type="submit" class="submit-btn">Envoyer le message</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-content">
+        <!-- About -->
+        <div class="footer-section">
+          <h4>Ryse</h4>
+          <p style="color: rgba(255,255,255,0.8);">Votre coach nutrition & fitness propulsé par l'IA.</p>
+        </div>
+
+        <!-- Links -->
+        <div class="footer-section">
+          <h4>Liens Utiles</h4>
+          <ul>
+            <li><a href="index.html">Accueil</a></li>
+            <li><a href="index.html#features">Fonctionnalités</a></li>
+            <li><a href="index.html#download">Télécharger</a></li>
+          </ul>
+        </div>
+
+        <!-- Support -->
+        <div class="footer-section">
+          <h4>Support</h4>
+          <ul>
+            <li><a href="#faq">FAQ</a></li>
+            <li><a href="#contact">Contact</a></li>
+            <li><a href="mailto:support@coach-ryze.com">Email Support</a></li>
+          </ul>
+        </div>
+
+        <!-- Legal -->
+        <div class="footer-section">
+          <h4>Légal</h4>
+          <ul>
+            <li><a href="privacy.html">Confidentialité</a></li>
+            <li><a href="terms.html">Conditions</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <p>&copy; 2025 Ryse App. Tous droits réservés.</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- JavaScript -->
+  <script src="assets/js/main.js"></script>
+  <script>
+    // FAQ Toggle
+    document.querySelectorAll('.faq-question').forEach(question => {
+      question.addEventListener('click', () => {
+        const item = question.parentElement;
+        const answer = item.querySelector('.faq-answer');
+
+        // Close all other items
+        document.querySelectorAll('.faq-item').forEach(otherItem => {
+          if (otherItem !== item) {
+            otherItem.classList.remove('active');
+            otherItem.querySelector('.faq-answer').classList.remove('active');
+          }
+        });
+
+        // Toggle current item
+        item.classList.toggle('active');
+        answer.classList.toggle('active');
+      });
+    });
+
+    // Contact Form
+    document.getElementById('contactForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+
+      const formData = {
+        name: document.getElementById('name').value,
+        email: document.getElementById('email').value,
+        subject: document.getElementById('subject').value,
+        message: document.getElementById('message').value
+      };
+
+      // Create mailto link (temporary solution until backend is set up)
+      const mailtoLink = `mailto:support@coach-ryze.com?subject=${encodeURIComponent(formData.subject + ' - ' + formData.name)}&body=${encodeURIComponent(formData.message + '\n\nDe: ' + formData.email)}`;
+
+      window.location.href = mailtoLink;
+
+      // Reset form
+      e.target.reset();
+
+      alert('Votre client email va s\'ouvrir. Merci de votre message !');
+    });
+  </script>
+</body>
+</html>

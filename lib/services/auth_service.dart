@@ -565,8 +565,115 @@ class AuthService extends ChangeNotifier {
   }
 
   void _setError(String error) {
-    _errorMessage = error;
+    _errorMessage = _getFriendlyErrorMessage(error);
     _safeNotifyListeners();
+  }
+
+  /// Convertit les erreurs techniques en messages conviviaux et ludiques
+  String _getFriendlyErrorMessage(String technicalError) {
+    final errorLower = technicalError.toLowerCase();
+
+    // Erreurs d'identifiants invalides
+    if (errorLower.contains('invalid login') ||
+        errorLower.contains('invalid credentials') ||
+        errorLower.contains('email not confirmed') ||
+        errorLower.contains('invalid grant')) {
+      return 'auth_error_invalid_credentials';
+    }
+
+    // Utilisateur non trouvé
+    if (errorLower.contains('user not found') ||
+        errorLower.contains('no user found')) {
+      return 'auth_error_user_not_found';
+    }
+
+    // Email invalide
+    if (errorLower.contains('invalid email') ||
+        errorLower.contains('malformed email')) {
+      return 'auth_error_invalid_email';
+    }
+
+    // Mot de passe trop faible
+    if (errorLower.contains('password') &&
+        (errorLower.contains('weak') ||
+         errorLower.contains('short') ||
+         errorLower.contains('must be at least'))) {
+      return 'auth_error_weak_password';
+    }
+
+    // Email déjà utilisé
+    if (errorLower.contains('already registered') ||
+        errorLower.contains('already exists') ||
+        errorLower.contains('email already in use') ||
+        errorLower.contains('user already registered')) {
+      return 'auth_error_email_already_exists';
+    }
+
+    // Trop de tentatives
+    if (errorLower.contains('too many requests') ||
+        errorLower.contains('rate limit') ||
+        errorLower.contains('too many attempts')) {
+      return 'auth_error_too_many_requests';
+    }
+
+    // Problèmes réseau
+    if (errorLower.contains('network') ||
+        errorLower.contains('connection') ||
+        errorLower.contains('timeout') ||
+        errorLower.contains('failed host lookup')) {
+      return 'auth_error_network';
+    }
+
+    // Google Sign-In annulé
+    if (errorLower.contains('sign_in_canceled') ||
+        errorLower.contains('sign_in_cancelled') ||
+        (errorLower.contains('google') && errorLower.contains('cancel'))) {
+      return 'auth_error_google_cancelled';
+    }
+
+    // Apple Sign-In annulé
+    if (errorLower.contains('authorization_error_canceled') ||
+        errorLower.contains('the operation couldn\'t be completed') ||
+        (errorLower.contains('apple') && errorLower.contains('cancel'))) {
+      return 'auth_error_apple_cancelled';
+    }
+
+    // Session expirée
+    if (errorLower.contains('session expired') ||
+        errorLower.contains('token expired') ||
+        errorLower.contains('jwt expired')) {
+      return 'auth_error_session_expired';
+    }
+
+    // Inscription désactivée
+    if (errorLower.contains('signup') && errorLower.contains('disabled')) {
+      return 'auth_error_signup_disabled';
+    }
+
+    // Compte désactivé
+    if (errorLower.contains('account') && errorLower.contains('disabled')) {
+      return 'auth_error_account_disabled';
+    }
+
+    // Google Sign-In échoué
+    if (errorLower.contains('google sign in failed') ||
+        errorLower.contains('google authentication failed')) {
+      return 'auth_error_google_failed';
+    }
+
+    // Apple Sign-In échoué
+    if (errorLower.contains('apple sign in failed') ||
+        errorLower.contains('apple authentication failed')) {
+      return 'auth_error_apple_failed';
+    }
+
+    // Réinitialisation mot de passe échouée
+    if (errorLower.contains('password reset failed')) {
+      return 'auth_error_password_reset_failed';
+    }
+
+    // Erreur inconnue
+    return 'auth_error_unknown';
   }
 
   void _clearError() {

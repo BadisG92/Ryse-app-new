@@ -3687,17 +3687,82 @@ class AppTranslations {
       'fr': 'S\'inscrire',
       'en': 'Sign Up',
     },
+    // 🔐 Messages d'erreur authentification - Ludiques et clairs
+    'auth_error_invalid_credentials': {
+      'fr': 'Oups ! Email ou mot de passe incorrect 🤔\nVérifie bien tes identifiants !',
+      'en': 'Oops! Wrong email or password 🤔\nDouble-check your credentials!',
+    },
+    'auth_error_user_not_found': {
+      'fr': 'On dirait que ce compte n\'existe pas encore 🧐\nEnvie de créer un compte ?',
+      'en': 'Looks like this account doesn\'t exist yet 🧐\nWant to create one?',
+    },
+    'auth_error_invalid_email': {
+      'fr': 'Cet email ne semble pas valide 📧\nVérifie qu\'il n\'y a pas de faute de frappe !',
+      'en': 'This email doesn\'t look valid 📧\nCheck for typos!',
+    },
+    'auth_error_weak_password': {
+      'fr': 'Ce mot de passe est trop simple 💪\nUtilise au moins 8 caractères avec majuscules, minuscules et chiffres !',
+      'en': 'This password is too weak 💪\nUse at least 8 characters with uppercase, lowercase and numbers!',
+    },
+    'auth_error_email_already_exists': {
+      'fr': 'Cet email est déjà utilisé 👀\nTu as déjà un compte ? Essaie de te connecter !',
+      'en': 'This email is already in use 👀\nAlready have an account? Try logging in!',
+    },
+    'auth_error_too_many_requests': {
+      'fr': 'Wow, doucement ! 🛑\nTrop de tentatives. Attends quelques minutes avant de réessayer.',
+      'en': 'Whoa, slow down! 🛑\nToo many attempts. Wait a few minutes before trying again.',
+    },
+    'auth_error_network': {
+      'fr': 'Pas de connexion internet 📡\nVérifie ta connexion et réessaie !',
+      'en': 'No internet connection 📡\nCheck your connection and try again!',
+    },
+    'auth_error_google_cancelled': {
+      'fr': 'Connexion Google annulée 🚫\nPas de souci, tu peux réessayer quand tu veux !',
+      'en': 'Google sign-in cancelled 🚫\nNo worries, try again whenever you\'re ready!',
+    },
+    'auth_error_google_failed': {
+      'fr': 'Connexion Google impossible 😅\nRéessaie ou utilise un autre moyen de connexion !',
+      'en': 'Google sign-in failed 😅\nTry again or use another sign-in method!',
+    },
+    'auth_error_apple_cancelled': {
+      'fr': 'Connexion Apple annulée 🍎\nTu peux réessayer quand tu veux !',
+      'en': 'Apple sign-in cancelled 🍎\nYou can try again anytime!',
+    },
+    'auth_error_apple_failed': {
+      'fr': 'Connexion Apple impossible 😅\nRéessaie ou utilise un autre moyen de connexion !',
+      'en': 'Apple sign-in failed 😅\nTry again or use another sign-in method!',
+    },
+    'auth_error_session_expired': {
+      'fr': 'Ta session a expiré ⏰\nReconnecte-toi pour continuer !',
+      'en': 'Your session expired ⏰\nSign in again to continue!',
+    },
+    'auth_error_password_reset_failed': {
+      'fr': 'Impossible d\'envoyer l\'email de réinitialisation 📨\nVérifie que ton email est correct !',
+      'en': 'Couldn\'t send reset email 📨\nMake sure your email is correct!',
+    },
+    'auth_error_unknown': {
+      'fr': 'Quelque chose s\'est mal passé 🤷\nRéessaie dans quelques instants !',
+      'en': 'Something went wrong 🤷\nTry again in a moment!',
+    },
+    'auth_error_signup_disabled': {
+      'fr': 'Les inscriptions sont temporairement désactivées 🚧\nRéessaie plus tard !',
+      'en': 'Sign-ups are temporarily disabled 🚧\nTry again later!',
+    },
+    'auth_error_account_disabled': {
+      'fr': 'Ton compte a été désactivé 🔒\nContacte le support pour plus d\'infos.',
+      'en': 'Your account has been disabled 🔒\nContact support for more info.',
+    },
     'login_failed': {
-      'fr': 'Échec de la connexion',
-      'en': 'Login failed',
+      'fr': 'Connexion impossible 😕\nVérifie tes identifiants !',
+      'en': 'Login failed 😕\nCheck your credentials!',
     },
     'google_login_failed': {
-      'fr': 'Échec de la connexion Google',
-      'en': 'Google login failed',
+      'fr': 'Connexion Google impossible 🔴\nRéessaie ou utilise une autre méthode !',
+      'en': 'Google login failed 🔴\nTry again or use another method!',
     },
     'apple_login_failed': {
-      'fr': 'Échec de la connexion Apple',
-      'en': 'Apple login failed',
+      'fr': 'Connexion Apple impossible 🍎\nRéessaie ou utilise une autre méthode !',
+      'en': 'Apple login failed 🍎\nTry again or use another method!',
     },
     'enter_email': {
       'fr': 'Veuillez saisir votre email',

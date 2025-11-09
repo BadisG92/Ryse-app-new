@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Ryse - Votre coach nutrition & fitness propulsé par l'IA. Scannez vos repas, suivez vos entraînements, progressez avec des insights personnalisés.">
+  <meta name="keywords" content="nutrition, fitness, calories, coach, musculation, cardio, scanner, ia, perte poids, macros, recettes, workout">
+  <meta name="author" content="Ryse App">
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://coach-ryze.com/">
+  <meta property="og:title" content="Ryse - Coach Nutrition & Fitness IA">
+  <meta property="og:description" content="Votre coach nutrition & fitness propulsé par l'IA. Scannez vos repas, suivez vos entraînements, progressez avec des insights personnalisés.">
+  <meta property="og:image" content="https://coach-ryze.com/assets/images/og-image.jpg">
+
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image">
+  <meta property="twitter:url" content="https://coach-ryze.com/">
+  <meta property="twitter:title" content="Ryse - Coach Nutrition & Fitness IA">
+  <meta property="twitter:description" content="Votre coach nutrition & fitness propulsé par l'IA. Scannez vos repas, suivez vos entraînements, progressez avec des insights personnalisés.">
+  <meta property="twitter:image" content="https://coach-ryze.com/assets/images/og-image.jpg">
+
+  <title>Ryse - Coach Nutrition & Fitness IA | Scanner alimentaire & Suivi sport</title>
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="assets/images/favicon.svg">
+  <link rel="apple-touch-icon" href="assets/images/apple-touch-icon.png">
+
+  <!-- Google Fonts - Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+  <!-- Navigation -->
+  <nav class="navbar">
+    <div class="container">
+      <a href="/" class="navbar-logo">
+        <img src="assets/images/logo_ryze.svg" alt="Ryse Logo" style="width: 40px; height: 40px; filter: invert(1);">
+        Ryse
+      </a>
+
+      <button class="navbar-toggle" id="navToggle">
+        ☰
+      </button>
+
+      <ul class="navbar-nav" id="navMenu">
+        <li><a href="#features">Fonctionnalités</a></li>
+        <li><a href="#screenshots">Screenshots</a></li>
+        <li><a href="#download">Télécharger</a></li>
+        <li><a href="support.html">Support</a></li>
+        <li><a href="#download" class="navbar-cta">Télécharger gratuitement</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="hero section-hero">
+    <div class="container">
+      <div class="hero-content">
+        <div class="hero-text fade-in-up">
+          <h1>Votre Coach Nutrition & Fitness <span class="text-gradient">Propulsé par l'IA</span></h1>
+          <p class="tagline">Transformez votre smartphone en coach personnel intelligent. Nutrition, sport, progression : tout synchronisé, automatisé, et conçu pour atteindre vos objectifs.</p>
+
+          <ul class="hero-features">
+            <li>Scanner IA Gemini 2.0 - Analysez vos repas en 5 secondes</li>
+            <li>Suivi GPS cardio haute précision avec mode offline</li>
+            <li>100+ exercices de musculation avec vidéos</li>
+            <li>50 000+ aliments bilingues (FR/EN)</li>
+            <li>Widget iOS intelligent pour actions rapides</li>
+            <li>Essai gratuit 7 jours, puis 9,99€/mois</li>
+          </ul>
+
+          <div class="hero-cta">
+            <a href="#download" class="btn btn-primary">
+              <span>📱</span>
+              Télécharger sur l'App Store
+            </a>
+            <a href="#features" class="btn btn-secondary">
+              <span>✨</span>
+              Découvrir les fonctionnalités
+            </a>
+          </div>
+        </div>
+
+        <div class="hero-mockup fade-in-up">
+          <!-- Placeholder for app mockup - you can replace with actual screenshot -->
+          <svg width="300" height="600" viewBox="0 0 300 600" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="300" height="600" rx="30" fill="#0B132B"/>
+            <rect x="20" y="60" width="260" height="500" rx="20" fill="url(#phoneGradient)"/>
+            <circle cx="150" cy="100" r="30" fill="white" opacity="0.2"/>
+            <rect x="40" y="150" width="220" height="30" rx="15" fill="white" opacity="0.3"/>
+            <rect x="40" y="200" width="180" height="20" rx="10" fill="white" opacity="0.2"/>
+            <rect x="40" y="240" width="220" height="120" rx="15" fill="white" opacity="0.1"/>
+            <rect x="40" y="380" width="100" height="100" rx="15" fill="white" opacity="0.15"/>
+            <rect x="160" y="380" width="100" height="100" rx="15" fill="white" opacity="0.15"/>
+            <defs>
+              <linearGradient id="phoneGradient" x1="150" y1="60" x2="150" y2="560">
+                <stop offset="0%" stop-color="#1C2951"/>
+                <stop offset="100%" stop-color="#0B132B"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section id="features" class="features section">
+    <div class="container">
+      <div class="text-center mb-xl">
+        <h2>Pourquoi Ryse est <span class="text-gradient">Différent</span></h2>
+        <p>Une suite complète d'outils propulsés par l'intelligence artificielle</p>
+      </div>
+
+      <div class="features-grid">
+        <!-- Feature 1 -->
+        <div class="feature-card fade-in-up">
+          <div class="feature-icon">🤖</div>
+          <h3>Scanner IA Gemini 2.0</h3>
+          <p>Photographiez votre assiette, l'IA détecte les aliments, estime les portions et calcule les calories en 5 secondes. Reconnaissance culturelle pour cuisine locale.</p>
+        </div>
+
+        <!-- Feature 2 -->
+        <div class="feature-card fade-in-up">
+          <div class="feature-icon">📸</div>
+          <h3>Triple Système d'Ajout</h3>
+          <p>Scanner caméra, code-barres (700 000+ produits), ou recherche manuelle. Plus de 50 000 aliments en français et anglais avec historique intelligent.</p>
+        </div>
+
+        <!-- Feature 3 -->
+        <div class="feature-card fade-in-up">
+          <div class="feature-icon">🏋️</div>
+          <h3>Suivi Sport Complet</h3>
+          <p>Musculation avec 100+ exercices vidéo, cardio GPS avec auto-pause, podomètre intégré, HIIT personnalisé. Tout fonctionne offline.</p>
+        </div>
+
+        <!-- Feature 4 -->
+        <div class="feature-card fade-in-up">
+          <div class="feature-icon">📊</div>
+          <h3>Progression & Motivation</h3>
+          <p>Tableaux de bord intelligents, graphiques d'évolution, système de streaks avec tolérance, popups de célébration, tutoriels interactifs.</p>
+        </div>
+
+        <!-- Feature 5 -->
+        <div class="feature-card fade-in-up">
+          <div class="feature-icon">📱</div>
+          <h3>Widget iOS Intelligent</h3>
+          <p>Détection contextuelle du repas selon l'heure, 5 boutons d'action rapide, progression en temps réel. Lock Screen et Home Screen.</p>
+        </div>
+
+        <!-- Feature 6 -->
+        <div class="feature-card fade-in-up">
+          <div class="feature-icon">🌍</div>
+          <h3>Bilingue Natif (FR/EN)</h3>
+          <p>Interface complète en français ET anglais. Base de données d'aliments et exercices traduits. Changement de langue instantané.</p>
+        </div>
+
+        <!-- Feature 7 -->
+        <div class="feature-card fade-in-up">
+          <div class="feature-icon">🔒</div>
+          <h3>Confidentialité Absolue</h3>
+          <p>Aucune publicité, jamais. Pas de vente de données. Connexion sécurisée (Google, Apple, Email). Mode offline complet.</p>
+        </div>
+
+        <!-- Feature 8 -->
+        <div class="feature-card fade-in-up">
+          <div class="feature-icon">⚡</div>
+          <h3>Performance & UX</h3>
+          <p>Synchronisation temps réel, cache intelligent pour chargements instantanés, mode hors ligne avec queue automatique, design moderne.</p>
+        </div>
+
+        <!-- Feature 9 -->
+        <div class="feature-card fade-in-up">
+          <div class="feature-icon">🎯</div>
+          <h3>Tous les Objectifs</h3>
+          <p>Perte de poids, prise de muscle, maintenance, performance sportive, santé générale. Déficit/surplus calorique intelligent avec macros optimisés.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Screenshots Section -->
+  <section id="screenshots" class="screenshots section">
+    <div class="container">
+      <div class="text-center mb-xl">
+        <h2>Découvrez l'<span class="text-gradient">Interface</span></h2>
+        <p>Design moderne et intuitif pour une expérience optimale</p>
+      </div>
+
+      <div class="screenshots-container">
+        <!-- Screenshot placeholders - replace with actual screenshots -->
+        <div class="screenshot-card">
+          <svg width="300" height="600" viewBox="0 0 300 600" xmlns="http://www.w3.org/2000/svg">
+            <rect width="300" height="600" fill="#0B132B"/>
+            <text x="150" y="300" text-anchor="middle" fill="white" font-size="20" font-family="Inter">Dashboard Principal</text>
+          </svg>
+          <div class="screenshot-overlay">
+            <h4>Dashboard Principal</h4>
+            <p>Votre coach tout-en-un 🎯</p>
+          </div>
+        </div>
+
+        <div class="screenshot-card">
+          <svg width="300" height="600" viewBox="0 0 300 600" xmlns="http://www.w3.org/2000/svg">
+            <rect width="300" height="600" fill="#1C2951"/>
+            <text x="150" y="300" text-anchor="middle" fill="white" font-size="20" font-family="Inter">Scanner IA</text>
+          </svg>
+          <div class="screenshot-overlay">
+            <h4>Scanner IA</h4>
+            <p>Scannez n'importe quel repas 📸</p>
+          </div>
+        </div>
+
+        <div class="screenshot-card">
+          <svg width="300" height="600" viewBox="0 0 300 600" xmlns="http://www.w3.org/2000/svg">
+            <rect width="300" height="600" fill="#2A3F6F"/>
+            <text x="150" y="300" text-anchor="middle" fill="white" font-size="20" font-family="Inter">Cardio GPS</text>
+          </svg>
+          <div class="screenshot-overlay">
+            <h4>Cardio GPS</h4>
+            <p>Suivez vos courses en temps réel 🏃</p>
+          </div>
+        </div>
+
+        <div class="screenshot-card">
+          <svg width="300" height="600" viewBox="0 0 300 600" xmlns="http://www.w3.org/2000/svg">
+            <rect width="300" height="600" fill="#0B132B"/>
+            <text x="150" y="300" text-anchor="middle" fill="white" font-size="20" font-family="Inter">Workout Session</text>
+          </svg>
+          <div class="screenshot-overlay">
+            <h4>Musculation</h4>
+            <p>Musculation guidée pas à pas 💪</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Technologies Section -->
+  <section class="section">
+    <div class="container">
+      <div class="text-center mb-xl">
+        <h2>Technologies de <span class="text-gradient">Pointe</span></h2>
+        <p>Propulsé par les meilleures technologies IA et cloud</p>
+      </div>
+
+      <div class="features-grid">
+        <div class="feature-card">
+          <h3>Google Gemini 2.0 Flash</h3>
+          <p>Analyse nutritionnelle IA de dernière génération avec reconnaissance culturelle avancée</p>
+        </div>
+
+        <div class="feature-card">
+          <h3>Google Cloud Vision</h3>
+          <p>Reconnaissance d'images et codes-barres haute précision pour identification instantanée</p>
+        </div>
+
+        <div class="feature-card">
+          <h3>GPS Haute Précision</h3>
+          <p>Algorithmes Haversine + filtrage Kalman pour tracking cardio ultra-précis</p>
+        </div>
+
+        <div class="feature-card">
+          <h3>Calculs MET</h3>
+          <p>Calories brûlées scientifiquement validées selon votre activité physique</p>
+        </div>
+
+        <div class="feature-card">
+          <h3>Firebase Analytics</h3>
+          <p>Amélioration continue basée sur vos retours et analytics en temps réel</p>
+        </div>
+
+        <div class="feature-card">
+          <h3>Supabase Backend</h3>
+          <p>Infrastructure cloud sécurisée avec synchronisation temps réel PostgreSQL</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Download CTA Section -->
+  <section id="download" class="cta-section">
+    <div class="container text-center">
+      <h2>Téléchargez Ryse <span style="color: white;">Maintenant</span></h2>
+      <p>Rejoignez des milliers d'utilisateurs qui ont déjà transformé leur vie avec Ryse.</p>
+
+      <div class="app-badges">
+        <!-- Replace with actual App Store badge -->
+        <a href="https://apps.apple.com/app/ryse" target="_blank" rel="noopener">
+          <svg width="180" height="60" viewBox="0 0 180 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="180" height="60" rx="10" fill="black"/>
+            <text x="90" y="35" text-anchor="middle" fill="white" font-size="16" font-family="Inter" font-weight="600">
+              Download on the App Store
+            </text>
+          </svg>
+        </a>
+
+        <!-- Google Play badge (future) -->
+        <a href="#" target="_blank" rel="noopener" style="opacity: 0.5; pointer-events: none;">
+          <svg width="180" height="60" viewBox="0 0 180 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="180" height="60" rx="10" fill="black"/>
+            <text x="90" y="35" text-anchor="middle" fill="white" font-size="14" font-family="Inter" font-weight="600">
+              Bientôt sur Google Play
+            </text>
+          </svg>
+        </a>
+      </div>
+
+      <p style="margin-top: 2rem; font-size: 0.9rem; opacity: 0.8;">
+        Compatible iPhone & iPad • iOS 15.0 ou supérieur • Version Android en développement
+      </p>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-content">
+        <!-- About -->
+        <div class="footer-section">
+          <h4>Ryse</h4>
+          <p style="color: rgba(255,255,255,0.8);">Votre coach nutrition & fitness propulsé par l'IA. Démocratiser le coaching de qualité grâce à l'intelligence artificielle.</p>
+          <div class="footer-social mt-md">
+            <a href="https://instagram.com/ryse.app" target="_blank" class="social-icon">📷</a>
+            <a href="https://twitter.com/ryseapp" target="_blank" class="social-icon">🐦</a>
+            <a href="https://tiktok.com/@ryse.app" target="_blank" class="social-icon">🎵</a>
+            <a href="mailto:support@coach-ryze.com" class="social-icon">✉️</a>
+          </div>
+        </div>
+
+        <!-- Product -->
+        <div class="footer-section">
+          <h4>Produit</h4>
+          <ul>
+            <li><a href="#features">Fonctionnalités</a></li>
+            <li><a href="#screenshots">Screenshots</a></li>
+            <li><a href="#download">Télécharger</a></li>
+            <li><a href="#">Roadmap (bientôt)</a></li>
+          </ul>
+        </div>
+
+        <!-- Support -->
+        <div class="footer-section">
+          <h4>Support</h4>
+          <ul>
+            <li><a href="support.html">Centre d'aide</a></li>
+            <li><a href="support.html#faq">FAQ</a></li>
+            <li><a href="support.html#contact">Contact</a></li>
+            <li><a href="mailto:support@coach-ryze.com">support@coach-ryze.com</a></li>
+          </ul>
+        </div>
+
+        <!-- Legal -->
+        <div class="footer-section">
+          <h4>Légal</h4>
+          <ul>
+            <li><a href="privacy.html">Politique de confidentialité</a></li>
+            <li><a href="terms.html">Conditions d'utilisation</a></li>
+            <li><a href="#">Cookies</a></li>
+            <li><a href="#">RGPD</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <p>&copy; 2025 Ryse App. Tous droits réservés. | Fait avec ❤️ pour votre santé</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- JavaScript -->
+  <script src="assets/js/main.js"></script>
+</body>
+</html>

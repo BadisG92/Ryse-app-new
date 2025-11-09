@@ -35,8 +35,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(authService.errorMessage ?? 'Failed to send reset email'),
+          content: Text(authService.errorMessage ?? 'auth_error_password_reset_failed'),
           backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
         ),
       );
     }

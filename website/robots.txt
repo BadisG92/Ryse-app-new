@@ -1,0 +1,31 @@
+# Robots.txt for coach-ryze.com
+# Allow all crawlers to index all pages
+
+User-agent: *
+Allow: /
+
+# Disallow crawling of assets (optional - improves crawl efficiency)
+# Disallow: /assets/
+
+# Sitemap location
+Sitemap: https://coach-ryze.com/sitemap.xml
+
+# Crawl-delay (optional - prevents server overload)
+# Crawl-delay: 1
+
+# Specific rules for major search engines
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Slurp
+Allow: /
+
+# Block bad bots (optional)
+User-agent: AhrefsBot
+Crawl-delay: 10
+
+User-agent: SemrushBot
+Crawl-delay: 10

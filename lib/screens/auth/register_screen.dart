@@ -76,8 +76,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final locService = Provider.of<LocalizationService>(context, listen: false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(authService.errorMessage ?? 'register.registrationFailed'.tr(locService.currentLanguageCode)),
+          content: Text((authService.errorMessage ?? 'register.registrationFailed').tr(locService.currentLanguageCode)),
           backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
         ),
       );
     }
@@ -96,8 +97,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final locService = Provider.of<LocalizationService>(context, listen: false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(authService.errorMessage ?? 'register.googleFailed'.tr(locService.currentLanguageCode)),
+          content: Text((authService.errorMessage ?? 'register.googleFailed').tr(locService.currentLanguageCode)),
           backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
         ),
       );
     }
@@ -116,8 +118,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final locService = Provider.of<LocalizationService>(context, listen: false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(authService.errorMessage ?? 'register.appleFailed'.tr(locService.currentLanguageCode)),
+          content: Text((authService.errorMessage ?? 'register.appleFailed').tr(locService.currentLanguageCode)),
           backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
         ),
       );
     }

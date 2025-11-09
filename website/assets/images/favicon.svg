@@ -1,0 +1,23 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background with gradient -->
+  <rect width="64" height="64" rx="16" fill="url(#gradient)"/>
+
+  <!-- Ryse Logo - Modern geometric shape -->
+  <path d="M32 16L44 24V40L32 48L20 40V24L32 16Z" fill="white" fill-opacity="0.95"/>
+  <path d="M32 24L38 28V36L32 40L26 36V28L32 24Z" fill="url(#innerGradient)"/>
+
+  <!-- Lightning bolt accent (representing power/energy) -->
+  <path d="M34 26L30 32H32L30 38L36 32H34L36 26H34Z" fill="white"/>
+
+  <defs>
+    <linearGradient id="gradient" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#3B82F6"/>
+      <stop offset="50%" stop-color="#10B981"/>
+      <stop offset="100%" stop-color="#0B132B"/>
+    </linearGradient>
+    <linearGradient id="innerGradient" x1="26" y1="24" x2="38" y2="40" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0B132B"/>
+      <stop offset="100%" stop-color="#1C2951"/>
+    </linearGradient>
+  </defs>
+</svg>
