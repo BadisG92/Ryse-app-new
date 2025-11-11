@@ -40,10 +40,18 @@
   <!-- Navigation -->
   <nav class="navbar">
     <div class="container">
-      <a href="/" class="navbar-logo">
-        <img src="assets/images/logo_ryze.svg" alt="Ryse Logo" style="width: 40px; height: 40px; filter: invert(1);">
-        Ryse
+      <a href="/index.html" class="navbar-logo">
+        <div class="logo-container">
+          <img src="assets/images/logo_ryze.svg" alt="Ryse Logo">
+        </div>
+        <span class="logo-text">Ryze</span>
       </a>
+
+      <!-- Language Switcher -->
+      <div class="language-switcher">
+        <a href="index.html" class="lang-btn active">FR</a>
+        <a href="index_en.html" class="lang-btn">EN</a>
+      </div>
 
       <button class="navbar-toggle" id="navToggle">
         ☰
@@ -68,44 +76,26 @@
           <p class="tagline">Transformez votre smartphone en coach personnel intelligent. Nutrition, sport, progression : tout synchronisé, automatisé, et conçu pour atteindre vos objectifs.</p>
 
           <ul class="hero-features">
-            <li>Scanner IA Gemini 2.0 - Analysez vos repas en 5 secondes</li>
-            <li>Suivi GPS cardio haute précision avec mode offline</li>
-            <li>100+ exercices de musculation avec vidéos</li>
-            <li>50 000+ aliments bilingues (FR/EN)</li>
-            <li>Widget iOS intelligent pour actions rapides</li>
-            <li>Essai gratuit 7 jours, puis 9,99€/mois</li>
+            <li>✓ Scanner IA Gemini 2.0 - Analysez vos repas en 5 secondes</li>
+            <li>✓ Suivi GPS cardio haute précision avec mode offline</li>
+            <li>✓ 100+ exercices de musculation avec vidéos</li>
+            <li>✓ 50 000+ aliments bilingues (FR/EN)</li>
+            <li>✓ Widget iOS intelligent pour actions rapides</li>
+            <li>✓ Essai gratuit 7 jours, puis 9,99€/mois</li>
           </ul>
 
           <div class="hero-cta">
             <a href="#download" class="btn btn-primary">
-              <span>📱</span>
               Télécharger sur l'App Store
             </a>
             <a href="#features" class="btn btn-secondary">
-              <span>✨</span>
               Découvrir les fonctionnalités
             </a>
           </div>
         </div>
 
         <div class="hero-mockup fade-in-up">
-          <!-- Placeholder for app mockup - you can replace with actual screenshot -->
-          <svg width="300" height="600" viewBox="0 0 300 600" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="300" height="600" rx="30" fill="#0B132B"/>
-            <rect x="20" y="60" width="260" height="500" rx="20" fill="url(#phoneGradient)"/>
-            <circle cx="150" cy="100" r="30" fill="white" opacity="0.2"/>
-            <rect x="40" y="150" width="220" height="30" rx="15" fill="white" opacity="0.3"/>
-            <rect x="40" y="200" width="180" height="20" rx="10" fill="white" opacity="0.2"/>
-            <rect x="40" y="240" width="220" height="120" rx="15" fill="white" opacity="0.1"/>
-            <rect x="40" y="380" width="100" height="100" rx="15" fill="white" opacity="0.15"/>
-            <rect x="160" y="380" width="100" height="100" rx="15" fill="white" opacity="0.15"/>
-            <defs>
-              <linearGradient id="phoneGradient" x1="150" y1="60" x2="150" y2="560">
-                <stop offset="0%" stop-color="#1C2951"/>
-                <stop offset="100%" stop-color="#0B132B"/>
-              </linearGradient>
-            </defs>
-          </svg>
+          <img src="assets/images/coach/coach_ryze_welcome_arms.png" alt="Coach Ryze" class="coach-ryze-hero">
         </div>
       </div>
     </div>
@@ -122,28 +112,36 @@
       <div class="features-grid">
         <!-- Feature 1 -->
         <div class="feature-card fade-in-up">
-          <div class="feature-icon">🤖</div>
+          <div class="feature-icon">
+            <img src="assets/images/coach/coach_ryze_nutrition_avatar.png" alt="Nutrition" class="feature-image">
+          </div>
           <h3>Scanner IA Gemini 2.0</h3>
           <p>Photographiez votre assiette, l'IA détecte les aliments, estime les portions et calcule les calories en 5 secondes. Reconnaissance culturelle pour cuisine locale.</p>
         </div>
 
         <!-- Feature 2 -->
         <div class="feature-card fade-in-up">
-          <div class="feature-icon">📸</div>
-          <h3>Triple Système d'Ajout</h3>
-          <p>Scanner caméra, code-barres (700 000+ produits), ou recherche manuelle. Plus de 50 000 aliments en français et anglais avec historique intelligent.</p>
+          <div class="feature-icon">
+            <img src="assets/images/coach/coach_ryze_chef_avatar.png" alt="5 modes d'ajout" class="feature-image">
+          </div>
+          <h3>5 Modes d'Ajout Alimentaire</h3>
+          <p>Scanner photo IA, code-barres (700 000+ produits), recherche manuelle, recettes, ou chat IA nutritionnel. Plus de 50 000 aliments en français et anglais.</p>
         </div>
 
         <!-- Feature 3 -->
         <div class="feature-card fade-in-up">
-          <div class="feature-icon">🏋️</div>
+          <div class="feature-icon">
+            <img src="assets/images/coach/coach_ryze_sport_avatar.png" alt="Sport" class="feature-image">
+          </div>
           <h3>Suivi Sport Complet</h3>
-          <p>Musculation avec 100+ exercices vidéo, cardio GPS avec auto-pause, podomètre intégré, HIIT personnalisé. Tout fonctionne offline.</p>
+          <p>Musculation avec historique détaillé, cardio GPS temps réel, sessions HIIT configurables, graphiques de progression. Mode offline avec sync automatique.</p>
         </div>
 
         <!-- Feature 4 -->
         <div class="feature-card fade-in-up">
-          <div class="feature-icon">📊</div>
+          <div class="feature-icon">
+            <img src="assets/images/coach/coach_ryze_congratulations.png" alt="Progression" class="feature-image">
+          </div>
           <h3>Progression & Motivation</h3>
           <p>Tableaux de bord intelligents, graphiques d'évolution, système de streaks avec tolérance, popups de célébration, tutoriels interactifs.</p>
         </div>
@@ -178,7 +176,9 @@
 
         <!-- Feature 9 -->
         <div class="feature-card fade-in-up">
-          <div class="feature-icon">🎯</div>
+          <div class="feature-icon">
+            <img src="assets/images/coach/coach_ryze_workout_avatar.png" alt="Objectifs" class="feature-image">
+          </div>
           <h3>Tous les Objectifs</h3>
           <p>Perte de poids, prise de muscle, maintenance, performance sportive, santé générale. Déficit/surplus calorique intelligent avec macros optimisés.</p>
         </div>
@@ -203,7 +203,7 @@
           </svg>
           <div class="screenshot-overlay">
             <h4>Dashboard Principal</h4>
-            <p>Votre coach tout-en-un 🎯</p>
+            <p>Votre coach tout-en-un</p>
           </div>
         </div>
 
@@ -214,7 +214,7 @@
           </svg>
           <div class="screenshot-overlay">
             <h4>Scanner IA</h4>
-            <p>Scannez n'importe quel repas 📸</p>
+            <p>Scannez n'importe quel repas</p>
           </div>
         </div>
 
@@ -225,7 +225,7 @@
           </svg>
           <div class="screenshot-overlay">
             <h4>Cardio GPS</h4>
-            <p>Suivez vos courses en temps réel 🏃</p>
+            <p>Suivez vos courses en temps réel</p>
           </div>
         </div>
 
@@ -236,7 +236,7 @@
           </svg>
           <div class="screenshot-overlay">
             <h4>Musculation</h4>
-            <p>Musculation guidée pas à pas 💪</p>
+            <p>Musculation guidée pas à pas</p>
           </div>
         </div>
       </div>
@@ -325,7 +325,12 @@
       <div class="footer-content">
         <!-- About -->
         <div class="footer-section">
-          <h4>Ryse</h4>
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+            <div class="logo-container-small">
+              <img src="assets/images/logo_ryze.svg" alt="Ryse Logo">
+            </div>
+            <h4 style="margin: 0;">Ryse</h4>
+          </div>
           <p style="color: rgba(255,255,255,0.8);">Votre coach nutrition & fitness propulsé par l'IA. Démocratiser le coaching de qualité grâce à l'intelligence artificielle.</p>
           <div class="footer-social mt-md">
             <a href="https://instagram.com/ryse.app" target="_blank" class="social-icon">📷</a>

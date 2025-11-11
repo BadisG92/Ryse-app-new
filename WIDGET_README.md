@@ -76,7 +76,7 @@ FoodEntriesService.addFoodEntry()
     ↓
 MealWidgetDataProvider.updateWidgetData()
     ↓
-SharedPreferences (group.com.ryse.app)
+SharedPreferences (group.com.ryze.app)
     ↓
 iOS Widget (Timeline Provider)
     ↓
@@ -188,12 +188,12 @@ ryse://add-food?meal=dejeuner&mode=camera
 
 **Runner target** :
 ```
-Signing & Capabilities → App Groups → group.com.ryse.app
+Signing & Capabilities → App Groups → group.com.ryze.app
 ```
 
 **RyseMealWidget target** :
 ```
-Signing & Capabilities → App Groups → group.com.ryse.app
+Signing & Capabilities → App Groups → group.com.ryze.app
 ```
 
 ### URL Scheme
@@ -403,7 +403,7 @@ print(data);
 **Vérifier App Group** :
 ```swift
 // Dans Swift
-if let userDefaults = UserDefaults(suiteName: "group.com.ryse.app") {
+if let userDefaults = UserDefaults(suiteName: "group.com.ryze.app") {
     print("✅ App Group accessible")
 } else {
     print("❌ App Group non accessible")

@@ -185,26 +185,29 @@
   <!-- Navigation -->
   <nav class="navbar">
     <div class="container">
-      <a href="/" class="navbar-logo">
-        <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect width="40" height="40" rx="10" fill="url(#gradient)"/>
-          <path d="M20 10L28 16V24L20 30L12 24V16L20 10Z" fill="white"/>
-          <defs>
-            <linearGradient id="gradient" x1="0" y1="0" x2="40" y2="40">
-              <stop offset="0%" stop-color="#3B82F6"/>
-              <stop offset="100%" stop-color="#10B981"/>
-            </linearGradient>
-          </defs>
-        </svg>
-        Ryse
+      <a href="/index.html" class="navbar-logo">
+        <div class="logo-container">
+          <img src="assets/images/logo_ryze.svg" alt="Ryze Logo">
+        </div>
+        <span class="logo-text">Ryze</span>
       </a>
 
-      <ul class="navbar-nav">
+      <button class="navbar-toggle" id="navToggle">
+        ☰
+      </button>
+
+      <ul class="navbar-nav" id="navMenu">
         <li><a href="index.html">Accueil</a></li>
         <li><a href="#faq">FAQ</a></li>
         <li><a href="#contact">Contact</a></li>
         <li><a href="index.html#download" class="navbar-cta">Télécharger</a></li>
       </ul>
+
+      <!-- Language Switcher -->
+      <div class="language-switcher">
+        <a href="support.html" class="lang-btn active">FR</a>
+        <a href="support_en.html" class="lang-btn">EN</a>
+      </div>
     </div>
   </nav>
 

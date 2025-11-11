@@ -42,6 +42,9 @@ end
 # Dependencies are managed manually in Xcode Build Settings
 
 post_install do |installer|
+  # Workaround for Xcode 16.1 compatibility: downgrade project format
+  installer.pods_project.root_object.attributes['compatibilityVersion'] = 'Xcode 15.0'
+  
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
 

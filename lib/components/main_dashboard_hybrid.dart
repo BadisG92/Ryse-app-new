@@ -1366,21 +1366,14 @@ class CompactProgressSection extends StatelessWidget {
           ),
         ),
         
-        // Badge XP ou progression
-        if (isCompleted)
-          CustomBadge(
-            text: '+${goal.xp} XP',
-            backgroundColor: const Color(0xFF22C55E).withOpacity(0.1),
-            textColor: const Color(0xFF22C55E),
-          )
-        else
-          Text(
-            goal.progressText,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Color(0xFF64748B),
-            ),
+        // Progression
+        Text(
+          goal.progressText,
+          style: const TextStyle(
+            fontSize: 12,
+            color: Color(0xFF64748B),
           ),
+        ),
       ],
     );
   }
@@ -1775,12 +1768,6 @@ class DetailedProgressSection extends StatelessWidget {
                   ],
                 ),
               ),
-              if (isCompleted)
-                CustomBadge(
-                  text: '+${goal.xp} XP',
-                  backgroundColor: const Color(0xFF22C55E).withOpacity(0.1),
-                  textColor: const Color(0xFF22C55E),
-                ),
             ],
           ),
           const SizedBox(height: 12),

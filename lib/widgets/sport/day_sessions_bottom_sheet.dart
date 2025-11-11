@@ -5,6 +5,8 @@ import '../../services/sport_dashboard_service.dart';
 import '../../services/cardio_service.dart';
 import '../../services/translations.dart';
 import '../../services/localization_service.dart';
+import '../../screens/workout_edit_screen.dart';
+import '../../models/sport_models.dart';
 
 /// Bottom sheet qui affiche les séances d'un jour spécifique avec option de suppression
 class DaySessionsBottomSheet extends StatefulWidget {
@@ -99,6 +101,86 @@ class _DaySessionsBottomSheetState extends State<DaySessionsBottomSheet> {
         );
       }
     }
+  }
+
+  Future<void> _editMusculationSession(String sessionId) async {
+    try {
+      // Charger les détails de la séance
+      final sessionDetails = await SportDashboardService.getMusculationSessionDetails(sessionId);
+
+      if (!mounted) return;
+
+      // Convertir en format WorkoutExercise pour le screen
+      final exercises = _convertToWorkoutExercises(sessionDetails['exercises'] as Map<String, List<Map<String, dynamic>>>);
+
+      // Ouvrir le screen d'édition
+      if (!mounted) return;
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => WorkoutEditScreen(
+            sessionId: sessionId,
+            historySessionId: sessionDetails['history_session_id'],
+            sessionName: sessionDetails['session_name'],
+            exercises: exercises,
+            durationMinutes: sessionDetails['duration_minutes'] ?? 0,
+            intensity: sessionDetails['intensity'],
+            sessionDate: sessionDetails['session_date'],
+          ),
+        ),
+      );
+
+      // Si la séance a été modifiée, recharger
+      if (result == true && mounted) {
+        await _loadSessions();
+        widget.onSessionDeleted(); // Réutiliser le callback pour rafraîchir
+      }
+    } catch (e) {
+      debugPrint('❌ Erreur lors de l\'édition: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Erreur lors du chargement de la séance'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  List<WorkoutExercise> _convertToWorkoutExercises(Map<String, List<Map<String, dynamic>>> exerciseGroups) {
+    final List<WorkoutExercise> workoutExercises = [];
+
+    for (final entry in exerciseGroups.entries) {
+      final exerciseName = entry.key;
+      final sets = entry.value;
+
+      // Créer les sets
+      final exerciseSets = sets.map((set) {
+        return ExerciseSet(
+          reps: set['reps'] as int,
+          weight: (set['weight'] as num).toDouble(),
+          isCompleted: true, // En mode édition, tous les sets sont déjà complétés
+        );
+      }).toList();
+
+      // Créer l'exercice
+      final exercise = Exercise(
+        id: exerciseName, // On utilise le nom comme ID
+        name: exerciseName,
+        muscleGroup: '', // Pas nécessaire pour l'édition
+        equipment: '',
+        description: '',
+        isCustom: false,
+      );
+
+      workoutExercises.add(WorkoutExercise(
+        exercise: exercise,
+        sets: exerciseSets,
+      ));
+    }
+
+    return workoutExercises;
   }
 
   Future<void> _deleteMusculationSession(String sessionId, int index) async {
@@ -313,6 +395,7 @@ class _DaySessionsBottomSheetState extends State<DaySessionsBottomSheet> {
                           duration: _formatDuration(null, session['duration_minutes']),
                           calories: session['calories_burned'] ?? 0,
                           color: const Color(0xFF0B132B),
+                          onEdit: () => _editMusculationSession(session['id']),
                           onDelete: () => _deleteMusculationSession(session['id'], index),
                         );
                       }),
@@ -366,6 +449,7 @@ class _DaySessionsBottomSheetState extends State<DaySessionsBottomSheet> {
     double? distance,
     String? intensity,
     required VoidCallback onDelete,
+    VoidCallback? onEdit,
   }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -468,6 +552,20 @@ class _DaySessionsBottomSheetState extends State<DaySessionsBottomSheet> {
               ],
             ),
           ),
+
+          // Bouton modifier (si disponible)
+          if (onEdit != null)
+            GestureDetector(
+              onTap: onEdit,
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                child: const Icon(
+                  LucideIcons.pencil,
+                  size: 16,
+                  color: Color(0xFF0B132B),
+                ),
+              ),
+            ),
 
           // Bouton supprimer
           GestureDetector(

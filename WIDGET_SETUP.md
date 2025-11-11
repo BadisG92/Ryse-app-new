@@ -19,7 +19,7 @@ Votre app Ryse dispose maintenant d'un widget iOS "Mes Repas" qui affiche vos ca
 - **`lib/services/meal_widget_data_provider.dart`**
   - Synchronise les données des repas vers le widget
   - Utilise SharedPreferences pour la communication inter-process
-  - App Group: `group.com.ryse.app`
+  - App Group: `group.com.ryze.app`
 
 - **`lib/services/widget_deep_link_handler.dart`**
   - Gère les deep links depuis le widget
@@ -132,7 +132,7 @@ run_with_widget.sh                         # Script tout-en-un
 
 Les App Groups permettent le partage de données entre l'app et le widget :
 
-- **Group ID**: `group.com.ryse.app`
+- **Group ID**: `group.com.ryze.app`
 - **Configured in**:
   - `ios/Runner/Runner.entitlements`
   - `ios/RyseMealWidgetExtensionDebug.entitlements`

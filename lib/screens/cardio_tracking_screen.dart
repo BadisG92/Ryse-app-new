@@ -9,11 +9,11 @@ import '../services/cardio_service.dart';
 import '../services/location_service.dart';
 import '../services/cardio_calculator.dart';
 import '../services/cardio_session_manager.dart';
+import '../services/celebration_service.dart';
 import '../services/translations.dart';
 import '../services/localization_service.dart';
-import '../services/sport_dashboard_service.dart';
-import '../services/dashboard_service.dart';
 import '../services/global_state_manager.dart';
+import '../services/pedometer_service.dart';
 
 class CardioTrackingScreen extends StatefulWidget {
   final String activityType;
@@ -39,12 +39,19 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
   StreamSubscription<LocationPoint>? _locationSubscription;
   bool _useGPS = false;
   bool _gpsPermissionGranted = false;
+  bool _sessionSaved = false; // Protection contre les doubles validations
+
+  // Pedometer
+  final PedometerService _pedometerService = PedometerService();
+  bool _usePedometer = false;
+  bool _pedometerAvailable = false;
 
   @override
   void initState() {
     super.initState();
     _initializeSession();
     _checkGPSPermissions();
+    _checkPedometerAvailability();
   }
 
   void _initializeSession() {
@@ -65,7 +72,35 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
     if (_useGPS) {
       LocationService.stopLocationTracking();
     }
+    if (_usePedometer) {
+      _pedometerService.stopTracking();
+    }
+    _pedometerService.dispose();
     super.dispose();
+  }
+
+  /// Vérifie la disponibilité du pedometer pour la marche
+  Future<void> _checkPedometerAvailability() async {
+    // Le pedometer n'est utile que pour la marche
+    if (widget.activityType != 'walking') {
+      setState(() {
+        _pedometerAvailable = false;
+        _usePedometer = false;
+      });
+      return;
+    }
+
+    final isAvailable = await _pedometerService.checkPedometerAvailability();
+    setState(() {
+      _pedometerAvailable = isAvailable;
+      _usePedometer = isAvailable; // Activer par défaut si disponible
+    });
+
+    if (isAvailable) {
+      debugPrint('✅ Pedometer: Activé pour le tracking des pas');
+    } else {
+      debugPrint('⚠️ Pedometer: Non disponible, utiliser fallback GPS/Simulation');
+    }
   }
 
   /// Vérifie les permissions GPS au démarrage
@@ -165,6 +200,28 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
   }
 
   void _startTracking() async {
+    // Démarrer le pedometer si disponible et c'est de la marche
+    if (_usePedometer && _pedometerAvailable && widget.activityType == 'walking') {
+      final pedometerStarted = await _pedometerService.startTracking();
+      if (pedometerStarted) {
+        _pedometerService.resetSessionSteps();
+
+        // Callback pour mettre à jour les pas en temps réel
+        _pedometerService.onStepCountChanged = (steps) {
+          if (mounted) {
+            setState(() {
+              _session = _session.copyWith(steps: steps);
+            });
+          }
+        };
+
+        debugPrint('✅ Pedometer: Tracking des pas démarré');
+      } else {
+        debugPrint('⚠️ Pedometer: Échec du démarrage, utiliser fallback');
+        _usePedometer = false;
+      }
+    }
+
     // Démarrer le suivi GPS si disponible
     if (_useGPS && _gpsPermissionGranted) {
       final gpsStarted = await LocationService.startLocationTracking();
@@ -209,9 +266,9 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
     final averageSpeed = LocationService.calculateAverageSpeed();
     final currentSpeed = LocationService.calculateCurrentSpeed();
     final route = LocationService.currentRoute;
-    
+
     debugPrint('📊 GPS Data - Distance: ${distance.toStringAsFixed(2)}km, Speed: ${currentSpeed.toStringAsFixed(1)}km/h, Points: ${route.length}');
-    
+
     // Calculer les calories avec les vraies données
     final calories = CardioCalculator.calculateCalories(
       activityType: widget.activityType,
@@ -220,12 +277,15 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
       distance: distance,
     );
 
-    // Calculer les pas pour la marche (estimation basée sur la cadence)
+    // Calculer les pas pour la marche UNIQUEMENT si pedometer pas actif
     int steps = _session.steps;
-    if (widget.activityType == 'walking' && currentSpeed > 0) {
-      // Estimation : ~100-120 pas par minute selon la vitesse
-      final stepsPerMinute = (currentSpeed * 20).clamp(80, 140); // pas/min
-      steps = ((stepsPerMinute / 60) * _session.duration.inSeconds).round();
+    if (widget.activityType == 'walking' && !_usePedometer) {
+      // FORMULE SCIENTIFIQUE: 1 km = ~1250 pas pour un adulte moyen (foulée ~0.8m)
+      // Ajuster selon la vitesse pour plus de précision
+      final strideLength = _calculateStrideLength(currentSpeed);
+      steps = ((distance * 1000) / strideLength).round(); // distance en mètres / longueur foulée
+
+      debugPrint('👣 GPS Fallback: $steps pas estimés (foulée: ${strideLength.toStringAsFixed(2)}m)');
     }
 
     _session = _session.copyWith(
@@ -238,12 +298,30 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
     );
   }
 
+  /// Calcule la longueur de foulée selon la vitesse
+  /// Formule basée sur des études biomécaniques
+  double _calculateStrideLength(double speedKmh) {
+    // Longueur de foulée moyenne selon la vitesse (en mètres)
+    // Source: Biomechanical studies on gait patterns
+    if (speedKmh < 3.0) {
+      return 0.60; // Marche très lente
+    } else if (speedKmh < 4.0) {
+      return 0.70; // Marche lente
+    } else if (speedKmh < 5.0) {
+      return 0.78; // Marche normale
+    } else if (speedKmh < 6.0) {
+      return 0.85; // Marche rapide
+    } else {
+      return 0.95; // Marche très rapide / transition vers course
+    }
+  }
+
   /// Met à jour avec des données simulées (fallback)
   void _updateWithSimulation() {
     final Random random = Random();
     double speedIncrement;
     int stepsIncrement = 0;
-    
+
     switch (widget.activityType) {
       case 'running':
         speedIncrement = random.nextDouble() * 0.003 + 0.002; // ~8-12 km/h
@@ -252,8 +330,19 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
         speedIncrement = random.nextDouble() * 0.005 + 0.004; // ~15-25 km/h
         break;
       case 'walking':
-        speedIncrement = random.nextDouble() * 0.001 + 0.001; // ~4-6 km/h
-        stepsIncrement = random.nextInt(3) + 1; // 1-3 pas par seconde
+        if (!_usePedometer) {
+          // Mode simulation: cadence réaliste de 100-120 pas/minute
+          speedIncrement = random.nextDouble() * 0.001 + 0.001; // ~4-6 km/h
+
+          // CORRECTION: 100-120 pas/minute = 1.67-2 pas/seconde
+          // Utiliser une distribution plus réaliste
+          final stepsPerSecond = 1.67 + (random.nextDouble() * 0.33); // 1.67-2.0 pas/sec
+          stepsIncrement = stepsPerSecond.round(); // Arrondi pour éviter les fractions
+
+          debugPrint('🎲 Simulation: +$stepsIncrement pas (${(stepsPerSecond * 60).toStringAsFixed(0)} pas/min)');
+        } else {
+          speedIncrement = random.nextDouble() * 0.001 + 0.001;
+        }
         break;
       default:
         speedIncrement = 0.002;
@@ -511,7 +600,17 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () async {
+                    onPressed: _sessionSaved ? null : () async {
+                      // Protection contre double clic
+                      if (_sessionSaved) {
+                        debugPrint('⚠️ Session déjà sauvegardée, ignorer');
+                        return;
+                      }
+
+                      setState(() {
+                        _sessionSaved = true;
+                      });
+
                       // Historiser la session avec GPS dans Supabase
                       try {
                         if (_useGPS && _gpsPermissionGranted) {
@@ -524,26 +623,29 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
                           await _saveSessionToSupabase();
                         }
                         debugPrint('✅ Session cardio sauvegardée');
+
+                        // UNE SEULE mise à jour du GlobalState pour éviter les doublons
+                        GlobalStateManager.instance.updateWorkout(true);
+                        debugPrint('✅ GlobalStateManager: Cardio marqué comme complété');
+
+                        // Marquer pour afficher le popup après retour écran
+                        CelebrationService().celebrateCardioCompletionGlobal(
+                          activityTitle: widget.activityTitle,
+                          duration: _session.duration,
+                          distanceKm: _session.distance,
+                        );
                       } catch (e) {
                         debugPrint('❌ Erreur sauvegarde session: $e');
+                        setState(() {
+                          _sessionSaved = false; // Réinitialiser en cas d'erreur
+                        });
                         // Continuer même en cas d'erreur pour ne pas bloquer l'utilisateur
                       }
 
-                      // OPTIMISATION: Invalider les caches pour forcer le rafraîchissement
-                      try {
-                        SportDashboardService.forceInvalidateAllCaches();
-                        DashboardService.invalidateAndRefreshAfterWorkout();
-
-                        // Recharger TOUTES les données Sport depuis la DB
-                        await GlobalStateManager.instance.refreshSportData();
-
-                        debugPrint('✅ Caches Sport invalidés après séance cardio');
-                      } catch (e) {
-                        debugPrint('⚠️ Erreur invalidation caches: $e');
+                      if (mounted) {
+                        Navigator.pop(context); // Fermer écran résultat
+                        Navigator.pop(context); // Retourner au cardio (se rafraîchira automatiquement)
                       }
-
-                      Navigator.pop(context); // Fermer dialog
-                      Navigator.pop(context); // Retourner au cardio (se rafraîchira automatiquement)
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF0B132B),
@@ -646,18 +748,14 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          // Indicateur GPS
+                          // Indicateur Mode de tracking
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: _useGPS && _gpsPermissionGranted 
-                                ? Colors.green.withValues(alpha: 0.2)
-                                : Colors.orange.withValues(alpha: 0.2),
+                              color: _getTrackingModeColor().withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
-                                color: _useGPS && _gpsPermissionGranted 
-                                  ? Colors.green
-                                  : Colors.orange,
+                                color: _getTrackingModeColor(),
                                 width: 1,
                               ),
                             ),
@@ -665,23 +763,17 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(
-                                  _useGPS && _gpsPermissionGranted 
-                                    ? LucideIcons.satellite 
-                                    : LucideIcons.wifiOff,
+                                  _getTrackingModeIcon(),
                                   size: 12,
-                                  color: _useGPS && _gpsPermissionGranted 
-                                    ? Colors.green
-                                    : Colors.orange,
+                                  color: _getTrackingModeColor(),
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
-                                  _useGPS && _gpsPermissionGranted ? 'GPS' : 'SIMU',
+                                  _getTrackingModeLabel(),
                                   style: TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.w600,
-                                    color: _useGPS && _gpsPermissionGranted 
-                                      ? Colors.green
-                                      : Colors.orange,
+                                    color: _getTrackingModeColor(),
                                   ),
                                 ),
                               ],
@@ -1013,5 +1105,38 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
       }
     }
     return '';
+  }
+
+  /// Retourne la couleur de l'indicateur selon le mode de tracking actif
+  Color _getTrackingModeColor() {
+    if (_usePedometer && _pedometerAvailable) {
+      return Colors.blue; // Pedometer = bleu (le plus précis)
+    } else if (_useGPS && _gpsPermissionGranted) {
+      return Colors.green; // GPS = vert (précis)
+    } else {
+      return Colors.orange; // Simulation = orange (estimation)
+    }
+  }
+
+  /// Retourne l'icône de l'indicateur selon le mode de tracking actif
+  IconData _getTrackingModeIcon() {
+    if (_usePedometer && _pedometerAvailable) {
+      return LucideIcons.footprints; // Pedometer = empreintes
+    } else if (_useGPS && _gpsPermissionGranted) {
+      return LucideIcons.satellite; // GPS = satellite
+    } else {
+      return LucideIcons.wifiOff; // Simulation = pas de signal
+    }
+  }
+
+  /// Retourne le label de l'indicateur selon le mode de tracking actif
+  String _getTrackingModeLabel() {
+    if (_usePedometer && _pedometerAvailable) {
+      return 'STEPS'; // Pedometer
+    } else if (_useGPS && _gpsPermissionGranted) {
+      return 'GPS'; // GPS
+    } else {
+      return 'SIMU'; // Simulation
+    }
   }
 } 

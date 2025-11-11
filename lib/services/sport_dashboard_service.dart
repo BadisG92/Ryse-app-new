@@ -580,6 +580,69 @@ class SportDashboardService {
     }
   }
 
+  /// Récupère les détails complets d'une séance de musculation pour édition
+  static Future<Map<String, dynamic>> getMusculationSessionDetails(String sessionId) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) {
+      throw Exception('User not authenticated');
+    }
+
+    try {
+      debugPrint('📋 Récupération des détails de la séance: $sessionId');
+
+      // Récupérer le résumé de la séance
+      final sessionSummary = await _client
+          .from('workout_session_summaries')
+          .select('id, session_name, duration_minutes, calories_burned, session_date, created_at, history_session_id, intensity')
+          .eq('id', sessionId)
+          .eq('user_id', userId)
+          .maybeSingle();
+
+      if (sessionSummary == null) {
+        throw Exception('Session not found');
+      }
+
+      final historySessionId = sessionSummary['history_session_id'] as String;
+
+      // Récupérer tous les sets avec les détails des exercices
+      final sets = await _client
+          .from('workout_set_history')
+          .select('exercise_name, set_order, reps, weight')
+          .eq('history_session_id', historySessionId)
+          .order('exercise_name')
+          .order('set_order');
+
+      debugPrint('✅ Trouvé ${sets.length} sets pour la séance');
+
+      // Grouper les sets par exercice
+      final Map<String, List<Map<String, dynamic>>> exerciseGroups = {};
+      for (final set in sets) {
+        final exerciseName = set['exercise_name'] as String;
+        if (!exerciseGroups.containsKey(exerciseName)) {
+          exerciseGroups[exerciseName] = [];
+        }
+        exerciseGroups[exerciseName]!.add({
+          'reps': set['reps'],
+          'weight': (set['weight'] as num?)?.toDouble() ?? 0.0,
+        });
+      }
+
+      return {
+        'id': sessionSummary['id'],
+        'session_name': sessionSummary['session_name'],
+        'duration_minutes': sessionSummary['duration_minutes'],
+        'calories_burned': sessionSummary['calories_burned'],
+        'session_date': sessionSummary['session_date'],
+        'history_session_id': historySessionId,
+        'intensity': sessionSummary['intensity'],
+        'exercises': exerciseGroups,
+      };
+    } catch (e) {
+      debugPrint('❌ Erreur lors de la récupération des détails: $e');
+      rethrow;
+    }
+  }
+
   /// Supprime une séance de musculation par son ID
   static Future<void> deleteMusculationSession(String sessionId) async {
     final userId = _client.auth.currentUser?.id;

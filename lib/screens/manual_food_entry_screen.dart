@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import '../services/celebration_service.dart';
 
 class ManualFoodEntryScreen extends StatefulWidget {
   const ManualFoodEntryScreen({super.key});
@@ -571,12 +572,17 @@ class _ManualFoodEntryScreenState extends State<ManualFoodEntryScreen> {
   void _submitForm() {
     if (_formKey.currentState!.validate()) {
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${_nameController.text} ajouté au repas'),
-          backgroundColor: const Color(0xFF0B132B),
-        ),
-      );
+
+      // Assurer que le context est toujours valide après navigation
+      final createdFoodName = _nameController.text;
+      Future.delayed(Duration.zero, () {
+        if (mounted) {
+          CelebrationService().celebrateFoodEntry(
+            context,
+            foodName: createdFoodName,
+          );
+        }
+      });
     }
   }
 } 

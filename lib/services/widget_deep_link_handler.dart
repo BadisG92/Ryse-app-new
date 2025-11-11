@@ -1,5 +1,9 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import '../screens/ai_scanner_screen.dart';
 import '../screens/barcode_scanner_screen.dart';
 import '../screens/select_recipe_screen.dart';
@@ -8,6 +12,12 @@ import '../bottom_sheets/manual_food_search_bottom_sheet.dart';
 import '../components/ui/nutrition_widgets.dart';
 import '../services/food_entries_service.dart';
 import '../services/auth_service.dart';
+import '../services/celebration_service.dart';
+import '../services/localization_service.dart';
+import '../services/translations.dart';
+import '../services/water_service.dart';
+import '../models/nutrition_models.dart';
+import 'meal_widget_data_provider.dart';
 
 /// Handler pour les deep links depuis les widgets iOS
 /// Gère la navigation depuis les widgets vers les bonnes fonctionnalités de l'app
@@ -27,9 +37,32 @@ class WidgetDeepLinkHandler {
   /// - ryse://add-food?meal=dejeuner
   /// - ryse://add-food?mode=camera
   /// - ryse://add-food
+  /// - ryse://widget?action=prev-meal (navigation widget)
+  /// - ryse://widget?action=next-meal (navigation widget)
   static Future<void> handleDeepLink(Uri uri) async {
     if (kDebugMode) {
       debugPrint('🔗 Deep link reçu: ${uri.toString()}');
+    }
+
+    // Gérer les actions de navigation du widget
+    if (uri.host == 'widget') {
+      final action = uri.queryParameters['action'];
+      if (action != null && (action == 'prev-meal' || action == 'next-meal')) {
+        await _handleWidgetNavigation(action);
+        return;
+      }
+    }
+
+    // Gérer l'ajout d'eau
+    if (uri.host == 'add-water') {
+      await Future.delayed(const Duration(milliseconds: 300));
+      final context = navigatorKey?.currentContext;
+      if (context == null) {
+        debugPrint('❌ Context non disponible pour le deep link');
+        return;
+      }
+      await _openWaterFlow(context);
+      return;
     }
 
     if (uri.host == 'add-food') {
@@ -90,12 +123,26 @@ class WidgetDeepLinkHandler {
       user.id,
       DateTime.now(),
     );
-    final targetMeal = meals.cast<dynamic>().firstWhere(
-          (m) => m.name.toLowerCase() == mealName.toLowerCase(),
-          orElse: () => null,
-        );
+
+    // Chercher le repas existant
+    dynamic targetMeal;
+    try {
+      targetMeal = meals.firstWhere(
+        (m) => m.name.toLowerCase() == mealName.toLowerCase(),
+      );
+    } catch (e) {
+      targetMeal = null; // Aucun repas trouvé
+    }
 
     final mealId = targetMeal?.id;
+
+    if (kDebugMode) {
+      if (targetMeal != null) {
+        debugPrint('✅ Repas existant trouvé: ${targetMeal.name} (ID: $mealId)');
+      } else {
+        debugPrint('🆕 Nouveau repas sera créé: $mealName');
+      }
+    }
 
     // Ouvrir directement selon le mode
     switch (mode) {
@@ -104,11 +151,9 @@ class WidgetDeepLinkHandler {
           context,
           mealName: mealName,
           mealId: mealId,
-          onFoodCreated: (foodItem) {
-            // L'ajout est géré par le bottom sheet lui-même
-            if (kDebugMode) {
-              debugPrint('✅ Food created from widget: ${foodItem.name}');
-            }
+          onFoodCreated: (foodItem) async {
+            // Ajouter l'aliment au repas
+            await _addFoodToMeal(context, foodItem, mealName, mealId);
           },
         );
         break;
@@ -129,7 +174,11 @@ class WidgetDeepLinkHandler {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => const BarcodeScannerScreen(),
+            builder: (_) => BarcodeScannerScreen(
+              isFromDashboard: mealId == null,
+              mealName: mealName,
+              mealId: mealId,
+            ),
           ),
         );
         break;
@@ -137,19 +186,20 @@ class WidgetDeepLinkHandler {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => const SelectRecipeScreen(),
-          ),
-        );
-        break;
-      case 'chat':
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => AIChatInputScreen(
+            builder: (_) => SelectRecipeScreen(
+              isFromDashboard: mealId == null,
               mealName: mealName,
               mealId: mealId,
             ),
           ),
+        );
+        break;
+      case 'chat':
+        AIChatInputScreen.showAsBottomSheet(
+          context,
+          isFromDashboard: mealId == null,
+          mealName: mealName,
+          mealId: mealId,
         );
         break;
       default:
@@ -167,7 +217,12 @@ class WidgetDeepLinkHandler {
       debugPrint('🎯 Flux quick add: $mealType');
     }
 
-    final mealName = _getMealName(mealType);
+    // Récupérer la langue actuelle de l'app
+    final locService = Provider.of<LocalizationService>(context, listen: false);
+    final currentLanguage = locService.currentLanguageCode;
+
+    // Obtenir le nom du repas dans la langue de l'app
+    final mealName = _getMealNameForLanguage(mealType, currentLanguage);
     final user = AuthService().currentUser;
 
     if (user == null) {
@@ -175,29 +230,90 @@ class WidgetDeepLinkHandler {
       return;
     }
 
-    // Récupérer les repas existants
-    final meals = await FoodEntriesService.getFoodEntriesForDate(
+    // Mapper le type de repas français vers anglais pour la DB
+    final mealTypeEnglish = _getMealTypeEnglish(mealType);
+
+    // Lancer les deux requêtes EN PARALLÈLE pour optimiser le temps total
+    // Pas de timeout car l'app peut être fermée et doit se connecter à Supabase
+    final quickCheckFuture = FoodEntriesService.checkMealExistsQuick(
+      user.id,
+      mealTypeEnglish,
+      DateTime.now(),
+    );
+
+    final detailsFuture = FoodEntriesService.getFoodEntriesForDate(
       user.id,
       DateTime.now(),
     );
-    final targetMeal = meals.cast<dynamic>().firstWhere(
-          (m) => m.name.toLowerCase() == mealName.toLowerCase(),
-          orElse: () => null,
-        );
 
-    if (targetMeal != null) {
-      // Repas existe → afficher 5 options pour repas existant
+    try {
+      // Attendre la vérification rapide (généralement < 500ms même si app fermée)
+      final mealExists = await quickCheckFuture;
+
+      if (!mealExists) {
+        if (kDebugMode) {
+          debugPrint('🚀 Vérification: Aucun repas ${mealName}, création immédiate');
+        }
+
+        await NutritionQuickActionsSection.showAddFoodOptionsForNewMeal(
+          context,
+          mealName,
+          mealTime: _getMealTimeString(mealType),
+        );
+        return;
+      }
+
+      // LE REPAS EXISTE - on doit attendre les détails pour avoir le bon meal_id
+      if (kDebugMode) {
+        debugPrint('⏳ Repas ${mealName} existe, récupération du meal_id...');
+      }
+
+      final meals = await detailsFuture;
+      Meal? existingMeal;
+
+      // Chercher le repas qui correspond au type
+      // Le nom peut être "Collation", "Collation 2", etc.
+      // On vérifie si le nom commence par le nom de base du repas
+      for (final meal in meals) {
+        if (meal.name.toLowerCase().startsWith(mealName.toLowerCase()) ||
+            meal.name.toLowerCase().replaceAll(' ', '') == mealName.toLowerCase().replaceAll(' ', '')) {
+          existingMeal = meal;
+          break;
+        }
+      }
+
+      if (kDebugMode) {
+        if (existingMeal != null) {
+          debugPrint('✅ Repas existant trouvé: ${existingMeal.name} (ID: ${existingMeal.id})');
+        } else {
+          debugPrint('⚠️ Aucun repas trouvé correspondant à "$mealName" parmi: ${meals.map((m) => m.name).join(', ')}');
+        }
+      }
+
+      // Afficher le bottom sheet avec le bon repas
       NutritionQuickActionsSection.showAddFoodOptionsForExistingMeal(
         context,
-        targetMeal,
+        Meal(
+          id: existingMeal?.id,
+          name: mealName,
+          time: existingMeal?.time ?? _getMealTimeString(mealType),
+          items: existingMeal?.items ?? [],
+        ),
       );
-    } else {
-      // Nouveau repas → afficher 5 options pour nouveau repas
-      NutritionQuickActionsSection.showAddFoodOptionsForNewMeal(
+
+    } catch (e) {
+      // En cas d'erreur, on affiche quand même le bottom sheet avec un nouveau repas
+      if (kDebugMode) {
+        debugPrint('⚠️ Erreur lors de la vérification: $e');
+      }
+
+      await NutritionQuickActionsSection.showAddFoodOptionsForNewMeal(
         context,
-        mealType,
+        mealName,
+        mealTime: _getMealTimeString(mealType),
       );
     }
+
   }
 
   /// Flux avec mode pré-sélectionné : sélection repas puis mode
@@ -224,14 +340,309 @@ class WidgetDeepLinkHandler {
     NutritionQuickActionsSection.showMealSelectionForDashboard(context);
   }
 
-  /// Mapper le type de repas vers le nom français
+  /// Obtenir le nom du repas selon la langue de l'app
+  static String _getMealNameForLanguage(String mealType, String languageCode) {
+    // Types de repas en base de données (anglais)
+    final dbTypes = ['breakfast', 'lunch', 'dinner', 'snack'];
+
+    // D'abord, normaliser le type de repas vers la clé DB anglaise
+    final mealTypeEnglish = _getMealTypeEnglish(mealType);
+
+    // Ensuite, retourner le nom selon la langue
+    if (languageCode == 'en') {
+      // Noms anglais
+      final englishNames = {
+        'breakfast': 'Breakfast',
+        'lunch': 'Lunch',
+        'dinner': 'Dinner',
+        'snack': 'Snack',
+      };
+      return englishNames[mealTypeEnglish] ?? 'Meal';
+    } else {
+      // Noms français (par défaut)
+      final frenchNames = {
+        'breakfast': 'Petit-déjeuner',
+        'lunch': 'Déjeuner',
+        'dinner': 'Dîner',
+        'snack': 'Collation',
+      };
+      return frenchNames[mealTypeEnglish] ?? 'Repas';
+    }
+  }
+
+  /// Mapper le type de repas vers le nom d'affichage (français ou anglais selon l'app)
   static String _getMealName(String mealType) {
-    final mappings = {
+    // D'abord essayer le mapping français
+    final frenchMappings = {
       'petit-dejeuner': 'Petit-déjeuner',
       'dejeuner': 'Déjeuner',
       'diner': 'Dîner',
+      'snack': 'Collation',
+    };
+
+    // Puis le mapping anglais
+    final englishMappings = {
+      'breakfast': 'Breakfast',
+      'lunch': 'Lunch',
+      'dinner': 'Dinner',
       'snack': 'Snack',
     };
-    return mappings[mealType.toLowerCase()] ?? 'Repas';
+
+    final lowerType = mealType.toLowerCase();
+
+    // Essayer français d'abord (cas du widget iOS en français)
+    if (frenchMappings.containsKey(lowerType)) {
+      return frenchMappings[lowerType]!;
+    }
+
+    // Puis essayer anglais (cas du widget iOS en anglais)
+    if (englishMappings.containsKey(lowerType)) {
+      return englishMappings[lowerType]!;
+    }
+
+    // Fallback
+    return 'Meal';
+  }
+
+  /// Mapper le type de repas (français ou anglais) vers anglais pour la DB
+  static String _getMealTypeEnglish(String mealType) {
+    // Mapping depuis le français
+    final frenchToEnglish = {
+      'petit-dejeuner': 'breakfast',
+      'dejeuner': 'lunch',
+      'diner': 'dinner',
+      'snack': 'snack',  // snack est identique
+      'collation': 'snack',
+    };
+
+    // Mapping depuis l'anglais (identité)
+    final englishToEnglish = {
+      'breakfast': 'breakfast',
+      'lunch': 'lunch',
+      'dinner': 'dinner',
+      'snack': 'snack',
+    };
+
+    final lowerType = mealType.toLowerCase();
+
+    // Essayer le mapping français
+    if (frenchToEnglish.containsKey(lowerType)) {
+      return frenchToEnglish[lowerType]!;
+    }
+
+    // Essayer le mapping anglais
+    if (englishToEnglish.containsKey(lowerType)) {
+      return englishToEnglish[lowerType]!;
+    }
+
+    return 'other';
+  }
+
+  /// Obtenir l'heure typique pour un type de repas
+  static String _getMealTimeString(String mealType) {
+    final timeMap = {
+      'petit-dejeuner': '08:00',
+      'dejeuner': '12:30',
+      'diner': '19:30',
+      'snack': '16:00',
+    };
+    return timeMap[mealType.toLowerCase()] ?? '12:00';
+  }
+
+  /// Ajouter un aliment au repas (existant ou nouveau)
+  static Future<void> _addFoodToMeal(
+    BuildContext context,
+    dynamic foodItem,
+    String mealName,
+    String? mealId,
+  ) async {
+    try {
+      final user = AuthService().currentUser;
+      if (user == null) {
+        if (context.mounted) {
+          final locService = Provider.of<LocalizationService>(context, listen: false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('error_user_not_connected'.tr(locService.currentLanguageCode)),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      if (kDebugMode) {
+        debugPrint('🔄 Ajout de ${foodItem.name} au repas $mealName (ID: $mealId)');
+      }
+
+      // Si mealId existe, ajouter au repas existant
+      // Sinon, créer un nouveau repas
+      final success = await FoodEntriesService.addFoodEntry(
+        userId: user.id,
+        mealName: mealName,
+        mealId: mealId,
+        foodItem: foodItem,
+        consumedAt: DateTime.now(),
+      );
+
+      if (success) {
+        if (kDebugMode) {
+          debugPrint('✅ Aliment ${foodItem.name} ajouté avec succès');
+        }
+
+        // Afficher la célébration
+        CelebrationService().celebrateFoodEntryGlobal(
+          foodName: foodItem.name,
+          mealName: mealName,
+        );
+
+        // Afficher une notification de succès
+        if (context.mounted) {
+          final locService = Provider.of<LocalizationService>(context, listen: false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('food_added_success'.tr(locService.currentLanguageCode).replaceAll('{foodName}', foodItem.name)),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      } else {
+        throw Exception('Échec de l\'ajout à la base de données');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Erreur lors de l\'ajout de l\'aliment: $e');
+      }
+      if (context.mounted) {
+        final locService = Provider.of<LocalizationService>(context, listen: false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('error_adding_food'.tr(locService.currentLanguageCode).replaceAll('{error}', e.toString())),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  /// Gérer la navigation entre les repas dans le widget
+  static Future<void> _handleWidgetNavigation(String action) async {
+    try {
+      if (Platform.isIOS) {
+        const MethodChannel channel = MethodChannel('com.ryze.widget/data');
+        
+        // Récupérer l'index actuel
+        final currentIndexString = await channel.invokeMethod<String>('getString', {
+          'key': 'widget_selected_meal_index',
+        });
+        int currentIndex = int.tryParse(currentIndexString ?? '0') ?? 0;
+        
+        // Récupérer la liste des repas pour connaître le nombre total
+        final widgetDataString = await channel.invokeMethod<String>('getString', {
+          'key': 'widget_meal_data',
+        });
+        
+        if (widgetDataString != null) {
+          final widgetData = jsonDecode(widgetDataString) as Map<String, dynamic>;
+          final allMeals = widgetData['allMeals'] as List? ?? [];
+          final maxIndex = allMeals.length - 1;
+          
+          // Calculer le nouvel index
+          int newIndex;
+          if (action == 'prev-meal') {
+            newIndex = currentIndex > 0 ? currentIndex - 1 : maxIndex;
+          } else {
+            newIndex = currentIndex < maxIndex ? currentIndex + 1 : 0;
+          }
+          
+          // Sauvegarder le nouvel index
+          await channel.invokeMethod('setString', {
+            'key': 'widget_selected_meal_index',
+            'value': newIndex.toString(),
+          });
+          
+          // Recharger le widget
+          await channel.invokeMethod('reloadWidgetTimelines');
+          
+          if (kDebugMode) {
+            debugPrint('🔄 Navigation widget: $action (index: $currentIndex → $newIndex)');
+          }
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Erreur navigation widget: $e');
+      }
+    }
+  }
+
+  /// Ouvrir le bottom sheet d'ajout d'eau
+  static Future<void> _openWaterFlow(BuildContext context) async {
+    if (kDebugMode) {
+      debugPrint('💧 Ouverture du bottom sheet d\'ajout d\'eau');
+    }
+
+    NutritionBottomSheetHelper.showWaterSheet(
+      context,
+      (int milliliters) async {
+        // Ajouter l'eau
+        final success = await WaterService.addWaterEntry(
+          amount: milliliters,
+          sourceType: _getSourceTypeFromAmount(milliliters),
+        );
+
+        if (success) {
+          if (kDebugMode) {
+            debugPrint('✅ Eau ajoutée: ${milliliters}ml');
+          }
+
+          // Mettre à jour les données du widget
+          await MealWidgetDataProvider.updateWidgetData();
+
+          // Afficher une notification de succès
+          if (context.mounted) {
+            final locService = Provider.of<LocalizationService>(context, listen: false);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('water_added_success'.tr(locService.currentLanguageCode).replaceAll('{amount}', milliliters.toString())),
+                backgroundColor: Colors.green,
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          }
+        } else {
+          if (context.mounted) {
+            final locService = Provider.of<LocalizationService>(context, listen: false);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('water_add_error'.tr(locService.currentLanguageCode)),
+                backgroundColor: Colors.red,
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+        }
+      },
+    );
+  }
+
+  /// Déterminer le type de source selon la quantité
+  static String _getSourceTypeFromAmount(int milliliters) {
+    switch (milliliters) {
+      case 250:
+        return 'glass';
+      case 500:
+        return 'bottle';
+      case 750:
+        return 'sports_bottle';
+      case 200:
+        return 'cup';
+      case 1000:
+        return 'bottle';
+      default:
+        return 'manual';
+    }
   }
 }

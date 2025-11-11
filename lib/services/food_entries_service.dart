@@ -200,23 +200,10 @@ class FoodEntriesService {
         ));
       }
 
-      // Ajouter des repas vides si aucun aliment n'a été ajouté
-      if (meals.isEmpty) {
-        final langCode = LocalizationService.instance.currentLanguageCode;
-        final mealTypes = [
-          {'key': 'breakfast', 'dbKey': 'breakfast'},
-          {'key': 'lunch', 'dbKey': 'lunch'},
-          {'key': 'snack', 'dbKey': 'snack'},
-          {'key': 'dinner', 'dbKey': 'dinner'},
-        ];
-        for (final mealType in mealTypes) {
-          meals.add(Meal(
-            time: defaultTimes[mealType['dbKey']] ?? '00h00',
-            name: mealType['key']!.tr(langCode),
-            items: [],
-          ));
-        }
-      }
+      // NE PAS ajouter de repas vides car ils n'ont pas d'ID
+      // Les repas vides sans ID causent des problèmes lors de l'ajout d'aliments
+      // Laissons la liste vide si aucun aliment n'a été ajouté
+      // Le widget créera un nouveau repas avec un ID correct au besoin
 
       return meals;
     } catch (e) {
@@ -480,6 +467,32 @@ class FoodEntriesService {
     } catch (e) {
       debugPrint('Erreur lors de la création du nouveau repas: $e');
       return null;
+    }
+  }
+
+  /// Vérifie rapidement si un repas existe pour aujourd'hui
+  /// Retourne true s'il y a des calories > 0 pour ce type de repas
+  static Future<bool> checkMealExistsQuick(String userId, String mealType, DateTime date) async {
+    try {
+      final startOfDay = DateTime(date.year, date.month, date.day);
+      final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59);
+
+      // Requête TRÈS LÉGÈRE : juste vérifier si des entrées existent
+      final response = await _supabase
+          .from('food_entries')
+          .select('calories')
+          .eq('user_id', userId)
+          .eq('meal_type', mealType)
+          .gte('consumed_at', startOfDay.toIso8601String())
+          .lte('consumed_at', endOfDay.toIso8601String())
+          .limit(1); // On veut juste savoir s'il existe au moins une entrée
+
+      return response.isNotEmpty;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ Erreur lors de la vérification rapide du repas: $e');
+      }
+      return false;
     }
   }
 

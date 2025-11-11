@@ -604,6 +604,14 @@ Provide your response in the following JSON format:
   ]
 }
 
+CRITICAL - EXACT CALORIE MATCHING:
+🚨 If the user specifies EXACT calories or quantities for a food item (e.g., "gâteau de 500kcal", "500 calories cake", "200g de poulet"), you MUST respect these values EXACTLY.
+- Calculate macros (proteins, carbs, fats) to match EXACTLY the specified calories
+- DO NOT add or subtract even 1 kcal (e.g., if user says "500kcal", return exactly 500kcal, NOT 540, NOT 523, NOT 498)
+- Use realistic macro distribution for that food type to reach the exact calorie target
+- Example: "gâteau de 500kcal" → nutrition values must total EXACTLY 500kcal
+- Example: "200g chicken" → use exactly 200g in portion_grams, then calculate accurate nutrition
+
 IMPORTANT:
 - Use realistic INDIVIDUAL portions (not family/restaurant portions)
 - For liquids: prefer "portion_ml" and set "is_liquid": true

@@ -6,6 +6,7 @@ import '../components/ui/snackbar_utils.dart';
 import '../components/ui/numeric_text_field.dart';
 import '../services/localization_service.dart';
 import '../services/translations.dart';
+import '../services/celebration_service.dart';
 
 class EditableFoodDetailsBottomSheet {
   static Future<void> show(
@@ -781,8 +782,40 @@ class _EditableFoodDetailsContentState extends State<_EditableFoodDetailsContent
                         );
                       } else {
                         // Flux classique - ajouter directement au repas
-                        Navigator.pop(context); // Fermer le bottom sheet AVANT d'appeler le callback
+                        debugPrint('🔵 Bouton Valider cliqué');
+
+                        final bottomSheetRoute = ModalRoute.of(context);
+
+                        // 1. Appeler le callback pour ajouter l'aliment
+                        debugPrint('🔵 Appel du callback onFoodAdded');
                         widget.onFoodAdded?.call(foodItem);
+                        debugPrint('🔵 Callback terminé');
+
+                        // 2. Fermer le bottom sheet après un léger délai pour laisser le callback se terminer
+                        debugPrint('🔵 Scheduling delayed close action (150ms)');
+                        Future.delayed(const Duration(milliseconds: 150), () {
+                          debugPrint('🔵 Delayed close START - mounted=$mounted');
+                          if (!mounted) {
+                            debugPrint('❌ Widget NOT mounted, bottom sheet déjà fermé');
+                            return;
+                          }
+
+                          if (bottomSheetRoute != null) {
+                            final navigator = bottomSheetRoute.navigator;
+                            if (bottomSheetRoute.isCurrent) {
+                              debugPrint('🔵 Route courante, appel Navigator.pop');
+                              navigator?.pop();
+                            } else {
+                              debugPrint('🔵 Route non courante, suppression directe');
+                              navigator?.removeRoute(bottomSheetRoute);
+                            }
+                          } else {
+                            debugPrint('⚠️ Aucun ModalRoute trouvé, fallback Navigator.pop(context)');
+                            Navigator.pop(context);
+                          }
+                          debugPrint('🔵 Delayed close END');
+                        });
+                        debugPrint('🔵 Bouton Valider terminé');
                       }
                     },
                     child: Container(
@@ -1203,14 +1236,14 @@ class _CreateFoodContentState extends State<_CreateFoodContent> {
                       
                       // Appeler le callback pour ajouter l'aliment
                       widget.onFoodCreated?.call(foodItem);
-                      
+
                       // Fermer seulement le bottom sheet de création
                       Navigator.pop(context);
-                      
-                      // Afficher le message de confirmation
-                      SnackBarUtils.showSuccessSnackBar(
+
+                      // Show celebration popup instead of snackbar
+                      CelebrationService().celebrateFoodEntry(
                         context,
-                        message: locService.currentLanguageCode == 'fr' ? '$itemName créé et ajouté au repas' : '$itemName created and added to meal',
+                        foodName: itemName,
                       );
                     },
                     child: Container(

@@ -14,6 +14,7 @@ import '../bottom_sheets/new_meal_type_bottom_sheet.dart';
 import '../services/food_entries_service.dart';
 import '../services/global_state_manager.dart';
 import '../services/dashboard_service.dart';
+import '../services/celebration_service.dart';
 
 class AIAnalysisScreen extends StatefulWidget {
   final String? imagePath; // Nullable pour le mode texte
@@ -251,29 +252,41 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
         throw Exception('Utilisateur non connecté');
       }
 
-      if (widget.mealName != null && widget.mealId != null) {
-        // Ajouter directement au repas existant
-        await _addToMeal(widget.mealName!, widget.mealId!);
-      } else {
-        // Afficher le sélecteur de repas
-        if (!mounted) return;
-        MealSelectionBottomSheet.show(
-          context,
-          foodName: _mealNameController.text,
-          existingMeals: [], // TODO: Charger les repas existants si nécessaire
-          onExistingMealSelected: (meal) async {
-            await _addToMeal(meal.name, meal.id ?? '');
-          },
-          onCreateNewMeal: () {
-            NewMealTypeBottomSheet.show(
-              context,
-              onMealTypeSelected: (mealType, time) async {
-                await _createNewMealAndAdd(mealType, time);
-              },
-            );
-          },
-        );
+      // Si on connaît déjà le repas (via widget/dashboard) mais sans meal_id, en générer un avant d'ajouter
+      if (widget.mealName != null) {
+        String? targetMealId = widget.mealId;
+        if (targetMealId == null) {
+          targetMealId = await FoodEntriesService.generateMealId(
+            userId: user.id,
+            mealName: widget.mealName!,
+            forDate: DateTime.now(),
+          );
+        }
+
+        if (targetMealId != null) {
+          await _addToMeal(widget.mealName!, targetMealId);
+          return;
+        }
       }
+
+      // Sinon, on retombe sur la sélection classique
+      if (!mounted) return;
+      MealSelectionBottomSheet.show(
+        context,
+        foodName: _mealNameController.text,
+        existingMeals: [], // TODO: Charger les repas existants si nécessaire
+        onExistingMealSelected: (meal) async {
+          await _addToMeal(meal.name, meal.id ?? '');
+        },
+        onCreateNewMeal: () {
+          NewMealTypeBottomSheet.show(
+            context,
+            onMealTypeSelected: (mealType, time) async {
+              await _createNewMealAndAdd(mealType, time);
+            },
+          );
+        },
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -309,11 +322,14 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
     if (mounted) {
       // Retourner au dashboard
       Navigator.popUntil(context, (route) => route.isFirst);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('✅ Aliments ajoutés avec succès'),
-          backgroundColor: Color(0xFF22C55E),
-        ),
+      final detectedMealName = _analysisResult.mealName?.isNotEmpty == true
+          ? _analysisResult.mealName!
+          : (_mealNameController.text.isNotEmpty ? _mealNameController.text : null);
+      // Show celebration popup instead of snackbar
+      CelebrationService().celebrateFoodEntry(
+        context,
+        foodName: detectedMealName,
+        mealName: mealName,
       );
     }
   }

@@ -80,17 +80,6 @@ class NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
     required GlobalKey journalTabKey,
     required GlobalKey recipesTabKey,
   }) async {
-    // Vérifier si déjà complété (en mode debug, toujours afficher)
-    const debugMode = false; // Mode production : tutoriels une seule fois
-    if (!debugMode) {
-      final prefs = await SharedPreferences.getInstance();
-      final completed = prefs.getBool('nutrition_dashboard_tutorial_completed') ?? false;
-      if (completed) {
-        debugPrint('ℹ️ Tutorial Dashboard Nutrition déjà complété');
-        return;
-      }
-    }
-
     final locService = LocalizationService.instance;
     final languageCode = locService.currentLanguageCode;
 
@@ -98,6 +87,7 @@ class NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
     await Future.delayed(const Duration(milliseconds: 300));
 
     // Lancer le tutorial avec les 3 onglets + 4 éléments du dashboard
+    // La vérification et la sauvegarde sont gérées par TutorialService
     await TutorialService().showNutritionDashboardTutorial(
       context: context,
       caloriesKey: _caloriesCardKey,
@@ -109,13 +99,6 @@ class NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
       recipesTabKey: recipesTabKey,
       languageCode: languageCode,
     );
-
-    // Marquer comme complété
-    if (!debugMode) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('nutrition_dashboard_tutorial_completed', true);
-    }
-    debugPrint('✅ Tutorial Dashboard Nutrition terminé');
   }
 
 

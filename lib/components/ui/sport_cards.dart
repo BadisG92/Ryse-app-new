@@ -205,11 +205,13 @@ class WeeklyStatsCard extends StatelessWidget {
 class WorkoutHistoryCard extends StatefulWidget {
   final WorkoutSession session;
   final Function(String)? onDelete; // Callback pour supprimer la séance
+  final Function(String)? onEdit; // Callback pour éditer la séance
 
   const WorkoutHistoryCard({
     super.key,
     required this.session,
     this.onDelete,
+    this.onEdit,
   });
 
   @override
@@ -373,6 +375,19 @@ class _WorkoutHistoryCardState extends State<WorkoutHistoryCard> {
                   ],
                 ),
               ),
+              // Bouton de modification
+              if (session.sessionId != null && widget.onEdit != null)
+                GestureDetector(
+                  onTap: () => widget.onEdit?.call(session.sessionId!),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    child: const Icon(
+                      LucideIcons.pencil,
+                      size: 16,
+                      color: Color(0xFF0B132B),
+                    ),
+                  ),
+                ),
               // Bouton de suppression
               if (session.sessionId != null)
                 GestureDetector(

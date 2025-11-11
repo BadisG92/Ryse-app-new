@@ -374,23 +374,12 @@ class DailyGoalItem extends StatelessWidget {
                   ],
                 ],
               ),
-              Row(
-                children: [
-                  if (goal.completed)
-                    CustomBadge(
-                      text: goal.xpBadgeText,
-                      backgroundColor: const Color(0xFF0B132B).withOpacity(0.1),
-                      textColor: const Color(0xFF0B132B),
-                    ),
-                  const SizedBox(width: 8),
-                  Text(
-                    goal.progressText,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF64748B),
-                    ),
-                  ),
-                ],
+              Text(
+                goal.progressText,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF64748B),
+                ),
               ),
             ],
           ),

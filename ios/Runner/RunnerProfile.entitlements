@@ -21,5 +21,11 @@
 	<array>
 		<string>Default</string>
 	</array>
+
+	<!-- App Group pour partager les données avec le widget iOS -->
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.com.ryze.app</string>
+	</array>
 </dict>
 </plist>

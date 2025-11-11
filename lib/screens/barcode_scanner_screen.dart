@@ -11,6 +11,8 @@ import '../services/openfoodfacts_service.dart';
 import '../services/auth_service.dart';
 import '../services/database_service.dart';
 import '../services/analytics_service.dart';
+import '../services/celebration_service.dart';
+import '../services/food_entries_service.dart';
 // import '../services/barcode_detection_service.dart'; // ANCIEN - Remplacé par unified_barcode_service
 import '../services/unified_barcode_service.dart'; // NOUVEAU - Switch ML Kit / Vision API
 import '../services/translations.dart';
@@ -1830,62 +1832,169 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
     }
   }
 
-  void _handleDashboardFoodSelection(nutrition_models.FoodItem foodItem) {
-    // Simuler des repas existants
-    final lang = LocalizationService.instance.currentLanguageCode;
-    final existingMeals = <nutrition_models.Meal>[
-      nutrition_models.Meal(
-        name: 'breakfast'.tr(lang),
-        time: '08:30',
-        items: [
-          nutrition_models.FoodItem(
-            name: lang == 'fr' ? 'Café' : 'Coffee',
-            calories: 5,
-            portion: lang == 'fr' ? '1 tasse' : '1 cup',
+  Future<void> _handleDashboardFoodSelection(nutrition_models.FoodItem foodItem) async {
+    // Utiliser le callback si disponible (flux normal depuis les actions rapides)
+    if (widget.onFoodScanned != null) {
+      Navigator.pop(context);
+      widget.onFoodScanned!(foodItem);
+      return;
+    }
+
+    // Fallback : charger les vrais repas depuis la base de données
+    final user = AuthService().currentUser;
+    if (user == null) {
+      Navigator.pop(context);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('must_be_logged_in'.tr(LocalizationService.instance.currentLanguageCode)),
+            backgroundColor: const Color(0xFFEF4444),
           ),
-        ],
-      ),
-      nutrition_models.Meal(
-        name: 'lunch'.tr(lang),
-        time: '12:45',
-        items: [
-          nutrition_models.FoodItem(
-            name: lang == 'fr' ? 'Salade' : 'Salad',
-            calories: 150,
-            portion: '200g',
-          ),
-        ],
-      ),
-    ];
+        );
+      }
+      return;
+    }
+
+    // Récupérer les vrais repas du jour
+    List<nutrition_models.Meal> existingMeals = [];
+    try {
+      final meals = await FoodEntriesService.getFoodEntriesForDate(user.id, DateTime.now());
+      existingMeals = meals.where((meal) => meal.items.isNotEmpty).toList();
+    } catch (e) {
+      if (kDebugMode) debugPrint('Erreur lors de la récupération des repas existants: $e');
+    }
 
     // Sauvegarder le contexte avant de fermer l'écran
     final currentContext = context;
-    
+
     // Fermer l'écran du scanner
     Navigator.pop(context);
-    
+
     // Attendre un délai pour permettre au popup de se fermer s'il était ouvert
-    Future.delayed(const Duration(milliseconds: 100), () {
+    Future.delayed(const Duration(milliseconds: 100), () async {
       if (currentContext.mounted) {
-    MealSelectionBottomSheet.show(
+        MealSelectionBottomSheet.show(
           currentContext,
-      foodName: foodItem.name,
-      existingMeals: existingMeals,
-      onExistingMealSelected: (meal) {
-        // TODO: Ajouter l'aliment au repas sélectionné
+          titleKey: 'add_barcode_meal_title',
+          subtitleKey: 'add_barcode_meal_subtitle',
+          existingMeals: existingMeals,
+          onExistingMealSelected: (meal) async {
             // Ajouter l'aliment au repas sélectionné
-      },
-      onCreateNewMeal: () {
-            // Utiliser le contexte sauvegardé
-        NewMealTypeBottomSheet.show(
+            try {
+              final success = await FoodEntriesService.addFoodEntry(
+                userId: user.id,
+                mealName: meal.name,
+                mealId: meal.id,
+                foodItem: foodItem,
+                consumedAt: DateTime.now(),
+              );
+
+              if (currentContext.mounted) {
+                if (success) {
+                  // Show celebration popup
+                  CelebrationService().celebrateFoodEntry(
+                    currentContext,
+                    foodName: foodItem.name,
+                    mealName: meal.name,
+                  );
+
+                  ScaffoldMessenger.of(currentContext).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'food_added_to_meal_name'.tr(LocalizationService.instance.currentLanguageCode)
+                          .replaceAll('{foodName}', foodItem.name)
+                          .replaceAll('{mealName}', meal.name)
+                      ),
+                      backgroundColor: const Color(0xFF0B132B),
+                    ),
+                  );
+                } else {
+                  ScaffoldMessenger.of(currentContext).showSnackBar(
+                    SnackBar(
+                      content: Text('error_database_add_failed'.tr(LocalizationService.instance.currentLanguageCode)),
+                      backgroundColor: const Color(0xFFEF4444),
+                    ),
+                  );
+                }
+              }
+            } catch (e) {
+              if (kDebugMode) debugPrint('Erreur lors de l\'ajout: $e');
+              if (currentContext.mounted) {
+                ScaffoldMessenger.of(currentContext).showSnackBar(
+                  SnackBar(
+                    content: Text('error_database_add_failed'.tr(LocalizationService.instance.currentLanguageCode)),
+                    backgroundColor: const Color(0xFFEF4444),
+                  ),
+                );
+              }
+            }
+          },
+          onCreateNewMeal: () {
+            // Afficher la sélection de type de nouveau repas
+            NewMealTypeBottomSheet.show(
               currentContext,
-          onMealTypeSelected: (mealType, time) {
-            // TODO: Créer un nouveau repas avec l'aliment
+              onMealTypeSelected: (mealType, time) async {
                 // Créer un nouveau repas avec l'aliment
+                try {
+                  final mealId = await FoodEntriesService.generateMealId(
+                    userId: user.id,
+                    mealName: mealType,
+                    forDate: DateTime.now(),
+                  );
+
+                  if (mealId != null) {
+                    final success = await FoodEntriesService.addFoodEntry(
+                      userId: user.id,
+                      mealName: mealType,
+                      mealId: mealId,
+                      foodItem: foodItem,
+                      consumedAt: DateTime.now(),
+                    );
+
+                    if (currentContext.mounted) {
+                      if (success) {
+                        // Show celebration popup
+                        CelebrationService().celebrateFoodEntry(
+                          currentContext,
+                          foodName: foodItem.name,
+                          mealName: mealType,
+                        );
+
+                        ScaffoldMessenger.of(currentContext).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'food_added_to_new_meal'.tr(LocalizationService.instance.currentLanguageCode)
+                                .replaceAll('{foodName}', foodItem.name)
+                                .replaceAll('{mealType}', mealType)
+                            ),
+                            backgroundColor: const Color(0xFF0B132B),
+                          ),
+                        );
+                      } else {
+                        ScaffoldMessenger.of(currentContext).showSnackBar(
+                          SnackBar(
+                            content: Text('error_creating_meal'.tr(LocalizationService.instance.currentLanguageCode)),
+                            backgroundColor: const Color(0xFFEF4444),
+                          ),
+                        );
+                      }
+                    }
+                  }
+                } catch (e) {
+                  if (kDebugMode) debugPrint('Erreur lors de la création du repas: $e');
+                  if (currentContext.mounted) {
+                    ScaffoldMessenger.of(currentContext).showSnackBar(
+                      SnackBar(
+                        content: Text('error_creating_meal'.tr(LocalizationService.instance.currentLanguageCode)),
+                        backgroundColor: const Color(0xFFEF4444),
+                      ),
+                    );
+                  }
+                }
+              },
+            );
           },
         );
-      },
-    );
       }
     });
   }

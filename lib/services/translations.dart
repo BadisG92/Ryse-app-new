@@ -199,6 +199,50 @@ class AppTranslations {
       'fr': 'Collation',
       'en': 'Snack',
     },
+    'widget_meals_title': {
+      'fr': 'Mes Repas',
+      'en': 'My Meals',
+    },
+    'widget_meals_description': {
+      'fr': 'Voir vos repas et calories du jour',
+      'en': 'See today\'s meals and calories',
+    },
+    'widget_placeholder_meal': {
+      'fr': 'Repas',
+      'en': 'Meal',
+    },
+    'widget_short_breakfast': {
+      'fr': 'Petit-déj.',
+      'en': 'Breakfast',
+    },
+    'widget_short_lunch': {
+      'fr': 'Déjeuner',
+      'en': 'Lunch',
+    },
+    'widget_short_dinner': {
+      'fr': 'Dîner',
+      'en': 'Dinner',
+    },
+    'widget_short_snack': {
+      'fr': 'Collation',
+      'en': 'Snack',
+    },
+    'widget_short_default': {
+      'fr': 'Repas',
+      'en': 'Meal',
+    },
+    'widget_add_water_title': {
+      'fr': 'Ajouter de l\'eau',
+      'en': 'Add water',
+    },
+    'widget_add_water_description': {
+      'fr': 'Ajoute de l\'eau à votre consommation quotidienne',
+      'en': 'Add water to your daily intake',
+    },
+    'widget_add_water_preset_format': {
+      'fr': 'Ajouter {amount} ml',
+      'en': 'Add {amount} ml',
+    },
     'total': {
       'fr': 'Total',
       'en': 'Total',
@@ -3618,6 +3662,10 @@ class AppTranslations {
       'fr': 'Elle sera synchronisée dès le retour du réseau',
       'en': 'It will be synchronized when network returns',
     },
+    'workout_save_failed': {
+      'fr': 'Échec de la sauvegarde de la séance',
+      'en': 'Failed to save workout session',
+    },
     'workout_program_from_manual': {
       'fr': 'Programme créé à partir d\'une séance manuelle',
       'en': 'Program created from manual session',
@@ -4781,8 +4829,8 @@ class AppTranslations {
       'en': 'Sign In',
     },
     'register.successMessage': {
-      'fr': 'Compte créé avec succès ! Veuillez vérifier votre email pour confirmer votre compte.',
-      'en': 'Account created successfully! Please check your email to verify your account.',
+      'fr': 'Bienvenue dans la team Ryze ! 🎉\nTon compte a été créé avec succès !',
+      'en': 'Welcome to team Ryze! 🎉\nYour account was created successfully!',
     },
     'register.registrationFailed': {
       'fr': 'L\'inscription a échoué',

@@ -14,12 +14,12 @@ class EnvConfig {
 
   static const String supabaseUrl = String.fromEnvironment(
     'SUPABASE_URL',
-    defaultValue: '',
+    defaultValue: 'https://mfskwlzgxjhhknlwpblq.supabase.co', // Fallback pour Xcode
   );
 
   static const String supabaseAnonKey = String.fromEnvironment(
     'SUPABASE_ANON_KEY',
-    defaultValue: '',
+    defaultValue: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1mc2t3bHpneGpoaGtubHdwYmxxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4MzU0ODIsImV4cCI6MjA2NTQxMTQ4Mn0.pAIhzY7oDOSGVk2c6Jj0fslSozwYeIzjXQhhMpORFXo', // Fallback pour Xcode
   );
 
   // ===================================
@@ -28,12 +28,12 @@ class EnvConfig {
 
   static const String geminiApiKey = String.fromEnvironment(
     'GEMINI_API_KEY',
-    defaultValue: '',
+    defaultValue: 'AIzaSyCZ40oCAMe-A5YNeAFfXAcdGeEqzNythZY', // Fallback pour Xcode
   );
 
   static const String googleVisionApiKey = String.fromEnvironment(
     'GOOGLE_VISION_API_KEY',
-    defaultValue: '',
+    defaultValue: 'AIzaSyCZ40oCAMe-A5YNeAFfXAcdGeEqzNythZY', // Fallback pour Xcode
   );
 
   // ===================================
@@ -61,7 +61,7 @@ class EnvConfig {
 
   static const bool testMode = bool.fromEnvironment(
     'TEST_MODE',
-    defaultValue: true,
+    defaultValue: false, // Changed to false pour utiliser les vraies données par défaut
   );
 
   static const bool enableDebugLogs = bool.fromEnvironment(

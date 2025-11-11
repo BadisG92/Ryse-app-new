@@ -37,6 +37,12 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
     <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
 
+    <!-- Permission pour le compteur de pas (Android 10+) -->
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
+
+    <!-- Permission pour les achats in-app (RevenueCat / Google Play Billing) -->
+    <uses-permission android:name="com.android.vending.BILLING" />
+
     <application
         android:label="ryze_app"
         android:name="${applicationName}"

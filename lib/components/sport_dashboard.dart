@@ -83,17 +83,6 @@ class SportDashboardState extends State<SportDashboard> with TickerProviderState
     required GlobalKey cardioTabKey,
     required GlobalKey musculationTabKey,
   }) async {
-    // Vérifier si déjà complété (en mode debug, toujours afficher)
-    const debugMode = false; // Mode production : tutoriels une seule fois
-    if (!debugMode) {
-      final prefs = await SharedPreferences.getInstance();
-      final completed = prefs.getBool('sport_dashboard_tutorial_completed') ?? false;
-      if (completed) {
-        debugPrint('ℹ️ Tutorial Dashboard Sport déjà complété');
-        return;
-      }
-    }
-
     final locService = LocalizationService.instance;
     final languageCode = locService.currentLanguageCode;
 
@@ -114,6 +103,7 @@ class SportDashboardState extends State<SportDashboard> with TickerProviderState
     await Future.delayed(const Duration(milliseconds: 500));
 
     // Lancer le tutorial avec les 3 onglets + 4 éléments du dashboard
+    // La vérification et la sauvegarde sont gérées par TutorialService
     await TutorialService().showSportDashboardTutorial(
       context: context,
       caloriesKey: _caloriesCardKey,
@@ -125,13 +115,6 @@ class SportDashboardState extends State<SportDashboard> with TickerProviderState
       musculationTabKey: musculationTabKey,
       languageCode: languageCode,
     );
-
-    // Marquer comme complété
-    if (!debugMode) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('sport_dashboard_tutorial_completed', true);
-    }
-    debugPrint('✅ Tutorial Dashboard Sport terminé');
   }
 
   /// Force le rafraîchissement des données

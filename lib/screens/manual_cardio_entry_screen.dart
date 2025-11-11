@@ -4,10 +4,9 @@ import 'package:provider/provider.dart';
 import '../models/cardio_session_models.dart';
 import '../components/ui/numeric_text_field.dart';
 import '../services/cardio_service.dart';
+import '../services/celebration_service.dart';
 import '../services/translations.dart';
 import '../services/localization_service.dart';
-import '../services/sport_dashboard_service.dart';
-import '../services/dashboard_service.dart';
 import '../services/global_state_manager.dart';
 
 class ManualCardioEntryScreen extends StatefulWidget {
@@ -158,98 +157,291 @@ class _ManualCardioEntryScreenState extends State<ManualCardioEntryScreen> {
 
   void _showEntrySummary(ManualCardioEntry entry) {
     final locService = LocalizationService.instance;
+
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) => AlertDialog(
-        title: Row(
-          children: [
-            const Icon(LucideIcons.check, color: Color(0xFF10B981)),
-            const SizedBox(width: 8),
-            Text('manual_session_saved'.tr(locService.currentLanguageCode)),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('${'manual_activity_label'.tr(locService.currentLanguageCode)}: ${entry.activityTitle}'),
-            Text('${'manual_format_label'.tr(locService.currentLanguageCode)}: ${entry.formatTitle}'),
-            Text('${'manual_duration_label'.tr(locService.currentLanguageCode)}: ${_formatDuration(entry.duration)}'),
-            Text('${'manual_distance_label'.tr(locService.currentLanguageCode)}: ${entry.distance.toStringAsFixed(2)} km'),
-            if (widget.activityType == 'walking') ...[
-              Text('${'manual_steps_label_result'.tr(locService.currentLanguageCode)}: ${entry.steps}'),
-              if (entry.duration.inMinutes > 0)
-                Text('${'manual_steps_per_minute'.tr(locService.currentLanguageCode)}: ${(entry.steps / entry.duration.inMinutes).toStringAsFixed(0)}'),
-            ] else
-              Text('${'manual_avg_speed'.tr(locService.currentLanguageCode)}: ${entry.calculateAverageSpeed().toStringAsFixed(1)} km/h'),
-            Text('${'manual_estimated_calories'.tr(locService.currentLanguageCode)}: ${entry.calculateCalories()} kcal'),
-            if (entry.notes != null) Text('${'manual_notes_label'.tr(locService.currentLanguageCode)}: ${entry.notes}'),
-          ],
-        ),
-        actions: [
-          ElevatedButton(
-            onPressed: _isSaving ? null : () async {
-              // Protection contre les double-clics
-              if (_isSaving) return;
-
-              setState(() {
-                _isSaving = true;
-              });
-
-              // Historiser la session dans Supabase
-              try {
-                await _saveManualSessionToSupabase(entry);
-                debugPrint('✅ Session manuelle cardio sauvegardée');
-              } catch (e) {
-                debugPrint('❌ Erreur sauvegarde session manuelle: $e');
-                if (mounted) {
-                  setState(() {
-                    _isSaving = false;
-                  });
-                }
-                // Continuer même en cas d'erreur pour ne pas bloquer l'utilisateur
-              }
-
-              // OPTIMISATION: Invalider les caches pour forcer le rafraîchissement
-              try {
-                SportDashboardService.forceInvalidateAllCaches();
-                DashboardService.invalidateAndRefreshAfterWorkout();
-
-                // Recharger TOUTES les données Sport depuis la DB
-                await GlobalStateManager.instance.refreshSportData();
-
-                debugPrint('✅ Caches Sport invalidés après séance cardio manuelle');
-              } catch (e) {
-                debugPrint('⚠️ Erreur invalidation caches: $e');
-              }
-
-              // Use dialogContext to safely pop the dialog
-              if (Navigator.canPop(dialogContext)) {
-                Navigator.pop(dialogContext); // Fermer dialog
-              }
-
-              // Use main widget context to pop back to cardio screen
-              if (mounted && Navigator.canPop(context)) {
-                Navigator.pop(context); // Retourner au cardio (se rafraîchira automatiquement)
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0B132B),
-            ),
-            child: _isSaving
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    ),
-                  )
-                : Text('manual_finish'.tr(locService.currentLanguageCode), style: const TextStyle(color: Colors.white)),
+      builder: (dialogContext) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.8,
           ),
-        ],
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Icône de succès
+                  Container(
+                    width: 64,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10B981).withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      LucideIcons.check,
+                      size: 32,
+                      color: Color(0xFF10B981),
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  Text(
+                    'manual_session_saved'.tr(locService.currentLanguageCode),
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1A1A1A),
+                    ),
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  Text(
+                    'workout_session_summary'.tr(locService.currentLanguageCode),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF64748B),
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Métriques de la session cardio
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: Column(
+                      children: [
+                        // Activité + Format
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildSummaryMetricInDialog(
+                                'manual_activity_label'.tr(locService.currentLanguageCode),
+                                entry.activityTitle,
+                                _getActivityIcon(),
+                              ),
+                            ),
+                            Container(
+                              width: 1,
+                              height: 40,
+                              color: const Color(0xFFE2E8F0),
+                            ),
+                            Expanded(
+                              child: _buildSummaryMetricInDialog(
+                                'manual_format_label'.tr(locService.currentLanguageCode),
+                                entry.formatTitle,
+                                LucideIcons.target,
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 16),
+                        const Divider(height: 1, color: Color(0xFFE2E8F0)),
+                        const SizedBox(height: 16),
+
+                        // Durée + Distance
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildSummaryMetricInDialog(
+                                'manual_duration_label'.tr(locService.currentLanguageCode),
+                                _formatDuration(entry.duration),
+                                LucideIcons.clock,
+                              ),
+                            ),
+                            Container(
+                              width: 1,
+                              height: 40,
+                              color: const Color(0xFFE2E8F0),
+                            ),
+                            Expanded(
+                              child: _buildSummaryMetricInDialog(
+                                'manual_distance_label'.tr(locService.currentLanguageCode),
+                                '${entry.distance.toStringAsFixed(2)} km',
+                                LucideIcons.navigation,
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 16),
+                        const Divider(height: 1, color: Color(0xFFE2E8F0)),
+                        const SizedBox(height: 16),
+
+                        // Vitesse moyenne + Calories
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildSummaryMetricInDialog(
+                                widget.activityType == 'walking'
+                                    ? 'manual_steps_label_result'.tr(locService.currentLanguageCode)
+                                    : 'manual_avg_speed'.tr(locService.currentLanguageCode),
+                                widget.activityType == 'walking'
+                                    ? '${entry.steps}'
+                                    : '${entry.calculateAverageSpeed().toStringAsFixed(1)} km/h',
+                                widget.activityType == 'walking'
+                                    ? LucideIcons.footprints
+                                    : LucideIcons.gauge,
+                              ),
+                            ),
+                            Container(
+                              width: 1,
+                              height: 40,
+                              color: const Color(0xFFE2E8F0),
+                            ),
+                            Expanded(
+                              child: _buildSummaryMetricInDialog(
+                                'calories'.tr(locService.currentLanguageCode),
+                                '${entry.calculateCalories()} kcal',
+                                LucideIcons.flame,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Bouton Terminer la séance
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _isSaving ? null : () async {
+                        // Protection contre les double-clics
+                        if (_isSaving) return;
+
+                        setState(() {
+                          _isSaving = true;
+                        });
+
+                        // Historiser la session dans Supabase
+                        var savedSuccessfully = false;
+                        try {
+                          await _saveManualSessionToSupabase(entry);
+                          debugPrint('✅ Session manuelle cardio sauvegardée');
+                          savedSuccessfully = true;
+
+                          // UNE SEULE mise à jour du GlobalState pour éviter les doublons
+                          GlobalStateManager.instance.updateWorkout(true);
+                          debugPrint('✅ GlobalStateManager: Cardio manuel marqué comme complété');
+                        } catch (e) {
+                          debugPrint('❌ Erreur sauvegarde session manuelle: $e');
+                          if (mounted) {
+                            setState(() {
+                              _isSaving = false;
+                            });
+                          }
+                          // Continuer même en cas d'erreur pour ne pas bloquer l'utilisateur
+                        }
+
+                        // Fermer le dialog de synthèse
+                        if (Navigator.canPop(dialogContext)) {
+                          Navigator.pop(dialogContext);
+                        }
+
+                        // Retourner au cardio screen
+                        if (mounted && Navigator.canPop(context)) {
+                          Navigator.pop(context);
+                        }
+
+                        // Afficher le CelebrationPopup (même design que les workouts)
+                        if (savedSuccessfully) {
+                          CelebrationService().celebrateCardioCompletionGlobal(
+                            activityTitle: entry.activityTitle,
+                            duration: entry.duration,
+                            distanceKm: entry.distance,
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0B132B),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: _isSaving
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          : Text(
+                              'session_end_session'.tr(locService.currentLanguageCode),
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
+    );
+  }
+
+  Widget _buildSummaryMetricInDialog(String label, String value, IconData icon) {
+    return Column(
+      children: [
+        Icon(
+          icon,
+          size: 20,
+          color: const Color(0xFF0B132B),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF1A1A1A),
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            color: Color(0xFF64748B),
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ],
     );
   }
 

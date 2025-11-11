@@ -116,7 +116,7 @@ class SportCardioHybridState extends State<SportCardioHybrid> {
             // 1. Bloc "Cette semaine" avec statistiques (connecté à Supabase)
             Container(
               key: _weeklyStatsKey,
-              child: const WeeklyStatsSection(),
+              child: WeeklyStatsSection(key: ValueKey('weekly_stats_$_refreshKey')),
             ),
 
             const SizedBox(height: 16),
@@ -136,6 +136,7 @@ class SportCardioHybridState extends State<SportCardioHybrid> {
             Container(
               key: _lastSessionKey,
               child: LastSessionSection(
+                key: ValueKey('last_session_$_refreshKey'),
                 onDetailsTap: () => _showSessionDetails(context),
               ),
             ),
@@ -145,7 +146,7 @@ class SportCardioHybridState extends State<SportCardioHybrid> {
             // 4. Bloc "Vos séances de la semaine" (connecté à Supabase)
             Container(
               key: _weekSessionsKey,
-              child: const WeekSessionsSection(),
+              child: WeekSessionsSection(key: ValueKey('week_sessions_$_refreshKey')),
             ),
 
             const SizedBox(height: 16),

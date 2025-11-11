@@ -670,7 +670,11 @@ class TutorialService {
     required GlobalKey recipesTabKey,
     String languageCode = 'fr',
   }) async {
-    // Pas de vérification de completion ici - géré par le widget parent
+    // Vérifier si déjà complété
+    if (await _isTutorialCompleted(_nutritionTutorialKey)) {
+      debugPrint('ℹ️ Tutorial Dashboard Nutrition déjà complété');
+      return;
+    }
 
     const nutritionAvatarPath = 'assets/images/coach_ryze_nutrition_avatar.png';
 
@@ -743,10 +747,12 @@ class TutorialService {
         fontWeight: FontWeight.w600,
       ),
       onSkip: () {
+        _markTutorialAsCompleted(_nutritionTutorialKey);
         debugPrint('⏭️ Tutorial Dashboard Nutrition skippé');
         return true;
       },
       onFinish: () {
+        _markTutorialAsCompleted(_nutritionTutorialKey);
         debugPrint('✅ Tutorial Dashboard Nutrition terminé');
       },
     );
@@ -768,7 +774,11 @@ class TutorialService {
     required GlobalKey musculationTabKey,
     String languageCode = 'fr',
   }) async {
-    // Pas de vérification de completion ici - géré par le widget parent
+    // Vérifier si déjà complété
+    if (await _isTutorialCompleted(_sportTutorialKey)) {
+      debugPrint('ℹ️ Tutorial Dashboard Sport déjà complété');
+      return;
+    }
 
     debugPrint('🚀 === DÉBUT TUTORIAL SPORT DASHBOARD ===');
     debugPrint('📍 État initial des widgets:');
@@ -895,10 +905,12 @@ class TutorialService {
         fontWeight: FontWeight.w600,
       ),
       onSkip: () {
+        _markTutorialAsCompleted(_sportTutorialKey);
         debugPrint('⏭️ Tutorial Dashboard Sport skippé');
         return true;
       },
       onFinish: () {
+        _markTutorialAsCompleted(_sportTutorialKey);
         debugPrint('✅ Tutorial Dashboard Sport terminé');
       },
     );

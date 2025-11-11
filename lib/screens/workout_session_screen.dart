@@ -20,6 +20,7 @@ import '../services/translations.dart';
 import '../services/localization_service.dart';
 import '../services/workout_voice_service.dart';
 import '../services/native_speech_service.dart';
+import '../services/celebration_service.dart';
 import 'package:provider/provider.dart';
 
 class WorkoutSessionScreen extends StatefulWidget {
@@ -31,6 +32,14 @@ class WorkoutSessionScreen extends StatefulWidget {
   final Function(WorkoutProgram)? onProgramSaved;
   final Function(WorkoutSession)? onSessionCompleted;
 
+  // Paramètres pour le mode édition
+  final bool isEditMode;
+  final String? editSessionId;
+  final String? editHistorySessionId;
+  final String? editSessionDate;
+  final int? editDurationMinutes;
+  final String? editIntensity;
+
   const WorkoutSessionScreen({
     super.key,
     required this.sessionName,
@@ -40,6 +49,12 @@ class WorkoutSessionScreen extends StatefulWidget {
     this.isFromAI = false, // ⚡ Par défaut false (manuel et guidé)
     this.onProgramSaved,
     this.onSessionCompleted,
+    this.isEditMode = false,
+    this.editSessionId,
+    this.editHistorySessionId,
+    this.editSessionDate,
+    this.editDurationMinutes,
+    this.editIntensity,
   });
 
   @override
@@ -70,6 +85,21 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
         return 'workout_intensity_moderate'.tr(locService.currentLanguageCode); // fallback
     }
   }
+
+  // Mapper les valeurs DB vers les clés d'intensité (inverse de _mapIntensityToDbValue)
+  String? _mapDbValueToIntensityKey(String? dbValue) {
+    if (dbValue == null) return null;
+    final locService = LocalizationService.instance;
+    final low = 'workout_intensity_low'.tr(locService.currentLanguageCode);
+    final moderate = 'workout_intensity_moderate'.tr(locService.currentLanguageCode);
+    final high = 'workout_intensity_high'.tr(locService.currentLanguageCode);
+
+    if (dbValue == low) return 'low';
+    if (dbValue == moderate) return 'moderate';
+    if (dbValue == high) return 'high';
+    return null;
+  }
+
   int? _effectiveDurationMinutes; // permet d'éditer la durée réelle
   
   // Mode offline
@@ -122,13 +152,19 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     super.initState();
     // ⚡ FIX: Coach Ryze (isFromAI) et programmes guidés arrivent avec exercices pré-remplis
     // Seules les séances VRAIMENT manuelles (ni program, ni AI) commencent vides
-    _exercises = (widget.isFromProgram || widget.isFromAI) ? List.from(widget.exercises) : [];
+    _exercises = (widget.isFromProgram || widget.isFromAI || widget.isEditMode) ? List.from(widget.exercises) : [];
 
-    if (kDebugMode) debugPrint('🏋️ WorkoutSessionScreen init: ${_exercises.length} exercices (isFromProgram: ${widget.isFromProgram}, isFromAI: ${widget.isFromAI})');
+    if (kDebugMode) debugPrint('🏋️ WorkoutSessionScreen init: ${_exercises.length} exercices (isFromProgram: ${widget.isFromProgram}, isFromAI: ${widget.isFromAI}, isEditMode: ${widget.isEditMode})');
 
     _sessionStartTime = DateTime.now();
     _currentFocusNode = FocusNode();
-    
+
+    // En mode édition, pré-remplir la durée et l'intensité
+    if (widget.isEditMode) {
+      _effectiveDurationMinutes = widget.editDurationMinutes;
+      _selectedIntensity = _mapDbValueToIntensityKey(widget.editIntensity);
+    }
+
     // Initialiser les controllers pour tous les exercices existants
     for (final exercise in _exercises) {
       _initializeControllersForExercise(exercise);
@@ -1726,13 +1762,17 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                           }
 
                           Navigator.pop(context); // Fermer popup
-                          Navigator.pop(context); // Retourner à la page précédente
+
+                          // Navigation d'abord - retourner à la page précédente
+                          Navigator.pop(context);
 
                           // ⚡ FIX: Pop supplémentaire pour Coach Ryze (isFromAI)
                           if (widget.isFromAI) {
                             Navigator.pop(context); // Fermer AI Generator → retour musculation
                             debugPrint('✅ Navigation pop x3 effectuée (bouton Non - Coach Ryze)');
                           }
+
+                          _triggerWorkoutCelebration();
                         },
                         style: OutlinedButton.styleFrom(
                           side: const BorderSide(color: Color(0xFFE2E8F0)),
@@ -1771,7 +1811,9 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                           }
 
                           Navigator.pop(context); // Fermer popup
-                          Navigator.pop(context); // Retourner à la page précédente
+
+                          // Navigation d'abord - retourner à la page précédente
+                          Navigator.pop(context);
 
                           // ⚡ FIX: Pop supplémentaire pour Coach Ryze (isFromAI)
                           if (widget.isFromAI) {
@@ -1779,18 +1821,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                             debugPrint('✅ Navigation pop x3 effectuée (bouton Oui - Coach Ryze)');
                           }
 
-                          // Afficher confirmation
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Consumer<LocalizationService>(
-                                builder: (context, locService, _) => Text(
-                                  'workout_session_saved_message'.tr(locService.currentLanguageCode).replaceAll('{0}', widget.sessionName),
-                                ),
-                              ),
-                              backgroundColor: const Color(0xFF10B981),
-                              duration: const Duration(seconds: 3),
-                            ),
-                          );
+                          _triggerWorkoutCelebration();
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF0B132B),
@@ -1821,16 +1852,117 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     );
   }
 
+  Future<void> _updateExistingSession() async {
+    try {
+      debugPrint('✏️ Mise à jour de la séance existante: ${widget.editSessionId}');
+
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId == null) {
+        throw Exception('User not authenticated');
+      }
+
+      // 1. Supprimer tous les sets existants pour cette séance
+      await Supabase.instance.client
+          .from('workout_set_history')
+          .delete()
+          .eq('history_session_id', widget.editHistorySessionId!);
+
+      debugPrint('🗑️ Anciens sets supprimés');
+
+      // 2. Insérer les nouveaux sets
+      final List<Map<String, dynamic>> rows = [];
+      int globalOrder = 1;
+
+      for (final we in _exercises) {
+        for (final set in we.sets.where((s) => s.reps > 0)) {
+          rows.add({
+            'user_id': userId,
+            'history_session_id': widget.editHistorySessionId!,
+            'exercise_name': we.exercise.name,
+            'set_order': globalOrder,
+            'reps': set.reps,
+            'weight': set.weight,
+            'performed_at': widget.editSessionDate ?? DateTime.now().toIso8601String().split('T')[0],
+            'session_name': widget.sessionName,
+          });
+          globalOrder++;
+        }
+      }
+
+      if (rows.isNotEmpty) {
+        await Supabase.instance.client
+            .from('workout_set_history')
+            .insert(rows);
+        debugPrint('✅ ${rows.length} nouveaux sets insérés');
+      }
+
+      // 3. Mettre à jour le résumé de la séance
+      final totalWeight = _exercises.fold<double>(
+        0,
+        (sum, we) => sum + we.sets.fold<double>(
+          0,
+          (setSum, s) => setSum + (s.weight * s.reps),
+        ),
+      );
+
+      final completedSets = _exercises.fold<int>(
+        0,
+        (sum, we) => sum + we.sets.where((s) => s.reps > 0).length,
+      );
+
+      await Supabase.instance.client
+          .from('workout_session_summaries')
+          .update({
+            'session_name': widget.sessionName,
+            'duration_minutes': _effectiveDurationMinutes ?? _displayedDuration.inMinutes,
+            'calories_burned': _estimatedCalories,
+            'intensity': _selectedIntensity != null ? _mapIntensityToDbValue(_selectedIntensity!) : null,
+            'total_weight_kg': totalWeight.round(),
+            'total_sets': completedSets,
+          })
+          .eq('id', widget.editSessionId!);
+
+      debugPrint('✅ Résumé de séance mis à jour');
+
+      // 4. Invalider les caches
+      SportDashboardService.forceInvalidateAllCaches();
+      DashboardService.invalidateAndRefreshAfterWorkout();
+      await GlobalStateManager.instance.refreshSportData();
+
+      // 5. Retourner avec succès
+      if (mounted) {
+        Navigator.pop(context, true); // Retourner true pour indiquer que la modification a réussi
+      }
+    } catch (e) {
+      debugPrint('❌ Erreur lors de la mise à jour: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Erreur lors de la mise à jour de la séance'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   void _validateSession() async {
+    // MODE ÉDITION : Mettre à jour la séance existante
+    if (widget.isEditMode && widget.editSessionId != null && widget.editHistorySessionId != null) {
+      await _updateExistingSession();
+      return;
+    }
+
+    // MODE CRÉATION : Créer une nouvelle séance
     // Créer la session complète et validée
     final sessionEndTime = DateTime.now();
-    
+
     // Generate unique session name with automatic numbering if needed
     final uniqueSessionName = await db.DatabaseService.generateUniqueSessionName(
       baseSessionName: widget.sessionName,
       performedAtDate: sessionEndTime,
     );
-    
+
     final completedSession = WorkoutSession(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       name: uniqueSessionName,
@@ -1839,9 +1971,9 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
       exercises: _exercises,
       isCompleted: true,
     );
-    
-    // Vérifier si on est hors ligne
-    final isOffline = _offlineStatus != null && !_offlineStatus!.isOnline;
+
+    // Vérifier si on est hors ligne (variable mutable pour le fallback)
+    bool isOffline = _offlineStatus != null && !_offlineStatus!.isOnline;
 
     // Déterminer le type de source de la séance
     String sessionSource;
@@ -1888,15 +2020,23 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
       caloriesBurned: _estimatedCalories,
     );
 
-    // Historiser la séance (manuel, guidé, ou IA)
-    db.DatabaseService.persistCompletedWorkoutAsHistory(
-      session: completedSession,
-      guidedTemplateId: guidedTemplateId,
-      sessionSource: sessionSource,
-      intensity: _selectedIntensity != null ? _mapIntensityToDbValue(_selectedIntensity!) : null,
-      durationMinutes: _displayedDuration.inMinutes,
-      caloriesBurned: _estimatedCalories,
-    ).then((_) async {
+    // Historiser la séance (manuel, guidé, ou IA) avec fallback offline
+    bool savedSuccessfully = false;
+    try {
+      await db.DatabaseService.persistCompletedWorkoutAsHistory(
+        session: completedSession,
+        guidedTemplateId: guidedTemplateId,
+        sessionSource: sessionSource,
+        intensity: _selectedIntensity != null ? _mapIntensityToDbValue(_selectedIntensity!) : null,
+        durationMinutes: _displayedDuration.inMinutes,
+        caloriesBurned: _estimatedCalories,
+      );
+
+      savedSuccessfully = true;
+      isOffline = false;
+
+      if (kDebugMode) debugPrint('✅ Séance sauvegardée en ligne avec succès');
+
       // OPTIMISATION: Invalider les caches pour forcer le rafraîchissement
       try {
         SportDashboardService.forceInvalidateAllCaches();
@@ -1909,9 +2049,34 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
       } catch (e) {
         if (kDebugMode) debugPrint('⚠️ Erreur invalidation caches: $e');
       }
-      
-      // Afficher un message différent si on est hors ligne
-      if (isOffline && mounted) {
+    } catch (e) {
+      // FALLBACK OFFLINE: Sauvegarder localement pour synchronisation ultérieure
+      if (kDebugMode) debugPrint('❌ Erreur sauvegarde en ligne: $e');
+      if (kDebugMode) debugPrint('💾 Activation du mode offline - Sauvegarde locale...');
+
+      isOffline = true;
+
+      try {
+        await _offlineService.saveSessionForSync(
+          completedSession,
+          guidedTemplateId: guidedTemplateId,
+          sessionSource: sessionSource,
+          intensity: _selectedIntensity != null ? _mapIntensityToDbValue(_selectedIntensity!) : null,
+          durationMinutes: _displayedDuration.inMinutes,
+          caloriesBurned: _estimatedCalories,
+        );
+
+        savedSuccessfully = true;
+        if (kDebugMode) debugPrint('✅ Séance sauvegardée en mode offline - Sync auto à la reconnexion');
+      } catch (offlineError) {
+        if (kDebugMode) debugPrint('❌ Erreur sauvegarde offline: $offlineError');
+        savedSuccessfully = false;
+      }
+    }
+
+    // Afficher un message selon le mode de sauvegarde
+    if (mounted && savedSuccessfully) {
+      if (isOffline) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
@@ -1945,15 +2110,35 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
           ),
         );
       }
-    }).catchError((e) {
-      if (kDebugMode) debugPrint('❌ persistCompletedWorkoutAsHistory error: $e');
-    });
+    } else if (mounted && !savedSuccessfully) {
+      // Échec complet de la sauvegarde
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 20),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Consumer<LocalizationService>(
+                  builder: (context, locService, _) => Text(
+                    'workout_save_failed'.tr(locService.currentLanguageCode),
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 5),
+        ),
+      );
+    }
 
     // Appeler le callback pour valider la session
     if (widget.onSessionCompleted != null) {
       widget.onSessionCompleted!(completedSession);
     }
-    
+
     if (kDebugMode) debugPrint('Séance validée: ${completedSession.name}');
     if (kDebugMode) debugPrint('- Durée totale: ${_formatDuration(completedSession.duration)}');
     if (kDebugMode) debugPrint('- ${completedSession.completedSets}/${completedSession.totalSets} séries terminées');
@@ -2236,7 +2421,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                       if (!widget.isFromProgram && _exercises.isNotEmpty) {
                         _showSaveSessionDialog();
                       } else {
-                        // Programmes guidés: pas de popup, retourner directement
+                        // Programmes guidés: invalider caches et retourner
                         try {
                           SportDashboardService.forceInvalidateAllCaches();
                           DashboardService.invalidateAndRefreshAfterWorkout();
@@ -2245,7 +2430,10 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                           debugPrint('⚠️ Erreur invalidation caches: $e');
                         }
 
-                        Navigator.pop(context); // Retourner à la musculation
+                        // Navigation d'abord - retourner à la musculation
+                        Navigator.pop(context);
+
+                        _triggerWorkoutCelebration();
                       }
                     },
                     style: ElevatedButton.styleFrom(
@@ -4680,5 +4868,17 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     _setKeys[exercise.exercise.id]?[setIndex] = GlobalKey();
 
     if (kDebugMode) debugPrint('➕ Added new set (index $setIndex)');
+  }
+
+  void _triggerWorkoutCelebration() {
+    final workoutType = widget.isFromAI
+        ? 'coach'
+        : (widget.isFromProgram ? 'guided' : 'manual');
+
+    CelebrationService().celebrateWorkoutCompletionGlobal(
+      sessionName: widget.sessionName,
+      workoutType: workoutType,
+      exerciseCount: _exercises.length,
+    );
   }
 }

@@ -3,9 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:ui' as ui;
 import 'dashboard_service.dart';
-import 'workout_cache_service.dart';
-import 'sport_dashboard_service.dart';
 import 'header_cache_service.dart';
+import 'sport_dashboard_service.dart';
+import 'widget_sync_service.dart';
+import 'workout_cache_service.dart';
 
 class LocalizationService extends ChangeNotifier {
   static const String _languageKey = 'selected_language';
@@ -65,6 +66,9 @@ class LocalizationService extends ChangeNotifier {
       HeaderCacheService.clearCache();
 
       notifyListeners();
+
+      // Mettre à jour le widget repas pour refléter la nouvelle langue
+      await WidgetSyncService.refreshMealWidget(force: true);
     }
   }
   

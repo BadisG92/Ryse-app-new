@@ -115,3 +115,7 @@ logs/
 .cache/
 *.cache
 
+
+# Fichier temporaire avec clés hardcodées - NE JAMAIS COMMITER
+lib/config/env_config.dart.backup
+lib/config/env_config_temp.dart

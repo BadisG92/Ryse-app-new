@@ -30,12 +30,12 @@ Dans Xcode :
 **Pour Runner** :
 - Sélectionner target **Runner**
 - **Signing & Capabilities → + Capability → App Groups**
-- Ajouter groupe : `group.com.ryse.app`
+- Ajouter groupe : `group.com.ryze.app`
 
 **Pour RyseMealWidget** :
 - Sélectionner target **RyseMealWidget**
 - **Signing & Capabilities → + Capability → App Groups**
-- Cocher le même groupe : `group.com.ryse.app`
+- Cocher le même groupe : `group.com.ryze.app`
 
 ### 3️⃣ Installer le Fichier Swift (2 min)
 
@@ -172,7 +172,7 @@ Sur le simulateur :
 ### Widget affiche "0 kcal"
 ```
 Cause : App Groups mal configuré
-Solution : Vérifier que "group.com.ryse.app" est coché dans les 2 targets
+Solution : Vérifier que "group.com.ryze.app" est coché dans les 2 targets
 ```
 
 ### Deep links ne fonctionnent pas
@@ -186,7 +186,7 @@ Solution : Vérifier CFBundleURLSchemes dans Info.plist
 Cause : App Group pas créé dans compte développeur
 Solution :
 1. developer.apple.com → Identifiers → App Groups
-2. Créer "group.com.ryse.app"
+2. Créer "group.com.ryze.app"
 3. Xcode : Signing & Capabilities → Refresh
 ```
 

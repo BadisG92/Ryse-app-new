@@ -24,6 +24,7 @@ import 'coach_ryze_nutrition_button.dart';
 import '../services/workout_service.dart';
 import '../services/global_state_manager.dart';
 import 'ui/coach_ryze_avatar.dart';
+import '../services/celebration_service.dart';
 
 class NutritionJournalHybrid extends StatefulWidget {
   const NutritionJournalHybrid({super.key});
@@ -161,6 +162,7 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
   }
 
   void _addFoodToSelectedMeal(FoodItem foodItem) async {
+    debugPrint('🎉 DEBUG - _addFoodToSelectedMeal called with: ${foodItem.name}');
     final user = AuthService().currentUser;
     if (user == null) {
       final locService = Provider.of<LocalizationService>(context, listen: false);
@@ -172,26 +174,26 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
     }
 
     String? targetMealName;
-    
+
     // OPTIMISATION: Mise à jour optimiste immédiate
     await OptimisticUpdateService.updateCaloriesOptimistic(foodItem.calories.toDouble());
-    
+
     // Fermer le bottom sheet immédiatement pour feedback instantané
     if (Navigator.canPop(context)) {
       Navigator.pop(context);
+      debugPrint('🎉 DEBUG - Bottom sheet closed');
     }
-    
+
     if (_selectedMealIndex != null && _selectedMealIndex! < meals.length) {
       // Cas normal : ajouter à un repas existant avec son meal_id
       final selectedMeal = meals[_selectedMealIndex!];
       targetMealName = selectedMeal.name;
-      
-      // Feedback visuel instantané
-      CustomSnackbarService.showSuccess(
-        context,
-        '${foodItem.name} ajouté au $targetMealName',
+
+      CelebrationService().celebrateFoodEntryGlobal(
+        foodName: foodItem.name,
+        mealName: selectedMeal.name,
       );
-      
+
       // Ajout en base (non-bloquant)
       FoodEntriesService.addFoodEntry(
         userId: user.id,
@@ -213,13 +215,11 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
     } else if (_pendingMealType != null && _pendingMealId != null) {
       // Cas nouveau repas : utiliser l'ID pré-généré
       targetMealName = _pendingMealId;
-      
-      // Feedback visuel instantané
-      CustomSnackbarService.showSuccess(
-        context,
-        '${foodItem.name} ajouté au $targetMealName',
+      CelebrationService().celebrateFoodEntryGlobal(
+        foodName: foodItem.name,
+        mealName: targetMealName,
       );
-      
+
       // Ajout en base (non-bloquant)
       FoodEntriesService.addFoodEntry(
         userId: user.id,
@@ -429,15 +429,10 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
                         if (success) {
                           // ✅ OPTIMISATION: Ne pas recharger ici, le stream listener s'en charge automatiquement
 
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('${foodItem.name} ajouté au ${meal.name}'),
-                                backgroundColor: const Color(0xFF0B132B),
-                                duration: const Duration(seconds: 2),
-                              ),
-                            );
-                          }
+                          CelebrationService().celebrateFoodEntryGlobal(
+                            foodName: foodItem.name,
+                            mealName: meal.name,
+                          );
                         } else {
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -513,15 +508,10 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
                           if (success) {
                             // ✅ OPTIMISATION: Ne pas recharger ici, le stream listener s'en charge automatiquement
 
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('${foodItem.name} ajouté à un nouveau $mealId'),
-                                  backgroundColor: const Color(0xFF0B132B),
-                                  duration: const Duration(seconds: 2),
-                                ),
-                              );
-                            }
+                            CelebrationService().celebrateFoodEntryGlobal(
+                              foodName: foodItem.name,
+                              mealName: mealType,
+                            );
                           } else {
                             if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -1252,8 +1242,8 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
         await _selectNewMealType(mealType);
 
         // Afficher directement les 5 options pour le nouveau repas
-        Future.delayed(const Duration(milliseconds: 300), () {
-          NutritionQuickActionsSection.showAddFoodOptionsForNewMeal(context, mealType);
+        Future.delayed(const Duration(milliseconds: 300), () async {
+          await NutritionQuickActionsSection.showAddFoodOptionsForNewMeal(context, mealType);
         });
       },
     );

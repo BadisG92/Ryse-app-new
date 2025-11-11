@@ -562,10 +562,8 @@ class CalendarGrid extends StatelessWidget {
     ];
     final days = _getDaysInMonth(currentMonth);
 
-    // Calculer la taille des cellules pour qu'elles restent carrées
-    final screenWidth = MediaQuery.of(context).size.width;
-    final availableWidth = screenWidth - 64; // padding horizontal (16*2) + card padding (16*2)
-    final cellSize = (availableWidth / 7).clamp(36.0, 48.0); // Taille entre 36 et 48
+    // Taille fixe de 40x40 pour garantir des cases carrées visibles sur tous les écrans (même style que calendrier sportif)
+    const double cellSize = 40.0;
 
     return Column(
           children: [
@@ -596,12 +594,12 @@ class CalendarGrid extends StatelessWidget {
             // Grille du calendrier
             ...List.generate(6, (weekIndex) {
               return Padding(
-                padding: const EdgeInsets.only(bottom: 4),
+                padding: const EdgeInsets.only(bottom: 8),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: List.generate(7, (dayIndex) {
                     final index = weekIndex * 7 + dayIndex;
-                    if (index >= days.length) return SizedBox(width: cellSize);
+                    if (index >= days.length) return const SizedBox(width: cellSize);
 
                     final day = days[index];
                     final data = _getNutritionData(nutritionData, day.date);
@@ -613,13 +611,13 @@ class CalendarGrid extends StatelessWidget {
                       child: Container(
                         width: cellSize,
                         height: cellSize,
-                        margin: EdgeInsets.all(isToday ? 1 : 2),
+                        margin: const EdgeInsets.all(1),
                         decoration: _getDayDecoration(day, data, isToday, isSelected),
                         child: Center(
                           child: Text(
                             '${day.date.day}',
                             style: TextStyle(
-                              fontSize: isToday ? 16 : 14,
+                              fontSize: isToday ? 14 : 12,
                               fontWeight: isToday ? FontWeight.bold : FontWeight.w500,
                               color: _getDayTextColor(day, data, isToday, isSelected),
                             ),

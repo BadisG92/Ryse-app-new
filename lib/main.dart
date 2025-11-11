@@ -9,6 +9,7 @@ import 'config/env_config.dart';
 import 'services/auth_service.dart';
 import 'services/localization_service.dart';
 import 'services/analytics_service.dart';
+import 'services/app_navigator.dart';
 import 'components/ui/recipe_models.dart';
 import 'pages/ryze_app.dart';
 import 'services/offline_workout_service.dart';
@@ -27,6 +28,8 @@ import 'services/subscription_service.dart';
 import 'services/notification_service.dart';
 import 'package:uni_links/uni_links.dart';
 import 'services/widget_deep_link_handler.dart';
+import 'services/widget_water_handler.dart';
+import 'services/meal_widget_data_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -44,6 +47,9 @@ void main() async {
   // NOUVEAU: Initialize deep link handler for iOS widgets
   final navigatorKey = GlobalKey<NavigatorState>();
   WidgetDeepLinkHandler.initialize(navigatorKey);
+
+  // Initialize AppNavigator service for global access to navigator context
+  AppNavigator().initialize(navigatorKey);
 
   // NOUVEAU: Handle initial link (app opened from widget)
   try {
@@ -98,6 +104,8 @@ void main() async {
       debugPrint('⚠️ GlobalStateManager timeout - using defaults');
     },
   );
+  // Mettre les données widget à jour dès que le state global est prêt avec les VRAIES valeurs
+  await MealWidgetDataProvider.forceWidgetUpdate();
 
   // Initialiser les services d'analyse IA avec Gemini
   ExerciseAiAnalysisService.initialize();
@@ -122,6 +130,13 @@ void main() async {
     debugPrint('⚠️ Notification service error: $e');
   }));
 
+  // OFFLINE WORKOUT: Initialiser le service offline (non-bloquant)
+  unawaited(OfflineWorkoutService().initialize().then((_) {
+    debugPrint('✅ Offline workout service initialized');
+  }).catchError((e) {
+    debugPrint('⚠️ Offline workout service error: $e');
+  }));
+
   // Phases 2 & 3: Non-bloquantes, en arrière-plan
   unawaited(initializer.initializeImportantServices());
   unawaited(initializer.initializeOptionalServices());
@@ -131,6 +146,9 @@ void main() async {
 
   // Lancer l'app immédiatement après les services critiques
   runApp(MyApp(navigatorKey: navigatorKey));
+  
+  // Démarrer la vérification des actions d'eau depuis le widget (iOS 17+ App Intents)
+  WidgetWaterHandler.startChecking();
 }
 
 class MyApp extends StatelessWidget {
@@ -191,7 +209,6 @@ class _AppInitializerState extends State<AppInitializer> with SingleTickerProvid
   late AnimationController _animationController;
   late Animation<double> _logoFadeAnimation;
   late Animation<double> _logoScaleAnimation;
-  late Animation<double> _textFadeAnimation;
   late Animation<double> _splashFadeOutAnimation;
 
   @override
@@ -201,40 +218,32 @@ class _AppInitializerState extends State<AppInitializer> with SingleTickerProvid
     // Précharger la police Inter avant de démarrer les animations
     _preloadFont();
 
-    // Animation controller pour toute la séquence (2 secondes)
+    // Animation ultra-rapide style AAA (500ms total)
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2000),
+      duration: const Duration(milliseconds: 500),
     );
 
-    // Logo : fade in + scale avec rebond (0ms -> 600ms) - apparition dynamique
+    // Logo : apparition instantanée (0ms -> 100ms)
     _logoFadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _animationController,
-        curve: const Interval(0.0, 0.4, curve: Curves.easeOut),
+        curve: const Interval(0.0, 0.2, curve: Curves.easeOut),
       ),
     );
 
-    _logoScaleAnimation = Tween<double>(begin: 0.6, end: 1.0).animate(
+    _logoScaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
       CurvedAnimation(
         parent: _animationController,
-        curve: const Interval(0.0, 0.4, curve: Curves.easeOutBack), // Rebond
+        curve: const Interval(0.0, 0.2, curve: Curves.easeOut),
       ),
     );
 
-    // Texte : fade in légèrement décalé (100ms -> 600ms) pour un effet de séquence
-    _textFadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: const Interval(0.1, 0.4, curve: Curves.easeOut),
-      ),
-    );
-
-    // Tout disparaît (1400ms -> 2000ms) - disparition en douceur
+    // Disparition rapide (300ms -> 500ms)
     _splashFadeOutAnimation = Tween<double>(begin: 1.0, end: 0.0).animate(
       CurvedAnimation(
         parent: _animationController,
-        curve: const Interval(0.7, 1.0, curve: Curves.easeInOut),
+        curve: const Interval(0.6, 1.0, curve: Curves.easeIn),
       ),
     );
 
@@ -245,7 +254,6 @@ class _AppInitializerState extends State<AppInitializer> with SingleTickerProvid
   /// Précharger la police Inter pour éviter le changement de police visible
   Future<void> _preloadFont() async {
     try {
-      // Précharger Inter avec tous les weights utilisés
       await Future.wait([
         GoogleFonts.pendingFonts([
           GoogleFonts.inter(fontWeight: FontWeight.w400),
@@ -270,10 +278,15 @@ class _AppInitializerState extends State<AppInitializer> with SingleTickerProvid
   Future<void> _initializeApp() async {
     // Initialiser l'auth en parallèle de l'animation
     final authService = Provider.of<AuthService>(context, listen: false);
-    await _performAuthInitialization(authService);
 
-    // Attendre la fin de l'animation (2 secondes)
-    await Future.delayed(const Duration(milliseconds: 2000));
+    // Démarrer l'auth
+    final authFuture = _performAuthInitialization(authService);
+
+    // Durée minimum de l'animation (300ms pour voir le logo)
+    final minDuration = Future.delayed(const Duration(milliseconds: 300));
+
+    // Attendre que l'auth ET l'animation minimum soient terminées
+    await Future.wait([authFuture, minDuration]);
 
     if (mounted) {
       setState(() {
@@ -287,7 +300,7 @@ class _AppInitializerState extends State<AppInitializer> with SingleTickerProvid
       // Délai pour éviter le freeze pendant build
       await Future.delayed(const Duration(milliseconds: 100));
 
-      // CRITICAL: Timeout court pour mode avion (3s max au lieu de 15s)
+      // CRITICAL: Timeout court pour mode avion (3s max)
       await authService.initialize().timeout(
         const Duration(seconds: 3),
         onTimeout: () {

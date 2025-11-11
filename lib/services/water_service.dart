@@ -5,6 +5,7 @@ import 'dashboard_service.dart';
 import 'optimistic_update_service.dart';
 import 'global_state_manager.dart';
 import 'supabase_error_handler.dart';
+import 'meal_widget_data_provider.dart';
 
 /// Service pour gérer le suivi d'hydratation
 class WaterService {
@@ -43,10 +44,12 @@ class WaterService {
         'source_type': sourceType,
         'notes': notes,
         'consumed_at': (consumedAt ?? DateTime.now()).toIso8601String(),
-      }).then((_) {
+      }).then((_) async {
         // Synchronisation ultra-rapide après succès
         debugPrint('✅ Eau ajoutée en base - sync rapide');
         DashboardService.invalidateAndRefreshGoals();
+        // Mettre à jour les données du widget iOS
+        await MealWidgetDataProvider.updateWidgetData();
       }).catchError((error) {
         debugPrint('❌ Erreur ajout eau: $error');
         // Rollback si erreur

@@ -11,6 +11,8 @@ import '../../services/global_state_manager.dart';
 import '../../services/translations.dart';
 import '../../services/localization_service.dart';
 import 'package:provider/provider.dart';
+import '../../screens/workout_edit_screen.dart';
+import '../../models/sport_models.dart' as models;
 
 // Section principale des statistiques de la semaine
 class WeeklyStatsSection extends StatefulWidget {
@@ -165,6 +167,91 @@ class _WeekHistorySectionState extends State<WeekHistorySection> with GlobalStat
     }
   }
 
+  Future<void> _editSession(String sessionId) async {
+    try {
+      debugPrint('✏️ Édition de la séance: $sessionId');
+
+      // Charger les détails de la séance
+      final sessionDetails = await SportDashboardService.getMusculationSessionDetails(sessionId);
+
+      if (!mounted) return;
+
+      // Convertir en format WorkoutExercise
+      final exercises = _convertToWorkoutExercises(
+        sessionDetails['exercises'] as Map<String, List<Map<String, dynamic>>>
+      );
+
+      // Ouvrir le screen d'édition
+      if (!mounted) return;
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => WorkoutEditScreen(
+            sessionId: sessionId,
+            historySessionId: sessionDetails['history_session_id'],
+            sessionName: sessionDetails['session_name'],
+            exercises: exercises,
+            durationMinutes: sessionDetails['duration_minutes'] ?? 0,
+            intensity: sessionDetails['intensity'],
+            sessionDate: sessionDetails['session_date'],
+          ),
+        ),
+      );
+
+      // Si la séance a été modifiée, recharger
+      if (result == true && mounted) {
+        await _loadWeekHistory();
+      }
+    } catch (e) {
+      debugPrint('❌ Erreur lors de l\'édition: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Erreur lors du chargement de la séance'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  List<models.WorkoutExercise> _convertToWorkoutExercises(
+    Map<String, List<Map<String, dynamic>>> exerciseGroups
+  ) {
+    final List<models.WorkoutExercise> workoutExercises = [];
+
+    for (final entry in exerciseGroups.entries) {
+      final exerciseName = entry.key;
+      final sets = entry.value;
+
+      // Créer les sets
+      final exerciseSets = sets.map((set) {
+        return models.ExerciseSet(
+          reps: set['reps'] as int,
+          weight: (set['weight'] as num).toDouble(),
+          isCompleted: true,
+        );
+      }).toList();
+
+      // Créer l'exercice
+      final exercise = models.Exercise(
+        id: exerciseName,
+        name: exerciseName,
+        muscleGroup: '',
+        equipment: '',
+        description: '',
+        isCustom: false,
+      );
+
+      workoutExercises.add(models.WorkoutExercise(
+        exercise: exercise,
+        sets: exerciseSets,
+      ));
+    }
+
+    return workoutExercises;
+  }
+
   Future<void> _deleteSession(String sessionId) async {
     try {
       debugPrint('🗑️ Suppression de la séance de musculation: $sessionId');
@@ -294,6 +381,7 @@ class _WeekHistorySectionState extends State<WeekHistorySection> with GlobalStat
             else ..._sessions.map((s) => WorkoutHistoryCard(
               session: s,
               onDelete: _deleteSession,
+              onEdit: _editSession,
             )).toList(),
           ],
         ),

@@ -13,6 +13,7 @@ import '../bottom_sheets/new_meal_type_bottom_sheet.dart';
 import '../models/nutrition_models.dart';
 import '../services/food_entries_service.dart';
 import '../services/auth_service.dart';
+import '../services/celebration_service.dart';
 import '../services/translations.dart';
 import '../components/nutrition_journal_hybrid.dart';
 import 'dart:io';
@@ -1115,11 +1116,42 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
                         return;
                       }
 
-                      // Si on vient du dashboard, déclencher la sélection de repas
-                      if (widget.mealName != null && widget.mealId != null) {
-                        // Flux depuis le journal - ajouter directement au repas sélectionné
-                        await _addFoodsToSpecificMeal(widget.mealName!, widget.mealId!);
-                      } else if (widget.isFromDashboard) {
+                      // Si un repas nous a été passé (même sans ID), prioriser l'ajout direct
+                      if (widget.mealName != null) {
+                        if (kDebugMode) {
+                          debugPrint('🥐 [WidgetFlow] Ajout direct demandé pour ${widget.mealName} (mealId=${widget.mealId ?? "null"})');
+                        }
+                        String? targetMealId = widget.mealId;
+
+                        // Générer un meal_id s'il n'existe pas encore (cas d'un nouveau repas venant du widget/dashboard)
+                        if (targetMealId == null) {
+                          final user = AuthService().currentUser;
+                          if (user != null) {
+                            targetMealId = await FoodEntriesService.generateMealId(
+                              userId: user.id,
+                              mealName: widget.mealName!,
+                              forDate: DateTime.now(),
+                            );
+                            if (kDebugMode) {
+                              debugPrint('🆔 [WidgetFlow] meal_id généré: ${targetMealId ?? "null"}');
+                            }
+                          }
+                        }
+
+                        if (targetMealId != null) {
+                          if (kDebugMode) {
+                            debugPrint('🚀 [WidgetFlow] Ajout IA direct au repas ${widget.mealName} (meal_id=$targetMealId)');
+                          }
+                          await _addFoodsToSpecificMeal(widget.mealName!, targetMealId);
+                          return;
+                        } else {
+                          if (kDebugMode) {
+                            debugPrint('⚠️ [WidgetFlow] Impossible de générer un meal_id, fallback sélection de repas');
+                          }
+                        }
+                      }
+
+                      if (widget.isFromDashboard) {
                         // Flux depuis le dashboard - demander la sélection du repas
                         await _addFoodsToJournalWithSelection();
                       } else {
@@ -1474,6 +1506,13 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
 
         if (success) {
           final foodName = _analysisResult!.mealName ?? 'meal_dish'.tr(LocalizationService.instance.currentLanguageCode);
+          // Show celebration popup
+          CelebrationService().celebrateFoodEntry(
+            context,
+            foodName: foodName,
+            mealName: mealName,
+          );
+
           final message = 'food_added_to_meal'.tr(LocalizationService.instance.currentLanguageCode)
               .replaceAll('{foodName}', foodName)
               .replaceAll('{mealName}', mealName);
@@ -1586,6 +1625,13 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
         if (success) {
           // Afficher un message de succès avec action vers le Journal
           final foodName = _analysisResult!.mealName ?? 'meal_dish'.tr(LocalizationService.instance.currentLanguageCode);
+          // Show celebration popup
+          CelebrationService().celebrateFoodEntry(
+            context,
+            foodName: foodName,
+            mealName: selectedMeal.name,
+          );
+
           final message = 'food_added_to_meal'.tr(LocalizationService.instance.currentLanguageCode)
               .replaceAll('{foodName}', foodName)
               .replaceAll('{mealName}', selectedMeal.name);
@@ -1643,6 +1689,13 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
 
         if (success) {
           final foodName = _analysisResult!.mealName ?? 'meal_dish'.tr(LocalizationService.instance.currentLanguageCode);
+          // Show celebration popup
+          CelebrationService().celebrateFoodEntry(
+            context,
+            foodName: foodName,
+            mealName: mealType,
+          );
+
           final message = 'food_added_to_new_meal'.tr(LocalizationService.instance.currentLanguageCode)
               .replaceAll('{foodName}', foodName)
               .replaceAll('{mealType}', mealType);

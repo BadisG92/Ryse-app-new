@@ -3,6 +3,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../models/subscription_models.dart';
 import '../services/subscription_service.dart';
+import '../services/unified_subscription_service.dart';
 import '../services/paywall_service.dart';
 import '../services/localization_service.dart';
 import '../services/translations.dart';
@@ -26,6 +27,7 @@ class PaywallScreen extends StatefulWidget {
 
 class _PaywallScreenState extends State<PaywallScreen> {
   final _subscriptionService = SubscriptionService.instance;
+  final _unifiedService = UnifiedSubscriptionService();
   bool _isProcessing = false;
   SubscriptionPeriod _selectedPeriod = SubscriptionPeriod.monthly;
 
@@ -417,19 +419,40 @@ class _PaywallScreenState extends State<PaywallScreen> {
     setState(() => _isProcessing = true);
 
     try {
-      // TODO: Intégrer RevenueCat ici
-      final success = await _subscriptionService.upgradeToPremium(
+      // Utilise UnifiedSubscriptionService qui gère RevenueCat en production
+      final success = await _unifiedService.upgradeToPremium(
         period: _selectedPeriod,
       );
 
       if (!mounted) return;
 
       if (success) {
+        final locService = LocalizationService.instance;
+        final isFrench = locService.currentLanguageCode == 'fr';
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isFrench
+                ? '🎉 Bienvenue dans Ryse Premium !'
+                : '🎉 Welcome to Ryse Premium!',
+            ),
+            backgroundColor: const Color(0xFF10B981),
+            duration: const Duration(seconds: 3),
+          ),
+        );
         Navigator.pop(context, true);
       } else {
+        final locService = LocalizationService.instance;
+        final isFrench = locService.currentLanguageCode == 'fr';
+
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Paiement annulé'),
+          SnackBar(
+            content: Text(
+              isFrench
+                ? 'Paiement annulé'
+                : 'Payment cancelled',
+            ),
             backgroundColor: Colors.orange,
           ),
         );

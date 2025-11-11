@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -12,6 +13,8 @@ import '../config/supabase_config.dart';
 import 'global_state_manager.dart';
 import 'fast_cache_service.dart';
 import 'analytics_service.dart';
+import 'offline_workout_service.dart';
+import 'meal_widget_data_provider.dart';
 
 class AuthService extends ChangeNotifier {
   static final AuthService _instance = AuthService._internal();
@@ -81,6 +84,8 @@ class AuthService extends ChangeNotifier {
             .timeout(const Duration(seconds: 2), onTimeout: () {
           if (kDebugMode) debugPrint('⚠️ GlobalStateManager timeout - using defaults');
         });
+        // Forcer la mise à jour du widget avec les vraies données utilisateur
+        await MealWidgetDataProvider.forceWidgetUpdate();
       } else {
         if (kDebugMode) debugPrint('📱 No existing session found');
       }
@@ -118,6 +123,13 @@ class AuthService extends ChangeNotifier {
         // 📊 Analytics: Sign up success
         await AnalyticsService.logSignUp(method: 'email');
         await AnalyticsService.setUserId(response.user!.id);
+
+        // OFFLINE: Télécharger le cache des exercices pour utilisation offline
+        if (kDebugMode) debugPrint('💾 Téléchargement du cache des exercices après inscription...');
+        unawaited(OfflineWorkoutService().refreshCache().catchError((e) {
+          if (kDebugMode) debugPrint('⚠️ Erreur téléchargement cache exercices: $e');
+        }));
+
         return true;
       }
       return false;
@@ -157,6 +169,14 @@ class AuthService extends ChangeNotifier {
         // NOUVEAU: Réinitialiser GlobalStateManager après connexion réussie
         if (kDebugMode) debugPrint('🔄 Réinitialisation GlobalStateManager après connexion...');
         await GlobalStateManager.instance.initialize();
+        // Forcer la mise à jour du widget avec les vraies données utilisateur après connexion
+        await MealWidgetDataProvider.forceWidgetUpdate();
+
+        // OFFLINE: Télécharger le cache des exercices pour utilisation offline
+        if (kDebugMode) debugPrint('💾 Téléchargement du cache des exercices pour mode offline...');
+        unawaited(OfflineWorkoutService().refreshCache().catchError((e) {
+          if (kDebugMode) debugPrint('⚠️ Erreur téléchargement cache exercices: $e');
+        }));
 
         return true;
       }
@@ -279,6 +299,13 @@ class AuthService extends ChangeNotifier {
         // NOUVEAU: Réinitialiser GlobalStateManager après connexion Google
         if (kDebugMode) debugPrint('🔄 Réinitialisation GlobalStateManager après connexion Google...');
         await GlobalStateManager.instance.initialize();
+        await MealWidgetDataProvider.updateWidgetData();
+
+        // OFFLINE: Télécharger le cache des exercices pour utilisation offline
+        if (kDebugMode) debugPrint('💾 Téléchargement du cache des exercices...');
+        unawaited(OfflineWorkoutService().refreshCache().catchError((e) {
+          if (kDebugMode) debugPrint('⚠️ Erreur téléchargement cache exercices: $e');
+        }));
 
         return true;
       }
@@ -366,6 +393,13 @@ class AuthService extends ChangeNotifier {
         // NOUVEAU: Réinitialiser GlobalStateManager après connexion Apple
         if (kDebugMode) debugPrint('🔄 Réinitialisation GlobalStateManager après connexion Apple...');
         await GlobalStateManager.instance.initialize();
+        await MealWidgetDataProvider.updateWidgetData();
+
+        // OFFLINE: Télécharger le cache des exercices pour utilisation offline
+        if (kDebugMode) debugPrint('💾 Téléchargement du cache des exercices...');
+        unawaited(OfflineWorkoutService().refreshCache().catchError((e) {
+          if (kDebugMode) debugPrint('⚠️ Erreur téléchargement cache exercices: $e');
+        }));
 
         if (kDebugMode) debugPrint('✅ Apple Sign In completed successfully');
         return true;
@@ -422,6 +456,7 @@ class AuthService extends ChangeNotifier {
 
       // 4. Clear global state manager
       GlobalStateManager.instance.reset();
+      await MealWidgetDataProvider.clearWidgetData();
 
       if (kDebugMode) debugPrint('✅ All local data cleared');
     } catch (e) {

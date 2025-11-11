@@ -4,7 +4,6 @@ import '../models/cardio_session_models.dart';
 import 'cardio_service.dart';
 import 'sport_dashboard_service.dart';
 import 'workout_cache_service.dart';
-import 'dashboard_service.dart';
 import 'location_service.dart';
 import 'cardio_calculator.dart';
 
@@ -142,17 +141,9 @@ class CardioSessionManager {
       // Nettoyer les données GPS
       LocationService.clearRoute();
 
-      // Invalider les caches
+      // Invalider les caches (mais pas de mise à jour GlobalState ici pour éviter doublons)
       _invalidateAllCaches();
 
-      // Mettre à jour le dashboard principal
-      try {
-        await DashboardService.invalidateAndRefreshAfterWorkout();
-        debugPrint('✅ Dashboard principal mis à jour après cardio GPS');
-      } catch (e) {
-        debugPrint('⚠️ Erreur lors de la mise à jour du dashboard principal: $e');
-      }
-      
     } catch (e) {
       debugPrint('❌ Error completing cardio session with GPS: $e');
       rethrow;
@@ -189,15 +180,7 @@ class CardioSessionManager {
 
       // 2. Invalider le cache pour forcer le rechargement des données
       _invalidateAllCaches();
-      
-      // 3. Invalider le dashboard principal pour mettre à jour les objectifs et modules
-      try {
-        await DashboardService.invalidateAndRefreshAfterWorkout();
-        debugPrint('✅ Dashboard principal mis à jour après cardio');
-      } catch (e) {
-        debugPrint('⚠️ Erreur lors de la mise à jour du dashboard principal: $e');
-      }
-      
+
     } catch (e) {
       debugPrint('❌ Error completing cardio session: $e');
       rethrow;

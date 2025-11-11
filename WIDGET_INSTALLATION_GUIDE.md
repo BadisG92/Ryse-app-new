@@ -50,11 +50,11 @@ Pour partager les données entre Flutter et le widget, vous devez configurer les
 
 4. Cliquez sur **+** pour ajouter un nouveau groupe :
    ```
-   group.com.ryse.app
+   group.com.ryze.app
    ```
 
 5. **IMPORTANT** : Répétez les étapes 1-4 pour le target **RyseMealWidget**
-   - Utilisez le **même** App Group ID : `group.com.ryse.app`
+   - Utilisez le **même** App Group ID : `group.com.ryze.app`
 
 ### **Étape 3 : Remplacer le fichier Swift du Widget**
 
@@ -217,7 +217,7 @@ class MyApp extends StatelessWidget {
 **Solution** : Vérifiez que l'App Group est correctement configuré dans les deux targets (Runner et RyseMealWidget).
 
 1. Dans Xcode, vérifiez **Signing & Capabilities** pour les deux targets
-2. Assurez-vous que `group.com.ryse.app` est coché pour les deux
+2. Assurez-vous que `group.com.ryze.app` est coché pour les deux
 3. Clean et rebuild le projet (**⌘ + Shift + K** puis **⌘ + R**)
 
 ### Les deep links ne fonctionnent pas
@@ -245,7 +245,7 @@ Pour forcer un refresh immédiat (debug) :
 
 1. Allez sur [developer.apple.com](https://developer.apple.com)
 2. Certificates, Identifiers & Profiles → Identifiers → App Groups
-3. Créez l'App Group `group.com.ryse.app`
+3. Créez l'App Group `group.com.ryze.app`
 4. Synchronisez dans Xcode (Signing & Capabilities → Refresh)
 
 ## 📊 Formats de Deep Links

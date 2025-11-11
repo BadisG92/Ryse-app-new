@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../components/ui/snackbar_utils.dart';
+import '../services/celebration_service.dart';
 
 class FoodDetailsBottomSheet {
   static void show(BuildContext context, String name, int calories, int baseWeight) {
@@ -234,9 +235,10 @@ class FoodDetailsBottomSheet {
                     Navigator.pop(context); // Fermer les détails
                     Navigator.pop(context); // Fermer la recherche
                     // TODO: Ajouter l'aliment au repas
-                    SnackBarUtils.showSuccessSnackBar(
+                    // Show celebration popup instead of snackbar
+                    CelebrationService().celebrateFoodEntry(
                       context,
-                      message: '$name ajouté au repas',
+                      foodName: name,
                     );
                   },
                   style: ElevatedButton.styleFrom(

@@ -201,17 +201,9 @@ class CardioService {
 
       debugPrint('✅ Cardio session saved: $sessionId (format_id: $activityFormatId)');
 
-      // NOUVEAU: Notifier GlobalStateManager immédiatement pour réactivité instantanée
-      try {
-        GlobalStateManager.instance.updateWorkout(true);
-        debugPrint('✅ GlobalStateManager: Cardio marqué comme complété instantanément');
-      } catch (e) {
-        debugPrint('⚠️ GlobalStateManager cardio update failed: $e');
-      }
+      // NOTE: Les mises à jour du GlobalStateManager sont gérées par l'appelant
+      // pour éviter les doublons de validation
 
-      // Mettre à jour les objectifs dashboard en temps réel
-      // DashboardService.invalidateAndRefreshGoals(); // TODO: Fix this
-      
       return sessionId;
     } catch (e) {
       debugPrint('❌ Error saving cardio session: $e');

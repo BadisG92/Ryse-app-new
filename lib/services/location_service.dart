@@ -17,14 +17,53 @@ class LocationService {
   static List<LocationPoint> _currentRoute = [];
   static DateTime? _lastCalculationTime;
 
+  // === NOUVELLES FONCTIONNALITÉS (SAFE, DÉSACTIVABLES) ===
+
+  // Configuration des améliorations (désactivables sans risque)
+  static bool _enableAutoPauseDetection = true;
+  static bool _enableKalmanFilter = true;
+
+  // Détection automatique des pauses
+  static bool _isAutoPaused = false;
+  static DateTime? _pauseStartTime;
+  static const double _autoPauseSpeedThreshold = 0.5; // km/h
+  static const int _autoPauseDelaySec = 3; // secondes
+
+  // Filtre de Kalman simplifié
+  static double? _kalmanEstimate; // Estimation de la vitesse
+  static double _kalmanError = 1.0; // Erreur d'estimation
+  static const double _processNoise = 0.1; // Bruit du processus
+  static const double _measurementNoise = 4.0; // Bruit de mesure GPS
+
   /// Returns true if location permission was denied and app is using FR default
   static bool get isUsingDefaultCountry => _locationPermissionDenied;
-  
+
   /// Stream des points de géolocalisation
   static Stream<LocationPoint>? get locationStream => _locationController?.stream;
 
   /// Liste des points de la route actuelle
   static List<LocationPoint> get currentRoute => List.unmodifiable(_currentRoute);
+
+  /// État de la pause automatique
+  static bool get isAutoPaused => _isAutoPaused;
+
+  /// Active/Désactive la détection automatique des pauses
+  static void setAutoPauseEnabled(bool enabled) {
+    _enableAutoPauseDetection = enabled;
+    if (!enabled) {
+      _isAutoPaused = false;
+      _pauseStartTime = null;
+    }
+  }
+
+  /// Active/Désactive le filtre de Kalman
+  static void setKalmanFilterEnabled(bool enabled) {
+    _enableKalmanFilter = enabled;
+    if (!enabled) {
+      _kalmanEstimate = null;
+      _kalmanError = 1.0;
+    }
+  }
 
   // === MÉTHODES EXISTANTES POUR LE PAYS ===
   
@@ -254,6 +293,11 @@ class LocationService {
   /// Remet à zéro les données de route
   static void clearRoute() {
     _currentRoute.clear();
+    _lastSmoothedSpeed = null; // Reset le cache de vitesse lissée
+    _kalmanEstimate = null; // Reset le filtre de Kalman
+    _kalmanError = 1.0;
+    _isAutoPaused = false; // Reset la pause automatique
+    _pauseStartTime = null;
   }
 
   /// Dispose des ressources
@@ -262,6 +306,11 @@ class LocationService {
     await _locationController?.close();
     _locationController = null;
     _currentRoute.clear();
+    _lastSmoothedSpeed = null; // Reset le cache de vitesse lissée
+    _kalmanEstimate = null; // Reset le filtre de Kalman
+    _kalmanError = 1.0;
+    _isAutoPaused = false; // Reset la pause automatique
+    _pauseStartTime = null;
   }
 
   /// Calcule la distance totale parcourue en kilomètres
@@ -291,17 +340,23 @@ class LocationService {
     return totalDistance / (duration.inMinutes / 60.0); // km/h
   }
 
+  // Cache pour le lissage exponentiel de la vitesse
+  static double? _lastSmoothedSpeed;
+  static const double _smoothingFactor = 0.3; // 0-1, plus petit = plus lisse
+
   /// Calcule la vitesse instantanée en km/h basée sur les derniers points GPS
+  /// Utilise un lissage exponentiel et une fenêtre glissante pour réduire la variabilité
+  /// Option: Filtre de Kalman pour encore plus de précision
   static double calculateCurrentSpeed() {
     if (_currentRoute.length < 2) return 0.0;
 
-    // Utiliser les 3 derniers points pour un calcul plus lissé
-    final pointsToUse = _currentRoute.length >= 3 ? 3 : _currentRoute.length;
-    final recentPoints = _currentRoute.sublist(_currentRoute.length - pointsToUse);
-    
+    // Utiliser une fenêtre plus large (10 points = ~10 secondes) pour plus de stabilité
+    final windowSize = _currentRoute.length >= 10 ? 10 : _currentRoute.length;
+    final recentPoints = _currentRoute.sublist(_currentRoute.length - windowSize);
+
     if (recentPoints.length < 2) return 0.0;
 
-    // Calculer la distance entre le premier et dernier point de l'échantillon
+    // Calculer la vitesse brute sur la fenêtre
     final distance = calculateDistanceBetweenPoints(
       recentPoints.first,
       recentPoints.last,
@@ -311,7 +366,76 @@ class LocationService {
     if (timeDiff.inSeconds == 0) return 0.0;
 
     final speedMs = distance / timeDiff.inSeconds; // m/s
-    return speedMs * 3.6; // Convertir en km/h
+    double rawSpeed = speedMs * 3.6; // km/h
+
+    // Filtrer les vitesses aberrantes (> 50 km/h pour la course/vélo urbain)
+    // Si vous faites du vélo de route, augmenter à 80 km/h
+    if (rawSpeed > 50.0) {
+      rawSpeed = _lastSmoothedSpeed ?? 0.0;
+    }
+
+    // === AMÉLIORATION 1: Filtre de Kalman (optionnel, désactivable) ===
+    double filteredSpeed = rawSpeed;
+    if (_enableKalmanFilter) {
+      filteredSpeed = _applyKalmanFilter(rawSpeed);
+    }
+
+    // === AMÉLIORATION 2: Lissage exponentiel (existant, toujours actif) ===
+    if (_lastSmoothedSpeed == null) {
+      _lastSmoothedSpeed = filteredSpeed;
+    } else {
+      _lastSmoothedSpeed = (_smoothingFactor * filteredSpeed) +
+                           ((1 - _smoothingFactor) * _lastSmoothedSpeed!);
+    }
+
+    // === AMÉLIORATION 3: Détection automatique des pauses (optionnel) ===
+    if (_enableAutoPauseDetection) {
+      _updateAutoPauseStatus(_lastSmoothedSpeed!);
+    }
+
+    return _lastSmoothedSpeed!;
+  }
+
+  /// Applique le filtre de Kalman pour lisser la vitesse
+  /// Version simplifiée du filtre pour réduire le bruit GPS
+  static double _applyKalmanFilter(double measurement) {
+    // Initialisation au premier passage
+    if (_kalmanEstimate == null) {
+      _kalmanEstimate = measurement;
+      return measurement;
+    }
+
+    // Étape 1: Prédiction (on suppose que la vitesse change peu)
+    double prediction = _kalmanEstimate!;
+    double predictionError = _kalmanError + _processNoise;
+
+    // Étape 2: Mise à jour avec la mesure GPS
+    double kalmanGain = predictionError / (predictionError + _measurementNoise);
+    _kalmanEstimate = prediction + kalmanGain * (measurement - prediction);
+    _kalmanError = (1 - kalmanGain) * predictionError;
+
+    return _kalmanEstimate!;
+  }
+
+  /// Met à jour l'état de la pause automatique
+  static void _updateAutoPauseStatus(double currentSpeed) {
+    if (currentSpeed < _autoPauseSpeedThreshold) {
+      // Vitesse faible, démarrer le compteur de pause
+      _pauseStartTime ??= DateTime.now();
+
+      final pauseDuration = DateTime.now().difference(_pauseStartTime!);
+      if (pauseDuration.inSeconds >= _autoPauseDelaySec && !_isAutoPaused) {
+        _isAutoPaused = true;
+        debugPrint('⏸️ Pause automatique détectée (vitesse < $_autoPauseSpeedThreshold km/h)');
+      }
+    } else {
+      // Vitesse normale, reprendre
+      if (_isAutoPaused) {
+        debugPrint('▶️ Reprise automatique (vitesse: ${currentSpeed.toStringAsFixed(1)} km/h)');
+      }
+      _isAutoPaused = false;
+      _pauseStartTime = null;
+    }
   }
 
   /// Calcule l'altitude actuelle

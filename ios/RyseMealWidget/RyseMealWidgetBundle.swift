@@ -2,7 +2,7 @@
 //  RyseMealWidgetBundle.swift
 //  RyseMealWidget
 //
-//  Created by Badis on 30/10/2025.
+//  Widget Bundle pour le widget iOS "Mes Repas"
 //
 
 import WidgetKit
@@ -12,7 +12,7 @@ import SwiftUI
 struct RyseMealWidgetBundle: WidgetBundle {
     var body: some Widget {
         RyseMealWidget()
-        RyseMealWidgetControl()
-        RyseMealWidgetLiveActivity()
+        // Note: RyseMealWidgetControl et RyseMealWidgetLiveActivity sont désactivés pour l'instant
+        // Ils peuvent être réactivés plus tard si nécessaire
     }
 }

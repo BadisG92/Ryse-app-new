@@ -22,6 +22,7 @@ import '../../bottom_sheets/new_meal_type_bottom_sheet.dart';
 import '../../models/nutrition_models.dart' as nutrition_models;
 import '../../services/food_entries_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/celebration_service.dart';
 
 // Section des actions rapides nutrition
 class NutritionQuickActionsSection extends StatelessWidget {
@@ -150,8 +151,8 @@ class NutritionQuickActionsSection extends StatelessWidget {
   }
 
   // Méthode publique pour afficher directement les 5 options pour un nouveau repas (utilisée depuis le journal)
-  static void showAddFoodOptionsForNewMeal(BuildContext context, String mealType) {
-    _showAddFoodOptionsForNewMeal(context, mealType);
+  static Future<void> showAddFoodOptionsForNewMeal(BuildContext context, String mealType, {String? mealTime}) {
+    return _showAddFoodOptionsForNewMeal(context, mealType, mealTime: mealTime);
   }
 
   // Méthode publique pour afficher directement les 5 options pour un repas existant (utilisée depuis le journal)
@@ -987,12 +988,12 @@ class NutritionQuickActionsSection extends StatelessWidget {
 
         // Le NewMealTypeBottomSheet fait déjà Navigator.pop() dans ses options
         // Attendre que l'animation se termine puis ouvrir le bottom sheet avec les 5 options
-        Future.delayed(const Duration(milliseconds: 300), () {
+        Future.delayed(const Duration(milliseconds: 300), () async {
           // Obtenir le context depuis le navigator stocké
           final newContext = navigator.context;
           if (newContext.mounted) {
             debugPrint('🔍 Ouverture des options d\'ajout pour nouveau repas');
-            _showAddFoodOptionsForNewMeal(newContext, mealType);
+            await _showAddFoodOptionsForNewMeal(newContext, mealType, mealTime: time);
           } else {
             debugPrint('❌ Navigator context invalide');
           }
@@ -1773,12 +1774,13 @@ class NutritionQuickActionsSection extends StatelessWidget {
 
   // Méthode statique pour afficher la recherche d'aliments avec un repas existant pré-sélectionné
   static void _showManualFoodSearchForMeal(BuildContext context, nutrition_models.Meal selectedMeal) {
+    final dashboardContext = context;
+
     ManualFoodSearchBottomSheet.show(
       context,
       isFromDashboard: true,
-      onFoodCreated: (foodItem) {
-        // Maintenant qu'on a l'aliment et le repas, on peut les ajouter
-        _addFoodToSelectedMeal(context, foodItem, selectedMeal);
+      onFoodCreated: (foodItem) async {
+        await _addFoodToSelectedMeal(dashboardContext, foodItem, selectedMeal);
       },
     );
   }
@@ -1830,7 +1832,21 @@ class NutritionQuickActionsSection extends StatelessWidget {
   }
 
   // Méthode statique pour afficher les options d'ajout pour un nouveau repas (comme dans le journal)
-  static void _showAddFoodOptionsForNewMeal(BuildContext context, String mealType) {
+  static Future<void> _showAddFoodOptionsForNewMeal(BuildContext context, String mealType, {String? mealTime}) async {
+    final pendingMealId = await _ensurePendingMealId(mealType);
+    if (pendingMealId == null) {
+      if (context.mounted) {
+        final locService = Provider.of<LocalizationService>(context, listen: false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('error_generating_meal_id'.tr(locService.currentLanguageCode)),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -1848,7 +1864,6 @@ class NutritionQuickActionsSection extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Handle bar
               Container(
                 width: 40,
                 height: 4,
@@ -1857,72 +1872,49 @@ class NutritionQuickActionsSection extends StatelessWidget {
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              
               const SizedBox(height: 20),
-              
-              // Titre
               Consumer<LocalizationService>(
                 builder: (context, locService, child) => Text(
                   'add_food'.tr(locService.currentLanguageCode),
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF1A1A1A),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1A1A1A),
+                  ),
                 ),
               ),
-            ),
-              
               const SizedBox(height: 16),
-              
               Consumer<LocalizationService>(
                 builder: (context, locService, child) => Text(
                   'choose_how_to_add_food'.tr(locService.currentLanguageCode),
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 14,
                     color: Color(0xFF64748B),
                   ),
                   textAlign: TextAlign.center,
                 ),
               ),
-              
               const SizedBox(height: 24),
-
-              // Options d'ajout pour nouveau repas
-              // Option 1: Chat avec Ryze (nouvelle)
+              // Chat IA
               Consumer<LocalizationService>(
                 builder: (context, locService, child) => _buildFoodOption(
                   context,
                   icon: LucideIcons.messageCircle,
                   title: 'describe_meal'.tr(locService.currentLanguageCode),
                   subtitle: 'ai_chat_subtitle'.tr(locService.currentLanguageCode),
-                  onTap: () async {
+                  onTap: () {
                     Navigator.pop(context);
-                    // Générer un ID de repas pour le chat
-                    final user = Supabase.instance.client.auth.currentUser;
-                    if (user == null) return;
-
-                    final mealId = await FoodEntriesService.generateMealId(
-                      userId: user.id,
+                    AIChatInputScreen.showAsBottomSheet(
+                      context,
+                      isFromDashboard: true,
                       mealName: mealType,
-                      forDate: DateTime.now(),
+                      mealId: pendingMealId,
                     );
-
-                    // Ouvrir le chat IA
-                    if (context.mounted) {
-                      AIChatInputScreen.showAsBottomSheet(
-                        context,
-                        isFromDashboard: true,
-                        mealName: mealType,
-                        mealId: mealId ?? 'meal_${DateTime.now().millisecondsSinceEpoch}',
-                      );
-                    }
                   },
                 ),
               ),
-
               const SizedBox(height: 12),
-
-              // Option 2: Scanner avec IA (photo)
+              // Scanner IA (photo)
               Consumer<LocalizationService>(
                 builder: (context, locService, child) => _buildFoodOption(
                   context,
@@ -1934,18 +1926,18 @@ class NutritionQuickActionsSection extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => const AIScannerScreen(
+                        builder: (context) => AIScannerScreen(
                           isFromDashboard: true,
+                          mealName: mealType,
+                          mealId: pendingMealId,
                         ),
                       ),
                     );
                   },
                 ),
               ),
-
               const SizedBox(height: 12),
-
-              // Option 3: Code-barres
+              // Code-barres
               Consumer<LocalizationService>(
                 builder: (context, locService, child) => _buildFoodOption(
                   context,
@@ -1960,7 +1952,12 @@ class NutritionQuickActionsSection extends StatelessWidget {
                         builder: (context) => BarcodeScannerScreen(
                           isFromDashboard: true,
                           onFoodScanned: (foodItem) {
-                            _addFoodToNewMealJournalStyle(context, foodItem, mealType);
+                            _addFoodToNewMealJournalStyle(
+                              context,
+                              foodItem,
+                              mealType,
+                              mealId: pendingMealId,
+                            );
                           },
                         ),
                       ),
@@ -1968,10 +1965,8 @@ class NutritionQuickActionsSection extends StatelessWidget {
                   },
                 ),
               ),
-
               const SizedBox(height: 12),
-
-              // Option 4: Saisie manuelle
+              // Recherche manuelle
               Consumer<LocalizationService>(
                 builder: (context, locService, child) => _buildFoodOption(
                   context,
@@ -1980,14 +1975,16 @@ class NutritionQuickActionsSection extends StatelessWidget {
                   subtitle: 'manual_entry_subtitle'.tr(locService.currentLanguageCode),
                   onTap: () {
                     Navigator.pop(context);
-                    _showManualFoodSearchForNewMeal(context, mealType);
+                    _showManualFoodSearchForNewMeal(
+                      context,
+                      mealType,
+                      mealId: pendingMealId,
+                    );
                   },
                 ),
               ),
-
               const SizedBox(height: 12),
-
-              // Option 5: Mes recettes
+              // Recettes
               Consumer<LocalizationService>(
                 builder: (context, locService, child) => _buildFoodOption(
                   context,
@@ -2002,7 +1999,12 @@ class NutritionQuickActionsSection extends StatelessWidget {
                         builder: (context) => SelectRecipeScreen(
                           isFromDashboard: true,
                           onRecipeSelected: (recipe) {
-                            _addFoodToNewMealJournalStyle(context, recipe, mealType);
+                            _addFoodToNewMealJournalStyle(
+                              context,
+                              recipe,
+                              mealType,
+                              mealId: pendingMealId,
+                            );
                           },
                         ),
                       ),
@@ -2010,7 +2012,6 @@ class NutritionQuickActionsSection extends StatelessWidget {
                   },
                 ),
               ),
-              
               const SizedBox(height: 24),
             ],
           ),
@@ -2181,7 +2182,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
   }
 
   // Méthode statique pour afficher la recherche d'aliments pour un nouveau repas - MÊME FLUX QUE LE JOURNAL
-  static void _showManualFoodSearchForNewMeal(BuildContext context, String mealType) {
+  static void _showManualFoodSearchForNewMeal(BuildContext context, String mealType, {String? mealId}) {
     debugPrint('🔍 _showManualFoodSearchForNewMeal appelée pour: $mealType');
     ManualFoodSearchBottomSheet.show(
       context,
@@ -2189,9 +2190,40 @@ class NutritionQuickActionsSection extends StatelessWidget {
       onFoodCreated: (foodItem) {
         debugPrint('🍽️ Aliment créé: ${foodItem.name}');
         // MÊME FLUX QUE LE JOURNAL - Créer directement le nouveau repas avec l'aliment
-        _addFoodToNewMealJournalStyle(context, foodItem, mealType);
+        _addFoodToNewMealJournalStyle(
+          context,
+          foodItem,
+          mealType,
+          mealId: mealId,
+        );
       },
     );
+  }
+
+  static Future<String?> _ensurePendingMealId(String mealType) async {
+    final user = AuthService().currentUser;
+    if (user == null) {
+      return null;
+    }
+
+    if (_dashboardPendingMealId != null &&
+        _dashboardPendingMealType != null &&
+        _dashboardPendingMealType!.toLowerCase() == mealType.toLowerCase()) {
+      return _dashboardPendingMealId;
+    }
+
+    final mealId = await FoodEntriesService.generateMealId(
+      userId: user.id,
+      mealName: mealType,
+      forDate: DateTime.now(),
+    );
+
+    if (mealId != null) {
+      _dashboardPendingMealId = mealId;
+      _dashboardPendingMealType = mealType;
+    }
+
+    return mealId;
   }
 
   // Variables statiques pour gérer les sélections de repas du dashboard
@@ -2387,33 +2419,26 @@ class NutritionQuickActionsSection extends StatelessWidget {
       _dashboardPendingMealType = null;
       _dashboardPendingMealId = null;
 
-      // Ajouter l'aliment au repas existant en utilisant le meal_id
-      final success = await FoodEntriesService.addFoodEntry(
+      final addEntryFuture = FoodEntriesService.addFoodEntry(
         userId: user.id,
         mealName: baseMealName, // Nom de base du repas (ex: "Dîner")
         foodItem: foodItem,
         consumedAt: DateTime.now(),
         mealId: selectedMeal.id, // ID du repas existant pour l'ajouter au bon bloc
       );
+
+      CelebrationService().celebrateFoodEntryGlobal(
+        foodName: foodItem.name,
+        mealName: selectedMeal.name,
+      );
+
+      final success = await addEntryFuture;
       
       if (success) {
         debugPrint('✅ Aliment ${foodItem.name} ajouté au repas ${selectedMeal.name} avec succès');
-        
+
         // Réinitialiser la sélection de repas après l'ajout
         resetDashboardMealSelection();
-        
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'food_added_to_meal_name'.tr(LocalizationService.instance.currentLanguageCode)
-                  .replaceAll('{foodName}', foodItem.name)
-                  .replaceAll('{mealName}', selectedMeal.name)
-              ),
-              backgroundColor: const Color(0xFF0B132B),
-            ),
-          );
-        }
       } else {
         throw Exception('Échec de l\'ajout à la base de données');
       }
@@ -2446,13 +2471,19 @@ class NutritionQuickActionsSection extends StatelessWidget {
       final match = regex.firstMatch(mealId);
       final mealName = match?.group(1) ?? mealId;
 
-      // Ajouter l'aliment directement avec l'ID du repas
-      await FoodEntriesService.addFoodEntry(
+      final addEntryFuture = FoodEntriesService.addFoodEntry(
         userId: user.id,
         mealName: mealName,
         mealId: mealId,
         foodItem: foodItem,
       );
+
+      CelebrationService().celebrateFoodEntryGlobal(
+        foodName: foodItem.name,
+        mealName: mealName,
+      );
+
+      await addEntryFuture;
 
       debugPrint('✅ Aliment ajouté avec succès au repas $mealId');
       
@@ -2487,29 +2518,43 @@ class NutritionQuickActionsSection extends StatelessWidget {
   }
 
   // Méthode statique qui utilise EXACTEMENT LE MÊME FLUX QUE LE JOURNAL
-  static Future<void> _addFoodToNewMealJournalStyle(BuildContext context, nutrition_models.FoodItem foodItem, String mealType) async {
+  static Future<void> _addFoodToNewMealJournalStyle(
+    BuildContext context,
+    nutrition_models.FoodItem foodItem,
+    String mealType, {
+    String? mealId,
+  }) async {
     // COPIE EXACTE DU CODE DU JOURNAL nutrition_journal_hybrid.dart
     final user = AuthService().currentUser;
     if (user != null) {
-      final mealId = await FoodEntriesService.generateMealId(
-        userId: user.id,
-        mealName: mealType,
-        forDate: DateTime.now(),
-      );
+      final resolvedMealId = mealId ??
+          await FoodEntriesService.generateMealId(
+            userId: user.id,
+            mealName: mealType,
+            forDate: DateTime.now(),
+          );
 
-      if (mealId != null) {
+      if (resolvedMealId != null) {
         // Ajouter l'aliment au nouveau repas avec l'ID pré-généré
-        final success = await FoodEntriesService.addFoodEntry(
+        final addEntryFuture = FoodEntriesService.addFoodEntry(
           userId: user.id,
           mealName: mealType,
           foodItem: foodItem,
           consumedAt: DateTime.now(),
-          mealId: mealId,
+          mealId: resolvedMealId,
         );
+
+        CelebrationService().celebrateFoodEntryGlobal(
+          foodName: foodItem.name,
+          mealName: mealType,
+        );
+
+        final success = await addEntryFuture;
 
         if (success) {
           // La notification de mise à jour se fait automatiquement dans addFoodEntry()
-          
+          resetDashboardMealSelection();
+
           if (context.mounted) {
             final locService = Provider.of<LocalizationService>(context, listen: false);
             ScaffoldMessenger.of(context).showSnackBar(
@@ -2594,32 +2639,26 @@ class NutritionQuickActionsSection extends StatelessWidget {
       }
 
       // Ajouter l'aliment au repas
-      final success = await FoodEntriesService.addFoodEntry(
+      final addEntryFuture = FoodEntriesService.addFoodEntry(
         userId: user.id,
         mealName: targetMealType!,
         foodItem: foodItem,
         consumedAt: DateTime.now(),
         mealId: targetMealId!,
       );
-      
+
+      CelebrationService().celebrateFoodEntryGlobal(
+        foodName: foodItem.name,
+        mealName: targetMealType,
+      );
+
+      final success = await addEntryFuture;
+
       if (success) {
         debugPrint('✅ Aliment ${foodItem.name} ajouté avec succès');
-        
+
         // Réinitialiser la sélection de repas après l'ajout
         resetDashboardMealSelection();
-        
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'food_added_to_meal_name'.tr(LocalizationService.instance.currentLanguageCode)
-                  .replaceAll('{foodName}', foodItem.name)
-                  .replaceAll('{mealName}', targetMealName ?? 'selected_meal'.tr(LocalizationService.instance.currentLanguageCode))
-              ),
-              backgroundColor: const Color(0xFF0B132B),
-            ),
-          );
-        }
       } else {
         throw Exception('Échec de l\'ajout à la base de données');
       }
@@ -2663,6 +2702,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
     }
     return null;
   }
+
 }
 
 // Bouton d'action rapide nutrition

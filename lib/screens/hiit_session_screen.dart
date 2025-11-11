@@ -5,8 +5,10 @@ import 'package:provider/provider.dart';
 import '../models/hiit_models.dart';
 import '../models/cardio_session_models.dart';
 import '../services/cardio_service.dart';
+import '../services/celebration_service.dart';
 import '../services/translations.dart';
 import '../services/localization_service.dart';
+import '../services/global_state_manager.dart';
 
 class HiitSessionScreen extends StatefulWidget {
   final HiitWorkout workout;
@@ -25,6 +27,7 @@ class HiitSessionScreen extends StatefulWidget {
 class _HiitSessionScreenState extends State<HiitSessionScreen> {
   late HiitSession _session;
   Timer? _timer;
+  bool _sessionSaved = false; // Protection contre les doubles validations
 
   @override
   void initState() {
@@ -252,7 +255,17 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
                  SizedBox(
                    width: double.infinity,
                    child: ElevatedButton(
-                     onPressed: () async {
+                     onPressed: _sessionSaved ? null : () async {
+                       // Protection contre double clic
+                       if (_sessionSaved) {
+                         debugPrint('⚠️ Session HIIT déjà sauvegardée, ignorer');
+                         return;
+                       }
+
+                       setState(() {
+                         _sessionSaved = true;
+                       });
+
                        // Historiser la session HIIT dans Supabase
                        try {
                          await _saveHiitSessionToSupabase(
@@ -261,13 +274,22 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
                            roundsCompleted: roundsCompleted,
                          );
                          debugPrint('✅ Session HIIT sauvegardée');
+
+                         // UNE SEULE mise à jour du GlobalState pour éviter les doublons
+                         GlobalStateManager.instance.updateWorkout(true);
+                         debugPrint('✅ GlobalStateManager: HIIT marqué comme complété');
                        } catch (e) {
                          debugPrint('❌ Erreur sauvegarde session HIIT: $e');
+                         setState(() {
+                           _sessionSaved = false; // Réinitialiser en cas d'erreur
+                         });
                          // Continuer même en cas d'erreur pour ne pas bloquer l'utilisateur
                        }
-                       
-                       Navigator.pop(context); // Fermer le dialog
-                       _exitSession(); // Puis fermer la session HIIT
+
+                       if (mounted) {
+                         Navigator.pop(context); // Fermer le dialog
+                         _exitSession(); // Puis fermer la session HIIT
+                       }
                      },
                      style: ElevatedButton.styleFrom(
                        backgroundColor: const Color(0xFF0B132B),
@@ -588,7 +610,17 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
                     ),
                     const SizedBox(height: 32),
                     ElevatedButton(
-                      onPressed: () async {
+                      onPressed: _sessionSaved ? null : () async {
+                        // Protection contre double clic
+                        if (_sessionSaved) {
+                          debugPrint('⚠️ Session HIIT complète déjà sauvegardée, ignorer');
+                          return;
+                        }
+
+                        setState(() {
+                          _sessionSaved = true;
+                        });
+
                         // Historiser la session HIIT complète dans Supabase
                         try {
                           await _saveHiitSessionToSupabase(
@@ -597,12 +629,21 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
                             roundsCompleted: _session.workout.totalRounds,
                           );
                           debugPrint('✅ Session HIIT complète sauvegardée');
+
+                          // UNE SEULE mise à jour du GlobalState pour éviter les doublons
+                          GlobalStateManager.instance.updateWorkout(true);
+                          debugPrint('✅ GlobalStateManager: HIIT complet marqué comme complété');
                         } catch (e) {
                           debugPrint('❌ Erreur sauvegarde session HIIT complète: $e');
+                          setState(() {
+                            _sessionSaved = false; // Réinitialiser en cas d'erreur
+                          });
                           // Continuer même en cas d'erreur pour ne pas bloquer l'utilisateur
                         }
-                        
-                        _exitSession();
+
+                        if (mounted) {
+                          _exitSession();
+                        }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white,
@@ -660,9 +701,14 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
         intensity: 'Élevé', // HIIT est toujours à intensité élevée (valeur française pour la base de données)
         notes: '${'hiit_session_completed_rounds'.tr(LocalizationService.instance.currentLanguageCode)}: $roundsCompleted/${_session.workout.totalRounds}',
       );
-      
+
       // Invalider le cache pour rafraîchir les données
       CardioService.invalidateCache();
+
+      // Show celebration popup
+      if (mounted) {
+        CelebrationService().celebrateHiitCompletion(context);
+      }
     } catch (e) {
       debugPrint('❌ Erreur lors de la sauvegarde HIIT: $e');
       rethrow;

@@ -664,8 +664,8 @@ class _ManualFoodSearchBottomSheetState extends State<ManualFoodSearchBottomShee
           debugPrint('   - finalFoodItem.shouldShowCustomIcon: ${finalFoodItem.shouldShowCustomIcon}');
           debugPrint('   - finalFoodItem.displayIcon: ${finalFoodItem.displayIcon}');
         }
-            
-        // Toujours utiliser le callback - le flux dashboard est maintenant géré en amont
+        // Appeler le callback pour ajouter l'aliment ; l'affichage du popup est géré dans
+        // EditableFoodDetailsBottomSheet pour garantir un context valide avant la fermeture.
         widget.onFoodCreated(finalFoodItem);
       },
     );
