@@ -1,20 +1,23 @@
 import 'package:flutter/material.dart';
 import '../models/subscription_models.dart';
 import '../screens/paywall_screen.dart';
+import '../components/ui/coach_ryze_avatar.dart';
 import 'subscription_service.dart';
+import 'translations.dart';
+import 'feature_trial_service.dart';
 
 /// Contextes de paywall (pour analytics et personnalisation)
 enum PaywallContext {
-  aiScanLimit,          // Limite de scans IA atteinte
-  historyLimit,         // Limite d'historique atteinte
-  workoutGenerator,     // Générateur de workouts
-  nutritionAnalysis,    // Bilan nutritionnel
-  trialEnded,          // Fin du trial
-  recipeLimit,         // Limite recettes
-  exportData,          // Export de données
-  advancedCharts,      // Graphiques avancés
-  offlineMode,         // Mode offline
-  genericUpgrade,      // Upgrade générique
+  // Contextes features Coach Ryze (principales)
+  scanner,              // Scanner automatique (photo)
+  barcodeScanner,       // Scanner de codes-barres
+  chatInput,            // Déclarer repas au Coach Ryze (texte/voix)
+  workoutGenerator,     // Coach Ryze - Générateur de workouts
+  nutritionAnalysis,    // Bilan du Coach Ryze (quotidien)
+  exerciseAnalysis,     // Analyse de progression par exercice
+
+  // Contexte générique
+  genericUpgrade,       // Upgrade générique (avatar sans tenue)
 }
 
 /// Service pour gérer l'affichage des paywalls
@@ -26,8 +29,9 @@ class PaywallService {
   static PaywallService get instance => _instance;
 
   final _subscriptionService = SubscriptionService.instance;
+  final _trialService = FeatureTrialService.instance;
 
-  /// Afficher un paywall modal
+  /// Afficher un paywall en pleine page
   Future<bool> showPaywall({
     required BuildContext context,
     required PaywallContext paywallContext,
@@ -39,15 +43,14 @@ class PaywallService {
       return true;
     }
 
-    final result = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      isDismissible: true,
-      builder: (context) => PaywallScreen(
-        context: paywallContext,
-        customTitle: customTitle,
-        customMessage: customMessage,
+    final result = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (context) => PaywallScreen(
+          context: paywallContext,
+          customTitle: customTitle,
+          customMessage: customMessage,
+        ),
       ),
     );
 
@@ -92,6 +95,367 @@ class PaywallService {
     );
   }
 
+  /// Obtenir l'avatar Coach Ryze selon le contexte
+  static CoachRyzeAvatarType getContextAvatar(PaywallContext context) {
+    switch (context) {
+      case PaywallContext.scanner:
+      case PaywallContext.barcodeScanner:
+      case PaywallContext.chatInput:
+      case PaywallContext.nutritionAnalysis:
+        return CoachRyzeAvatarType.nutrition;
+
+      case PaywallContext.workoutGenerator:
+      case PaywallContext.exerciseAnalysis:
+        return CoachRyzeAvatarType.workout;
+
+      case PaywallContext.genericUpgrade:
+        return CoachRyzeAvatarType.workout; // Avatar sans tenue spéciale
+    }
+  }
+
+  /// Obtenir la clé de traduction du titre selon le contexte
+  static String getContextTitleKey(PaywallContext context) {
+    switch (context) {
+      case PaywallContext.scanner:
+        return 'paywall_title_scanner';
+      case PaywallContext.barcodeScanner:
+        return 'paywall_title_barcode';
+      case PaywallContext.chatInput:
+        return 'paywall_title_chat';
+      case PaywallContext.workoutGenerator:
+        return 'paywall_title_workout';
+      case PaywallContext.nutritionAnalysis:
+        return 'paywall_title_nutrition_analysis';
+      case PaywallContext.exerciseAnalysis:
+        return 'paywall_title_exercise_analysis';
+      case PaywallContext.genericUpgrade:
+        return 'paywall_title_generic';
+    }
+  }
+
+  /// Obtenir le titre accrocheur émotionnel selon le contexte
+  static String getContextTitle(PaywallContext context, String languageCode) {
+    final key = getContextTitleKey(context);
+    return AppTranslations.get(key, languageCode);
+  }
+
+  /// Obtenir les bénéfices émotionnels selon le contexte
+  static List<Map<String, String>> getContextBenefits(
+    PaywallContext context,
+    String languageCode,
+  ) {
+    final isFrench = languageCode == 'fr';
+
+    switch (context) {
+      case PaywallContext.scanner:
+        return [
+          {
+            'icon': '⚡',
+            'text': isFrench
+                ? 'Prends une photo, obtiens les calories en 2 secondes'
+                : 'Take a photo, get calories in 2 seconds',
+          },
+          {
+            'icon': '🎯',
+            'text': isFrench
+                ? 'Fini les estimations approximatives qui ruinent tes progrès'
+                : 'No more rough estimates ruining your progress',
+          },
+          {
+            'icon': '🔥',
+            'text': isFrench
+                ? 'Scanne tes 3 repas quotidiens en moins de 30 secondes'
+                : 'Scan your 3 daily meals in under 30 seconds',
+          },
+          {
+            'icon': '📊',
+            'text': isFrench
+                ? 'Vois exactement ce que tu manges (macros + micros)'
+                : 'See exactly what you\'re eating (macros + micros)',
+          },
+          {
+            'icon': '💪',
+            'text': isFrench
+                ? 'Atteins tes objectifs 3x plus vite avec un tracking précis'
+                : 'Reach your goals 3x faster with precise tracking',
+          },
+          {
+            'icon': '✨',
+            'text': isFrench
+                ? 'Plus de 10 000 athlètes scannent déjà leurs repas'
+                : 'Over 10,000 athletes already scan their meals',
+          },
+        ];
+
+      case PaywallContext.barcodeScanner:
+        return [
+          {
+            'icon': '📱',
+            'text': isFrench
+                ? 'Scanne le code-barre, obtiens les vraies valeurs nutritionnelles'
+                : 'Scan the barcode, get the real nutritional values',
+          },
+          {
+            'icon': '✅',
+            'text': isFrench
+                ? 'Calories, protéines, glucides, lipides 100% précis'
+                : '100% accurate calories, protein, carbs, fats',
+          },
+          {
+            'icon': '⚡',
+            'text': isFrench
+                ? 'Tracke tes aliments en 2 secondes chrono'
+                : 'Track your food in 2 seconds flat',
+          },
+          {
+            'icon': '🎯',
+            'text': isFrench
+                ? 'Fini les erreurs d\'estimation qui faussent tes résultats'
+                : 'No more estimation errors messing up your results',
+          },
+          {
+            'icon': '📊',
+            'text': isFrench
+                ? 'Base de données mondiale de millions de produits'
+                : 'Global database of millions of products',
+          },
+          {
+            'icon': '💪',
+            'text': isFrench
+                ? 'Atteins tes objectifs avec un tracking ultra-précis'
+                : 'Reach your goals with ultra-precise tracking',
+          },
+        ];
+
+      case PaywallContext.chatInput:
+        return [
+          {
+            'icon': '🗣️',
+            'text': isFrench
+                ? 'Dis juste "j\'ai mangé une pizza" et c\'est tracké'
+                : 'Just say "I ate a pizza" and it\'s tracked',
+          },
+          {
+            'icon': '⚡',
+            'text': isFrench
+                ? 'Le moyen le PLUS rapide de tracker (3 secondes chrono)'
+                : 'The FASTEST way to track (3 seconds flat)',
+          },
+          {
+            'icon': '🎤',
+            'text': isFrench
+                ? 'Déclare tes repas en vocal pendant que tu manges'
+                : 'Declare meals by voice while you eat',
+          },
+          {
+            'icon': '🧠',
+            'text': isFrench
+                ? 'Le Coach Ryze comprend "2 œufs + tartines beurre"'
+                : 'Coach Ryze understands "2 eggs + buttered toast"',
+          },
+          {
+            'icon': '💪',
+            'text': isFrench
+                ? 'Reste constant dans ton tracking = résultats garantis'
+                : 'Stay consistent with tracking = guaranteed results',
+          },
+          {
+            'icon': '📲',
+            'text': isFrench
+                ? 'Parfait quand t\'es au resto avec des potes'
+                : 'Perfect when you\'re at a restaurant with friends',
+          },
+        ];
+
+      case PaywallContext.workoutGenerator:
+        return [
+          {
+            'icon': '🤖',
+            'text': isFrench
+                ? 'Ton Coach crée des séances adaptées à TON niveau'
+                : 'Your Coach creates sessions adapted to YOUR level',
+          },
+          {
+            'icon': '📈',
+            'text': isFrench
+                ? 'Progression automatique basée sur tes performances'
+                : 'Automatic progression based on your performance',
+          },
+          {
+            'icon': '⚡',
+            'text': isFrench
+                ? 'Génère un workout complet en 10 secondes'
+                : 'Generate a complete workout in 10 seconds',
+          },
+          {
+            'icon': '💪',
+            'text': isFrench
+                ? 'Ne stagne plus jamais : le Coach augmente l\'intensité'
+                : 'Never plateau again: Coach increases intensity',
+          },
+          {
+            'icon': '🎯',
+            'text': isFrench
+                ? 'Équilibrage intelligent de tous les groupes musculaires'
+                : 'Smart balancing of all muscle groups',
+          },
+          {
+            'icon': '🔥',
+            'text': isFrench
+                ? 'Atteins tes objectifs physiques 2x plus vite'
+                : 'Reach your physical goals 2x faster',
+          },
+        ];
+
+      case PaywallContext.nutritionAnalysis:
+        return [
+          {
+            'icon': '📊',
+            'text': isFrench
+                ? 'Bilan quotidien personnalisé de ta journée'
+                : 'Personalized daily report of your day',
+          },
+          {
+            'icon': '💡',
+            'text': isFrench
+                ? 'Sais EXACTEMENT quoi ajuster pour progresser'
+                : 'Know EXACTLY what to adjust to progress',
+          },
+          {
+            'icon': '🎯',
+            'text': isFrench
+                ? 'Conseils adaptés à ton objectif (sèche, prise de masse...)'
+                : 'Advice adapted to your goal (cut, bulk...)',
+          },
+          {
+            'icon': '📈',
+            'text': isFrench
+                ? 'Visualise ta progression semaine après semaine'
+                : 'Visualize your progress week after week',
+          },
+          {
+            'icon': '🔥',
+            'text': isFrench
+                ? 'Comprends pourquoi certains jours tu stagnes'
+                : 'Understand why some days you plateau',
+          },
+          {
+            'icon': '✨',
+            'text': isFrench
+                ? 'Reçois des encouragements personnalisés chaque jour'
+                : 'Receive personalized encouragement every day',
+          },
+        ];
+
+      case PaywallContext.exerciseAnalysis:
+        return [
+          {
+            'icon': '💪',
+            'text': isFrench
+                ? 'Analyse de tes perfs exercice par exercice'
+                : 'Analysis of your performance exercise by exercise',
+          },
+          {
+            'icon': '📈',
+            'text': isFrench
+                ? 'Vois tes points faibles et comment les corriger'
+                : 'See your weak points and how to fix them',
+          },
+          {
+            'icon': '🎯',
+            'text': isFrench
+                ? 'Recommandations pour ajouter 5-10kg sur chaque mouvement'
+                : 'Recommendations to add 5-10kg on each movement',
+          },
+          {
+            'icon': '⚡',
+            'text': isFrench
+                ? 'Détecte automatiquement quand tu dois progresser'
+                : 'Automatically detects when you should progress',
+          },
+          {
+            'icon': '🔥',
+            'text': isFrench
+                ? 'Compare tes perfs avec des athlètes de ton niveau'
+                : 'Compare your performance with athletes at your level',
+          },
+          {
+            'icon': '💡',
+            'text': isFrench
+                ? 'Feedback immédiat après chaque séance'
+                : 'Immediate feedback after each session',
+          },
+        ];
+
+      default:
+        // Bénéfices génériques
+        return [
+          {
+            'icon': '📸',
+            'text': isFrench
+                ? 'Scans illimités - Le Coach Ryze reconnaît tout'
+                : 'Unlimited scans - Coach Ryze recognizes everything',
+          },
+          {
+            'icon': '🤖',
+            'text': isFrench
+                ? 'Workouts personnalisés générés par ton Coach'
+                : 'Personalized workouts by your Coach',
+          },
+          {
+            'icon': '📊',
+            'text': isFrench
+                ? 'Bilan quotidien et conseils sur-mesure'
+                : 'Daily report and custom advice',
+          },
+          {
+            'icon': '💬',
+            'text': isFrench
+                ? 'Chat vocal/texte avec le Coach Ryze'
+                : 'Voice/text chat with Coach Ryze',
+          },
+          {
+            'icon': '💪',
+            'text': isFrench
+                ? 'Analyse de progression par exercice'
+                : 'Exercise-by-exercise progress analysis',
+          },
+          {
+            'icon': '📈',
+            'text': isFrench
+                ? 'Historique complet et graphiques avancés'
+                : 'Full history and advanced charts',
+          },
+        ];
+    }
+  }
+
+  /// Obtenir la clé de traduction de la bulle du Coach selon le contexte
+  static String getCoachBubbleTextKey(PaywallContext context) {
+    switch (context) {
+      case PaywallContext.scanner:
+        return 'paywall_bubble_scanner';
+      case PaywallContext.barcodeScanner:
+        return 'paywall_bubble_barcode';
+      case PaywallContext.chatInput:
+        return 'paywall_bubble_chat';
+      case PaywallContext.workoutGenerator:
+        return 'paywall_bubble_workout';
+      case PaywallContext.nutritionAnalysis:
+        return 'paywall_bubble_nutrition_analysis';
+      case PaywallContext.exerciseAnalysis:
+        return 'paywall_bubble_exercise_analysis';
+      case PaywallContext.genericUpgrade:
+        return 'paywall_bubble_generic';
+    }
+  }
+
+  /// Obtenir le texte de la bulle du Coach Ryze selon le contexte
+  static String getCoachBubbleText(PaywallContext context, String languageCode) {
+    final key = getCoachBubbleTextKey(context);
+    return AppTranslations.get(key, languageCode);
+  }
+
   /// Obtenir le message personnalisé selon le contexte
   static Map<String, String> getPaywallContent(
     PaywallContext context,
@@ -100,90 +464,57 @@ class PaywallService {
     final isFrench = languageCode == 'fr';
 
     switch (context) {
-      case PaywallContext.aiScanLimit:
+      // === FEATURES COACH RYZE (NOUVELLES) ===
+
+      case PaywallContext.scanner:
         return {
-          'title': isFrench ? '🔥 Limite atteinte' : '🔥 Limit reached',
+          'title': isFrench ? '📸 Scanner automatique - Premium' : '📸 Auto Scanner - Premium',
           'message': isFrench
-              ? 'Tu as utilisé tes 3 scans gratuits aujourd\'hui!\n\nTu es motivé, c\'est génial! 🎯\n\nLes utilisateurs Premium scannent en moyenne 8 repas/jour.'
-              : 'You\'ve used your 3 free scans today!\n\nYou\'re motivated, that\'s great! 🎯\n\nPremium users scan an average of 8 meals/day.',
+              ? 'Le scanner automatique est réservé aux membres Premium.\n\n✨ Le Coach Ryze reconnaît tes aliments instantanément\n📊 Calories calculées automatiquement\n⚡ Plus rapide que l\'entrée manuelle'
+              : 'Auto scanner is reserved for Premium members.\n\n✨ Coach Ryze recognizes your food instantly\n📊 Calories calculated automatically\n⚡ Faster than manual entry',
+        };
+
+      case PaywallContext.barcodeScanner:
+        return {
+          'title': isFrench ? '📱 Scanner codes-barres - Premium' : '📱 Barcode Scanner - Premium',
+          'message': isFrench
+              ? 'Le scanner de codes-barres est réservé aux membres Premium.\n\n✨ Scanne les produits du supermarché\n📊 Nutritions complètes automatiquement\n⚡ Gain de temps énorme'
+              : 'Barcode scanner is reserved for Premium members.\n\n✨ Scan supermarket products\n📊 Complete nutrition automatically\n⚡ Huge time saver',
+        };
+
+      case PaywallContext.chatInput:
+        return {
+          'title': isFrench ? '💬 Déclarer au Coach Ryze - Premium' : '💬 Tell Coach Ryze - Premium',
+          'message': isFrench
+              ? 'Déclarer tes repas au Coach Ryze est réservé aux membres Premium.\n\n🗣️ Dis simplement ce que tu as mangé\n✨ Le Coach Ryze comprend et calcule tout\n⚡ Vocal ou texte, ultra rapide'
+              : 'Telling Coach Ryze your meals is reserved for Premium members.\n\n🗣️ Simply say what you ate\n✨ Coach Ryze understands and calculates everything\n⚡ Voice or text, ultra fast',
         };
 
       case PaywallContext.workoutGenerator:
         return {
-          'title': isFrench
-              ? '🤖 Générateur IA - Premium'
-              : '🤖 AI Generator - Premium',
+          'title': isFrench ? '🤖 Coach Ryze - Premium' : '🤖 Coach Ryze - Premium',
           'message': isFrench
-              ? 'Le générateur de séances IA est réservé aux membres Premium.\n\nIl analyse ton historique pour créer des workouts personnalisés avec les bons poids.'
-              : 'The AI workout generator is reserved for Premium members.\n\nIt analyzes your history to create personalized workouts with the right weights.',
+              ? 'Le générateur de séances personnalisées est réservé aux membres Premium.\n\n✨ Le Coach Ryze analyse ton historique\n💪 Crée des workouts adaptés à ton niveau\n📈 Suggère les bons poids automatiquement'
+              : 'Personalized workout generator is reserved for Premium members.\n\n✨ Coach Ryze analyzes your history\n💪 Creates workouts adapted to your level\n📈 Suggests the right weights automatically',
         };
 
       case PaywallContext.nutritionAnalysis:
         return {
-          'title': isFrench ? '📊 Bilan IA - Premium' : '📊 AI Analysis - Premium',
+          'title': isFrench ? '📊 Bilan du Coach Ryze - Premium' : '📊 Coach Ryze Report - Premium',
           'message': isFrench
-              ? 'Les bilans nutritionnels quotidiens sont réservés aux membres Premium.\n\nCoach Ryze analyse ta journée et te donne des conseils personnalisés.'
-              : 'Daily nutrition reports are reserved for Premium members.\n\nCoach Ryze analyzes your day and gives you personalized advice.',
+              ? 'Le bilan quotidien personnalisé est réservé aux membres Premium.\n\n✨ Le Coach Ryze analyse ta journée\n💡 Conseils personnalisés selon tes objectifs\n📈 Suivi de ta progression'
+              : 'Personalized daily report is reserved for Premium members.\n\n✨ Coach Ryze analyzes your day\n💡 Personalized advice based on your goals\n📈 Track your progress',
         };
 
-      case PaywallContext.historyLimit:
+      case PaywallContext.exerciseAnalysis:
         return {
-          'title': isFrench
-              ? '⚠️ Historique limité'
-              : '⚠️ Limited history',
+          'title': isFrench ? '💪 Analyse de progression - Premium' : '💪 Progress Analysis - Premium',
           'message': isFrench
-              ? 'Version gratuite: 3 jours d\'historique\n\nPasse Premium pour garder TOUTES tes données à vie et suivre ta progression sur le long terme.'
-              : 'Free version: 3 days of history\n\nUpgrade to Premium to keep ALL your data forever and track your long-term progress.',
-        };
-
-      case PaywallContext.trialEnded:
-        return {
-          'title': isFrench ? '🎉 Tu as adoré ton essai Premium!' : '🎉 You loved your Premium trial!',
-          'message': isFrench
-              ? 'Ton essai gratuit de 7 jours est terminé.\n\nContinue à profiter de toutes les fonctionnalités Premium pour seulement 9,99€/mois.'
-              : 'Your 7-day free trial has ended.\n\nContinue enjoying all Premium features for only €9.99/month.',
-        };
-
-      case PaywallContext.recipeLimit:
-        return {
-          'title': isFrench
-              ? '🍳 Limite recettes'
-              : '🍳 Recipe limit',
-          'message': isFrench
-              ? 'Version gratuite: 3 recettes maximum\n\nPasse Premium pour créer et sauvegarder autant de recettes que tu veux.'
-              : 'Free version: 3 recipes maximum\n\nUpgrade to Premium to create and save unlimited recipes.',
-        };
-
-      case PaywallContext.exportData:
-        return {
-          'title': isFrench ? '📄 Export - Premium' : '📄 Export - Premium',
-          'message': isFrench
-              ? 'L\'export de données est réservé aux membres Premium.\n\nTélécharge tes données en PDF ou Excel.'
-              : 'Data export is reserved for Premium members.\n\nDownload your data in PDF or Excel format.',
-        };
-
-      case PaywallContext.advancedCharts:
-        return {
-          'title': isFrench
-              ? '📈 Graphiques - Premium'
-              : '📈 Charts - Premium',
-          'message': isFrench
-              ? 'Les graphiques avancés sont réservés aux membres Premium.\n\nVisualise ta progression sur le long terme avec des graphiques détaillés.'
-              : 'Advanced charts are reserved for Premium members.\n\nVisualize your long-term progress with detailed charts.',
-        };
-
-      case PaywallContext.offlineMode:
-        return {
-          'title': isFrench
-              ? '✈️ Mode offline - Premium'
-              : '✈️ Offline mode - Premium',
-          'message': isFrench
-              ? 'Le mode offline complet est réservé aux membres Premium.\n\nContinue à tracker même sans connexion internet.'
-              : 'Full offline mode is reserved for Premium members.\n\nKeep tracking even without internet connection.',
+              ? 'L\'analyse de progression est réservée aux membres Premium.\n\n✨ Le Coach Ryze analyse tes performances\n💡 Recommandations pour progresser\n📈 Feedback personnalisé'
+              : 'Progress analysis is reserved for Premium members.\n\n✨ Coach Ryze analyzes your performance\n💡 Recommendations to improve\n📈 Personalized feedback',
         };
 
       case PaywallContext.genericUpgrade:
-      default:
         return {
           'title': isFrench
               ? '💎 Passe Premium'
@@ -193,5 +524,126 @@ class PaywallService {
               : 'Unlock all Premium features and reach your goals faster.',
         };
     }
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // SYSTÈME D'ESSAIS GRATUITS
+  // ═══════════════════════════════════════════════════════
+
+  /// Mapper PaywallContext vers clé de feature trial
+  static String getFeatureTrialKey(PaywallContext context) {
+    switch (context) {
+      case PaywallContext.scanner:
+        return FeatureTrialService.keyScanner;
+      case PaywallContext.barcodeScanner:
+        return FeatureTrialService.keyBarcode;
+      case PaywallContext.chatInput:
+        return FeatureTrialService.keyChat;
+      case PaywallContext.workoutGenerator:
+        return FeatureTrialService.keyWorkout;
+      case PaywallContext.nutritionAnalysis:
+        return FeatureTrialService.keyNutritionAnalysis;
+      case PaywallContext.exerciseAnalysis:
+        return FeatureTrialService.keyExerciseAnalysis;
+      case PaywallContext.genericUpgrade:
+        return ''; // Pas de trial pour générique
+    }
+  }
+
+  /// Vérifier si l'utilisateur peut utiliser la feature (Premium ou 1er essai gratuit)
+  ///
+  /// Retourne `true` si l'utilisateur peut accéder à la feature :
+  /// - Si Premium : accès illimité
+  /// - Si non-Premium et 1er essai : accès gratuit (et marque comme utilisé si `markAsUsed = true`)
+  /// - Si non-Premium et essai déjà utilisé : affiche le paywall et retourne `false`
+  ///
+  /// Paramètres :
+  /// - `context` : BuildContext pour afficher le paywall si nécessaire
+  /// - `paywallContext` : Contexte de la feature (scanner, barcode, chat, etc.)
+  /// - `markAsUsed` : Si `true`, marque l'essai gratuit comme utilisé (par défaut `true`)
+  ///
+  /// Exemple :
+  /// ```dart
+  /// final canUse = await PaywallService.instance.canUseFeature(
+  ///   context: context,
+  ///   paywallContext: PaywallContext.scanner,
+  /// );
+  ///
+  /// if (canUse) {
+  ///   // Ouvrir le scanner
+  ///   Navigator.push(...);
+  /// }
+  /// // Sinon, le paywall s'est affiché automatiquement
+  /// ```
+  Future<bool> canUseFeature({
+    required BuildContext context,
+    required PaywallContext paywallContext,
+    bool markAsUsed = true,
+  }) async {
+    // Si Premium, accès illimité
+    if (_subscriptionService.isPremium) {
+      print('✅ PaywallService: User is Premium, granting access to ${paywallContext.name}');
+      return true;
+    }
+
+    // Vérifier le trial gratuit
+    final trialKey = getFeatureTrialKey(paywallContext);
+    if (trialKey.isEmpty) {
+      print('⚠️ PaywallService: No trial key for ${paywallContext.name}, showing paywall');
+      await showPaywall(
+        context: context,
+        paywallContext: paywallContext,
+      );
+      return false;
+    }
+
+    final hasUsed = await _trialService.hasUsedFreeTrial(trialKey);
+
+    if (!hasUsed) {
+      // 1er essai gratuit
+      print('🎁 PaywallService: First free trial for ${paywallContext.name}');
+
+      if (markAsUsed) {
+        await _trialService.markFeatureAsUsed(trialKey);
+        print('✅ PaywallService: Marked ${paywallContext.name} trial as used');
+      }
+
+      return true;
+    }
+
+    // A déjà utilisé son essai, montrer le paywall
+    print('🚫 PaywallService: Trial already used for ${paywallContext.name}, showing paywall');
+    await showPaywall(
+      context: context,
+      paywallContext: paywallContext,
+    );
+
+    return false;
+  }
+
+  /// Vérifier si la feature est verrouillée (badge Premium à afficher)
+  ///
+  /// Retourne `true` si l'utilisateur doit voir un badge "Premium" :
+  /// - Non-Premium ET a déjà utilisé son essai gratuit
+  ///
+  /// Retourne `false` si :
+  /// - Premium (accès illimité)
+  /// - Non-Premium mais n'a pas encore utilisé son essai
+  ///
+  /// Utile pour griser les boutons et afficher le badge "PRO"
+  Future<bool> isFeatureLocked(PaywallContext paywallContext) async {
+    // Si Premium, jamais verrouillé
+    if (_subscriptionService.isPremium) {
+      return false;
+    }
+
+    // Vérifier si l'essai a été utilisé
+    final trialKey = getFeatureTrialKey(paywallContext);
+    if (trialKey.isEmpty) {
+      return true; // Pas de trial = toujours verrouillé pour non-Premium
+    }
+
+    final hasUsed = await _trialService.hasUsedFreeTrial(trialKey);
+    return hasUsed; // Verrouillé si l'essai a déjà été utilisé
   }
 }

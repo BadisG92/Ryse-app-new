@@ -24,7 +24,7 @@ import 'services/global_state_manager.dart';
 import 'services/navigation_preloader.dart';
 import 'services/exercise_ai_analysis_service.dart';
 import 'services/coach_ryze_nutrition_service.dart';
-import 'services/subscription_service.dart';
+import 'services/unified_subscription_service.dart';
 import 'services/notification_service.dart';
 import 'package:uni_links/uni_links.dart';
 import 'services/widget_deep_link_handler.dart';
@@ -111,11 +111,11 @@ void main() async {
   ExerciseAiAnalysisService.initialize();
   CoachRyzeNutritionService.initialize();
 
-  // Initialiser le service d'abonnement (Subscription/Paywall)
-  await SubscriptionService.instance.initialize().timeout(
+  // Initialiser le service d'abonnement unifié (gère RevenueCat + DB)
+  await UnifiedSubscriptionService().initialize().timeout(
     const Duration(seconds: 2),
     onTimeout: () {
-      debugPrint('⚠️ SubscriptionService timeout - defaulting to free tier');
+      debugPrint('⚠️ UnifiedSubscriptionService timeout - defaulting to free tier');
     },
   );
 

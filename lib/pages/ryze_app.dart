@@ -8,6 +8,7 @@ import '../components/main_app.dart';
 import '../services/auth_service.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/complete_profile_screen.dart';
+import '../screens/trial_offer_screen.dart';
 
 /// RyzeApp - Implémentation du flow AAA (style MyFitnessPal, Headspace, etc.)
 ///
@@ -235,13 +236,14 @@ class _RyzeAppState extends State<RyzeApp> {
       debugPrint('🎯 PostFrameCallback - Widget mounted: $mounted');
 
       if (mounted) {
-        debugPrint('🚀 Navigation vers MainApp...');
+        debugPrint('🚀 Navigation vers TrialOfferScreen...');
         try {
-          // Utiliser le root navigator pour être sûr de remplacer toute la stack
+          // 🎯 NOUVEAU : Afficher l'écran d'offre de trial après l'onboarding
+          // L'utilisateur peut choisir entre commencer le trial ou continuer en gratuit
           Navigator.of(context, rootNavigator: true).pushReplacement(
-            MaterialPageRoute(builder: (context) => const MainApp()),
+            MaterialPageRoute(builder: (context) => const TrialOfferScreen()),
           );
-          debugPrint('✅ Navigation réussie');
+          debugPrint('✅ Navigation réussie vers Trial Offer');
         } catch (e) {
           debugPrint('❌ Erreur navigation: $e');
         }

@@ -39,6 +39,14 @@ class AppTranslations {
       'fr': 'Fonctionnalité disponible avec Premium',
       'en': 'Feature available with Premium',
     },
+    'unlock_badge': {
+      'fr': 'UPGRADE',
+      'en': 'UPGRADE',
+    },
+    'trial_badge': {
+      'fr': 'ESSAI GRATUIT',
+      'en': 'TRY FREE',
+    },
     'must_be_connected': {
       'fr': 'Vous devez être connecté pour enregistrer l\'hydratation',
       'en': 'You must be logged in to record hydration',
@@ -5304,6 +5312,218 @@ class AppTranslations {
     'open_settings': {
       'fr': 'Ouvrir les réglages',
       'en': 'Open Settings',
+    },
+
+    // ═══════════════════════════════════════════════════════
+    // PAYWALL CONTEXTUAL TRANSLATIONS
+    // ═══════════════════════════════════════════════════════
+
+    // Paywall - Titres contextuels
+    'paywall_title_scanner': {
+      'fr': '📸 Arrête de Deviner tes Calories',
+      'en': '📸 Stop Guessing Your Calories',
+    },
+    'paywall_title_barcode': {
+      'fr': '📊 Valeurs Nutritionnelles Exactes',
+      'en': '📊 Accurate Nutritional Values',
+    },
+    'paywall_title_chat': {
+      'fr': '💬 Mange, Parle, C\'est Compté',
+      'en': '💬 Eat, Talk, It\'s Tracked',
+    },
+    'paywall_title_workout': {
+      'fr': '💪 Entraîne-toi comme un Pro',
+      'en': '💪 Train Like a Pro',
+    },
+    'paywall_title_nutrition_analysis': {
+      'fr': '📊 Comprends VRAIMENT ta Nutrition',
+      'en': '📊 TRULY Understand Your Nutrition',
+    },
+    'paywall_title_exercise_analysis': {
+      'fr': '📈 Progresse sur Chaque Exercice',
+      'en': '📈 Progress on Every Exercise',
+    },
+    'paywall_title_generic': {
+      'fr': '🐼 Transforme ton Corps',
+      'en': '🐼 Transform Your Body',
+    },
+
+    // Paywall - Bulles du Coach
+    'paywall_bubble_scanner': {
+      'fr': 'Prêt à débloquer tes résultats ?',
+      'en': 'Ready to unlock your results?',
+    },
+    'paywall_bubble_barcode': {
+      'fr': 'Scanne et tracke instantanément !',
+      'en': 'Scan and track instantly!',
+    },
+    'paywall_bubble_chat': {
+      'fr': 'Parle-moi, je comprends tout !',
+      'en': 'Talk to me, I understand everything!',
+    },
+    'paywall_bubble_workout': {
+      'fr': 'Je vais créer ton programme parfait !',
+      'en': 'I\'ll create your perfect program!',
+    },
+    'paywall_bubble_nutrition_analysis': {
+      'fr': 'Laisse-moi analyser ta journée !',
+      'en': 'Let me analyze your day!',
+    },
+    'paywall_bubble_exercise_analysis': {
+      'fr': 'Je vais booster tes performances !',
+      'en': 'I\'ll boost your performance!',
+    },
+    'paywall_bubble_limit': {
+      'fr': 'Tu as atteint ta limite gratuite !',
+      'en': 'You\'ve reached your free limit!',
+    },
+    'paywall_bubble_generic': {
+      'fr': 'Prêt à débloquer tes résultats ?',
+      'en': 'Ready to unlock your results?',
+    },
+
+    // Paywall - Bénéfices Scanner
+    'paywall_benefit_scanner_1': {
+      'fr': 'Prends une photo, obtiens les calories en 2 secondes',
+      'en': 'Take a photo, get calories in 2 seconds',
+    },
+    'paywall_benefit_scanner_2': {
+      'fr': 'Fini les estimations approximatives qui ruinent tes progrès',
+      'en': 'No more rough estimates ruining your progress',
+    },
+    'paywall_benefit_scanner_3': {
+      'fr': 'Scanne tes 3 repas quotidiens en moins de 30 secondes',
+      'en': 'Scan your 3 daily meals in under 30 seconds',
+    },
+
+    // Paywall - Bénéfices Barcode
+    'paywall_benefit_barcode_1': {
+      'fr': 'Scanne le code-barre, obtiens les vraies valeurs nutritionnelles',
+      'en': 'Scan the barcode, get the real nutritional values',
+    },
+    'paywall_benefit_barcode_2': {
+      'fr': 'Calories, protéines, glucides, lipides 100% précis',
+      'en': '100% accurate calories, protein, carbs, fats',
+    },
+    'paywall_benefit_barcode_3': {
+      'fr': 'Tracke tes aliments en 2 secondes chrono',
+      'en': 'Track your food in 2 seconds flat',
+    },
+
+    // Paywall - Bénéfices Chat
+    'paywall_benefit_chat_1': {
+      'fr': 'Dis juste "j\'ai mangé une pizza" et c\'est tracké',
+      'en': 'Just say "I ate a pizza" and it\'s tracked',
+    },
+    'paywall_benefit_chat_2': {
+      'fr': 'Le moyen le PLUS rapide de tracker (3 secondes chrono)',
+      'en': 'The FASTEST way to track (3 seconds flat)',
+    },
+    'paywall_benefit_chat_3': {
+      'fr': 'Déclare tes repas en vocal pendant que tu manges',
+      'en': 'Declare meals by voice while you eat',
+    },
+
+    // Paywall - Bénéfices Workout
+    'paywall_benefit_workout_1': {
+      'fr': 'Ton Coach crée des séances adaptées à TON niveau',
+      'en': 'Your Coach creates sessions adapted to YOUR level',
+    },
+    'paywall_benefit_workout_2': {
+      'fr': 'Progression automatique basée sur tes performances',
+      'en': 'Automatic progression based on your performance',
+    },
+    'paywall_benefit_workout_3': {
+      'fr': 'Génère un workout complet en 10 secondes',
+      'en': 'Generate a complete workout in 10 seconds',
+    },
+
+    // Paywall - Bénéfices Nutrition Analysis
+    'paywall_benefit_nutrition_analysis_1': {
+      'fr': 'Bilan quotidien personnalisé de ta journée',
+      'en': 'Personalized daily report of your day',
+    },
+    'paywall_benefit_nutrition_analysis_2': {
+      'fr': 'Sais EXACTEMENT quoi ajuster pour progresser',
+      'en': 'Know EXACTLY what to adjust to progress',
+    },
+    'paywall_benefit_nutrition_analysis_3': {
+      'fr': 'Conseils adaptés à ton objectif (sèche, prise de masse...)',
+      'en': 'Advice adapted to your goal (cut, bulk...)',
+    },
+
+    // Paywall - Bénéfices Exercise Analysis
+    'paywall_benefit_exercise_analysis_1': {
+      'fr': 'Analyse de tes perfs exercice par exercice',
+      'en': 'Analysis of your performance exercise by exercise',
+    },
+    'paywall_benefit_exercise_analysis_2': {
+      'fr': 'Vois tes points faibles et comment les corriger',
+      'en': 'See your weak points and how to fix them',
+    },
+    'paywall_benefit_exercise_analysis_3': {
+      'fr': 'Recommandations pour ajouter 5-10kg sur chaque mouvement',
+      'en': 'Recommendations to add 5-10kg on each movement',
+    },
+
+    // Paywall - Bénéfices Generic
+    'paywall_benefit_generic_1': {
+      'fr': 'Scans illimités - Le Coach Ryze reconnaît tout',
+      'en': 'Unlimited scans - Coach Ryze recognizes everything',
+    },
+    'paywall_benefit_generic_2': {
+      'fr': 'Workouts personnalisés générés par ton Coach',
+      'en': 'Personalized workouts by your Coach',
+    },
+    'paywall_benefit_generic_3': {
+      'fr': 'Bilan quotidien et conseils sur-mesure',
+      'en': 'Daily report and custom advice',
+    },
+
+    // Paywall - Common
+    'paywall_banner_trial': {
+      'fr': '7 JOURS GRATUITS',
+      'en': '7 DAYS FREE',
+    },
+    'paywall_cta_button': {
+      'fr': 'DÉBLOQUER MON COACH\n7 JOURS GRATUITS',
+      'en': 'UNLOCK MY COACH\n7 DAYS FREE',
+    },
+    'paywall_then_price': {
+      'fr': 'Puis 9,99€/mois • Annule en 1 clic',
+      'en': 'Then €9.99/month • Cancel in 1 click',
+    },
+    'paywall_skip': {
+      'fr': 'Peut-être plus tard',
+      'en': 'Maybe later',
+    },
+    'paywall_badge_annual': {
+      'fr': 'Meilleure valeur',
+      'en': 'Best value',
+    },
+    'paywall_badge_monthly': {
+      'fr': 'Le plus choisi',
+      'en': 'Most popular',
+    },
+    'paywall_badge_weekly': {
+      'fr': 'Pour tester',
+      'en': 'Try it',
+    },
+    'paywall_savings_annual': {
+      'fr': 'Économise 49%',
+      'en': 'Save 49%',
+    },
+    'paywall_annual': {
+      'fr': 'Annuel',
+      'en': 'Annual',
+    },
+    'paywall_monthly': {
+      'fr': 'Mensuel',
+      'en': 'Monthly',
+    },
+    'paywall_weekly': {
+      'fr': 'Hebdo',
+      'en': 'Weekly',
     },
   };
 

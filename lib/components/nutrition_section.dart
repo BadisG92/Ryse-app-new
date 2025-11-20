@@ -13,6 +13,7 @@ import '../services/streak_service.dart';
 import '../services/header_cache_service.dart';
 import '../services/localization_service.dart';
 import '../services/translations.dart';
+import '../services/tutorial_service.dart';
 import '../services/global_state_manager.dart'; // NOUVEAU
 import '../providers/goals_notifier.dart';
 import 'ui/refresh_wrapper.dart';
@@ -130,6 +131,9 @@ class _NutritionSectionState extends State<NutritionSection>
         debugPrint('⏭️ Tutorial onglets skippé - Arrêt complet du tutorial');
       }
     } else {
+      debugPrint('🔴 === BOUTON "PASSER" APPUYÉ - WELCOME SCREEN NUTRITION ===');
+      // Marquer le tutoriel comme complété dans Supabase via TutorialService
+      await TutorialService().markTutorialAsCompleted('tutorial_nutrition_completed');
       debugPrint('⏭️ Welcome Nutrition skippé');
     }
   }

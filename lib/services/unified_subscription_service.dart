@@ -99,7 +99,7 @@ class UnifiedSubscriptionService extends ChangeNotifier {
           if (productId.contains('weekly')) {
             period = SubscriptionPeriod.weekly;
           } else if (productId.contains('yearly')) {
-            period = SubscriptionPeriod.yearly;
+            period = SubscriptionPeriod.annual;
           }
         }
 
@@ -228,8 +228,12 @@ class UnifiedSubscriptionService extends ChangeNotifier {
         case SubscriptionPeriod.monthly:
           targetIdentifier = SubscriptionConfig.monthlyProductId;
           break;
-        case SubscriptionPeriod.yearly:
+        case SubscriptionPeriod.annual:
           targetIdentifier = SubscriptionConfig.yearlyProductId;
+          break;
+        case SubscriptionPeriod.lifetime:
+          // Pas de lifetime pour Ryse, fallback sur mensuel
+          targetIdentifier = SubscriptionConfig.monthlyProductId;
           break;
       }
 
@@ -297,7 +301,7 @@ class UnifiedSubscriptionService extends ChangeNotifier {
         },
         {
           'identifier': 'yearly',
-          'period': SubscriptionPeriod.yearly,
+          'period': SubscriptionPeriod.annual,
           'price': SubscriptionConfig.yearlyPriceDisplay,
           'description': SubscriptionConfig.getOfferDescription('yearly'),
         },
@@ -312,7 +316,7 @@ class UnifiedSubscriptionService extends ChangeNotifier {
         if (package.storeProduct.identifier.contains('weekly')) {
           period = SubscriptionPeriod.weekly;
         } else if (package.storeProduct.identifier.contains('yearly')) {
-          period = SubscriptionPeriod.yearly;
+          period = SubscriptionPeriod.annual;
         }
 
         return {

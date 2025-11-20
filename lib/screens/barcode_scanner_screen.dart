@@ -15,6 +15,9 @@ import '../services/celebration_service.dart';
 import '../services/food_entries_service.dart';
 // import '../services/barcode_detection_service.dart'; // ANCIEN - Remplacé par unified_barcode_service
 import '../services/unified_barcode_service.dart'; // NOUVEAU - Switch ML Kit / Vision API
+import '../services/subscription_service.dart';
+import '../services/paywall_service.dart';
+import '../services/feature_trial_service.dart';
 import '../services/translations.dart';
 import '../services/localization_service.dart';
 import '../config/supabase_config.dart';
@@ -72,7 +75,6 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
   void initState() {
     super.initState();
     _quantityController.text = '100'; // Quantité par défaut
-    _initializeCamera();
     _animationController = AnimationController(
       duration: const Duration(seconds: 2),
       vsync: this,
@@ -97,6 +99,33 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
         _fadeAnimationController.forward();
       }
     });
+
+    // Vérifier accès Premium après que le widget soit monté
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkPremiumAccess();
+    });
+  }
+
+  /// Vérifier si l'utilisateur a accès au scanner barcode (Premium uniquement)
+  Future<void> _checkPremiumAccess() async {
+    final isPremium = SubscriptionService.instance.isPremium;
+
+    if (!isPremium) {
+      // Afficher le paywall
+      final upgraded = await PaywallService.instance.showPaywall(
+        context: context,
+        paywallContext: PaywallContext.barcodeScanner,
+      );
+
+      if (!upgraded && mounted) {
+        // L'utilisateur n'a pas souscrit, retour
+        Navigator.pop(context);
+        return;
+      }
+    }
+
+    // Si Premium ou upgrade réussi, initialiser la caméra
+    _initializeCamera();
   }
 
   Future<void> _initializeCamera() async {
@@ -1424,6 +1453,14 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
       hasResult = true;
           _errorMessage = null;
         });
+
+        // ✅ Marquer le trial comme utilisé UNIQUEMENT si le produit a été trouvé
+        if (!SubscriptionService.instance.isPremium) {
+          FeatureTrialService.instance.markFeatureAsUsed(
+            FeatureTrialService.keyBarcode,
+          );
+          if (kDebugMode) debugPrint('✅ Barcode scanner trial marked as used after successful product fetch');
+        }
       } else {
         setState(() {
           _errorMessage = OpenFoodFactsService.getErrorMessage(product);

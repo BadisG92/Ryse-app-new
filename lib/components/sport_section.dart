@@ -11,6 +11,7 @@ import '../services/streak_service.dart';
 import '../services/header_cache_service.dart';
 import '../services/translations.dart';
 import '../services/localization_service.dart';
+import '../services/tutorial_service.dart';
 import 'ui/custom_snackbar.dart';
 import 'ui/global_state_header.dart';
 import 'package:provider/provider.dart';
@@ -148,6 +149,9 @@ class _SportSectionState extends State<SportSection>
       // Lancer le tutorial du Dashboard APRÈS le welcome
       await _launchDashboardTutorial();
     } else {
+      debugPrint('🔴 === BOUTON "PASSER" APPUYÉ - WELCOME SCREEN SPORT ===');
+      // Marquer le tutoriel comme complété dans Supabase via TutorialService
+      await TutorialService().markTutorialAsCompleted('tutorial_sport_completed');
       debugPrint('⏭️ Welcome Sport skippé');
     }
   }
@@ -212,6 +216,9 @@ class _SportSectionState extends State<SportSection>
       // Lancer le tutorial Cardio APRÈS le welcome
       await _launchCardioTutorial();
     } else {
+      debugPrint('🔴 === BOUTON "PASSER" APPUYÉ - WELCOME SCREEN CARDIO ===');
+      // Marquer le tutoriel comme complété dans Supabase via TutorialService
+      await TutorialService().markTutorialAsCompleted('tutorial_cardio_completed');
       debugPrint('⏭️ Welcome Cardio skippé');
     }
   }
@@ -280,6 +287,9 @@ class _SportSectionState extends State<SportSection>
       // Lancer le tutorial Musculation APRÈS le welcome
       await _launchMusculationTutorial();
     } else {
+      debugPrint('🔴 === BOUTON "PASSER" APPUYÉ - WELCOME SCREEN MUSCULATION ===');
+      // Marquer le tutoriel comme complété dans Supabase via TutorialService
+      await TutorialService().markTutorialAsCompleted('tutorial_musculation_completed');
       debugPrint('⏭️ Welcome Musculation skippé');
     }
   }

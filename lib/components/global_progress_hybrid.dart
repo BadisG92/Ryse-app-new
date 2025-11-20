@@ -11,6 +11,7 @@ import 'ui/progression_tutorial_welcome.dart';
 import '../services/dashboard_service.dart';
 import '../services/progress_service_v2.dart';
 import '../services/weight_service.dart';
+import '../services/tutorial_service.dart';
 import '../screens/weight_evolution_screen.dart';
 import '../providers/weight_notifier.dart';
 import '../services/translations.dart';
@@ -105,8 +106,16 @@ class _GlobalProgressState extends State<GlobalProgress> {
       languageCode: languageCode,
     );
 
-    // Si l'utilisateur a skippé, on arrête
-    if (!shouldContinue || !mounted) return;
+    // Si l'utilisateur a skippé, marquer comme complété et arrêter
+    if (!shouldContinue) {
+      debugPrint('🔴 === BOUTON "PASSER" APPUYÉ - WELCOME SCREEN PROGRESSION ===');
+      // Marquer le tutoriel comme complété dans Supabase via TutorialService
+      await TutorialService().markTutorialAsCompleted('tutorial_progression_completed');
+      debugPrint('⏭️ Welcome Screen Progression skippé');
+      return;
+    }
+
+    if (!mounted) return;
 
     // Petit délai avant de lancer le tutorial principal
     await Future.delayed(const Duration(milliseconds: 300));

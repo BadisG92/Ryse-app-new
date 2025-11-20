@@ -15,6 +15,9 @@ import '../services/food_entries_service.dart';
 import '../services/auth_service.dart';
 import '../services/celebration_service.dart';
 import '../services/translations.dart';
+import '../services/subscription_service.dart';
+import '../services/paywall_service.dart';
+import '../services/feature_trial_service.dart';
 import '../components/nutrition_journal_hybrid.dart';
 import 'dart:io';
 import 'dart:typed_data';
@@ -55,6 +58,32 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
     super.initState();
     if (kDebugMode) debugPrint('🔥 [FLUX AI] 📸 ===== VERSION AVEC ZOOM ET NOTE =====');
     if (kDebugMode) debugPrint('🔥 [FLUX AI] 📸 PAS d\'écran de choix - Caméra DIRECTE !');
+
+    // Vérifier le Premium après que le widget soit monté
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkPremiumAccess();
+    });
+  }
+
+  /// Vérifier si l'utilisateur a accès au scanner (Premium uniquement)
+  Future<void> _checkPremiumAccess() async {
+    final isPremium = SubscriptionService.instance.isPremium;
+
+    if (!isPremium) {
+      // Afficher le paywall
+      final upgraded = await PaywallService.instance.showPaywall(
+        context: context,
+        paywallContext: PaywallContext.scanner,
+      );
+
+      if (!upgraded && mounted) {
+        // L'utilisateur n'a pas souscrit, retour
+        Navigator.pop(context);
+        return;
+      }
+    }
+
+    // Si Premium ou upgrade réussi, initialiser la caméra
     _initializeCamera();
   }
 
@@ -705,10 +734,19 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
             // Mettre à jour le nom du repas avec le nom généré par l'IA
             _mealNameController.text = result.mealName ?? 'coach_detected_dish'.tr(LocalizationService.instance.currentLanguageCode);
             if (kDebugMode) debugPrint('🔥 [FLUX AI] ✅ Analyse terminée avec succès');
+
+            // ✅ Marquer le trial comme utilisé UNIQUEMENT si l'analyse a réussi
+            if (!SubscriptionService.instance.isPremium) {
+              FeatureTrialService.instance.markFeatureAsUsed(
+                FeatureTrialService.keyScanner,
+              );
+              if (kDebugMode) debugPrint('✅ Scanner trial marked as used after successful analysis');
+            }
           } else {
             _hasResult = false;
             _errorMessage = result.error ?? 'error_no_food_detected'.tr(LocalizationService.instance.currentLanguageCode);
             if (kDebugMode) debugPrint('🔥 [FLUX AI] ❌ Erreur d\'analyse: ${result.error}');
+            // ⚠️ NE PAS marquer le trial comme utilisé si l'analyse échoue
           }
         });
       }

@@ -29,15 +29,22 @@ class TutorialService {
   /// Vérifie si un tutorial a déjà été complété
   /// Vérifie d'abord dans Supabase (source de vérité), puis SharedPreferences en fallback
   Future<bool> _isTutorialCompleted(String key) async {
-    if (_debugMode) return false; // En mode debug, toujours afficher
+    debugPrint('🔍 === VÉRIFICATION TUTORIAL: $key ===');
+
+    if (_debugMode) {
+      debugPrint('🔧 Mode DEBUG actif - Tutorial forcé à afficher');
+      return false;
+    }
 
     final prefs = await SharedPreferences.getInstance();
     final supabase = Supabase.instance.client;
     final user = supabase.auth.currentUser;
 
     if (user != null) {
+      debugPrint('✅ Utilisateur connecté: ${user.id}');
       try {
         // Vérifier dans Supabase (source de vérité)
+        debugPrint('📡 Requête Supabase: SELECT $key FROM users WHERE id = ${user.id}');
         final response = await supabase
             .from('users')
             .select(key)
@@ -45,21 +52,33 @@ class TutorialService {
             .single()
             .timeout(const Duration(seconds: 3));
 
+        debugPrint('📦 Réponse Supabase brute: $response');
         final isCompleted = response[key] as bool? ?? false;
+        debugPrint('✅ Valeur extraite de Supabase: $key = $isCompleted');
 
         // Synchroniser avec SharedPreferences pour accès offline
         await prefs.setBool(key, isCompleted);
+        debugPrint('💾 SharedPreferences synchronisé: $key = $isCompleted');
 
+        debugPrint('🔍 === RÉSULTAT: Tutorial $key ${isCompleted ? "COMPLÉTÉ ✅" : "NON COMPLÉTÉ ❌"} ===\n');
         return isCompleted;
-      } catch (e) {
-        debugPrint('⚠️ Erreur lecture tutorial depuis Supabase: $e');
+      } catch (e, stackTrace) {
+        debugPrint('⚠️ ❌ ERREUR lecture tutorial depuis Supabase: $e');
+        debugPrint('📚 Stack trace: $stackTrace');
         // Fallback vers SharedPreferences
-        return prefs.getBool(key) ?? false;
+        final fallbackValue = prefs.getBool(key) ?? false;
+        debugPrint('🔄 Fallback vers SharedPreferences: $key = $fallbackValue');
+        debugPrint('🔍 === RÉSULTAT (fallback): Tutorial $key ${fallbackValue ? "COMPLÉTÉ ✅" : "NON COMPLÉTÉ ❌"} ===\n');
+        return fallbackValue;
       }
     }
 
+    debugPrint('⚠️ Aucun utilisateur connecté');
     // Pas d'utilisateur connecté, utiliser SharedPreferences
-    return prefs.getBool(key) ?? false;
+    final localValue = prefs.getBool(key) ?? false;
+    debugPrint('💾 Valeur locale (pas d\'utilisateur): $key = $localValue');
+    debugPrint('🔍 === RÉSULTAT (local): Tutorial $key ${localValue ? "COMPLÉTÉ ✅" : "NON COMPLÉTÉ ❌"} ===\n');
+    return localValue;
   }
 
   /// Fonction pour obtenir la position d'un widget
@@ -83,28 +102,51 @@ class TutorialService {
 
   /// Marque un tutorial comme complété
   /// Sauvegarde dans Supabase ET SharedPreferences pour persister l'état
+  /// Version publique pour être appelée depuis d'autres widgets
+  Future<void> markTutorialAsCompleted(String key) async {
+    await _markTutorialAsCompleted(key);
+  }
+
+  /// Version privée interne
   Future<void> _markTutorialAsCompleted(String key) async {
+    debugPrint('🔵 === DÉBUT _markTutorialAsCompleted ===');
+    debugPrint('🔵 Clé du tutoriel: $key');
+
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(key, true);
+    debugPrint('✅ Sauvegarde locale (SharedPreferences) réussie: $key = true');
 
     final supabase = Supabase.instance.client;
     final user = supabase.auth.currentUser;
 
     if (user != null) {
+      debugPrint('🔵 Utilisateur connecté: ${user.id}');
+      debugPrint('🔵 Email: ${user.email}');
+      debugPrint('🔵 Tentative de mise à jour Supabase...');
+      debugPrint('🔵 Table: users');
+      debugPrint('🔵 Colonne: $key');
+      debugPrint('🔵 Valeur: true');
+      debugPrint('🔵 WHERE: id = ${user.id}');
+
       try {
         // Sauvegarder dans Supabase pour persister entre les sessions
-        await supabase.from('users').update({
+        final response = await supabase.from('users').update({
           key: true,
         }).eq('id', user.id);
 
+        debugPrint('✅ Réponse Supabase reçue: $response');
         debugPrint('✅ Tutorial marqué comme complété dans Supabase: $key');
-      } catch (e) {
+      } catch (e, stackTrace) {
         debugPrint('❌ Erreur sauvegarde tutorial dans Supabase: $e');
+        debugPrint('❌ Stack trace: $stackTrace');
         // Continue quand même, l'utilisateur a les SharedPreferences
       }
+    } else {
+      debugPrint('⚠️ Aucun utilisateur connecté ! Impossible de sauvegarder dans Supabase');
     }
 
     debugPrint('✅ Tutorial marqué comme complété localement: $key');
+    debugPrint('🔵 === FIN _markTutorialAsCompleted ===\n');
   }
 
   /// Réinitialise tous les tutoriels (utile pour debug)
@@ -385,6 +427,7 @@ class TutorialService {
         debugPrint('✅ Tutorial Dashboard terminé');
       },
       onSkip: () {
+        debugPrint('🔴 === BOUTON "PASSER" APPUYÉ - TUTORIAL DASHBOARD ===');
         _markTutorialAsCompleted(_dashboardTutorialKey);
         debugPrint('⏭️ Tutorial Dashboard skippé');
         return true;
@@ -467,6 +510,7 @@ class TutorialService {
         debugPrint('✅ Tutorial Nutrition terminé');
       },
       onSkip: () {
+        debugPrint('🔴 === BOUTON "PASSER" APPUYÉ - TUTORIAL NUTRITION ===');
         _markTutorialAsCompleted(_nutritionTutorialKey);
         debugPrint('⏭️ Tutorial Nutrition skippé');
         return true;
@@ -549,6 +593,7 @@ class TutorialService {
         debugPrint('✅ Tutorial Sport terminé');
       },
       onSkip: () {
+        debugPrint('🔴 === BOUTON "PASSER" APPUYÉ - TUTORIAL SPORT ===');
         _markTutorialAsCompleted(_sportTutorialKey);
         debugPrint('⏭️ Tutorial Sport skippé');
         return true;
@@ -747,6 +792,7 @@ class TutorialService {
         fontWeight: FontWeight.w600,
       ),
       onSkip: () {
+        debugPrint('🔴 === BOUTON "PASSER" APPUYÉ - TUTORIAL NUTRITION DASHBOARD ===');
         _markTutorialAsCompleted(_nutritionTutorialKey);
         debugPrint('⏭️ Tutorial Dashboard Nutrition skippé');
         return true;
@@ -905,6 +951,7 @@ class TutorialService {
         fontWeight: FontWeight.w600,
       ),
       onSkip: () {
+        debugPrint('🔴 === BOUTON "PASSER" APPUYÉ - TUTORIAL SPORT DASHBOARD ===');
         _markTutorialAsCompleted(_sportTutorialKey);
         debugPrint('⏭️ Tutorial Dashboard Sport skippé');
         return true;
@@ -1020,6 +1067,7 @@ class TutorialService {
         fontWeight: FontWeight.w600,
       ),
       onSkip: () {
+        debugPrint('🔴 === BOUTON "PASSER" APPUYÉ - TUTORIAL CARDIO ===');
         _markTutorialAsCompleted(_cardioTutorialKey);
         debugPrint('⏭️ Tutorial Cardio sauté');
         return true;
@@ -1164,6 +1212,7 @@ class TutorialService {
         fontWeight: FontWeight.w600,
       ),
       onSkip: () {
+        debugPrint('🔴 === BOUTON "PASSER" APPUYÉ - TUTORIAL MUSCULATION ===');
         _markTutorialAsCompleted(_musculationTutorialKey);
         debugPrint('⏭️ Tutorial Musculation sauté');
         return true;
@@ -1266,6 +1315,7 @@ class TutorialService {
         fontWeight: FontWeight.w600,
       ),
       onSkip: () {
+        debugPrint('🔴 === BOUTON "PASSER" APPUYÉ - TUTORIAL PROGRESSION ===');
         _markTutorialAsCompleted(_progressionTutorialKey);
         debugPrint('⏭️ Tutorial Progression Globale skippé');
         return true;

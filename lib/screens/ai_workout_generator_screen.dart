@@ -8,6 +8,8 @@ import '../services/localization_service.dart';
 import '../services/offline_workout_service.dart';
 import '../services/translations.dart';
 import '../services/auth_service.dart';
+import '../services/subscription_service.dart';
+import '../services/feature_trial_service.dart';
 import '../models/sport_models.dart';
 import '../components/ui/coach_ryze_avatar.dart';
 import 'workout_session_screen.dart';
@@ -120,6 +122,14 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> wit
           _aiSuggestions = result.aiSuggestions;
           _sessionName = _generateSessionName(result.exercises, locService.isFrench);
         });
+
+        // ✅ Marquer le trial comme utilisé UNIQUEMENT si le workout a été généré avec succès
+        if (!SubscriptionService.instance.isPremium) {
+          FeatureTrialService.instance.markFeatureAsUsed(
+            FeatureTrialService.keyWorkout,
+          );
+          if (kDebugMode) debugPrint('✅ Workout Generator trial marked as used after successful generation');
+        }
       } else {
         setState(() {
           _errorMessage = result.error ?? 'ai_workout_error_unknown'.tr(locService.currentLanguageCode);

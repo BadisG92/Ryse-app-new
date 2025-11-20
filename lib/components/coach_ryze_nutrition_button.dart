@@ -7,6 +7,106 @@ import '../services/coach_ryze_nutrition_service.dart';
 import '../models/nutrition_models.dart';
 import '../models/nutrition_analysis.dart';
 import '../screens/nutrition_analysis_screen.dart';
+import '../services/paywall_service.dart';
+import '../services/feature_trial_service.dart';
+import '../services/subscription_service.dart';
+
+// Badge Premium pour Coach Ryze
+class _CoachRyzePremiumBadge extends StatefulWidget {
+  final bool isLocked;
+  final bool isFrench;
+
+  const _CoachRyzePremiumBadge({
+    required this.isLocked,
+    required this.isFrench,
+  });
+
+  @override
+  State<_CoachRyzePremiumBadge> createState() => _CoachRyzePremiumBadgeState();
+}
+
+class _CoachRyzePremiumBadgeState extends State<_CoachRyzePremiumBadge> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _pulseAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    );
+
+    _pulseAnimation = Tween<double>(
+      begin: 1.0,
+      end: 1.08,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOut,
+    ));
+
+    _controller.repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final badge = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: widget.isLocked
+            ? [const Color(0xFFFFD700), const Color(0xFFFFA500)] // Gold for UPGRADE
+            : [const Color(0xFF0B132B), const Color(0xFF1C2951)], // Blue DA for TRY FREE
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: widget.isLocked
+              ? const Color(0xFFFFD700).withOpacity(0.4)
+              : const Color(0xFF0B132B).withOpacity(0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            widget.isLocked ? LucideIcons.lockOpen : LucideIcons.gift,
+            size: 11,
+            color: Colors.white,
+          ),
+          const SizedBox(width: 5),
+          Text(
+            widget.isLocked
+              ? (widget.isFrench ? 'UPGRADE' : 'UPGRADE')
+              : (widget.isFrench ? 'ESSAI GRATUIT' : 'TRY FREE'),
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    return ScaleTransition(
+      scale: _pulseAnimation,
+      child: badge,
+    );
+  }
+}
 
 /// Bouton intelligent Coach Ryze pour l'analyse nutritionnelle
 /// Apparence adaptée selon le contexte détecté
@@ -49,6 +149,8 @@ class _CoachRyzeNutritionButtonState extends State<CoachRyzeNutritionButton> {
   bool _isLoading = false;
   NutritionAnalysis? _cachedAnalysis;
   bool _isInitialized = false;
+  bool? _isLocked;
+  bool _isCheckingLock = true;
 
   @override
   void initState() {
@@ -57,6 +159,20 @@ class _CoachRyzeNutritionButtonState extends State<CoachRyzeNutritionButton> {
     _currentContext = _detectContextSync();
     // Charger le cache en arrière-plan
     _loadCacheInBackground();
+    // Vérifier le statut locked
+    _checkLockStatus();
+  }
+
+  Future<void> _checkLockStatus() async {
+    final locked = await PaywallService.instance.isFeatureLocked(
+      PaywallContext.nutritionAnalysis,
+    );
+    if (mounted) {
+      setState(() {
+        _isLocked = locked;
+        _isCheckingLock = false;
+      });
+    }
   }
 
   @override
@@ -69,6 +185,14 @@ class _CoachRyzeNutritionButtonState extends State<CoachRyzeNutritionButton> {
       });
       _loadCacheInBackground();
     }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Re-check lock status when widget becomes visible again
+    // This ensures badge updates after trial is used
+    _checkLockStatus();
   }
 
   /// Détection synchrone du contexte pour éviter le flash
@@ -137,6 +261,19 @@ class _CoachRyzeNutritionButtonState extends State<CoachRyzeNutritionButton> {
   }
 
   Future<void> _generateNewAnalysis(BuildContext context) async {
+    // Vérifier l'accès (Premium ou 1er essai gratuit)
+    // Ne PAS marquer comme utilisé ici - on le fera seulement si l'analyse réussit
+    final canUse = await PaywallService.instance.canUseFeature(
+      context: context,
+      paywallContext: PaywallContext.nutritionAnalysis,
+      markAsUsed: false, // ← Ne pas marquer maintenant
+    );
+
+    if (!canUse) {
+      // Le paywall s'est affiché automatiquement
+      return;
+    }
+
     final locService = Provider.of<LocalizationService>(context, listen: false);
 
     setState(() {
@@ -165,6 +302,14 @@ class _CoachRyzeNutritionButtonState extends State<CoachRyzeNutritionButton> {
         _isLoading = false;
       });
 
+      // ✅ Marquer le trial comme utilisé UNIQUEMENT si l'analyse a été générée avec succès
+      if (!SubscriptionService.instance.isPremium) {
+        await FeatureTrialService.instance.markFeatureAsUsed(
+          FeatureTrialService.keyNutritionAnalysis,
+        );
+        debugPrint('✅ Nutrition Analysis trial marked as used after successful generation');
+      }
+
       if (mounted) {
         Navigator.push(
           context,
@@ -177,6 +322,8 @@ class _CoachRyzeNutritionButtonState extends State<CoachRyzeNutritionButton> {
         );
       }
     } catch (e) {
+      debugPrint('❌ Error generating nutrition analysis: $e');
+
       setState(() {
         _isLoading = false;
       });
@@ -186,10 +333,11 @@ class _CoachRyzeNutritionButtonState extends State<CoachRyzeNutritionButton> {
           SnackBar(
             content: Text(
               locService.currentLanguageCode == 'fr'
-                  ? 'Erreur lors de la génération de l\'analyse'
-                  : 'Error generating analysis',
+                  ? 'Erreur lors de la génération de l\'analyse: ${e.toString()}'
+                  : 'Error generating analysis: ${e.toString()}',
             ),
             backgroundColor: const Color(0xFFEF4444),
+            duration: const Duration(seconds: 5),
           ),
         );
       }
@@ -205,6 +353,9 @@ class _CoachRyzeNutritionButtonState extends State<CoachRyzeNutritionButton> {
         // Déterminer l'apparence selon le contexte
         final buttonConfig = _getButtonConfig(isFrench);
         final showEndOfDayBadge = _currentContext == 'end_of_day';
+
+        final isPremium = SubscriptionService.instance.isPremium;
+        final isLocked = _isLocked ?? false;
 
         return GestureDetector(
           onTap: _isLoading ? null : () => _handleAnalysisTap(context),
@@ -233,7 +384,8 @@ class _CoachRyzeNutritionButtonState extends State<CoachRyzeNutritionButton> {
                     ? _buildLoadingState()
                     : _buildButtonContent(buttonConfig, isFrench),
               ),
-              if (showEndOfDayBadge)
+              // Badge "Bilan dispo" en fin de journée
+              if (showEndOfDayBadge && (isPremium || !isLocked))
                 Positioned(
                   top: 4,
                   right: 32,
@@ -258,6 +410,16 @@ class _CoachRyzeNutritionButtonState extends State<CoachRyzeNutritionButton> {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
+                  ),
+                ),
+              // Badge Premium à cheval sur le bord supérieur
+              if (!isPremium && !_isCheckingLock)
+                Positioned(
+                  top: 0,
+                  right: 32,
+                  child: _CoachRyzePremiumBadge(
+                    isLocked: isLocked,
+                    isFrench: isFrench,
                   ),
                 ),
             ],

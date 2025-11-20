@@ -1,38 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:math' as math;
-import 'package:provider/provider.dart';
 import '../services/paywall_service.dart';
 import '../components/ui/coach_ryze_avatar.dart';
 import '../models/subscription_models.dart';
-import '../services/revenuecat_service.dart';
-import '../services/localization_service.dart';
-import 'package:purchases_flutter/purchases_flutter.dart';
 
-/// Paywall avec design V3 - Animations gaming + particles
-class PaywallScreen extends StatefulWidget {
-  final PaywallContext context;
-  final String? customTitle;
-  final String? customMessage;
+/// V3 - Ton design actuel + animations gaming du trial offer
+/// Garde le même contenu/structure mais avec particules et animations progressives
+class PaywallPreviewStandaloneV3 extends StatefulWidget {
+  final PaywallContext paywallContext;
 
-  const PaywallScreen({
+  const PaywallPreviewStandaloneV3({
     Key? key,
-    required this.context,
-    this.customTitle,
-    this.customMessage,
+    required this.paywallContext,
   }) : super(key: key);
 
   @override
-  State<PaywallScreen> createState() => _PaywallScreenState();
+  State<PaywallPreviewStandaloneV3> createState() => _PaywallPreviewStandaloneV3State();
 }
 
-class _PaywallScreenState extends State<PaywallScreen>
+class _PaywallPreviewStandaloneV3State extends State<PaywallPreviewStandaloneV3>
     with TickerProviderStateMixin {
   SubscriptionPeriod _selectedPeriod = SubscriptionPeriod.monthly;
   bool _showCloseButton = false;
-  bool _isPurchasing = false;
-  List<Package> _availablePackages = [];
-  bool _isLoadingPackages = true;
 
   // Animation controllers
   late AnimationController _particleController;
@@ -201,108 +191,6 @@ class _PaywallScreenState extends State<PaywallScreen>
 
     // Haptic feedback
     HapticFeedback.mediumImpact();
-
-    // Load RevenueCat packages
-    _loadPackages();
-  }
-
-  /// Load available packages from RevenueCat
-  Future<void> _loadPackages() async {
-    try {
-      final packages = await RevenueCatService().getAvailablePackages();
-      if (mounted) {
-        setState(() {
-          _availablePackages = packages;
-          _isLoadingPackages = false;
-        });
-      }
-    } catch (e) {
-      debugPrint('❌ Error loading packages: $e');
-      if (mounted) {
-        setState(() {
-          _isLoadingPackages = false;
-        });
-      }
-    }
-  }
-
-  /// Handle purchase of selected package
-  Future<void> _handlePurchase() async {
-    if (_isPurchasing || _availablePackages.isEmpty) return;
-
-    setState(() {
-      _isPurchasing = true;
-    });
-
-    try {
-      // Find the package for the selected period
-      Package? selectedPackage;
-
-      for (final package in _availablePackages) {
-        final packageId = package.identifier.toLowerCase();
-
-        if (_selectedPeriod == SubscriptionPeriod.weekly &&
-            packageId.contains('weekly')) {
-          selectedPackage = package;
-          break;
-        } else if (_selectedPeriod == SubscriptionPeriod.monthly &&
-                   packageId.contains('monthly')) {
-          selectedPackage = package;
-          break;
-        } else if (_selectedPeriod == SubscriptionPeriod.annual &&
-                   packageId.contains('annual')) {
-          selectedPackage = package;
-          break;
-        }
-      }
-
-      // Default to monthly package if no match found
-      selectedPackage ??= _availablePackages.firstWhere(
-        (p) => p.identifier.toLowerCase().contains('monthly'),
-        orElse: () => _availablePackages.first,
-      );
-
-      debugPrint('🛒 Purchasing package: ${selectedPackage.identifier}');
-
-      final customerInfo = await RevenueCatService().purchasePackage(selectedPackage);
-
-      if (customerInfo != null && mounted) {
-        // Purchase successful
-        HapticFeedback.heavyImpact();
-        Navigator.pop(context, true); // Return true to indicate successful purchase
-      }
-    } on PlatformException catch (e) {
-      debugPrint('❌ Purchase error: ${e.code} - ${e.message}');
-
-      if (mounted) {
-        // Show error to user (not cancelled)
-        if (e.code != 'PURCHASE_CANCELLED') {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(e.message ?? 'Purchase failed'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      debugPrint('❌ Unexpected purchase error: $e');
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('An error occurred. Please try again.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isPurchasing = false;
-        });
-      }
-    }
   }
 
   void _startAnimationSequence() async {
@@ -359,61 +247,69 @@ class _PaywallScreenState extends State<PaywallScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<LocalizationService>(
-      builder: (context, locService, _) {
-        final languageCode = locService.currentLanguageCode;
-        final isFrench = languageCode == 'fr';
+    final locale = Localizations.localeOf(context);
+    final languageCode = locale.languageCode == 'fr' ? 'fr' : 'en';
+    final isFrench = languageCode == 'fr';
 
-        // Contextual content
-        final avatarType = PaywallService.getContextAvatar(widget.context);
-        final benefits = PaywallService.getContextBenefits(widget.context, languageCode);
-        final title = PaywallService.getContextTitle(widget.context, languageCode);
-        final bubbleText = PaywallService.getCoachBubbleText(widget.context, languageCode);
+    // Contextual content
+    final avatarType = PaywallService.getContextAvatar(widget.paywallContext);
+    final benefits = PaywallService.getContextBenefits(widget.paywallContext, languageCode);
+    final title = PaywallService.getContextTitle(widget.paywallContext, languageCode);
+    final bubbleText = PaywallService.getCoachBubbleText(widget.paywallContext, languageCode);
 
-        return _buildPaywallContent(context, isFrench, languageCode, avatarType, benefits, title, bubbleText);
-      },
-    );
-  }
-
-  Widget _buildPaywallContent(
-    BuildContext context,
-    bool isFrench,
-    String languageCode,
-    CoachRyzeAvatarType avatarType,
-    List<Map<String, String>> benefits,
-    String title,
-    String bubbleText,
-  ) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: RadialGradient(
-            center: Alignment.center,
-            radius: 1.5,
-            colors: [
-              Color(0xFF1A1F4E),
-              Color(0xFF0A0E27),
-            ],
-          ),
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const RadialGradient(
+          center: Alignment.center,
+          radius: 1.5,
+          colors: [
+            Color(0xFF1A1F4E),
+            Color(0xFF0A0E27),
+          ],
         ),
-        child: SafeArea(
-          child: Stack(
-            children: [
-              // Animated particles background
-              ..._buildFloatingParticles(),
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(28),
+          topRight: Radius.circular(28),
+        ),
+      ),
+      child: Stack(
+        children: [
+          // Animated particles background (comme trial offer)
+          ..._buildFloatingParticles(),
 
-              // Main content - Full screen
-              Stack(
-                children: [
-                  // HERO SECTION (Avatar + Bubble) - Starts centered, then moves up smoothly
-                  AnimatedBuilder(
-                    animation: _heroMoveAnimation,
-                    builder: (context, child) {
-                      final screenHeight = MediaQuery.of(context).size.height;
-                      final centerY = (screenHeight - 300) / 2;
-                      final topY = 15.0;
-                      final currentY = centerY + (_heroMoveAnimation.value * (topY - centerY));
+          // Main content - Taille fixe
+          SizedBox(
+            height: MediaQuery.of(context).size.height * 0.85,
+            child: Stack(
+              children: [
+                // Handle bar and close button at top
+                if (_showContent)
+                  Column(
+                    children: [
+                      const SizedBox(height: 4),
+                      Center(
+                        child: Container(
+                          width: 36,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.withOpacity(0.3),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      if (_showCloseButton) _buildCloseButton(),
+                    ],
+                  ),
+
+                // HERO SECTION (Avatar + Bubble) - Starts centered, then moves up smoothly
+                AnimatedBuilder(
+                  animation: _heroMoveAnimation,
+                  builder: (context, child) {
+                    final screenHeight = MediaQuery.of(context).size.height * 0.85;
+                    final centerY = (screenHeight - 300) / 2;
+                    final topY = 50.0;
+                    final currentY = centerY + (_heroMoveAnimation.value * (topY - centerY));
 
                     return Positioned(
                       top: currentY,
@@ -433,69 +329,35 @@ class _PaywallScreenState extends State<PaywallScreen>
                   },
                 ),
 
-
-                  // REST OF CONTENT - Appears after hero moves up
-                  if (_showContent)
-                    Positioned(
-                      top: 135,
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      child: SingleChildScrollView(
+                // REST OF CONTENT - Appears after hero moves up
+                if (_showContent)
+                  Positioned(
+                    top: 160,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: SingleChildScrollView(
                       child: Column(
                         children: [
-                          const SizedBox(height: 8),
-
-                          // Premium unlock title
+                          // Title - Slides up
                           SlideTransition(
                             position: _titleSlide,
                             child: FadeTransition(
                               opacity: _titleOpacity,
-                              child: _buildPremiumUnlockTitle(isFrench),
+                              child: _buildTitle(title),
                             ),
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 14),
 
-                          // Blue container with subtitle + benefits - Slides up
+                          // Benefits - Slides up
                           SlideTransition(
                             position: _benefitsSlide,
                             child: FadeTransition(
                               opacity: _benefitsOpacity,
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 24),
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF1C2951),
-                                    borderRadius: BorderRadius.circular(16),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.05),
-                                        blurRadius: 10,
-                                        offset: const Offset(0, 4),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Column(
-                                    children: [
-                                      // Subtitle
-                                      Padding(
-                                        padding: const EdgeInsets.only(top: 20, left: 20, right: 20),
-                                        child: _buildSubtitle(title),
-                                      ),
-                                      const SizedBox(height: 16),
-
-                                      // Benefits
-                                      Padding(
-                                        padding: const EdgeInsets.only(bottom: 20, left: 20, right: 20),
-                                        child: _buildBenefits(benefits, isFrench),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
+                              child: _buildBenefits(benefits, isFrench),
                             ),
                           ),
-                          const SizedBox(height: 20),
+                          const SizedBox(height: 14),
 
                           // Banner - Slides up
                           SlideTransition(
@@ -505,7 +367,7 @@ class _PaywallScreenState extends State<PaywallScreen>
                               child: _buildTrialBanner(isFrench),
                             ),
                           ),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 10),
 
                           // Pricing cards - Slides up
                           SlideTransition(
@@ -515,7 +377,7 @@ class _PaywallScreenState extends State<PaywallScreen>
                               child: _buildPricingCards(isFrench),
                             ),
                           ),
-                          const SizedBox(height: 20),
+                          const SizedBox(height: 26),
 
                           // CTA - Slides up
                           SlideTransition(
@@ -525,22 +387,21 @@ class _PaywallScreenState extends State<PaywallScreen>
                               child: _buildCTA(isFrench),
                             ),
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 16),
 
                           // Skip button (delayed)
                           if (_showCloseButton) _buildSkipButton(isFrench),
 
                           // Bottom padding
-                          SizedBox(height: MediaQuery.of(context).padding.bottom + 40),
+                          SizedBox(height: MediaQuery.of(context).padding.bottom + 4),
                         ],
                       ),
                     ),
                   ),
-                ],
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -584,21 +445,27 @@ class _PaywallScreenState extends State<PaywallScreen>
   }
 
   Widget _buildCloseButton() {
-    return IconButton(
-      onPressed: () {
-        HapticFeedback.lightImpact();
-        Navigator.pop(context);
-      },
-      icon: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.15),
-          shape: BoxShape.circle,
-        ),
-        child: const Icon(
-          Icons.close,
-          size: 20,
-          color: Colors.white,
+    return Align(
+      alignment: Alignment.topRight,
+      child: Padding(
+        padding: const EdgeInsets.only(right: 16, bottom: 8),
+        child: IconButton(
+          onPressed: () {
+            HapticFeedback.lightImpact();
+            Navigator.pop(context);
+          },
+          icon: Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: Colors.grey.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.close,
+              size: 18,
+              color: Color(0xFF64748B),
+            ),
+          ),
         ),
       ),
     );
@@ -669,36 +536,6 @@ class _PaywallScreenState extends State<PaywallScreen>
     );
   }
 
-  Widget _buildPremiumUnlockTitle(bool isFrench) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Text(
-        isFrench ? '🔓 Débloque Ryze Premium' : '🔓 Unlock Ryze Premium',
-        textAlign: TextAlign.center,
-        style: const TextStyle(
-          fontSize: 26,
-          fontWeight: FontWeight.w900,
-          color: Colors.white,
-          letterSpacing: -0.5,
-          height: 1.2,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSubtitle(String subtitle) {
-    return Text(
-      subtitle,
-      textAlign: TextAlign.center,
-      style: const TextStyle(
-        fontSize: 17,
-        fontWeight: FontWeight.w700,
-        color: Colors.white,
-        height: 1.35,
-      ),
-    );
-  }
-
   Widget _buildTitle(String title) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -717,24 +554,27 @@ class _PaywallScreenState extends State<PaywallScreen>
   }
 
   Widget _buildBenefits(List<Map<String, String>> benefits, bool isFrench) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: benefits.take(3).toList().asMap().entries.map((entry) {
-        final index = entry.key;
-        final benefit = entry.value;
-        return Padding(
-          padding: EdgeInsets.only(bottom: index < 2 ? 10.0 : 0),
-          child: Text(
-            '${benefit['icon']} ${benefit['text']}',
-            style: const TextStyle(
-              fontSize: 14,
-              color: Colors.white,
-              fontWeight: FontWeight.w600,
-              height: 1.4,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: benefits.take(3).toList().asMap().entries.map((entry) {
+          final index = entry.key;
+          final benefit = entry.value;
+          return Padding(
+            padding: EdgeInsets.only(bottom: index < 2 ? 10.0 : 0),
+            child: Text(
+              '${benefit['icon']} ${benefit['text']}',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.white.withOpacity(0.9),
+                fontWeight: FontWeight.w600,
+                height: 1.4,
+              ),
             ),
-          ),
-        );
-      }).toList(),
+          );
+        }).toList(),
+      ),
     );
   }
 
@@ -744,18 +584,9 @@ class _PaywallScreenState extends State<PaywallScreen>
       margin: const EdgeInsets.symmetric(horizontal: 24),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFFCD7F32), Color(0xFFB8860B)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+          colors: [Color(0xFFFEF3C7), Color(0xFFFCD34D)],
         ),
         borderRadius: BorderRadius.circular(8),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFFCD7F32).withOpacity(0.2),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
       child: Center(
         child: Text(
@@ -763,7 +594,7 @@ class _PaywallScreenState extends State<PaywallScreen>
           style: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w900,
-            color: Colors.white,
+            color: Color(0xFF92400E),
             letterSpacing: 1,
           ),
         ),
@@ -773,66 +604,25 @@ class _PaywallScreenState extends State<PaywallScreen>
 
   Widget _buildPricingCards(bool isFrench) {
     return SizedBox(
-      height: 140,
+      height: 120,
       child: Padding(
-        padding: const EdgeInsets.only(left: 20, right: 20, top: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Annual (with savings badge on top)
+            // Annual
             Expanded(
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  // Savings badge on top
-                  Positioned(
-                    top: -18,
-                    left: 0,
-                    right: 0,
-                    child: Center(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFFCD7F32), Color(0xFFB8860B)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(8),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFFCD7F32).withOpacity(0.3),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Text(
-                          isFrench ? 'Économise 49%' : 'Save 49%',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w900,
-                            color: Colors.white,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  // Pricing card
-                  _buildPricingCard(
-                    period: SubscriptionPeriod.annual,
-                    price: '69,99€',
-                    interval: isFrench ? '/an' : '/yr',
-                    badge: isFrench ? 'Meilleure valeur' : 'Best value',
-                    badgeColor: const Color(0xFFD4A574),
-                    description: isFrench ? 'Économise 49%' : 'Save 49%',
-                    equivalentPrice: isFrench ? '5,83€/mois' : '€5.83/mo',
-                    savingsText: null, // Remove from inside the card
-                    isHighlighted: true,
-                    isFrench: isFrench,
-                  ),
-                ],
+              child: _buildPricingCard(
+                period: SubscriptionPeriod.annual,
+                price: '69,99€',
+                interval: '/an',
+                badge: isFrench ? 'Meilleure valeur' : 'Best value',
+                badgeColor: const Color(0xFFFFD700),
+                description: 'Économise 49%',
+                equivalentPrice: isFrench ? '5,83€/mois' : '€5.83/mo',
+                savingsText: isFrench ? 'Économise 49%' : 'Save 49%',
+                isHighlighted: true,
+                isFrench: isFrench,
               ),
             ),
             const SizedBox(width: 8),
@@ -842,10 +632,10 @@ class _PaywallScreenState extends State<PaywallScreen>
               child: _buildPricingCard(
                 period: SubscriptionPeriod.monthly,
                 price: '9,99€',
-                interval: isFrench ? '/mois' : '/mo',
+                interval: '/mois',
                 badge: isFrench ? 'Le plus choisi' : 'Most popular',
-                badgeColor: const Color(0xFFD4A574),
-                description: isFrench ? 'Sans engagement' : 'No commitment',
+                badgeColor: const Color(0xFFFF8C00),
+                description: 'Sans engagement',
                 isFrench: isFrench,
               ),
             ),
@@ -856,9 +646,9 @@ class _PaywallScreenState extends State<PaywallScreen>
               child: _buildPricingCard(
                 period: SubscriptionPeriod.weekly,
                 price: '2,99€',
-                interval: isFrench ? '/sem' : '/wk',
+                interval: '/sem',
                 badge: isFrench ? 'Pour tester' : 'Try it',
-                badgeColor: const Color(0xFFD4A574),
+                badgeColor: const Color(0xFF5AC8FA),
                 equivalentPrice: isFrench ? '12,96€/mois' : '€12.96/mo',
                 isFrench: isFrench,
               ),
@@ -897,24 +687,28 @@ class _PaywallScreenState extends State<PaywallScreen>
         setState(() => _selectedPeriod = period);
         HapticFeedback.selectionClick();
       },
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          AnimatedContainer(
-                  height: 105,
+      child: AnimatedBuilder(
+        animation: _pulseAnimation,
+        builder: (context, child) {
+          return Transform.scale(
+            scale: isSelected ? _pulseAnimation.value : 1.0,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                AnimatedContainer(
                   duration: const Duration(milliseconds: 250),
                   curve: Curves.easeOut,
                   decoration: BoxDecoration(
-                    color: isSelected ? const Color(0xFFF5E6D3) : Colors.white,
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: isSelected ? const Color(0xFFB8860B) : const Color(0xFFE5E7EB),
-                      width: 3,
+                      color: isSelected ? const Color(0xFFFFD700) : const Color(0xFFE5E7EB),
+                      width: isSelected ? 3 : 2,
                     ),
                     boxShadow: isSelected
                         ? [
                             BoxShadow(
-                              color: const Color(0xFFCD7F32).withOpacity(0.3),
+                              color: const Color(0xFFFF8C00).withOpacity(0.3),
                               blurRadius: 12,
                               offset: const Offset(0, 4),
                             ),
@@ -924,7 +718,6 @@ class _PaywallScreenState extends State<PaywallScreen>
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
               child: Column(
-                mainAxisSize: MainAxisSize.max,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   // Name + Radio
@@ -969,7 +762,7 @@ class _PaywallScreenState extends State<PaywallScreen>
                       ),
                     ],
                   ),
-                  const Spacer(),
+                  const SizedBox(height: 10),
 
                   // Price
                   SizedBox(
@@ -1001,6 +794,21 @@ class _PaywallScreenState extends State<PaywallScreen>
                     ),
                   ),
 
+                  // Savings text
+                  if (savingsText != null) ...[
+                    const SizedBox(height: 2),
+                    Center(
+                      child: Text(
+                        savingsText,
+                        style: const TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF10B981),
+                          height: 1,
+                        ),
+                      ),
+                    ),
+                  ],
                   const Spacer(),
                 ],
               ),
@@ -1033,12 +841,15 @@ class _PaywallScreenState extends State<PaywallScreen>
           ),
         ],
       ),
+          );
+        },
+      ),
     );
   }
 
   /// Get CTA button gradient colors based on context
   List<Color> _getCtaGradient() {
-    switch (widget.context) {
+    switch (widget.paywallContext) {
       case PaywallContext.scanner:
         return [const Color(0xFFFFD700), const Color(0xFFFFA500)]; // Gold gradient
 
@@ -1063,6 +874,8 @@ class _PaywallScreenState extends State<PaywallScreen>
   }
 
   Widget _buildCTA(bool isFrench) {
+    final gradientColors = _getCtaGradient();
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
@@ -1071,22 +884,25 @@ class _PaywallScreenState extends State<PaywallScreen>
             width: double.infinity,
             height: 56,
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFFCD7F32), Color(0xFFB8860B)],
+              gradient: LinearGradient(
+                colors: gradientColors,
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFFCD7F32).withOpacity(0.3),
+                  color: gradientColors[0].withOpacity(0.4),
                   blurRadius: 24,
                   offset: const Offset(0, 8),
                 ),
               ],
             ),
             child: ElevatedButton(
-              onPressed: _isPurchasing ? null : _handlePurchase,
+              onPressed: () {
+                HapticFeedback.mediumImpact();
+                Navigator.pop(context);
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.transparent,
                 shadowColor: Colors.transparent,
@@ -1094,40 +910,31 @@ class _PaywallScreenState extends State<PaywallScreen>
                   borderRadius: BorderRadius.circular(16),
                 ),
               ),
-              child: _isPurchasing
-                ? const SizedBox(
-                    height: 24,
-                    width: 24,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.5,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    isFrench ? 'DÉBLOQUER MON COACH' : 'UNLOCK MY COACH',
+                    style: const TextStyle(
+                      color: Color(0xFF1A1A1A),
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.3,
+                      height: 1.2,
                     ),
-                  )
-                : Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        isFrench ? 'DÉBLOQUER MON COACH' : 'UNLOCK MY COACH',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 0.3,
-                          height: 1.2,
-                        ),
-                      ),
-                      Text(
-                        isFrench ? '7 JOURS GRATUITS' : '7 DAYS FREE',
-                        style: const TextStyle(
-                          color: Color(0xFF1A1A1A),
-                          fontSize: 15,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 0.3,
-                          height: 1.2,
-                        ),
-                      ),
-                    ],
                   ),
+                  Text(
+                    isFrench ? '7 JOURS GRATUITS' : '7 DAYS FREE',
+                    style: const TextStyle(
+                      color: Color(0xFF1A1A1A),
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.3,
+                      height: 1.2,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 8),
@@ -1136,7 +943,7 @@ class _PaywallScreenState extends State<PaywallScreen>
             textAlign: TextAlign.center,
             style: const TextStyle(
               fontSize: 11,
-              color: Colors.white,
+              color: Color(0xFF6B7280),
               fontWeight: FontWeight.w600,
             ),
           ),

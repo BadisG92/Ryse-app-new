@@ -1,12 +1,113 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../services/exercise_ai_analysis_service.dart';
 import '../services/localization_service.dart';
 import '../services/translations.dart';
+import '../services/paywall_service.dart';
+import '../services/feature_trial_service.dart';
+import '../services/subscription_service.dart';
 
 // Export des classes du service pour utilisation dans le widget
 export '../services/exercise_ai_analysis_service.dart' show ExerciseAnalysis, ExerciseRecommendation;
+
+// Badge Premium pour Exercise Analysis
+class _ExerciseAnalysisPremiumBadge extends StatefulWidget {
+  final bool isLocked;
+  final bool isFrench;
+
+  const _ExerciseAnalysisPremiumBadge({
+    required this.isLocked,
+    required this.isFrench,
+  });
+
+  @override
+  State<_ExerciseAnalysisPremiumBadge> createState() => _ExerciseAnalysisPremiumBadgeState();
+}
+
+class _ExerciseAnalysisPremiumBadgeState extends State<_ExerciseAnalysisPremiumBadge> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _pulseAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    );
+
+    _pulseAnimation = Tween<double>(
+      begin: 1.0,
+      end: 1.08,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOut,
+    ));
+
+    _controller.repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final badge = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: widget.isLocked
+            ? [const Color(0xFFFFD700), const Color(0xFFFFA500)] // Gold for UPGRADE
+            : [const Color(0xFF0B132B), const Color(0xFF1C2951)], // Blue DA for TRY FREE
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: widget.isLocked
+              ? const Color(0xFFFFD700).withOpacity(0.4)
+              : const Color(0xFF0B132B).withOpacity(0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            widget.isLocked ? LucideIcons.lockOpen : LucideIcons.gift,
+            size: 11,
+            color: Colors.white,
+          ),
+          const SizedBox(width: 5),
+          Text(
+            widget.isLocked
+              ? (widget.isFrench ? 'UPGRADE' : 'UPGRADE')
+              : (widget.isFrench ? 'ESSAI GRATUIT' : 'TRY FREE'),
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    return ScaleTransition(
+      scale: _pulseAnimation,
+      child: badge,
+    );
+  }
+}
 
 class ExerciseAiAnalysisWidget extends StatefulWidget {
   final String exerciseName;
@@ -31,11 +132,33 @@ class _ExerciseAiAnalysisWidgetState extends State<ExerciseAiAnalysisWidget> {
   DateTime? _analysisTimestamp;
   bool _hasNewSessions = false;
   String? _errorMessage;
+  bool? _isLocked;
+  bool _isCheckingLock = true;
 
   @override
   void initState() {
     super.initState();
     _loadCachedAnalysis();
+    _checkLockStatus();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Re-check lock status when widget becomes visible again
+    _checkLockStatus();
+  }
+
+  Future<void> _checkLockStatus() async {
+    final locked = await PaywallService.instance.isFeatureLocked(
+      PaywallContext.exerciseAnalysis,
+    );
+    if (mounted) {
+      setState(() {
+        _isLocked = locked;
+        _isCheckingLock = false;
+      });
+    }
   }
 
   @override
@@ -98,6 +221,19 @@ class _ExerciseAiAnalysisWidgetState extends State<ExerciseAiAnalysisWidget> {
   Future<void> _generateAnalysis() async {
     if (!mounted) return;
 
+    // Vérifier l'accès (Premium ou 1er essai gratuit)
+    // Ne PAS marquer comme utilisé ici - on le fera seulement si l'analyse réussit
+    final canUse = await PaywallService.instance.canUseFeature(
+      context: context,
+      paywallContext: PaywallContext.exerciseAnalysis,
+      markAsUsed: false, // ← Ne pas marquer maintenant
+    );
+
+    if (!canUse) {
+      // Le paywall s'est affiché automatiquement
+      return;
+    }
+
     final locService = context.read<LocalizationService>();
     final languageCode = locService.currentLanguageCode;
 
@@ -119,6 +255,14 @@ class _ExerciseAiAnalysisWidgetState extends State<ExerciseAiAnalysisWidget> {
         analysis: analysis,
         sessionCount: widget.sessionHistory.length,
       );
+
+      // ✅ Marquer le trial comme utilisé UNIQUEMENT si l'analyse a été générée avec succès
+      if (!SubscriptionService.instance.isPremium) {
+        await FeatureTrialService.instance.markFeatureAsUsed(
+          FeatureTrialService.keyExerciseAnalysis,
+        );
+        debugPrint('✅ Exercise Analysis trial marked as used after successful generation');
+      }
 
       if (!mounted) return;
 
@@ -227,120 +371,155 @@ class _ExerciseAiAnalysisWidgetState extends State<ExerciseAiAnalysisWidget> {
       return _buildUnavailableState(languageCode);
     }
 
+    final isPremium = SubscriptionService.instance.isPremium;
+    final isLocked = _isLocked ?? false;
+
     // Si 3 séances ou plus, afficher le bouton d'analyse
-    return GestureDetector(
-      onTap: _generateAnalysis,
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 8.0),
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-        decoration: BoxDecoration(
-          color: const Color(0xFF0B132B),
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF0B132B).withOpacity(0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        GestureDetector(
+          onTap: _generateAnalysis,
+          child: Container(
+            margin: const EdgeInsets.symmetric(vertical: 8.0),
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0B132B),
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF0B132B).withOpacity(0.1),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
-          ],
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SvgPicture.asset(
+                  'assets/images/logo_solo.svg',
+                  width: 20,
+                  height: 20,
+                  colorFilter: const ColorFilter.mode(
+                    Colors.white,
+                    BlendMode.srcIn,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'analyze_with_ai'.tr(languageCode),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SvgPicture.asset(
-              'assets/images/logo_solo.svg',
-              width: 20,
-              height: 20,
-              colorFilter: const ColorFilter.mode(
-                Colors.white,
-                BlendMode.srcIn,
-              ),
+        // Badge Premium/Trial visible uniquement pour les non-Premium
+        if (!isPremium && !_isCheckingLock)
+          Positioned(
+            top: -2,
+            right: 8,
+            child: _ExerciseAnalysisPremiumBadge(
+              isLocked: isLocked,
+              isFrench: languageCode == 'fr',
             ),
-            const SizedBox(width: 12),
-            Text(
-              'analyze_with_ai'.tr(languageCode),
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
+          ),
+      ],
     );
   }
 
   Widget _buildUnavailableState(String languageCode) {
     final sessionsNeeded = 3 - widget.sessionHistory.length;
+    final isPremium = SubscriptionService.instance.isPremium;
+    final isLocked = _isLocked ?? false;
 
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8.0),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          margin: const EdgeInsets.symmetric(vertical: 8.0),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.03),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            // Logo Ryze en bleu (sans cercle, même style que le header)
-            SvgPicture.asset(
-              'assets/images/logo_solo.svg',
-              width: 20,
-              height: 20,
-              colorFilter: const ColorFilter.mode(
-                Color(0xFF0B132B),
-                BlendMode.srcIn,
-              ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                // Logo Ryze en bleu (sans cercle, même style que le header)
+                SvgPicture.asset(
+                  'assets/images/logo_solo.svg',
+                  width: 20,
+                  height: 20,
+                  colorFilter: const ColorFilter.mode(
+                    Color(0xFF0B132B),
+                    BlendMode.srcIn,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Texte
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'ai_performance_analysis'.tr(languageCode),
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1A1A1A),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'ai_analysis_unavailable'.tr(languageCode),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF64748B),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        languageCode == 'fr'
+                            ? 'Encore ${sessionsNeeded} séance${sessionsNeeded > 1 ? 's' : ''} à faire'
+                            : '${sessionsNeeded} more session${sessionsNeeded > 1 ? 's' : ''} to go',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF94A3B8),
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 12),
-            // Texte
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'ai_performance_analysis'.tr(languageCode),
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF1A1A1A),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'ai_analysis_unavailable'.tr(languageCode),
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: Color(0xFF64748B),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    languageCode == 'fr'
-                        ? 'Encore ${sessionsNeeded} séance${sessionsNeeded > 1 ? 's' : ''} à faire'
-                        : '${sessionsNeeded} more session${sessionsNeeded > 1 ? 's' : ''} to go',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF94A3B8),
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+          ),
         ),
-      ),
+        // Badge Premium/Trial visible uniquement pour les non-Premium
+        if (!isPremium && !_isCheckingLock)
+          Positioned(
+            top: -2,
+            right: 8,
+            child: _ExerciseAnalysisPremiumBadge(
+              isLocked: isLocked,
+              isFrench: languageCode == 'fr',
+            ),
+          ),
+      ],
     );
   }
 

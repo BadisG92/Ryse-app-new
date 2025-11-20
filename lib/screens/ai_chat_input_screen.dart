@@ -10,6 +10,9 @@ import 'ai_analysis_screen.dart';
 import '../services/gemini_analysis_service_v2.dart';
 import '../models/ai_analysis_models.dart';
 import '../components/ui/coach_ryze_avatar.dart';
+import '../services/paywall_service.dart';
+import '../services/feature_trial_service.dart';
+import '../services/subscription_service.dart';
 
 class AIChatInputScreen extends StatefulWidget {
   final bool isFromDashboard;
@@ -148,6 +151,19 @@ class _AIChatInputScreenState extends State<AIChatInputScreen> {
       return;
     }
 
+    // Vérifier l'accès (Premium ou 1er essai gratuit)
+    // Ne PAS marquer comme utilisé ici - on le fera seulement si l'analyse réussit
+    final canUse = await PaywallService.instance.canUseFeature(
+      context: context,
+      paywallContext: PaywallContext.chatInput,
+      markAsUsed: false, // ← Ne pas marquer maintenant
+    );
+
+    if (!canUse) {
+      // Le paywall s'est affiché automatiquement
+      return;
+    }
+
     setState(() {
       _isAnalyzing = true;
       _errorMessage = null;
@@ -163,6 +179,14 @@ class _AIChatInputScreenState extends State<AIChatInputScreen> {
       if (!mounted) return;
 
       if (result.success && result.detectedFoods.isNotEmpty) {
+        // ✅ Marquer le trial comme utilisé UNIQUEMENT si l'analyse a réussi
+        if (!SubscriptionService.instance.isPremium) {
+          await FeatureTrialService.instance.markFeatureAsUsed(
+            FeatureTrialService.keyChat,
+          );
+          debugPrint('✅ Chat Coach trial marked as used after successful analysis');
+        }
+
         // Naviguer vers AIAnalysisScreen avec les résultats
         Navigator.pushReplacement(
           context,

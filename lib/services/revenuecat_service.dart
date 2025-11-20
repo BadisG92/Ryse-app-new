@@ -70,9 +70,7 @@ class RevenueCatService {
         configuration.appUserID = userId;
       }
 
-      // Active le mode debug en développement
-      configuration.observerMode = false;
-
+      // Configuration sans observerMode (supprimé dans RevenueCat 8.x)
       await Purchases.configure(configuration);
 
       // Active les logs en développement
@@ -208,7 +206,8 @@ class RevenueCatService {
   }
 
   /// Achète un package d'abonnement
-  Future<PurchaseResult?> purchasePackage(Package package) async {
+  /// Retourne CustomerInfo directement (RevenueCat 8.x)
+  Future<CustomerInfo?> purchasePackage(Package package) async {
     if (!_isInitialized) {
       debugPrint('⚠️ RevenueCat non initialisé');
       return null;
@@ -216,15 +215,15 @@ class RevenueCatService {
 
     try {
       debugPrint('🛒 Achat de l\'abonnement: ${package.identifier}');
-      final purchaseResult = await Purchases.purchasePackage(package);
-      _currentCustomerInfo = purchaseResult.customerInfo;
+      final customerInfo = await Purchases.purchasePackage(package);
+      _currentCustomerInfo = customerInfo;
 
-      if (_isPremiumActive(purchaseResult.customerInfo)) {
+      if (_isPremiumActive(customerInfo)) {
         debugPrint('✅ Abonnement activé avec succès!');
         _subscriptionStatusController.add(true);
       }
 
-      return purchaseResult;
+      return customerInfo;
     } on PlatformException catch (e) {
       final errorCode = PurchasesErrorHelper.getErrorCode(e);
 

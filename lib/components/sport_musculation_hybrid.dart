@@ -15,6 +15,105 @@ import '../services/localization_service.dart';
 import '../services/tutorial_service.dart';
 import 'package:provider/provider.dart';
 import '../widgets/sport/sport_calendar_view.dart';
+import '../services/paywall_service.dart';
+import '../services/subscription_service.dart';
+
+// Badge Premium pour Coach Ryze Sport
+class _CoachRyzeSportPremiumBadge extends StatefulWidget {
+  final bool isLocked;
+  final bool isFrench;
+
+  const _CoachRyzeSportPremiumBadge({
+    required this.isLocked,
+    required this.isFrench,
+  });
+
+  @override
+  State<_CoachRyzeSportPremiumBadge> createState() => _CoachRyzeSportPremiumBadgeState();
+}
+
+class _CoachRyzeSportPremiumBadgeState extends State<_CoachRyzeSportPremiumBadge> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _pulseAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    );
+
+    _pulseAnimation = Tween<double>(
+      begin: 1.0,
+      end: 1.08,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOut,
+    ));
+
+    _controller.repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final badge = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: widget.isLocked
+            ? [const Color(0xFFFFD700), const Color(0xFFFFA500)] // Gold for UPGRADE
+            : [const Color(0xFF0B132B), const Color(0xFF1C2951)], // Blue DA for TRY FREE
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: widget.isLocked
+              ? const Color(0xFFFFD700).withOpacity(0.4)
+              : const Color(0xFF0B132B).withOpacity(0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            widget.isLocked ? LucideIcons.lockOpen : LucideIcons.gift,
+            size: 11,
+            color: Colors.white,
+          ),
+          const SizedBox(width: 5),
+          Text(
+            widget.isLocked
+              ? (widget.isFrench ? 'UPGRADE' : 'UPGRADE')
+              : (widget.isFrench ? 'ESSAI GRATUIT' : 'TRY FREE'),
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    return ScaleTransition(
+      scale: _pulseAnimation,
+      child: badge,
+    );
+  }
+}
 
 class SportMusculationHybrid extends StatefulWidget {
   final VoidCallback? onOpenCalendar;
@@ -209,93 +308,10 @@ class SportMusculationHybridState extends State<SportMusculationHybrid> {
     required String title,
     required VoidCallback onTap,
   }) {
-    return Consumer<LocalizationService>(
-      builder: (context, locService, _) => GestureDetector(
-        onTap: onTap,
-        child: Stack(
-          clipBehavior: Clip.none, // Permet à la bulle de sortir du bouton
-          children: [
-            // Bouton principal
-            Container(
-              key: key,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF0B132B),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Center(
-                      child: SvgPicture.asset(
-                        'assets/images/logo_solo.svg',
-                        width: 24,
-                        height: 24,
-                        colorFilter: const ColorFilter.mode(
-                          Colors.white,
-                          BlendMode.srcIn,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    height: 36,
-                    child: Center(
-                      child: Text(
-                        'Coach\nRyze',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF1A1A1A),
-                          height: 1.2,
-                        ),
-                        textAlign: TextAlign.center,
-                        maxLines: 2,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // Bulle "For you" positionnée au-dessus
-            Positioned(
-              top: -10, // Moitié sur le bouton, moitié en dehors
-              right: 8,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0B132B), // Couleur principale de l'app (bleu marine)
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF0B132B).withOpacity(0.2),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Text(
-                  locService.currentLanguageCode == 'fr' ? 'Pour toi' : 'For you',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+    return _CoachRyzeButtonWithBadge(
+      buttonKey: key,
+      title: title,
+      onTap: onTap,
     );
   }
 
@@ -530,7 +546,20 @@ class SportMusculationHybridState extends State<SportMusculationHybrid> {
     _showSessionNameModal();
   }
 
-  void _navigateToAIWorkoutGenerator() {
+  void _navigateToAIWorkoutGenerator() async {
+    // Vérifier l'accès (Premium ou 1er essai gratuit)
+    // Ne PAS marquer comme utilisé ici - on le fera seulement si le workout est généré
+    final canUse = await PaywallService.instance.canUseFeature(
+      context: context,
+      paywallContext: PaywallContext.workoutGenerator,
+      markAsUsed: false, // ← Ne pas marquer maintenant
+    );
+
+    if (!canUse) {
+      // Le paywall s'est affiché automatiquement
+      return;
+    }
+
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -1190,5 +1219,159 @@ class SportMusculationHybridState extends State<SportMusculationHybrid> {
     setState(() {
       _showCalendar = true;
     });
+  }
+}
+
+// Widget stateful pour le bouton Coach Ryze avec gestion du badge Premium
+class _CoachRyzeButtonWithBadge extends StatefulWidget {
+  final Key? buttonKey;
+  final String title;
+  final VoidCallback onTap;
+
+  const _CoachRyzeButtonWithBadge({
+    this.buttonKey,
+    required this.title,
+    required this.onTap,
+  });
+
+  @override
+  State<_CoachRyzeButtonWithBadge> createState() => _CoachRyzeButtonWithBadgeState();
+}
+
+class _CoachRyzeButtonWithBadgeState extends State<_CoachRyzeButtonWithBadge> {
+  bool? _isLocked;
+  bool _isCheckingLock = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkLockStatus();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Re-check lock status when widget becomes visible again
+    _checkLockStatus();
+  }
+
+  Future<void> _checkLockStatus() async {
+    final locked = await PaywallService.instance.isFeatureLocked(
+      PaywallContext.workoutGenerator,
+    );
+    if (mounted) {
+      setState(() {
+        _isLocked = locked;
+        _isCheckingLock = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isPremium = SubscriptionService.instance.isPremium;
+    final isLocked = _isLocked ?? false;
+
+    return Consumer<LocalizationService>(
+      builder: (context, locService, _) => GestureDetector(
+        onTap: widget.onTap,
+        child: Stack(
+          clipBehavior: Clip.none, // Permet aux badges de sortir du bouton
+          children: [
+            // Bouton principal
+            Container(
+              key: widget.buttonKey,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0B132B),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Center(
+                      child: SvgPicture.asset(
+                        'assets/images/logo_solo.svg',
+                        width: 24,
+                        height: 24,
+                        colorFilter: const ColorFilter.mode(
+                          Colors.white,
+                          BlendMode.srcIn,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    height: 36,
+                    child: Center(
+                      child: Text(
+                        'Coach\nRyze',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1A1A1A),
+                          height: 1.2,
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Badge "For you" visible uniquement pour les Premium
+            if (isPremium && !_isCheckingLock)
+              Positioned(
+                top: -10,
+                right: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0B132B),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF0B132B).withOpacity(0.2),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    locService.currentLanguageCode == 'fr' ? 'Pour toi' : 'For you',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+
+            // Badge Premium/Trial visible uniquement pour les non-Premium
+            if (!isPremium && !_isCheckingLock)
+              Positioned(
+                top: -10,
+                right: 8,
+                child: _CoachRyzeSportPremiumBadge(
+                  isLocked: isLocked,
+                  isFrench: locService.currentLanguageCode == 'fr',
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 } 
