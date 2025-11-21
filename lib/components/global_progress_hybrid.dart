@@ -17,7 +17,7 @@ import '../providers/weight_notifier.dart';
 import '../services/translations.dart';
 import '../services/localization_service.dart';
 import '../services/global_state_manager.dart';
-import '../services/tutorial_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class GlobalProgress extends StatefulWidget {
   const GlobalProgress({super.key});
@@ -74,22 +74,40 @@ class _GlobalProgressState extends State<GlobalProgress> {
 
   /// Vérifie si c'est la première visite et lance le tutorial
   Future<void> _checkAndLaunchTutorial() async {
-    // Mode production : tutoriels une seule fois
-    const bool debugMode = false;
+    debugPrint('🔍 Vérification du tutorial Progression Globale...');
 
-    final prefs = await SharedPreferences.getInstance();
-    final tutorialShown = prefs.getBool('global_progress_tutorial_shown') ?? false;
+    // ✅ VÉRIFIER DANS SUPABASE si le tutorial est déjà complété
+    final supabase = Supabase.instance.client;
+    final user = supabase.auth.currentUser;
 
-    if ((debugMode || !tutorialShown) && mounted) {
+    if (user != null) {
+      try {
+        final response = await supabase
+            .from('users')
+            .select('tutorial_progression_completed')
+            .eq('id', user.id)
+            .single()
+            .timeout(const Duration(seconds: 3));
+
+        final isCompleted = response['tutorial_progression_completed'] as bool? ?? false;
+        debugPrint('📊 Tutorial Progression dans Supabase: $isCompleted');
+
+        if (isCompleted) {
+          debugPrint('✅ Tutorial Progression déjà complété - Arrêt');
+          return;
+        }
+      } catch (e) {
+        debugPrint('⚠️ Erreur vérification Supabase: $e - On continue quand même');
+      }
+    }
+
+    if (mounted) {
       // Petit délai pour que la page soit montée (welcome page s'affiche rapidement)
       await Future.delayed(const Duration(milliseconds: 300));
 
       if (mounted) {
+        debugPrint('🚀 Lancement du tutorial Progression...');
         await _showProgressTutorial();
-        // Marquer le tutorial comme vu (sauf en mode debug)
-        if (!debugMode) {
-          await prefs.setBool('global_progress_tutorial_shown', true);
-        }
       }
     }
   }

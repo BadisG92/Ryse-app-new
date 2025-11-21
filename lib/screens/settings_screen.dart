@@ -11,6 +11,8 @@ import '../services/header_cache_service.dart';
 import '../services/localization_service.dart';
 import '../services/translations.dart';
 import '../services/global_state_manager.dart';
+import '../services/revenuecat_service.dart';
+import '../services/unified_subscription_service.dart';
 import 'package:provider/provider.dart';
 import '../providers/goals_notifier.dart';
 import '../providers/weight_notifier.dart';
@@ -22,6 +24,14 @@ import '../pages/ryze_app.dart';
 import '../core/infrastructure/migration/migration_controller.dart';
 import '../models/notification_models.dart';
 import '../services/notification_service.dart';
+import 'account_management_screen.dart';
+import 'privacy_screen.dart';
+import 'help_support_screen.dart';
+import 'about_screen.dart';
+import 'delete_account_screen.dart';
+import 'auth/login_screen.dart';
+import 'paywall_screen.dart';
+import '../services/paywall_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -1059,6 +1069,11 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
               child: SingleChildScrollView(
                 child: Column(
                 children: [
+                    // Cartouche Premium (uniquement pour utilisateurs non-premium)
+                    Consumer<LocalizationService>(
+                      builder: (context, locService, _) => _buildPremiumBanner(locService.currentLanguageCode),
+                    ),
+
                     // Section Profil
                     Consumer<LocalizationService>(
                       builder: (context, locService, child) => _buildExpandableSection(
@@ -1777,15 +1792,52 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                 icon: LucideIcons.mail,
                                 title: 'email_password'.tr(locService.currentLanguageCode),
                                 onTap: () {
-                                  // Navigation vers page compte
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const AccountManagementScreen(),
+                                    ),
+                                  );
                                 },
+                              ),
+                              Consumer<LocalizationService>(
+                                builder: (context, locService, _) => _buildListTile(
+                                  icon: LucideIcons.creditCard,
+                                  title: 'manage_subscription'.tr(locService.currentLanguageCode),
+                                  onTap: () async {
+                                    try {
+                                      // Initialiser UnifiedSubscriptionService qui gère RevenueCat
+                                      final unifiedService = UnifiedSubscriptionService();
+                                      await unifiedService.initialize();
+
+                                      // Ouvrir la gestion des abonnements
+                                      final revenueCat = RevenueCatService();
+                                      await revenueCat.showManageSubscriptions();
+                                    } catch (e) {
+                                      debugPrint('❌ Erreur gestion abonnement: $e');
+                                      if (mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text('error_opening_subscriptions'.tr(locService.currentLanguageCode)),
+                                            backgroundColor: Colors.red,
+                                          ),
+                                        );
+                                      }
+                                    }
+                                  },
+                                ),
                               ),
                               Consumer<LocalizationService>(
                                 builder: (context, locService, _) => _buildListTile(
                                   icon: LucideIcons.shield,
                                   title: 'privacy'.tr(locService.currentLanguageCode),
                                   onTap: () {
-                                    // Navigation vers page confidentialité
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => const PrivacyScreen(),
+                                      ),
+                                    );
                                   },
                                 ),
                               ),
@@ -1794,7 +1846,12 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                   icon: LucideIcons.circleHelp,
                                   title: 'help_support'.tr(locService.currentLanguageCode),
                                   onTap: () {
-                                    // Navigation vers page aide
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => const HelpSupportScreen(),
+                                      ),
+                                    );
                                   },
                                 ),
                               ),
@@ -1803,8 +1860,27 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                   icon: LucideIcons.info,
                                   title: 'about'.tr(locService.currentLanguageCode),
                                   onTap: () {
-                                    // Test discret de la nouvelle architecture
-                                    _showArchitectureTestDialog(context);
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => const AboutScreen(),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                              Consumer<LocalizationService>(
+                                builder: (context, locService, _) => _buildListTile(
+                                  icon: LucideIcons.trash2,
+                                  title: 'delete_account'.tr(locService.currentLanguageCode),
+                                  textColor: Colors.red,
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => const DeleteAccountScreen(),
+                                      ),
+                                    );
                                   },
                                 ),
                               ),
@@ -1863,8 +1939,8 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                           Navigator.of(context).pop();
 
                                           // Naviguer vers la page de login et supprimer toutes les routes
-                                          Navigator.of(context).pushNamedAndRemoveUntil(
-                                            '/login',
+                                          Navigator.of(context).pushAndRemoveUntil(
+                                            MaterialPageRoute(builder: (context) => const LoginScreen()),
                                             (route) => false,
                                           );
                                         }
@@ -3062,5 +3138,162 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   String _getDisplayMeasurementUnit(String languageCode) {
     final key = _getMeasurementTranslationKey(_measurementUnit);
     return key.tr(languageCode);
+  }
+
+  // Cartouche Premium (uniquement pour non-premium)
+  Widget _buildPremiumBanner(String languageCode) {
+    final revenueCat = RevenueCatService();
+
+    // Ne rien afficher si l'utilisateur est premium
+    if (revenueCat.isPremium()) {
+      return const SizedBox.shrink();
+    }
+
+    return _PremiumBannerPulse(
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF0B132B), // Primary dark
+              Color(0xFF1C2951), // Secondary
+            ],
+          ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF1C2951).withOpacity(0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () {
+              // Ouvrir le paywall
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => PaywallScreen(
+                    context: PaywallContext.genericUpgrade,
+                    customTitle: 'upgrade_to_premium'.tr(languageCode),
+                  ),
+                ),
+              );
+            },
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                children: [
+                  // Logo Ryze
+                  Container(
+                    width: 52,
+                    height: 52,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: SvgPicture.asset(
+                      'assets/images/logo_seul.svg',
+                      width: 28,
+                      height: 28,
+                      colorFilter: const ColorFilter.mode(
+                        Colors.white,
+                        BlendMode.srcIn,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+
+                  // Texte
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'upgrade_to_premium'.tr(languageCode),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'unlock_all_features'.tr(languageCode),
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.white.withOpacity(0.8),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Flèche
+                  Icon(
+                    LucideIcons.chevronRight,
+                    color: Colors.white.withOpacity(0.8),
+                    size: 20,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Widget d'animation pulse pour le banner Premium
+class _PremiumBannerPulse extends StatefulWidget {
+  final Widget child;
+
+  const _PremiumBannerPulse({required this.child});
+
+  @override
+  State<_PremiumBannerPulse> createState() => _PremiumBannerPulseState();
+}
+
+class _PremiumBannerPulseState extends State<_PremiumBannerPulse>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    )..repeat(reverse: true);
+
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 1.02,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOut,
+    ));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ScaleTransition(
+      scale: _scaleAnimation,
+      child: widget.child,
+    );
   }
 }

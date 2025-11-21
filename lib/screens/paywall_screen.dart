@@ -6,6 +6,7 @@ import '../services/paywall_service.dart';
 import '../components/ui/coach_ryze_avatar.dart';
 import '../models/subscription_models.dart';
 import '../services/revenuecat_service.dart';
+import '../services/unified_subscription_service.dart';
 import '../services/localization_service.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 
@@ -209,7 +210,13 @@ class _PaywallScreenState extends State<PaywallScreen>
   /// Load available packages from RevenueCat
   Future<void> _loadPackages() async {
     try {
+      debugPrint('📦 PaywallScreen: Loading packages...');
+
+      // 🔧 FIX: S'assurer que RevenueCat est initialisé si un user est connecté
+      await UnifiedSubscriptionService().initialize();
+
       final packages = await RevenueCatService().getAvailablePackages();
+      debugPrint('📦 PaywallScreen: Loaded ${packages.length} packages');
       if (mounted) {
         setState(() {
           _availablePackages = packages;
@@ -228,7 +235,31 @@ class _PaywallScreenState extends State<PaywallScreen>
 
   /// Handle purchase of selected package
   Future<void> _handlePurchase() async {
-    if (_isPurchasing || _availablePackages.isEmpty) return;
+    debugPrint('🛒 PaywallScreen: _handlePurchase called');
+    debugPrint('🛒 _isPurchasing: $_isPurchasing');
+    debugPrint('🛒 _availablePackages.length: ${_availablePackages.length}');
+
+    if (_isPurchasing) {
+      debugPrint('⚠️ Purchase already in progress');
+      return;
+    }
+
+    if (_availablePackages.isEmpty) {
+      debugPrint('⚠️ No packages available - showing configuration error');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              '❌ RevenueCat configuration incomplete\n'
+              '💡 Configure products in RevenueCat Dashboard or activate StoreKit Testing in Xcode',
+            ),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 5),
+          ),
+        );
+      }
+      return;
+    }
 
     setState(() {
       _isPurchasing = true;

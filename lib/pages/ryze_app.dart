@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
@@ -8,7 +7,8 @@ import '../components/main_app.dart';
 import '../services/auth_service.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/complete_profile_screen.dart';
-import '../screens/trial_offer_screen.dart';
+import '../screens/paywall_screen.dart';
+import '../services/paywall_service.dart';
 
 /// RyzeApp - Implémentation du flow AAA (style MyFitnessPal, Headspace, etc.)
 ///
@@ -236,14 +236,22 @@ class _RyzeAppState extends State<RyzeApp> {
       debugPrint('🎯 PostFrameCallback - Widget mounted: $mounted');
 
       if (mounted) {
-        debugPrint('🚀 Navigation vers TrialOfferScreen...');
+        debugPrint('🚀 Navigation vers PaywallScreen (genericUpgrade)...');
         try {
-          // 🎯 NOUVEAU : Afficher l'écran d'offre de trial après l'onboarding
-          // L'utilisateur peut choisir entre commencer le trial ou continuer en gratuit
+          // 🎯 PAYWALL GÉNÉRIQUE : Afficher l'offre Premium après l'onboarding
+          // L'utilisateur peut choisir de s'abonner (7 jours gratuits) ou continuer en gratuit
           Navigator.of(context, rootNavigator: true).pushReplacement(
-            MaterialPageRoute(builder: (context) => const TrialOfferScreen()),
+            MaterialPageRoute(
+              builder: (context) => _PaywallWrapper(
+                child: PaywallScreen(
+                  context: PaywallContext.genericUpgrade,
+                  customTitle: 'Débloquez Coach Ryze Premium',
+                  customMessage: 'Profitez de 7 jours d\'essai gratuit',
+                ),
+              ),
+            ),
           );
-          debugPrint('✅ Navigation réussie vers Trial Offer');
+          debugPrint('✅ Navigation réussie vers Paywall');
         } catch (e) {
           debugPrint('❌ Erreur navigation: $e');
         }
@@ -294,6 +302,31 @@ class _RyzeAppState extends State<RyzeApp> {
     return _targetScreen ?? const Scaffold(
       backgroundColor: Color(0xFFF8FAFC),
       body: SizedBox.shrink(),
+    );
+  }
+}
+
+/// Wrapper pour le PaywallScreen dans le flow d'onboarding
+/// Gère la navigation vers MainApp lorsque l'utilisateur ferme le paywall
+class _PaywallWrapper extends StatelessWidget {
+  final Widget child;
+
+  const _PaywallWrapper({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: false, // Empêche le back navigation par défaut
+      onPopInvokedWithResult: (didPop, result) async {
+        if (!didPop) {
+          // L'utilisateur a fermé le paywall (bouton X ou swipe)
+          debugPrint('🆓 Utilisateur continue en version gratuite');
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const MainApp()),
+          );
+        }
+      },
+      child: child,
     );
   }
 }

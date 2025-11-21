@@ -51,6 +51,20 @@ class EnvConfig {
   );
 
   // ===================================
+  // REVENUECAT
+  // ===================================
+
+  static const String revenueCatAppleApiKey = String.fromEnvironment(
+    'REVENUECAT_APPLE_API_KEY',
+    defaultValue: '',
+  );
+
+  static const String revenueCatGoogleApiKey = String.fromEnvironment(
+    'REVENUECAT_GOOGLE_API_KEY',
+    defaultValue: '',
+  );
+
+  // ===================================
   // ENVIRONMENT
   // ===================================
 
@@ -78,6 +92,7 @@ class EnvConfig {
     final hasSupabase = supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty;
     final hasGemini = geminiApiKey.isNotEmpty;
     final hasVision = googleVisionApiKey.isNotEmpty;
+    // RevenueCat n'est pas obligatoire (peut être en mode test)
 
     return hasSupabase && hasGemini && hasVision;
   }
@@ -108,6 +123,8 @@ class EnvConfig {
     debugPrint('  Gemini Key: ${_maskSecret(geminiApiKey)}');
     debugPrint('  Vision Key: ${_maskSecret(googleVisionApiKey)}');
     debugPrint('  Google OAuth: ${_maskSecret(googleClientId)}');
+    debugPrint('  RevenueCat Apple: ${_maskSecret(revenueCatAppleApiKey)}');
+    debugPrint('  RevenueCat Google: ${_maskSecret(revenueCatGoogleApiKey)}');
     debugPrint('  Is Configured: $isConfigured');
   }
 

@@ -99,6 +99,12 @@ dependencies:
   # Network connectivity
   connectivity_plus: ^6.0.5
 
+  # App info
+  package_info_plus: ^8.1.2
+
+  # URL launcher
+  url_launcher: ^6.3.1
+
   # Image caching for performance
   cached_network_image: ^3.3.1
 

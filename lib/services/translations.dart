@@ -284,6 +284,14 @@ class AppTranslations {
       'en': 'Type a food name...',
     },
     // Settings screen
+    'upgrade_to_premium': {
+      'fr': 'Passer à Premium',
+      'en': 'Upgrade to Premium',
+    },
+    'unlock_all_features': {
+      'fr': 'Débloquez toutes les fonctionnalités',
+      'en': 'Unlock all features',
+    },
     'settings_profile': {
       'fr': 'Profil',
       'en': 'Profile',
@@ -4619,12 +4627,12 @@ class AppTranslations {
 
     // Legacy nutrition tutorial (non utilisé mais conservé)
     'tutorial_nutrition_ai_scanner_title': {
-      'fr': 'Scanner IA',
-      'en': 'AI Scanner',
+      'fr': 'Scanner',
+      'en': 'Scanner',
     },
     'tutorial_nutrition_ai_scanner_desc': {
-      'fr': 'Prenez une photo de votre assiette et l\'IA analysera automatiquement les aliments et leurs calories.',
-      'en': 'Take a picture of your plate and the AI will automatically analyze the foods and their calories.',
+      'fr': 'Prenez une photo de votre assiette et l\'application analysera automatiquement les aliments et leurs calories.',
+      'en': 'Take a picture of your plate and the app will automatically analyze the foods and their calories.',
     },
     'tutorial_nutrition_barcode_title': {
       'fr': 'Scanner barcode',
@@ -5524,6 +5532,528 @@ class AppTranslations {
     'paywall_weekly': {
       'fr': 'Hebdo',
       'en': 'Weekly',
+    },
+
+    // Account Management Screen
+    'current_email': {
+      'fr': 'Email actuel',
+      'en': 'Current email',
+    },
+    'change_email': {
+      'fr': 'Changer l\'email',
+      'en': 'Change email',
+    },
+    'new_email': {
+      'fr': 'Nouvel email',
+      'en': 'New email',
+    },
+    'email_change_info': {
+      'fr': 'Un email de confirmation sera envoyé à votre nouvelle adresse',
+      'en': 'A confirmation email will be sent to your new address',
+    },
+    'change_password': {
+      'fr': 'Changer le mot de passe',
+      'en': 'Change password',
+    },
+    'current_password': {
+      'fr': 'Mot de passe actuel',
+      'en': 'Current password',
+    },
+    'new_password': {
+      'fr': 'Nouveau mot de passe',
+      'en': 'New password',
+    },
+    'confirm_password': {
+      'fr': 'Confirmer le mot de passe',
+      'en': 'Confirm password',
+    },
+    'current_password_incorrect': {
+      'fr': 'Mot de passe actuel incorrect',
+      'en': 'Current password is incorrect',
+    },
+    'password_changed_success': {
+      'fr': 'Mot de passe modifié avec succès',
+      'en': 'Password changed successfully',
+    },
+    'error_changing_password': {
+      'fr': 'Erreur lors du changement de mot de passe',
+      'en': 'Error changing password',
+    },
+    'invalid_email': {
+      'fr': 'Email invalide',
+      'en': 'Invalid email',
+    },
+    'email_change_confirmation_sent': {
+      'fr': 'Email de confirmation envoyé. Vérifiez votre boîte de réception.',
+      'en': 'Confirmation email sent. Check your inbox.',
+    },
+    'error_changing_email': {
+      'fr': 'Erreur lors du changement d\'email',
+      'en': 'Error changing email',
+    },
+    'field_required': {
+      'fr': 'Ce champ est requis',
+      'en': 'This field is required',
+    },
+    'password_min_length': {
+      'fr': 'Le mot de passe doit contenir au moins 6 caractères',
+      'en': 'Password must be at least 6 characters',
+    },
+    'passwords_dont_match': {
+      'fr': 'Les mots de passe ne correspondent pas',
+      'en': 'Passwords don\'t match',
+    },
+
+    // Privacy Screen
+    'privacy_title': {
+      'fr': 'Votre vie privée nous tient à cœur',
+      'en': 'Your privacy matters to us',
+    },
+    'privacy_subtitle': {
+      'fr': 'Consultez nos politiques et gérez vos données',
+      'en': 'Review our policies and manage your data',
+    },
+    'legal_documents': {
+      'fr': 'Documents légaux',
+      'en': 'Legal documents',
+    },
+    'privacy_policy': {
+      'fr': 'Politique de confidentialité',
+      'en': 'Privacy Policy',
+    },
+    'privacy_policy_desc': {
+      'fr': 'Comment nous protégeons vos données',
+      'en': 'How we protect your data',
+    },
+    'terms_of_service': {
+      'fr': 'Conditions d\'utilisation',
+      'en': 'Terms of Service',
+    },
+    'terms_of_service_desc': {
+      'fr': 'Les règles d\'utilisation de l\'app',
+      'en': 'App usage guidelines',
+    },
+    'your_data': {
+      'fr': 'Vos données',
+      'en': 'Your data',
+    },
+    'data_we_collect': {
+      'fr': 'Données collectées',
+      'en': 'Data we collect',
+    },
+    'data_we_collect_desc': {
+      'fr': 'Quelles informations nous recueillons',
+      'en': 'What information we gather',
+    },
+    'data_security': {
+      'fr': 'Sécurité des données',
+      'en': 'Data security',
+    },
+    'data_security_desc': {
+      'fr': 'Comment nous protégeons vos informations',
+      'en': 'How we protect your information',
+    },
+    'data_sharing': {
+      'fr': 'Partage de données',
+      'en': 'Data sharing',
+    },
+    'data_sharing_desc': {
+      'fr': 'Avec qui nous partageons vos données',
+      'en': 'Who we share your data with',
+    },
+    'your_rights': {
+      'fr': 'Vos droits',
+      'en': 'Your rights',
+    },
+    'export_data': {
+      'fr': 'Exporter mes données',
+      'en': 'Export my data',
+    },
+    'export_data_desc': {
+      'fr': 'Télécharger toutes vos données',
+      'en': 'Download all your data',
+    },
+    'delete_account': {
+      'fr': 'Supprimer le compte',
+      'en': 'Delete account',
+    },
+    'delete_account_desc': {
+      'fr': 'Supprimer définitivement votre compte',
+      'en': 'Permanently delete your account',
+    },
+    'delete_account_from_settings': {
+      'fr': 'Accédez à cette fonctionnalité depuis Paramètres > Compte > Supprimer le compte',
+      'en': 'Access this feature from Settings > Account > Delete Account',
+    },
+    'data_collection_details': {
+      'fr': 'Nous collectons :\n\n• Informations de profil (nom, email, âge, genre)\n• Données nutritionnelles (aliments, recettes, objectifs caloriques)\n• Données sportives (séances d\'entraînement, performances)\n• Données de progression (poids, mesures, photos)\n\nToutes ces données sont stockées de manière sécurisée et ne sont jamais vendues à des tiers.',
+      'en': 'We collect:\n\n• Profile information (name, email, age, gender)\n• Nutrition data (foods, recipes, calorie goals)\n• Fitness data (workout sessions, performance)\n• Progress data (weight, measurements, photos)\n\nAll this data is securely stored and never sold to third parties.',
+    },
+    'data_security_details': {
+      'fr': 'Vos données sont protégées par :\n\n• Chiffrement SSL/TLS pour toutes les communications\n• Stockage sécurisé dans des bases de données chiffrées\n• Authentification à deux facteurs disponible\n• Accès strictement contrôlé aux serveurs\n• Sauvegardes régulières et redondantes\n\nNous suivons les meilleures pratiques de l\'industrie pour garantir la sécurité de vos informations.',
+      'en': 'Your data is protected by:\n\n• SSL/TLS encryption for all communications\n• Secure storage in encrypted databases\n• Two-factor authentication available\n• Strictly controlled server access\n• Regular and redundant backups\n\nWe follow industry best practices to ensure the security of your information.',
+    },
+    'data_sharing_details': {
+      'fr': 'Nous ne partageons JAMAIS vos données personnelles avec des tiers à des fins commerciales.\n\nNous partageons uniquement avec :\n\n• Les services d\'infrastructure nécessaires (Supabase pour le stockage)\n• Les services d\'analyse (anonymisé)\n• Les autorités légales si requis par la loi\n\nVous gardez toujours le contrôle total de vos données.',
+      'en': 'We NEVER share your personal data with third parties for commercial purposes.\n\nWe only share with:\n\n• Necessary infrastructure services (Supabase for storage)\n• Analytics services (anonymized)\n• Legal authorities if required by law\n\nYou always maintain full control of your data.',
+    },
+    'export_data_instructions': {
+      'fr': 'Voulez-vous télécharger une copie complète de toutes vos données ? Cela inclut votre profil, aliments, recettes, séances d\'entraînement et historique de progression.\n\nUn fichier JSON sera généré et envoyé à votre email.',
+      'en': 'Would you like to download a complete copy of all your data? This includes your profile, foods, recipes, workout sessions, and progress history.\n\nA JSON file will be generated and sent to your email.',
+    },
+    'export_data_started': {
+      'fr': 'Export démarré. Vous recevrez un email avec vos données sous peu.',
+      'en': 'Export started. You will receive an email with your data shortly.',
+    },
+    'export': {
+      'fr': 'Exporter',
+      'en': 'Export',
+    },
+
+    // Help & Support Screen
+    'help_support_title': {
+      'fr': 'Nous sommes là pour vous aider',
+      'en': 'We\'re here to help',
+    },
+    'help_support_subtitle': {
+      'fr': 'Contactez-nous ou consultez notre FAQ',
+      'en': 'Contact us or check our FAQ',
+    },
+    'quick_contact': {
+      'fr': 'Contact rapide',
+      'en': 'Quick contact',
+    },
+    'contact_email': {
+      'fr': 'Email de contact',
+      'en': 'Contact email',
+    },
+    'copy_email': {
+      'fr': 'Copier l\'email',
+      'en': 'Copy email',
+    },
+    'email_copied': {
+      'fr': 'Email copié dans le presse-papier',
+      'en': 'Email copied to clipboard',
+    },
+    'cannot_open_email': {
+      'fr': 'Impossible d\'ouvrir l\'application email',
+      'en': 'Cannot open email application',
+    },
+    'support_email_subject': {
+      'fr': 'Support Ryze',
+      'en': 'Ryze Support',
+    },
+    'faq': {
+      'fr': 'Questions fréquentes',
+      'en': 'FAQ',
+    },
+    'view_faq': {
+      'fr': 'Voir la FAQ complète',
+      'en': 'View full FAQ',
+    },
+    'view_faq_desc': {
+      'fr': 'Consultez toutes nos questions fréquentes',
+      'en': 'Browse all our frequently asked questions',
+    },
+    'faq_scanner': {
+      'fr': 'Comment utiliser le scanner ?',
+      'en': 'How to use the scanner?',
+    },
+    'faq_scanner_desc': {
+      'fr': 'Utilisation du scanner alimentaire',
+      'en': 'Using the food scanner',
+    },
+    'faq_scanner_answer': {
+      'fr': '1. Appuyez sur le bouton Scanner\n2. Prenez une photo de votre repas\n3. L\'application analyse automatiquement les aliments\n4. Vérifiez et ajustez les portions\n5. Ajoutez au repas souhaité\n\nAstuce : Prenez la photo à la lumière naturelle pour de meilleurs résultats.',
+      'en': '1. Tap the Scanner button\n2. Take a photo of your meal\n3. The app automatically analyzes the foods\n4. Review and adjust portions\n5. Add to desired meal\n\nTip: Take the photo in natural light for best results.',
+    },
+    'faq_workouts': {
+      'fr': 'Comment créer un programme d\'entraînement ?',
+      'en': 'How to create a workout program?',
+    },
+    'faq_workouts_desc': {
+      'fr': 'Création et gestion des séances',
+      'en': 'Creating and managing sessions',
+    },
+    'faq_workouts_answer': {
+      'fr': '1. Allez dans Sport\n2. Créez une nouvelle séance\n3. Ajoutez des exercices\n4. Définissez séries et répétitions\n5. Lancez la séance\n\nVous pouvez sauvegarder vos séances favorites pour les réutiliser rapidement.',
+      'en': '1. Go to Sport\n2. Create a new session\n3. Add exercises\n4. Set sets and reps\n5. Start the session\n\nYou can save your favorite sessions to reuse them quickly.',
+    },
+    'faq_goals': {
+      'fr': 'Comment définir mes objectifs ?',
+      'en': 'How to set my goals?',
+    },
+    'faq_goals_desc': {
+      'fr': 'Configuration des objectifs caloriques',
+      'en': 'Setting up calorie goals',
+    },
+    'faq_goals_answer': {
+      'fr': 'Allez dans Paramètres > Profil et renseignez :\n\n• Votre poids actuel et objectif\n• Votre niveau d\'activité\n• Votre objectif (perte, maintien, prise de masse)\n\nL\'app calculera automatiquement vos besoins caloriques et macros optimaux.',
+      'en': 'Go to Settings > Profile and enter:\n\n• Your current and target weight\n• Your activity level\n• Your goal (loss, maintenance, gain)\n\nThe app will automatically calculate your optimal calorie needs and macros.',
+    },
+    'faq_premium': {
+      'fr': 'Qu\'est-ce que le Premium ?',
+      'en': 'What is Premium?',
+    },
+    'faq_premium_desc': {
+      'fr': 'Fonctionnalités Premium disponibles',
+      'en': 'Available Premium features',
+    },
+    'faq_premium_answer': {
+      'fr': 'Le Premium débloque :\n\n• Scanner alimentaire illimité\n• Recettes personnalisées\n• Programmes d\'entraînement avancés\n• Statistiques détaillées\n• Support prioritaire\n\n7 jours d\'essai gratuit, puis 9,99€/mois.',
+      'en': 'Premium unlocks:\n\n• Unlimited food scanner\n• Custom recipes\n• Advanced workout programs\n• Detailed statistics\n• Priority support\n\n7-day free trial, then €9.99/month.',
+    },
+    'guides': {
+      'fr': 'Guides',
+      'en': 'Guides',
+    },
+    'getting_started': {
+      'fr': 'Démarrage rapide',
+      'en': 'Getting started',
+    },
+    'getting_started_desc': {
+      'fr': 'Guide pour bien débuter',
+      'en': 'Guide to get started',
+    },
+    'getting_started_content': {
+      'fr': 'Bienvenue sur Ryze ! Voici comment commencer :\n\n1. Complétez votre profil\n2. Définissez vos objectifs\n3. Scannez votre premier repas\n4. Créez votre première séance d\'entraînement\n5. Suivez vos progrès quotidiens\n\nN\'hésitez pas à explorer toutes les fonctionnalités !',
+      'en': 'Welcome to Ryze! Here\'s how to start:\n\n1. Complete your profile\n2. Set your goals\n3. Scan your first meal\n4. Create your first workout\n5. Track your daily progress\n\nFeel free to explore all features!',
+    },
+    'nutrition_guide': {
+      'fr': 'Guide nutrition',
+      'en': 'Nutrition guide',
+    },
+    'nutrition_guide_desc': {
+      'fr': 'Comprendre la nutrition',
+      'en': 'Understanding nutrition',
+    },
+    'nutrition_guide_content': {
+      'fr': 'Les macronutriments :\n\n• PROTÉINES : Construction musculaire (4 kcal/g)\n• GLUCIDES : Énergie rapide (4 kcal/g)\n• LIPIDES : Énergie durable (9 kcal/g)\n\nÉquilibrez vos macros selon votre objectif :\n\n• Perte de poids : Déficit calorique\n• Prise de masse : Surplus calorique\n• Maintien : Équilibre énergétique',
+      'en': 'Macronutrients:\n\n• PROTEIN: Muscle building (4 kcal/g)\n• CARBS: Quick energy (4 kcal/g)\n• FATS: Sustained energy (9 kcal/g)\n\nBalance your macros according to your goal:\n\n• Weight loss: Caloric deficit\n• Muscle gain: Caloric surplus\n• Maintenance: Energy balance',
+    },
+    'workout_guide': {
+      'fr': 'Guide entraînement',
+      'en': 'Workout guide',
+    },
+    'workout_guide_desc': {
+      'fr': 'Optimiser vos séances',
+      'en': 'Optimize your workouts',
+    },
+    'workout_guide_content': {
+      'fr': 'Principes de base :\n\n• SURCHARGE PROGRESSIVE : Augmentez progressivement\n• RÉCUPÉRATION : 48h entre les mêmes muscles\n• TECHNIQUE : Priorité sur la forme\n• VARIÉTÉ : Changez régulièrement\n\nStructure d\'une séance :\n1. Échauffement (10 min)\n2. Exercices principaux (30-40 min)\n3. Retour au calme (10 min)',
+      'en': 'Basic principles:\n\n• PROGRESSIVE OVERLOAD: Gradually increase\n• RECOVERY: 48h between same muscles\n• TECHNIQUE: Prioritize form\n• VARIETY: Change regularly\n\nSession structure:\n1. Warm-up (10 min)\n2. Main exercises (30-40 min)\n3. Cool-down (10 min)',
+    },
+    'technical_issues': {
+      'fr': 'Problèmes techniques',
+      'en': 'Technical issues',
+    },
+    'sync_issues': {
+      'fr': 'Problèmes de synchronisation',
+      'en': 'Sync issues',
+    },
+    'sync_issues_desc': {
+      'fr': 'Les données ne se synchronisent pas',
+      'en': 'Data not syncing',
+    },
+    'sync_issues_solution': {
+      'fr': 'Solutions :\n\n1. Vérifiez votre connexion Internet\n2. Déconnectez-vous et reconnectez-vous\n3. Forcez la fermeture de l\'app\n4. Vérifiez les mises à jour disponibles\n\nSi le problème persiste, contactez le support.',
+      'en': 'Solutions:\n\n1. Check your Internet connection\n2. Sign out and sign back in\n3. Force close the app\n4. Check for available updates\n\nIf the problem persists, contact support.',
+    },
+    'camera_issues': {
+      'fr': 'Problèmes de caméra',
+      'en': 'Camera issues',
+    },
+    'camera_issues_desc': {
+      'fr': 'La caméra ne fonctionne pas',
+      'en': 'Camera not working',
+    },
+    'camera_issues_solution': {
+      'fr': 'Solutions :\n\n1. Vérifiez les permissions dans Réglages\n2. Redémarrez l\'application\n3. Redémarrez votre appareil\n4. Réinstallez l\'app si nécessaire\n\nAssurez-vous d\'avoir autorisé l\'accès à la caméra dans les réglages de votre téléphone.',
+      'en': 'Solutions:\n\n1. Check permissions in Settings\n2. Restart the app\n3. Restart your device\n4. Reinstall the app if necessary\n\nMake sure you\'ve allowed camera access in your phone settings.',
+    },
+    'report_bug': {
+      'fr': 'Signaler un bug',
+      'en': 'Report a bug',
+    },
+    'report_bug_desc': {
+      'fr': 'Rapporter un problème technique',
+      'en': 'Report a technical issue',
+    },
+    'contact_support': {
+      'fr': 'Contacter le support',
+      'en': 'Contact support',
+    },
+
+    // About Screen
+    'about_slogan': {
+      'fr': 'Votre coach fitness & nutrition',
+      'en': 'Your fitness & nutrition coach',
+    },
+    'version': {
+      'fr': 'Version',
+      'en': 'Version',
+    },
+    'about_app': {
+      'fr': 'À propos de l\'app',
+      'en': 'About the app',
+    },
+    'about_description': {
+      'fr': 'Ryze est votre compagnon intelligent pour atteindre vos objectifs de santé et de fitness. Nous rendons le suivi nutritionnel et sportif simple, précis et motivant.',
+      'en': 'Ryze is your smart companion to achieve your health and fitness goals. We make nutrition and fitness tracking simple, accurate, and motivating.',
+    },
+    'key_features': {
+      'fr': 'Fonctionnalités principales',
+      'en': 'Key features',
+    },
+    'feature_ai_scanner': {
+      'fr': 'Scanner : Reconnaissance instantanée des aliments',
+      'en': 'Scanner: Instant food recognition',
+    },
+    'feature_nutrition': {
+      'fr': 'Nutrition : Suivi calories et macros détaillé',
+      'en': 'Nutrition: Detailed calorie and macro tracking',
+    },
+    'feature_workouts': {
+      'fr': 'Sport : Programmes d\'entraînement personnalisés',
+      'en': 'Sport: Personalized workout programs',
+    },
+    'feature_goals': {
+      'fr': 'Objectifs : Atteindre votre poids idéal',
+      'en': 'Goals: Reach your ideal weight',
+    },
+    'feature_progress': {
+      'fr': 'Progression : Statistiques et graphiques détaillés',
+      'en': 'Progress: Detailed statistics and charts',
+    },
+    'made_with_love': {
+      'fr': 'Fait avec ❤️ pour votre santé',
+      'en': 'Made with ❤️ for your health',
+    },
+
+    // Delete Account Screen
+    'delete_account_warning': {
+      'fr': '⚠️ ATTENTION : Action irréversible',
+      'en': '⚠️ WARNING: Irreversible action',
+    },
+    'delete_account_warning_desc': {
+      'fr': 'La suppression de votre compte est définitive. Toutes vos données seront perdues sans possibilité de récupération.',
+      'en': 'Account deletion is permanent. All your data will be lost with no possibility of recovery.',
+    },
+    'data_to_be_deleted': {
+      'fr': 'Données qui seront supprimées',
+      'en': 'Data that will be deleted',
+    },
+    'profile_data': {
+      'fr': 'Données de profil',
+      'en': 'Profile data',
+    },
+    'nutrition_data': {
+      'fr': 'Données nutritionnelles',
+      'en': 'Nutrition data',
+    },
+    'workout_data': {
+      'fr': 'Données d\'entraînement',
+      'en': 'Workout data',
+    },
+    'goals_data': {
+      'fr': 'Objectifs',
+      'en': 'Goals',
+    },
+    'progress_data': {
+      'fr': 'Données de progression',
+      'en': 'Progress data',
+    },
+    'health_data': {
+      'fr': 'Données de santé',
+      'en': 'Health data',
+    },
+    'achievements_data': {
+      'fr': 'Récompenses',
+      'en': 'Achievements',
+    },
+    'subscription_info': {
+      'fr': 'Note : Votre abonnement doit être annulé séparément dans les réglages de l\'App Store',
+      'en': 'Note: Your subscription must be canceled separately in App Store settings',
+    },
+    'confirm_deletion': {
+      'fr': 'Confirmer la suppression',
+      'en': 'Confirm deletion',
+    },
+    'understand_permanent': {
+      'fr': 'Je comprends que cette action est permanente et irréversible',
+      'en': 'I understand this action is permanent and irreversible',
+    },
+    'accept_data_loss': {
+      'fr': 'J\'accepte de perdre toutes mes données définitivement',
+      'en': 'I accept to permanently lose all my data',
+    },
+    'type_delete_to_confirm': {
+      'fr': 'Veuillez taper DELETE pour confirmer',
+      'en': 'Please type DELETE to confirm',
+    },
+    'type_delete_to_confirm_label': {
+      'fr': 'Tapez "DELETE" pour confirmer :',
+      'en': 'Type "DELETE" to confirm:',
+    },
+    'confirm_checkboxes_required': {
+      'fr': 'Veuillez cocher toutes les cases de confirmation',
+      'en': 'Please check all confirmation boxes',
+    },
+    'final_confirmation': {
+      'fr': 'Confirmation finale',
+      'en': 'Final confirmation',
+    },
+    'final_confirmation_message': {
+      'fr': 'Êtes-vous absolument certain de vouloir supprimer votre compte ? Cette action ne peut pas être annulée.',
+      'en': 'Are you absolutely sure you want to delete your account? This action cannot be undone.',
+    },
+    'delete_permanently': {
+      'fr': 'Supprimer définitivement',
+      'en': 'Delete permanently',
+    },
+    'delete_my_account': {
+      'fr': 'Supprimer mon compte',
+      'en': 'Delete my account',
+    },
+    'account_deleted_success': {
+      'fr': 'Votre compte a été supprimé avec succès. Au revoir et bonne chance dans vos objectifs !',
+      'en': 'Your account has been successfully deleted. Goodbye and good luck with your goals!',
+    },
+    'error_deleting_account': {
+      'fr': 'Erreur lors de la suppression du compte. Veuillez réessayer ou contacter le support.',
+      'en': 'Error deleting account. Please try again or contact support.',
+    },
+
+    // Subscription Management
+    'manage_subscription': {
+      'fr': 'Gérer mon abonnement',
+      'en': 'Manage subscription',
+    },
+    'error_opening_subscriptions': {
+      'fr': 'Impossible d\'ouvrir la gestion des abonnements',
+      'en': 'Cannot open subscription management',
+    },
+
+    // Forgot Password
+    'forgot_password_title': {
+      'fr': 'Mot de passe oublié ?',
+      'en': 'Forgot password?',
+    },
+    'forgot_password_desc': {
+      'fr': 'Recevez un lien par email pour réinitialiser votre mot de passe.',
+      'en': 'Receive an email link to reset your password.',
+    },
+    'send_reset_link': {
+      'fr': 'Envoyer le lien',
+      'en': 'Send reset link',
+    },
+    'reset_link_sent': {
+      'fr': 'Lien de réinitialisation envoyé ! Vérifiez votre boîte mail.',
+      'en': 'Reset link sent! Check your inbox.',
+    },
+    'error_sending_reset_link': {
+      'fr': 'Erreur lors de l\'envoi du lien',
+      'en': 'Error sending reset link',
     },
   };
 

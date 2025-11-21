@@ -43,6 +43,20 @@ class UnifiedSubscriptionService extends ChangeNotifier {
   Future<void> initialize() async {
     if (_isInitialized) {
       debugPrint('UnifiedSubscriptionService déjà initialisé');
+
+      // 🔧 FIX: Vérifier si RevenueCat doit être initialisé maintenant qu'un user est connecté
+      final userId = _supabase.auth.currentUser?.id;
+      if (!testMode && userId != null && !_revenueCat.isInitialized) {
+        debugPrint('🔄 RevenueCat pas encore initialisé mais user connecté, initialisation...');
+        try {
+          await _revenueCat.initialize(userId: userId);
+          debugPrint('✅ RevenueCat initialisé en mode PRODUCTION (delayed)');
+          await _syncRevenueCatStatus();
+        } catch (e) {
+          debugPrint('⚠️ Erreur RevenueCat delayed init: $e');
+        }
+      }
+
       return;
     }
 

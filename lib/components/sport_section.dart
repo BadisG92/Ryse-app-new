@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -7,8 +6,8 @@ import 'sport_dashboard.dart';
 import 'sport_cardio_hybrid.dart';
 import 'sport_musculation_hybrid.dart';
 import '../services/dashboard_service.dart';
-import '../services/streak_service.dart';
 import '../services/header_cache_service.dart';
+import '../services/streak_service.dart';
 import '../services/translations.dart';
 import '../services/localization_service.dart';
 import '../services/tutorial_service.dart';
@@ -19,10 +18,10 @@ import 'ui/refresh_wrapper.dart';
 import '../services/fast_cache_service.dart';
 import '../services/sport_dashboard_service.dart';
 import '../services/global_state_manager.dart';
-import 'ui/sport_tutorial_welcome.dart'; // Welcome screen sport
-import 'ui/cardio_tutorial_welcome.dart'; // Welcome screen cardio
-import 'ui/musculation_tutorial_welcome.dart'; // Welcome screen musculation
-import 'package:shared_preferences/shared_preferences.dart';
+import 'ui/sport_tutorial_welcome.dart';
+import 'ui/cardio_tutorial_welcome.dart';
+import 'ui/musculation_tutorial_welcome.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SportSection extends StatefulWidget {
   const SportSection({super.key});
@@ -110,20 +109,37 @@ class _SportSectionState extends State<SportSection>
 
   /// Affiche l'écran de bienvenue Sport si c'est la première visite
   Future<void> _showSportTutorial() async {
-    // Vérifier si déjà complété (en mode debug, toujours afficher)
-    const debugMode = false; // Mode production : tutoriels une seule fois
-    if (!debugMode) {
-      final prefs = await SharedPreferences.getInstance();
-      final completed = prefs.getBool('sport_welcome_shown') ?? false;
-      if (completed) {
-        debugPrint('ℹ️ Welcome Sport déjà affiché');
-        return;
+    debugPrint('🔍 Vérification du tutorial Sport...');
+
+    // ✅ VÉRIFIER DANS SUPABASE si le tutorial est déjà complété
+    final supabase = Supabase.instance.client;
+    final user = supabase.auth.currentUser;
+
+    if (user != null) {
+      try {
+        final response = await supabase
+            .from('users')
+            .select('tutorial_sport_completed')
+            .eq('id', user.id)
+            .single()
+            .timeout(const Duration(seconds: 3));
+
+        final isCompleted = response['tutorial_sport_completed'] as bool? ?? false;
+        debugPrint('📊 Tutorial Sport dans Supabase: $isCompleted');
+
+        if (isCompleted) {
+          debugPrint('✅ Tutorial Sport déjà complété - Arrêt');
+          return;
+        }
+      } catch (e) {
+        debugPrint('⚠️ Erreur vérification Supabase: $e - On continue quand même');
       }
     }
 
     final locService = LocalizationService.instance;
     final globalState = GlobalStateManager.instance;
 
+    debugPrint('🚀 Affichage du Welcome Screen Sport...');
     // Afficher l'écran de bienvenue en PLEIN ÉCRAN (pas en dialog)
     final shouldContinue = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
@@ -137,11 +153,8 @@ class _SportSectionState extends State<SportSection>
       ),
     );
 
-    // Marquer le welcome comme affiché
-    if (!debugMode) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('sport_welcome_shown', true);
-    }
+    // ℹ️ Note: On ne marque RIEN ici car c'est le TutorialService qui gère la sauvegarde
+    // dans Supabase avec la clé 'tutorial_sport_completed'
 
     if (shouldContinue == true) {
       debugPrint('✅ Welcome Sport terminé - Lancement du tutorial Dashboard');
@@ -177,20 +190,37 @@ class _SportSectionState extends State<SportSection>
 
   /// Affiche l'écran de bienvenue Cardio si c'est la première visite
   Future<void> _showCardioTutorial() async {
-    // Vérifier si déjà complété (en mode debug, toujours afficher)
-    const debugMode = false; // Mode production : tutoriels une seule fois
-    if (!debugMode) {
-      final prefs = await SharedPreferences.getInstance();
-      final completed = prefs.getBool('cardio_welcome_shown') ?? false;
-      if (completed) {
-        debugPrint('ℹ️ Welcome Cardio déjà affiché');
-        return;
+    debugPrint('🔍 Vérification du tutorial Cardio...');
+
+    // ✅ VÉRIFIER DANS SUPABASE si le tutorial est déjà complété
+    final supabase = Supabase.instance.client;
+    final user = supabase.auth.currentUser;
+
+    if (user != null) {
+      try {
+        final response = await supabase
+            .from('users')
+            .select('tutorial_cardio_completed')
+            .eq('id', user.id)
+            .single()
+            .timeout(const Duration(seconds: 3));
+
+        final isCompleted = response['tutorial_cardio_completed'] as bool? ?? false;
+        debugPrint('📊 Tutorial Cardio dans Supabase: $isCompleted');
+
+        if (isCompleted) {
+          debugPrint('✅ Tutorial Cardio déjà complété - Arrêt');
+          return;
+        }
+      } catch (e) {
+        debugPrint('⚠️ Erreur vérification Supabase: $e - On continue quand même');
       }
     }
 
     final locService = LocalizationService.instance;
     final globalState = GlobalStateManager.instance;
 
+    debugPrint('🚀 Affichage du Welcome Screen Cardio...');
     // Afficher l'écran de bienvenue en PLEIN ÉCRAN (pas en dialog)
     final shouldContinue = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
@@ -204,11 +234,8 @@ class _SportSectionState extends State<SportSection>
       ),
     );
 
-    // Marquer le welcome comme affiché
-    if (!debugMode) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('cardio_welcome_shown', true);
-    }
+    // ℹ️ Note: On ne marque RIEN ici car c'est le TutorialService qui gère la sauvegarde
+    // dans Supabase avec la clé 'tutorial_cardio_completed'
 
     if (shouldContinue == true) {
       debugPrint('✅ Welcome Cardio terminé - Lancement du tutorial');
@@ -248,20 +275,37 @@ class _SportSectionState extends State<SportSection>
 
   /// Affiche l'écran de bienvenue Musculation si c'est la première visite
   Future<void> _showMusculationTutorial() async {
-    // Vérifier si déjà complété (en mode debug, toujours afficher)
-    const debugMode = false; // Mode production : tutoriels une seule fois
-    if (!debugMode) {
-      final prefs = await SharedPreferences.getInstance();
-      final completed = prefs.getBool('musculation_welcome_shown') ?? false;
-      if (completed) {
-        debugPrint('ℹ️ Welcome Musculation déjà affiché');
-        return;
+    debugPrint('🔍 Vérification du tutorial Musculation...');
+
+    // ✅ VÉRIFIER DANS SUPABASE si le tutorial est déjà complété
+    final supabase = Supabase.instance.client;
+    final user = supabase.auth.currentUser;
+
+    if (user != null) {
+      try {
+        final response = await supabase
+            .from('users')
+            .select('tutorial_musculation_completed')
+            .eq('id', user.id)
+            .single()
+            .timeout(const Duration(seconds: 3));
+
+        final isCompleted = response['tutorial_musculation_completed'] as bool? ?? false;
+        debugPrint('📊 Tutorial Musculation dans Supabase: $isCompleted');
+
+        if (isCompleted) {
+          debugPrint('✅ Tutorial Musculation déjà complété - Arrêt');
+          return;
+        }
+      } catch (e) {
+        debugPrint('⚠️ Erreur vérification Supabase: $e - On continue quand même');
       }
     }
 
     final locService = LocalizationService.instance;
     final globalState = GlobalStateManager.instance;
 
+    debugPrint('🚀 Affichage du Welcome Screen Musculation...');
     // Afficher l'écran de bienvenue en PLEIN ÉCRAN (pas en dialog)
     final shouldContinue = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
@@ -275,11 +319,8 @@ class _SportSectionState extends State<SportSection>
       ),
     );
 
-    // Marquer le welcome comme affiché
-    if (!debugMode) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('musculation_welcome_shown', true);
-    }
+    // ℹ️ Note: On ne marque RIEN ici car c'est le TutorialService qui gère la sauvegarde
+    // dans Supabase avec la clé 'tutorial_musculation_completed'
 
     if (shouldContinue == true) {
       debugPrint('✅ Welcome Musculation terminé - Lancement du tutorial');

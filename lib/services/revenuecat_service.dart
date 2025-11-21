@@ -3,7 +3,9 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../config/subscription_config.dart';
+import '../config/env_config.dart';
 
 /// Service RevenueCat pour la gestion des achats in-app réels
 ///
@@ -24,16 +26,9 @@ class RevenueCatService {
   factory RevenueCatService() => _instance;
   RevenueCatService._internal();
 
-  // Clés API RevenueCat (à configurer dans vos variables d'environnement)
-  static const String _appleApiKey = String.fromEnvironment(
-    'REVENUECAT_APPLE_API_KEY',
-    defaultValue: '',
-  );
-
-  static const String _googleApiKey = String.fromEnvironment(
-    'REVENUECAT_GOOGLE_API_KEY',
-    defaultValue: '',
-  );
+  // Clés API RevenueCat (depuis EnvConfig)
+  static String get _appleApiKey => EnvConfig.revenueCatAppleApiKey;
+  static String get _googleApiKey => EnvConfig.revenueCatGoogleApiKey;
 
   // Identifiants des entitlements et produits (depuis SubscriptionConfig)
   static String get premiumEntitlementId => SubscriptionConfig.premiumEntitlementId;
@@ -201,6 +196,7 @@ class RevenueCatService {
       return packages;
     } catch (e) {
       debugPrint('❌ Erreur lors de la récupération des packages: $e');
+      debugPrint('💡 Astuce: Configure les produits dans RevenueCat Dashboard ou active StoreKit Testing dans Xcode');
       rethrow;
     }
   }
@@ -236,6 +232,63 @@ class RevenueCatService {
       } else {
         debugPrint('❌ Erreur lors de l\'achat: ${e.message}');
       }
+      rethrow;
+    }
+  }
+
+  /// Ouvre la page de gestion des abonnements iOS/Android
+  /// Note: Cette méthode utilise les réglages système natifs
+  Future<void> showManageSubscriptions() async {
+    if (!_isInitialized) {
+      debugPrint('⚠️ RevenueCat non initialisé');
+      return;
+    }
+
+    try {
+      debugPrint('📱 Ouverture de la gestion des abonnements...');
+
+      // Essayer d'abord d'obtenir l'URL de gestion depuis RevenueCat
+      final managementUrl = await getManagementURL();
+
+      if (managementUrl != null && managementUrl.isNotEmpty) {
+        // Utiliser l'URL fournie par RevenueCat (la plus fiable)
+        debugPrint('📱 Utilisation de l\'URL de gestion RevenueCat: $managementUrl');
+        final uri = Uri.parse(managementUrl);
+
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+          debugPrint('✅ Page de gestion ouverte');
+          return;
+        }
+      }
+
+      // Fallback: utiliser les URL système par défaut
+      if (Platform.isIOS) {
+        // iOS: Ouvre directement l'App Store pour gérer les abonnements
+        // Cette URL fonctionne mieux que itms-apps://
+        final uri = Uri.parse('https://apps.apple.com/account/subscriptions');
+        debugPrint('📱 Ouverture de l\'App Store pour gérer l\'abonnement');
+
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+          debugPrint('✅ App Store ouvert');
+        } else {
+          debugPrint('⚠️ Impossible d\'ouvrir l\'App Store');
+        }
+      } else if (Platform.isAndroid) {
+        // Android: Ouvre Play Store pour les abonnements
+        final uri = Uri.parse('https://play.google.com/store/account/subscriptions');
+        debugPrint('📱 Ouverture du Play Store pour gérer l\'abonnement');
+
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+          debugPrint('✅ Play Store ouvert');
+        } else {
+          debugPrint('⚠️ Impossible d\'ouvrir le Play Store');
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Erreur lors de l\'ouverture de la gestion des abonnements: $e');
       rethrow;
     }
   }
