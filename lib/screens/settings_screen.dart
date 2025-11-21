@@ -13,6 +13,7 @@ import '../services/translations.dart';
 import '../services/global_state_manager.dart';
 import '../services/revenuecat_service.dart';
 import '../services/unified_subscription_service.dart';
+import '../services/app_review_service.dart';
 import 'package:provider/provider.dart';
 import '../providers/goals_notifier.dart';
 import '../providers/weight_notifier.dart';
@@ -1852,6 +1853,18 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                         builder: (context) => const HelpSupportScreen(),
                                       ),
                                     );
+                                  },
+                                ),
+                              ),
+                              // Bouton "Noter l'application" (ouvre l'App Store)
+                              Consumer<LocalizationService>(
+                                builder: (context, locService, _) => _buildListTile(
+                                  icon: LucideIcons.star,
+                                  title: locService.currentLanguageCode == 'fr'
+                                      ? 'Noter l\'application'
+                                      : 'Rate the App',
+                                  onTap: () async {
+                                    await AppReviewService().openAppStore();
                                   },
                                 ),
                               ),

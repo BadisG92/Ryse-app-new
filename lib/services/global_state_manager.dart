@@ -7,6 +7,7 @@ import 'translations.dart';
 import '../components/ui/global_progress_models.dart';
 import 'sport_dashboard_service.dart';
 import 'header_cache_service.dart';
+import 'app_review_service.dart';
 
 /// Gestionnaire d'état global pour synchronisation instantanée entre pages
 /// Résout le problème de latence et de mise à jour non reflétée
@@ -399,6 +400,9 @@ class GlobalStateManager {
     ));
 
     if (kDebugMode) debugPrint('💧 GlobalState: Eau mise à jour -> ${_currentWaterL}L');
+
+    // Vérifier si on peut demander une review
+    _checkAndRequestReviewIfNeeded();
   }
 
   /// MISE À JOUR INSTANTANÉE - Calories et macros
@@ -415,6 +419,9 @@ class GlobalStateManager {
     ));
 
     if (kDebugMode) debugPrint('🍎 GlobalState: Calories mises à jour -> ${_currentCalories}kcal');
+
+    // Vérifier si on peut demander une review
+    _checkAndRequestReviewIfNeeded();
   }
 
   /// MISE À JOUR INSTANTANÉE - Macronutriments
@@ -460,6 +467,9 @@ class GlobalStateManager {
     ));
 
     if (kDebugMode) debugPrint('🍽️ GlobalState: Repas mis à jour -> $_mealsCount');
+
+    // Vérifier si on peut demander une review
+    _checkAndRequestReviewIfNeeded();
   }
 
   /// MISE À JOUR INSTANTANÉE - Workout
@@ -499,6 +509,9 @@ class GlobalStateManager {
     ));
 
     if (kDebugMode) debugPrint('🏋️ GlobalState: Sport mis à jour -> $_sportSessions séances, $_sportCaloriesBurned kcal');
+
+    // Vérifier si on peut demander une review
+    _checkAndRequestReviewIfNeeded();
   }
 
   /// RECOMPTE INSTANTANÉ - Recharge TOUTES les données Sport du jour depuis la base
@@ -736,6 +749,144 @@ class GlobalStateManager {
   void _notifyChange(StateChangeEvent event) {
     if (!_eventController.isClosed) {
       _eventController.add(event);
+    }
+  }
+
+  /// Vérifie si les conditions sont remplies pour demander une review
+  ///
+  /// Appelée automatiquement après chaque mise à jour d'objectif:
+  /// - Calories ajoutées
+  /// - Eau ajoutée
+  /// - Repas ajouté
+  /// - Sport complété
+  ///
+  /// Déclenche la première review si:
+  /// - Au moins 2 objectifs quotidiens sont complétés
+  /// - Priorité si Calories + Sport sont complétés ensemble
+  ///
+  /// Déclenche les reviews suivantes (milestones) si:
+  /// - Après 3 workouts complétés (total historique)
+  /// - Après 7 jours de streak
+  /// - Après 5 repas différents trackés (total historique)
+  Future<void> _checkAndRequestReviewIfNeeded() async {
+    try {
+      // Calculer le nombre d'objectifs complétés
+      final dailyGoals = getDailyGoalsForDashboard();
+      final completedGoals = dailyGoals.where((goal) => goal['completed'] == true).toList();
+      final completedCount = completedGoals.length;
+
+      // Vérifier si Calories ET Sport sont complétés (combo premium)
+      final caloriesCompleted = calorieProgress >= 100;
+      final workoutCompleted = _sportSessions >= 1;
+      final hasCaloriesAndWorkout = caloriesCompleted && workoutCompleted;
+
+      if (kDebugMode) {
+        debugPrint('🎯 GlobalState: Vérification review...');
+        debugPrint('   - Objectifs complétés: $completedCount/4');
+        debugPrint('   - Calories: ${caloriesCompleted ? "✅" : "❌"}');
+        debugPrint('   - Sport: ${workoutCompleted ? "✅" : "❌"}');
+        debugPrint('   - Combo premium: ${hasCaloriesAndWorkout ? "✅" : "❌"}');
+        debugPrint('   - Streak: $_currentStreak jours');
+      }
+
+      // TRIGGER 1: Premier review - Si au moins 2 objectifs sont complétés
+      if (completedCount >= 2) {
+        await AppReviewService().requestReviewAfterDailyGoals(
+          completedGoalsCount: completedCount,
+          hasCaloriesAndWorkout: hasCaloriesAndWorkout,
+        );
+      }
+
+      // TRIGGER 2: Après 7 jours de streak
+      if (_currentStreak == 7) {
+        await AppReviewService().requestReviewAfterMilestone('7_day_streak');
+      }
+
+      // TRIGGER 3: Après 3 workouts complétés (vérifier le total historique)
+      await _checkWorkoutMilestone();
+
+      // TRIGGER 4: Après 5 repas différents trackés (vérifier le total historique)
+      await _checkMealsMilestone();
+
+    } catch (e) {
+      if (kDebugMode) debugPrint('❌ GlobalState: Erreur _checkAndRequestReviewIfNeeded - $e');
+    }
+  }
+
+  /// Vérifie si l'utilisateur a complété 3 workouts (total historique)
+  Future<void> _checkWorkoutMilestone() async {
+    try {
+      final client = SupabaseConfig.client;
+      final user = client.auth.currentUser;
+      if (user == null) return;
+
+      // Compter le nombre TOTAL de séances (musculation + cardio) depuis le début
+      final futures = await Future.wait([
+        // Total séances musculation
+        client
+            .from('workout_session_summaries')
+            .select('history_session_id')
+            .eq('user_id', user.id),
+
+        // Total séances cardio
+        client
+            .from('cardio_sessions')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('is_completed', true),
+      ]);
+
+      final workoutSessions = futures[0] as List;
+      final cardioSessions = futures[1] as List;
+      final totalWorkouts = workoutSessions.length + cardioSessions.length;
+
+      if (kDebugMode) debugPrint('💪 Total workouts historiques: $totalWorkouts');
+
+      // Si exactement 3 workouts → trigger review
+      if (totalWorkouts == 3) {
+        await AppReviewService().requestReviewAfterMilestone('3_workouts_completed');
+      }
+
+    } catch (e) {
+      if (kDebugMode) debugPrint('❌ GlobalState: Erreur _checkWorkoutMilestone - $e');
+    }
+  }
+
+  /// Vérifie si l'utilisateur a tracké 5 repas différents (total historique)
+  Future<void> _checkMealsMilestone() async {
+    try {
+      final client = SupabaseConfig.client;
+      final user = client.auth.currentUser;
+      if (user == null) return;
+
+      // Compter le nombre de meal_id UNIQUES (repas différents)
+      final response = await client
+          .from('food_entries')
+          .select('meal_id')
+          .eq('user_id', user.id)
+          .not('meal_id', 'is', null);
+
+      final entries = response as List;
+      final uniqueMealIds = <String>{};
+
+      for (var entry in entries) {
+        final mealId = entry['meal_id'] as String?;
+        if (mealId != null && mealId.isNotEmpty) {
+          uniqueMealIds.add(mealId);
+        }
+      }
+
+      final totalUniqueMeals = uniqueMealIds.length;
+
+      if (kDebugMode) debugPrint('🍽️ Total repas uniques trackés: $totalUniqueMeals');
+
+      // Si exactement 5 repas différents → trigger review
+      if (totalUniqueMeals == 5) {
+        await AppReviewService().requestReviewAfterMilestone('5_different_meals_tracked');
+      }
+
+    } catch (e) {
+      if (kDebugMode) debugPrint('❌ GlobalState: Erreur _checkMealsMilestone - $e');
     }
   }
 

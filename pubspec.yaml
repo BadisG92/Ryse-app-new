@@ -130,6 +130,9 @@ dependencies:
   # In-App Purchases & Subscriptions
   purchases_flutter: ^8.3.3
 
+  # In-App Review (Apple StoreKit pour demander une note)
+  in_app_review: ^2.0.9
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
