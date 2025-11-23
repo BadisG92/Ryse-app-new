@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Ryze App</string>
+	<string>Ryze</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -33,10 +33,6 @@
 	</dict>
 	<key>NSCameraUsageDescription</key>
 	<string>Cette application utilise la caméra pour scanner les aliments et analyser les plats avec l'IA nutritionnelle.</string>
-	<key>NSHealthShareUsageDescription</key>
-	<string>Cette application peut synchroniser vos données d'entraînement avec l'app Santé pour un suivi complet de votre activité physique.</string>
-	<key>NSHealthUpdateUsageDescription</key>
-	<string>Cette application peut ajouter vos séances de sport à l'app Santé pour améliorer votre suivi fitness global.</string>
 	<key>NSLocationTemporaryUsageDescriptionDictionary</key>
 	<dict>
 		<key>CardioWorkout</key>
@@ -44,6 +40,8 @@
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Cette application utilise votre localisation pour vous proposer des recommandations nutritionnelles adaptées à votre région et pour suivre précisément vos activités cardio (distance, vitesse, parcours).</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Cette application peut utiliser votre localisation en arrière-plan pour suivre vos activités sportives même lorsque l'app n'est pas active.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Cette application utilise le microphone pour l'assistance vocale lors du scan nutritionnel et l'enregistrement mains-libres de vos performances pendant les entraînements.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
@@ -56,6 +54,10 @@
 	<string>Cette application accède à vos photos pour analyser les aliments et calculer leurs valeurs nutritionnelles.</string>
 	<key>NSUserTrackingUsageDescription</key>
 	<string>Cette app ne suit pas vos données personnelles. Le suivi GPS sert uniquement à mesurer vos performances sportives localement sur votre appareil.</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Cette application peut lire vos données de santé (activité, calories brûlées) pour optimiser vos objectifs nutritionnels et sportifs.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Cette application peut écrire vos données d'entraînement dans Apple Health pour centraliser votre suivi fitness.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

@@ -106,25 +106,25 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
     });
   }
 
-  /// Vérifier si l'utilisateur a accès au scanner barcode (Premium uniquement)
+  /// Vérifier si l'utilisateur a accès au scanner barcode (Premium uniquement ou Trial)
   Future<void> _checkPremiumAccess() async {
-    final isPremium = SubscriptionService.instance.isPremium;
+    // Utiliser canUseFeature pour gérer le trial
+    // markAsUsed: false car on marque seulement après succès
+    final canAccess = await PaywallService.instance.canUseFeature(
+      context: context,
+      paywallContext: PaywallContext.barcodeScanner,
+      markAsUsed: false,
+    );
 
-    if (!isPremium) {
-      // Afficher le paywall
-      final upgraded = await PaywallService.instance.showPaywall(
-        context: context,
-        paywallContext: PaywallContext.barcodeScanner,
-      );
-
-      if (!upgraded && mounted) {
-        // L'utilisateur n'a pas souscrit, retour
+    if (!canAccess) {
+      // L'utilisateur n'a pas accès (ni Premium, ni trial, et a refusé le paywall)
+      if (mounted) {
         Navigator.pop(context);
-        return;
       }
+      return;
     }
 
-    // Si Premium ou upgrade réussi, initialiser la caméra
+    // Si accès autorisé, initialiser la caméra
     _initializeCamera();
   }
 
@@ -144,8 +144,8 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
         enableAudio: false,
       );
 
-      await _cameraController!.initialize();
-      await _cameraController!.setFocusMode(FocusMode.auto);
+      await _cameraController?.initialize();
+      await _cameraController?.setFocusMode(FocusMode.auto);
 
       if (mounted) {
         setState(() {
@@ -187,7 +187,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
         if (isCameraInitialized && _cameraController != null && !isLoadingProduct)
           GestureDetector(
             onTapDown: (details) async {
-              if (isProcessing) return;
+              if (isProcessing || _cameraController == null) return;
 
               final RenderBox box = context.findRenderObject() as RenderBox;
               final Offset localPosition = box.globalToLocal(details.globalPosition);
@@ -195,8 +195,8 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
               final double y = localPosition.dy / box.size.height;
 
               try {
-                await _cameraController!.setFocusPoint(Offset(x, y));
-                await _cameraController!.setExposurePoint(Offset(x, y));
+                await _cameraController?.setFocusPoint(Offset(x, y));
+                await _cameraController?.setExposurePoint(Offset(x, y));
 
                 setState(() {
                   _focusPoint = details.globalPosition;
@@ -215,7 +215,9 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
               }
             },
             child: SizedBox.expand(
-              child: CameraPreview(_cameraController!),
+              child: _cameraController != null 
+                ? CameraPreview(_cameraController!)
+                : const SizedBox(),
             ),
           ),
 
@@ -230,8 +232,8 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
         // Indicateur de focus (tap-to-focus)
         if (_showFocusIndicator && _focusPoint != null)
           Positioned(
-            left: _focusPoint!.dx - 40,
-            top: _focusPoint!.dy - 40,
+            left: (_focusPoint?.dx ?? 0) - 40,
+            top: (_focusPoint?.dy ?? 0) - 40,
             child: Container(
               width: 80,
               height: 80,
@@ -599,7 +601,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
           ),
           const SizedBox(height: 16),
           Text(
-            _errorMessage!,
+            _errorMessage ?? '',
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
@@ -669,7 +671,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: const Color(0xFFE5E7EB)),
                         ),
-                child: _scannedProduct!.imageUrl != null && _scannedProduct!.imageUrl!.isNotEmpty
+                child: (_scannedProduct?.imageUrl?.isNotEmpty ?? false)
                     ? ClipRRect(
                         borderRadius: BorderRadius.circular(12),
                         child: Image.network(
@@ -698,7 +700,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                       
                       // Informations du produit
               Text(
-                _scannedProduct!.productName ?? 'Produit sans nom',
+                _scannedProduct?.productName ?? 'Produit sans nom',
                 style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w700,
@@ -754,7 +756,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                       const SizedBox(height: 20),
                       
               // Informations nutritionnelles
-              if (_scannedProduct!.nutriments != null)
+              if (_scannedProduct?.nutriments != null)
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.all(16),
@@ -1141,12 +1143,12 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
   String _buildProductSubtitle() {
     final parts = <String>[];
     
-    if (_scannedProduct!.brands != null && _scannedProduct!.brands!.isNotEmpty) {
-      parts.add('Marque: ${_scannedProduct!.brands!}');
+    if ((_scannedProduct?.brands?.isNotEmpty ?? false)) {
+      parts.add('Marque: ${_scannedProduct?.brands}');
     }
     
-    if (_scannedProduct!.quantity != null && _scannedProduct!.quantity!.isNotEmpty) {
-      parts.add(_scannedProduct!.quantity!);
+    if ((_scannedProduct?.quantity?.isNotEmpty ?? false)) {
+      parts.add(_scannedProduct?.quantity ?? '');
     }
     
     return parts.isNotEmpty ? parts.join(' • ') : 'no_additional_info'.tr(LocalizationService.instance.currentLanguageCode);
@@ -1212,7 +1214,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
   // Redémarrer le scan
   /// Scanner le code-barres (ML Kit ou Vision API selon config)
   Future<void> _scanBarcodeWithCamera() async {
-    if (isProcessing || !isCameraInitialized) return;
+    if (isProcessing || !isCameraInitialized || _cameraController == null) return;
 
     setState(() {
       isProcessing = true;
@@ -1221,6 +1223,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
 
     try {
       // Capturer une image haute résolution
+      if (_cameraController == null || !_cameraController!.value.isInitialized) return;
       final image = await _cameraController!.takePicture();
 
       if (kDebugMode) debugPrint('📸 Image capturée, détection en cours...');
@@ -1488,9 +1491,9 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
     if (widget.isFromDashboard) {
       // Créer un FoodItem basé sur les données scannées
       final quantity = double.tryParse(_quantityController.text) ?? 100.0;
-      final unit = _scannedProduct!.unit;
+      final unit = _scannedProduct?.unit ?? 'g';
       final foodItem = nutrition_models.FoodItem(
-        name: _scannedProduct!.productName ?? 'Produit scanné', // Juste le nom, sans les calories
+        name: _scannedProduct?.productName ?? 'Produit scanné', // Juste le nom, sans les calories
         calories: _getCalculatedCalories().round(),
         proteins: _getCalculatedProtein(),
         carbs: _getCalculatedCarbs(),
@@ -1500,7 +1503,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
       );
       
       // Afficher le popup AVANT de déclencher la sélection
-      if (_scannedProduct!.barcode != null && _scannedProduct!.barcode!.isNotEmpty) {
+      if ((_scannedProduct?.barcode?.isNotEmpty ?? false)) {
         if (kDebugMode) debugPrint('DEBUG: Dashboard - Affichage du popup');
         _pendingDashboardFoodItem = foodItem; // Stocker pour après le popup
         _showSaveToCustomFoodsDialog();
@@ -1511,7 +1514,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
       }
     } else {
       // Comportement pour le journal - Afficher le popup d'abord
-      if (_scannedProduct!.barcode != null && _scannedProduct!.barcode!.isNotEmpty) {
+      if ((_scannedProduct?.barcode?.isNotEmpty ?? false)) {
         if (kDebugMode) debugPrint('DEBUG: Mode Journal - Affichage immédiat du popup');
         _showSaveToCustomFoodsDialog();
         // La fermeture de l'écran sera gérée dans le popup lui-même
@@ -1555,9 +1558,9 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
     
     // Créer le FoodItem avec les données scannées
     final quantity = double.tryParse(_quantityController.text) ?? 100.0;
-    final unit = _scannedProduct!.unit;
+    final unit = _scannedProduct?.unit ?? 'g';
     final foodItem = nutrition_models.FoodItem(
-      name: _scannedProduct!.productName ?? 'Produit scanné', // Juste le nom, sans les calories
+      name: _scannedProduct?.productName ?? 'Produit scanné', // Juste le nom, sans les calories
       calories: _getCalculatedCalories().round(),
       proteins: _getCalculatedProtein(),
       carbs: _getCalculatedCarbs(),
@@ -1582,7 +1585,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
 
     // Vérifier d'abord si l'aliment existe déjà
     final user = AuthService().currentUser;
-    if (user != null && _scannedProduct!.barcode != null) {
+    if (user != null && (_scannedProduct?.barcode?.isNotEmpty ?? false)) {
       final existingFood = await DatabaseService.checkCustomFoodExistsByBarcode(
         user.id, 
         _scannedProduct!.barcode!
@@ -1593,7 +1596,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
         // mais continuer avec l'ajout au repas
         if (mounted) {
           // Afficher message d'information (optionnel)
-          final productName = _scannedProduct!.productName ?? 'this_product'.tr(LocalizationService.instance.currentLanguageCode);
+          final productName = _scannedProduct?.productName ?? 'this_product'.tr(LocalizationService.instance.currentLanguageCode);
           final message = 'product_already_in_custom_foods'.tr(LocalizationService.instance.currentLanguageCode)
               .replaceAll('{productName}', productName);
           ScaffoldMessenger.of(context).showSnackBar(
@@ -1675,7 +1678,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
 
                 Consumer<LocalizationService>(
                   builder: (context, locService, child) {
-                    final productName = _scannedProduct!.productName ?? 'this_product'.tr(locService.currentLanguageCode);
+                    final productName = _scannedProduct?.productName ?? 'this_product'.tr(locService.currentLanguageCode);
                     final message = 'add_to_custom_foods_question'.tr(locService.currentLanguageCode)
                         .replaceAll('{productName}', productName);
                     return Text(
@@ -1788,25 +1791,25 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
 
       // Calculer les macros pour 100g/ml (base de référence)
       final currentQuantity = double.tryParse(_quantityController.text) ?? 100.0;
-      final originalCalories = _scannedProduct!.nutriments?.energyKcal100g ?? 0.0;
-      final originalProteins = _scannedProduct!.nutriments?.proteins100g ?? 0.0;
-      final originalCarbs = _scannedProduct!.nutriments?.carbohydrates100g ?? 0.0;
-      final originalFats = _scannedProduct!.nutriments?.fat100g ?? 0.0;
+      final originalCalories = _scannedProduct?.nutriments?.energyKcal100g ?? 0.0;
+      final originalProteins = _scannedProduct?.nutriments?.proteins100g ?? 0.0;
+      final originalCarbs = _scannedProduct?.nutriments?.carbohydrates100g ?? 0.0;
+      final originalFats = _scannedProduct?.nutriments?.fat100g ?? 0.0;
 
       // Si l'unité est en grammes ou ml, on peut convertir à la base 100g/ml
       // Sinon, on garde les valeurs actuelles
-      final isWeightBasedUnit = _scannedProduct!.unit == 'g' || _scannedProduct!.unit == 'ml';
+      final isWeightBasedUnit = _scannedProduct?.unit == 'g' || _scannedProduct?.unit == 'ml';
       
       final finalCalories = isWeightBasedUnit ? originalCalories.round() : _getCalculatedCalories().round();
       final finalProteins = isWeightBasedUnit ? originalProteins : _getCalculatedProtein();
       final finalCarbs = isWeightBasedUnit ? originalCarbs : _getCalculatedCarbs();
       final finalFats = isWeightBasedUnit ? originalFats : _getCalculatedFat();
       final finalQuantity = isWeightBasedUnit ? 100.0 : currentQuantity;
-      final finalUnit = _scannedProduct!.unit;
+      final finalUnit = _scannedProduct?.unit ?? 'g';
 
       final customFood = {
         'user_id': user.id,
-        'name': _scannedProduct!.productName ?? 'scanned_product'.tr(LocalizationService.instance.currentLanguageCode),
+        'name': _scannedProduct?.productName ?? 'scanned_product'.tr(LocalizationService.instance.currentLanguageCode),
         'calories': finalCalories,
         'proteins': finalProteins,
         'carbs': finalCarbs,
@@ -1815,7 +1818,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
         'reference_unit_fr': finalUnit,
         'reference_unit_en': finalUnit,
         'origin': 'barcode', // Marquer comme provenant d'un scan
-        'barcode': _scannedProduct!.barcode, // Sauvegarder le code-barres
+        'barcode': _scannedProduct?.barcode, // Sauvegarder le code-barres
       };
 
       // Sauvegarder dans Supabase
@@ -1827,7 +1830,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
 
       // Afficher une confirmation
       if (mounted) {
-        final productName = _scannedProduct!.productName ?? 'meal_dish'.tr(LocalizationService.instance.currentLanguageCode);
+        final productName = _scannedProduct?.productName ?? 'meal_dish'.tr(LocalizationService.instance.currentLanguageCode);
         final message = 'product_added_to_custom_foods'.tr(LocalizationService.instance.currentLanguageCode)
             .replaceAll('{productName}', productName);
         ScaffoldMessenger.of(context).showSnackBar(

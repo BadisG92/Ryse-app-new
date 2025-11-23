@@ -13,6 +13,7 @@ import '../services/weight_service.dart';
 import '../services/translations.dart';
 import '../services/localization_service.dart';
 import '../providers/weight_notifier.dart';
+import '../services/haptic_service.dart';
 
 class WeightEvolutionScreen extends StatefulWidget {
   const WeightEvolutionScreen({
@@ -878,7 +879,7 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
         handleBuiltInTouches: true,
         touchCallback: (FlTouchEvent event, LineTouchResponse? response) {
           if (event is FlTapUpEvent) {
-            HapticFeedback.selectionClick();
+            HapticService.instance.selectionClick();
           }
         },
         touchTooltipData: LineTouchTooltipData(

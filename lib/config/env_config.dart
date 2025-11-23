@@ -19,7 +19,7 @@ class EnvConfig {
 
   static const String supabaseAnonKey = String.fromEnvironment(
     'SUPABASE_ANON_KEY',
-    defaultValue: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1mc2t3bHpneGpoaGtubHdwYmxxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4MzU0ODIsImV4cCI6MjA2NTQxMTQ4Mn0.pAIhzY7oDOSGVk2c6Jj0fslSozwYeIzjXQhhMpORFXo', // Fallback pour Xcode
+    defaultValue: '',
   );
 
   // ===================================
@@ -28,12 +28,12 @@ class EnvConfig {
 
   static const String geminiApiKey = String.fromEnvironment(
     'GEMINI_API_KEY',
-    defaultValue: 'AIzaSyCZ40oCAMe-A5YNeAFfXAcdGeEqzNythZY', // Fallback pour Xcode
+    defaultValue: '',
   );
 
   static const String googleVisionApiKey = String.fromEnvironment(
     'GOOGLE_VISION_API_KEY',
-    defaultValue: 'AIzaSyCZ40oCAMe-A5YNeAFfXAcdGeEqzNythZY', // Fallback pour Xcode
+    defaultValue: '',
   );
 
   // ===================================

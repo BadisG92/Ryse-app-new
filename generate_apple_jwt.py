@@ -12,10 +12,7 @@ key_id = "8KB56YY7H8"
 
 # Votre clé privée .p8
 private_key = """-----BEGIN PRIVATE KEY-----
-MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQglNWWRXvclB8rwr8H
-LxWIIlOdZsi9qzQ6TTMEsi50FuegCgYIKoZIzj0DAQehRANCAASLWQNc99KlM2/O
-kqIossjFpGgTXsFbF9hZ2r5KQfc8Z1ZfvIMxZTOA/ttilIhgXi9JBKz+S8e3Vtyx
-ikmczqKz
+YOUR_PRIVATE_KEY_HERE
 -----END PRIVATE KEY-----"""
 
 # Timestamps (valide 6 mois)

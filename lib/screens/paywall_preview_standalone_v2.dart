@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import '../services/paywall_service.dart';
 import '../components/ui/coach_ryze_avatar.dart';
 import '../models/subscription_models.dart';
+import '../services/haptic_service.dart';
 
 /// Version V2 moderne du paywall standalone - Tient dans un bottom sheet sans scroll
 /// Design premium avec gradients, glassmorphism et micro-animations
@@ -97,7 +98,7 @@ class _PaywallPreviewStandaloneV2State extends State<PaywallPreviewStandaloneV2>
     });
 
     // Haptic feedback on load
-    HapticFeedback.mediumImpact();
+    HapticService.instance.mediumImpact();
   }
 
   @override
@@ -243,7 +244,7 @@ class _PaywallPreviewStandaloneV2State extends State<PaywallPreviewStandaloneV2>
         padding: const EdgeInsets.only(right: 16, top: 4),
         child: IconButton(
           onPressed: () {
-            HapticFeedback.lightImpact();
+            HapticService.instance.lightImpact();
             Navigator.pop(context);
           },
           icon: Container(
@@ -517,7 +518,7 @@ class _PaywallPreviewStandaloneV2State extends State<PaywallPreviewStandaloneV2>
     return GestureDetector(
       onTap: () {
         setState(() => _selectedPeriod = period);
-        HapticFeedback.selectionClick();
+        HapticService.instance.selectionClick();
       },
       child: Stack(
         clipBehavior: Clip.none,
@@ -693,7 +694,7 @@ class _PaywallPreviewStandaloneV2State extends State<PaywallPreviewStandaloneV2>
                     color: Colors.transparent,
                     child: InkWell(
                       onTap: () {
-                        HapticFeedback.mediumImpact();
+                        HapticService.instance.mediumImpact();
                         Navigator.pop(context);
                       },
                       borderRadius: BorderRadius.circular(16),
@@ -745,7 +746,7 @@ class _PaywallPreviewStandaloneV2State extends State<PaywallPreviewStandaloneV2>
   Widget _buildSkipButton(bool isFrench) {
     return TextButton(
       onPressed: () {
-        HapticFeedback.lightImpact();
+        HapticService.instance.lightImpact();
         Navigator.pop(context);
       },
       child: Text(

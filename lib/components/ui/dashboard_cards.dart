@@ -154,16 +154,6 @@ class DashboardHeader extends StatelessWidget {
                         ),
                       ),
                     ),
-                    
-                    Consumer<LocalizationService>(
-                      builder: (context, locService, child) => Text(
-                        profile.xpText(locService.currentLanguageCode),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.white.withOpacity(0.8),
-                        ),
-                      ),
-                    ),
 
                     const SizedBox(height: 12),
 

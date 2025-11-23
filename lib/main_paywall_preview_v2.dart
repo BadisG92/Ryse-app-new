@@ -8,6 +8,7 @@ import 'config/env_config.dart';
 
 // Import final paywall screen
 import 'screens/paywall_screen.dart';
+import 'services/haptic_service.dart';
 
 /// Test app to compare OLD vs NEW paywall designs
 /// Run with: flutter run --dart-define-from-file=.env.local lib/main_paywall_preview_v2.dart
@@ -293,7 +294,7 @@ class _PaywallComparisonScreenState extends State<PaywallComparisonScreen> {
         setState(() => _currentLanguage = code);
         Provider.of<LocalizationService>(context, listen: false)
             .setLanguage(code);
-        HapticFeedback.selectionClick();
+        HapticService.instance.selectionClick();
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

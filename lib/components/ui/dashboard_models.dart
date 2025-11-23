@@ -8,7 +8,6 @@ class UserProfile {
   final String name;
   final int streak;
   final int todayScore;
-  final int todayXP;
   final bool isPremium;
   final int photosUsed;
   final int dailyCalories;
@@ -18,7 +17,6 @@ class UserProfile {
     required this.name,
     required this.streak,
     required this.todayScore,
-    required this.todayXP,
     required this.isPremium,
     required this.photosUsed,
     required this.dailyCalories,
@@ -30,9 +28,6 @@ class UserProfile {
 
   // Formattage du streak
   String streakText(String languageCode) => '$streak ${'days'.tr(languageCode)}';
-
-  // Formattage des XP
-  String xpText(String languageCode) => '+$todayXP XP ${'today'.tr(languageCode)}';
 
   // Reste de calories
   int get remainingCalories => max(0, dailyCalories - currentCalories);
@@ -153,7 +148,6 @@ class UserProfile {
     String? name,
     int? streak,
     int? todayScore,
-    int? todayXP,
     bool? isPremium,
     int? photosUsed,
     int? dailyCalories,
@@ -163,7 +157,6 @@ class UserProfile {
       name: name ?? this.name,
       streak: streak ?? this.streak,
       todayScore: todayScore ?? this.todayScore,
-      todayXP: todayXP ?? this.todayXP,
       isPremium: isPremium ?? this.isPremium,
       photosUsed: photosUsed ?? this.photosUsed,
       dailyCalories: dailyCalories ?? this.dailyCalories,
@@ -177,7 +170,6 @@ class DailyGoal {
   final String id;
   final String label;
   final int progress;
-  final int xp;
   final bool completed;
   final bool isPremium;
   final double? currentValue;
@@ -188,7 +180,6 @@ class DailyGoal {
     required this.id,
     required this.label,
     required this.progress,
-    required this.xp,
     required this.completed,
     this.isPremium = false,
     this.currentValue,
@@ -213,9 +204,6 @@ class DailyGoal {
     }
   }
 
-  // Badge XP texte
-  String get xpBadgeText => '+$xp XP';
-
   // Texte de progression formaté (X/Y ou X%)
   String get progressText {
     if (currentValue != null && targetValue != null) {
@@ -239,7 +227,6 @@ class DailyGoal {
       progress: (map['progress'] ?? 0) is double
           ? (map['progress'] as double).round()
           : (map['progress'] ?? 0),
-      xp: map['xp'] ?? 0,
       completed: map['completed'] ?? false,
       isPremium: map['isPremium'] ?? false,
       currentValue: (map['currentValue'] as num?)?.toDouble(),
@@ -377,7 +364,6 @@ class DashboardData {
     name: 'Rihab',
     streak: 7,
     todayScore: 85,
-    todayXP: 250,
     isPremium: false,
     photosUsed: 2,
     dailyCalories: 2500,
@@ -390,7 +376,6 @@ class DashboardData {
       id: 'meals',
       label: 'Suivre mes repas aujourd\'hui',
       progress: 0, // No meals
-      xp: 25,
       completed: false,
       currentValue: 0,
       targetValue: 0,
@@ -400,7 +385,6 @@ class DashboardData {
       id: 'water',
       label: 'Boire 2L d\'eau',
       progress: 0, // 0L/0L
-      xp: 15,
       completed: false,
       currentValue: 0.0,
       targetValue: 0.0,
@@ -410,7 +394,6 @@ class DashboardData {
       id: 'calories',
       label: 'Atteindre mes calories',
       progress: 0, // 0/0 kcal
-      xp: 25,
       completed: false,
       currentValue: 0,
       targetValue: 0,
@@ -420,7 +403,6 @@ class DashboardData {
       id: 'workout',
       label: 'Faire une séance aujourd\'hui',
       progress: 0, // 0/0 séance
-      xp: 30,
       completed: false,
       currentValue: 0,
       targetValue: 0,

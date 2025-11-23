@@ -1,6 +1,6 @@
-# Site Web Ryse - coach-ryze.com
+# Site Web Ryze - coach-ryze.com
 
-Site web officiel de l'application Ryse - Coach Nutrition & Fitness propulsé par l'IA.
+Site web officiel de l'application Ryze - Coach Nutrition & Fitness propulsé par l'IA.
 
 ## 📁 Structure du Projet
 
@@ -54,7 +54,7 @@ Le site utilise la même direction artistique que l'application Flutter :
 
 2. **Upload des fichiers** :
    ```
-   Dossier local: /Users/badis/Documents/Ryse-app-new/website/
+   Dossier local: /Users/badis/Documents/Ryze-app-new/website/
    Dossier distant: /public_html/ (ou /htdocs/ selon config)
    ```
 
@@ -83,7 +83,7 @@ Le site utilise la même direction artistique que l'application Flutter :
 
 ```bash
 # Dans le terminal local
-cd /Users/badis/Documents/Ryse-app-new/website
+cd /Users/badis/Documents/Ryze-app-new/website
 
 # Initialiser git (si pas déjà fait)
 git init
@@ -110,7 +110,7 @@ www.coach-ryze.com → [IP de votre serveur GoDaddy]
 
 ### Contenu
 - [ ] Remplacer les SVG placeholders par de vraies screenshots
-- [ ] Ajouter le logo Ryse en SVG dans `assets/images/`
+- [ ] Ajouter le logo Ryze en SVG dans `assets/images/`
 - [ ] Créer favicon.svg et apple-touch-icon.png
 - [ ] Ajouter og-image.jpg (1200x630px) pour réseaux sociaux
 - [ ] Mettre à jour les liens App Store (remplacer `#`)
@@ -309,7 +309,7 @@ Ajouter language switcher dans navbar.
 
 ```bash
 # Après modifications locales
-cd /Users/badis/Documents/Ryse-app-new/website
+cd /Users/badis/Documents/Ryze-app-new/website
 
 # Upload via FTP
 # OU
@@ -338,4 +338,4 @@ cd /Users/badis/Documents/Ryse-app-new/website
 
 **Créé le** : 9 novembre 2025
 **Version** : 1.0
-**Auteur** : Claude Code pour Ryse App
+**Auteur** : Claude Code pour Ryze App

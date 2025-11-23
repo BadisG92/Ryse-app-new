@@ -152,6 +152,14 @@ p {
   padding: var(--spacing-2xl) 0;
 }
 
+.bg-white {
+  background: var(--white);
+}
+
+.bg-gray {
+  background: var(--gray-100);
+}
+
 .section-hero {
   padding: 5rem 0 3rem 0;
 }
@@ -304,6 +312,20 @@ p {
   font-weight: 400;
 }
 
+.hero-badges {
+  margin-bottom: var(--spacing-lg);
+}
+
+.store-badge img {
+  height: 50px;
+  width: auto;
+  transition: transform 0.2s;
+}
+
+.store-badge:hover img {
+  transform: scale(1.05);
+}
+
 .hero-features {
   list-style: none;
   margin-bottom: var(--spacing-xl);
@@ -331,54 +353,27 @@ p {
   flex-shrink: 0;
 }
 
-.hero-cta {
-  display: flex;
-  gap: var(--spacing-md);
-  flex-wrap: wrap;
-}
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  padding: 1rem 2rem;
-  border-radius: var(--radius-md);
-  font-weight: 600;
-  font-size: 1.125rem;
-  border: none;
-  cursor: pointer;
-  transition: var(--transition-normal);
-  text-decoration: none;
-}
-
-.btn-primary {
-  background: linear-gradient(135deg, var(--accent-blue), var(--accent-green));
-  color: var(--white);
-  box-shadow: var(--shadow-lg);
-}
-
-.btn-primary:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--shadow-xl);
-}
-
-.btn-secondary {
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--white);
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  backdrop-filter: blur(10px);
-}
-
-.btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.5);
-}
-
 .hero-mockup {
   position: relative;
   display: flex;
   justify-content: center;
   align-items: center;
+}
+
+/* Effet Glow derrière le panda */
+.hero-mockup::after {
+  content: '';
+  position: absolute;
+  width: 300px;
+  height: 300px;
+  background: var(--accent-blue);
+  filter: blur(100px);
+  opacity: 0.2;
+  z-index: -1;
+  border-radius: 50%;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
 }
 
 .hero-mockup img {
@@ -397,11 +392,10 @@ p {
     grid-template-columns: 1fr;
     text-align: center;
   }
-
-  .hero-cta {
+  .hero-badges {
+    display: flex;
     justify-content: center;
   }
-
   .hero-features li {
     justify-content: center;
   }
@@ -417,7 +411,7 @@ p {
 
 .features-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: var(--spacing-lg);
   margin-top: var(--spacing-xl);
 }
@@ -428,23 +422,32 @@ p {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-md);
   transition: var(--transition-normal);
+  text-align: center; /* Center text for better flow */
 }
 
 .feature-card:hover {
-  transform: translateY(-5px);
+  transform: translateY(-10px);
   box-shadow: var(--shadow-xl);
 }
 
-.feature-icon {
-  width: 60px;
-  height: 60px;
-  background: linear-gradient(135deg, var(--accent-blue), var(--accent-green));
-  border-radius: var(--radius-md);
+/* Nouveau wrapper pour animation panda */
+.feature-icon-wrapper {
+  height: 100px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 2rem;
   margin-bottom: var(--spacing-md);
+}
+
+.feature-image-anim {
+  max-height: 100%;
+  width: auto;
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  filter: drop-shadow(0 5px 15px rgba(0,0,0,0.1));
+}
+
+.feature-card:hover .feature-image-anim {
+  transform: scale(1.1) rotate(5deg);
 }
 
 .feature-card h3 {
@@ -455,6 +458,42 @@ p {
 .feature-card p {
   color: var(--gray-600);
   font-size: 1rem;
+}
+
+/* =====================================================
+   TESTIMONIALS / SOCIAL PROOF
+   ===================================================== */
+
+.testimonials-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--spacing-lg);
+  margin-top: var(--spacing-lg);
+}
+
+.testimonial-card {
+  background: var(--gray-100);
+  padding: var(--spacing-lg);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--gray-200);
+}
+
+.testimonial-card .stars {
+  color: var(--accent-orange);
+  margin-bottom: var(--spacing-sm);
+  font-size: 1.2rem;
+}
+
+.testimonial-card p {
+  font-style: italic;
+  color: var(--gray-800);
+  font-size: 1rem;
+}
+
+.testimonial-card .author {
+  margin-top: var(--spacing-md);
+  font-weight: 700;
+  color: var(--primary-medium);
 }
 
 /* =====================================================
@@ -485,12 +524,217 @@ p {
   box-shadow: var(--shadow-xl);
 }
 
-.screenshot-card img {
+/* NOUVEAU : Mockups CSS Pure */
+.phone-mockup {
   width: 100%;
-  height: auto;
-  display: block;
+  height: 550px; /* Hauteur fixe pour uniformité */
+  background: #000;
+  padding: 12px;
+  border-radius: 40px;
+  position: relative;
+  box-shadow: 0 0 0 4px #333;
 }
 
+.phone-notch {
+  width: 120px;
+  height: 30px;
+  background: #000;
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-bottom-left-radius: 16px;
+  border-bottom-right-radius: 16px;
+  z-index: 10;
+}
+
+.phone-screen {
+  width: 100%;
+  height: 100%;
+  background: #fff;
+  border-radius: 32px;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Mockup Elements */
+.mock-header {
+  padding: 40px 20px 20px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.mock-avatar {
+  width: 50px;
+  height: 50px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 50%;
+}
+
+.mock-title-bar {
+  height: 20px;
+  width: 60%;
+  background: rgba(255,255,255,0.2);
+  border-radius: 10px;
+}
+
+.mock-stats-row {
+  display: flex;
+  gap: 15px;
+  padding: 0 20px 20px;
+}
+
+.mock-stat-box {
+  flex: 1;
+  height: 100px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 20px;
+}
+
+.mock-content-block {
+  margin: 0 20px 15px;
+  height: 80px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 20px;
+}
+
+.mock-fab {
+  position: absolute;
+  bottom: 30px;
+  right: 30px;
+  width: 60px;
+  height: 60px;
+  background: var(--accent-blue);
+  border-radius: 50%;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+
+/* Scanner Mockup */
+.mock-scanner-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.3);
+}
+
+.mock-scanner-frame {
+  width: 200px;
+  height: 200px;
+  border: 2px dashed #fff;
+  border-radius: 20px;
+  margin-bottom: 20px;
+}
+
+.mock-scanner-text {
+  color: #fff;
+  background: rgba(0,0,0,0.5);
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+}
+
+/* Cardio Mockup */
+.mock-map-view {
+  flex: 1;
+  position: relative;
+  background: #2A3F6F;
+}
+
+.mock-path {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 150px;
+  height: 150px;
+  border: 4px solid var(--accent-blue);
+  border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+  transform: translate(-50%, -50%);
+}
+
+.mock-location-pin {
+  width: 20px;
+  height: 20px;
+  background: var(--accent-blue);
+  border-radius: 50%;
+  border: 3px solid white;
+  position: absolute;
+  top: 50%;
+  left: 65%;
+}
+
+.mock-stats-overlay {
+  height: 150px;
+  background: #1C2951;
+  padding: 20px;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.mock-big-stat {
+  font-size: 3rem;
+  font-weight: 900;
+}
+
+.mock-small-stats {
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
+/* Workout Mockup */
+.mock-video-placeholder {
+  height: 200px;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 2rem;
+}
+
+.mock-exercise-list {
+  padding: 20px;
+}
+
+.mock-exercise-item {
+  height: 60px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 12px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  padding: 0 15px;
+  gap: 15px;
+}
+
+.mock-exercise-item.active {
+  background: rgba(59, 130, 246, 0.2);
+  border: 1px solid rgba(59, 130, 246, 0.5);
+}
+
+.mock-check {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.3);
+}
+
+.mock-lines {
+  flex: 1;
+  height: 8px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 4px;
+}
+
+/* Overlay au survol */
 .screenshot-overlay {
   position: absolute;
   bottom: 0;
@@ -501,6 +745,7 @@ p {
   color: var(--white);
   transform: translateY(100%);
   transition: var(--transition-normal);
+  z-index: 20;
 }
 
 .screenshot-card:hover .screenshot-overlay {
@@ -884,6 +1129,87 @@ p {
 @media (max-width: 768px) {
   .logo-text {
     font-size: 24px;
+  }
+}
+/* ... (previous content remains the same until the end) ... */
+
+/* =====================================================
+   MOBILE OPTIMIZATION (EXTRA)
+   ===================================================== */
+
+@media (max-width: 768px) {
+  /* Hero Section Adjustments */
+  .section-hero {
+    padding-top: 8rem; /* Plus d'espace pour la nav fixe */
+    padding-bottom: 2rem;
+    text-align: center;
+  }
+
+  .hero-text h1 {
+    font-size: 2.5rem; /* Titre un peu plus petit */
+  }
+  
+  .hero-mockup img {
+    max-width: 280px; /* Image plus petite sur mobile */
+    margin-top: 2rem;
+  }
+
+  .hero-badges {
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  /* Screenshots Carousel (Horizontal Scroll) */
+  .screenshots-container {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    gap: 1rem;
+    padding-bottom: 2rem; /* Espace pour la scrollbar */
+    -webkit-overflow-scrolling: touch; /* Smooth scroll iOS */
+    grid-template-columns: none; /* Disable grid */
+  }
+
+  .screenshot-card {
+    min-width: 85vw; /* Chaque carte prend 85% de la largeur */
+    scroll-snap-align: center;
+    flex-shrink: 0;
+  }
+  
+  /* Cache la scrollbar moche mais garde le scroll */
+  .screenshots-container::-webkit-scrollbar {
+    display: none; 
+  }
+  .screenshots-container {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+
+  /* Feature Cards */
+  .features-grid {
+    grid-template-columns: 1fr; /* Une seule colonne */
+    padding: 0 1rem;
+  }
+
+  /* Navbar Mobile */
+  .navbar-nav {
+    background: rgba(11, 19, 43, 0.98); /* Fond plus opaque */
+    backdrop-filter: blur(15px);
+    padding-top: 5rem;
+    height: 100vh; /* Plein écran */
+    align-items: center;
+    justify-content: center;
+    gap: 2rem;
+  }
+
+  .navbar-nav a {
+    font-size: 1.5rem; /* Liens plus gros pour le tactile */
+  }
+
+  /* Testimonials */
+  .testimonials-grid {
+    grid-template-columns: 1fr;
   }
 }
 

@@ -23,26 +23,114 @@ class HelpSupportScreen extends StatelessWidget {
     }
   }
 
-  Future<void> _sendEmail(BuildContext context, String lang) async {
+  Future<void> _sendSupportEmail(BuildContext context, String lang) async {
+    // Récupérer les infos système pour faciliter le debug
+    final userId = 'USER_ID'; // TODO: Remplacer par le vrai User ID depuis AuthService
+    final appVersion = '1.0.0'; // TODO: Utiliser package_info_plus pour récupérer la vraie version
+
+    final subject = lang == 'fr' ? 'Support - Ryze' : 'Support - Ryze';
+    final body = lang == 'fr'
+        ? 'Bonjour,\n\nJe vous contacte concernant :\n\n[Décrivez votre problème ici]\n\n---\nInfos système (ne pas supprimer) :\nUser ID: $userId\nVersion: $appVersion\nPlateforme: iOS'
+        : 'Hello,\n\nI am contacting you regarding:\n\n[Describe your issue here]\n\n---\nSystem info (do not delete):\nUser ID: $userId\nVersion: $appVersion\nPlatform: iOS';
+
     final emailUri = Uri(
       scheme: 'mailto',
       path: 'support@coach-ryze.com',
-      query: 'subject=${Uri.encodeComponent('support_email_subject'.tr(lang))}',
+      query: 'subject=${Uri.encodeComponent(subject)}&body=${Uri.encodeComponent(body)}',
     );
 
     try {
-      if (await canLaunchUrl(emailUri)) {
+      // Essayer d'ouvrir l'app Mail native
+      final canLaunch = await canLaunchUrl(emailUri);
+      if (canLaunch) {
         await launchUrl(emailUri);
       } else {
-        // Copier l'email si impossible d'ouvrir
-        _copyEmail(context, lang);
+        // Mail n'est pas configuré sur l'appareil
+        if (context.mounted) {
+          _showEmailNotConfiguredDialog(context, lang);
+        }
       }
     } catch (e) {
-      // En cas d'erreur, copier l'email automatiquement
+      // Erreur lors de l'ouverture de Mail
       if (context.mounted) {
-        _copyEmail(context, lang);
+        _showEmailNotConfiguredDialog(context, lang);
       }
     }
+  }
+
+  Future<void> _sendBugReportEmail(BuildContext context, String lang) async {
+    // Récupérer les infos système pour faciliter le debug
+    final userId = 'USER_ID'; // TODO: Remplacer par le vrai User ID depuis AuthService
+    final appVersion = '1.0.0'; // TODO: Utiliser package_info_plus pour récupérer la vraie version
+
+    final subject = lang == 'fr' ? 'Bug - Ryze' : 'Bug - Ryze';
+    final body = lang == 'fr'
+        ? 'Bonjour,\n\nJe rencontre le bug suivant :\n\n[Décrivez le bug ici]\n\n---\nÉtapes pour reproduire :\n1. [Première étape]\n2. [Deuxième étape]\n3. [Troisième étape]\n\n---\nComportement attendu :\n[Ce qui devrait se passer]\n\n---\nComportement observé :\n[Ce qui se passe réellement]\n\n---\nInfos système (ne pas supprimer) :\nUser ID: $userId\nVersion: $appVersion\nPlateforme: iOS'
+        : 'Hello,\n\nI am experiencing the following bug:\n\n[Describe the bug here]\n\n---\nSteps to reproduce:\n1. [First step]\n2. [Second step]\n3. [Third step]\n\n---\nExpected behavior:\n[What should happen]\n\n---\nObserved behavior:\n[What actually happens]\n\n---\nSystem info (do not delete):\nUser ID: $userId\nVersion: $appVersion\nPlatform: iOS';
+
+    final emailUri = Uri(
+      scheme: 'mailto',
+      path: 'support@coach-ryze.com',
+      query: 'subject=${Uri.encodeComponent(subject)}&body=${Uri.encodeComponent(body)}',
+    );
+
+    try {
+      // Essayer d'ouvrir l'app Mail native
+      final canLaunch = await canLaunchUrl(emailUri);
+      if (canLaunch) {
+        await launchUrl(emailUri);
+      } else {
+        // Mail n'est pas configuré sur l'appareil
+        if (context.mounted) {
+          _showEmailNotConfiguredDialog(context, lang);
+        }
+      }
+    } catch (e) {
+      // Erreur lors de l'ouverture de Mail
+      if (context.mounted) {
+        _showEmailNotConfiguredDialog(context, lang);
+      }
+    }
+  }
+
+  void _showEmailNotConfiguredDialog(BuildContext context, String lang) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        title: Text(
+          lang == 'fr' ? 'Mail non configuré' : 'Mail not configured',
+          style: const TextStyle(
+            color: _primaryDark,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        content: Text(
+          lang == 'fr'
+              ? 'L\'application Mail n\'est pas configurée sur votre appareil.\n\nVous pouvez copier notre adresse email et nous contacter via votre client email préféré.'
+              : 'The Mail app is not configured on your device.\n\nYou can copy our email address and contact us via your preferred email client.',
+          style: const TextStyle(color: Colors.black87),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            style: TextButton.styleFrom(foregroundColor: Colors.grey),
+            child: Text(lang == 'fr' ? 'Annuler' : 'Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _copyEmail(context, lang);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _secondary,
+              foregroundColor: Colors.white,
+            ),
+            child: Text(lang == 'fr' ? 'Copier l\'email' : 'Copy email'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _copyEmail(BuildContext context, String lang) {
@@ -149,9 +237,9 @@ class HelpSupportScreen extends StatelessWidget {
                   items: [
                     _HelpItem(
                       icon: LucideIcons.mail,
-                      title: 'contact_email'.tr(lang),
+                      title: lang == 'fr' ? 'Contacter le support' : 'Contact support',
                       subtitle: 'support@coach-ryze.com',
-                      onTap: () => _sendEmail(context, lang),
+                      onTap: () => _sendSupportEmail(context, lang),
                       trailing: IconButton(
                         icon: const Icon(LucideIcons.copy, size: 18, color: _secondary),
                         onPressed: () => _copyEmail(context, lang),
@@ -220,7 +308,7 @@ class HelpSupportScreen extends StatelessWidget {
                       icon: LucideIcons.bug,
                       title: 'report_bug'.tr(lang),
                       subtitle: 'report_bug_desc'.tr(lang),
-                      onTap: () => _sendEmail(context, lang),
+                      onTap: () => _sendBugReportEmail(context, lang),
                     ),
                   ],
                 ),
@@ -407,7 +495,7 @@ class HelpSupportScreen extends StatelessWidget {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              _sendEmail(context, lang);
+              _sendSupportEmail(context, lang);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: _secondary,

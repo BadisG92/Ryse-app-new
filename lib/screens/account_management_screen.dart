@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../services/auth_service.dart';
 import '../services/localization_service.dart';
 import '../services/translations.dart';
 
@@ -28,11 +26,12 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
   bool _obscureConfirmPassword = true;
 
   String? _currentEmail;
+  bool _isOAuthUser = false;
 
   @override
   void initState() {
     super.initState();
-    _loadCurrentEmail();
+    _loadUserInfo();
   }
 
   @override
@@ -43,11 +42,18 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
     super.dispose();
   }
 
-  Future<void> _loadCurrentEmail() async {
+  Future<void> _loadUserInfo() async {
     final user = Supabase.instance.client.auth.currentUser;
     if (user != null) {
+      // Vérifier si l'utilisateur utilise OAuth (Google, Apple)
+      // Les utilisateurs OAuth n'ont pas de provider "email" dans leurs identités
+      final identities = user.identities ?? [];
+      final hasEmailProvider = identities.any((id) => id.provider == 'email');
+
       setState(() {
         _currentEmail = user.email;
+        // Si pas de provider email, c'est un utilisateur OAuth
+        _isOAuthUser = !hasEmailProvider && identities.isNotEmpty;
       });
     }
   }
@@ -61,9 +67,14 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
     setState(() => _isSendingResetLink = true);
 
     try {
+      debugPrint('📧 Sending password reset email to: $_currentEmail');
+
       await Supabase.instance.client.auth.resetPasswordForEmail(
         _currentEmail!,
+        redirectTo: 'https://coach-ryze.com/reset-password', // Page web pour reset
       );
+
+      debugPrint('✅ Password reset email sent successfully');
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -74,10 +85,11 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
         );
       }
     } catch (e) {
+      debugPrint('❌ Error sending password reset email: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('error_sending_reset_link'.tr(lang)),
+            content: Text('${'error_sending_reset_link'.tr(lang)}: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -98,8 +110,6 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
     setState(() => _isChangingPassword = true);
 
     try {
-      final authService = Provider.of<AuthService>(context, listen: false);
-
       // Vérifier le mot de passe actuel en tentant de se reconnecter
       if (_currentEmail != null) {
         try {
@@ -109,6 +119,7 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
           );
         } catch (e) {
           if (mounted) {
+            setState(() => _isChangingPassword = false);
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text('current_password_incorrect'.tr(lang)),
@@ -183,7 +194,42 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
               children: [
                 const SizedBox(height: 24),
 
-                // Section Mot de passe oublié
+                // Message pour les utilisateurs OAuth (Google/Apple)
+                if (_isOAuthUser)
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEF3C7),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFFCD34D)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          LucideIcons.info,
+                          color: Color(0xFFD97706),
+                          size: 24,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'oauth_no_password'.tr(lang),
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Color(0xFF92400E),
+                              height: 1.4,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                if (_isOAuthUser) const SizedBox(height: 8),
+
+                // Section Mot de passe oublié (cachée pour OAuth)
+                if (!_isOAuthUser)
                 Container(
                   margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   padding: const EdgeInsets.all(20),
@@ -261,9 +307,10 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
                   ),
                 ),
 
-                const SizedBox(height: 24),
+                if (!_isOAuthUser) const SizedBox(height: 24),
 
-                // Section Changer le mot de passe
+                // Section Changer le mot de passe (cachée pour OAuth)
+                if (!_isOAuthUser)
                 Container(
                   margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   padding: const EdgeInsets.all(20),

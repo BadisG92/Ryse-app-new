@@ -30,6 +30,7 @@ import 'package:uni_links/uni_links.dart';
 import 'services/widget_deep_link_handler.dart';
 import 'services/widget_water_handler.dart';
 import 'services/meal_widget_data_provider.dart';
+import 'services/haptic_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -104,6 +105,9 @@ void main() async {
       debugPrint('⚠️ GlobalStateManager timeout - using defaults');
     },
   );
+
+  // Initialiser le service de retour haptique
+  await HapticService.instance.initialize();
   // Mettre les données widget à jour dès que le state global est prêt avec les VRAIES valeurs
   await MealWidgetDataProvider.forceWidgetUpdate();
 
@@ -165,7 +169,7 @@ class MyApp extends StatelessWidget {
       ],
       child: MaterialApp(
         navigatorKey: navigatorKey, // NOUVEAU: Pour les deep links
-        title: 'Ryze App',
+        title: 'Ryze',
         debugShowCheckedModeBanner: false,
         builder: (context, child) {
           return GestureDetector(

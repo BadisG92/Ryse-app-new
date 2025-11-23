@@ -9,6 +9,7 @@ import '../services/unified_subscription_service.dart';
 import '../services/paywall_service.dart';
 import '../services/localization_service.dart';
 import '../services/translations.dart';
+import '../services/haptic_service.dart';
 import '../components/ui/coach_ryze_avatar.dart';
 
 /// Modern Paywall Screen V2 - Conversion-focused design
@@ -71,7 +72,7 @@ class _PaywallScreenV2State extends State<PaywallScreenV2>
     });
 
     // Trigger haptic feedback on load
-    HapticFeedback.mediumImpact();
+    HapticService.instance.mediumImpact();
   }
 
   void _initAnimations() {
@@ -543,7 +544,7 @@ class _PaywallScreenV2State extends State<PaywallScreenV2>
     return GestureDetector(
       onTap: () {
         setState(() => _selectedPeriod = period);
-        HapticFeedback.lightImpact();
+        HapticService.instance.lightImpact();
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
@@ -870,7 +871,7 @@ class _PaywallScreenV2State extends State<PaywallScreenV2>
 
   Future<void> _handlePurchase() async {
     setState(() => _isProcessing = true);
-    HapticFeedback.mediumImpact();
+    HapticService.instance.mediumImpact();
 
     try {
       if (SubscriptionService.TEST_MODE) {
@@ -883,7 +884,7 @@ class _PaywallScreenV2State extends State<PaywallScreenV2>
         if (!mounted) return;
 
         if (success) {
-          HapticFeedback.heavyImpact();
+          HapticService.instance.heavyImpact();
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('🧪 TEST: Premium activé!'),
@@ -901,14 +902,14 @@ class _PaywallScreenV2State extends State<PaywallScreenV2>
         if (!mounted) return;
 
         if (success) {
-          HapticFeedback.heavyImpact();
+          HapticService.instance.heavyImpact();
           Navigator.pop(context, true);
         } else {
-          HapticFeedback.mediumImpact();
+          HapticService.instance.mediumImpact();
         }
       }
     } catch (e) {
-      HapticFeedback.mediumImpact();
+      HapticService.instance.mediumImpact();
       debugPrint('Error during purchase: $e');
     } finally {
       if (mounted) {

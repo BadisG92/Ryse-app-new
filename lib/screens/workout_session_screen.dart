@@ -21,6 +21,7 @@ import '../services/localization_service.dart';
 import '../services/workout_voice_service.dart';
 import '../services/native_speech_service.dart';
 import '../services/celebration_service.dart';
+import '../services/haptic_service.dart';
 import 'package:provider/provider.dart';
 
 class WorkoutSessionScreen extends StatefulWidget {
@@ -4232,23 +4233,23 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     switch (type) {
       case 'start':
         // Début d'écoute
-        HapticFeedback.selectionClick();
+        HapticService.instance.selectionClick();
         break;
       case 'success':
         // Succès de reconnaissance
-        HapticFeedback.heavyImpact();
+        HapticService.instance.heavyImpact();
         break;
       case 'warning':
         // Avertissement (retry)
-        HapticFeedback.mediumImpact();
+        HapticService.instance.mediumImpact();
         break;
       case 'error':
         // Erreur finale
-        HapticFeedback.vibrate();
+        HapticService.instance.vibrate();
         break;
       case 'undo':
         // Action annulée
-        HapticFeedback.lightImpact();
+        HapticService.instance.lightImpact();
         break;
     }
   }
@@ -4301,7 +4302,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
       });
 
       // Feedback
-      HapticFeedback.lightImpact();
+      HapticService.instance.lightImpact();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Consumer<LocalizationService>(
@@ -4349,7 +4350,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
       });
 
       // Feedback
-      HapticFeedback.lightImpact();
+      HapticService.instance.lightImpact();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Consumer<LocalizationService>(
@@ -4409,7 +4410,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     }
 
     setState(() => _isVoiceListening = true);
-    HapticFeedback.mediumImpact();
+    HapticService.instance.mediumImpact();
 
     await _voiceService.startListening(
       onPartialResult: (text) {
@@ -4574,7 +4575,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     }
 
     setState(() => _isVoiceListening = true);
-    HapticFeedback.mediumImpact();
+    HapticService.instance.mediumImpact();
 
     await _voiceService.startListening(
       onPartialResult: (text) {

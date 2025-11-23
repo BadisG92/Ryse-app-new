@@ -70,7 +70,6 @@ class NavigationPreloader {
               id: 'calories',
               label: '',
               progress: 0,
-              xp: 0,
               completed: false
             )).currentValue ?? 0;
 
@@ -79,7 +78,6 @@ class NavigationPreloader {
               id: 'water',
               label: '',
               progress: 0,
-              xp: 0,
               completed: false
             )).currentValue ?? 0;
 

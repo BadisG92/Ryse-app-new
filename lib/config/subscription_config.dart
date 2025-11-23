@@ -43,7 +43,7 @@ class SubscriptionConfig {
 
   /// Identifiant de l'entitlement RevenueCat
   /// À créer dans RevenueCat Dashboard > Entitlements
-  static const String premiumEntitlementId = 'premium';
+  static const String premiumEntitlementId = 'Ryze';
 
   /// Identifiant de l'offering principal
   /// À créer dans RevenueCat Dashboard > Offerings

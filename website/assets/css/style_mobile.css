@@ -1,0 +1,85 @@
+/* ... (previous content remains the same until the end) ... */
+
+/* =====================================================
+   MOBILE OPTIMIZATION (EXTRA)
+   ===================================================== */
+
+@media (max-width: 768px) {
+  /* Hero Section Adjustments */
+  .section-hero {
+    padding-top: 8rem; /* Plus d'espace pour la nav fixe */
+    padding-bottom: 2rem;
+    text-align: center;
+  }
+
+  .hero-text h1 {
+    font-size: 2.5rem; /* Titre un peu plus petit */
+  }
+  
+  .hero-mockup img {
+    max-width: 280px; /* Image plus petite sur mobile */
+    margin-top: 2rem;
+  }
+
+  .hero-badges {
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  /* Screenshots Carousel (Horizontal Scroll) */
+  .screenshots-container {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    gap: 1rem;
+    padding-bottom: 2rem; /* Espace pour la scrollbar */
+    -webkit-overflow-scrolling: touch; /* Smooth scroll iOS */
+    grid-template-columns: none; /* Disable grid */
+  }
+
+  .screenshot-card {
+    min-width: 85vw; /* Chaque carte prend 85% de la largeur */
+    scroll-snap-align: center;
+    flex-shrink: 0;
+  }
+  
+  /* Cache la scrollbar moche mais garde le scroll */
+  .screenshots-container::-webkit-scrollbar {
+    display: none; 
+  }
+  .screenshots-container {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+
+  /* Feature Cards */
+  .features-grid {
+    grid-template-columns: 1fr; /* Une seule colonne */
+    padding: 0 1rem;
+  }
+
+  /* Navbar Mobile */
+  .navbar-nav {
+    background: rgba(11, 19, 43, 0.98); /* Fond plus opaque */
+    backdrop-filter: blur(15px);
+    padding-top: 5rem;
+    height: 100vh; /* Plein écran */
+    align-items: center;
+    justify-content: center;
+    gap: 2rem;
+  }
+
+  .navbar-nav a {
+    font-size: 1.5rem; /* Liens plus gros pour le tactile */
+  }
+
+  /* Testimonials */
+  .testimonials-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+
+

@@ -114,7 +114,6 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
       name: globalState.userName, // Utiliser directement le nom formaté du GlobalState
       streak: globalState.currentStreak,
       todayScore: _calculateTodayScore(globalState),
-      todayXP: _calculateTodayXP(globalState),
       isPremium: false, // Sera mis à jour
       photosUsed: 0,
       dailyCalories: globalState.calorieGoal.toInt(),
@@ -127,7 +126,6 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
         id: data['id'] as String,
         label: data['label'] as String,
         progress: data['progress'] as int,
-        xp: data['xp'] as int,
         completed: data['completed'] as bool,
         isPremium: false,
         currentValue: data['currentValue'] as double?,
@@ -178,7 +176,6 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
           id: data['id'] as String,
           label: data['label'] as String,
           progress: data['progress'] as int,
-          xp: data['xp'] as int,
           completed: data['completed'] as bool,
           isPremium: false,
           currentValue: data['currentValue'] as double?,
@@ -237,7 +234,6 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
         id: data['id'] as String,
         label: data['label'] as String,
         progress: data['progress'] as int,
-        xp: data['xp'] as int,
         completed: data['completed'] as bool,
         isPremium: false,
         currentValue: data['currentValue'] as double?,
@@ -274,7 +270,6 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
           userProfile = loadedProfile.copyWith(
             currentCalories: globalState.currentCalories.toInt(),
             todayScore: _calculateTodayScore(globalState), // ✅ Recalculer le score en temps réel
-            todayXP: _calculateTodayXP(globalState), // ✅ Recalculer les XP en temps réel
           );
         });
 
@@ -294,7 +289,6 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
       name: globalState.userName,
       streak: globalState.currentStreak,
       todayScore: _calculateTodayScore(globalState),
-      todayXP: _calculateTodayXP(globalState),
       isPremium: globalState.isPremium,
       photosUsed: 0, // Sera mis à jour par le vrai profil
       dailyCalories: globalState.calorieGoal.toInt(),
@@ -317,18 +311,6 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
     if (kDebugMode) debugPrint('   - Score final: $score%');
 
     return score;
-  }
-
-  /// Calcule les XP du jour
-  int _calculateTodayXP(GlobalStateManager globalState) {
-    final goals = globalState.getDailyGoalsForDashboard();
-    int totalXP = 0;
-    for (var goal in goals) {
-      if (goal['completed'] == true) {
-        totalXP += goal['xp'] as int;
-      }
-    }
-    return totalXP;
   }
 
   /// Construit les ModulePreviews avec les vraies données du GlobalState
@@ -622,7 +604,6 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
           userProfile = userProfile!.copyWith(
             currentCalories: globalState.currentCalories.toInt(),
             todayScore: _calculateTodayScore(globalState),
-            todayXP: _calculateTodayXP(globalState),
           );
 
           // Redémarrer l'animation du score
@@ -1581,22 +1562,7 @@ class DailyAchievementBadge extends StatelessWidget {
               ),
             ),
             
-            // Bonus XP
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: achievement['color'].withOpacity(0.1),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                '+${achievement['xp']} XP',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: achievement['color'],
-                ),
-              ),
-            ),
+            // Bonus XP supprimé
           ],
         ),
       ),
@@ -1615,7 +1581,6 @@ class DailyAchievementBadge extends StatelessWidget {
         'description': 'Tous les objectifs atteints !',
         'emoji': '🏆',
         'color': const Color(0xFFFFD700),
-        'xp': 100,
       };
     }
     
@@ -1626,7 +1591,6 @@ class DailyAchievementBadge extends StatelessWidget {
         'description': '$streak jours consécutifs !',
         'emoji': '🔥',
         'color': const Color(0xFFFF6B35),
-        'xp': 75,
       };
     }
     
@@ -1637,7 +1601,6 @@ class DailyAchievementBadge extends StatelessWidget {
         'description': 'Objectif calorique maîtrisé !',
         'emoji': '⚖️',
         'color': const Color(0xFF22C55E),
-        'xp': 50,
       };
     }
     
@@ -1648,7 +1611,6 @@ class DailyAchievementBadge extends StatelessWidget {
         'description': 'Tu es sur la bonne voie !',
         'emoji': '💪',
         'color': const Color(0xFF0B132B),
-        'xp': 25,
       };
     }
     
@@ -1848,7 +1810,6 @@ extension UserProfileCopyWith on UserProfile {
     String? name,
     int? streak,
     int? todayScore,
-    int? todayXP,
     bool? isPremium,
     int? photosUsed,
     int? dailyCalories,
@@ -1858,7 +1819,6 @@ extension UserProfileCopyWith on UserProfile {
       name: name ?? this.name,
       streak: streak ?? this.streak,
       todayScore: todayScore ?? this.todayScore,
-      todayXP: todayXP ?? this.todayXP,
       isPremium: isPremium ?? this.isPremium,
       photosUsed: photosUsed ?? this.photosUsed,
       dailyCalories: dailyCalories ?? this.dailyCalories,

@@ -9,6 +9,7 @@ import 'custom_card.dart';
 import 'global_progress_models.dart';
 import '../../services/translations.dart';
 import '../../services/localization_service.dart';
+import '../../services/haptic_service.dart';
 
 // Carte d'évolution du poids avec graphique
 class WeightEvolutionCard extends StatelessWidget {
@@ -89,7 +90,7 @@ class WeightEvolutionCard extends StatelessWidget {
                 // Bouton d'expansion style DA avec haptic feedback
                 GestureDetector(
                   onTap: () {
-                    HapticFeedback.lightImpact();
+                    HapticService.instance.lightImpact();
                     onGraphTap?.call();
                   },
                   child: Container(
@@ -227,7 +228,7 @@ class WeightEvolutionCard extends StatelessWidget {
                               handleBuiltInTouches: true,
                               touchCallback: (FlTouchEvent event, LineTouchResponse? response) {
                                 if (event is FlTapUpEvent) {
-                                  HapticFeedback.selectionClick();
+                                  HapticService.instance.selectionClick();
                                 }
                               },
                               touchTooltipData: LineTouchTooltipData(

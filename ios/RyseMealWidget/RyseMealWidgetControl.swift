@@ -9,6 +9,8 @@ import AppIntents
 import SwiftUI
 import WidgetKit
 
+// Control Widgets are only available in iOS 18+
+@available(iOS 18.0, *)
 struct RyseMealWidgetControl: ControlWidget {
     var body: some ControlWidgetConfiguration {
         StaticControlConfiguration(
@@ -28,6 +30,7 @@ struct RyseMealWidgetControl: ControlWidget {
     }
 }
 
+@available(iOS 18.0, *)
 extension RyseMealWidgetControl {
     struct Provider: ControlValueProvider {
         var previewValue: Bool {
@@ -41,6 +44,7 @@ extension RyseMealWidgetControl {
     }
 }
 
+@available(iOS 18.0, *)
 struct StartTimerIntent: SetValueIntent {
     static let title: LocalizedStringResource = "Start a timer"
 

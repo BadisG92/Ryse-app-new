@@ -119,23 +119,33 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
     try {
       final supabase = Supabase.instance.client;
       final userId = supabase.auth.currentUser?.id;
+      final accessToken = supabase.auth.currentSession?.accessToken;
 
-      if (userId == null) {
+      if (userId == null || accessToken == null) {
         throw Exception('User not authenticated');
       }
 
-      // Étape 1: Supprimer toutes les données utilisateur
-      debugPrint('🗑️ Suppression du compte utilisateur: $userId');
+      // Étape 1: Appeler l'Edge Function pour suppression complète
+      // Cette fonction supprime:
+      // - public.users (avec CASCADE sur toutes les données)
+      // - auth.users (compte d'authentification)
+      debugPrint('🗑️ Suppression complète du compte utilisateur: $userId');
 
-      // Étape 2: Supprimer le profil utilisateur (CASCADE DELETE)
-      await supabase
-          .from('users')
-          .delete()
-          .eq('id', userId);
+      final response = await supabase.functions.invoke(
+        'delete-user',
+        headers: {
+          'Authorization': 'Bearer $accessToken',
+        },
+      );
 
-      debugPrint('✅ Profil utilisateur supprimé de la BDD');
+      if (response.status != 200) {
+        final errorData = response.data;
+        throw Exception(errorData?['error'] ?? 'Failed to delete account');
+      }
 
-      // Étape 3: Déconnexion
+      debugPrint('✅ Compte utilisateur complètement supprimé (public.users + auth.users)');
+
+      // Étape 2: Déconnexion locale (le compte auth n'existe plus)
       final authService = Provider.of<AuthService>(context, listen: false);
       await authService.signOut();
 

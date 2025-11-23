@@ -654,8 +654,8 @@ class AppTranslations {
       'en': 'Account management',
     },
     'email_password': {
-      'fr': 'Email et mot de passe',
-      'en': 'Email and password',
+      'fr': 'Mot de passe',
+      'en': 'Password',
     },
     'privacy': {
       'fr': 'Confidentialité',
@@ -5672,6 +5672,10 @@ class AppTranslations {
     'export_data_desc': {
       'fr': 'Télécharger toutes vos données',
       'en': 'Download all your data',
+    },
+    'oauth_no_password': {
+      'fr': 'Vous êtes connecté avec Google ou Apple. La gestion du mot de passe se fait via votre compte Google/Apple.',
+      'en': 'You are signed in with Google or Apple. Password management is handled through your Google/Apple account.',
     },
     'delete_account': {
       'fr': 'Supprimer le compte',

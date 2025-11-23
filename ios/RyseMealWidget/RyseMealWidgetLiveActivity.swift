@@ -19,6 +19,7 @@ struct RyseMealWidgetAttributes: ActivityAttributes {
     var name: String
 }
 
+@available(iOS 16.1, *)
 struct RyseMealWidgetLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: RyseMealWidgetAttributes.self) { context in
@@ -66,15 +67,8 @@ extension RyseMealWidgetAttributes.ContentState {
     fileprivate static var smiley: RyseMealWidgetAttributes.ContentState {
         RyseMealWidgetAttributes.ContentState(emoji: "😀")
      }
-     
+
      fileprivate static var starEyes: RyseMealWidgetAttributes.ContentState {
          RyseMealWidgetAttributes.ContentState(emoji: "🤩")
      }
-}
-
-#Preview("Notification", as: .content, using: RyseMealWidgetAttributes.preview) {
-   RyseMealWidgetLiveActivity()
-} contentStates: {
-    RyseMealWidgetAttributes.ContentState.smiley
-    RyseMealWidgetAttributes.ContentState.starEyes
 }

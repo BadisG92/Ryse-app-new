@@ -12,6 +12,7 @@ import '../services/translations.dart';
 import '../models/subscription_models.dart';
 import '../components/ui/coach_ryze_avatar.dart';
 import '../components/main_app.dart';
+import '../services/haptic_service.dart';
 
 /// Modern Trial Offer Screen V2 - Premium onboarding experience
 /// Features:
@@ -521,7 +522,7 @@ class _TrialOfferScreenV2State extends State<TrialOfferScreenV2>
             return Transform.scale(
               scale: _cardAnimations[index].value,
               child: GestureDetector(
-                onTapDown: (_) => HapticFeedback.lightImpact(),
+                onTapDown: (_) => HapticService.instance.lightImpact(),
                 child: Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
@@ -731,7 +732,7 @@ class _TrialOfferScreenV2State extends State<TrialOfferScreenV2>
 
         // Main CTA button
         GestureDetector(
-          onTapDown: (_) => HapticFeedback.mediumImpact(),
+          onTapDown: (_) => HapticService.instance.mediumImpact(),
           onTap: _isLoading ? null : () => _startTrial(isFrench),
           child: Container(
             width: double.infinity,
@@ -887,7 +888,7 @@ class _TrialOfferScreenV2State extends State<TrialOfferScreenV2>
 
   Future<void> _startTrial(bool isFrench) async {
     setState(() => _isLoading = true);
-    HapticFeedback.mediumImpact();
+    HapticService.instance.mediumImpact();
 
     try {
       if (SubscriptionService.TEST_MODE) {
@@ -902,7 +903,7 @@ class _TrialOfferScreenV2State extends State<TrialOfferScreenV2>
         if (!mounted) return;
 
         if (success) {
-          HapticFeedback.heavyImpact();
+          HapticService.instance.heavyImpact();
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (context) => const MainApp()),
           );
@@ -917,13 +918,13 @@ class _TrialOfferScreenV2State extends State<TrialOfferScreenV2>
         if (!mounted) return;
 
         if (success) {
-          HapticFeedback.heavyImpact();
+          HapticService.instance.heavyImpact();
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (context) => const MainApp()),
           );
         } else {
           setState(() => _isLoading = false);
-          HapticFeedback.mediumImpact();
+          HapticService.instance.mediumImpact();
         }
       }
     } catch (e) {
@@ -931,7 +932,7 @@ class _TrialOfferScreenV2State extends State<TrialOfferScreenV2>
       if (!mounted) return;
 
       setState(() => _isLoading = false);
-      HapticFeedback.mediumImpact();
+      HapticService.instance.mediumImpact();
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -945,7 +946,7 @@ class _TrialOfferScreenV2State extends State<TrialOfferScreenV2>
   }
 
   void _skipTrial(bool isFrench) {
-    HapticFeedback.selectionClick();
+    HapticService.instance.selectionClick();
 
     showDialog(
       context: context,

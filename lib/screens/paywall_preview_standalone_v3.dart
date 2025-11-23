@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import '../services/paywall_service.dart';
 import '../components/ui/coach_ryze_avatar.dart';
 import '../models/subscription_models.dart';
+import '../services/haptic_service.dart';
 
 /// V3 - Ton design actuel + animations gaming du trial offer
 /// Garde le même contenu/structure mais avec particules et animations progressives
@@ -190,7 +191,7 @@ class _PaywallPreviewStandaloneV3State extends State<PaywallPreviewStandaloneV3>
     });
 
     // Haptic feedback
-    HapticFeedback.mediumImpact();
+    HapticService.instance.mediumImpact();
   }
 
   void _startAnimationSequence() async {
@@ -451,7 +452,7 @@ class _PaywallPreviewStandaloneV3State extends State<PaywallPreviewStandaloneV3>
         padding: const EdgeInsets.only(right: 16, bottom: 8),
         child: IconButton(
           onPressed: () {
-            HapticFeedback.lightImpact();
+            HapticService.instance.lightImpact();
             Navigator.pop(context);
           },
           icon: Container(
@@ -685,7 +686,7 @@ class _PaywallPreviewStandaloneV3State extends State<PaywallPreviewStandaloneV3>
     return GestureDetector(
       onTap: () {
         setState(() => _selectedPeriod = period);
-        HapticFeedback.selectionClick();
+        HapticService.instance.selectionClick();
       },
       child: AnimatedBuilder(
         animation: _pulseAnimation,
@@ -900,7 +901,7 @@ class _PaywallPreviewStandaloneV3State extends State<PaywallPreviewStandaloneV3>
             ),
             child: ElevatedButton(
               onPressed: () {
-                HapticFeedback.mediumImpact();
+                HapticService.instance.mediumImpact();
                 Navigator.pop(context);
               },
               style: ElevatedButton.styleFrom(
@@ -959,7 +960,7 @@ class _PaywallPreviewStandaloneV3State extends State<PaywallPreviewStandaloneV3>
       child: TextButton(
         onPressed: _showCloseButton
             ? () {
-                HapticFeedback.lightImpact();
+                HapticService.instance.lightImpact();
                 Navigator.pop(context);
               }
             : null,

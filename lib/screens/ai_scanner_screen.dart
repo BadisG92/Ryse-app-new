@@ -65,25 +65,25 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
     });
   }
 
-  /// Vérifier si l'utilisateur a accès au scanner (Premium uniquement)
+  /// Vérifier si l'utilisateur a accès au scanner (Premium uniquement ou Trial)
   Future<void> _checkPremiumAccess() async {
-    final isPremium = SubscriptionService.instance.isPremium;
+    // Utiliser canUseFeature pour gérer le trial
+    // markAsUsed: false car on marque seulement après succès
+    final canAccess = await PaywallService.instance.canUseFeature(
+      context: context,
+      paywallContext: PaywallContext.scanner,
+      markAsUsed: false,
+    );
 
-    if (!isPremium) {
-      // Afficher le paywall
-      final upgraded = await PaywallService.instance.showPaywall(
-        context: context,
-        paywallContext: PaywallContext.scanner,
-      );
-
-      if (!upgraded && mounted) {
-        // L'utilisateur n'a pas souscrit, retour
+    if (!canAccess) {
+      // L'utilisateur n'a pas accès (ni Premium, ni trial, et a refusé le paywall)
+      if (mounted) {
         Navigator.pop(context);
-        return;
       }
+      return;
     }
 
-    // Si Premium ou upgrade réussi, initialiser la caméra
+    // Si accès autorisé, initialiser la caméra
     _initializeCamera();
   }
 
@@ -105,11 +105,11 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
         enableAudio: false,
       );
 
-      await _cameraController!.initialize();
+      await _cameraController?.initialize();
 
       // Récupérer les niveaux de zoom min/max
-      _minZoomLevel = await _cameraController!.getMinZoomLevel();
-      _maxZoomLevel = await _cameraController!.getMaxZoomLevel();
+      _minZoomLevel = await _cameraController?.getMinZoomLevel() ?? 1.0;
+      _maxZoomLevel = await _cameraController?.getMaxZoomLevel() ?? 1.0;
       _currentZoomLevel = _minZoomLevel;
       _baseZoomLevel = _minZoomLevel;
       if (kDebugMode) debugPrint('🔥 [FLUX AI] ✅ Caméra initialisée - Zoom: ${_minZoomLevel}x - ${_maxZoomLevel}x');
@@ -142,12 +142,13 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
 
   Future<void> _takePicture() async {
     if (kDebugMode) debugPrint('🔥 [FLUX AI] 📸 Prise de photo');
-    if (_cameraController == null || !_cameraController!.value.isInitialized) {
+    if (_cameraController == null || !(_cameraController?.value.isInitialized ?? false)) {
       return;
     }
 
     try {
-      final image = await _cameraController!.takePicture();
+      final image = await _cameraController?.takePicture();
+      if (image == null) return;
       if (kDebugMode) debugPrint('🔥 [FLUX AI] ✅ Photo prise: ${image.path}');
 
       // Aller au preview screen avec note
@@ -197,7 +198,7 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
 
   void _toggleFlash() {
     if (_cameraController != null) {
-      _cameraController!.setFlashMode(
+      _cameraController?.setFlashMode(
         _isFlashOn ? FlashMode.off : FlashMode.torch
       );
       setState(() {
@@ -257,7 +258,7 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
             const Icon(LucideIcons.cameraOff, color: Colors.white, size: 64),
             const SizedBox(height: 20),
             Text(
-              _errorMessage!,
+              _errorMessage ?? '',
               style: const TextStyle(color: Colors.white, fontSize: 16),
               textAlign: TextAlign.center,
             ),
@@ -274,7 +275,7 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
         child: Stack(
           children: [
             // Caméra preview plein écran avec zoom
-            if (_isCameraInitialized)
+            if (_isCameraInitialized && _cameraController != null)
               Positioned.fill(
                 child: GestureDetector(
                   onScaleStart: (ScaleStartDetails details) {
@@ -282,7 +283,7 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
                   },
                   onScaleUpdate: (ScaleUpdateDetails details) {
                     final double newZoom = (_baseZoomLevel * details.scale).clamp(_minZoomLevel, _maxZoomLevel);
-                    _cameraController!.setZoomLevel(newZoom);
+                    _cameraController?.setZoomLevel(newZoom);
                     setState(() {
                       _currentZoomLevel = newZoom;
                     });
@@ -695,7 +696,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
   void initState() {
     super.initState();
     if (kDebugMode) debugPrint('🔥 [FLUX AI] 🤖 Démarrage analyse IA pour: ${widget.imagePath}');
-    if (widget.note != null && widget.note!.isNotEmpty) {
+    if (widget.note != null && (widget.note?.isNotEmpty ?? false)) {
       if (kDebugMode) debugPrint('🔥 [FLUX AI] 📝 Note utilisateur: ${widget.note}');
     }
     _capturedImage = File(widget.imagePath);
@@ -973,7 +974,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
           ),
 
           // Nom du plat modifiable (visible seulement quand on a un résultat)
-          if (_hasResult && _analysisResult != null && _analysisResult!.success)
+          if (_hasResult && _analysisResult != null && (_analysisResult?.success ?? false))
             Container(
               margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               child: Column(
@@ -1047,12 +1048,12 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
                             _capturedImageBytes!,
                             fit: BoxFit.cover,
                           )
-                        : _capturedImage != null
+                        : (_capturedImage != null
                             ? Image.file(
                                 _capturedImage!,
                                 fit: BoxFit.cover,
                               )
-                            : const SizedBox(),
+                            : const SizedBox()),
                   )
                 : Consumer<LocalizationService>(
                     builder: (context, locService, child) => Center(
@@ -1084,7 +1085,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               children: [
                 // Bilan nutritionnel
-                if (_analysisResult != null && _analysisResult!.success)
+                if (_analysisResult != null && (_analysisResult?.success ?? false))
                   _buildNutritionalSummary(),
 
                 const SizedBox(height: 24),
@@ -1102,7 +1103,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
                 const SizedBox(height: 16),
 
                 // Aliments détectés via IA
-                if (_analysisResult != null && _analysisResult!.success)
+                if (_analysisResult != null && (_analysisResult?.success ?? false))
                   ...(_analysisResult!.detectedFoods.asMap().entries.map((entry) {
                     final index = entry.key;
                     final food = entry.value;
@@ -1150,7 +1151,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: () async {
-                      if (_analysisResult == null || !_analysisResult!.success || _analysisResult!.detectedFoods.isEmpty) {
+                      if (_analysisResult == null || !(_analysisResult?.success ?? false) || (_analysisResult?.detectedFoods.isEmpty ?? true)) {
                         return;
                       }
 
@@ -1510,7 +1511,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
   }
 
   Future<void> _addFoodsToSpecificMeal(String mealName, String mealId) async {
-    if (_analysisResult == null || !_analysisResult!.success || _analysisResult!.detectedFoods.isEmpty) {
+    if (_analysisResult == null || !(_analysisResult?.success ?? false) || (_analysisResult?.detectedFoods.isEmpty ?? true)) {
       return;
     }
 
@@ -1532,7 +1533,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
       final success = await FoodEntriesService.addAIFoodEntry(
         userId: user.id,
         mealName: mealName,
-        detectedFoods: _analysisResult!.detectedFoods,
+        detectedFoods: _analysisResult?.detectedFoods ?? [],
         aiMealName: _mealNameController.text.isNotEmpty ? _mealNameController.text : 'coach_detected_dish'.tr(LocalizationService.instance.currentLanguageCode),
         mealId: mealId, // Utiliser le meal_id du repas existant
         consumedAt: DateTime.now(),
@@ -1543,7 +1544,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
         Navigator.of(context).popUntil((route) => route.isFirst);
 
         if (success) {
-          final foodName = _analysisResult!.mealName ?? 'meal_dish'.tr(LocalizationService.instance.currentLanguageCode);
+          final foodName = _analysisResult?.mealName ?? 'meal_dish'.tr(LocalizationService.instance.currentLanguageCode);
           // Show celebration popup
           CelebrationService().celebrateFoodEntry(
             context,
@@ -1592,7 +1593,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
   }
 
   Future<void> _addFoodsToJournalWithSelection() async {
-    if (_analysisResult == null || !_analysisResult!.success || _analysisResult!.detectedFoods.isEmpty) {
+    if (_analysisResult == null || !(_analysisResult?.success ?? false) || (_analysisResult?.detectedFoods.isEmpty ?? true)) {
       return;
     }
 
@@ -1650,7 +1651,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
       final success = await FoodEntriesService.addAIFoodEntry(
         userId: userId,
         mealName: selectedMeal.name,
-        detectedFoods: _analysisResult!.detectedFoods,
+        detectedFoods: _analysisResult?.detectedFoods ?? [],
         aiMealName: _mealNameController.text.isNotEmpty ? _mealNameController.text : 'coach_detected_dish'.tr(LocalizationService.instance.currentLanguageCode),
         mealId: selectedMeal.id, // Utiliser le meal_id du repas existant
         consumedAt: DateTime.now(),
@@ -1662,7 +1663,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
 
         if (success) {
           // Afficher un message de succès avec action vers le Journal
-          final foodName = _analysisResult!.mealName ?? 'meal_dish'.tr(LocalizationService.instance.currentLanguageCode);
+          final foodName = _analysisResult?.mealName ?? 'meal_dish'.tr(LocalizationService.instance.currentLanguageCode);
           // Show celebration popup
           CelebrationService().celebrateFoodEntry(
             context,
@@ -1716,7 +1717,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
       final success = await FoodEntriesService.addAIFoodEntry(
         userId: userId,
         mealName: mealType,
-        detectedFoods: _analysisResult!.detectedFoods,
+        detectedFoods: _analysisResult?.detectedFoods ?? [],
         aiMealName: _mealNameController.text.isNotEmpty ? _mealNameController.text : 'coach_detected_dish'.tr(LocalizationService.instance.currentLanguageCode),
         consumedAt: DateTime.now(),
       );
@@ -1726,7 +1727,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
         Navigator.of(context).popUntil((route) => route.isFirst);
 
         if (success) {
-          final foodName = _analysisResult!.mealName ?? 'meal_dish'.tr(LocalizationService.instance.currentLanguageCode);
+          final foodName = _analysisResult?.mealName ?? 'meal_dish'.tr(LocalizationService.instance.currentLanguageCode);
           // Show celebration popup
           CelebrationService().celebrateFoodEntry(
             context,

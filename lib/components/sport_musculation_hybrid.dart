@@ -1363,10 +1363,13 @@ class _CoachRyzeButtonWithBadgeState extends State<_CoachRyzeButtonWithBadge> {
             if (!isPremium && !_isCheckingLock)
               Positioned(
                 top: -10,
-                right: 8,
-                child: _CoachRyzeSportPremiumBadge(
-                  isLocked: isLocked,
-                  isFrench: locService.currentLanguageCode == 'fr',
+                left: -20,
+                right: -20,
+                child: Center(
+                  child: _CoachRyzeSportPremiumBadge(
+                    isLocked: isLocked,
+                    isFrench: locService.currentLanguageCode == 'fr',
+                  ),
                 ),
               ),
           ],

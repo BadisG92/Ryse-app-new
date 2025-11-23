@@ -11,6 +11,7 @@
 		28AC04572ECFC06800CFE304 /* RevenueCat.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 28AC04562ECFC06800CFE304 /* RevenueCat.storekit */; };
 		28B9A4682EB30460003952F1 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 28B9A4672EB30460003952F1 /* WidgetKit.framework */; };
 		28B9A46A2EB30460003952F1 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 28B9A4692EB30460003952F1 /* SwiftUI.framework */; };
+		28B9A4832EB30500003952F1 /* RyseMealWidgetExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 28B9A4662EB30460003952F1 /* RyseMealWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		28C32FF42EB7A3C1004421F9 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 28C32FF32EB7A3C1004421F9 /* GoogleService-Info.plist */; };
 		28C3325C2EC05276004421F9 /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 28C3325B2EC05276004421F9 /* StoreKit.framework */; };
 		28E3BD992E9BB564009966BF /* NativeSpeechRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28E3BD982E9BB564009966BF /* NativeSpeechRecognizer.swift */; };
@@ -25,6 +26,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		28B9A4842EB30500003952F1 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 97C146E61CF9000F007C117D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 28B9A4652EB30460003952F1;
+			remoteInfo = RyseMealWidgetExtension;
+		};
 		331C8085294A63A400263BE5 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 97C146E61CF9000F007C117D /* Project object */;
@@ -35,6 +43,17 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
+		28B9A4852EB30500003952F1 /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				28B9A4832EB30500003952F1 /* RyseMealWidgetExtension.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		9705A1C41CF9048500538489 /* Embed Frameworks */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -267,14 +286,15 @@
 				97C146EB1CF9000F007C117D /* Frameworks */,
 				97C146EC1CF9000F007C117D /* Resources */,
 				9705A1C41CF9048500538489 /* Embed Frameworks */,
+				28B9A4852EB30500003952F1 /* Embed App Extensions */,
 				3B06AD1E1E4923F5004D2608 /* Thin Binary */,
-				28C32D462EB31C55004421F9 /* Embed Widget Extension */,
 				47385B3554B4818FF6690AAF /* [CP] Embed Pods Frameworks */,
 				C2CEE307835F1316A539E5BE /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				28B9A4862EB30500003952F1 /* PBXTargetDependency */,
 			);
 			name = Runner;
 			productName = Runner;
@@ -356,27 +376,6 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		28C32D462EB31C55004421F9 /* Embed Widget Extension */ = {
-			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-				"$(BUILT_PRODUCTS_DIR)/RyseMealWidgetExtension.appex",
-			);
-			name = "Embed Widget Extension";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-				"$(BUILT_PRODUCTS_DIR)/$(WRAPPER_NAME)/PlugIns/RyseMealWidgetExtension.appex",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${SRCROOT}/embed_widget.sh\"\n";
-		};
 		3B06AD1E1E4923F5004D2608 /* Thin Binary */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
@@ -517,6 +516,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		28B9A4862EB30500003952F1 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 28B9A4652EB30460003952F1 /* RyseMealWidgetExtension */;
+			targetProxy = 28B9A4842EB30500003952F1 /* PBXContainerItemProxy */;
+		};
 		331C8086294A63A400263BE5 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 97C146ED1CF9000F007C117D /* Runner */;
@@ -634,7 +638,7 @@
 				CLANG_ENABLE_OBJC_WEAK = YES;
 				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
-				CODE_SIGN_ENTITLEMENTS = RyseMealWidgetExtensionDebug.entitlements;
+				CODE_SIGN_ENTITLEMENTS = RyseMealWidget/RyseMealWidgetExtensionDebug.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -645,7 +649,7 @@
 				INFOPLIST_FILE = RyseMealWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = RyseMealWidget;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				IPHONEOS_DEPLOYMENT_TARGET = 18.1;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -676,6 +680,7 @@
 				CLANG_ENABLE_OBJC_WEAK = YES;
 				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CODE_SIGN_ENTITLEMENTS = RyseMealWidget/RyseMealWidgetExtension.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -686,7 +691,7 @@
 				INFOPLIST_FILE = RyseMealWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = RyseMealWidget;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				IPHONEOS_DEPLOYMENT_TARGET = 18.1;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -714,6 +719,7 @@
 				CLANG_ENABLE_OBJC_WEAK = YES;
 				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CODE_SIGN_ENTITLEMENTS = RyseMealWidget/RyseMealWidgetExtension.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -724,7 +730,7 @@
 				INFOPLIST_FILE = RyseMealWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = RyseMealWidget;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				IPHONEOS_DEPLOYMENT_TARGET = 18.1;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

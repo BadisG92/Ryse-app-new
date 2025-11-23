@@ -33,6 +33,10 @@ import 'delete_account_screen.dart';
 import 'auth/login_screen.dart';
 import 'paywall_screen.dart';
 import '../services/paywall_service.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../services/analytics_service.dart';
+import '../services/haptic_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -79,8 +83,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   String _measurementUnit = ''; // Utiliser clés de traduction
   String _startWeekDay = '';
   bool _darkMode = false;
-  bool _soundEffects = false;
-  
+
   // Streak
   int _currentStreak = 0;
   bool _loadingStreak = true;
@@ -105,6 +108,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
     _loadStreak();
     // Toutes les sections sont fermées par défaut
     _expandedSections['profile'] = false;
+    _expandedSections['application'] = false;
     _expandedSections['objectives'] = false;
     _expandedSections['notifications'] = false;
     _expandedSections['preferences'] = false;
@@ -219,7 +223,6 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
       _measurementUnit = _getMeasurementTranslationKey(rawMeasurement);
       _startWeekDay = prefs.getString('start_week_day') ?? 'Lundi';
       _darkMode = prefs.getBool('dark_mode') ?? false;
-      _soundEffects = prefs.getBool('sound_effects') ?? true;
       _hapticFeedback = prefs.getBool('haptic_feedback') ?? true;
     });
   }
@@ -255,7 +258,6 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
       _measurementUnit = _getMeasurementTranslationKey(rawMeasurement);
       _startWeekDay = prefs.getString('start_week_day') ?? 'Lundi';
       _darkMode = prefs.getBool('dark_mode') ?? false;
-      _soundEffects = prefs.getBool('sound_effects') ?? true;
       _hapticFeedback = prefs.getBool('haptic_feedback') ?? true;
       
       final rawLocalRestrictions = prefs.getStringList('dietary_restrictions') ?? [];
@@ -360,8 +362,10 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
     await prefs.setString('measurement_unit', _measurementUnit);
     await prefs.setString('start_week_day', _startWeekDay);
     await prefs.setBool('dark_mode', _darkMode);
-    await prefs.setBool('sound_effects', _soundEffects);
     await prefs.setBool('haptic_feedback', _hapticFeedback);
+
+    // Mettre à jour le service de retour haptique
+    await HapticService.instance.setEnabled(_hapticFeedback);
 
     await prefs.setStringList('dietary_restrictions', _dietaryRestrictions);
   }
@@ -386,7 +390,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   }
 
   void _toggleSection(String section) {
-    if (_hapticFeedback) HapticFeedback.lightImpact();
+    HapticService.instance.lightImpact();
     setState(() {
       _expandedSections[section] = !(_expandedSections[section] ?? false);
     });
@@ -405,7 +409,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   );
   
   void _recalculateNutrition() async {
-    if (_hapticFeedback) HapticFeedback.mediumImpact();
+    HapticService.instance.mediumImpact();
     
     // Calculer les nouvelles valeurs basées sur le profil actuel
     final calories = MetabolicCalculations.calculateDailyGoal(_userProfile);
@@ -1046,12 +1050,94 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
         _loadStreak(),
         _loadSettings(),
       ]);
-      
+
       // Vider le cache pour forcer un rechargement (méthode void)
       HeaderCacheService.clearCache();
     } catch (e) {
       debugPrint('Erreur lors du rafraîchissement des paramètres: $e');
     }
+  }
+
+  /// Envoyer un email de feedback/suggestion
+  Future<void> _sendFeedbackEmail(BuildContext context, String lang) async {
+    final userId = Supabase.instance.client.auth.currentUser?.id ?? 'UNKNOWN';
+
+    final subject = lang == 'fr'
+        ? 'Suggestion - Ryze'
+        : 'Suggestion - Ryze';
+
+    final body = lang == 'fr'
+        ? 'Bonjour,\n\nJ\'aimerais proposer l\'idée suivante :\n\n[Décrivez votre idée ici]\n\n---\nPourquoi cette fonctionnalité serait utile :\n\n[Expliquez pourquoi]\n\n---\nDétails supplémentaires :\n\n[Ajoutez des détails si nécessaire]\n\n---\nInfos système (ne pas supprimer) :\nUser ID: $userId\nPlateforme: iOS'
+        : 'Hello,\n\nI would like to suggest the following idea:\n\n[Describe your idea here]\n\n---\nWhy this feature would be useful:\n\n[Explain why]\n\n---\nAdditional details:\n\n[Add details if needed]\n\n---\nSystem info (do not delete):\nUser ID: $userId\nPlatform: iOS';
+
+    final emailUri = Uri(
+      scheme: 'mailto',
+      path: 'support@coach-ryze.com',
+      query: 'subject=${Uri.encodeComponent(subject)}&body=${Uri.encodeComponent(body)}',
+    );
+
+    try {
+      final canLaunch = await canLaunchUrl(emailUri);
+      if (canLaunch) {
+        await launchUrl(emailUri);
+        await AnalyticsService.logEvent('feedback_email_opened');
+      } else {
+        if (context.mounted) {
+          _showEmailNotConfiguredDialog(context, lang);
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        _showEmailNotConfiguredDialog(context, lang);
+      }
+    }
+  }
+
+  void _showEmailNotConfiguredDialog(BuildContext context, String lang) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        title: Text(
+          lang == 'fr' ? 'Mail non configuré' : 'Mail not configured',
+          style: const TextStyle(
+            color: Color(0xFF0B132B),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        content: Text(
+          lang == 'fr'
+              ? 'L\'application Mail n\'est pas configurée sur votre appareil.\n\nVous pouvez copier notre adresse email et nous contacter via votre client email préféré.'
+              : 'The Mail app is not configured on your device.\n\nYou can copy our email address and contact us via your preferred email client.',
+          style: const TextStyle(color: Colors.black87),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            style: TextButton.styleFrom(foregroundColor: Colors.grey),
+            child: Text(lang == 'fr' ? 'Annuler' : 'Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Clipboard.setData(const ClipboardData(text: 'support@coach-ryze.com'));
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(lang == 'fr' ? 'Email copié' : 'Email copied'),
+                  backgroundColor: const Color(0xFF1C2951),
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF1C2951),
+              foregroundColor: Colors.white,
+            ),
+            child: Text(lang == 'fr' ? 'Copier l\'email' : 'Copy email'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -1073,6 +1159,74 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                     // Cartouche Premium (uniquement pour utilisateurs non-premium)
                     Consumer<LocalizationService>(
                       builder: (context, locService, _) => _buildPremiumBanner(locService.currentLanguageCode),
+                    ),
+
+                    // Section Application (nouveau bloc)
+                    Consumer<LocalizationService>(
+                      builder: (context, locService, child) => _buildExpandableSection(
+                        key: 'application',
+                        icon: LucideIcons.smartphone,
+                        title: locService.currentLanguageCode == 'fr' ? 'Application' : 'Application',
+                        subtitle: locService.currentLanguageCode == 'fr'
+                            ? 'Évaluez et partagez votre expérience'
+                            : 'Rate and share your experience',
+                        children: [
+                          _buildSectionContent(
+                            padding: EdgeInsets.zero,
+                            child: Column(
+                              children: [
+                                // Bouton "Noter l'application"
+                                Consumer<LocalizationService>(
+                                  builder: (context, locService, _) => _buildListTile(
+                                    icon: LucideIcons.star,
+                                    title: locService.currentLanguageCode == 'fr'
+                                        ? 'Noter l\'application'
+                                        : 'Rate the App',
+                                    onTap: () async {
+                                      await AppReviewService().openAppStore();
+                                    },
+                                  ),
+                                ),
+                                // Bouton "Partager l'application"
+                                Consumer<LocalizationService>(
+                                  builder: (context, locService, _) => _buildListTile(
+                                    icon: LucideIcons.share2,
+                                    title: locService.currentLanguageCode == 'fr'
+                                        ? 'Partager l\'application'
+                                        : 'Share the App',
+                                    onTap: () async {
+                                      final appUrl = 'https://apps.apple.com/app/id6752426474';
+                                      final message = locService.currentLanguageCode == 'fr'
+                                          ? 'J\'utilise Ryze pour mes entraînements et ma nutrition ! Rejoins-moi 💪\n\n$appUrl'
+                                          : 'I use Ryze for my workouts and nutrition! Join me 💪\n\n$appUrl';
+
+                                      await Share.share(
+                                        message,
+                                        subject: locService.currentLanguageCode == 'fr'
+                                            ? 'Découvre Ryze'
+                                            : 'Check out Ryze',
+                                      );
+
+                                      // Analytics
+                                      await AnalyticsService.logEvent('app_shared');
+                                    },
+                                  ),
+                                ),
+                                // Bouton "Proposer une idée"
+                                Consumer<LocalizationService>(
+                                  builder: (context, locService, _) => _buildListTile(
+                                    icon: LucideIcons.lightbulb,
+                                    title: locService.currentLanguageCode == 'fr'
+                                        ? 'Proposer une idée'
+                                        : 'Suggest an idea',
+                                    onTap: () => _sendFeedbackEmail(context, locService.currentLanguageCode),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
 
                     // Section Profil
@@ -1717,15 +1871,6 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                               ),
                               const SizedBox(height: 16),
                               _buildSwitchTile(
-                                title: 'sound_effects'.tr(locService.currentLanguageCode),
-                                subtitle: 'sound_effects_subtitle'.tr(locService.currentLanguageCode),
-                                value: _soundEffects,
-                                onChanged: (value) {
-                                  setState(() => _soundEffects = value);
-                                  _saveSettings();
-                                },
-                              ),
-                              _buildSwitchTile(
                                 title: 'haptic_feedback'.tr(locService.currentLanguageCode),
                                 subtitle: 'haptic_feedback_subtitle'.tr(locService.currentLanguageCode),
                                 value: _hapticFeedback,
@@ -1790,7 +1935,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                           child: Column(
                             children: [
                               _buildListTile(
-                                icon: LucideIcons.mail,
+                                icon: LucideIcons.lock,
                                 title: 'email_password'.tr(locService.currentLanguageCode),
                                 onTap: () {
                                   Navigator.push(
@@ -1856,18 +2001,6 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                   },
                                 ),
                               ),
-                              // Bouton "Noter l'application" (ouvre l'App Store)
-                              Consumer<LocalizationService>(
-                                builder: (context, locService, _) => _buildListTile(
-                                  icon: LucideIcons.star,
-                                  title: locService.currentLanguageCode == 'fr'
-                                      ? 'Noter l\'application'
-                                      : 'Rate the App',
-                                  onTap: () async {
-                                    await AppReviewService().openAppStore();
-                                  },
-                                ),
-                              ),
                               Consumer<LocalizationService>(
                                 builder: (context, locService, _) => _buildListTile(
                                   icon: LucideIcons.info,
@@ -1903,7 +2036,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                   title: 'logout'.tr(locService.currentLanguageCode),
                                   textColor: Colors.red,
                                   onTap: () async {
-                                    if (_hapticFeedback) HapticFeedback.mediumImpact();
+                                    HapticService.instance.mediumImpact();
 
                                     final confirm = await showDialog<bool>(
                                       context: context,

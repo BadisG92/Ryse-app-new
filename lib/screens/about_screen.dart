@@ -65,6 +65,81 @@ class _AboutScreenState extends State<AboutScreen> {
     );
   }
 
+  Future<void> _sendEmail(BuildContext context, String lang) async {
+    // Récupérer les infos système pour faciliter le debug
+    final userId = 'USER_ID'; // TODO: Remplacer par le vrai User ID depuis AuthService
+    final appVersion = _appVersion.isNotEmpty ? _appVersion : '1.0.0';
+
+    final subject = 'support_email_subject'.tr(lang);
+    final body = lang == 'fr'
+        ? 'Bonjour,\n\nJe vous contacte concernant :\n\n[Décrivez votre problème ici]\n\n---\nInfos système (ne pas supprimer) :\nUser ID: $userId\nVersion: $appVersion\nPlateforme: iOS'
+        : 'Hello,\n\nI am contacting you regarding:\n\n[Describe your issue here]\n\n---\nSystem info (do not delete):\nUser ID: $userId\nVersion: $appVersion\nPlatform: iOS';
+
+    final emailUri = Uri(
+      scheme: 'mailto',
+      path: 'support@coach-ryze.com',
+      query: 'subject=${Uri.encodeComponent(subject)}&body=${Uri.encodeComponent(body)}',
+    );
+
+    try {
+      // Essayer d'ouvrir l'app Mail native
+      final canLaunch = await canLaunchUrl(emailUri);
+      if (canLaunch) {
+        await launchUrl(emailUri);
+      } else {
+        // Mail n'est pas configuré sur l'appareil
+        if (context.mounted) {
+          _showEmailNotConfiguredDialog(context, lang);
+        }
+      }
+    } catch (e) {
+      // Erreur lors de l'ouverture de Mail
+      if (context.mounted) {
+        _showEmailNotConfiguredDialog(context, lang);
+      }
+    }
+  }
+
+  void _showEmailNotConfiguredDialog(BuildContext context, String lang) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        title: Text(
+          lang == 'fr' ? 'Mail non configuré' : 'Mail not configured',
+          style: const TextStyle(
+            color: _primaryDark,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        content: Text(
+          lang == 'fr'
+              ? 'L\'application Mail n\'est pas configurée sur votre appareil.\n\nVous pouvez copier notre adresse email et nous contacter via votre client email préféré.'
+              : 'The Mail app is not configured on your device.\n\nYou can copy our email address and contact us via your preferred email client.',
+          style: const TextStyle(color: Colors.black87),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            style: TextButton.styleFrom(foregroundColor: Colors.grey),
+            child: Text(lang == 'fr' ? 'Annuler' : 'Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _copyText(context, 'support@coach-ryze.com', 'email_copied'.tr(lang));
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _secondary,
+              foregroundColor: Colors.white,
+            ),
+            child: Text(lang == 'fr' ? 'Copier l\'email' : 'Copy email'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<LocalizationService>(
@@ -303,7 +378,7 @@ class _AboutScreenState extends State<AboutScreen> {
                         onTap: () => _copyText(
                           context,
                           'support@coach-ryze.com',
-                          'email_copied'.tr(lang),
+                          lang == 'fr' ? 'Email copié' : 'Email copied',
                         ),
                       ),
                       const Divider(height: 1, color: _borderColor),

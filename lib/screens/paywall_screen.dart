@@ -8,6 +8,7 @@ import '../models/subscription_models.dart';
 import '../services/revenuecat_service.dart';
 import '../services/unified_subscription_service.dart';
 import '../services/localization_service.dart';
+import '../services/haptic_service.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 
 /// Paywall avec design V3 - Animations gaming + particles
@@ -201,10 +202,28 @@ class _PaywallScreenState extends State<PaywallScreen>
     });
 
     // Haptic feedback
-    HapticFeedback.mediumImpact();
+    HapticService.instance.mediumImpact();
 
     // Load RevenueCat packages
     _loadPackages();
+  }
+
+  /// Helper to get dynamic price string from loaded packages
+  String _getPriceString(SubscriptionPeriod period, String defaultPrice) {
+    if (_availablePackages.isEmpty) return defaultPrice;
+    
+    try {
+      final package = _availablePackages.firstWhere((p) {
+        final id = p.identifier.toLowerCase();
+        if (period == SubscriptionPeriod.weekly) return id.contains('weekly');
+        if (period == SubscriptionPeriod.monthly) return id.contains('monthly');
+        if (period == SubscriptionPeriod.annual) return id.contains('annual') || id.contains('yearly');
+        return false;
+      });
+      return package.storeProduct.priceString;
+    } catch (_) {
+      return defaultPrice;
+    }
   }
 
   /// Load available packages from RevenueCat
@@ -299,7 +318,7 @@ class _PaywallScreenState extends State<PaywallScreen>
 
       if (customerInfo != null && mounted) {
         // Purchase successful
-        HapticFeedback.heavyImpact();
+        HapticService.instance.heavyImpact();
         Navigator.pop(context, true); // Return true to indicate successful purchase
       }
     } on PlatformException catch (e) {
@@ -617,7 +636,7 @@ class _PaywallScreenState extends State<PaywallScreen>
   Widget _buildCloseButton() {
     return IconButton(
       onPressed: () {
-        HapticFeedback.lightImpact();
+        HapticService.instance.lightImpact();
         Navigator.pop(context);
       },
       icon: Container(
@@ -853,12 +872,12 @@ class _PaywallScreenState extends State<PaywallScreen>
                   // Pricing card
                   _buildPricingCard(
                     period: SubscriptionPeriod.annual,
-                    price: '69,99€',
+                    price: _getPriceString(SubscriptionPeriod.annual, '69,99€'),
                     interval: isFrench ? '/an' : '/yr',
                     badge: isFrench ? 'Meilleure valeur' : 'Best value',
                     badgeColor: const Color(0xFFD4A574),
                     description: isFrench ? 'Économise 49%' : 'Save 49%',
-                    equivalentPrice: isFrench ? '5,83€/mois' : '€5.83/mo',
+                    equivalentPrice: isFrench ? '5,83€/mois' : '€5.83/mo', // Difficile de calculer dynamiquement sans rawPrice, on garde statique pour l'instant
                     savingsText: null, // Remove from inside the card
                     isHighlighted: true,
                     isFrench: isFrench,
@@ -872,7 +891,7 @@ class _PaywallScreenState extends State<PaywallScreen>
             Expanded(
               child: _buildPricingCard(
                 period: SubscriptionPeriod.monthly,
-                price: '9,99€',
+                price: _getPriceString(SubscriptionPeriod.monthly, '9,99€'),
                 interval: isFrench ? '/mois' : '/mo',
                 badge: isFrench ? 'Le plus choisi' : 'Most popular',
                 badgeColor: const Color(0xFFD4A574),
@@ -886,7 +905,7 @@ class _PaywallScreenState extends State<PaywallScreen>
             Expanded(
               child: _buildPricingCard(
                 period: SubscriptionPeriod.weekly,
-                price: '2,99€',
+                price: _getPriceString(SubscriptionPeriod.weekly, '2,99€'),
                 interval: isFrench ? '/sem' : '/wk',
                 badge: isFrench ? 'Pour tester' : 'Try it',
                 badgeColor: const Color(0xFFD4A574),
@@ -926,7 +945,7 @@ class _PaywallScreenState extends State<PaywallScreen>
     return GestureDetector(
       onTap: () {
         setState(() => _selectedPeriod = period);
-        HapticFeedback.selectionClick();
+        HapticService.instance.selectionClick();
       },
       child: Stack(
         clipBehavior: Clip.none,
@@ -1183,7 +1202,7 @@ class _PaywallScreenState extends State<PaywallScreen>
       child: TextButton(
         onPressed: _showCloseButton
             ? () {
-                HapticFeedback.lightImpact();
+                HapticService.instance.lightImpact();
                 Navigator.pop(context);
               }
             : null,
@@ -1201,19 +1220,28 @@ class _PaywallScreenState extends State<PaywallScreen>
   }
 
   String _getLegalText(bool isFrench) {
+    final price = _getPriceString(_selectedPeriod, '');
+    
+    // Si pas de prix chargé (vide), utiliser les valeurs par défaut pour le texte légal
+    // pour éviter d'afficher "Puis /mois"
+    final displayPrice = price.isEmpty ? 
+        (_selectedPeriod == SubscriptionPeriod.monthly ? '9,99€' : 
+         _selectedPeriod == SubscriptionPeriod.annual ? '69,99€' : '2,99€') 
+        : price;
+
     switch (_selectedPeriod) {
       case SubscriptionPeriod.monthly:
         return isFrench
-            ? 'Puis 9,99€/mois • Annule en 1 clic'
-            : 'Then €9.99/mo • Cancel in 1 click';
+            ? 'Puis $displayPrice/mois • Annule en 1 clic'
+            : 'Then $displayPrice/mo • Cancel in 1 click';
       case SubscriptionPeriod.annual:
         return isFrench
-            ? 'Puis 69,99€/an • Annule en 1 clic'
-            : 'Then €69.99/yr • Cancel in 1 click';
+            ? 'Puis $displayPrice/an • Annule en 1 clic'
+            : 'Then $displayPrice/yr • Cancel in 1 click';
       case SubscriptionPeriod.weekly:
         return isFrench
-            ? 'Puis 2,99€/sem • Annule en 1 clic'
-            : 'Then €2.99/wk • Cancel in 1 click';
+            ? 'Puis $displayPrice/sem • Annule en 1 clic'
+            : 'Then $displayPrice/wk • Cancel in 1 click';
       case SubscriptionPeriod.lifetime:
         return '';
     }

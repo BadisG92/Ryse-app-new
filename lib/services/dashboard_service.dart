@@ -87,10 +87,9 @@ class DashboardService {
       final profile = UserProfile(
         name: capitalizedName,
         streak: realStreak, // Vraie streak calculée
-        todayScore: 85, // TODO: Calculer le vrai score
-        todayXP: 250, // TODO: Calculer les vrais XP
-        isPremium: false, // TODO: Récupérer le statut premium
-        photosUsed: 2, // TODO: Compter les photos utilisées
+        todayScore: (realStreak * 10).clamp(0, 100), // Score basé sur la régularité
+        isPremium: false, // Sera mis à jour par le provider
+        photosUsed: 0, // Sera mis à jour par le provider
         dailyCalories: response['daily_calories'] ?? 2000,
         currentCalories: currentCalories.round(),
       );
@@ -213,7 +212,6 @@ class DashboardService {
           id: 'meals',
           label: 'track_meals_today'.tr(languageCode),
           progress: ((mealsCount / 3) * 100).round(),
-          xp: 25,
           completed: mealsCount >= 3,
           currentValue: mealsCount.toDouble(),
           targetValue: 3,
@@ -225,7 +223,6 @@ class DashboardService {
             ? 'Boire ${dailyWaterGoal.toStringAsFixed(1)}L d\'eau'
             : 'Drink ${dailyWaterGoal.toStringAsFixed(1)}L of water',
           progress: ((currentWaterL / dailyWaterGoal) * 100).round().clamp(0, 100),
-          xp: 15,
           completed: currentWaterL >= dailyWaterGoal,
           currentValue: currentWaterL,
           targetValue: dailyWaterGoal,
@@ -235,7 +232,6 @@ class DashboardService {
           id: 'calories',
           label: 'reach_calorie_goal'.tr(languageCode),
           progress: ((currentCalories / dailyCaloriesGoal) * 100).round().clamp(0, 100),
-          xp: 25,
           completed: currentCalories >= dailyCaloriesGoal * 0.9, // 90% = complété
           currentValue: currentCalories,
           targetValue: dailyCaloriesGoal.toDouble(),
@@ -376,7 +372,6 @@ class DashboardService {
         id: 'workout',
         label: 'complete_workout'.tr(languageCode),
         progress: completed ? 100 : 0,
-        xp: 30,
         completed: completed,
         currentValue: totalSessions.toDouble(),
         targetValue: 1,
@@ -392,7 +387,6 @@ class DashboardService {
         id: 'workout',
         label: 'complete_workout'.tr(languageCode),
         progress: 0,
-        xp: 30,
         completed: false,
         currentValue: 0,
         targetValue: 1,
@@ -573,7 +567,6 @@ class DashboardService {
           id: 'calories',
           label: 'reach_calorie_goal'.tr(languageCode),
           progress: ((totalCalories / targetCalories) * 100).round().clamp(0, 100),
-          xp: 25,
           completed: totalCalories >= targetCalories * 0.9,
           currentValue: totalCalories,
           targetValue: targetCalories,
@@ -584,7 +577,6 @@ class DashboardService {
           id: 'water',
           label: 'drink_water_goal'.tr(languageCode),
           progress: ((totalWaterMl / 1000.0 / targetWaterL) * 100).round().clamp(0, 100),
-          xp: 25,
           completed: totalWaterMl / 1000.0 >= targetWaterL,
           currentValue: totalWaterMl / 1000.0,
           targetValue: targetWaterL,
@@ -595,7 +587,6 @@ class DashboardService {
           id: 'meals',
           label: 'track_meals_today'.tr(languageCode),
           progress: ((uniqueMeals / 3) * 100).round().clamp(0, 100),
-          xp: 25,
           completed: uniqueMeals >= 3,
           currentValue: uniqueMeals.toDouble(),
           targetValue: 3,
@@ -606,7 +597,6 @@ class DashboardService {
           id: 'workout',
           label: 'complete_workout'.tr(languageCode),
           progress: hasWorkout ? 100 : 0,
-          xp: 25,
           completed: hasWorkout,
           currentValue: hasWorkout ? 1 : 0,
           targetValue: 1,

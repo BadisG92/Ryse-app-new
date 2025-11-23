@@ -17,6 +17,7 @@ import '../providers/weight_notifier.dart';
 import '../services/translations.dart';
 import '../services/localization_service.dart';
 import '../services/global_state_manager.dart';
+import '../services/haptic_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class GlobalProgress extends StatefulWidget {
@@ -525,7 +526,7 @@ class _GlobalProgressState extends State<GlobalProgress> {
 
   // Action d'édition du poids - naviguer vers la page dédiée
   void _onEditWeight() {
-    HapticFeedback.lightImpact();
+    HapticService.instance.lightImpact();
     
     Navigator.push(
       context,

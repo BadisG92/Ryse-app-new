@@ -25,9 +25,8 @@ class SubscriptionService extends ChangeNotifier {
   bool get isLoading => _isLoading;
 
   /// Vérifie si l'utilisateur est Premium
-  /// ⚠️ MODE TEST: Force NON-Premium pour tester le système de trials
-  /// TODO: Remettre à "_currentSubscription?.isPremium ?? false" avant commit
-  bool get isPremium => false; // ← TEMPORAIRE POUR TEST TRIALS
+  /// Renvoie true si l'utilisateur a un abonnement actif ou est en période d'essai
+  bool get isPremium => _currentSubscription?.isPremium ?? false;
 
   /// Vérifie si l'utilisateur est en trial
   bool get isInTrial => _currentSubscription?.isInTrial ?? false;
