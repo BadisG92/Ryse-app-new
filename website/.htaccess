@@ -120,8 +120,8 @@
 # ==========================================
 # File Protection
 # ==========================================
-# Protect sensitive files
-<FilesMatch "^\.">
+# Protect sensitive files (except .well-known for Apple Universal Links)
+<FilesMatch "^\.((?!well-known).)*$">
   Order allow,deny
   Deny from all
 </FilesMatch>
@@ -162,9 +162,27 @@ AddDefaultCharset UTF-8
 AddCharset UTF-8 .html .css .js .xml .json .rss .atom
 
 # ==========================================
+# Apple App Site Association (Universal Links)
+# ==========================================
+<IfModule mod_headers.c>
+  <FilesMatch "apple-app-site-association">
+    Header set Content-Type "application/json"
+  </FilesMatch>
+</IfModule>
+
+# Allow access to .well-known directory
+<IfModule mod_rewrite.c>
+  RewriteCond %{REQUEST_URI} ^/\.well-known/
+  RewriteRule ^ - [L]
+</IfModule>
+
+# ==========================================
 # MIME Types (for modern formats)
 # ==========================================
 <IfModule mod_mime.c>
+  # Apple App Site Association
+  AddType application/json apple-app-site-association
+
   # JavaScript
   AddType application/javascript js
   AddType application/json json

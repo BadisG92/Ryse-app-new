@@ -1,0 +1,26 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "7M288BM6Q3.com.BadisG.ryzeApp",
+        "paths": [
+          "*",
+          "/",
+          "/app/*",
+          "/meal/*",
+          "/workout/*",
+          "/scanner/*"
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": [
+      "7M288BM6Q3.com.BadisG.ryzeApp"
+    ]
+  },
+  "appclips": {
+    "apps": []
+  }
+}

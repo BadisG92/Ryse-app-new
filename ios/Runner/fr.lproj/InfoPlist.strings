@@ -1,0 +1,31 @@
+/* French localization for Info.plist permission descriptions */
+
+/* Camera */
+"NSCameraUsageDescription" = "Cette application utilise la caméra pour scanner les aliments et analyser les plats avec l'IA nutritionnelle.";
+
+/* Location */
+"NSLocationWhenInUseUsageDescription" = "Cette application utilise votre localisation pour vous proposer des recommandations nutritionnelles adaptées à votre région et pour suivre précisément vos activités cardio (distance, vitesse, parcours).";
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "Cette application peut utiliser votre localisation en arrière-plan pour suivre vos activités sportives même lorsque l'app n'est pas active.";
+"NSLocationTemporaryUsageDescriptionDictionary" = {
+    "CardioWorkout" = "Localisation précise requise pour mesurer votre distance et vitesse pendant l'entraînement cardio.";
+};
+
+/* Microphone */
+"NSMicrophoneUsageDescription" = "Cette application utilise le microphone pour l'assistance vocale lors du scan nutritionnel et l'enregistrement mains-libres de vos performances pendant les entraînements.";
+
+/* Speech Recognition */
+"NSSpeechRecognitionUsageDescription" = "Cette application utilise la reconnaissance vocale pour enregistrer vos répétitions et poids pendant l'entraînement musculation, vous permettant de rester concentré sur votre séance.";
+
+/* Motion */
+"NSMotionUsageDescription" = "Cette application utilise les capteurs de mouvement pour compter vos pas lors des séances de marche et optimiser le suivi de vos activités.";
+
+/* Photo Library */
+"NSPhotoLibraryAddUsageDescription" = "Cette application peut sauvegarder les photos scannées dans votre galerie pour référence.";
+"NSPhotoLibraryUsageDescription" = "Cette application accède à vos photos pour analyser les aliments et calculer leurs valeurs nutritionnelles.";
+
+/* User Tracking */
+"NSUserTrackingUsageDescription" = "Cette app ne suit pas vos données personnelles. Le suivi GPS sert uniquement à mesurer vos performances sportives localement sur votre appareil.";
+
+/* HealthKit */
+"NSHealthShareUsageDescription" = "Cette application peut lire vos données de santé (activité, calories brûlées) pour optimiser vos objectifs nutritionnels et sportifs.";
+"NSHealthUpdateUsageDescription" = "Cette application peut écrire vos données d'entraînement dans Apple Health pour centraliser votre suivi fitness.";

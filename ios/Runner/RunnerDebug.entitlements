@@ -10,7 +10,7 @@
 	<string>development</string>
 	<key>com.apple.developer.associated-domains</key>
 	<array>
-		<string>applinks:ryze-app.com</string>
+		<string>applinks:coach-ryze.com</string>
 	</array>
 	<key>com.apple.developer.healthkit</key>
 	<true/>

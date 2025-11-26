@@ -283,6 +283,78 @@ class AppTranslations {
       'fr': 'Ajouter {amount} ml',
       'en': 'Add {amount} ml',
     },
+    // Coach Widget - Lock Screen
+    'widget_coach_title': {
+      'fr': 'Coach Ryse',
+      'en': 'Ryse Coach',
+    },
+    'widget_coach_description': {
+      'fr': 'Suivi calories avec conseils personnalisés',
+      'en': 'Calorie tracking with personalized tips',
+    },
+    // Coach Messages - Morning (before breakfast)
+    'coach_morning_no_breakfast': {
+      'fr': 'Bien dormi ? Commence ta journée ! 🌅',
+      'en': 'Slept well? Start your day! 🌅',
+    },
+    'coach_morning_has_breakfast': {
+      'fr': 'Super début de journée ! 💪',
+      'en': 'Great start to your day! 💪',
+    },
+    // Coach Messages - Lunch time
+    'coach_lunch_on_track': {
+      'fr': 'En bonne voie, continue ! 🎯',
+      'en': 'On track, keep it up! 🎯',
+    },
+    'coach_lunch_low_calories': {
+      'fr': 'Pense à bien manger ce midi 🍽️',
+      'en': 'Remember to eat well at lunch 🍽️',
+    },
+    // Coach Messages - Afternoon
+    'coach_afternoon_good': {
+      'fr': 'Belle progression aujourd\'hui ! ⭐',
+      'en': 'Great progress today! ⭐',
+    },
+    'coach_afternoon_low_protein': {
+      'fr': 'Plus de protéines serait idéal 🥩',
+      'en': 'More protein would be ideal 🥩',
+    },
+    // Coach Messages - Dinner time
+    'coach_dinner_almost_goal': {
+      'fr': 'Presque à l\'objectif ! 🏁',
+      'en': 'Almost at your goal! 🏁',
+    },
+    'coach_dinner_over_budget': {
+      'fr': 'Dîner léger ce soir ? 🥗',
+      'en': 'Light dinner tonight? 🥗',
+    },
+    // Coach Messages - Evening
+    'coach_evening_goal_reached': {
+      'fr': 'Objectif atteint, bravo ! 🏆',
+      'en': 'Goal reached, well done! 🏆',
+    },
+    'coach_evening_water_low': {
+      'fr': 'N\'oublie pas de t\'hydrater 💧',
+      'en': 'Don\'t forget to hydrate 💧',
+    },
+    // Coach Messages - Streak milestones
+    'coach_streak_7': {
+      'fr': '7 jours de suite ! 🔥',
+      'en': '7 days in a row! 🔥',
+    },
+    'coach_streak_14': {
+      'fr': '2 semaines, incroyable ! 🌟',
+      'en': '2 weeks, incredible! 🌟',
+    },
+    'coach_streak_30': {
+      'fr': '1 mois ! Tu es un champion ! 👑',
+      'en': '1 month! You\'re a champion! 👑',
+    },
+    // Coach Messages - Default/Fallback
+    'coach_default': {
+      'fr': 'Continue comme ça ! 💪',
+      'en': 'Keep it up! 💪',
+    },
     'total': {
       'fr': 'Total',
       'en': 'Total',
@@ -5972,6 +6044,16 @@ class AppTranslations {
     'made_with_love': {
       'fr': 'Fait avec ❤️ pour votre santé',
       'en': 'Made with ❤️ for your health',
+    },
+
+    // Health Disclaimer (Required by Apple App Store for health/fitness apps)
+    'health_disclaimer_title': {
+      'fr': 'Avertissement santé',
+      'en': 'Health Disclaimer',
+    },
+    'health_disclaimer_text': {
+      'fr': 'Ryze est une application de suivi nutritionnel et fitness destinée à des fins d\'information générale uniquement. Elle ne constitue pas un avis médical, un diagnostic ou un traitement. Consultez toujours un professionnel de santé qualifié avant de commencer un nouveau programme alimentaire ou sportif, particulièrement si vous avez des conditions médicales préexistantes. Les informations nutritionnelles sont fournies à titre indicatif et peuvent varier.',
+      'en': 'Ryze is a nutrition and fitness tracking app intended for general informational purposes only. It does not constitute medical advice, diagnosis, or treatment. Always consult a qualified healthcare professional before starting any new diet or exercise program, especially if you have pre-existing medical conditions. Nutritional information is provided for reference and may vary.',
     },
 
     // Delete Account Screen

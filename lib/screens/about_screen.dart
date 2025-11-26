@@ -407,6 +407,58 @@ class _AboutScreenState extends State<AboutScreen> {
 
                 const SizedBox(height: 20),
 
+                // Health Disclaimer (Required by Apple for health/fitness apps)
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 20),
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFEF3C7),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFFCD34D)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF59E0B).withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(
+                              LucideIcons.triangleAlert,
+                              color: Color(0xFFD97706),
+                              size: 20,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            'health_disclaimer_title'.tr(lang),
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF92400E),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'health_disclaimer_text'.tr(lang),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF92400E),
+                          height: 1.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
                 // Crédits
                 Container(
                   margin: const EdgeInsets.symmetric(horizontal: 20),

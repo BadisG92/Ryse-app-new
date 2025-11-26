@@ -9,6 +9,7 @@ import '../services/food_entries_service.dart';
 import '../services/global_state_manager.dart';
 import '../services/localization_service.dart';
 import '../services/translations.dart';
+import '../services/coach_message_service.dart';
 
 /// Provider de données pour les widgets iOS repas
 /// Synchronise les données entre Flutter et les widgets iOS via UserDefaults partagé
@@ -115,6 +116,9 @@ class MealWidgetDataProvider {
           ? ((currentWaterMl / waterGoalMl) * 100).round().clamp(0, 100)
           : 0;
 
+      // Générer le message du coach personnalisé
+      final coachMessage = CoachMessageService.generateCoachMessage(languageCode);
+
       // Créer la structure de données pour le widget avec les VRAIES données utilisateur
       final widgetData = {
         'languageCode': languageCode,
@@ -148,6 +152,10 @@ class MealWidgetDataProvider {
           'percentage': waterPercentage,
           'currentL': globalState.currentWaterL,
           'goalL': globalState.waterGoalL,
+        },
+        'coach': {
+          'message': coachMessage,
+          'streak': globalState.currentStreak,
         },
         'lastUpdate': DateTime.now().toIso8601String(),
       };
@@ -310,6 +318,10 @@ class MealWidgetDataProvider {
             AppTranslations.get('widget_add_water_description', languageCode),
         'addWaterPresetFormat':
             AppTranslations.get('widget_add_water_preset_format', languageCode),
+        'coachWidgetTitle':
+            AppTranslations.get('widget_coach_title', languageCode),
+        'coachWidgetDescription':
+            AppTranslations.get('widget_coach_description', languageCode),
       },
       'mealShortNames': {
         'petit-dejeuner': shortBreakfast,

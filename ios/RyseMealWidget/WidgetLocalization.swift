@@ -13,6 +13,8 @@ struct WidgetLocalizationStrings {
     let addWaterTitle: String
     let addWaterDescription: String
     let addWaterPresetFormat: String
+    let coachWidgetTitle: String
+    let coachWidgetDescription: String
     let mealShortNames: [String: String]
 
     static func fallback() -> WidgetLocalizationStrings {
@@ -24,6 +26,8 @@ struct WidgetLocalizationStrings {
             addWaterTitle: "Ajouter de l'eau",
             addWaterDescription: "Ajoute de l'eau à votre consommation quotidienne",
             addWaterPresetFormat: "Ajouter {amount} ml",
+            coachWidgetTitle: "Coach Ryse",
+            coachWidgetDescription: "Suivi calories avec conseils personnalisés",
             mealShortNames: [
                 "petit-dejeuner": "Petit-déj.",
                 "breakfast": "Breakfast",
@@ -60,6 +64,8 @@ struct WidgetLocalizationStrings {
             addWaterTitle: texts["addWaterTitle"] as? String ?? defaults.addWaterTitle,
             addWaterDescription: texts["addWaterDescription"] as? String ?? defaults.addWaterDescription,
             addWaterPresetFormat: texts["addWaterPresetFormat"] as? String ?? defaults.addWaterPresetFormat,
+            coachWidgetTitle: texts["coachWidgetTitle"] as? String ?? defaults.coachWidgetTitle,
+            coachWidgetDescription: texts["coachWidgetDescription"] as? String ?? defaults.coachWidgetDescription,
             mealShortNames: mergedShortNames
         )
     }

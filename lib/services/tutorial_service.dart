@@ -26,6 +26,9 @@ class TutorialService {
 
   TutorialCoachMark? _tutorialCoachMark;
 
+  // Flag pour éviter les appels multiples au tutorial dashboard
+  bool _isDashboardTutorialRunning = false;
+
   /// Vérifie si un tutorial a déjà été complété
   /// Vérifie d'abord dans Supabase (source de vérité), puis SharedPreferences en fallback
   Future<bool> _isTutorialCompleted(String key) async {
@@ -136,13 +139,25 @@ class TutorialService {
 
         debugPrint('✅ Réponse Supabase reçue: $response');
         debugPrint('✅ Tutorial marqué comme complété dans Supabase: $key');
+
+        // Libérer le verrou si c'est le tutorial dashboard
+        if (key == _dashboardTutorialKey) {
+          _isDashboardTutorialRunning = false;
+        }
       } catch (e, stackTrace) {
         debugPrint('❌ Erreur sauvegarde tutorial dans Supabase: $e');
         debugPrint('❌ Stack trace: $stackTrace');
-        // Continue quand même, l'utilisateur a les SharedPreferences
+        // Libérer le verrou même en cas d'erreur
+        if (key == _dashboardTutorialKey) {
+          _isDashboardTutorialRunning = false;
+        }
       }
     } else {
       debugPrint('⚠️ Aucun utilisateur connecté ! Impossible de sauvegarder dans Supabase');
+      // Libérer le verrou même sans utilisateur
+      if (key == _dashboardTutorialKey) {
+        _isDashboardTutorialRunning = false;
+      }
     }
 
     debugPrint('✅ Tutorial marqué comme complété localement: $key');
@@ -300,14 +315,26 @@ class TutorialService {
     required GlobalKey sportTabKey,
     required GlobalKey progressTabKey,
     String languageCode = 'fr',
-    String? pandaImagePath, // Optionnel : chemin vers l'image du panda
-    String? userName, // Optionnel : prénom de l'utilisateur
+    String? pandaImagePath,
+    String? userName,
   }) async {
+    // 🔒 Éviter les appels multiples simultanés (AVANT toute opération async)
+    if (_isDashboardTutorialRunning) {
+      debugPrint('⚠️ Tutorial Dashboard déjà en cours, ignoré');
+      return;
+    }
+
+    // Marquer comme en cours IMMÉDIATEMENT (avant les opérations async)
+    _isDashboardTutorialRunning = true;
+
     // Vérifier si déjà complété
     if (await _isTutorialCompleted(_dashboardTutorialKey)) {
       debugPrint('ℹ️ Tutorial Dashboard déjà complété');
+      _isDashboardTutorialRunning = false; // Libérer le verrou
       return;
     }
+
+    debugPrint('🚀 Démarrage du tutorial Dashboard');
 
     // Attendre que le build soit terminé
     await Future.delayed(const Duration(milliseconds: 500));
@@ -321,14 +348,16 @@ class TutorialService {
     );
 
     // Si l'utilisateur a skippé, marquer comme complété et sortir
+    // Le callback sera appelé dans _markTutorialAsCompleted
     if (!shouldContinue) {
       await _markTutorialAsCompleted(_dashboardTutorialKey);
       debugPrint('⏭️ Tutorial Dashboard skippé depuis le Welcome Screen');
       return;
     }
 
-    // Petit délai avant de lancer le tutorial principal
-    await Future.delayed(const Duration(milliseconds: 300));
+    // Attendre que le Welcome Screen soit complètement fermé avant de lancer le tutorial
+    // L'animation de fermeture prend environ 300ms, on attend un peu plus pour être sûr
+    await Future.delayed(const Duration(milliseconds: 500));
 
     final targets = <TargetFocus>[
       // 1. Bouton Ajouter aliment
@@ -419,15 +448,16 @@ class TutorialService {
         fontSize: 16,
         fontWeight: FontWeight.w600,
       ),
-      // 🎯 TRANSITIONS FLUIDES : Pas de reset entre les steps
-      pulseEnable: false, // Désactiver le pulse pour plus de fluidité
+      pulseEnable: false,
 
       onFinish: () {
+        // Le callback onCompleted sera appelé dans _markTutorialAsCompleted après Supabase
         _markTutorialAsCompleted(_dashboardTutorialKey);
         debugPrint('✅ Tutorial Dashboard terminé');
       },
       onSkip: () {
         debugPrint('🔴 === BOUTON "PASSER" APPUYÉ - TUTORIAL DASHBOARD ===');
+        // Le callback onCompleted sera appelé dans _markTutorialAsCompleted après Supabase
         _markTutorialAsCompleted(_dashboardTutorialKey);
         debugPrint('⏭️ Tutorial Dashboard skippé');
         return true;

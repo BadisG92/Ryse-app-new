@@ -39,6 +39,7 @@ class WidgetDeepLinkHandler {
   /// - ryse://add-food
   /// - ryse://widget?action=prev-meal (navigation widget)
   /// - ryse://widget?action=next-meal (navigation widget)
+  /// - ryse://dashboard (depuis le coach widget lock screen)
   static Future<void> handleDeepLink(Uri uri) async {
     if (kDebugMode) {
       debugPrint('🔗 Deep link reçu: ${uri.toString()}');
@@ -51,6 +52,17 @@ class WidgetDeepLinkHandler {
         await _handleWidgetNavigation(action);
         return;
       }
+    }
+
+    // Gérer le deep link depuis le coach widget (lock screen)
+    // Ouvre simplement l'app sur le dashboard principal
+    if (uri.host == 'dashboard') {
+      if (kDebugMode) {
+        debugPrint('🏠 Deep link dashboard: ouverture de l\'app sur l\'écran principal');
+      }
+      // L'app s'ouvre naturellement sur le dashboard, rien de spécial à faire
+      // Le widget sync sera déclenché automatiquement au lancement
+      return;
     }
 
     // Gérer l'ajout d'eau

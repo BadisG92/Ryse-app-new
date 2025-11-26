@@ -203,6 +203,7 @@ class _RyzeAppState extends State<RyzeApp> {
   }
 
   /// Appelée quand l'onboarding est terminé
+  /// Affiche le paywall, puis redirige vers MainApp quelle que soit l'issue
   Future<void> _completeOnboarding() async {
     debugPrint('🎯 _completeOnboarding appelé');
     debugPrint('🎯 Widget mounted: $mounted');
@@ -231,29 +232,40 @@ class _RyzeAppState extends State<RyzeApp> {
     debugPrint('✅ Onboarding terminé');
 
     // Attendre que tous les frames soient rendus avant de naviguer
-    // Cela garantit que le widget est stable
     WidgetsBinding.instance.addPostFrameCallback((_) {
       debugPrint('🎯 PostFrameCallback - Widget mounted: $mounted');
 
       if (mounted) {
-        debugPrint('🚀 Navigation vers PaywallScreen (genericUpgrade)...');
+        debugPrint('🚀 Navigation vers PaywallScreen...');
         try {
-          // 🎯 PAYWALL GÉNÉRIQUE : Afficher l'offre Premium après l'onboarding
-          // L'utilisateur peut choisir de s'abonner (7 jours gratuits) ou continuer en gratuit
-          Navigator.of(context, rootNavigator: true).pushReplacement(
+          // 🎯 Afficher le Paywall après l'onboarding
+          // Quelle que soit l'issue (abonnement, plus tard, restauration), on va vers MainApp
+          Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
             MaterialPageRoute(
-              builder: (context) => _PaywallWrapper(
-                child: PaywallScreen(
-                  context: PaywallContext.genericUpgrade,
-                  customTitle: 'Débloquez Coach Ryze Premium',
-                  customMessage: 'Profitez de 7 jours d\'essai gratuit',
-                ),
+              builder: (context) => PaywallScreen(
+                context: PaywallContext.genericUpgrade,
+                customTitle: 'Débloquez Coach Ryze Premium',
+                customMessage: 'Profitez de 7 jours d\'essai gratuit',
+                onDismiss: () {
+                  // Appelé quand l'utilisateur ferme le paywall (peu importe la raison)
+                  debugPrint('🏠 Paywall fermé → Navigation vers MainApp');
+                  Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (context) => const MainApp()),
+                    (route) => false,
+                  );
+                },
               ),
             ),
+            (route) => false, // Supprimer toutes les routes précédentes
           );
           debugPrint('✅ Navigation réussie vers Paywall');
         } catch (e) {
           debugPrint('❌ Erreur navigation: $e');
+          // En cas d'erreur, aller directement vers MainApp
+          Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => const MainApp()),
+            (route) => false,
+          );
         }
       } else {
         debugPrint('❌ Widget non mounted dans PostFrameCallback');
@@ -302,31 +314,6 @@ class _RyzeAppState extends State<RyzeApp> {
     return _targetScreen ?? const Scaffold(
       backgroundColor: Color(0xFFF8FAFC),
       body: SizedBox.shrink(),
-    );
-  }
-}
-
-/// Wrapper pour le PaywallScreen dans le flow d'onboarding
-/// Gère la navigation vers MainApp lorsque l'utilisateur ferme le paywall
-class _PaywallWrapper extends StatelessWidget {
-  final Widget child;
-
-  const _PaywallWrapper({required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false, // Empêche le back navigation par défaut
-      onPopInvokedWithResult: (didPop, result) async {
-        if (!didPop) {
-          // L'utilisateur a fermé le paywall (bouton X ou swipe)
-          debugPrint('🆓 Utilisateur continue en version gratuite');
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => const MainApp()),
-          );
-        }
-      },
-      child: child,
     );
   }
 }

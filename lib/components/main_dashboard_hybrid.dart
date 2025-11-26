@@ -9,7 +9,6 @@ import 'ui/dashboard_models.dart';
 import 'ui/dashboard_cards.dart';
 import 'ui/dashboard_widgets.dart';
 import 'ui/custom_card.dart';
-import 'ui/custom_badge.dart';
 import 'ui/global_state_header.dart';
 import '../services/dashboard_service.dart';
 import '../services/localization_service.dart';
@@ -95,12 +94,12 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
       addExerciseKey: _addExerciseKey,
       addWaterKey: _addWaterKey,
       caloriesCardKey: _caloriesCardKey,
-      nutritionTabKey: widget.nutritionTabKey ?? GlobalKey(), // Utiliser les keys passées par main_app
+      nutritionTabKey: widget.nutritionTabKey ?? GlobalKey(),
       sportTabKey: widget.sportTabKey ?? GlobalKey(),
-      progressTabKey: widget.progressTabKey ?? GlobalKey(), // Ajouter le bouton Progression
+      progressTabKey: widget.progressTabKey ?? GlobalKey(),
       languageCode: locService.currentLanguageCode,
-      pandaImagePath: 'assets/images/coach_ryze_welcome.png', // Image du Coach Ryze pour le Welcome Screen
-      userName: globalState.userName, // Prénom de l'utilisateur (déjà formaté avec majuscule)
+      pandaImagePath: 'assets/images/coach_ryze_welcome.png',
+      userName: globalState.userName,
     );
   }
 

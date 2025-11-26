@@ -2204,44 +2204,27 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                           await _saveUserData();
                           debugPrint('✅ Données sauvegardées');
 
-                          // Appeler le callback parent (pour mettre à jour SharedPrefs et Supabase)
-                          debugPrint('📞 Appel du callback parent...');
-                          widget.onComplete();
+                          // Rafraîchir le GlobalState avant de naviguer pour charger les nouvelles données
+                          try {
+                            final globalState = GlobalStateManager.instance;
+                            debugPrint('🔄 Rafraîchissement du GlobalState...');
+                            await globalState.initialize();
+                            debugPrint('✅ GlobalState rafraîchi - Calories: ${globalState.calorieGoal}');
 
-                          // Attendre pour que les données Supabase soient bien propagées
-                          debugPrint('⏳ Attente de 500ms pour propagation des données...');
-                          await Future.delayed(const Duration(milliseconds: 500));
-
-                          if (mounted) {
-                            debugPrint('🚀 Navigation directe vers MainApp depuis onboarding...');
-
-                            // Rafraîchir le GlobalState avant de naviguer pour charger les nouvelles données
-                            try {
-                              final globalState = GlobalStateManager.instance;
-                              debugPrint('🔄 Rafraîchissement du GlobalState...');
-                              debugPrint('🔄 Appel de globalState.initialize()...');
-                              await globalState.initialize();
-                              debugPrint('✅ GlobalState rafraîchi - Calories: ${globalState.calorieGoal}');
-
-                              // Invalider les caches pour forcer le rechargement des données
-                              debugPrint('🗑️ Invalidation des caches...');
-                              FastCacheService.invalidateDashboard();
-                              DashboardService.clearAllCache();
-                              debugPrint('✅ Caches invalidés');
-                            } catch (e) {
-                              debugPrint('⚠️ Erreur rafraîchissement GlobalState: $e');
-                              debugPrint('Stack trace: ${StackTrace.current}');
-                            }
-
-                            debugPrint('🧭 Navigation vers MainApp...');
-                            // Naviguer directement en remplaçant toute la stack
-                            Navigator.of(context).pushAndRemoveUntil(
-                              MaterialPageRoute(builder: (context) => const MainApp()),
-                              (route) => false, // Supprimer toutes les routes précédentes
-                            );
-                          } else {
-                            debugPrint('❌ Widget non monté, impossible de naviguer');
+                            // Invalider les caches pour forcer le rechargement des données
+                            debugPrint('🗑️ Invalidation des caches...');
+                            FastCacheService.invalidateDashboard();
+                            DashboardService.clearAllCache();
+                            debugPrint('✅ Caches invalidés');
+                          } catch (e) {
+                            debugPrint('⚠️ Erreur rafraîchissement GlobalState: $e');
                           }
+
+                          // Appeler le callback parent qui gère la navigation vers Paywall puis MainApp
+                          debugPrint('📞 Appel du callback onComplete (navigation vers Paywall)...');
+                          widget.onComplete();
+                          // NOTE: Le callback onComplete gère toute la navigation
+                          // Ne PAS naviguer ici - le callback s'en charge
                         } catch (e) {
                           // Afficher un message d'erreur mais permettre de continuer
                           if (mounted) {
@@ -2257,27 +2240,10 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                                 ),
                                 actions: [
                                   TextButton(
-                                    onPressed: () async {
+                                    onPressed: () {
                                       Navigator.of(context).pop();
-
-                                      // Appeler le callback parent
+                                      // Le callback onComplete gère toute la navigation
                                       widget.onComplete();
-
-                                      // Attendre et rafraîchir
-                                      await Future.delayed(const Duration(milliseconds: 300));
-                                      if (mounted) {
-                                        try {
-                                          await GlobalStateManager.instance.initialize();
-                                          debugPrint('✅ GlobalState rafraîchi');
-                                        } catch (e) {
-                                          debugPrint('⚠️ Erreur rafraîchissement: $e');
-                                        }
-
-                                        Navigator.of(context).pushAndRemoveUntil(
-                                          MaterialPageRoute(builder: (context) => const MainApp()),
-                                          (route) => false,
-                                        );
-                                      }
                                     },
                                     child: const Text('Continuer quand même'),
                                   ),
@@ -2287,47 +2253,13 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                                       // Réessayer la sauvegarde
                                       try {
                                         await _saveUserData();
-
-                                        // Appeler le callback parent
+                                        // Le callback onComplete gère toute la navigation
                                         widget.onComplete();
-
-                                        // Attendre et rafraîchir
-                                        await Future.delayed(const Duration(milliseconds: 300));
-                                        if (mounted) {
-                                          try {
-                                            await GlobalStateManager.instance.initialize();
-                                            debugPrint('✅ GlobalState rafraîchi');
-                                          } catch (e) {
-                                            debugPrint('⚠️ Erreur rafraîchissement: $e');
-                                          }
-
-                                          Navigator.of(context).pushAndRemoveUntil(
-                                            MaterialPageRoute(builder: (context) => const MainApp()),
-                                            (route) => false,
-                                          );
-                                        }
                                       } catch (retryError) {
                                         // Si ça échoue encore, continuer quand même
                                         debugPrint('❌ Échec de la 2ème tentative: $retryError');
-
-                                        // Appeler le callback parent
+                                        // Le callback onComplete gère toute la navigation
                                         widget.onComplete();
-
-                                        // Attendre et rafraîchir
-                                        await Future.delayed(const Duration(milliseconds: 300));
-                                        if (mounted) {
-                                          try {
-                                            await GlobalStateManager.instance.initialize();
-                                            debugPrint('✅ GlobalState rafraîchi');
-                                          } catch (e) {
-                                            debugPrint('⚠️ Erreur rafraîchissement: $e');
-                                          }
-
-                                          Navigator.of(context).pushAndRemoveUntil(
-                                            MaterialPageRoute(builder: (context) => const MainApp()),
-                                            (route) => false,
-                                          );
-                                        }
                                       }
                                     },
                                     child: const Text('Réessayer'),

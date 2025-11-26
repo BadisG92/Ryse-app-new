@@ -16,12 +16,14 @@ class PaywallScreen extends StatefulWidget {
   final PaywallContext context;
   final String? customTitle;
   final String? customMessage;
+  final VoidCallback? onDismiss; // Appelé quand le paywall est fermé (peu importe la raison)
 
   const PaywallScreen({
     Key? key,
     required this.context,
     this.customTitle,
     this.customMessage,
+    this.onDismiss,
   }) : super(key: key);
 
   @override
@@ -319,7 +321,7 @@ class _PaywallScreenState extends State<PaywallScreen>
       if (customerInfo != null && mounted) {
         // Purchase successful
         HapticService.instance.heavyImpact();
-        Navigator.pop(context, true); // Return true to indicate successful purchase
+        _dismissPaywall(); // Ferme le paywall (appelle onDismiss si fourni)
       }
     } on PlatformException catch (e) {
       debugPrint('❌ Purchase error: ${e.code} - ${e.message}');
@@ -577,8 +579,8 @@ class _PaywallScreenState extends State<PaywallScreen>
                           ),
                           const SizedBox(height: 12),
 
-                          // Skip button (delayed)
-                          if (_showCloseButton) _buildSkipButton(isFrench),
+                          // Skip button (delayed) + Restore Purchases (always visible)
+                          _buildSkipButton(isFrench),
 
                           // Bottom padding
                           SizedBox(height: MediaQuery.of(context).padding.bottom + 40),
@@ -1180,7 +1182,7 @@ class _PaywallScreenState extends State<PaywallScreen>
                   ),
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             _getLegalText(isFrench),
             textAlign: TextAlign.center,
@@ -1190,12 +1192,30 @@ class _PaywallScreenState extends State<PaywallScreen>
               fontWeight: FontWeight.w600,
             ),
           ),
+          // Restore Purchases button (Required by Apple App Store)
+          TextButton(
+            onPressed: _handleRestorePurchases,
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: Text(
+              isFrench ? 'Restaurer mes achats' : 'Restore Purchases',
+              style: const TextStyle(
+                fontSize: 12,
+                color: Color(0xFF6B7280),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 
   Widget _buildSkipButton(bool isFrench) {
+    // "Maybe later" button - delayed appearance (6 seconds)
     return AnimatedOpacity(
       opacity: _showCloseButton ? 1.0 : 0.0,
       duration: const Duration(milliseconds: 300),
@@ -1203,7 +1223,7 @@ class _PaywallScreenState extends State<PaywallScreen>
         onPressed: _showCloseButton
             ? () {
                 HapticService.instance.lightImpact();
-                Navigator.pop(context);
+                _dismissPaywall();
               }
             : null,
         child: Text(
@@ -1217,6 +1237,104 @@ class _PaywallScreenState extends State<PaywallScreen>
         ),
       ),
     );
+  }
+
+  /// Ferme le paywall et appelle le callback onDismiss si fourni
+  void _dismissPaywall() {
+    if (widget.onDismiss != null) {
+      widget.onDismiss!();
+    } else {
+      Navigator.pop(context);
+    }
+  }
+
+  Future<void> _handleRestorePurchases() async {
+    HapticService.instance.lightImpact();
+
+    final isFrench = Provider.of<LocalizationService>(context, listen: false)
+        .currentLanguageCode == 'fr';
+
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Center(
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF0B132B)),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                isFrench ? 'Restauration en cours...' : 'Restoring purchases...',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF0B132B),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    try {
+      final subscriptionService = UnifiedSubscriptionService();
+      final restored = await subscriptionService.restorePurchases();
+
+      if (mounted) {
+        Navigator.pop(context); // Close loading dialog
+
+        if (restored) {
+          // Success - close paywall
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                isFrench
+                    ? 'Achats restaurés avec succès !'
+                    : 'Purchases restored successfully!',
+              ),
+              backgroundColor: const Color(0xFF10B981),
+            ),
+          );
+          _dismissPaywall(); // Ferme le paywall (appelle onDismiss si fourni)
+        } else {
+          // No purchases found
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                isFrench
+                    ? 'Aucun achat trouvé à restaurer'
+                    : 'No purchases found to restore',
+              ),
+              backgroundColor: const Color(0xFF6B7280),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context); // Close loading dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isFrench
+                  ? 'Erreur lors de la restauration'
+                  : 'Error restoring purchases',
+            ),
+            backgroundColor: const Color(0xFFEF4444),
+          ),
+        );
+      }
+    }
   }
 
   String _getLegalText(bool isFrench) {

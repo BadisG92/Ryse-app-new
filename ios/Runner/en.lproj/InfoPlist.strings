@@ -1,0 +1,31 @@
+/* English localization for Info.plist permission descriptions */
+
+/* Camera */
+"NSCameraUsageDescription" = "This app uses the camera to scan food and analyze meals with AI nutrition technology.";
+
+/* Location */
+"NSLocationWhenInUseUsageDescription" = "This app uses your location to provide region-specific nutrition recommendations and to accurately track your cardio activities (distance, speed, route).";
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "This app can use your location in the background to track your sports activities even when the app is not active.";
+"NSLocationTemporaryUsageDescriptionDictionary" = {
+    "CardioWorkout" = "Precise location required to measure your distance and speed during cardio workout.";
+};
+
+/* Microphone */
+"NSMicrophoneUsageDescription" = "This app uses the microphone for voice assistance during nutrition scanning and hands-free recording of your performance during workouts.";
+
+/* Speech Recognition */
+"NSSpeechRecognitionUsageDescription" = "This app uses speech recognition to record your reps and weights during strength training, allowing you to stay focused on your workout.";
+
+/* Motion */
+"NSMotionUsageDescription" = "This app uses motion sensors to count your steps during walking sessions and optimize activity tracking.";
+
+/* Photo Library */
+"NSPhotoLibraryAddUsageDescription" = "This app can save scanned photos to your gallery for reference.";
+"NSPhotoLibraryUsageDescription" = "This app accesses your photos to analyze food and calculate nutritional values.";
+
+/* User Tracking */
+"NSUserTrackingUsageDescription" = "This app does not track your personal data. GPS tracking is only used to measure your sports performance locally on your device.";
+
+/* HealthKit */
+"NSHealthShareUsageDescription" = "This app can read your health data (activity, calories burned) to optimize your nutrition and fitness goals.";
+"NSHealthUpdateUsageDescription" = "This app can write your workout data to Apple Health to centralize your fitness tracking.";

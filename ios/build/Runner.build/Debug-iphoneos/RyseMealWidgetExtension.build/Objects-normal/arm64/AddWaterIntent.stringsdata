@@ -1,0 +1,32 @@
+{
+  "source": "/Users/badis/Documents/Ryse-app-new/ios/RyseMealWidget/AddWaterIntent.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Ajouter de l'eau",
+        "location": {
+          "startingColumn": 49,
+          "startingLine": 14
+        }
+      },
+      {
+        "comment": "",
+        "key": "Ajoute de l'eau à ta journée",
+        "location": {
+          "startingColumn": 67,
+          "startingLine": 15
+        }
+      },
+      {
+        "comment": "",
+        "key": "Amount (ml)",
+        "location": {
+          "startingColumn": 23,
+          "startingLine": 19
+        }
+      }
+    ]
+  },
+  "version": 1
+}

@@ -9,7 +9,7 @@
 	<!-- Associated domains (si besoin pour auth) -->
 	<key>com.apple.developer.associated-domains</key>
 	<array>
-		<string>applinks:ryze-app.com</string>
+		<string>applinks:coach-ryze.com</string>
 	</array>
 
 	<!-- Push notifications capability -->

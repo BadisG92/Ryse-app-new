@@ -1,0 +1,56 @@
+{
+  "source": "/Users/badis/Documents/Ryse-app-new/ios/RyseMealWidget/RyseMealWidget.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "+250",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 425
+        }
+      },
+      {
+        "comment": "",
+        "key": "+500",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 438
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld / %lld kcal",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 511
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 633
+        }
+      },
+      {
+        "comment": "",
+        "key": "0",
+        "location": {
+          "startingColumn": 67,
+          "startingLine": 633
+        }
+      },
+      {
+        "comment": "",
+        "key": "0",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 669
+        }
+      }
+    ]
+  },
+  "version": 1
+}

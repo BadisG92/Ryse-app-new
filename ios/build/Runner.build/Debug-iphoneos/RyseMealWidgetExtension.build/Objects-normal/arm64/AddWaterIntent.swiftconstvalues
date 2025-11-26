@@ -1,0 +1,213 @@
+[
+  {
+    "typeName": "RyseMealWidgetExtension.AddWaterIntent",
+    "mangledTypeName": "23RyseMealWidgetExtension14AddWaterIntentV",
+    "kind": "struct",
+    "file": "/Users/badis/Documents/Ryse-app-new/ios/RyseMealWidget/AddWaterIntent.swift",
+    "line": 13,
+    "conformances": [
+      "AppIntents.AppIntent",
+      "AppIntents.PersistentlyIdentifiable",
+      "AppIntents._SupportsAppDependencies",
+      "Swift.Sendable"
+    ],
+    "associatedTypeAliases": [
+      {
+        "typeAliasName": "PerformResult",
+        "substitutedTypeName": "some AppIntents.IntentResult",
+        "substitutedMangledTypeName": "23RyseMealWidgetExtension14AddWaterIntentV7performQryYaKFQOy_Qo_",
+        "opaqueTypeProtocolRequirements": [
+          "AppIntents.IntentResult"
+        ],
+        "opaqueTypeSameTypeRequirements": []
+      },
+      {
+        "typeAliasName": "SummaryContent",
+        "substitutedTypeName": "some AppIntents.ParameterSummary",
+        "substitutedMangledTypeName": "10AppIntents0A6IntentPAAE16parameterSummaryQrvpZQOy23RyseMealWidgetExtension08AddWaterC0V_Qo_",
+        "opaqueTypeProtocolRequirements": [
+          "AppIntents.ParameterSummary"
+        ],
+        "opaqueTypeSameTypeRequirements": []
+      }
+    ],
+    "properties": [
+      {
+        "label": "_amount",
+        "type": "AppIntents.IntentParameter<Swift.Int>",
+        "mangledTypeName": "n/a - deprecated",
+        "isStatic": "false",
+        "isComputed": "false",
+        "file": "/Users/badis/Documents/Ryse-app-new/ios/RyseMealWidget/AddWaterIntent.swift",
+        "line": 20,
+        "valueKind": "InitCall",
+        "value": {
+          "type": "AppIntents.IntentParameter<Swift.Int>",
+          "arguments": [
+            {
+              "label": "title",
+              "type": "Foundation.LocalizedStringResource",
+              "valueKind": "RawLiteral",
+              "value": "Amount (ml)"
+            },
+            {
+              "label": "description",
+              "type": "Swift.Optional<Foundation.LocalizedStringResource>",
+              "valueKind": "RawLiteral",
+              "value": "nil"
+            },
+            {
+              "label": "default",
+              "type": "Swift.Optional<Swift.Int>",
+              "valueKind": "RawLiteral",
+              "value": "nil"
+            },
+            {
+              "label": "controlStyle",
+              "type": "AppIntents.IntentParameter<Swift.Int>.IntControlStyle",
+              "valueKind": "Runtime"
+            },
+            {
+              "label": "inclusiveRange",
+              "type": "Swift.Optional<(lowerBound: Swift.Int, upperBound: Swift.Int)>",
+              "valueKind": "RawLiteral",
+              "value": "nil"
+            },
+            {
+              "label": "requestValueDialog",
+              "type": "Swift.Optional<AppIntents.IntentDialog>",
+              "valueKind": "RawLiteral",
+              "value": "nil"
+            },
+            {
+              "label": "inputConnectionBehavior",
+              "type": "AppIntents.InputConnectionBehavior",
+              "valueKind": "Runtime"
+            }
+          ]
+        }
+      },
+      {
+        "label": "title",
+        "type": "Foundation.LocalizedStringResource",
+        "mangledTypeName": "n/a - deprecated",
+        "isStatic": "true",
+        "isComputed": "true",
+        "file": "/Users/badis/Documents/Ryse-app-new/ios/RyseMealWidget/AddWaterIntent.swift",
+        "line": 14,
+        "valueKind": "RawLiteral",
+        "value": "Ajouter de l'eau"
+      },
+      {
+        "label": "description",
+        "type": "AppIntents.IntentDescription",
+        "mangledTypeName": "n/a - deprecated",
+        "isStatic": "true",
+        "isComputed": "true",
+        "file": "/Users/badis/Documents/Ryse-app-new/ios/RyseMealWidget/AddWaterIntent.swift",
+        "line": 15,
+        "valueKind": "RawLiteral",
+        "value": "Ajoute de l'eau à ta journée"
+      },
+      {
+        "label": "openAppWhenRun",
+        "type": "Swift.Bool",
+        "mangledTypeName": "n/a - deprecated",
+        "isStatic": "true",
+        "isComputed": "false",
+        "file": "/Users/badis/Documents/Ryse-app-new/ios/RyseMealWidget/AddWaterIntent.swift",
+        "line": 17,
+        "valueKind": "RawLiteral",
+        "value": "false"
+      },
+      {
+        "label": "amount",
+        "type": "Swift.Int",
+        "mangledTypeName": "n/a - deprecated",
+        "isStatic": "false",
+        "isComputed": "true",
+        "file": "/Users/badis/Documents/Ryse-app-new/ios/RyseMealWidget/AddWaterIntent.swift",
+        "line": 20,
+        "valueKind": "InitCall",
+        "value": {
+          "type": "AppIntents.IntentParameter<Swift.Int>",
+          "arguments": [
+            {
+              "label": "title",
+              "type": "Foundation.LocalizedStringResource",
+              "valueKind": "RawLiteral",
+              "value": "Amount (ml)"
+            },
+            {
+              "label": "description",
+              "type": "Swift.Optional<Foundation.LocalizedStringResource>",
+              "valueKind": "RawLiteral",
+              "value": "nil"
+            },
+            {
+              "label": "default",
+              "type": "Swift.Optional<Swift.Int>",
+              "valueKind": "RawLiteral",
+              "value": "nil"
+            },
+            {
+              "label": "controlStyle",
+              "type": "AppIntents.IntentParameter<Swift.Int>.IntControlStyle",
+              "valueKind": "Runtime"
+            },
+            {
+              "label": "inclusiveRange",
+              "type": "Swift.Optional<(lowerBound: Swift.Int, upperBound: Swift.Int)>",
+              "valueKind": "RawLiteral",
+              "value": "nil"
+            },
+            {
+              "label": "requestValueDialog",
+              "type": "Swift.Optional<AppIntents.IntentDialog>",
+              "valueKind": "RawLiteral",
+              "value": "nil"
+            },
+            {
+              "label": "inputConnectionBehavior",
+              "type": "AppIntents.InputConnectionBehavior",
+              "valueKind": "Runtime"
+            }
+          ]
+        },
+        "propertyWrappers": [
+          {
+            "type": "AppIntents.IntentParameter",
+            "file": "/Users/badis/Documents/Ryse-app-new/ios/RyseMealWidget/AddWaterIntent.swift",
+            "line": 19,
+            "arguments": [
+              {
+                "label": "title",
+                "type": "Foundation.LocalizedStringResource",
+                "valueKind": "RawLiteral",
+                "value": "Amount (ml)"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "label": "$amount",
+        "type": "AppIntents.IntentParameter<Swift.Int>",
+        "mangledTypeName": "n/a - deprecated",
+        "isStatic": "false",
+        "isComputed": "true",
+        "file": "/Users/badis/Documents/Ryse-app-new/ios/RyseMealWidget/AddWaterIntent.swift",
+        "line": 20,
+        "valueKind": "Runtime"
+      }
+    ],
+    "availabilityAttributes": [
+      {
+        "platform": "iOS",
+        "introducedVersion": "17.0",
+        "isUnavailable": false,
+        "isDeprecated": false
+      }
+    ]
+  }
+]
