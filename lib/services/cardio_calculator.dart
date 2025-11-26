@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import '../models/cardio_session_models.dart';
 import 'location_service.dart';
+import 'unit_service.dart';
 
 /// Service pour calculer les métriques cardio basées sur les données GPS et physiologiques
 class CardioCalculator {
@@ -227,7 +228,7 @@ class CardioCalculator {
     return {
       'overall_score': overallScore.clamp(0, 100).round(),
       'calories_per_minute': caloriesPerMinute.toStringAsFixed(1),
-      'distance_efficiency': '${(distanceEfficiency * 60).toStringAsFixed(2)} km/h',
+      'distance_efficiency': UnitService.instance.formatSpeed(distanceEfficiency * 60),
       'speed_consistency': '${(speedConsistency * 100).toStringAsFixed(0)}%',
       'recommendations': _generateRecommendations(overallScore, activityType),
     };

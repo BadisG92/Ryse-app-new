@@ -1812,22 +1812,37 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
       final birthDate = '${userData['birthYear']}-${userData['birthMonth'].toString().padLeft(2, '0')}-${userData['birthDay'].toString().padLeft(2, '0')}';
       debugPrint('Date de naissance construite: $birthDate');
 
-      // Déterminer le poids objectif
-      final targetWeight = userData['targetWeight']?.isNotEmpty == true
-          ? double.tryParse(userData['targetWeight']) ?? double.tryParse(userData['weight'] ?? '0')
-          : double.tryParse(userData['weight'] ?? '0');
+      // Convertir en métrique si l'utilisateur est en impérial
+      // La base de données stocke TOUJOURS en métrique (kg, cm)
+      final bool isMetric = userData['isMetric'] ?? true;
 
-      debugPrint('Poids objectif: $targetWeight');
+      double heightValue = double.tryParse(userData['height'] ?? '0') ?? 0;
+      double weightValue = double.tryParse(userData['weight'] ?? '0') ?? 0;
+      double targetWeightValue = userData['targetWeight']?.isNotEmpty == true
+          ? double.tryParse(userData['targetWeight']) ?? weightValue
+          : weightValue;
 
-      // Préparer les données à sauvegarder
+      if (!isMetric) {
+        // Convertir inches → cm et lbs → kg
+        heightValue = heightValue * 2.54;
+        weightValue = weightValue / 2.20462;
+        targetWeightValue = targetWeightValue / 2.20462;
+        debugPrint('🔄 Conversion impérial → métrique pour stockage');
+        debugPrint('  Taille: ${userData['height']} in → ${heightValue.toStringAsFixed(1)} cm');
+        debugPrint('  Poids: ${userData['weight']} lbs → ${weightValue.toStringAsFixed(1)} kg');
+      }
+
+      debugPrint('Poids objectif (en kg): ${targetWeightValue.toStringAsFixed(1)}');
+
+      // Préparer les données à sauvegarder (TOUJOURS en métrique)
       final updateData = {
         'gender': userData['gender'],
         'birth_date': birthDate,
         'age': int.tryParse(userData['age'] ?? '0'),
-        'height': double.tryParse(userData['height'] ?? '0'),
-        'weight': double.tryParse(userData['weight'] ?? '0'),
-        'target_weight': targetWeight,
-        'is_metric': userData['isMetric'] ?? true,
+        'height': heightValue,
+        'weight': weightValue,
+        'target_weight': targetWeightValue,
+        'is_metric': isMetric,
         'activity_level': userData['activity'],
         'fitness_goal': userData['goal'],
         'dietary_restrictions': userData['restrictions'],
@@ -1855,8 +1870,8 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
       debugPrint('✅ Réponse Supabase UPDATE: $response');
 
       // Créer une entrée dans l'historique pour marquer le poids initial de l'onboarding
-      final weight = double.tryParse(userData['weight'] ?? '0') ?? 0.0;
-      if (weight > 0) {
+      // Utiliser weightValue qui est déjà converti en kg
+      if (weightValue > 0) {
         debugPrint('Création de l\'entrée dans user_profile_history...');
 
         // D'abord, désactiver tous les profils "current" existants pour cet utilisateur
@@ -1871,14 +1886,14 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
           debugPrint('⚠️ Erreur désactivation anciens profils (peut-être aucun): $e');
         }
 
-        // Ensuite, créer le nouveau profil current
+        // Ensuite, créer le nouveau profil current (valeurs en métrique)
         final historyResponse = await supabase.from('user_profile_history').insert({
           'user_id': userId,
           'gender': userData['gender'],
           'birth_date': birthDate,
           'age': int.tryParse(userData['age'] ?? '0'),
-          'height': double.tryParse(userData['height'] ?? '0'),
-          'weight': weight,
+          'height': heightValue,
+          'weight': weightValue,
           'activity_level': userData['activity'],
           'fitness_goal': userData['goal'],
           'dietary_restrictions': userData['restrictions'],

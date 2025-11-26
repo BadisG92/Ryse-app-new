@@ -8,6 +8,7 @@ import '../services/dashboard_service.dart';
 import '../services/global_state_manager.dart';
 import '../services/calorie_burn_service.dart';
 import '../services/auth_service.dart';
+import '../services/unit_service.dart';
 import '../widgets/exercise/exercise_selector_bottom_sheet.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -948,12 +949,13 @@ class _WorkoutEditScreenState extends State<WorkoutEditScreen> {
           // Poids
           Expanded(
             child: _buildInputField(
-              value: set.weight.toStringAsFixed(set.weight % 1 == 0 ? 0 : 1),
-              suffix: 'kg',
+              value: UnitService.instance.formatWeightValue(set.weight, decimals: set.weight % 1 == 0 ? 0 : 1),
+              suffix: UnitService.instance.weightUnit,
               onChanged: (value) {
                 final weight = double.tryParse(value);
                 if (weight != null) {
-                  _updateSet(exerciseIndex, setIndex, null, weight);
+                  // Convertir en kg pour le stockage
+                  _updateSet(exerciseIndex, setIndex, null, UnitService.instance.storageWeight(weight));
                 }
               },
             ),

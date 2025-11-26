@@ -10,6 +10,7 @@ import '../../services/sport_dashboard_service.dart';
 import '../../services/global_state_manager.dart';
 import '../../services/translations.dart';
 import '../../services/localization_service.dart';
+import '../../services/unit_service.dart';
 import 'package:provider/provider.dart';
 import '../../screens/workout_edit_screen.dart';
 import '../../models/sport_models.dart' as models;
@@ -43,7 +44,7 @@ class _WeeklyStatsSectionState extends State<WeeklyStatsSection> with GlobalStat
       final userId = Supabase.instance.client.auth.currentUser?.id;
       if (userId == null) {
         setState(() {
-          _stats = const WeeklyStats(sessions: '0', weight: '0 kg', calories: '0 kcal');
+          _stats = WeeklyStats(sessions: '0', weight: '0 ${UnitService.instance.weightUnit}', calories: '0 kcal');
           _loading = false;
         });
         return;
@@ -59,7 +60,7 @@ class _WeeklyStatsSectionState extends State<WeeklyStatsSection> with GlobalStat
       setState(() {
         _stats = WeeklyStats(
           sessions: sessions,
-          weight: '${totalVolume.toStringAsFixed(0)} kg',
+          weight: UnitService.instance.formatWeight(totalVolume, decimals: 0),
           calories: '$totalCalories kcal',
         );
         _loading = false;
@@ -67,7 +68,7 @@ class _WeeklyStatsSectionState extends State<WeeklyStatsSection> with GlobalStat
     } catch (e) {
       debugPrint('❌ WeeklyStats error: $e');
       setState(() {
-        _stats = const WeeklyStats(sessions: '0', weight: '0 kg', calories: '0 kcal');
+        _stats = WeeklyStats(sessions: '0', weight: '0 ${UnitService.instance.weightUnit}', calories: '0 kcal');
         _loading = false;
       });
     }
@@ -432,9 +433,21 @@ class _ExerciseProgressSectionState extends State<ExerciseProgressSection> with 
       final exercisesData = await WorkoutCacheService.getTopExercises(userId);
 
       final allExercises = exercisesData.map<ExerciseProgress>((e) {
+        // Récupère les valeurs brutes depuis le cache
+        final maxWeight = (e['maxWeight'] as num?)?.toDouble() ?? 0.0;
+        final maxReps = (e['maxReps'] as int?) ?? 0;
+
+        // Formate côté UI avec l'unité correcte
+        String current = 'N/A';
+        if (maxWeight > 0) {
+          current = UnitService.instance.formatWeight(maxWeight, decimals: 0);
+        } else if (maxReps > 0) {
+          current = '$maxReps reps';
+        }
+
         return ExerciseProgress(
           name: e['localized_name']?.toString() ?? e['name']?.toString() ?? '',
-          current: e['current']?.toString() ?? 'N/A',
+          current: current,
           progress: '', // Pas de calcul de progression pour l'instant
           sessions: (e['sessions'] as int?) ?? 0,
         );

@@ -7,6 +7,7 @@ import 'dart:math' as math;
 import '../../services/workout_cache_service.dart';
 import '../../services/translations.dart';
 import '../../services/localization_service.dart';
+import '../../services/unit_service.dart';
 import '../../components/exercise_ai_analysis_widget.dart';
 
 class ExerciseDetailPage extends StatefulWidget {
@@ -128,8 +129,7 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
 
     String _fmtKg(double w) {
       if (w <= 0) return '—';
-      if ((w % 1).abs() < 1e-6) return '${w.toInt()} kg';
-      return '${w.toStringAsFixed(1)} kg';
+      return UnitService.instance.formatWeight(w, decimals: (w % 1).abs() < 1e-6 ? 0 : 1);
     }
 
     final List<double> bestSeries = [];
@@ -383,7 +383,10 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
       final dt = DateTime.tryParse(r['date'] as String? ?? '');
       if (dt == null) continue;
       if (dt.isBefore(periodStart) || dt.isAfter(periodEnd)) continue;
-      points.add({'date': dt, 'val': (r['best'] as num).toDouble()});
+      // Convertir la valeur en unité d'affichage (lbs si impérial, kg si métrique)
+      final rawVal = (r['best'] as num).toDouble();
+      final displayVal = UnitService.instance.displayWeight(rawVal);
+      points.add({'date': dt, 'val': displayVal});
     }
     if (points.isEmpty) {
       return Container(
@@ -554,17 +557,28 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
                           getTooltipColor: (_) => const Color(0xFFF1F5F9),
                           getTooltipItem: (group, groupIndex, rod, rodIndex) {
                             final double v = rod.toY;
-                            final String val = v % 1 == 0 ? v.toStringAsFixed(0) : v.toStringAsFixed(1);
-                            // Unité selon la période: kg s'il y a eu du poids >0, sinon reps
-                            final unit = chartUsesWeight ? 'kg' : 'reps';
-                            return BarTooltipItem(
-                              '$val $unit',
-                              const TextStyle(
-                                color: Color(0xFF0B132B),
-                                fontWeight: FontWeight.w600,
-                                fontSize: 12,
-                              ),
-                            );
+                            // Unité selon la période: poids s'il y a eu du poids >0, sinon reps
+                            // Note: v est déjà converti en unité d'affichage
+                            if (chartUsesWeight) {
+                              final unit = UnitService.instance.weightUnit;
+                              return BarTooltipItem(
+                                '${v % 1 == 0 ? v.toInt() : v.toStringAsFixed(1)} $unit',
+                                const TextStyle(
+                                  color: Color(0xFF0B132B),
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 12,
+                                ),
+                              );
+                            } else {
+                              return BarTooltipItem(
+                                '${v.toStringAsFixed(0)} reps',
+                                const TextStyle(
+                                  color: Color(0xFF0B132B),
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 12,
+                                ),
+                              );
+                            }
                           },
                         ),
                       ),
@@ -653,7 +667,7 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
     if (period.isNotEmpty) {
       final double best = period.map((e) => e['best'] as double).reduce((a, b) => a > b ? a : b);
       if (usesWeight) {
-        bestLabel = (best % 1 == 0) ? '${best.toInt()} kg' : '${best.toStringAsFixed(1)} kg';
+        bestLabel = UnitService.instance.formatWeight(best, decimals: (best % 1 == 0) ? 0 : 1);
       } else {
         bestLabel = '${best.toInt()} reps';
       }
@@ -677,10 +691,19 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
         final double first = bestByDay[sortedDays.first]!;
         final double last = bestByDay[sortedDays.last]!;
         final double diff = last - first;
-        final String diffStr = diff == 0
-            ? '0'
-            : (diff % 1 == 0 ? (diff > 0 ? '+${diff.toInt()}' : '${diff.toInt()}') : (diff > 0 ? '+${diff.toStringAsFixed(1)}' : diff.toStringAsFixed(1)));
-        progressLabel = diffStr + (usesWeight ? ' kg' : ' reps');
+        if (usesWeight) {
+          // Convertir la différence en unité d'affichage
+          final displayDiff = UnitService.instance.displayWeight(diff);
+          final String diffStr = displayDiff == 0
+              ? '0'
+              : (displayDiff % 1 == 0 ? (displayDiff > 0 ? '+${displayDiff.toInt()}' : '${displayDiff.toInt()}') : (displayDiff > 0 ? '+${displayDiff.toStringAsFixed(1)}' : displayDiff.toStringAsFixed(1)));
+          progressLabel = '$diffStr ${UnitService.instance.weightUnit}';
+        } else {
+          final String diffStr = diff == 0
+              ? '0'
+              : (diff % 1 == 0 ? (diff > 0 ? '+${diff.toInt()}' : '${diff.toInt()}') : (diff > 0 ? '+${diff.toStringAsFixed(1)}' : diff.toStringAsFixed(1)));
+          progressLabel = '$diffStr reps';
+        }
       }
     }
 

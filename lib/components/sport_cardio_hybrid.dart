@@ -13,6 +13,7 @@ import '../services/translations.dart';
 import '../services/localization_service.dart';
 import '../services/cardio_service.dart';
 import '../services/tutorial_service.dart';
+import '../services/unit_service.dart';
 import '../widgets/sport/sport_calendar_view.dart';
 
 class SportCardioHybrid extends StatefulWidget {
@@ -288,9 +289,12 @@ class SportCardioHybridState extends State<SportCardioHybrid> {
           // Créer l'objectif selon le type
           CardioObjective? objective;
           if (config.type == 'distance') {
+            // Convertir la distance saisie en km pour le stockage
+            final distanceInput = double.tryParse(value) ?? 0.0;
+            final distanceKm = UnitService.instance.storageDistance(distanceInput);
             objective = CardioObjective(
               type: 'distance',
-              targetDistance: double.tryParse(value) ?? 0.0,
+              targetDistance: distanceKm,
               activityType: format.title.toLowerCase(),
               formatTitle: '${format.title} ($value ${config.unit})',
             );

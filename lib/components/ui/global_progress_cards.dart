@@ -10,6 +10,7 @@ import 'global_progress_models.dart';
 import '../../services/translations.dart';
 import '../../services/localization_service.dart';
 import '../../services/haptic_service.dart';
+import '../../services/unit_service.dart';
 
 // Carte d'évolution du poids avec graphique
 class WeightEvolutionCard extends StatelessWidget {
@@ -24,11 +25,13 @@ class WeightEvolutionCard extends StatelessWidget {
     this.onGraphTap,
   });
 
-  /// Calculer la moyenne mobile pour lisser les fluctuations
+  /// Calculer la moyenne mobile pour lisser les fluctuations (avec conversion d'unité)
   List<FlSpot> _calculateMovingAverage(List<WeightEntry> entries) {
+    final unitService = UnitService.instance;
+
     if (entries.length <= 3) {
       return entries.asMap().entries.map((entry) {
-        return FlSpot(entry.key.toDouble(), entry.value.weight);
+        return FlSpot(entry.key.toDouble(), unitService.displayWeight(entry.value.weight));
       }).toList();
     }
 
@@ -47,7 +50,8 @@ class WeightEvolutionCard extends StatelessWidget {
       }
 
       final average = sum / count;
-      smoothedSpots.add(FlSpot(i.toDouble(), average));
+      // Convertir la moyenne en unité d'affichage
+      smoothedSpots.add(FlSpot(i.toDouble(), unitService.displayWeight(average)));
     }
 
     return smoothedSpots;
@@ -57,6 +61,15 @@ class WeightEvolutionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 400;
+    final unitService = UnitService.instance;
+
+    // Convertir les valeurs en unité d'affichage pour le graphique
+    final displayMinY = unitService.displayWeight(progress.minY);
+    final displayMaxY = unitService.displayWeight(progress.maxY);
+    final displayTargetWeight = unitService.displayWeight(progress.targetWeight);
+
+    // Intervalle adapté selon l'unité (2 kg ou ~5 lbs)
+    final yInterval = unitService.isImperial ? 5.0 : 2.0;
 
     return CustomCard(
       child: Padding(
@@ -130,8 +143,8 @@ class WeightEvolutionCard extends StatelessWidget {
                         padding: const EdgeInsets.fromLTRB(8, 16, 8, 0),
                         child: LineChart(
                           LineChartData(
-                            minY: progress.minY,
-                            maxY: progress.maxY,
+                            minY: displayMinY,
+                            maxY: displayMaxY,
                             minX: -0.5,
                             maxX: math.max(6, progress.entries.length - 1).toDouble() + 0.5,
                             gridData: FlGridData(
@@ -149,11 +162,11 @@ class WeightEvolutionCard extends StatelessWidget {
                                 sideTitles: SideTitles(
                                   showTitles: true,
                                   reservedSize: isSmallScreen ? 32 : 35,
-                                  interval: (progress.maxY - progress.minY) > 10 ? 5 : 2,
+                                  interval: yInterval,
                                   getTitlesWidget: (value, meta) {
-                                    // Marquer l'objectif sur l'axe Y
-                                    if (progress.targetWeight > 0 &&
-                                        (value - progress.targetWeight).abs() < 0.5) {
+                                    // Marquer l'objectif sur l'axe Y (valeurs déjà converties)
+                                    if (displayTargetWeight > 0 &&
+                                        (value - displayTargetWeight).abs() < (yInterval / 2)) {
                                       return Container(
                                         padding: EdgeInsets.symmetric(
                                           horizontal: isSmallScreen ? 2 : 4,
@@ -174,9 +187,7 @@ class WeightEvolutionCard extends StatelessWidget {
                                       );
                                     }
 
-                                    if (value % ((progress.maxY - progress.minY) > 10 ? 5 : 2) != 0) {
-                                      return const SizedBox.shrink();
-                                    }
+                                    // Afficher le label normal
                                     return Text(
                                       '${value.toInt()}',
                                       style: TextStyle(
@@ -244,17 +255,18 @@ class WeightEvolutionCard extends StatelessWidget {
                                     if (barSpot.barIndex == 1 && index >= 0 && index < progress.entries.length) {
                                       final entry = progress.entries[index];
                                       final weight = entry.weight;
+                                      final unitService = UnitService.instance;
 
                                       // Calculer la différence avec le poids précédent
                                       String diffText = '';
                                       if (index > 0) {
                                         final prevWeight = progress.entries[index - 1].weight;
                                         final diff = weight - prevWeight;
-                                        diffText = '\n${diff >= 0 ? '+' : ''}${diff.toStringAsFixed(1)} kg';
+                                        diffText = '\n${diff >= 0 ? '+' : ''}${unitService.formatWeight(diff)}';
                                       }
 
                                       return LineTooltipItem(
-                                        '${DateFormat('dd/MM/yyyy').format(entry.date)}\n${weight.toStringAsFixed(1)} kg$diffText',
+                                        '${DateFormat('dd/MM/yyyy').format(entry.date)}\n${unitService.formatWeight(weight)}$diffText',
                                         const TextStyle(
                                           color: Colors.white,
                                           fontWeight: FontWeight.w600,
@@ -275,7 +287,8 @@ class WeightEvolutionCard extends StatelessWidget {
                               if (progress.entries.length > 3)
                                 LineChartBarData(
                                   spots: progress.entries.asMap().entries.map((entry) {
-                                    return FlSpot(entry.key.toDouble(), entry.value.weight);
+                                    // Convertir le poids en unité d'affichage
+                                    return FlSpot(entry.key.toDouble(), unitService.displayWeight(entry.value.weight));
                                   }).toList(),
                                   isCurved: true,
                                   color: const Color(0xFF94A3B8).withValues(alpha: 0.4),
@@ -284,7 +297,7 @@ class WeightEvolutionCard extends StatelessWidget {
                                   belowBarData: BarAreaData(show: false),
                                 ),
 
-                              // 2. Ligne de tendance (moyenne mobile) - ligne principale
+                              // 2. Ligne de tendance (moyenne mobile) - ligne principale (déjà convertie)
                               LineChartBarData(
                                 spots: _calculateMovingAverage(progress.entries),
                                 isCurved: true,
@@ -317,12 +330,12 @@ class WeightEvolutionCard extends StatelessWidget {
                                 ),
                               ),
 
-                              // 3. Ligne d'objectif - plus épaisse et visible
+                              // 3. Ligne d'objectif - plus épaisse et visible (valeur convertie)
                               if (progress.targetWeight > 0)
                                 LineChartBarData(
                                   spots: [
-                                    FlSpot(-0.5, progress.targetWeight),
-                                    FlSpot(math.max(6, progress.entries.length - 1).toDouble() + 0.5, progress.targetWeight),
+                                    FlSpot(-0.5, displayTargetWeight),
+                                    FlSpot(math.max(6, progress.entries.length - 1).toDouble() + 0.5, displayTargetWeight),
                                   ],
                                   isCurved: false,
                                   color: const Color(0xFF64748B),
@@ -356,7 +369,7 @@ class WeightEvolutionCard extends StatelessWidget {
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
-                                  '${progress.targetWeight.toStringAsFixed(1)} kg',
+                                  UnitService.instance.formatWeight(progress.targetWeight),
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 10,

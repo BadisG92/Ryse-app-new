@@ -13,6 +13,7 @@ import '../services/workout_service.dart';
 import '../services/translations.dart';
 import '../services/localization_service.dart';
 import '../services/tutorial_service.dart';
+import '../services/unit_service.dart';
 import 'package:provider/provider.dart';
 import '../widgets/sport/sport_calendar_view.dart';
 import '../services/paywall_service.dart';
@@ -1085,7 +1086,7 @@ class SportMusculationHybridState extends State<SportMusculationHybrid> {
                   child: Consumer<LocalizationService>(
                     builder: (context, locService, _) => _buildSummaryItem(
                       'workout_weight_lifted'.tr(locService.currentLanguageCode),
-                      '${totalWeight.toInt()} kg',
+                      UnitService.instance.formatWeight(totalWeight, decimals: 0),
                     ),
                   ),
                 ),

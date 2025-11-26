@@ -8,6 +8,7 @@ import '../services/celebration_service.dart';
 import '../services/translations.dart';
 import '../services/localization_service.dart';
 import '../services/global_state_manager.dart';
+import '../services/unit_service.dart';
 
 class ManualCardioEntryScreen extends StatefulWidget {
   final String activityType;
@@ -54,9 +55,11 @@ class _ManualCardioEntryScreenState extends State<ManualCardioEntryScreen> {
         _distanceController = TextEditingController(); // Vide
       } else if (widget.objective!.type == 'distance' && widget.objective!.targetDistance != null) {
         // Objectif distance : pré-remplir la distance, laisser durée vide
+        // Convertir de km (stockage) vers l'unité d'affichage
+        final displayDistance = UnitService.instance.displayDistance(widget.objective!.targetDistance!);
         _durationHoursController = TextEditingController(); // Vide
         _durationMinutesController = TextEditingController(); // Vide
-        _distanceController = TextEditingController(text: widget.objective!.targetDistance.toString());
+        _distanceController = TextEditingController(text: displayDistance.toStringAsFixed(1));
       } else {
         // Pas d'objectif spécifique, laisser vide
         _durationHoursController = TextEditingController();
@@ -98,7 +101,9 @@ class _ManualCardioEntryScreenState extends State<ManualCardioEntryScreen> {
     final locService = LocalizationService.instance;
     final hours = int.tryParse(_durationHoursController.text) ?? 0;
     final minutes = int.tryParse(_durationMinutesController.text) ?? 0;
-    final distance = double.tryParse(_distanceController.text) ?? 0.0;
+    // Convertir la distance saisie en km pour le stockage
+    final distanceInput = double.tryParse(_distanceController.text) ?? 0.0;
+    final distance = UnitService.instance.storageDistance(distanceInput);
     final steps = int.tryParse(_stepsController.text) ?? 0;
 
     // IMPORTANT: La durée est obligatoire pour calculer les calories
@@ -280,7 +285,7 @@ class _ManualCardioEntryScreenState extends State<ManualCardioEntryScreen> {
                             Expanded(
                               child: _buildSummaryMetricInDialog(
                                 'manual_distance_label'.tr(locService.currentLanguageCode),
-                                '${entry.distance.toStringAsFixed(2)} km',
+                                UnitService.instance.formatDistance(entry.distance),
                                 LucideIcons.navigation,
                               ),
                             ),
@@ -301,7 +306,7 @@ class _ManualCardioEntryScreenState extends State<ManualCardioEntryScreen> {
                                     : 'manual_avg_speed'.tr(locService.currentLanguageCode),
                                 widget.activityType == 'walking'
                                     ? '${entry.steps}'
-                                    : '${entry.calculateAverageSpeed().toStringAsFixed(1)} km/h',
+                                    : UnitService.instance.formatSpeed(entry.calculateAverageSpeed()),
                                 widget.activityType == 'walking'
                                     ? LucideIcons.footprints
                                     : LucideIcons.gauge,
@@ -680,9 +685,9 @@ class _ManualCardioEntryScreenState extends State<ManualCardioEntryScreen> {
                 title: 'manual_distance_covered'.tr(locService.currentLanguageCode),
                 child: _buildTextField(
                   controller: _distanceController,
-                  label: 'manual_distance_km'.tr(locService.currentLanguageCode),
+                  label: '${'manual_distance_km'.tr(locService.currentLanguageCode)} (${UnitService.instance.distanceUnit})',
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  suffix: 'km',
+                  suffix: UnitService.instance.distanceUnit,
                 ),
               ),
 
@@ -851,7 +856,9 @@ class _ManualCardioEntryScreenState extends State<ManualCardioEntryScreen> {
   Widget _buildCaloriesEstimation(LocalizationService locService) {
     final hours = int.tryParse(_durationHoursController.text) ?? 0;
     final minutes = int.tryParse(_durationMinutesController.text) ?? 0;
-    final distance = double.tryParse(_distanceController.text) ?? 0.0;
+    // Convertir la distance en km pour le calcul des calories
+    final distanceInput = double.tryParse(_distanceController.text) ?? 0.0;
+    final distance = UnitService.instance.storageDistance(distanceInput);
 
     // Calculer seulement si durée > 0
     if (hours == 0 && minutes == 0) {

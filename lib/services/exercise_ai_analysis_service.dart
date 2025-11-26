@@ -3,6 +3,7 @@ import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../config/gemini_config.dart';
+import 'unit_service.dart';
 
 /// Service pour l'analyse IA des performances d'exercice avec Gemini 2.0 Flash
 class ExerciseAiAnalysisService {
@@ -262,9 +263,14 @@ class ExerciseAiAnalysisService {
     List<Map<String, dynamic>> sessions,
   ) {
     final buffer = StringBuffer();
+    final unitService = UnitService.instance;
+
     buffer.writeln('Tu es Coach Ryze, un coach sportif expert en musculation et progression.');
     buffer.writeln('');
     buffer.writeln('MISSION : Analyse concise et actionnable des performances sur "$exerciseName".');
+    buffer.writeln('');
+    buffer.writeln('SYSTÈME D\'UNITÉS : ${unitService.isImperial ? "Impérial (lbs)" : "Métrique (kg)"}');
+    buffer.writeln('- Utilise ${unitService.weightUnit} pour tous les poids dans tes recommandations');
     buffer.writeln('');
     buffer.writeln('⚠️ CONTRAINTES ABSOLUES :');
     buffer.writeln('- LONGUEUR TOTALE : 100 mots MAXIMUM (pas un de plus)');
@@ -323,10 +329,10 @@ class ExerciseAiAnalysisService {
     buffer.writeln('- Description actionnable (20-25 mots)');
     buffer.writeln('');
     buffer.writeln('Exemples selon situation :');
-    buffer.writeln('- Si progression → "Augmente de [X]kg à la prochaine séance"');
+    buffer.writeln('- Si progression → "Augmente de [X]${unitService.weightUnit} à la prochaine séance"');
     buffer.writeln('- Si plateau → "Change le format : passe à [X] séries de [Y] reps"');
-    buffer.writeln('- Si fatigue → "Réduis à [X]kg pendant 1 semaine puis reprends"');
-    buffer.writeln('- Si débutant → "Maintiens [X]kg pendant 2 séances puis augmente"');
+    buffer.writeln('- Si fatigue → "Réduis à [X]${unitService.weightUnit} pendant 1 semaine puis reprends"');
+    buffer.writeln('- Si débutant → "Maintiens [X]${unitService.weightUnit} pendant 2 séances puis augmente"');
     buffer.writeln('');
     buffer.writeln('STYLE :');
     buffer.writeln('- Ton direct et pro, tutoiement');
@@ -343,7 +349,7 @@ class ExerciseAiAnalysisService {
     buffer.writeln('  "recommendations": [');
     buffer.writeln('    {');
     buffer.writeln('      "title": "Planifie ta progression",');
-    buffer.writeln('      "description": "Augmente de 2.5kg toutes les 2 séances en gardant 3 séries de 15-20 reps."');
+    buffer.writeln('      "description": "Augmente de ${unitService.isImperial ? "5lbs" : "2.5kg"} toutes les 2 séances en gardant 3 séries de 15-20 reps."');
     buffer.writeln('    },');
     buffer.writeln('    {');
     buffer.writeln('      "title": "Technique avant charge",');
@@ -360,9 +366,14 @@ class ExerciseAiAnalysisService {
     List<Map<String, dynamic>> sessions,
   ) {
     final buffer = StringBuffer();
+    final unitService = UnitService.instance;
+
     buffer.writeln('You are Coach Ryze, an expert fitness coach in strength training and progression.');
     buffer.writeln('');
     buffer.writeln('MISSION: Concise and actionable performance analysis on "$exerciseName".');
+    buffer.writeln('');
+    buffer.writeln('UNIT SYSTEM: ${unitService.isImperial ? "Imperial (lbs)" : "Metric (kg)"}');
+    buffer.writeln('- Use ${unitService.weightUnit} for all weights in your recommendations');
     buffer.writeln('');
     buffer.writeln('⚠️ ABSOLUTE CONSTRAINTS:');
     buffer.writeln('- TOTAL LENGTH: 100 words MAXIMUM (not one more)');
@@ -421,10 +432,10 @@ class ExerciseAiAnalysisService {
     buffer.writeln('- Actionable description (20-25 words)');
     buffer.writeln('');
     buffer.writeln('Examples by situation:');
-    buffer.writeln('- If progression → "Increase by [X]lbs next session"');
+    buffer.writeln('- If progression → "Increase by [X]${unitService.weightUnit} next session"');
     buffer.writeln('- If plateau → "Change format: switch to [X] sets of [Y] reps"');
-    buffer.writeln('- If fatigue → "Reduce to [X]lbs for 1 week then resume"');
-    buffer.writeln('- If beginner → "Maintain [X]lbs for 2 sessions then increase"');
+    buffer.writeln('- If fatigue → "Reduce to [X]${unitService.weightUnit} for 1 week then resume"');
+    buffer.writeln('- If beginner → "Maintain [X]${unitService.weightUnit} for 2 sessions then increase"');
     buffer.writeln('');
     buffer.writeln('STYLE:');
     buffer.writeln('- Direct and pro tone');
@@ -441,7 +452,7 @@ class ExerciseAiAnalysisService {
     buffer.writeln('  "recommendations": [');
     buffer.writeln('    {');
     buffer.writeln('      "title": "Plan your progression",');
-    buffer.writeln('      "description": "Increase by 5lbs every 2 sessions while keeping 3 sets of 15-20 reps."');
+    buffer.writeln('      "description": "Increase by ${unitService.isImperial ? "5lbs" : "2.5kg"} every 2 sessions while keeping 3 sets of 15-20 reps."');
     buffer.writeln('    },');
     buffer.writeln('    {');
     buffer.writeln('      "title": "Technique before load",');

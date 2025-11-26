@@ -3,6 +3,7 @@ import 'dart:math';
 import '../widgets/celebration_popup.dart';
 import 'localization_service.dart';
 import 'app_navigator.dart';
+import 'unit_service.dart';
 
 class CelebrationService {
   static final CelebrationService _instance = CelebrationService._internal();
@@ -453,8 +454,8 @@ class CelebrationService {
     }
 
     if (distanceKm != null && distanceKm > 0) {
-      final formattedDistance = distanceKm.toStringAsFixed(distanceKm >= 10 ? 1 : 2);
-      final distanceText = isEnglish ? '$formattedDistance km' : '$formattedDistance km';
+      // Utiliser UnitService pour afficher la distance dans la bonne unité
+      final distanceText = UnitService.instance.formatDistance(distanceKm, decimals: distanceKm >= 10 ? 1 : 2);
       buffer.write(buffer.isEmpty ? distanceText : ' · $distanceText');
     }
 

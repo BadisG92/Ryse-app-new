@@ -37,6 +37,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/analytics_service.dart';
 import '../services/haptic_service.dart';
+import '../services/unit_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -212,15 +213,18 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   Future<void> _loadLocalPreferences() async {
     final prefs = await SharedPreferences.getInstance();
     final locService = LocalizationService.instance;
-    
+    final unitService = UnitService.instance;
+
     setState(() {
       // Les notifications sont maintenant gérées via NotificationService
       // Pas besoin de charger depuis SharedPreferences ici
 
       // Synchroniser avec le service de localisation
       _language = locService.isFrench ? 'Français' : 'English';
-      final rawMeasurement = prefs.getString('measurement_unit') ?? 'Métrique';
-      _measurementUnit = _getMeasurementTranslationKey(rawMeasurement);
+
+      // Synchroniser avec le UnitService
+      _measurementUnit = unitService.isImperial ? 'imperial' : 'metric';
+
       _startWeekDay = prefs.getString('start_week_day') ?? 'Lundi';
       _darkMode = prefs.getBool('dark_mode') ?? false;
       _hapticFeedback = prefs.getBool('haptic_feedback') ?? true;
@@ -254,17 +258,19 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
       // Les notifications sont maintenant gérées via NotificationService
 
       _language = prefs.getString('language') ?? 'Français';
-      final rawMeasurement = prefs.getString('measurement_unit') ?? 'Métrique';
-      _measurementUnit = _getMeasurementTranslationKey(rawMeasurement);
+
+      // Synchroniser avec le UnitService
+      _measurementUnit = UnitService.instance.isImperial ? 'imperial' : 'metric';
+
       _startWeekDay = prefs.getString('start_week_day') ?? 'Lundi';
       _darkMode = prefs.getBool('dark_mode') ?? false;
       _hapticFeedback = prefs.getBool('haptic_feedback') ?? true;
-      
+
       final rawLocalRestrictions = prefs.getStringList('dietary_restrictions') ?? [];
       _dietaryRestrictions = rawLocalRestrictions.map((restriction) => _getDietaryRestrictionKey(restriction)).toList();
     });
   }
-  
+
   Future<void> _saveSettings() async {
     try {
       final supabase = Supabase.instance.client;
@@ -1275,10 +1281,15 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                               _buildInputRow(
                                 label: 'height'.tr(locService.currentLanguageCode),
                                 child: _buildNumberField(
-                                  value: _height,
-                                  suffix: 'cm',
+                                  value: _getDisplayHeight(),
+                                  suffix: UnitService.instance.heightUnit,
                                   onChanged: (value) {
-                                    _height = value;
+                                    // Convertir en cm pour stockage
+                                    final inputValue = double.tryParse(value) ?? 0;
+                                    final heightCm = UnitService.instance.isImperial
+                                        ? inputValue * 2.54  // inches → cm
+                                        : inputValue;
+                                    _height = heightCm.toStringAsFixed(0);
                                     _saveSettings();
                                   },
                                 ),
@@ -1286,11 +1297,14 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                               _buildInputRow(
                                 label: 'weight'.tr(locService.currentLanguageCode),
                                 child: _buildNumberField(
-                                  value: _weight,
-                                  suffix: 'kg',
+                                  value: _getDisplayWeight(),
+                                  suffix: UnitService.instance.weightUnit,
                                   decimal: true,
                                   onChanged: (value) {
-                                    _weight = value;
+                                    // Convertir en kg pour stockage
+                                    final inputValue = double.tryParse(value) ?? 0;
+                                    final weightKg = UnitService.instance.storageWeight(inputValue);
+                                    _weight = weightKg.toStringAsFixed(1);
                                     _saveSettings();
                                   },
                                 ),
@@ -1370,11 +1384,14 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                   builder: (context, locService, _) => _buildInputRow(
                                     label: 'target_weight'.tr(locService.currentLanguageCode),
                                     child: _buildNumberField(
-                                      value: _targetWeight,
-                                      suffix: 'kg',
+                                      value: _getDisplayTargetWeight(),
+                                      suffix: UnitService.instance.weightUnit,
                                       decimal: true,
                                       onChanged: (value) {
-                                        _targetWeight = value;
+                                        // Convertir en kg pour stockage
+                                        final inputValue = double.tryParse(value) ?? 0;
+                                        final weightKg = UnitService.instance.storageWeight(inputValue);
+                                        _targetWeight = weightKg.toStringAsFixed(1);
                                         _saveSettings();
                                       },
                                     ),
@@ -1855,15 +1872,21 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                 child: _buildSegmentedControl(
                                   value: _getDisplayMeasurementUnit(locService.currentLanguageCode),
                                   options: _getMeasurementOptions(locService.currentLanguageCode),
-                                  onChanged: (value) {
+                                  onChanged: (value) async {
                                     // Retrouver la clé de traduction à partir de la valeur affichée
                                     String key = 'metric';
+                                    bool isImperial = false;
                                     if (value == 'metric'.tr(locService.currentLanguageCode)) {
                                       key = 'metric';
+                                      isImperial = false;
                                     } else if (value == 'imperial'.tr(locService.currentLanguageCode)) {
                                       key = 'imperial';
+                                      isImperial = true;
                                     }
-                                    
+
+                                    // Mettre à jour le UnitService
+                                    await UnitService.instance.setImperial(isImperial);
+
                                     setState(() => _measurementUnit = key);
                                     _saveSettings();
                                   },
@@ -3081,7 +3104,37 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   
   String _getProfileSummary(String languageCode) {
     final ageText = 'age_years'.tr(languageCode);
-    return '$_age $ageText, $_weight kg, $_height cm';
+    final weightKg = double.tryParse(_weight) ?? 0;
+    final heightCm = double.tryParse(_height) ?? 0;
+
+    final weightDisplay = UnitService.instance.formatWeight(weightKg, decimals: 1);
+    final heightDisplay = UnitService.instance.formatHeight(heightCm);
+
+    return '$_age $ageText, $weightDisplay, $heightDisplay';
+  }
+
+  /// Retourne la taille convertie pour l'affichage (cm ou inches)
+  String _getDisplayHeight() {
+    final heightCm = double.tryParse(_height) ?? 0;
+    if (heightCm == 0) return '';
+    final displayValue = UnitService.instance.displayHeight(heightCm);
+    return displayValue.toStringAsFixed(0);
+  }
+
+  /// Retourne le poids converti pour l'affichage (kg ou lbs)
+  String _getDisplayWeight() {
+    final weightKg = double.tryParse(_weight) ?? 0;
+    if (weightKg == 0) return '';
+    final displayValue = UnitService.instance.displayWeight(weightKg);
+    return displayValue.toStringAsFixed(1);
+  }
+
+  /// Retourne le poids cible converti pour l'affichage (kg ou lbs)
+  String _getDisplayTargetWeight() {
+    final weightKg = double.tryParse(_targetWeight) ?? 0;
+    if (weightKg == 0) return '';
+    final displayValue = UnitService.instance.displayWeight(weightKg);
+    return displayValue.toStringAsFixed(1);
   }
   
   List<String> _getGenderOptions(String languageCode) {

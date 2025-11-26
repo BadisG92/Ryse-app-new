@@ -6,6 +6,7 @@ import 'translations.dart';
 import 'localization_service.dart';
 import 'sport_dashboard_service.dart';
 import 'global_state_manager.dart';
+import 'unit_service.dart';
 
 /// Service pour gérer les activités cardio depuis Supabase
 class CardioService {
@@ -406,8 +407,8 @@ class CardioWeeklyStats {
     required this.sessionsCount,
   });
 
-  /// Formatte la distance totale
-  String get distanceText => '${totalDistance.toStringAsFixed(1)} km';
+  /// Formatte la distance totale avec l'unité appropriée
+  String get distanceText => UnitService.instance.formatDistance(totalDistance, decimals: 1);
 
   /// Formatte la durée totale
   String get durationText {
@@ -493,16 +494,18 @@ class CompletedCardioSession {
   /// Formatte la distance en texte
   String get distanceText {
     if (distance == null) return '';
-    return '${distance!.toStringAsFixed(1)} km';
+    return UnitService.instance.formatDistance(distance!);
   }
 
-  /// Formatte l'allure en texte (min:sec /km)
+  /// Formatte l'allure en texte (min:sec /km ou /mi)
   String get paceText {
     if (pacePerKmSeconds == null) return '';
-    final totalSeconds = pacePerKmSeconds!;
-    final minutes = totalSeconds ~/ 60;
-    final seconds = totalSeconds % 60;
-    return '${minutes}:${seconds.toString().padLeft(2, '0')} /km';
+    // pacePerKmSeconds est en secondes par km, convertir si impérial
+    final unitService = UnitService.instance;
+    final paceValue = unitService.displayPace(pacePerKmSeconds! / 60.0); // convertir en minutes
+    final minutes = paceValue.floor();
+    final seconds = ((paceValue - minutes) * 60).round();
+    return '${minutes}:${seconds.toString().padLeft(2, '0')} ${unitService.paceUnit}';
   }
 
   /// Formatte les calories en texte
@@ -511,7 +514,7 @@ class CompletedCardioSession {
   /// Formatte la vitesse moyenne en texte
   String get speedText {
     if (averageSpeed == null) return '';
-    return '${averageSpeed!.toStringAsFixed(1)} km/h';
+    return UnitService.instance.formatSpeed(averageSpeed!);
   }
 
   /// Calcule le temps écoulé depuis la session

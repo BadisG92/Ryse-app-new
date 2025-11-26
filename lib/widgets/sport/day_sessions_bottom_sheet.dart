@@ -5,6 +5,7 @@ import '../../services/sport_dashboard_service.dart';
 import '../../services/cardio_service.dart';
 import '../../services/translations.dart';
 import '../../services/localization_service.dart';
+import '../../services/unit_service.dart';
 import '../../screens/workout_edit_screen.dart';
 import '../../models/sport_models.dart';
 
@@ -312,6 +313,7 @@ class _DaySessionsBottomSheetState extends State<DaySessionsBottomSheet> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Icon(
                   LucideIcons.calendar,
@@ -319,23 +321,28 @@ class _DaySessionsBottomSheetState extends State<DaySessionsBottomSheet> {
                   color: Color(0xFF0B132B),
                 ),
                 const SizedBox(width: 12),
-                Text(
-                  widget.displayDate,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1A1A1A),
-                  ),
-                ),
-                const Spacer(),
-                Consumer<LocalizationService>(
-                  builder: (context, locService, _) => Text(
-                    '$totalSessions ${'sport_sessions'.tr(locService.currentLanguageCode).toLowerCase()}',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Color(0xFF888888),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.displayDate,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1A1A1A),
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 4),
+                    Consumer<LocalizationService>(
+                      builder: (context, locService, _) => Text(
+                        '$totalSessions ${'sport_sessions'.tr(locService.currentLanguageCode).toLowerCase()}',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF888888),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -524,7 +531,7 @@ class _DaySessionsBottomSheetState extends State<DaySessionsBottomSheet> {
                         ),
                       ),
                       Text(
-                        '${distance.toStringAsFixed(2)} km',
+                        UnitService.instance.formatDistance(distance),
                         style: const TextStyle(
                           fontSize: 12,
                           color: Color(0xFF888888),

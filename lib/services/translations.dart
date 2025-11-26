@@ -131,6 +131,38 @@ class AppTranslations {
       'fr': 'lb',
       'en': 'lb',
     },
+    'lbs': {
+      'fr': 'lbs',
+      'en': 'lbs',
+    },
+    'km': {
+      'fr': 'km',
+      'en': 'km',
+    },
+    'mi': {
+      'fr': 'mi',
+      'en': 'mi',
+    },
+    'kmh': {
+      'fr': 'km/h',
+      'en': 'km/h',
+    },
+    'mph': {
+      'fr': 'mph',
+      'en': 'mph',
+    },
+    'per_km': {
+      'fr': '/km',
+      'en': '/km',
+    },
+    'per_mi': {
+      'fr': '/mi',
+      'en': '/mi',
+    },
+    'cm': {
+      'fr': 'cm',
+      'en': 'cm',
+    },
     'see_all': {
       'fr': 'Voir tout',
       'en': 'See all',
@@ -1165,6 +1197,10 @@ class AppTranslations {
     'weight_kg': {
       'fr': 'Poids (kg)',
       'en': 'Weight (kg)',
+    },
+    'weight_label': {
+      'fr': 'Poids',
+      'en': 'Weight',
     },
     'save_weight': {
       'fr': 'Enregistrer',
@@ -2827,8 +2863,8 @@ class AppTranslations {
       'en': 'Minutes',
     },
     'manual_distance_km': {
-      'fr': 'Distance (km)',
-      'en': 'Distance (km)',
+      'fr': 'Distance',
+      'en': 'Distance',
     },
     'manual_steps_label': {
       'fr': 'Nombre de pas',
@@ -3657,6 +3693,10 @@ class AppTranslations {
     'workout_weight_kg': {
       'fr': 'Poids (kg)',
       'en': 'Weight (kg)',
+    },
+    'workout_weight': {
+      'fr': 'Poids',
+      'en': 'Weight',
     },
     'workout_reps': {
       'fr': 'Répétitions',

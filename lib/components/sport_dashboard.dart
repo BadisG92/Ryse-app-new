@@ -11,6 +11,7 @@ import '../models/hiit_models.dart';
 
 import '../services/sport_dashboard_service.dart';
 import '../services/cardio_service.dart';
+import '../services/unit_service.dart';
 import 'ui/cardio_models.dart';
 import 'ui/chunked_progress_bar.dart';
 import '../widgets/sport/sport_calendar_view.dart';
@@ -1322,16 +1323,16 @@ class SportDashboardState extends State<SportDashboard> with TickerProviderState
                    _buildObjectiveOption(
                      icon: LucideIcons.mapPin,
                      title: 'Objectif distance',
-                     subtitle: '5 km',
+                     subtitle: '5 ${UnitService.instance.distanceUnit}',
                      onTap: () => _startCardioTracking(
-                       activityType, 
-                       activityTitle, 
-                       'Objectif distance', 
+                       activityType,
+                       activityTitle,
+                       'Objectif distance',
                        CardioObjective(
                          type: 'distance',
                          activityType: activityType,
                          formatTitle: 'Objectif distance',
-                         targetDistance: 5.0,
+                         targetDistance: UnitService.instance.storageDistance(5.0), // 5 dans l'unité utilisateur → km
                        ),
                      ),
                    ),
@@ -2158,7 +2159,7 @@ class _ActivityFormatsModal extends StatelessWidget {
   void _showConfigurationModal(BuildContext context, ActivityFormat format) {
     // Pour l'instant, on lance directement avec des valeurs par défaut
     if (format.configType == 'distance') {
-      _startTracking(context, format.title, targetDistance: 5.0);
+      _startTracking(context, format.title, targetDistance: UnitService.instance.storageDistance(5.0));
     } else if (format.configType == 'duration') {
       _startTracking(context, format.title, targetDurationMinutes: 30);
     }

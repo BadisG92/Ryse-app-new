@@ -9,6 +9,7 @@ import '../../services/localization_service.dart';
 import '../../services/sport_dashboard_service.dart';
 import '../../services/global_state_manager.dart';
 import '../../services/workout_cache_service.dart';
+import '../../services/unit_service.dart';
 import 'package:provider/provider.dart';
 
 // Card pour les statistiques hebdomadaires individuelles
@@ -429,7 +430,7 @@ class _WorkoutHistoryCardState extends State<WorkoutHistoryCard> {
                     const SizedBox(width: 12),
                     const Icon(LucideIcons.dumbbell, size: 14, color: Color(0xFF1A1A1A)),
                     const SizedBox(width: 6),
-                    Text('${session.totalVolumeKg.toStringAsFixed(0)} kg', style: const TextStyle(fontSize: 12, color: Color(0xFF1A1A1A))),
+                    Text(UnitService.instance.formatWeight(session.totalVolumeKg), style: const TextStyle(fontSize: 12, color: Color(0xFF1A1A1A))),
                   ],
                 ),
               ),
@@ -476,7 +477,7 @@ class _WorkoutHistoryCardState extends State<WorkoutHistoryCard> {
             const SizedBox(height: 6),
             ...session.items.map((it) {
               final right = (it.weightKg != null && it.weightKg! > 0)
-                  ? '${it.weightKg!.toStringAsFixed(1)} kg × ${it.reps}'
+                  ? '${UnitService.instance.formatWeight(it.weightKg!)} × ${it.reps}'
                   : '${it.reps} reps';
               return Padding(
                 padding: const EdgeInsets.symmetric(vertical: 4),

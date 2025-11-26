@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../services/translations.dart';
 import '../../services/localization_service.dart';
 import '../../services/workout_cache_service.dart';
+import '../../services/unit_service.dart';
 import 'exercise_detail_page.dart';
 
 class ExerciseListBottomSheet extends StatefulWidget {
@@ -143,10 +144,7 @@ class _ExerciseListBottomSheetState extends State<ExerciseListBottomSheet> {
 
       String _fmtWeight(double w) {
         if (w <= 0) return '';
-        if ((w % 1).abs() < 1e-6) {
-          return '${w.toInt()} kg';
-        }
-        return '${w.toStringAsFixed(1)} kg';
+        return UnitService.instance.formatWeight(w, decimals: (w % 1).abs() < 1e-6 ? 0 : 1);
       }
 
       final list = agg.values.map((m) {

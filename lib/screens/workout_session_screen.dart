@@ -22,6 +22,7 @@ import '../services/workout_voice_service.dart';
 import '../services/native_speech_service.dart';
 import '../services/celebration_service.dart';
 import '../services/haptic_service.dart';
+import '../services/unit_service.dart';
 import 'package:provider/provider.dart';
 
 class WorkoutSessionScreen extends StatefulWidget {
@@ -457,8 +458,12 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
       final set = exercise.sets[i];
 
       // Pré-remplir les controllers avec les valeurs de l'IA si disponibles
+      // Convertir le poids stocké (kg) en unité d'affichage (lbs si impérial)
+      final displayWeight = set.weight > 0
+          ? UnitService.instance.formatWeightValue(set.weight, decimals: set.weight % 1 == 0 ? 0 : 1)
+          : '';
       final weightController = TextEditingController(
-        text: set.weight > 0 ? set.weight.toString() : '',
+        text: displayWeight,
       );
       final repsController = TextEditingController(
         text: set.reps > 0 ? set.reps.toString() : '',
@@ -2366,7 +2371,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                             child: Consumer<LocalizationService>(
                               builder: (context, locService, _) => _buildSummaryMetric(
                                 'workout_volume'.tr(locService.currentLanguageCode),
-                                '${_totalWeight.toStringAsFixed(0)} kg',
+                                UnitService.instance.formatWeight(_totalWeight, decimals: 0),
                                 LucideIcons.activity,
                               ),
                             ),
@@ -3022,7 +3027,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                             Expanded(
                               child: Consumer<LocalizationService>(
                                 builder: (context, locService, _) => Text(
-                                  'workout_weight_kg'.tr(locService.currentLanguageCode),
+                                  '${'workout_weight'.tr(locService.currentLanguageCode)} (${UnitService.instance.weightUnit})',
                                   style: TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w600,
@@ -3258,8 +3263,10 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
               focusNode: _getWeightFocusNode(setIndex),
               hintText: '0',
               onChanged: (value) {
-                final weight = double.tryParse(value) ?? 0.0;
-                _updateSetValue(setIndex, weight: weight);
+                final inputWeight = double.tryParse(value) ?? 0.0;
+                // Convertir l'entrée utilisateur (lbs si impérial) en kg pour le stockage
+                final weightKg = UnitService.instance.storageWeight(inputWeight);
+                _updateSetValue(setIndex, weight: weightKg);
               },
               setIndex: setIndex,
               isDecimal: true,
@@ -4120,7 +4127,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                                 ? '${parsedData.reps} reps'
                                 : '';
                             final weightText = parsedData.weight != null
-                                ? '${parsedData.weight}kg'
+                                ? '${UnitService.instance.formatWeight(parsedData.weight!.toDouble())}'
                                 : '';
                             final separator = repsText.isNotEmpty && weightText.isNotEmpty ? ' • ' : '';
 
@@ -4293,10 +4300,10 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
         );
         _exercises[_currentExerciseIndex] = currentExercise.copyWith(sets: updatedSets);
 
-        // Mettre à jour les controllers
+        // Mettre à jour les controllers (convertir kg → unité d'affichage)
         final exerciseId = currentExercise.exercise.id;
         _weightControllers[exerciseId]?[setIndex + 1]?.text =
-            currentSet.weight > 0 ? currentSet.weight.toString() : '';
+            currentSet.weight > 0 ? UnitService.instance.formatWeightValue(currentSet.weight, decimals: currentSet.weight % 1 == 0 ? 0 : 1) : '';
         _repsControllers[exerciseId]?[setIndex + 1]?.text =
             currentSet.reps > 0 ? currentSet.reps.toString() : '';
       });
@@ -4333,7 +4340,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
         _setKeys[exerciseId] ??= {};
 
         _weightControllers[exerciseId]![newSetIndex] = TextEditingController(
-          text: currentSet.weight > 0 ? currentSet.weight.toString() : '',
+          text: currentSet.weight > 0 ? UnitService.instance.formatWeightValue(currentSet.weight, decimals: currentSet.weight % 1 == 0 ? 0 : 1) : '',
         );
         _repsControllers[exerciseId]![newSetIndex] = TextEditingController(
           text: currentSet.reps > 0 ? currentSet.reps.toString() : '',
@@ -4814,23 +4821,26 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
   void _fillSetWithVoiceData(WorkoutExercise exercise, int setIndex, WorkoutSetData data) {
     // ⚡ NOUVEAU: Si donnée non mentionnée dans le micro, on VIDE la case (au lieu de garder l'ancienne valeur)
     final reps = data.reps ?? 0;
-    final weight = data.weight ?? 0.0;
+    final weightKg = data.weight ?? 0.0; // Le poids vocal est toujours en kg
 
-    // Mettre à jour les controllers
+    // Mettre à jour les controllers (convertir kg → unité d'affichage)
     _repsControllers[exercise.exercise.id]?[setIndex]?.text = reps > 0 ? reps.toString() : '';
-    _weightControllers[exercise.exercise.id]?[setIndex]?.text = weight > 0 ? weight.toString() : '';
+    _weightControllers[exercise.exercise.id]?[setIndex]?.text = weightKg > 0
+        ? UnitService.instance.formatWeightValue(weightKg, decimals: weightKg % 1 == 0 ? 0 : 1)
+        : '';
 
     // Mettre à jour le modèle avec copyWith (PAS de isCompleted = true)
+    // Le modèle stocke toujours en kg
     setState(() {
       final updatedSet = exercise.sets[setIndex].copyWith(
         reps: reps,
-        weight: weight,
+        weight: weightKg,
         // ⚡ NE PAS valider la série (pas de vert)
       );
       exercise.sets[setIndex] = updatedSet;
     });
 
-    if (kDebugMode) debugPrint('✅ Filled set $setIndex: $reps reps, $weight kg (sans validation)');
+    if (kDebugMode) debugPrint('✅ Filled set $setIndex: $reps reps, $weightKg kg (sans validation)');
   }
 
   /// Valider EN CASCADE (toutes les séries jusqu'à celle-là incluse)

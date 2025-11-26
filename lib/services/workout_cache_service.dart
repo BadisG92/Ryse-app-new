@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'localization_service.dart';
+import 'unit_service.dart';
 
 /// Cache entry avec timestamp pour TTL
 class _CacheEntry {
@@ -323,19 +324,13 @@ class WorkoutCacheService {
         final sessionsCount = (stats['sessions'] as Set<String>).length;
         final maxWeight = stats['maxWeight'] as double;
         final maxReps = stats['maxReps'] as int;
-        
-        String current = 'N/A';
-        if (maxWeight > 0) {
-          current = '${maxWeight.toInt()} kg';
-        } else if (maxReps > 0) {
-          current = '$maxReps reps';
-        }
-        
+
         return {
           'name': stats['localized_name'],
           'localized_name': stats['localized_name'],
           'sessions': sessionsCount,
-          'current': current,
+          'maxWeight': maxWeight,  // Valeur brute en kg pour formatage côté UI
+          'maxReps': maxReps,
         };
       }).where((exercise) => (exercise['sessions'] as int) > 0)
         .toList()
@@ -646,8 +641,7 @@ class WorkoutCacheService {
 
     String _fmtKg(double w) {
       if (w <= 0) return '—';
-      if ((w % 1).abs() < 1e-6) return '${w.toInt()} kg';
-      return '${w.toStringAsFixed(1)} kg';
+      return UnitService.instance.formatWeight(w, decimals: (w % 1).abs() < 1e-6 ? 0 : 1);
     }
 
     final List<double> bestSeries = [];
@@ -685,7 +679,8 @@ class WorkoutCacheService {
         final setWeight = set['weight'] as double;
         final setReps = set['reps'] as int;
         if (setWeight > 0) {
-          formattedSets.add('${setWeight % 1 == 0 ? setWeight.toInt() : setWeight.toStringAsFixed(1)} kg x $setReps');
+          final formattedWeight = UnitService.instance.formatWeight(setWeight, decimals: setWeight % 1 == 0 ? 0 : 1);
+          formattedSets.add('$formattedWeight x $setReps');
         } else {
           formattedSets.add('$setReps reps');
         }

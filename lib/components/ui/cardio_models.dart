@@ -4,6 +4,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../services/translations.dart';
 import '../../services/cardio_service.dart';
 import '../../services/localization_service.dart';
+import '../../services/unit_service.dart';
 
 // Modèle de session cardio
 class CardioSession {
@@ -114,13 +115,10 @@ class WeeklyCardioStats {
     required this.totalCalories,
   });
 
-  // Formatte la distance avec gestion intelligente
+  // Formatte la distance avec gestion intelligente et unités
   String get distanceText {
-    if (totalDistance >= 100) {
-      return '${totalDistance.round()} km';
-    } else {
-      return '${totalDistance.toStringAsFixed(1)} km';
-    }
+    final decimals = totalDistance >= 100 ? 0 : 1;
+    return UnitService.instance.formatDistance(totalDistance, decimals: decimals);
   }
 
   // Formatte la durée
@@ -208,24 +206,37 @@ class CardioData {
   static Map<String, List<ActivityType>> _cachedActivityTypes = {};
   static Map<String, Map<String, ActivityConfig>> _cachedActivityConfigs = {};
   static String _lastLanguage = '';
+  static bool _lastIsImperial = false;
   static bool _isListenerSetup = false;
 
-  // Listener pour les changements de langue
+  // Listener pour les changements de langue et d'unités
   static void _setupLanguageListener() {
     if (!_isListenerSetup) {
       LocalizationService.instance.addListener(_onLanguageChanged);
+      UnitService.instance.addListener(_onUnitChanged);
       _isListenerSetup = true;
       _lastLanguage = LocalizationService.instance.currentLanguageCode;
-      debugPrint('✅ CardioData: Language listener configuré');
+      _lastIsImperial = UnitService.instance.isImperial;
+      debugPrint('✅ CardioData: Language & Unit listeners configurés');
     }
   }
-  
+
   // Callback appelé lors du changement de langue
   static void _onLanguageChanged() {
     final currentLanguage = LocalizationService.instance.currentLanguageCode;
     if (currentLanguage != _lastLanguage) {
       debugPrint('🔄 CardioData: Changement de langue détecté ($currentLanguage)');
       _lastLanguage = currentLanguage;
+      _invalidateCache();
+    }
+  }
+
+  // Callback appelé lors du changement d'unités
+  static void _onUnitChanged() {
+    final currentIsImperial = UnitService.instance.isImperial;
+    if (currentIsImperial != _lastIsImperial) {
+      debugPrint('🔄 CardioData: Changement d\'unité détecté (${currentIsImperial ? "Impérial" : "Métrique"})');
+      _lastIsImperial = currentIsImperial;
       _invalidateCache();
     }
   }
@@ -565,7 +576,7 @@ class CardioData {
         type: 'distance',
         title: 'cardio_distance_question'.tr(languageCode),
         hint: 'cardio_distance_hint'.tr(languageCode),
-        unit: 'cardio_km_unit'.tr(languageCode),
+        unit: UnitService.instance.distanceUnit,
       ),
       'duration': ActivityConfig(
         type: 'duration',

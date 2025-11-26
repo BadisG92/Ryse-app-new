@@ -14,6 +14,7 @@ import '../services/translations.dart';
 import '../services/localization_service.dart';
 import '../services/global_state_manager.dart';
 import '../services/pedometer_service.dart';
+import '../services/unit_service.dart';
 
 class CardioTrackingScreen extends StatefulWidget {
   final String activityType;
@@ -528,7 +529,7 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
                             child: Consumer<LocalizationService>(
                               builder: (context, locService, _) => _buildSummaryMetric(
                                 'tracking_summary_distance'.tr(locService.currentLanguageCode),
-                                '${_session.distance.toStringAsFixed(2)} km',
+                                UnitService.instance.formatDistance(_session.distance),
                                 LucideIcons.mapPin,
                               ),
                             ),
@@ -555,7 +556,7 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
                                 : Consumer<LocalizationService>(
                                     builder: (context, locService, _) => _buildSummaryMetric(
                                       'tracking_summary_average_speed'.tr(locService.currentLanguageCode),
-                                      '${_session.averageSpeed.toStringAsFixed(1)} km/h',
+                                      UnitService.instance.formatSpeed(_session.averageSpeed),
                                       LucideIcons.gauge,
                                     ),
                                   ),
@@ -881,7 +882,7 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
                                 child: Consumer<LocalizationService>(
                                   builder: (context, locService, _) => _buildMetric(
                                     'tracking_distance'.tr(locService.currentLanguageCode),
-                                    '${_session.distance.toStringAsFixed(2)} km',
+                                    UnitService.instance.formatDistance(_session.distance),
                                   ),
                                 ),
                               ),
@@ -901,7 +902,7 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
                                     : Consumer<LocalizationService>(
                                         builder: (context, locService, _) => _buildMetric(
                                           'tracking_speed'.tr(locService.currentLanguageCode),
-                                          '${_session.currentSpeed.toStringAsFixed(1)} km/h',
+                                          UnitService.instance.formatSpeed(_session.currentSpeed),
                                         ),
                                       ),
                               ),
@@ -921,7 +922,7 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
                                     : Consumer<LocalizationService>(
                                         builder: (context, locService, _) => _buildMetric(
                                           'tracking_average'.tr(locService.currentLanguageCode),
-                                          '${_session.averageSpeed.toStringAsFixed(1)} km/h',
+                                          UnitService.instance.formatSpeed(_session.averageSpeed),
                                         ),
                                       ),
                               ),

@@ -10,6 +10,7 @@ import '../services/translations.dart';
 import '../services/auth_service.dart';
 import '../services/subscription_service.dart';
 import '../services/feature_trial_service.dart';
+import '../services/unit_service.dart';
 import '../models/sport_models.dart';
 import '../components/ui/coach_ryze_avatar.dart';
 import 'workout_session_screen.dart';
@@ -738,8 +739,8 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> wit
               const SizedBox(width: 4),
               Text(
                 weights.length == 1
-                    ? '${weights.first.toStringAsFixed(weights.first.truncateToDouble() == weights.first ? 0 : 1)}kg'
-                    : '${weights.first.toStringAsFixed(weights.first.truncateToDouble() == weights.first ? 0 : 1)}-${weights.last.toStringAsFixed(weights.last.truncateToDouble() == weights.last ? 0 : 1)}kg',
+                    ? UnitService.instance.formatWeight(weights.first, decimals: weights.first.truncateToDouble() == weights.first ? 0 : 1)
+                    : '${UnitService.instance.formatWeight(weights.first, decimals: weights.first.truncateToDouble() == weights.first ? 0 : 1).split(' ').first}-${UnitService.instance.formatWeight(weights.last, decimals: weights.last.truncateToDouble() == weights.last ? 0 : 1)}',
                 style: const TextStyle(
                   fontSize: 12,
                   color: Color(0xFF64748B),
@@ -761,12 +762,14 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> wit
     if (weights.isNotEmpty && weights.first > 0) {
       if (weights.length == 1) {
         // Un seul poids pour toutes les séries
-        weightText = '${weights.first.toStringAsFixed(weights.first.truncateToDouble() == weights.first ? 0 : 1)} kg';
+        weightText = UnitService.instance.formatWeight(weights.first, decimals: weights.first.truncateToDouble() == weights.first ? 0 : 1);
       } else {
         // Plusieurs poids différents
         final minWeight = weights.first;
         final maxWeight = weights.last;
-        weightText = '${minWeight.toStringAsFixed(minWeight.truncateToDouble() == minWeight ? 0 : 1)} - ${maxWeight.toStringAsFixed(maxWeight.truncateToDouble() == maxWeight ? 0 : 1)} kg';
+        final minDec = minWeight.truncateToDouble() == minWeight ? 0 : 1;
+        final maxDec = maxWeight.truncateToDouble() == maxWeight ? 0 : 1;
+        weightText = '${UnitService.instance.displayWeight(minWeight).toStringAsFixed(minDec)} - ${UnitService.instance.formatWeight(maxWeight, decimals: maxDec)}';
       }
     }
 

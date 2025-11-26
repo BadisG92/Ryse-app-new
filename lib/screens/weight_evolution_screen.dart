@@ -14,6 +14,7 @@ import '../services/translations.dart';
 import '../services/localization_service.dart';
 import '../providers/weight_notifier.dart';
 import '../services/haptic_service.dart';
+import '../services/unit_service.dart';
 
 class WeightEvolutionScreen extends StatefulWidget {
   const WeightEvolutionScreen({
@@ -302,29 +303,34 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
 
   // 3 KPI Cards carrés et uniformes
   Widget _buildKPICards() {
+    final unitService = UnitService.instance;
+    final currentWeightKg = _filteredWeightProgress?.currentWeight ?? 0.0;
+    final targetWeightKg = _filteredWeightProgress?.targetWeight ?? 0.0;
+    final weightChangeKg = _filteredWeightProgress?.weightChange ?? 0.0;
+
     return Row(
       children: [
         Expanded(
           child: _buildKPICard(
             'current_weight'.tr(LocalizationService.instance.currentLanguageCode),
-            "${_filteredWeightProgress?.currentWeight.toStringAsFixed(1) ?? '0.0'}",
-            "kg",
+            unitService.formatWeightValue(currentWeightKg),
+            unitService.weightUnit,
           ),
         ),
         const SizedBox(width: 12),
         Expanded(
           child: _buildKPICard(
-            'target_weight'.tr(LocalizationService.instance.currentLanguageCode), 
-            "${_filteredWeightProgress?.targetWeight.toStringAsFixed(1) ?? '0.0'}",
-            "kg",
+            'target_weight'.tr(LocalizationService.instance.currentLanguageCode),
+            unitService.formatWeightValue(targetWeightKg),
+            unitService.weightUnit,
           ),
         ),
         const SizedBox(width: 12),
         Expanded(
           child: _buildKPICard(
             _getPeriodLabel(),
-            "${(_filteredWeightProgress?.weightChange ?? 0) >= 0 ? '+' : ''}${_filteredWeightProgress?.weightChange.toStringAsFixed(1) ?? '0.0'}",
-            "kg",
+            "${weightChangeKg >= 0 ? '+' : ''}${unitService.formatWeightValue(weightChangeKg)}",
+            unitService.weightUnit,
           ),
         ),
       ],
@@ -583,7 +589,7 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
                           ),
                           const SizedBox(width: 5),
                           Text(
-                            '${'target'.tr(LocalizationService.instance.currentLanguageCode)}: ${filteredProgress.targetWeight.toStringAsFixed(1)} kg',
+                            '${'target'.tr(LocalizationService.instance.currentLanguageCode)}: ${UnitService.instance.formatWeight(filteredProgress.targetWeight)}',
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 11,
@@ -683,7 +689,7 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
           Icon(trendIcon, size: 16, color: trendColor),
           const SizedBox(width: 6),
           Text(
-            'Tendance: ${changePerWeek >= 0 ? '+' : ''}${changePerWeek.toStringAsFixed(2)} kg/sem',
+            'Tendance: ${changePerWeek >= 0 ? '+' : ''}${UnitService.instance.formatWeightValue(changePerWeek, decimals: 2)} ${UnitService.instance.weightUnit}/sem',
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
@@ -695,16 +701,22 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
     );
   }
 
-  LineChartData _buildTargetOnlyChartData(double targetWeight) {
+  LineChartData _buildTargetOnlyChartData(double targetWeightKg) {
+    // Convertir le poids cible en unité d'affichage
+    final unitService = UnitService.instance;
+    final targetWeight = unitService.displayWeight(targetWeightKg);
+
     // Graphique avec seulement la ligne d'objectif
-    final minY = targetWeight - 5.0;
-    final maxY = targetWeight + 5.0;
-    
+    // Intervalle adapté selon l'unité (2 kg ou ~5 lbs)
+    final interval = unitService.isImperial ? 5.0 : 2.0;
+    final minY = targetWeight - (interval * 2.5);
+    final maxY = targetWeight + (interval * 2.5);
+
     return LineChartData(
       gridData: FlGridData(
         show: true,
         drawVerticalLine: false,
-        horizontalInterval: 2.0,
+        horizontalInterval: interval,
         getDrawingHorizontalLine: (value) {
           return FlLine(
             color: const Color(0xFFE2E8F0),
@@ -730,7 +742,7 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
         leftTitles: AxisTitles(
           sideTitles: SideTitles(
             showTitles: true,
-            interval: 2.0,
+            interval: interval,
             reservedSize: 40,
             getTitlesWidget: (value, meta) {
               return Text(
@@ -756,7 +768,7 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
       minY: minY,
       maxY: maxY,
       lineBarsData: [
-        // Ligne d'objectif uniquement
+        // Ligne d'objectif uniquement (valeur déjà convertie)
         LineChartBarData(
           spots: [
             FlSpot(0, targetWeight),
@@ -774,15 +786,25 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
   }
 
   LineChartData _buildLineChartData(WeightProgress weightProgress) {
+    final unitService = UnitService.instance;
+
     // Étendre seulement la ligne d'objectif, pas les données de poids
     final dataPointsCount = weightProgress.entries.length;
     final extendedWidth = dataPointsCount + 3; // Étendre un peu l'axe X pour la ligne d'objectif
+
+    // Convertir minY, maxY et targetWeight en unité d'affichage
+    final displayMinY = unitService.displayWeight(weightProgress.minY);
+    final displayMaxY = unitService.displayWeight(weightProgress.maxY);
+    final displayTargetWeight = unitService.displayWeight(weightProgress.targetWeight);
+
+    // Intervalle adapté selon l'unité (2 kg ou ~5 lbs)
+    final yInterval = unitService.isImperial ? 5.0 : 2.0;
 
     return LineChartData(
       gridData: FlGridData(
         show: true,
         drawVerticalLine: false,
-        horizontalInterval: _calculateYInterval(),
+        horizontalInterval: yInterval,
         getDrawingHorizontalLine: (value) {
           return FlLine(
             color: const Color(0xFFCBD5E1), // Grille plus visible
@@ -819,14 +841,13 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
         leftTitles: AxisTitles(
           sideTitles: SideTitles(
             showTitles: true,
-            interval: _calculateYInterval(),
+            interval: yInterval,
             reservedSize: 55, // Plus d'espace pour les labels et le label objectif
             getTitlesWidget: (value, meta) {
               // Marquer l'objectif sur l'axe Y avec un style spécial
-              final filteredProgress = _filteredWeightProgress;
-              if (filteredProgress != null &&
-                  filteredProgress.targetWeight > 0 &&
-                  (value - filteredProgress.targetWeight).abs() < 0.5) {
+              // Note: value est déjà en unité d'affichage
+              if (displayTargetWeight > 0 &&
+                  (value - displayTargetWeight).abs() < (yInterval / 2)) {
                 return Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                   decoration: BoxDecoration(
@@ -848,20 +869,18 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
                 );
               }
 
-              if (_shouldShowYLabel(value)) {
-                return Container(
-                  padding: const EdgeInsets.only(right: 4),
-                  child: Text(
-                    '${value.toStringAsFixed(0)} kg',
-                    style: const TextStyle(
-                      color: Color(0xFF0B132B),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
+              // Afficher le label normal (valeur déjà en unité d'affichage)
+              return Container(
+                padding: const EdgeInsets.only(right: 4),
+                child: Text(
+                  '${value.toStringAsFixed(0)}',
+                  style: const TextStyle(
+                    color: Color(0xFF0B132B),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
                   ),
-                );
-              }
-              return const SizedBox.shrink();
+                ),
+              );
             },
           ),
         ),
@@ -894,14 +913,14 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
               // Afficher le tooltip seulement pour la ligne de tendance (barDataIndex = 1)
               if (barSpot.barIndex == 1 && index >= 0 && index < weightProgress.entries.length) {
                 final entry = weightProgress.entries[index];
-                final weight = entry.weight;
+                final weight = entry.weight; // Poids en kg (stockage)
 
                 // Calculer la différence avec le poids précédent
                 String diffText = '';
                 if (index > 0) {
                   final prevWeight = weightProgress.entries[index - 1].weight;
                   final diff = weight - prevWeight;
-                  diffText = '\n${diff >= 0 ? '+' : ''}${diff.toStringAsFixed(1)} kg';
+                  diffText = '\n${diff >= 0 ? '+' : ''}${unitService.formatWeight(diff)}';
                 }
 
                 // Calculer la distance à l'objectif
@@ -910,12 +929,12 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
                   final diffToTarget = weight - weightProgress.targetWeight;
                   final isClose = diffToTarget.abs() < 2;
                   if (isClose) {
-                    targetDiff = '\n🎯 ${diffToTarget.abs().toStringAsFixed(1)} kg de l\'objectif';
+                    targetDiff = '\n🎯 ${unitService.formatWeight(diffToTarget.abs())} de l\'objectif';
                   }
                 }
 
                 return LineTooltipItem(
-                  '${DateFormat('dd/MM/yyyy').format(entry.date)}\n${weight.toStringAsFixed(1)} kg$diffText$targetDiff',
+                  '${DateFormat('dd/MM/yyyy').format(entry.date)}\n${unitService.formatWeight(weight)}$diffText$targetDiff',
                   const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w600,
@@ -933,14 +952,15 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
       ),
       minX: 0,
       maxX: extendedWidth.toDouble() - 1,
-      minY: weightProgress.minY,
-      maxY: weightProgress.maxY,
+      minY: displayMinY,
+      maxY: displayMaxY,
       lineBarsData: [
         // 1. Ligne des données brutes (gris clair, fine) - pour contexte
         if (weightProgress.entries.length > 3)
           LineChartBarData(
             spots: weightProgress.entries.asMap().entries.map((entry) {
-              return FlSpot(entry.key.toDouble(), entry.value.weight);
+              // Convertir le poids en unité d'affichage
+              return FlSpot(entry.key.toDouble(), unitService.displayWeight(entry.value.weight));
             }).toList(),
             isCurved: true,
             color: const Color(0xFF94A3B8).withValues(alpha: 0.5), // Gris clair
@@ -951,7 +971,7 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
 
         // 2. Ligne de tendance (moyenne mobile 7 jours) - couleur principale
         LineChartBarData(
-          spots: _calculateMovingAverage(weightProgress.entries),
+          spots: _calculateMovingAverageDisplay(weightProgress.entries),
           isCurved: true,
           color: const Color(0xFF0B132B),
           barWidth: 3,
@@ -986,8 +1006,8 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
         if (weightProgress.targetWeight > 0)
           LineChartBarData(
             spots: [
-              FlSpot(0, weightProgress.targetWeight),
-              FlSpot(extendedWidth.toDouble() - 1, weightProgress.targetWeight),
+              FlSpot(0, displayTargetWeight),
+              FlSpot(extendedWidth.toDouble() - 1, displayTargetWeight),
             ],
             isCurved: false,
             color: const Color(0xFF64748B),
@@ -1026,6 +1046,40 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
 
       final average = sum / count;
       smoothedSpots.add(FlSpot(i.toDouble(), average));
+    }
+
+    return smoothedSpots;
+  }
+
+  /// Calcule la moyenne mobile avec conversion en unité d'affichage
+  List<FlSpot> _calculateMovingAverageDisplay(List<WeightEntry> entries) {
+    final unitService = UnitService.instance;
+
+    if (entries.length <= 3) {
+      // Si peu de données, retourner les points originaux convertis
+      return entries.asMap().entries.map((entry) {
+        return FlSpot(entry.key.toDouble(), unitService.displayWeight(entry.value.weight));
+      }).toList();
+    }
+
+    final windowSize = math.min(7, entries.length);
+    final List<FlSpot> smoothedSpots = [];
+
+    for (int i = 0; i < entries.length; i++) {
+      // Calculer la moyenne des points dans la fenêtre
+      final startIndex = math.max(0, i - windowSize ~/ 2);
+      final endIndex = math.min(entries.length, i + windowSize ~/ 2 + 1);
+
+      double sum = 0;
+      int count = 0;
+      for (int j = startIndex; j < endIndex; j++) {
+        sum += entries[j].weight;
+        count++;
+      }
+
+      final average = sum / count;
+      // Convertir la moyenne en unité d'affichage
+      smoothedSpots.add(FlSpot(i.toDouble(), unitService.displayWeight(average)));
     }
 
     return smoothedSpots;
@@ -1083,7 +1137,7 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
                       ),
                     ),
                     Text(
-                      '${entry.weight.toStringAsFixed(1)} ${'kg'.tr(LocalizationService.instance.currentLanguageCode)}',
+                      UnitService.instance.formatWeight(entry.weight),
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
@@ -1124,7 +1178,7 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
             NumericTextField(
               controller: _weightController,
               decoration: InputDecoration(
-                labelText: 'weight_kg'.tr(LocalizationService.instance.currentLanguageCode),
+                labelText: '${'weight_label'.tr(LocalizationService.instance.currentLanguageCode)} (${UnitService.instance.weightUnit})',
                 hintText: 'weight_example'.tr(LocalizationService.instance.currentLanguageCode),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
@@ -1174,10 +1228,12 @@ class _WeightEvolutionScreenState extends State<WeightEvolutionScreen> {
   }
 
   Future<void> _addWeight() async {
-    final weight = double.tryParse(_weightController.text);
-    if (weight != null && weight > 0) {
+    final inputWeight = double.tryParse(_weightController.text);
+    if (inputWeight != null && inputWeight > 0) {
       try {
-        await WeightService.saveWeightEntry(weight);
+        // Convertir en kg pour le stockage si l'utilisateur est en mode impérial
+        final weightKg = UnitService.instance.storageWeight(inputWeight);
+        await WeightService.saveWeightEntry(weightKg);
 
         // Invalider le cache pour forcer le rechargement
         final prefs = await SharedPreferences.getInstance();

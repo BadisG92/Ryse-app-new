@@ -19,13 +19,17 @@ class WeeklyStatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Formatage intelligent pour les distances > 100 km
+    // Formatage intelligent pour les distances > 100 (km ou mi)
     String displayTitle = title;
-    if (subtitle == 'Distance' && title.contains('km')) {
-      final numericPart = title.replaceAll(' km', '');
-      final distance = double.tryParse(numericPart);
-      if (distance != null && distance >= 100) {
-        displayTitle = '${distance.round()} km';
+    if (subtitle == 'Distance' && (title.contains('km') || title.contains('mi'))) {
+      // Extraire la partie numérique et l'unité
+      final parts = title.split(' ');
+      if (parts.length >= 2) {
+        final distance = double.tryParse(parts[0]);
+        final unit = parts.sublist(1).join(' ');
+        if (distance != null && distance >= 100) {
+          displayTitle = '${distance.round()} $unit';
+        }
       }
     }
 

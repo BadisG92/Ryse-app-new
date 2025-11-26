@@ -2,6 +2,7 @@ import 'dart:async';
 import '../logging/app_logger.dart';
 import '../../../config/supabase_config.dart';
 import '../../../services/localization_service.dart';
+import '../../../services/unit_service.dart';
 import '../migration/migration_controller.dart';
 
 /// Service d'initialisation par priorités pour optimiser le démarrage
@@ -26,6 +27,7 @@ class PriorityServiceInitializer {
     try {
       await Future.wait([
         _initializeLocalization(),
+        _initializeUnits(),
         _initializeBasicAuth(),
       ]).timeout(const Duration(seconds: 2));
       
@@ -83,6 +85,16 @@ class PriorityServiceInitializer {
       _logger.i('✅ Localisation OK', tag: 'STARTUP');
     } catch (e) {
       _logger.w('⚠️ Localisation échoué (valeurs par défaut utilisées)', error: e, tag: 'STARTUP');
+    }
+  }
+
+  Future<void> _initializeUnits() async {
+    try {
+      await UnitService.instance.initialize()
+          .timeout(const Duration(seconds: 1));
+      _logger.i('✅ Unités OK', tag: 'STARTUP');
+    } catch (e) {
+      _logger.w('⚠️ Unités échoué (métrique par défaut)', error: e, tag: 'STARTUP');
     }
   }
   
@@ -189,6 +201,8 @@ class PriorityServiceInitializer {
       'initialized': _isInitialized,
       'supabase_available': SupabaseConfig.isAvailable,
       'localization_ready': LocalizationService.instance.isInitialized,
+      'units_ready': UnitService.instance.isInitialized,
+      'units_system': UnitService.instance.isImperial ? 'imperial' : 'metric',
       'architecture_status': MigrationController.instance.status,
       'timestamp': DateTime.now().toIso8601String(),
     };
