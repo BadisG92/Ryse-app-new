@@ -8,11 +8,16 @@ class GeminiConfig {
   // Google Gemini API Configuration (from environment)
   static String get geminiApiKey => EnvConfig.geminiApiKey;
 
-  // Gemini API endpoint for vision (using Gemini 2.0 Flash - faster and more stable)
-  static const String geminiApiUrl = 'https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent';
+  // Gemini API endpoint for vision
+  // Options disponibles:
+  // - gemini-2.5-flash-lite (le plus rapide, économique) ✅ Actuel
+  // - gemini-2.5-flash (équilibré, thinking mode)
+  // - gemini-2.0-flash (rapide, stable)
+  // - gemini-1.5-pro (plus précis, plus lent)
+  static const String geminiApiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent';
 
   // Model configuration
-  static const String modelName = 'gemini-2.0-flash';
+  static const String modelName = 'gemini-2.5-flash-lite';
 
   // Generation parameters
   static const double temperature = 0.3; // Lower for more consistent results

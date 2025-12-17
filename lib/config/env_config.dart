@@ -83,6 +83,10 @@ class EnvConfig {
     defaultValue: true,
   );
 
+  /// 📸 MODE SCREENSHOT - Active toutes les fonctionnalités Premium
+  /// Mettre à true pour faire les screenshots App Store, puis remettre à false
+  static const bool screenshotMode = false; // ← PRODUCTION: Désactivé
+
   // ===================================
   // VALIDATORS
   // ===================================

@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ryze - Screenshot 1 - L'Accroche</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* DA Ryze */
+            --bg-primary: #F8FAFC;
+            --bg-secondary: #F1F5F9;
+            --navy-dark: #0B132B;
+            --navy-medium: #1C2951;
+            --text-primary: #0B132B;
+            --text-secondary: #64748B;
+            --border-light: #E2E8F0;
+            --white: #FFFFFF;
+            --green-accent: #22C55E;
+            --orange-accent: #F97316;
+            --blue-accent: #3B82F6;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .screenshot-container {
+            width: 1284px;
+            height: 2778px;
+            background: var(--bg-primary);
+            position: relative;
+            overflow: hidden;
+            border-radius: 60px;
+        }
+
+        /* Header avec logo */
+        .header {
+            padding: 90px 80px 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 18px;
+        }
+
+        .logo-container {
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(145deg, var(--navy-dark), var(--navy-medium));
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 30px rgba(11, 19, 43, 0.2);
+        }
+
+        .logo-letter {
+            font-size: 38px;
+            font-weight: 900;
+            color: white;
+        }
+
+        .app-name {
+            font-size: 52px;
+            font-weight: 900;
+            color: var(--text-primary);
+            letter-spacing: -2px;
+        }
+
+        /* Title section */
+        .title-section {
+            padding: 40px 80px 30px;
+            text-align: center;
+        }
+
+        .main-title {
+            font-size: 92px;
+            font-weight: 900;
+            color: var(--text-primary);
+            line-height: 1.0;
+            letter-spacing: -4px;
+            margin-bottom: 25px;
+        }
+
+        .subtitle {
+            font-size: 42px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        /* Pandas fistbump */
+        .pandas-section {
+            display: flex;
+            justify-content: center;
+            padding: 30px 40px;
+        }
+
+        .pandas-image {
+            width: 750px;
+            height: auto;
+            filter: drop-shadow(0 30px 50px rgba(11, 19, 43, 0.2));
+        }
+
+        /* Features section */
+        .features-section {
+            padding: 40px 70px;
+        }
+
+        .features-grid {
+            display: flex;
+            gap: 24px;
+        }
+
+        .feature-card {
+            flex: 1;
+            background: var(--white);
+            border: 1.5px solid var(--border-light);
+            border-radius: 28px;
+            padding: 35px 25px;
+            text-align: center;
+            box-shadow: 0 8px 25px rgba(11, 19, 43, 0.05);
+        }
+
+        .feature-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 20px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .feature-icon.nutrition {
+            background: linear-gradient(145deg, var(--green-accent), #16a34a);
+            box-shadow: 0 10px 25px rgba(34, 197, 94, 0.3);
+        }
+
+        .feature-icon.sport {
+            background: linear-gradient(145deg, var(--orange-accent), #ea580c);
+            box-shadow: 0 10px 25px rgba(249, 115, 22, 0.3);
+        }
+
+        .feature-icon.ai {
+            background: linear-gradient(145deg, var(--blue-accent), #2563eb);
+            box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
+        }
+
+        .feature-icon svg {
+            width: 40px;
+            height: 40px;
+            stroke: white;
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .feature-title {
+            font-size: 30px;
+            font-weight: 800;
+            color: var(--text-primary);
+            margin-bottom: 10px;
+        }
+
+        .feature-desc {
+            font-size: 24px;
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        /* Stats section */
+        .stats-section {
+            padding: 40px 70px;
+        }
+
+        .stats-row {
+            display: flex;
+            gap: 24px;
+        }
+
+        .stat-card {
+            flex: 1;
+            background: linear-gradient(145deg, var(--navy-dark), var(--navy-medium));
+            border-radius: 24px;
+            padding: 35px 25px;
+            text-align: center;
+            box-shadow: 0 15px 40px rgba(11, 19, 43, 0.2);
+        }
+
+        .stat-value {
+            font-size: 48px;
+            font-weight: 900;
+            color: white;
+            margin-bottom: 8px;
+        }
+
+        .stat-label {
+            font-size: 22px;
+            color: rgba(255,255,255,0.7);
+        }
+
+        /* Input methods */
+        .methods-section {
+            padding: 40px 70px;
+        }
+
+        .methods-card {
+            background: var(--white);
+            border: 1.5px solid var(--border-light);
+            border-radius: 30px;
+            padding: 40px;
+            box-shadow: 0 8px 30px rgba(11, 19, 43, 0.05);
+        }
+
+        .methods-title {
+            font-size: 32px;
+            font-weight: 800;
+            color: var(--text-primary);
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .methods-row {
+            display: flex;
+            justify-content: center;
+            gap: 50px;
+        }
+
+        .method-item {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+        }
+
+        .method-icon {
+            width: 65px;
+            height: 65px;
+            background: var(--bg-secondary);
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .method-icon svg {
+            width: 32px;
+            height: 32px;
+            stroke: var(--navy-dark);
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .method-text {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        /* Bottom CTA */
+        .bottom-section {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 50px 80px 80px;
+            background: linear-gradient(to top, var(--bg-primary) 80%, transparent);
+        }
+
+        .cta-button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            background: linear-gradient(145deg, var(--navy-dark), var(--navy-medium));
+            color: white;
+            font-size: 34px;
+            font-weight: 800;
+            padding: 30px 60px;
+            border-radius: 60px;
+            max-width: 700px;
+            margin: 0 auto;
+            box-shadow: 0 20px 50px rgba(11, 19, 43, 0.3);
+        }
+
+        .cta-button svg {
+            width: 32px;
+            height: 32px;
+            stroke: white;
+            stroke-width: 2.5;
+            fill: none;
+        }
+
+        .stores-text {
+            text-align: center;
+            margin-top: 25px;
+            font-size: 24px;
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+    <div class="screenshot-container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo-container">
+                <span class="logo-letter">R</span>
+            </div>
+            <span class="app-name">Ryze</span>
+        </div>
+
+        <!-- Title -->
+        <div class="title-section">
+            <h1 class="main-title">Maigrir & se Muscler.</h1>
+            <p class="subtitle">Une seule app.</p>
+        </div>
+
+        <!-- Pandas fistbump -->
+        <div class="pandas-section">
+            <img src="../assets/images/coach_ryze fistbump.png" alt="Coach Ryze - Nutrition & Sport" class="pandas-image">
+        </div>
+
+        <!-- Features -->
+        <div class="features-section">
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon nutrition">
+                        <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                    </div>
+                    <div class="feature-title">Nutrition</div>
+                    <div class="feature-desc">Suivi calories & macros intelligent</div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon sport">
+                        <svg viewBox="0 0 24 24"><path d="M6.5 6.5h11M6.5 17.5h11M3 12h18M17.5 6.5v11M6.5 6.5v11"/></svg>
+                    </div>
+                    <div class="feature-title">Sport</div>
+                    <div class="feature-desc">Programmes muscu, cardio, HIIT</div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon ai">
+                        <svg viewBox="0 0 24 24"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2M20 14h2M15 13v2M9 13v2"/></svg>
+                    </div>
+                    <div class="feature-title">Coach IA</div>
+                    <div class="feature-desc">Conseils personnalisés 24/7</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-section">
+            <div class="stats-row">
+                <div class="stat-card">
+                    <div class="stat-value">1M+</div>
+                    <div class="stat-label">Aliments</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">500+</div>
+                    <div class="stat-label">Exercices</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">5 sec</div>
+                    <div class="stat-label">Pour tracker</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Input methods -->
+        <div class="methods-section">
+            <div class="methods-card">
+                <div class="methods-title">Trackez en un instant</div>
+                <div class="methods-row">
+                    <div class="method-item">
+                        <div class="method-icon">
+                            <svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                        </div>
+                        <span class="method-text">Photo</span>
+                    </div>
+                    <div class="method-item">
+                        <div class="method-icon">
+                            <svg viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+                        </div>
+                        <span class="method-text">Voix</span>
+                    </div>
+                    <div class="method-item">
+                        <div class="method-icon">
+                            <svg viewBox="0 0 24 24"><rect width="20" height="16" x="2" y="4" rx="2" ry="2"/><path d="M6 8h.001M10 8h.001M14 8h.001M18 8h.001M8 12h.001M12 12h.001M16 12h.001M7 16h10"/></svg>
+                        </div>
+                        <span class="method-text">Texte</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom CTA -->
+        <div class="bottom-section">
+            <div class="cta-button">
+                <span>Commencer gratuitement</span>
+                <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </div>
+            <p class="stores-text">Disponible sur iOS & Android</p>
+        </div>
+    </div>
+</body>
+</html>

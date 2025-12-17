@@ -26,7 +26,8 @@ class SubscriptionService extends ChangeNotifier {
 
   /// Vérifie si l'utilisateur est Premium
   /// Renvoie true si l'utilisateur a un abonnement actif ou est en période d'essai
-  bool get isPremium => _currentSubscription?.isPremium ?? false;
+  /// En screenshotMode, renvoie toujours true
+  bool get isPremium => EnvConfig.screenshotMode || (_currentSubscription?.isPremium ?? false);
 
   /// Vérifie si l'utilisateur est en trial
   bool get isInTrial => _currentSubscription?.isInTrial ?? false;

@@ -322,6 +322,10 @@ class RevenueCatService {
 
   /// Vérifie si l'utilisateur a un abonnement premium actif
   bool isPremium() {
+    // 📸 MODE SCREENSHOT - Bypass pour les screenshots App Store
+    if (EnvConfig.screenshotMode) {
+      return true;
+    }
     if (!_isInitialized || _currentCustomerInfo == null) {
       return false;
     }

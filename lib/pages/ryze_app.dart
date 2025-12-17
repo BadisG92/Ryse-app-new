@@ -231,46 +231,49 @@ class _RyzeAppState extends State<RyzeApp> {
 
     debugPrint('✅ Onboarding terminé');
 
-    // Attendre que tous les frames soient rendus avant de naviguer
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      debugPrint('🎯 PostFrameCallback - Widget mounted: $mounted');
+    // Navigation directe sans PostFrameCallback pour éviter les race conditions
+    // Le context est passé depuis le widget appelant qui est forcément mounted
+    debugPrint('🚀 Navigation vers PaywallScreen...');
+    try {
+      // Utiliser un délai minimal pour laisser le temps au frame actuel de se terminer
+      await Future.delayed(const Duration(milliseconds: 50));
 
-      if (mounted) {
-        debugPrint('🚀 Navigation vers PaywallScreen...');
-        try {
-          // 🎯 Afficher le Paywall après l'onboarding
-          // Quelle que soit l'issue (abonnement, plus tard, restauration), on va vers MainApp
-          Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
-            MaterialPageRoute(
-              builder: (context) => PaywallScreen(
-                context: PaywallContext.genericUpgrade,
-                customTitle: 'Débloquez Coach Ryze Premium',
-                customMessage: 'Profitez de 7 jours d\'essai gratuit',
-                onDismiss: () {
-                  // Appelé quand l'utilisateur ferme le paywall (peu importe la raison)
-                  debugPrint('🏠 Paywall fermé → Navigation vers MainApp');
-                  Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
-                    MaterialPageRoute(builder: (context) => const MainApp()),
-                    (route) => false,
-                  );
-                },
-              ),
-            ),
-            (route) => false, // Supprimer toutes les routes précédentes
-          );
-          debugPrint('✅ Navigation réussie vers Paywall');
-        } catch (e) {
-          debugPrint('❌ Erreur navigation: $e');
-          // En cas d'erreur, aller directement vers MainApp
-          Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (context) => const MainApp()),
-            (route) => false,
-          );
-        }
-      } else {
-        debugPrint('❌ Widget non mounted dans PostFrameCallback');
+      if (!mounted) {
+        debugPrint('⚠️ Widget non mounted, navigation annulée');
+        return;
       }
-    });
+
+      // 🎯 Afficher le Paywall après l'onboarding
+      // Quelle que soit l'issue (abonnement, plus tard, restauration), on va vers MainApp
+      Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (ctx) => PaywallScreen(
+            context: PaywallContext.genericUpgrade,
+            customTitle: 'Débloquez Coach Ryze Premium',
+            customMessage: 'Profitez de 7 jours d\'essai gratuit',
+            onDismiss: () {
+              // Appelé quand l'utilisateur ferme le paywall (peu importe la raison)
+              debugPrint('🏠 Paywall fermé → Navigation vers MainApp');
+              Navigator.of(ctx, rootNavigator: true).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (context) => const MainApp()),
+                (route) => false,
+              );
+            },
+          ),
+        ),
+        (route) => false, // Supprimer toutes les routes précédentes
+      );
+      debugPrint('✅ Navigation réussie vers Paywall');
+    } catch (e) {
+      debugPrint('❌ Erreur navigation: $e');
+      // En cas d'erreur, aller directement vers MainApp
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const MainApp()),
+          (route) => false,
+        );
+      }
+    }
   }
 
   /// Méthode utilitaire pour réinitialiser l'onboarding (développement)

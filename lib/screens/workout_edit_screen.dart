@@ -88,30 +88,35 @@ class _WorkoutEditScreenState extends State<WorkoutEditScreen> {
     });
   }
 
+  // Mapper les valeurs DB vers les clés d'intensité
+  // La DB stocke: 'Faible', 'Modéré', 'Élevé'
   String? _mapDbValueToIntensityKey(String? dbValue) {
     if (dbValue == null) return null;
-    final locService = LocalizationService.instance;
-    final low = 'workout_intensity_low'.tr(locService.currentLanguageCode);
-    final moderate = 'workout_intensity_moderate'.tr(locService.currentLanguageCode);
-    final high = 'workout_intensity_high'.tr(locService.currentLanguageCode);
 
-    if (dbValue == low) return 'low';
-    if (dbValue == moderate) return 'moderate';
-    if (dbValue == high) return 'high';
-    return null;
+    switch (dbValue) {
+      case 'Faible':
+        return 'low';
+      case 'Modéré':
+        return 'moderate';
+      case 'Élevé':
+        return 'high';
+      default:
+        return null;
+    }
   }
 
+  // Mapper les clés d'intensité UI vers les valeurs françaises de la DB
+  // La DB attend: 'Faible', 'Modéré', 'Élevé' (contrainte CHECK)
   String _mapIntensityToDbValue(String intensity) {
-    final locService = LocalizationService.instance;
     switch (intensity) {
       case 'low':
-        return 'workout_intensity_low'.tr(locService.currentLanguageCode);
+        return 'Faible';
       case 'moderate':
-        return 'workout_intensity_moderate'.tr(locService.currentLanguageCode);
+        return 'Modéré';
       case 'high':
-        return 'workout_intensity_high'.tr(locService.currentLanguageCode);
+        return 'Élevé';
       default:
-        return 'workout_intensity_moderate'.tr(locService.currentLanguageCode);
+        return 'Modéré';
     }
   }
 

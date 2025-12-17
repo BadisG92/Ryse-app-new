@@ -162,6 +162,7 @@ flutter:
   assets:
     - assets/images/
     - assets/images/muscle_groups/
+    - assets/images/image test/
     - assets/seed/
     # - assets/animations/ # Ligne à supprimer ou commenter si elle existe encore
 

@@ -5005,6 +5005,10 @@ class AppTranslations {
       'fr': 'Erreur d\'accès à la caméra',
       'en': 'Camera access error',
     },
+    'select_image_from_files': {
+      'fr': 'Sélectionner une image',
+      'en': 'Select an image',
+    },
 
     // Food List - using existing 'no_food_found' at line 1747
     // Note: close already exists earlier

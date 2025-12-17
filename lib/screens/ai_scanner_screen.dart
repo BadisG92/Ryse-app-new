@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:camera/camera.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:path_provider/path_provider.dart';
 import '../services/localization_service.dart';
 import '../services/gemini_analysis_service_v2.dart';
 import '../models/ai_analysis_models.dart';
@@ -173,6 +175,27 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
   Future<void> _pickFromGallery() async {
     if (kDebugMode) debugPrint('🔥 [FLUX AI] 🖼️ Ouverture galerie');
     try {
+      // TODO: TEST MODE - Utiliser une image de test
+      // Supprimer ce bloc après les tests
+      if (kDebugMode) {
+        final testImagePath = await _loadTestImage();
+        if (testImagePath != null) {
+          debugPrint('🔥 [FLUX AI] 🧪 TEST MODE: Utilisation image de test');
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => AIPreviewScreen(
+                imagePath: testImagePath,
+                isFromDashboard: widget.isFromDashboard,
+                mealName: widget.mealName,
+                mealId: widget.mealId,
+              ),
+            ),
+          );
+          return;
+        }
+      }
+      // FIN TEST MODE
+
       final XFile? image = await _picker.pickImage(
         source: ImageSource.gallery,
         imageQuality: 85,
@@ -193,6 +216,22 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
       }
     } catch (e) {
       if (kDebugMode) debugPrint('🔥 [FLUX AI] ❌ Erreur galerie: $e');
+    }
+  }
+
+  /// Charge l'image de test depuis les assets et retourne le chemin du fichier temporaire
+  Future<String?> _loadTestImage() async {
+    try {
+      const assetPath = 'assets/images/image test/Gemini_Generated_Image_87jucs87jucs87ju.png';
+      final byteData = await rootBundle.load(assetPath);
+      final tempDir = await getTemporaryDirectory();
+      final tempFile = File('${tempDir.path}/test_meal_image.png');
+      await tempFile.writeAsBytes(byteData.buffer.asUint8List());
+      debugPrint('🔥 [FLUX AI] 🧪 Image de test copiée: ${tempFile.path}');
+      return tempFile.path;
+    } catch (e) {
+      debugPrint('🔥 [FLUX AI] ❌ Erreur chargement image de test: $e');
+      return null;
     }
   }
 
@@ -261,6 +300,23 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
               _errorMessage ?? '',
               style: const TextStyle(color: Colors.white, fontSize: 16),
               textAlign: TextAlign.center,
+            ),
+            // Si la caméra n'est pas disponible, proposer de sélectionner une image
+            const SizedBox(height: 40),
+            Consumer<LocalizationService>(
+              builder: (context, locService, child) => ElevatedButton.icon(
+                onPressed: _pickFromGallery,
+                icon: const Icon(LucideIcons.image),
+                label: Text('select_image_from_files'.tr(locService.currentLanguageCode)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF6366F1),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
             ),
           ],
         ),

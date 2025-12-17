@@ -141,6 +141,8 @@ class _NutritionSectionState extends State<NutritionSection>
         await _launchDashboardTutorial();
       } else {
         debugPrint('⏭️ Tutorial onglets skippé - Arrêt complet du tutorial');
+        // IMPORTANT: Marquer le tutoriel comme complété même si skippé
+        await TutorialService().markTutorialAsCompleted('tutorial_nutrition_completed');
       }
     } else {
       debugPrint('🔴 === BOUTON "PASSER" APPUYÉ - WELCOME SCREEN NUTRITION ===');
@@ -500,6 +502,7 @@ class _NutritionSectionState extends State<NutritionSection>
       value: SystemUiOverlayStyle.light,
       child: Scaffold(
         backgroundColor: const Color(0xFFF8FAFC),
+        resizeToAvoidBottomInset: false, // Empêche la barre d'onglets de monter avec le clavier
         body: SafeArea(
           top: false,
           child: Stack(

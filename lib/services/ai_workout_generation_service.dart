@@ -12,6 +12,7 @@ import 'localization_service.dart';
 class AIWorkoutGenerationService {
   // Cache des exercices pour éviter les appels répétés à la DB
   static List<Exercise>? _cachedExercises;
+  static String? _cachedExercisesLanguage; // Langue du cache
   static DateTime? _cacheTimestamp;
   static const _cacheDuration = Duration(hours: 1);
 
@@ -117,19 +118,23 @@ class AIWorkoutGenerationService {
 
   /// Récupérer les exercices avec cache (évite les appels DB répétés)
   static Future<List<Exercise>> _getExercisesWithCache() async {
-    // Vérifier si le cache est valide
+    final currentLanguage = LocalizationService.instance.currentLanguageCode;
+
+    // Vérifier si le cache est valide ET dans la bonne langue
     if (_cachedExercises != null &&
         _cacheTimestamp != null &&
+        _cachedExercisesLanguage == currentLanguage &&
         DateTime.now().difference(_cacheTimestamp!) < _cacheDuration) {
-      debugPrint('✅ Using cached exercises (${_cachedExercises!.length} exercises)');
+      debugPrint('✅ Using cached exercises (${_cachedExercises!.length} exercises, lang: $currentLanguage)');
       return _cachedExercises!;
     }
 
-    // Cache expiré ou inexistant, récupérer depuis la DB
-    debugPrint('🔄 Fetching exercises from database...');
-    _cachedExercises = await DatabaseService.getSystemExercises();
+    // Cache expiré, inexistant ou langue différente, récupérer depuis la DB
+    debugPrint('🔄 Fetching exercises from database (lang: $currentLanguage)...');
+    _cachedExercises = await DatabaseService.getSystemExercises(language: currentLanguage);
+    _cachedExercisesLanguage = currentLanguage;
     _cacheTimestamp = DateTime.now();
-    debugPrint('✅ Cached ${_cachedExercises!.length} exercises (valid for ${_cacheDuration.inMinutes} minutes)');
+    debugPrint('✅ Cached ${_cachedExercises!.length} exercises (lang: $currentLanguage, valid for ${_cacheDuration.inMinutes} minutes)');
 
     return _cachedExercises!;
   }
@@ -155,9 +160,10 @@ class AIWorkoutGenerationService {
     return _cachedUserContext!;
   }
 
-  /// Invalider le cache (utile après une séance terminée)
+  /// Invalider le cache (utile après une séance terminée ou changement de langue)
   static void invalidateCache() {
     _cachedExercises = null;
+    _cachedExercisesLanguage = null;
     _cacheTimestamp = null;
     _cachedUserContext = null;
     _cachedUserId = null;

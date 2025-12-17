@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Service central pour la gestion des unités de mesure (métrique/impérial)
 ///
@@ -31,25 +32,84 @@ class UnitService extends ChangeNotifier {
   UnitService._();
 
   /// Initialise le service en chargeant la préférence sauvegardée
+  /// Priorité: 1) SharedPreferences (local), 2) Supabase (remote), 3) Défaut (métrique)
   Future<void> initialize() async {
     final prefs = await SharedPreferences.getInstance();
     final savedUnit = prefs.getString(_unitKey);
 
-    // Par défaut: métrique (comme la plupart des pays)
-    // "Métrique" ou "Impérial" sont les valeurs stockées historiquement
-    _isImperial = savedUnit == 'Impérial' || savedUnit == 'imperial';
-    _isInitialized = true;
+    // Si on a une valeur locale, l'utiliser
+    if (savedUnit != null) {
+      _isImperial = savedUnit == 'Impérial' || savedUnit == 'imperial';
+      _isInitialized = true;
+      debugPrint('📏 UnitService initialisé (local): ${_isImperial ? "Impérial" : "Métrique"}');
+      notifyListeners();
+      return;
+    }
 
-    debugPrint('📏 UnitService initialisé: ${_isImperial ? "Impérial" : "Métrique"}');
+    // Sinon, essayer de récupérer depuis Supabase (pour les utilisateurs existants)
+    try {
+      final supabase = Supabase.instance.client;
+      final user = supabase.auth.currentUser;
+
+      if (user != null) {
+        final response = await supabase
+            .from('users')
+            .select('is_metric')
+            .eq('id', user.id)
+            .maybeSingle()
+            .timeout(const Duration(seconds: 3));
+
+        if (response != null && response['is_metric'] != null) {
+          final isMetric = response['is_metric'] as bool;
+          _isImperial = !isMetric;
+
+          // Synchroniser avec SharedPreferences pour les prochains lancements
+          await prefs.setString(_unitKey, _isImperial ? 'Impérial' : 'Métrique');
+          debugPrint('📏 UnitService initialisé (Supabase): ${_isImperial ? "Impérial" : "Métrique"}');
+        } else {
+          // Pas de données utilisateur, utiliser métrique par défaut
+          _isImperial = false;
+          debugPrint('📏 UnitService initialisé (défaut): Métrique');
+        }
+      } else {
+        // Pas d'utilisateur connecté, utiliser métrique par défaut
+        _isImperial = false;
+        debugPrint('📏 UnitService initialisé (pas connecté): Métrique');
+      }
+    } catch (e) {
+      debugPrint('⚠️ Erreur lecture unité depuis Supabase: $e');
+      // En cas d'erreur, utiliser métrique par défaut
+      _isImperial = false;
+      debugPrint('📏 UnitService initialisé (erreur fallback): Métrique');
+    }
+
+    _isInitialized = true;
     notifyListeners();
   }
 
   /// Change le système d'unités
+  /// Sauvegarde dans SharedPreferences ET Supabase pour synchronisation
   Future<void> setImperial(bool imperial) async {
     if (_isImperial != imperial) {
       _isImperial = imperial;
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_unitKey, imperial ? 'Impérial' : 'Métrique');
+
+      // Synchroniser avec Supabase pour persistance cross-device
+      try {
+        final supabase = Supabase.instance.client;
+        final user = supabase.auth.currentUser;
+        if (user != null) {
+          await supabase
+              .from('users')
+              .update({'is_metric': !imperial})
+              .eq('id', user.id);
+          debugPrint('📏 Unité synchronisée avec Supabase: ${imperial ? "Impérial" : "Métrique"}');
+        }
+      } catch (e) {
+        debugPrint('⚠️ Erreur sync unité Supabase: $e');
+        // Continue sans erreur - la valeur locale est sauvegardée
+      }
 
       debugPrint('📏 Unité changée: ${imperial ? "Impérial" : "Métrique"}');
       notifyListeners();

@@ -167,6 +167,11 @@ class UnifiedSubscriptionService extends ChangeNotifier {
 
   /// Vérifie si l'utilisateur est Premium
   bool get isPremium {
+    // 📸 MODE SCREENSHOT - Bypass pour les screenshots App Store
+    if (EnvConfig.screenshotMode) {
+      return true;
+    }
+
     if (testMode) {
       return _subscription.isPremium;
     }
@@ -353,11 +358,19 @@ class UnifiedSubscriptionService extends ChangeNotifier {
 
   /// Vérifie si une feature est accessible
   bool canAccessFeature(String featureName) {
+    // 📸 MODE SCREENSHOT - Toutes les features accessibles
+    if (EnvConfig.screenshotMode) {
+      return true;
+    }
     return _subscription.canAccessFeature(featureName);
   }
 
   /// Vérifie si une feature avec limite quotidienne est accessible
   Future<bool> canUseDailyLimitedFeature(String featureName, int limit) async {
+    // 📸 MODE SCREENSHOT - Pas de limite
+    if (EnvConfig.screenshotMode) {
+      return true;
+    }
     return await _subscription.canUseDailyLimitedFeature(featureName, limit);
   }
 

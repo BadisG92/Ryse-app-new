@@ -16,6 +16,9 @@ import '../services/localization_service.dart';
 import '../services/global_state_manager.dart';
 import '../services/fast_cache_service.dart';
 import '../services/dashboard_service.dart';
+import '../services/unit_service.dart';
+import '../services/paywall_service.dart';
+import '../screens/paywall_screen.dart';
 import 'package:provider/provider.dart';
 import 'main_app.dart';
 
@@ -1917,6 +1920,12 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
       await prefs.setInt('daily_fat', macros['fat']!);
       await prefs.setBool('onboarding_completed', true);
 
+      // IMPORTANT: Sauvegarder la préférence d'unité pour UnitService
+      await prefs.setString('measurement_unit', isMetric ? 'Métrique' : 'Impérial');
+      // Synchroniser UnitService immédiatement
+      await UnitService.instance.setImperial(!isMetric);
+      debugPrint('📏 Préférence d\'unité sauvegardée: ${isMetric ? "Métrique" : "Impérial"}');
+
       debugPrint('✅ ✅ ✅ Données d\'onboarding sauvegardées avec SUCCÈS dans Supabase et localement');
     } catch (e, stackTrace) {
       debugPrint('❌ ❌ ❌ ERREUR CRITIQUE lors de la sauvegarde: $e');
@@ -2220,49 +2229,71 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                             debugPrint('⚠️ Erreur rafraîchissement GlobalState: $e');
                           }
 
-                          // Appeler le callback parent qui gère la navigation vers Paywall puis MainApp
-                          debugPrint('📞 Appel du callback onComplete (navigation vers Paywall)...');
-                          widget.onComplete();
-                          // NOTE: Le callback onComplete gère toute la navigation
-                          // Ne PAS naviguer ici - le callback s'en charge
+                          // Marquer onboarding comme terminé
+                          final prefs = await SharedPreferences.getInstance();
+                          await prefs.setBool('has_seen_intro', true);
+                          await prefs.setBool('is_onboarded', true);
+
+                          // Mettre à jour Supabase
+                          final supabase = Supabase.instance.client;
+                          final user = supabase.auth.currentUser;
+                          if (user != null) {
+                            try {
+                              await supabase.from('users').update({
+                                'is_onboarded': true,
+                              }).eq('id', user.id);
+                              debugPrint('✅ Onboarding marqué comme terminé dans Supabase');
+                            } catch (e) {
+                              debugPrint('⚠️ Erreur mise à jour onboarding Supabase: $e');
+                            }
+                          }
+
+                          // Navigation DIRECTE vers Paywall depuis ce widget (context valide)
+                          if (!mounted) return;
+                          debugPrint('🚀 Navigation directe vers PaywallScreen...');
+
+                          Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+                            MaterialPageRoute(
+                              builder: (ctx) => PaywallScreen(
+                                context: PaywallContext.genericUpgrade,
+                                customTitle: 'Débloquez Coach Ryze Premium',
+                                customMessage: 'Profitez de 7 jours d\'essai gratuit',
+                                onDismiss: () {
+                                  debugPrint('🏠 Paywall fermé → Navigation vers MainApp');
+                                  Navigator.of(ctx, rootNavigator: true).pushAndRemoveUntil(
+                                    MaterialPageRoute(builder: (_) => const MainApp()),
+                                    (route) => false,
+                                  );
+                                },
+                              ),
+                            ),
+                            (route) => false,
+                          );
                         } catch (e) {
-                          // Afficher un message d'erreur mais permettre de continuer
+                          debugPrint('❌ Erreur onboarding: $e');
+                          // En cas d'erreur, permettre de continuer vers MainApp
                           if (mounted) {
                             showDialog(
                               context: context,
                               barrierDismissible: false,
-                              builder: (context) => AlertDialog(
+                              builder: (dialogContext) => AlertDialog(
                                 title: const Text('Erreur de sauvegarde'),
                                 content: Text(
                                   'Impossible de sauvegarder vos données dans le cloud.\n\n'
-                                  'Vos informations sont sauvegardées localement, mais vous devrez peut-être les ressaisir lors de votre prochaine connexion.\n\n'
+                                  'Vos informations sont sauvegardées localement.\n\n'
                                   'Erreur: $e'
                                 ),
                                 actions: [
                                   TextButton(
                                     onPressed: () {
-                                      Navigator.of(context).pop();
-                                      // Le callback onComplete gère toute la navigation
-                                      widget.onComplete();
+                                      Navigator.of(dialogContext).pop();
+                                      // Aller directement vers MainApp
+                                      Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+                                        MaterialPageRoute(builder: (_) => const MainApp()),
+                                        (route) => false,
+                                      );
                                     },
-                                    child: const Text('Continuer quand même'),
-                                  ),
-                                  TextButton(
-                                    onPressed: () async {
-                                      Navigator.of(context).pop();
-                                      // Réessayer la sauvegarde
-                                      try {
-                                        await _saveUserData();
-                                        // Le callback onComplete gère toute la navigation
-                                        widget.onComplete();
-                                      } catch (retryError) {
-                                        // Si ça échoue encore, continuer quand même
-                                        debugPrint('❌ Échec de la 2ème tentative: $retryError');
-                                        // Le callback onComplete gère toute la navigation
-                                        widget.onComplete();
-                                      }
-                                    },
-                                    child: const Text('Réessayer'),
+                                    child: const Text('Continuer'),
                                   ),
                                 ],
                               ),

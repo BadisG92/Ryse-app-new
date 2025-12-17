@@ -84,22 +84,30 @@ class GeminiAnalysisServiceV2 {
       // Get user's country for cultural context
       final cultureContext = await LocationService.getFoodCultureContext();
       final countryName = await LocationService.getUserCountryName();
-      
+
+      // Get user's preferred language from LocalizationService
+      final languageCode = LocalizationService.instance.currentLanguageCode;
+      final isFrench = languageCode == 'fr';
+      final responseLanguage = isFrench ? 'French' : 'English';
+
       // Create detailed prompt for food analysis with user note integration
-      final userNoteContext = userNote != null && userNote.trim().isNotEmpty 
-        ? "\n\nUser note: \"$userNote\"\nPlease take this user note into account for more accurate analysis of portion sizes and food identification."
+      final hasUserNote = userNote != null && userNote.trim().isNotEmpty;
+      final userNoteContext = hasUserNote
+        ? "\n\n**CRITICAL USER INPUT: \"$userNote\"**\nThe user has provided specific information that MUST be respected:\n- If they mention quantities (e.g., \"100g chicken\"), use EXACTLY those values for portion_grams\n- If they mention calories (e.g., \"500 kcal\", \"300 calories\"), adjust portions so the TOTAL calories match EXACTLY what they specified\n- User-specified values are ABSOLUTE and override any visual estimation"
         : "";
-      
+
       final prompt = '''
 Analyze this food image taken in $countryName ($cultureContext region).$userNoteContext
+
+IMPORTANT: You MUST respond entirely in $responseLanguage. All food names, meal names, and descriptions must be in $responseLanguage.
 
 Please provide a detailed JSON response with the following structure:
 
 {
-  "meal_name": "Creative name for this meal/dish (e.g., 'Salade méditerranéenne', 'Plat du jour', etc.)",
+  "meal_name": "Creative name for this meal/dish in $responseLanguage (e.g., ${isFrench ? "'Salade méditerranéenne', 'Plat du jour'" : "'Mediterranean salad', 'Daily special'"})",
   "foods": [
     {
-      "name": "Food name in local language",
+      "name": "Food name in $responseLanguage",
       "confidence": 85,
       "portion_grams": 120,
       "nutrition": {
@@ -107,19 +115,20 @@ Please provide a detailed JSON response with the following structure:
         "carbs_g": 25.8,
         "fats_g": 8.1
       },
-      "description": "Brief description of what you see"
+      "description": "Brief description in $responseLanguage"
     }
   ]
 }
 
 Requirements:
-1. Generate a creative, appetizing name for the overall meal/dish in the "meal_name" field
-2. Estimate portion sizes based on visual cues in the image (plate size, food volume, typical serving sizes you can observe)${userNote != null && userNote.trim().isNotEmpty ? " and the user's note" : ""}
+1. Generate a creative, appetizing name for the overall meal/dish in $responseLanguage in the "meal_name" field
+2. ${hasUserNote ? "**MANDATORY**: If the user specified quantities (e.g., \"100g chicken\"), use EXACTLY those values. If the user specified total calories (e.g., \"500 kcal\"), adjust all portion sizes proportionally so the meal totals EXACTLY that calorie amount. Only estimate for values NOT specified by the user." : "Estimate portion sizes based on visual cues in the image (plate size, food volume, typical serving sizes you can observe)"}
 3. Provide nutritional values in grams for the estimated portion size
 4. Use confidence scores from 0-100 based on how clearly you can identify each item
 5. Recognize local dishes common in $cultureContext if present
 6. Focus only on food items that are clearly visible and identifiable
 7. If you see multiple similar items, combine them into one entry with total weight
+8. ALL text output MUST be in $responseLanguage
 
 Be precise with your estimations and only include foods you can confidently identify.
 ''';
@@ -199,22 +208,30 @@ Be precise with your estimations and only include foods you can confidently iden
       // Get user's country for cultural context
       final cultureContext = await LocationService.getFoodCultureContext();
       final countryName = await LocationService.getUserCountryName();
-      
+
+      // Get user's preferred language from LocalizationService
+      final languageCode = LocalizationService.instance.currentLanguageCode;
+      final isFrench = languageCode == 'fr';
+      final responseLanguage = isFrench ? 'French' : 'English';
+
       // Create detailed prompt for food analysis with user note integration
-      final userNoteContext = userNote != null && userNote.trim().isNotEmpty 
-        ? "\n\nUser note: \"$userNote\"\nPlease take this user note into account for more accurate analysis of portion sizes and food identification."
+      final hasUserNote = userNote != null && userNote.trim().isNotEmpty;
+      final userNoteContext = hasUserNote
+        ? "\n\n**CRITICAL USER INPUT: \"$userNote\"**\nThe user has provided specific information that MUST be respected:\n- If they mention quantities (e.g., \"100g chicken\"), use EXACTLY those values for portion_grams\n- If they mention calories (e.g., \"500 kcal\", \"300 calories\"), adjust portions so the TOTAL calories match EXACTLY what they specified\n- User-specified values are ABSOLUTE and override any visual estimation"
         : "";
-      
+
       final prompt = '''
 Analyze this food image taken in $countryName ($cultureContext region).$userNoteContext
+
+IMPORTANT: You MUST respond entirely in $responseLanguage. All food names, meal names, and descriptions must be in $responseLanguage.
 
 Please provide a detailed JSON response with the following structure:
 
 {
-  "meal_name": "Creative name for this meal/dish (e.g., 'Salade méditerranéenne', 'Plat du jour', etc.)",
+  "meal_name": "Creative name for this meal/dish in $responseLanguage (e.g., ${isFrench ? "'Salade méditerranéenne', 'Plat du jour'" : "'Mediterranean salad', 'Daily special'"})",
   "foods": [
     {
-      "name": "Food name in local language",
+      "name": "Food name in $responseLanguage",
       "confidence": 85,
       "portion_grams": 120,
       "nutrition": {
@@ -222,19 +239,20 @@ Please provide a detailed JSON response with the following structure:
         "carbs_g": 25.8,
         "fats_g": 8.1
       },
-      "description": "Brief description of what you see"
+      "description": "Brief description in $responseLanguage"
     }
   ]
 }
 
 Requirements:
-1. Generate a creative, appetizing name for the overall meal/dish in the "meal_name" field
-2. Estimate portion sizes based on visual cues in the image (plate size, food volume, typical serving sizes you can observe)${userNote != null && userNote.trim().isNotEmpty ? " and the user's note" : ""}
+1. Generate a creative, appetizing name for the overall meal/dish in $responseLanguage in the "meal_name" field
+2. ${hasUserNote ? "**MANDATORY**: If the user specified quantities (e.g., \"100g chicken\"), use EXACTLY those values. If the user specified total calories (e.g., \"500 kcal\"), adjust all portion sizes proportionally so the meal totals EXACTLY that calorie amount. Only estimate for values NOT specified by the user." : "Estimate portion sizes based on visual cues in the image (plate size, food volume, typical serving sizes you can observe)"}
 3. Provide nutritional values in grams for the estimated portion size
 4. Use confidence scores from 0-100 based on how clearly you can identify each item
 5. Recognize local dishes common in $cultureContext if present
 6. Focus only on food items that are clearly visible and identifiable
 7. If you see multiple similar items, combine them into one entry with total weight
+8. ALL text output MUST be in $responseLanguage
 
 Be precise with your estimations and only include foods you can confidently identify.
 ''';

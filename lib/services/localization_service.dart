@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:ui' as ui;
+import 'ai_workout_generation_service.dart';
 import 'dashboard_service.dart';
 import 'header_cache_service.dart';
 import 'sport_dashboard_service.dart';
@@ -64,6 +65,7 @@ class LocalizationService extends ChangeNotifier {
       WorkoutCacheService.clearCache();
       SportDashboardService.invalidateCache();
       HeaderCacheService.clearCache();
+      AIWorkoutGenerationService.invalidateCache();
 
       notifyListeners();
 

@@ -13,6 +13,8 @@ class RecipeService {
   static const String _cacheKeyAllRecipes = 'recipes_all_cache';
   static const String _cacheKeyFeaturedRecipes = 'recipes_featured_cache';
   static const String _cacheKeyTimestamp = 'recipes_cache_timestamp';
+  static const String _cacheKeyVersion = 'recipes_cache_version';
+  static const int _currentCacheVersion = 2; // Incrémenté pour forcer le rechargement avec ingredientNames
   static const Duration _cacheValidDuration = Duration(hours: 24); // Cache valide 24h
 
   /// Récupère toutes les recettes - AVEC CACHE LOCAL
@@ -84,11 +86,37 @@ class RecipeService {
         .select('*')
         .eq('is_public', true);
 
+    // Charger tous les ingrédients avec leurs noms pour la recherche
+    final ingredientsResponse = await _supabase
+        .from('recipe_ingredient_database')
+        .select('recipe_id, food_database!inner(name_fr, name_en)');
+
+    // Créer un map recipe_id -> liste de noms d'ingrédients
+    final locService = LocalizationService.instance;
+    Map<int, List<String>> recipeIngredientNames = {};
+    for (var ing in ingredientsResponse) {
+      final recipeId = ing['recipe_id'] as int;
+      final food = ing['food_database'];
+      if (food != null) {
+        final ingredientName = locService.getTextFromColumns(food['name_fr'], food['name_en']);
+        if (ingredientName.isNotEmpty) {
+          recipeIngredientNames.putIfAbsent(recipeId, () => []);
+          recipeIngredientNames[recipeId]!.add(ingredientName);
+        }
+      }
+    }
+
+    debugPrint('📦 RecipeService: Chargé ingrédients pour ${recipeIngredientNames.length} recettes');
+
     List<Recipe> recipes = [];
 
     for (int i = 0; i < recipesResponse.length; i++) {
       var recipeData = recipesResponse[i];
       try {
+        // Ajouter les noms d'ingrédients au JSON avant de créer la Recipe
+        final recipeId = recipeData['id'] as int;
+        recipeData['ingredient_names'] = recipeIngredientNames[recipeId] ?? [];
+
         final recipe = Recipe.fromJson(recipeData);
         recipes.add(recipe);
       } catch (e) {
@@ -108,11 +136,12 @@ class RecipeService {
       final recipesJson = recipes.map((r) => r.toJson()).toList();
       final jsonString = jsonEncode(recipesJson);
 
-      // Sauvegarder
+      // Sauvegarder avec la version actuelle
       await prefs.setString(key, jsonString);
       await prefs.setInt(_cacheKeyTimestamp, DateTime.now().millisecondsSinceEpoch);
+      await prefs.setInt(_cacheKeyVersion, _currentCacheVersion);
 
-      debugPrint('💾 RecipeService: ${recipes.length} recettes sauvegardées en cache');
+      debugPrint('💾 RecipeService: ${recipes.length} recettes sauvegardées en cache (v$_currentCacheVersion)');
     } catch (e) {
       debugPrint('⚠️ RecipeService: Erreur sauvegarde cache: $e');
     }
@@ -122,6 +151,13 @@ class RecipeService {
   static Future<List<Recipe>?> _loadRecipesFromCache(String key, {bool ignoreExpiry = false}) async {
     try {
       final prefs = await SharedPreferences.getInstance();
+
+      // Vérifier la version du cache - si différente, invalider
+      final cacheVersion = prefs.getInt(_cacheKeyVersion) ?? 0;
+      if (cacheVersion < _currentCacheVersion) {
+        debugPrint('🔄 RecipeService: Cache obsolète (v$cacheVersion -> v$_currentCacheVersion), rechargement...');
+        return null;
+      }
 
       // Vérifier l'expiration du cache
       if (!ignoreExpiry) {

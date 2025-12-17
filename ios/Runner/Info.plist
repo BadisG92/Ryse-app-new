@@ -52,8 +52,6 @@
 	<string>Cette application peut sauvegarder les photos scannées dans votre galerie pour référence.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Cette application accède à vos photos pour analyser les aliments et calculer leurs valeurs nutritionnelles.</string>
-	<key>NSUserTrackingUsageDescription</key>
-	<string>Cette app ne suit pas vos données personnelles. Le suivi GPS sert uniquement à mesurer vos performances sportives localement sur votre appareil.</string>
 	<key>NSHealthShareUsageDescription</key>
 	<string>Cette application peut lire vos données de santé (activité, calories brûlées) pour optimiser vos objectifs nutritionnels et sportifs.</string>
 	<key>NSHealthUpdateUsageDescription</key>
@@ -66,8 +64,7 @@
 	<string>Main</string>
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
-		<string>still-camera</string>
-		<string>armv7</string>
+		<string>arm64</string>
 	</array>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>

@@ -153,6 +153,9 @@ class Recipe {
   final String? stepsFr;
   final String? stepsEn;
 
+  // Noms des ingrédients pour la recherche (chargés depuis recipe_ingredient_database)
+  final List<String> ingredientNames;
+
   const Recipe({
     required this.id,
     required this.name,
@@ -173,6 +176,7 @@ class Recipe {
     this.tagsEn,
     this.stepsFr,
     this.stepsEn,
+    this.ingredientNames = const [],
   });
 
   // Factory pour créer une Recipe depuis JSON (base de données)
@@ -202,6 +206,16 @@ class Recipe {
       final tags = _parseTagsFromJson(json);
       final steps = _parseStepsFromJson(json);
 
+      // Parser les noms d'ingrédients pour la recherche
+      List<String> ingredientNames = [];
+      if (json['ingredient_names'] != null) {
+        if (json['ingredient_names'] is List) {
+          ingredientNames = (json['ingredient_names'] as List).map((e) => e.toString()).toList();
+        } else if (json['ingredient_names'] is String) {
+          ingredientNames = (json['ingredient_names'] as String).split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+        }
+      }
+
       return Recipe(
         id: id,
         name: name,
@@ -223,6 +237,7 @@ class Recipe {
         tagsEn: json['tags_en']?.toString(),
         stepsFr: json['steps_fr']?.toString(),
         stepsEn: json['steps_en']?.toString(),
+        ingredientNames: ingredientNames,
       );
     } catch (e) {
       debugPrint('❌ Recipe.fromJson - Erreur: $e');
@@ -291,6 +306,7 @@ class Recipe {
       'steps_fr': stepsFr ?? steps.join(' | '),
       'steps_en': stepsEn ?? steps.join(' | '),
       'difficulty': difficulty,
+      'ingredient_names': ingredientNames,
     };
   }
 
@@ -318,14 +334,82 @@ class Recipe {
         .replaceAll('î', 'i');
   }
 
+  // Synonymes et associations d'ingrédients pour une recherche plus intelligente
+  static const Map<String, List<String>> _ingredientSynonyms = {
+    // Pâtes
+    'pate': ['spaghetti', 'penne', 'tagliatelle', 'fusilli', 'farfalle', 'rigatoni', 'linguine', 'fettuccine', 'macaroni', 'lasagne', 'ravioli', 'tortellini', 'gnocchi', 'nouille', 'vermicelle', 'coquillette', 'pates'],
+    'pasta': ['spaghetti', 'penne', 'tagliatelle', 'fusilli', 'farfalle', 'rigatoni', 'linguine', 'fettuccine', 'macaroni', 'lasagna', 'ravioli', 'tortellini', 'gnocchi', 'noodle', 'vermicelli'],
+    // Viandes
+    'viande': ['boeuf', 'poulet', 'porc', 'agneau', 'veau', 'dinde', 'canard', 'lapin', 'steak', 'escalope', 'filet', 'cuisse', 'aile'],
+    'meat': ['beef', 'chicken', 'pork', 'lamb', 'veal', 'turkey', 'duck', 'rabbit', 'steak', 'fillet'],
+    // Poissons
+    'poisson': ['saumon', 'thon', 'cabillaud', 'colin', 'truite', 'bar', 'dorade', 'sole', 'lieu', 'merlu', 'sardine', 'maquereau', 'anchois'],
+    'fish': ['salmon', 'tuna', 'cod', 'trout', 'bass', 'sole', 'sardine', 'mackerel', 'anchovy'],
+    // Fromages
+    'fromage': ['mozzarella', 'parmesan', 'cheddar', 'gruyere', 'emmental', 'comte', 'brie', 'camembert', 'chevre', 'feta', 'ricotta', 'mascarpone', 'gorgonzola', 'roquefort'],
+    'cheese': ['mozzarella', 'parmesan', 'cheddar', 'gruyere', 'emmental', 'brie', 'camembert', 'goat cheese', 'feta', 'ricotta', 'mascarpone'],
+    // Légumes
+    'legume': ['tomate', 'carotte', 'courgette', 'aubergine', 'poivron', 'oignon', 'ail', 'salade', 'laitue', 'epinard', 'brocoli', 'chou', 'haricot', 'petit pois', 'concombre', 'celeri', 'poireau', 'champignon'],
+    'vegetable': ['tomato', 'carrot', 'zucchini', 'eggplant', 'pepper', 'onion', 'garlic', 'salad', 'lettuce', 'spinach', 'broccoli', 'cabbage', 'bean', 'pea', 'cucumber', 'celery', 'leek', 'mushroom'],
+    // Fruits
+    'fruit': ['pomme', 'banane', 'orange', 'citron', 'fraise', 'framboise', 'myrtille', 'raisin', 'peche', 'abricot', 'mangue', 'ananas', 'kiwi', 'poire', 'cerise', 'melon', 'pasteque'],
+    // Céréales
+    'cereale': ['riz', 'quinoa', 'boulgour', 'avoine', 'orge', 'millet', 'sarrasin', 'epeautre', 'semoule', 'couscous'],
+    'grain': ['rice', 'quinoa', 'bulgur', 'oat', 'barley', 'millet', 'buckwheat', 'spelt', 'semolina', 'couscous'],
+    // Produits laitiers
+    'lait': ['yaourt', 'yogourt', 'creme', 'beurre', 'lait'],
+    'dairy': ['yogurt', 'cream', 'butter', 'milk'],
+  };
+
+  // Vérifie si un terme de recherche correspond à un ingrédient (avec synonymes)
+  static bool _matchesIngredientWithSynonyms(String query, String ingredientName) {
+    final normalizedQuery = _normalizeString(query);
+    final normalizedIngredient = _normalizeString(ingredientName);
+
+    // Match direct
+    if (normalizedIngredient.contains(normalizedQuery)) {
+      return true;
+    }
+
+    // Vérifier si la query est un terme générique avec des synonymes
+    for (final entry in _ingredientSynonyms.entries) {
+      final genericTerm = entry.key;
+      final synonyms = entry.value;
+
+      // Si la query contient le terme générique (ex: "pate")
+      if (normalizedQuery.contains(genericTerm)) {
+        // Vérifier si l'ingrédient est un des synonymes (ex: "spaghetti")
+        for (final synonym in synonyms) {
+          if (normalizedIngredient.contains(synonym)) {
+            return true;
+          }
+        }
+      }
+    }
+
+    return false;
+  }
+
   // Helper pour vérifier si la recette correspond aux filtres
   bool matchesFilters({
     String? searchQuery,
     Map<String, Set<String>>? filters,
   }) {
-    // Recherche par nom
+    // Recherche par nom, tags ET ingrédients (avec synonymes)
     if (searchQuery != null && searchQuery.isNotEmpty) {
-      if (!name.toLowerCase().contains(searchQuery.toLowerCase())) {
+      final query = _normalizeString(searchQuery);
+
+      // Chercher dans le nom
+      final nameMatch = _normalizeString(name).contains(query);
+
+      // Chercher dans les tags
+      final tagMatch = tags.any((tag) => _normalizeString(tag).contains(query));
+
+      // Chercher dans les noms d'ingrédients (avec support des synonymes)
+      final ingredientMatch = ingredientNames.any((ing) => _matchesIngredientWithSynonyms(searchQuery, ing));
+
+      // Si aucun match trouvé, exclure la recette
+      if (!nameMatch && !tagMatch && !ingredientMatch) {
         return false;
       }
     }
