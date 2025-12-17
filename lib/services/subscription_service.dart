@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/subscription_models.dart';
 import '../config/env_config.dart';
+import '../config/subscription_config.dart';
 
 /// Service de gestion des abonnements
 class SubscriptionService extends ChangeNotifier {
@@ -235,7 +236,7 @@ class SubscriptionService extends ChangeNotifier {
 
   /// Vérifier les limites quotidiennes (ex: scans IA)
   Future<bool> canUseDailyLimitedFeature(String featureName, int limit) async {
-    if (isPremium) return true; // Premium = illimité
+    if (isPremium) return true; // Premium = illimité (pour features non-IA)
 
     final prefs = await SharedPreferences.getInstance();
     final userId = _supabase.auth.currentUser?.id ?? 'anonymous';
@@ -252,9 +253,66 @@ class SubscriptionService extends ChangeNotifier {
     return true;
   }
 
+  /// Vérifier si l'utilisateur peut utiliser le scanner IA (limite même pour Premium)
+  Future<bool> canUseAiScan() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userId = _supabase.auth.currentUser?.id ?? 'anonymous';
+    final today = DateTime.now().toIso8601String().substring(0, 10);
+    final key = 'daily_ai_scans_${userId}_$today';
+
+    final currentCount = prefs.getInt(key) ?? 0;
+    final limit = isPremium
+        ? SubscriptionConfig.premiumDailyAiScansLimit
+        : SubscriptionConfig.freeDailyAiScansLimit;
+
+    // Gratuit = 0 scans autorisés (doit passer par trial/paywall)
+    if (!isPremium && limit == 0) {
+      debugPrint('⚠️ AI scan not available for free users');
+      return false;
+    }
+
+    if (currentCount >= limit) {
+      debugPrint('⚠️ Daily AI scan limit reached ($currentCount/$limit)');
+      return false;
+    }
+
+    return true;
+  }
+
+  /// Incrémenter le compteur de scans IA (même pour Premium)
+  Future<void> incrementAiScanUsage() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userId = _supabase.auth.currentUser?.id ?? 'anonymous';
+    final today = DateTime.now().toIso8601String().substring(0, 10);
+    final key = 'daily_ai_scans_${userId}_$today';
+
+    final currentCount = prefs.getInt(key) ?? 0;
+    await prefs.setInt(key, currentCount + 1);
+
+    final limit = isPremium
+        ? SubscriptionConfig.premiumDailyAiScansLimit
+        : SubscriptionConfig.freeDailyAiScansLimit;
+    debugPrint('📊 AI scan usage: ${currentCount + 1}/$limit');
+  }
+
+  /// Obtenir le nombre de scans IA restants aujourd'hui
+  Future<int> getRemainingAiScans() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userId = _supabase.auth.currentUser?.id ?? 'anonymous';
+    final today = DateTime.now().toIso8601String().substring(0, 10);
+    final key = 'daily_ai_scans_${userId}_$today';
+
+    final currentCount = prefs.getInt(key) ?? 0;
+    final limit = isPremium
+        ? SubscriptionConfig.premiumDailyAiScansLimit
+        : SubscriptionConfig.freeDailyAiScansLimit;
+
+    return (limit - currentCount).clamp(0, limit);
+  }
+
   /// Incrémenter le compteur d'utilisation quotidien
   Future<void> incrementDailyUsage(String featureName) async {
-    if (isPremium) return; // Premium = pas de comptage
+    if (isPremium) return; // Premium = pas de comptage (pour features non-IA)
 
     final prefs = await SharedPreferences.getInstance();
     final userId = _supabase.auth.currentUser?.id ?? 'anonymous';

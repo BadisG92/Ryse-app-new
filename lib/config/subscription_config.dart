@@ -102,6 +102,9 @@ class SubscriptionConfig {
   /// Limite de scans IA par jour en gratuit (0 = désactivé)
   static const int freeDailyAiScansLimit = 0;
 
+  /// Limite de scans IA par jour en Premium
+  static const int premiumDailyAiScansLimit = 10;
+
   /// Limite d'analyses nutrition IA en gratuit (0 = désactivé)
   static const int freeDailyNutritionAnalysisLimit = 0;
 

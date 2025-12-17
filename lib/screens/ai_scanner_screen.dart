@@ -21,6 +21,7 @@ import '../services/subscription_service.dart';
 import '../services/paywall_service.dart';
 import '../services/feature_trial_service.dart';
 import '../components/nutrition_journal_hybrid.dart';
+import '../config/subscription_config.dart';
 import 'dart:io';
 import 'dart:typed_data';
 import 'dart:math';
@@ -772,6 +773,26 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
 
   Future<void> _startAnalysis() async {
     try {
+      // Vérifier la limite de scans IA (même pour Premium)
+      final canScan = await SubscriptionService.instance.canUseAiScan();
+      if (!canScan) {
+        final remaining = await SubscriptionService.instance.getRemainingAiScans();
+        final limit = SubscriptionService.instance.isPremium
+            ? SubscriptionConfig.premiumDailyAiScansLimit
+            : SubscriptionConfig.freeDailyAiScansLimit;
+
+        if (mounted) {
+          setState(() {
+            _isAnalyzing = false;
+            _hasResult = false;
+            _errorMessage = LocalizationService.instance.currentLanguageCode == 'fr'
+                ? 'Limite de $limit scans IA atteinte pour aujourd\'hui. Réessayez demain !'
+                : 'Daily limit of $limit AI scans reached. Try again tomorrow!';
+          });
+        }
+        return;
+      }
+
       final file = File(widget.imagePath);
 
       // Appeler le service Gemini avec la note utilisateur
@@ -792,6 +813,9 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
             _mealNameController.text = result.mealName ?? 'coach_detected_dish'.tr(LocalizationService.instance.currentLanguageCode);
             if (kDebugMode) debugPrint('🔥 [FLUX AI] ✅ Analyse terminée avec succès');
 
+            // ✅ Incrémenter le compteur de scans IA (même pour Premium)
+            SubscriptionService.instance.incrementAiScanUsage();
+
             // ✅ Marquer le trial comme utilisé UNIQUEMENT si l'analyse a réussi
             if (!SubscriptionService.instance.isPremium) {
               FeatureTrialService.instance.markFeatureAsUsed(
@@ -803,7 +827,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
             _hasResult = false;
             _errorMessage = result.error ?? 'error_no_food_detected'.tr(LocalizationService.instance.currentLanguageCode);
             if (kDebugMode) debugPrint('🔥 [FLUX AI] ❌ Erreur d\'analyse: ${result.error}');
-            // ⚠️ NE PAS marquer le trial comme utilisé si l'analyse échoue
+            // ⚠️ NE PAS incrémenter le compteur si l'analyse échoue
           }
         });
       }
