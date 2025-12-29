@@ -94,6 +94,10 @@ class _NutritionRecipesHybridState extends State<NutritionRecipesHybrid> {
       selectedFilters: hasAdvancedFilters ? selectedAdvancedFilters : null,
     );
 
+    // Détecter si le clavier est visible pour ajouter un padding supplémentaire
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+    final isKeyboardVisible = keyboardHeight > 0;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       child: Column(
@@ -113,7 +117,7 @@ class _NutritionRecipesHybridState extends State<NutritionRecipesHybrid> {
                     ),
                     const SizedBox(height: 24),
                   ],
-                  
+
                   // Barre de recherche avec icône de filtre
                   RecipeSearchSection(
                     searchController: _searchController,
@@ -125,25 +129,25 @@ class _NutritionRecipesHybridState extends State<NutritionRecipesHybrid> {
                       });
                     },
                   ),
-                  
+
                   // Filtres actifs (espacement réduit)
                   ActiveFiltersSection(
                     activeFilters: RecipeFilters.getActiveFilterTags(selectedAdvancedFilters),
                     onRemoveFilter: _removeSpecificFilter,
                   ),
-                  
+
                   // Espacement conditionnel après les filtres
                   SizedBox(height: hasActiveFilter ? 16 : 24),
-                  
+
                   // Liste verticale
                   RecipeListSection(
                     recipes: filteredRecipes,
                     hasActiveFilter: hasActiveFilter,
                     onRecipeTap: _onRecipeTap,
                   ),
-                  
-                  // Padding bottom pour éviter la coupure
-                  const SizedBox(height: 100),
+
+                  // Padding bottom pour éviter la coupure (+ hauteur clavier si visible)
+                  SizedBox(height: isKeyboardVisible ? keyboardHeight + 20 : 100),
                 ],
               ),
             ),

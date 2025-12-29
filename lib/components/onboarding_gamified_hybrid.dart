@@ -1877,40 +1877,65 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
       if (weightValue > 0) {
         debugPrint('Création de l\'entrée dans user_profile_history...');
 
-        // D'abord, désactiver tous les profils "current" existants pour cet utilisateur
-        try {
-          await supabase
-              .from('user_profile_history')
-              .update({'is_current': false})
-              .eq('user_id', userId)
-              .eq('is_current', true);
-          debugPrint('✅ Anciens profils current désactivés');
-        } catch (e) {
-          debugPrint('⚠️ Erreur désactivation anciens profils (peut-être aucun): $e');
-        }
+        // Vérifier s'il existe déjà un profil current pour cet utilisateur
+        final existingProfile = await supabase
+            .from('user_profile_history')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('is_current', true)
+            .maybeSingle();
 
-        // Ensuite, créer le nouveau profil current (valeurs en métrique)
-        final historyResponse = await supabase.from('user_profile_history').insert({
-          'user_id': userId,
-          'gender': userData['gender'],
-          'birth_date': birthDate,
-          'age': int.tryParse(userData['age'] ?? '0'),
-          'height': heightValue,
-          'weight': weightValue,
-          'activity_level': userData['activity'],
-          'fitness_goal': userData['goal'],
-          'dietary_restrictions': userData['restrictions'],
-          'daily_calories': calories,
-          'daily_protein': macros['protein'],
-          'daily_carbs': macros['carbs'],
-          'daily_fat': macros['fat'],
-          'bmr': bmr,
-          'valid_from': DateTime.now().toIso8601String(),
-          'is_current': true,
-          'change_source': 'onboarding_completion',
-          'weight_modified': true,
-        }).select();
-        debugPrint('✅ Réponse Supabase INSERT history: $historyResponse');
+        if (existingProfile != null) {
+          // Mettre à jour le profil existant au lieu d'en créer un nouveau
+          debugPrint('🔄 Profil current existant trouvé, mise à jour...');
+          final historyResponse = await supabase
+              .from('user_profile_history')
+              .update({
+                'gender': userData['gender'],
+                'birth_date': birthDate,
+                'age': int.tryParse(userData['age'] ?? '0'),
+                'height': heightValue,
+                'weight': weightValue,
+                'activity_level': userData['activity'],
+                'fitness_goal': userData['goal'],
+                'dietary_restrictions': userData['restrictions'],
+                'daily_calories': calories,
+                'daily_protein': macros['protein'],
+                'daily_carbs': macros['carbs'],
+                'daily_fat': macros['fat'],
+                'bmr': bmr,
+                'valid_from': DateTime.now().toIso8601String(),
+                'change_source': 'onboarding_completion',
+                'weight_modified': true,
+              })
+              .eq('id', existingProfile['id'])
+              .select();
+          debugPrint('✅ Réponse Supabase UPDATE history: $historyResponse');
+        } else {
+          // Créer un nouveau profil current
+          debugPrint('➕ Aucun profil current, création...');
+          final historyResponse = await supabase.from('user_profile_history').insert({
+            'user_id': userId,
+            'gender': userData['gender'],
+            'birth_date': birthDate,
+            'age': int.tryParse(userData['age'] ?? '0'),
+            'height': heightValue,
+            'weight': weightValue,
+            'activity_level': userData['activity'],
+            'fitness_goal': userData['goal'],
+            'dietary_restrictions': userData['restrictions'],
+            'daily_calories': calories,
+            'daily_protein': macros['protein'],
+            'daily_carbs': macros['carbs'],
+            'daily_fat': macros['fat'],
+            'bmr': bmr,
+            'valid_from': DateTime.now().toIso8601String(),
+            'is_current': true,
+            'change_source': 'onboarding_completion',
+            'weight_modified': true,
+          }).select();
+          debugPrint('✅ Réponse Supabase INSERT history: $historyResponse');
+        }
       }
 
       // Aussi sauvegarder en local pour la compatibilité
@@ -2522,6 +2547,66 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                             style: TextStyle(
                               fontSize: 13,
                               color: const Color(0xFF1A1A1A).withOpacity(0.85),
+                              fontWeight: FontWeight.w500,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+
+          // Recommandation de séances de sport par semaine
+          Builder(
+            builder: (context) {
+              final profile = UserProfile.fromMap(userData);
+              final languageCode = Provider.of<LocalizationService>(context, listen: false).currentLanguageCode;
+              final workoutText = MetabolicCalculations.getWorkoutRecommendationText(
+                profile,
+                isFrench: languageCode == 'fr',
+              );
+
+              if (workoutText.isEmpty) {
+                return const SizedBox.shrink();
+              }
+
+              return Column(
+                children: [
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          const Color(0xFF10B981).withOpacity(0.08),
+                          const Color(0xFF059669).withOpacity(0.05),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: const Color(0xFF10B981).withOpacity(0.15),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          LucideIcons.dumbbell,
+                          size: 16,
+                          color: const Color(0xFF10B981).withOpacity(0.8),
+                        ),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            workoutText,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: const Color(0xFF065F46).withOpacity(0.9),
                               fontWeight: FontWeight.w500,
                             ),
                             textAlign: TextAlign.center,

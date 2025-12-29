@@ -11,6 +11,8 @@ enum NotificationType {
   weeklyRecap,       // Résumé hebdomadaire
   milestone,         // Célébrations de jalons
   reengagement,      // Réengagement utilisateurs inactifs
+  closeToGoal,       // Proche de l'objectif
+  nothingLogged,     // Rien logué aujourd'hui
 }
 
 /// Type de repas pour les rappels

@@ -46,6 +46,32 @@ class _RyzeAppState extends State<RyzeApp> {
 
     if (!mounted) return;
 
+    // Timeout global de 10 secondes pour éviter écran blanc infini
+    try {
+      await _determineInitialRouteInternal().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          debugPrint('⚠️ Timeout routing - fallback vers LoginScreen');
+          if (mounted) {
+            setState(() {
+              _targetScreen = const LoginScreen();
+              _isLoading = false;
+            });
+          }
+        },
+      );
+    } catch (e) {
+      debugPrint('❌ Erreur critique routing: $e');
+      if (mounted) {
+        setState(() {
+          _targetScreen = const LoginScreen();
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _determineInitialRouteInternal() async {
     try {
       final supabase = Supabase.instance.client;
       final session = supabase.auth.currentSession;
@@ -59,6 +85,13 @@ class _RyzeAppState extends State<RyzeApp> {
 
         // Vérifier si l'utilisateur a un nom complet
         final authService = Provider.of<AuthService>(context, listen: false);
+
+        // S'assurer que l'AuthService est initialisé
+        if (authService.currentUser == null) {
+          debugPrint('⏳ AuthService non initialisé, initialisation...');
+          await authService.initialize();
+        }
+
         final hasCompleteName = authService.hasCompleteName;
 
         // Si pas de nom complet → écran de complétion de profil
@@ -304,19 +337,18 @@ class _RyzeAppState extends State<RyzeApp> {
   @override
   Widget build(BuildContext context) {
     // Écran de chargement pendant la détermination du routing
-    // IMPORTANT: On utilise un Container transparent pour que le SplashScreen
-    // de main.dart continue d'être visible pendant le chargement
     if (_isLoading) {
       return const Scaffold(
-        backgroundColor: Color(0xFFF8FAFC), // Même couleur que le splash
-        body: SizedBox.shrink(), // Widget vide pour éviter le flash
+        backgroundColor: Color(0xFFF8FAFC),
+        body: Center(
+          child: CircularProgressIndicator(
+            color: Color(0xFF0B132B),
+          ),
+        ),
       );
     }
 
-    // Afficher l'écran cible déterminé
-    return _targetScreen ?? const Scaffold(
-      backgroundColor: Color(0xFFF8FAFC),
-      body: SizedBox.shrink(),
-    );
+    // Afficher l'écran cible déterminé, ou LoginScreen en fallback
+    return _targetScreen ?? const LoginScreen();
   }
 }

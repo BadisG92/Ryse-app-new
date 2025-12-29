@@ -372,6 +372,154 @@ class MetabolicCalculations {
         };
     }
   }
+
+  /// Calcule le nombre de séances de sport recommandées par semaine
+  /// Basé sur l'objectif et le niveau d'activité actuel
+  static Map<String, dynamic> getWorkoutRecommendation(UserProfile profile) {
+    if (profile.goal.isEmpty || profile.activity.isEmpty) {
+      return {'sessions': 0, 'text': ''};
+    }
+
+    int minSessions;
+    int maxSessions;
+    String type; // 'strength', 'cardio', 'mixed'
+
+    // Recommandation basée sur l'objectif
+    switch (profile.goal) {
+      case 'lose':
+        // Perte de poids : mix cardio + musculation
+        switch (profile.activity) {
+          case 'low':
+            minSessions = 3;
+            maxSessions = 4;
+            break;
+          case 'light':
+            minSessions = 3;
+            maxSessions = 4;
+            break;
+          case 'moderate':
+            minSessions = 4;
+            maxSessions = 5;
+            break;
+          case 'high':
+            minSessions = 4;
+            maxSessions = 5;
+            break;
+          default:
+            minSessions = 3;
+            maxSessions = 4;
+        }
+        type = 'mixed';
+        break;
+
+      case 'gain':
+        // Prise de masse : musculation prioritaire
+        switch (profile.activity) {
+          case 'low':
+            minSessions = 3;
+            maxSessions = 4;
+            break;
+          case 'light':
+            minSessions = 3;
+            maxSessions = 4;
+            break;
+          case 'moderate':
+            minSessions = 4;
+            maxSessions = 5;
+            break;
+          case 'high':
+            minSessions = 5;
+            maxSessions = 6;
+            break;
+          default:
+            minSessions = 3;
+            maxSessions = 4;
+        }
+        type = 'strength';
+        break;
+
+      case 'maintain':
+      default:
+        // Maintien : équilibré
+        switch (profile.activity) {
+          case 'low':
+            minSessions = 2;
+            maxSessions = 3;
+            break;
+          case 'light':
+            minSessions = 2;
+            maxSessions = 3;
+            break;
+          case 'moderate':
+            minSessions = 3;
+            maxSessions = 4;
+            break;
+          case 'high':
+            minSessions = 3;
+            maxSessions = 4;
+            break;
+          default:
+            minSessions = 2;
+            maxSessions = 3;
+        }
+        type = 'mixed';
+    }
+
+    return {
+      'minSessions': minSessions,
+      'maxSessions': maxSessions,
+      'type': type,
+    };
+  }
+
+  /// Génère le texte de recommandation de séances pour l'UI
+  static String getWorkoutRecommendationText(UserProfile profile, {required bool isFrench}) {
+    final recommendation = getWorkoutRecommendation(profile);
+
+    if (recommendation['minSessions'] == 0) {
+      return '';
+    }
+
+    final min = recommendation['minSessions'] as int;
+    final max = recommendation['maxSessions'] as int;
+    final type = recommendation['type'] as String;
+
+    String sessionText;
+    if (min == max) {
+      sessionText = '$min';
+    } else {
+      sessionText = '$min-$max';
+    }
+
+    String typeText;
+    if (isFrench) {
+      switch (type) {
+        case 'strength':
+          typeText = 'musculation';
+          break;
+        case 'cardio':
+          typeText = 'cardio';
+          break;
+        case 'mixed':
+        default:
+          typeText = 'sport';
+      }
+      return '$sessionText séances de $typeText / semaine recommandées';
+    } else {
+      switch (type) {
+        case 'strength':
+          typeText = 'strength training';
+          break;
+        case 'cardio':
+          typeText = 'cardio';
+          break;
+        case 'mixed':
+        default:
+          typeText = 'workout';
+      }
+      return '$sessionText $typeText sessions / week recommended';
+    }
+  }
 }
 
 class OnboardingStep {

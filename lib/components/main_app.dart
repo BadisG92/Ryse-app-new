@@ -54,7 +54,11 @@ class _MainAppState extends State<MainApp> {
 
   @override
   Widget build(BuildContext context) {
+    // Masquer la barre de navigation quand le clavier est visible
+    final isKeyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
+
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       body: Stack(
         children: [
           Container(
@@ -70,18 +74,20 @@ class _MainAppState extends State<MainApp> {
             ),
           ),
           _renderContent(),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: BottomNavigation(
-              activeTab: _activeTab,
-              onTabChange: _onTabChange,
-              nutritionTabKey: _nutritionTabKey,
-              sportTabKey: _sportTabKey,
-              progressTabKey: _progressTabKey,
+          // Masquer la barre de navigation quand le clavier est ouvert
+          if (!isKeyboardVisible)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: BottomNavigation(
+                activeTab: _activeTab,
+                onTabChange: _onTabChange,
+                nutritionTabKey: _nutritionTabKey,
+                sportTabKey: _sportTabKey,
+                progressTabKey: _progressTabKey,
+              ),
             ),
-          ),
         ],
       ),
     );

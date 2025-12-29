@@ -254,6 +254,7 @@ class SubscriptionService extends ChangeNotifier {
   }
 
   /// Vérifier si l'utilisateur peut utiliser le scanner IA (limite même pour Premium)
+  /// Pour les utilisateurs gratuits, vérifie aussi le trial gratuit
   Future<bool> canUseAiScan() async {
     final prefs = await SharedPreferences.getInstance();
     final userId = _supabase.auth.currentUser?.id ?? 'anonymous';
@@ -261,22 +262,29 @@ class SubscriptionService extends ChangeNotifier {
     final key = 'daily_ai_scans_${userId}_$today';
 
     final currentCount = prefs.getInt(key) ?? 0;
-    final limit = isPremium
-        ? SubscriptionConfig.premiumDailyAiScansLimit
-        : SubscriptionConfig.freeDailyAiScansLimit;
 
-    // Gratuit = 0 scans autorisés (doit passer par trial/paywall)
-    if (!isPremium && limit == 0) {
-      debugPrint('⚠️ AI scan not available for free users');
-      return false;
+    // Pour Premium : vérifier limite journalière
+    if (isPremium) {
+      final limit = SubscriptionConfig.premiumDailyAiScansLimit;
+      if (currentCount >= limit) {
+        debugPrint('⚠️ Daily AI scan limit reached for Premium ($currentCount/$limit)');
+        return false;
+      }
+      return true;
     }
 
-    if (currentCount >= limit) {
-      debugPrint('⚠️ Daily AI scan limit reached ($currentCount/$limit)');
-      return false;
+    // Pour Free : vérifier si trial non utilisé (1 scan gratuit à vie)
+    // Le trial est géré par PaywallService.canUseFeature() en amont
+    // Cette fonction est appelée APRÈS que le paywall/trial ait été vérifié
+    // Donc si on arrive ici en tant que free user, c'est que le trial est valide
+    // On vérifie juste qu'il n'a pas déjà scanné aujourd'hui (pour éviter abus)
+    if (currentCount == 0) {
+      debugPrint('✅ Free user first scan of the day (trial flow)');
+      return true;
     }
 
-    return true;
+    debugPrint('⚠️ Free user already scanned today');
+    return false;
   }
 
   /// Incrémenter le compteur de scans IA (même pour Premium)
