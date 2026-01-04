@@ -1,0 +1,617 @@
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:provider/provider.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
+import '../models/coach_chat_models.dart';
+import '../services/coach_chat_service.dart';
+import '../services/localization_service.dart';
+import '../services/subscription_service.dart';
+import '../services/translations.dart';
+import '../components/ui/coach_ryze_avatar.dart';
+import '../components/ui/chat_message_bubble.dart';
+
+/// Main chat screen for conversation with Coach Ryze
+class CoachChatScreen extends StatefulWidget {
+  final CoachConversation conversation;
+
+  const CoachChatScreen({
+    super.key,
+    required this.conversation,
+  });
+
+  @override
+  State<CoachChatScreen> createState() => _CoachChatScreenState();
+}
+
+class _CoachChatScreenState extends State<CoachChatScreen> {
+  final TextEditingController _textController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+  final FocusNode _focusNode = FocusNode();
+
+  List<CoachMessage> _messages = [];
+  bool _isLoading = false;
+  bool _isSending = false;
+  String _streamingResponse = '';
+  CoachRateLimitStatus? _rateLimitStatus;
+
+  // Speech to text
+  final stt.SpeechToText _speech = stt.SpeechToText();
+  bool _isListening = false;
+  bool _speechAvailable = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadConversation();
+    _initSpeech();
+  }
+
+  @override
+  void dispose() {
+    _textController.dispose();
+    _scrollController.dispose();
+    _focusNode.dispose();
+    _speech.stop();
+    super.dispose();
+  }
+
+  Future<void> _initSpeech() async {
+    try {
+      _speechAvailable = await _speech.initialize(
+        onStatus: (status) {
+          if (status == 'done' || status == 'notListening') {
+            if (mounted) setState(() => _isListening = false);
+          }
+        },
+        onError: (error) {
+          if (mounted) setState(() => _isListening = false);
+        },
+      );
+    } catch (e) {
+      _speechAvailable = false;
+    }
+  }
+
+  Future<void> _loadConversation() async {
+    setState(() => _isLoading = true);
+
+    try {
+      await CoachChatService.instance.loadConversation(widget.conversation.id);
+      final rateLimitStatus = await CoachChatService.instance.getRateLimitStatus();
+
+      if (mounted) {
+        setState(() {
+          _messages = List.from(CoachChatService.instance.currentMessages);
+          _rateLimitStatus = rateLimitStatus;
+          _isLoading = false;
+        });
+        _scrollToBottom();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  Future<void> _sendMessage() async {
+    final text = _textController.text.trim();
+    if (text.isEmpty || _isSending) return;
+
+    // Check rate limit
+    if (_rateLimitStatus != null && !_rateLimitStatus!.canSendMessage) {
+      _showUpgradeDialog();
+      return;
+    }
+
+    setState(() {
+      _isSending = true;
+      _textController.clear();
+      _streamingResponse = '';
+    });
+
+    // Add temporary user message
+    final tempUserMessage = CoachMessage.temporary(
+      conversationId: widget.conversation.id,
+      userId: '',
+      content: text,
+    );
+    setState(() {
+      _messages.add(tempUserMessage);
+    });
+    _scrollToBottom();
+
+    try {
+      // Use streaming for better UX
+      final stream = CoachChatService.instance.streamMessage(text);
+
+      // Add streaming placeholder
+      final streamingMessage = CoachMessage.streaming(
+        conversationId: widget.conversation.id,
+        userId: '',
+      );
+      setState(() {
+        _messages.add(streamingMessage);
+      });
+
+      // Buffer to accumulate chunks and display with typing effect
+      String fullResponse = '';
+      String displayedText = '';
+
+      await for (final chunk in stream) {
+        if (mounted) {
+          fullResponse += chunk;
+
+          // Typing effect: display characters progressively
+          while (displayedText.length < fullResponse.length && mounted) {
+            // Add characters in small batches for smoother effect
+            final charsToAdd = (fullResponse.length - displayedText.length).clamp(1, 3);
+            displayedText = fullResponse.substring(0, displayedText.length + charsToAdd);
+
+            setState(() {
+              _streamingResponse = displayedText;
+              if (_messages.isNotEmpty) {
+                final lastIndex = _messages.length - 1;
+                _messages[lastIndex] = _messages[lastIndex].copyWith(
+                  content: displayedText,
+                );
+              }
+            });
+
+            // Small delay for typing effect (15ms per batch of chars)
+            await Future.delayed(const Duration(milliseconds: 15));
+          }
+
+          _scrollToBottom();
+        }
+      }
+
+      // Update rate limit status without reloading messages
+      final rateLimitStatus = await CoachChatService.instance.getRateLimitStatus();
+      if (mounted) {
+        setState(() {
+          _rateLimitStatus = rateLimitStatus;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur: ${e.toString()}')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSending = false;
+          _streamingResponse = '';
+        });
+      }
+    }
+  }
+
+  void _startListening() async {
+    if (!_speechAvailable || _isListening) return;
+
+    final locService = Provider.of<LocalizationService>(context, listen: false);
+    final localeId = locService.currentLanguageCode == 'fr' ? 'fr_FR' : 'en_US';
+
+    setState(() => _isListening = true);
+
+    await _speech.listen(
+      onResult: (result) {
+        if (mounted) {
+          setState(() {
+            _textController.text = result.recognizedWords;
+          });
+        }
+      },
+      localeId: localeId,
+      listenFor: const Duration(seconds: 30),
+      pauseFor: const Duration(seconds: 3),
+    );
+  }
+
+  void _stopListening() async {
+    await _speech.stop();
+    setState(() => _isListening = false);
+  }
+
+  void _showUpgradeDialog() {
+    final locService = Provider.of<LocalizationService>(context, listen: false);
+    final lang = locService.currentLanguageCode;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('coach_chat_limit_reached'.tr(lang)),
+        content: Text('coach_chat_limit_reached_message'.tr(lang)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('coach_chat_later'.tr(lang)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // TODO: Navigate to paywall
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0B132B),
+            ),
+            child: Text(
+              'coach_chat_upgrade_to_premium'.tr(lang),
+              style: const TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      appBar: _buildAppBar(),
+      body: Column(
+        children: [
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _buildMessagesList(),
+          ),
+          _buildInputBar(),
+        ],
+      ),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar() {
+    final locService = Provider.of<LocalizationService>(context, listen: false);
+    final lang = locService.currentLanguageCode;
+
+    return AppBar(
+      backgroundColor: Colors.white,
+      elevation: 0,
+      leading: IconButton(
+        icon: const Icon(LucideIcons.arrowLeft, color: Color(0xFF0B132B)),
+        onPressed: () => Navigator.pop(context),
+      ),
+      title: Row(
+        children: [
+          const CoachRyzeAvatar(
+            type: CoachRyzeAvatarType.nutritionChat,
+            size: CoachRyzeAvatarSize.small,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'coach_ryze'.tr(lang),
+                  style: const TextStyle(
+                    color: Color(0xFF0B132B),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (_isSending)
+                  Text(
+                    'coach_chat_typing'.tr(lang),
+                    style: const TextStyle(
+                      color: Color(0xFF64748B),
+                      fontSize: 12,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        if (_rateLimitStatus != null && !_rateLimitStatus!.isPremium)
+          Container(
+            margin: const EdgeInsets.only(right: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: _rateLimitStatus!.canSendMessage
+                  ? const Color(0xFFF1F5F9)
+                  : Colors.red.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              _rateLimitStatus!.displayText,
+              style: TextStyle(
+                color: _rateLimitStatus!.canSendMessage
+                    ? const Color(0xFF64748B)
+                    : Colors.red,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  /// Get day label for date separator
+  String _getDayLabel(DateTime date, String lang) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final messageDay = DateTime(date.year, date.month, date.day);
+
+    if (messageDay == today) {
+      return lang == 'fr' ? "Aujourd'hui" : 'Today';
+    } else if (messageDay == yesterday) {
+      return lang == 'fr' ? 'Hier' : 'Yesterday';
+    } else {
+      // Format: "Lundi 6 jan" or "Monday, Jan 6"
+      if (lang == 'fr') {
+        return DateFormat('EEEE d MMM', 'fr_FR').format(date);
+      } else {
+        return DateFormat('EEEE, MMM d', 'en_US').format(date);
+      }
+    }
+  }
+
+  /// Check if we need a day separator before this message
+  bool _needsDaySeparator(int index) {
+    if (index == 0) return true;
+
+    final currentMessage = _messages[index];
+    final previousMessage = _messages[index - 1];
+
+    final currentDay = DateTime(
+      currentMessage.createdAt.year,
+      currentMessage.createdAt.month,
+      currentMessage.createdAt.day,
+    );
+    final previousDay = DateTime(
+      previousMessage.createdAt.year,
+      previousMessage.createdAt.month,
+      previousMessage.createdAt.day,
+    );
+
+    return currentDay != previousDay;
+  }
+
+  Widget _buildDaySeparator(DateTime date, String lang) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Row(
+        children: [
+          const Expanded(child: Divider(color: Color(0xFFE2E8F0))),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text(
+              _getDayLabel(date, lang),
+              style: const TextStyle(
+                color: Color(0xFF94A3B8),
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          const Expanded(child: Divider(color: Color(0xFFE2E8F0))),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMessagesList() {
+    if (_messages.isEmpty) {
+      return _buildWelcomeMessage();
+    }
+
+    final locService = Provider.of<LocalizationService>(context, listen: false);
+    final lang = locService.currentLanguageCode;
+
+    return ListView.builder(
+      controller: _scrollController,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      itemCount: _messages.length,
+      itemBuilder: (context, index) {
+        final message = _messages[index];
+        final needsSeparator = _needsDaySeparator(index);
+
+        return Column(
+          children: [
+            if (needsSeparator) _buildDaySeparator(message.createdAt, lang),
+            ChatMessageBubble(
+              message: message,
+              isStreaming: _isSending && index == _messages.length - 1 && message.isAssistant,
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildWelcomeMessage() {
+    final locService = Provider.of<LocalizationService>(context);
+    final lang = locService.currentLanguageCode;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const SizedBox(height: 40),
+          const CoachRyzeAvatar(
+            type: CoachRyzeAvatarType.nutritionChat,
+            size: CoachRyzeAvatarSize.xlarge,
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'coach_chat_how_can_i_help'.tr(lang),
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF0B132B),
+            ),
+          ),
+          const SizedBox(height: 32),
+          _buildSuggestionChips(lang),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSuggestionChips(String lang) {
+    final suggestions = [
+      'coach_chat_suggestion_dinner'.tr(lang),
+      'coach_chat_suggestion_leg_workout'.tr(lang),
+      'coach_chat_suggestion_macros'.tr(lang),
+      'coach_chat_suggestion_snack'.tr(lang),
+    ];
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      alignment: WrapAlignment.center,
+      children: suggestions.map((text) {
+        return InkWell(
+          onTap: () {
+            _textController.text = text;
+            _sendMessage();
+          },
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: Text(
+              text,
+              style: const TextStyle(
+                color: Color(0xFF0B132B),
+                fontSize: 14,
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildInputBar() {
+    final locService = Provider.of<LocalizationService>(context, listen: false);
+    final lang = locService.currentLanguageCode;
+
+    return Container(
+      padding: EdgeInsets.only(
+        left: 16,
+        right: 16,
+        top: 12,
+        bottom: MediaQuery.of(context).padding.bottom + 12,
+      ),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          top: BorderSide(color: Color(0xFFE2E8F0)),
+        ),
+      ),
+      child: Row(
+        children: [
+          // Voice button
+          if (_speechAvailable)
+            GestureDetector(
+              onTap: _isListening ? _stopListening : _startListening,
+              child: Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: _isListening
+                      ? Colors.red.withOpacity(0.1)
+                      : const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(22),
+                ),
+                child: Icon(
+                  _isListening ? LucideIcons.micOff : LucideIcons.mic,
+                  size: 22,
+                  color: _isListening ? Colors.red : const Color(0xFF64748B),
+                ),
+              ),
+            ),
+          if (_speechAvailable) const SizedBox(width: 12),
+
+          // Text input
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: TextField(
+                controller: _textController,
+                focusNode: _focusNode,
+                maxLines: 4,
+                minLines: 1,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: InputDecoration(
+                  hintText: _isListening
+                      ? 'coach_chat_listening'.tr(lang)
+                      : 'coach_chat_message_placeholder'.tr(lang),
+                  hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                ),
+                onSubmitted: (_) => _sendMessage(),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+
+          // Send button
+          GestureDetector(
+            onTap: _isSending ? null : _sendMessage,
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+                ),
+                borderRadius: BorderRadius.circular(22),
+              ),
+              child: _isSending
+                  ? const Padding(
+                      padding: EdgeInsets.all(12),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : const Icon(
+                      LucideIcons.send,
+                      size: 20,
+                      color: Colors.white,
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

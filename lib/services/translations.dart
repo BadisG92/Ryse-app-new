@@ -6251,6 +6251,133 @@ class AppTranslations {
       'fr': 'Erreur lors de l\'envoi du lien',
       'en': 'Error sending reset link',
     },
+
+    // ==================== COACH CHAT ====================
+    'coach_ryze': {
+      'fr': 'Coach Ryze',
+      'en': 'Coach Ryze',
+    },
+    'coach_chat_title': {
+      'fr': 'Coach Ryze',
+      'en': 'Coach Ryze',
+    },
+    'coach_chat_subtitle': {
+      'fr': 'Ton coach fitness & nutrition 24/7',
+      'en': 'Your 24/7 fitness & nutrition coach',
+    },
+    'coach_chat_welcome': {
+      'fr': 'Salut ! Je suis Coach Ryze',
+      'en': 'Hi! I\'m Coach Ryze',
+    },
+    'coach_chat_welcome_subtitle': {
+      'fr': 'Ton coach fitness et nutrition personnel, disponible 24/7. Pose-moi toutes tes questions !',
+      'en': 'Your personal fitness and nutrition coach, available 24/7. Ask me anything!',
+    },
+    'coach_chat_how_can_i_help': {
+      'fr': 'Comment puis-je t\'aider ?',
+      'en': 'How can I help you?',
+    },
+    'coach_chat_start_conversation': {
+      'fr': 'Démarrer une conversation',
+      'en': 'Start a conversation',
+    },
+    'coach_chat_new_conversation': {
+      'fr': 'Nouvelle conversation',
+      'en': 'New conversation',
+    },
+    'coach_chat_message_placeholder': {
+      'fr': 'Message Coach Ryze...',
+      'en': 'Message Coach Ryze...',
+    },
+    'coach_chat_listening': {
+      'fr': 'Écoute...',
+      'en': 'Listening...',
+    },
+    'coach_chat_typing': {
+      'fr': 'En train d\'écrire...',
+      'en': 'Typing...',
+    },
+    'coach_chat_messages': {
+      'fr': 'messages',
+      'en': 'messages',
+    },
+    'coach_chat_free_messages_total': {
+      'fr': '10 messages gratuits',
+      'en': '10 free messages',
+    },
+    'coach_chat_remaining': {
+      'fr': 'restants',
+      'en': 'remaining',
+    },
+    'coach_chat_limit_reached': {
+      'fr': 'Limite atteinte',
+      'en': 'Limit reached',
+    },
+    'coach_chat_limit_reached_message': {
+      'fr': 'Tu as utilisé tes 10 messages gratuits. Passe à Premium pour des conversations illimitées avec Coach Ryze !',
+      'en': 'You\'ve used your 10 free messages. Upgrade to Premium for unlimited conversations with Coach Ryze!',
+    },
+    'coach_chat_upgrade_to_premium': {
+      'fr': 'Passer à Premium',
+      'en': 'Upgrade to Premium',
+    },
+    'coach_chat_later': {
+      'fr': 'Plus tard',
+      'en': 'Later',
+    },
+    'coach_chat_delete_conversation': {
+      'fr': 'Supprimer la conversation ?',
+      'en': 'Delete conversation?',
+    },
+    'coach_chat_delete_irreversible': {
+      'fr': 'Cette action est irréversible.',
+      'en': 'This action cannot be undone.',
+    },
+    'coach_chat_cancel': {
+      'fr': 'Annuler',
+      'en': 'Cancel',
+    },
+    'coach_chat_delete': {
+      'fr': 'Supprimer',
+      'en': 'Delete',
+    },
+    'coach_chat_error': {
+      'fr': 'Erreur',
+      'en': 'Error',
+    },
+    'coach_chat_error_sending': {
+      'fr': 'Erreur lors de l\'envoi du message',
+      'en': 'Error sending message',
+    },
+    'coach_chat_error_loading': {
+      'fr': 'Erreur lors du chargement',
+      'en': 'Error loading',
+    },
+    'coach_chat_retry': {
+      'fr': 'Réessayer',
+      'en': 'Retry',
+    },
+    // Suggestions
+    'coach_chat_suggestion_dinner': {
+      'fr': 'Que manger pour le dîner ?',
+      'en': 'What should I eat for dinner?',
+    },
+    'coach_chat_suggestion_leg_workout': {
+      'fr': 'Un workout pour les jambes ?',
+      'en': 'A leg workout?',
+    },
+    'coach_chat_suggestion_macros': {
+      'fr': 'Comment atteindre mes macros ?',
+      'en': 'How to hit my macros?',
+    },
+    'coach_chat_suggestion_snack': {
+      'fr': 'Idée de snack protéiné',
+      'en': 'Protein snack idea',
+    },
+    'coach_chat_premium_unlimited': {
+      'fr': 'Illimité',
+      'en': 'Unlimited',
+    },
   };
 
   /// Getter public pour accéder aux traductions (utilisé par TranslationChecker)

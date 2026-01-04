@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'dart:ui';
@@ -8,10 +9,12 @@ import '../services/translations.dart';
 class BottomNavigation extends StatelessWidget {
   final String activeTab;
   final Function(String) onTabChange;
+  final VoidCallback? onCoachTap;
 
   // GlobalKeys pour le tutorial (optionnels)
   final GlobalKey? homeTabKey;
   final GlobalKey? nutritionTabKey;
+  final GlobalKey? coachFabKey;
   final GlobalKey? sportTabKey;
   final GlobalKey? progressTabKey;
 
@@ -19,8 +22,10 @@ class BottomNavigation extends StatelessWidget {
     super.key,
     required this.activeTab,
     required this.onTabChange,
+    this.onCoachTap,
     this.homeTabKey,
     this.nutritionTabKey,
+    this.coachFabKey,
     this.sportTabKey,
     this.progressTabKey,
   });
@@ -29,11 +34,16 @@ class BottomNavigation extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<LocalizationService>(
       builder: (context, locService, child) {
-        final tabs = [
-          {'id': 'home', 'label': 'home_tab'.tr(locService.currentLanguageCode), 'icon': LucideIcons.house, 'key': homeTabKey},
-          {'id': 'nutrition', 'label': 'nutrition_tab'.tr(locService.currentLanguageCode), 'icon': LucideIcons.apple, 'key': nutritionTabKey},
-          {'id': 'sport', 'label': 'sport_tab'.tr(locService.currentLanguageCode), 'icon': LucideIcons.dumbbell, 'key': sportTabKey},
-          {'id': 'progress', 'label': 'progress_tab'.tr(locService.currentLanguageCode), 'icon': LucideIcons.trendingUp, 'key': progressTabKey},
+        // Left tabs (Home, Nutrition)
+        final leftTabs = [
+          {'id': 'home', 'icon': LucideIcons.house, 'key': homeTabKey},
+          {'id': 'nutrition', 'icon': LucideIcons.apple, 'key': nutritionTabKey},
+        ];
+
+        // Right tabs (Sport, Progress)
+        final rightTabs = [
+          {'id': 'sport', 'icon': LucideIcons.dumbbell, 'key': sportTabKey},
+          {'id': 'progress', 'icon': LucideIcons.trendingUp, 'key': progressTabKey},
         ];
 
     return Container(
@@ -57,50 +67,108 @@ class BottomNavigation extends StatelessWidget {
             padding: const EdgeInsets.only(left: 8, right: 8, top: 12, bottom: 20),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: tabs.map((tab) {
-                final isActive = activeTab == tab['id'];
-                final tabKey = tab['key'] as GlobalKey?;
+              children: [
+                // Left tabs
+                ...leftTabs.map((tab) => _buildTab(tab, activeTab == tab['id'])),
 
-                return GestureDetector(
-                  onTap: () => onTabChange(tab['id'] as String),
-                  child: Container(
-                    key: tabKey, // Attacher la GlobalKey ici
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      gradient: isActive
-                          ? const LinearGradient(
-                              colors: [
-                                Color(0xFF0B132B),
-                                Color(0xFF1C2951),
-                              ],
-                            )
-                          : null,
-                      color: isActive ? null : const Color(0xFFF1F5F9),
-                      boxShadow: isActive
-                          ? [
-                              BoxShadow(
-                                color: const Color(0xFF0B132B).withOpacity(0.3),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ]
-                          : null,
-                    ),
-                    child: Icon(
-                      tab['icon'] as IconData,
-                      size: 24,
-                      color: isActive ? Colors.white : const Color(0xFF64748B),
-                    ),
-                  ),
-                );
-              }).toList(),
+                // Center FAB - Coach Ryze
+                _buildCoachFab(),
+
+                // Right tabs
+                ...rightTabs.map((tab) => _buildTab(tab, activeTab == tab['id'])),
+              ],
             ),
           ),
         ),
       ),
     );
       },
+    );
+  }
+
+  Widget _buildTab(Map<String, dynamic> tab, bool isActive) {
+    final tabKey = tab['key'] as GlobalKey?;
+
+    return GestureDetector(
+      onTap: () => onTabChange(tab['id'] as String),
+      child: Container(
+        key: tabKey,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          gradient: isActive
+              ? const LinearGradient(
+                  colors: [
+                    Color(0xFF0B132B),
+                    Color(0xFF1C2951),
+                  ],
+                )
+              : null,
+          color: isActive ? null : const Color(0xFFF1F5F9),
+          boxShadow: isActive
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFF0B132B).withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Icon(
+          tab['icon'] as IconData,
+          size: 24,
+          color: isActive ? Colors.white : const Color(0xFF64748B),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCoachFab() {
+    return Transform.translate(
+      offset: const Offset(0, -12), // Raise the FAB higher
+      child: GestureDetector(
+        key: coachFabKey,
+        onTap: onCoachTap,
+        child: Container(
+          width: 60,
+          height: 60,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color(0xFF0B132B),
+                Color(0xFF1C2951),
+              ],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF0B132B).withOpacity(0.4),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Center(
+            child: SvgPicture.asset(
+              'assets/images/logo_seul.svg',
+              width: 36,
+              height: 36,
+              colorFilter: const ColorFilter.mode(
+                Colors.white,
+                BlendMode.srcIn,
+              ),
+              placeholderBuilder: (context) => const Icon(
+                LucideIcons.messageCircle,
+                size: 28,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 } 

@@ -5,6 +5,8 @@ import 'nutrition_section.dart';
 import 'sport_section.dart';
 import 'global_progress_hybrid.dart';
 import 'onboarding_gamified_hybrid.dart';
+import '../screens/coach_chat_screen.dart';
+import '../services/coach_chat_service.dart';
 
 class MainApp extends StatefulWidget {
   const MainApp({super.key});
@@ -25,6 +27,20 @@ class _MainAppState extends State<MainApp> {
     setState(() {
       _activeTab = tab;
     });
+  }
+
+  void _onCoachTap() async {
+    // Get or create the single conversation
+    await CoachChatService.instance.initialize();
+    final conversation = await CoachChatService.instance.getOrCreateConversation();
+
+    if (conversation != null && mounted) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => CoachChatScreen(conversation: conversation),
+        ),
+      );
+    }
   }
 
   Widget _renderContent() {
@@ -83,6 +99,7 @@ class _MainAppState extends State<MainApp> {
               child: BottomNavigation(
                 activeTab: _activeTab,
                 onTabChange: _onTabChange,
+                onCoachTap: _onCoachTap,
                 nutritionTabKey: _nutritionTabKey,
                 sportTabKey: _sportTabKey,
                 progressTabKey: _progressTabKey,
