@@ -80,8 +80,8 @@ dependencies:
   crypto: ^3.0.3
   uuid: ^4.5.1
 
-  # Deep Links for iOS Widgets
-  uni_links: ^0.5.1
+  # Deep Links for iOS/Android Widgets
+  app_links: ^6.4.0
   
   # State Management
   provider: ^6.1.2
@@ -132,6 +132,9 @@ dependencies:
 
   # In-App Review (Apple StoreKit pour demander une note)
   in_app_review: ^2.0.9
+
+  # Home Screen Widgets (Android & iOS)
+  home_widget: ^0.7.0
 
   # Share (partage de contenu)
   share_plus: ^10.1.2

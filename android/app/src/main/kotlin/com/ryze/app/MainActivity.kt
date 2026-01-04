@@ -1,4 +1,4 @@
-package com.example.ryze_app
+package com.ryze.app
 
 import io.flutter.embedding.android.FlutterActivity
 

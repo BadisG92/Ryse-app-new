@@ -23,7 +23,6 @@ import '../services/translations.dart';
 import '../services/global_state_manager.dart'; // NOUVEAU: GlobalStateManager
 import '../services/tutorial_service.dart'; // Tutorial système
 import '../models/nutrition_models.dart' as nutrition_models;
-import '../screens/select_recipe_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

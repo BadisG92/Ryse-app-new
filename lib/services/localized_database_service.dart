@@ -14,12 +14,10 @@ class LocalizedDatabaseService {
   /// [tableName] - nom de la table
   /// [baseColumns] - colonnes de base (non localisées) 
   /// [localizedColumns] - colonnes qui ont des variantes _fr/_en
-  /// [filter] - fonction optionnelle pour ajouter des filtres
   static Future<List<Map<String, dynamic>>> getLocalizedData({
     required String tableName,
     List<String> baseColumns = const [],
     List<String> localizedColumns = const [],
-    PostgrestFilterBuilder Function(PostgrestQueryBuilder)? filter,
   }) async {
     final locService = LocalizationService.instance;
     final suffix = locService.getColumnSuffix();
@@ -32,14 +30,9 @@ class LocalizedDatabaseService {
       allColumns.add('$column$suffix');
     }
     
-    var query = _supabase.from(tableName).select(allColumns.join(','));
+    final response = await _supabase.from(tableName).select(allColumns.join(','));
     
-    // Appliquer le filtre si fourni
-    if (filter != null) {
-      query = filter(query) as PostgrestQueryBuilder;
-    }
-    
-    return await query;
+    return response;
   }
 
   /// Exemple : Récupérer les aliments avec nom et description localisés
@@ -50,30 +43,42 @@ class LocalizedDatabaseService {
     final locService = LocalizationService.instance;
     final suffix = locService.getColumnSuffix();
     
-    var query = _supabase
-        .from('foods')
-        .select('''
-          id,
-          code,
-          name$suffix,
-          description$suffix,
-          calories_per_100g,
-          proteins_per_100g,
-          carbs_per_100g,
-          fats_per_100g,
-          category_id
-        ''');
+    final selectQuery = '''
+      id,
+      code,
+      name$suffix,
+      description$suffix,
+      calories_per_100g,
+      proteins_per_100g,
+      carbs_per_100g,
+      fats_per_100g,
+      category_id
+    ''';
     
     if (searchTerm != null && searchTerm.isNotEmpty) {
       // Rechercher dans la colonne nom appropriée selon la langue
-      query = query.ilike('name$suffix', '%$searchTerm%');
+      if (limit != null) {
+        return await _supabase
+            .from('foods')
+            .select(selectQuery)
+            .ilike('name$suffix', '%$searchTerm%')
+            .limit(limit);
+      } else {
+        return await _supabase
+            .from('foods')
+            .select(selectQuery)
+            .ilike('name$suffix', '%$searchTerm%');
+      }
     }
     
     if (limit != null) {
-      query = query.limit(limit);
+      return await _supabase
+          .from('foods')
+          .select(selectQuery)
+          .limit(limit);
     }
     
-    return await query;
+    return await _supabase.from('foods').select(selectQuery);
   }
 
   /// Exemple : Récupérer les catégories d'aliments localisées
@@ -95,28 +100,46 @@ class LocalizedDatabaseService {
     final locService = LocalizationService.instance;
     final suffix = locService.getColumnSuffix();
     
-    var query = _supabase
-        .from('exercises')
-        .select('''
-          id,
-          name$suffix,
-          instructions$suffix,
-          muscle_group_fr,
-          muscle_group_en,
-          difficulty_level,
-          equipment_needed
-        ''');
+    final selectQuery = '''
+      id,
+      name$suffix,
+      instructions$suffix,
+      muscle_group_fr,
+      muscle_group_en,
+      difficulty_level,
+      equipment_needed
+    ''';
     
     if (muscleGroup != null) {
       // Filtrer par le groupe musculaire dans la langue appropriée
-      query = query.eq('muscle_group$suffix', muscleGroup);
+      if (limit != null) {
+        return await _supabase
+            .from('exercises')
+            .select(selectQuery)
+            .eq('muscle_group$suffix', muscleGroup)
+            .limit(limit)
+            .order('name$suffix');
+      } else {
+        return await _supabase
+            .from('exercises')
+            .select(selectQuery)
+            .eq('muscle_group$suffix', muscleGroup)
+            .order('name$suffix');
+      }
     }
     
     if (limit != null) {
-      query = query.limit(limit);
+      return await _supabase
+          .from('exercises')
+          .select(selectQuery)
+          .limit(limit)
+          .order('name$suffix');
     }
     
-    return await query.order('name$suffix');
+    return await _supabase
+        .from('exercises')
+        .select(selectQuery)
+        .order('name$suffix');
   }
 
   /// Méthode générique pour récupérer du texte localisé depuis deux colonnes

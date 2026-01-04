@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:home_widget/home_widget.dart';
 import '../config/supabase_config.dart';
 import '../models/nutrition_models.dart';
 import '../services/food_entries_service.dart';
@@ -179,6 +180,33 @@ class MealWidgetDataProvider {
         } catch (e) {
           if (kDebugMode) {
             debugPrint('⚠️ Impossible de synchroniser les données widget côté iOS: $e');
+          }
+        }
+      }
+
+      // Sync data for Android widgets using home_widget
+      if (Platform.isAndroid) {
+        try {
+          await HomeWidget.saveWidgetData<String>('widget_meal_data', encodedData);
+
+          // Update both widgets
+          await HomeWidget.updateWidget(
+            name: 'RyseMealWidget',
+            androidName: 'RyseMealWidget',
+            qualifiedAndroidName: 'com.ryze.app.widget.RyseMealWidget',
+          );
+          await HomeWidget.updateWidget(
+            name: 'RyseWaterWidget',
+            androidName: 'RyseWaterWidget',
+            qualifiedAndroidName: 'com.ryze.app.widget.RyseWaterWidget',
+          );
+
+          if (kDebugMode) {
+            debugPrint('📱 Android widget data synced via home_widget');
+          }
+        } catch (e) {
+          if (kDebugMode) {
+            debugPrint('⚠️ Unable to sync Android widget data: $e');
           }
         }
       }
@@ -413,6 +441,30 @@ class MealWidgetDataProvider {
         } catch (e) {
           if (kDebugMode) {
             debugPrint('⚠️ Impossible d\'effacer les données App Group: $e');
+          }
+        }
+      }
+
+      // Clear Android widget data
+      if (Platform.isAndroid) {
+        try {
+          await HomeWidget.saveWidgetData<String?>('widget_meal_data', null);
+          await HomeWidget.updateWidget(
+            name: 'RyseMealWidget',
+            androidName: 'RyseMealWidget',
+            qualifiedAndroidName: 'com.ryze.app.widget.RyseMealWidget',
+          );
+          await HomeWidget.updateWidget(
+            name: 'RyseWaterWidget',
+            androidName: 'RyseWaterWidget',
+            qualifiedAndroidName: 'com.ryze.app.widget.RyseWaterWidget',
+          );
+          if (kDebugMode) {
+            debugPrint('📱 Android widget data cleared');
+          }
+        } catch (e) {
+          if (kDebugMode) {
+            debugPrint('⚠️ Unable to clear Android widget data: $e');
           }
         }
       }

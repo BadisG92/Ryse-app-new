@@ -82,18 +82,22 @@ class NotificationMessages {
     "Prends 10 sec pour scanner ton assiette 📸",
     "Coach Ryze veut savoir ce que tu manges 👀",
     "Un repas tracké = des progrès visibles 📈",
-    "Décris-moi ton repas, je m'occupe du reste",
+    "Décris-moi ton repas, je calcule tout pour toi",
     "Pas le temps ? Juste une photo suffit !",
     "Chaque repas compte pour ton objectif 🎯",
+    "Curieux de voir tes macros ? 🧐",
+    "Combien de calories dans ton assiette ? Découvre-le !",
   ];
 
   static const _mealBodiesEn = [
     "Take 10 sec to scan your plate 📸",
     "Coach Ryze wants to know what you're eating 👀",
     "A tracked meal = visible progress 📈",
-    "Describe your meal, I'll handle the rest",
+    "Describe your meal, I'll calculate everything",
     "No time? Just a photo is enough!",
     "Every meal counts towards your goal 🎯",
+    "Curious about your macros? 🧐",
+    "How many calories in your plate? Find out!",
   ];
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -134,6 +138,8 @@ class NotificationMessages {
     "Ton corps te remerciera !",
     "Un verre d'eau = un pas vers ton objectif",
     "Reste hydraté, reste focus 🎯",
+    "As-tu bu assez aujourd'hui ? Vérifie dans l'app",
+    "L'hydratation booste ton métabolisme 🚀",
   ];
 
   static const _waterBodiesEn = [
@@ -142,6 +148,8 @@ class NotificationMessages {
     "Your body will thank you!",
     "One glass = one step towards your goal",
     "Stay hydrated, stay focused 🎯",
+    "Have you had enough today? Check in the app",
+    "Hydration boosts your metabolism 🚀",
   ];
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -356,22 +364,22 @@ class NotificationMessages {
     final name = firstName?.isNotEmpty == true ? '$firstName, ' : '';
 
     if (daysInactive == 1) {
-      // J+1 : Rappel doux
+      // J+1 : Rappel doux + curiosité
       final titles = isFrench
-          ? ["tu nous manques ! 👋", "on t'attend ! 🙂", "de retour ? 👀"]
-          : ["we miss you! 👋", "waiting for you! 🙂", "coming back? 👀"];
+          ? ["tu nous manques ! 👋", "on t'attend ! 🙂", "de retour ? 👀", "hey, tout va bien ? 💭"]
+          : ["we miss you! 👋", "waiting for you! 🙂", "coming back? 👀", "hey, everything ok? 💭"];
       return '$name${_pickRandom(titles)}';
     } else if (daysInactive == 2) {
-      // J+2 : Un peu plus insistant
+      // J+2 : Un peu plus insistant + FOMO
       final titles = isFrench
-          ? ["Coach Ryze s'inquiète 😅", "ça va ? 🤔", "on a besoin de toi ! 💪"]
-          : ["Coach Ryze is worried 😅", "you okay? 🤔", "we need you! 💪"];
+          ? ["Coach Ryze s'inquiète 🐼", "ça va ? 🤔", "ta progression t'attend ! 📈", "2 jours déjà... ⏰"]
+          : ["Coach Ryze is worried 🐼", "you okay? 🤔", "your progress is waiting! 📈", "2 days already... ⏰"];
       return '$name${_pickRandom(titles)}';
     } else {
-      // J+3+ : Urgence
+      // J+3+ : Urgence + motivation
       final titles = isFrench
-          ? ["tes objectifs t'attendent ! 🎯", "reviens en force ! 💪", "ne lâche pas maintenant ! 🔥"]
-          : ["your goals are waiting! 🎯", "come back strong! 💪", "don't give up now! 🔥"];
+          ? ["tes objectifs t'attendent ! 🎯", "reviens en force ! 💪", "ne lâche pas maintenant ! 🔥", "nouveau départ ? 🌟"]
+          : ["your goals are waiting! 🎯", "come back strong! 💪", "don't give up now! 🔥", "fresh start? 🌟"];
       return '$name${_pickRandom(titles)}';
     }
   }
@@ -384,46 +392,52 @@ class NotificationMessages {
     if (daysInactive == 1) {
       final bodies = isFrench
           ? [
-              "Tu n'as encore rien logué aujourd'hui",
-              "1 minute suffit pour rester sur la bonne voie",
-              "Juste un repas ou un verre d'eau ?",
+              "Juste 30 secondes pour garder le rythme 🎯",
+              "1 tap = tu restes sur la bonne voie",
+              "Scanner un repas prend moins de temps qu'un café ☕",
+              "Ton futur toi te remerciera !",
             ]
           : [
-              "You haven't logged anything today",
-              "1 minute is all you need to stay on track",
-              "Just a meal or a glass of water?",
+              "Just 30 seconds to stay on track 🎯",
+              "1 tap = you stay on the right path",
+              "Scanning a meal takes less time than a coffee ☕",
+              "Your future self will thank you!",
             ];
       return _pickRandom(bodies);
     } else if (daysInactive == 2) {
       final bodies = isFrench
           ? [
-              "2 jours sans nouvelles... Reviens dire bonjour !",
+              "Reprends là où tu t'es arrêté. C'est facile !",
               "Ton progrès ne va pas se tracker tout seul 😉",
-              "Un petit check-in ? Coach Ryze t'attend",
+              "Coach Ryze a plein de nouvelles fonctionnalités pour toi",
+              "Un petit check-in et tu repars de plus belle 🚀",
             ]
           : [
-              "2 days without news... Come say hi!",
+              "Pick up where you left off. It's easy!",
               "Your progress won't track itself 😉",
-              "A quick check-in? Coach Ryze is waiting",
+              "Coach Ryze has new features waiting for you",
+              "A quick check-in and you're back on track 🚀",
             ];
       return _pickRandom(bodies);
     } else {
       // Mentionner la série perdue si elle était significative
       if (previousStreak != null && previousStreak >= 5) {
         return isFrench
-            ? "Tu avais une série de $previousStreak jours ! Recommence aujourd'hui"
-            : "You had a $previousStreak-day streak! Start fresh today";
+            ? "Tu avais $previousStreak jours de série ! Reconstruis-la aujourd'hui 🔥"
+            : "You had a $previousStreak-day streak! Rebuild it today 🔥";
       }
       final bodies = isFrench
           ? [
-              "C'est le moment de reprendre. 1 tap suffit !",
+              "Aujourd'hui est le meilleur jour pour recommencer 🌟",
               "Rappelle-toi pourquoi tu as commencé 💪",
-              "Chaque jour est une nouvelle chance",
+              "Chaque jour est une nouvelle chance de progresser",
+              "1 action aujourd'hui = 1 pas vers ton objectif",
             ]
           : [
-              "Time to get back. 1 tap is all it takes!",
+              "Today is the best day to start again 🌟",
               "Remember why you started 💪",
-              "Every day is a new chance",
+              "Every day is a new chance to progress",
+              "1 action today = 1 step towards your goal",
             ];
       return _pickRandom(bodies);
     }

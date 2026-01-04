@@ -25,8 +25,6 @@ import '../../bottom_sheets/meal_selection_bottom_sheet.dart';
 import '../../bottom_sheets/new_meal_type_bottom_sheet.dart';
 import '../../models/nutrition_models.dart' as nutrition_models;
 import '../../services/water_service.dart';
-import '../../services/localization_service.dart';
-import '../../services/translations.dart';
 import '../../services/cardio_service.dart';
 import 'cardio_models.dart';
 import 'cardio_widgets.dart';

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/supabase_config.dart';
@@ -6,6 +7,7 @@ import 'optimistic_update_service.dart';
 import 'global_state_manager.dart';
 import 'supabase_error_handler.dart';
 import 'meal_widget_data_provider.dart';
+import 'notification_service.dart';
 
 /// Service pour gérer le suivi d'hydratation
 class WaterService {
@@ -50,6 +52,8 @@ class WaterService {
         DashboardService.invalidateAndRefreshGoals();
         // Mettre à jour les données du widget iOS
         await MealWidgetDataProvider.updateWidgetData();
+        // Mettre à jour l'activité pour les notifications de réengagement
+        unawaited(NotificationService().updateLastActivity());
       }).catchError((error) {
         debugPrint('❌ Erreur ajout eau: $error');
         // Rollback si erreur

@@ -6,6 +6,7 @@ import '../../models/sport_models.dart';
 import '../../services/localization_service.dart';
 import '../../services/translations.dart';
 import '../../services/database_service.dart' as db;
+import '../../bottom_sheets/exercise_info_bottom_sheet.dart';
 
 /// Bottom sheet pour sélectionner ou créer un exercice
 /// Retourne un `Exercise` via Navigator.pop(context, exercise)
@@ -366,6 +367,7 @@ class _ExerciseSelectorBottomSheetState extends State<ExerciseSelectorBottomShee
   }
 
   Widget _buildMuscleGroupsGrid() {
+    debugPrint('🔢 Building grid with ${availableMuscleGroups.length} groups: $availableMuscleGroups');
     return GridView.builder(
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
@@ -384,46 +386,45 @@ class _ExerciseSelectorBottomSheetState extends State<ExerciseSelectorBottomShee
         }
 
         final group = availableMuscleGroups[index];
-        String imagePath;
+        final groupLower = group.toLowerCase().trim();
 
-        switch (group.toLowerCase()) {
-          case 'cardio':
-            imagePath = 'assets/images/muscle_groups/cardio.png';
-            break;
-          case 'personnalisé':
-            imagePath = 'assets/images/muscle_groups/custom.png';
-            break;
-          case 'pectoraux':
-            imagePath = 'assets/images/muscle_groups/chest.png';
-            break;
-          case 'dos':
-            imagePath = 'assets/images/muscle_groups/back.png';
-            break;
-          case 'jambes':
-            imagePath = 'assets/images/muscle_groups/legs.png';
-            break;
-          case 'épaules':
-            imagePath = 'assets/images/muscle_groups/shoulders.png';
-            break;
-          case 'bras':
-            imagePath = 'assets/images/muscle_groups/arms.png';
-            break;
-          case 'abdos':
-            imagePath = 'assets/images/muscle_groups/abs.png';
-            break;
-          case 'corps complet':
-            imagePath = 'assets/images/muscle_groups/full_body.png';
-            break;
-          default:
-            imagePath = 'assets/images/muscle_groups/chest.png';
-        }
+        // Map explicite pour éviter tout problème de switch
+        final Map<String, String> muscleGroupImages = {
+          // Français
+          'cardio': 'assets/images/muscle_groups/cardio.png',
+          'personnalisé': 'assets/images/muscle_groups/custom.png',
+          'pectoraux': 'assets/images/muscle_groups/chest.png',
+          'dos': 'assets/images/muscle_groups/back.png',
+          'jambes': 'assets/images/muscle_groups/legs.png',
+          'épaules': 'assets/images/muscle_groups/shoulders.png',
+          'bras': 'assets/images/muscle_groups/arms.png',
+          'abdos': 'assets/images/muscle_groups/abs.png',
+          'corps complet': 'assets/images/muscle_groups/full_body.png',
+          // Anglais
+          'custom': 'assets/images/muscle_groups/custom.png',
+          'chest': 'assets/images/muscle_groups/chest.png',
+          'back': 'assets/images/muscle_groups/back.png',
+          'legs': 'assets/images/muscle_groups/legs.png',
+          'shoulders': 'assets/images/muscle_groups/shoulders.png',
+          'arms': 'assets/images/muscle_groups/arms.png',
+          'core': 'assets/images/muscle_groups/abs.png',
+          'abs': 'assets/images/muscle_groups/abs.png',
+          'full body': 'assets/images/muscle_groups/full_body.png',
+        };
 
-        return _buildMuscleGroupCard(group, imagePath);
+        final imagePath = muscleGroupImages[groupLower];
+
+        debugPrint('🔴 DEBUG MAPPING: group="$group" | groupLower="$groupLower" | found=${imagePath != null} | path=${imagePath ?? "DEFAULT chest.png"}');
+
+        final finalPath = imagePath ?? 'assets/images/muscle_groups/chest.png';
+
+        return _buildMuscleGroupCard(group, finalPath);
       },
     );
   }
 
   Widget _buildMuscleGroupCard(String group, String imagePath) {
+    debugPrint('🎨 RENDERING CARD: "$group" with image: $imagePath');
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -454,6 +455,10 @@ class _ExerciseSelectorBottomSheetState extends State<ExerciseSelectorBottomShee
               child: Image.asset(
                 imagePath,
                 fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) {
+                  debugPrint('❌ Error loading image $imagePath: $error');
+                  return const Icon(Icons.error, color: Colors.red);
+                },
               ),
             ),
           ),
@@ -740,6 +745,35 @@ class _ExerciseSelectorBottomSheetState extends State<ExerciseSelectorBottomShee
                               fontSize: 10,
                               fontWeight: FontWeight.w600,
                               color: Color(0xFF0B132B),
+                            ),
+                          ),
+                        ),
+                      ],
+                      // Icône info (seulement pour les exercices non-custom)
+                      if (!exercise.isCustom) ...[
+                        const SizedBox(width: 6),
+                        GestureDetector(
+                          onTap: () {
+                            ExerciseInfoBottomSheet.show(
+                              context,
+                              exerciseId: exercise.id,
+                              exerciseName: exercise.name,
+                            );
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF94A3B8).withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: const Color(0xFF94A3B8).withValues(alpha: 0.3), width: 1),
+                            ),
+                            child: const Text(
+                              '?',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF64748B),
+                              ),
                             ),
                           ),
                         ),

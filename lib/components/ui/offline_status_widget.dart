@@ -54,7 +54,7 @@ class _OfflineStatusWidgetState extends State<OfflineStatusWidget> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                LucideIcons.checkCircle,
+                LucideIcons.circleCheck,
                 size: 14,
                 color: const Color(0xFF10B981),
               ),
@@ -262,7 +262,7 @@ class _OfflineStatusWidgetState extends State<OfflineStatusWidget> {
         child: Row(
           children: [
             Icon(
-              LucideIcons.checkCircle,
+              LucideIcons.circleCheck,
               size: 20,
               color: const Color(0xFF10B981),
             ),
@@ -423,7 +423,7 @@ class _OfflineStatusWidgetState extends State<OfflineStatusWidget> {
                 child: Row(
                   children: [
                     Icon(
-                      LucideIcons.checkCircle,
+                      LucideIcons.circleCheck,
                       color: const Color(0xFF10B981),
                     ),
                     const SizedBox(width: 16),

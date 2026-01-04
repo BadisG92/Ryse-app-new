@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_container"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_background"
+    android:paddingHorizontal="14dp"
+    android:paddingVertical="12dp"
+    android:gravity="center_vertical">
+
+    <!-- Calorie Progress Section -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginBottom="10dp">
+
+        <TextView
+            android:id="@+id/calorie_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="0 / 2000 kcal"
+            android:textColor="#FFFFFF"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.02" />
+
+        <ProgressBar
+            android:id="@+id/calorie_progress"
+            style="@android:style/Widget.ProgressBar.Horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="8dp"
+            android:layout_marginTop="6dp"
+            android:progressDrawable="@drawable/progress_gradient"
+            android:max="100"
+            android:progress="0" />
+    </LinearLayout>
+
+    <!-- Meal Buttons Row -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:baselineAligned="false">
+
+        <!-- Breakfast -->
+        <LinearLayout
+            android:id="@+id/btn_breakfast"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:background="@drawable/meal_button_background"
+            android:paddingVertical="10dp"
+            android:paddingHorizontal="4dp"
+            android:layout_marginEnd="6dp">
+
+            <ImageView
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:src="@drawable/ic_sunrise" />
+
+            <TextView
+                android:id="@+id/breakfast_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Breakfast"
+                android:textColor="#94A3B8"
+                android:textSize="9sp"
+                android:layout_marginTop="4dp" />
+
+            <TextView
+                android:id="@+id/breakfast_calories"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0"
+                android:textColor="#3B82F6"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:layout_marginTop="2dp" />
+        </LinearLayout>
+
+        <!-- Lunch -->
+        <LinearLayout
+            android:id="@+id/btn_lunch"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:background="@drawable/meal_button_background"
+            android:paddingVertical="10dp"
+            android:paddingHorizontal="4dp"
+            android:layout_marginEnd="6dp">
+
+            <ImageView
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:src="@drawable/ic_sun" />
+
+            <TextView
+                android:id="@+id/lunch_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Lunch"
+                android:textColor="#94A3B8"
+                android:textSize="9sp"
+                android:layout_marginTop="4dp" />
+
+            <TextView
+                android:id="@+id/lunch_calories"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0"
+                android:textColor="#3B82F6"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:layout_marginTop="2dp" />
+        </LinearLayout>
+
+        <!-- Dinner -->
+        <LinearLayout
+            android:id="@+id/btn_dinner"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:background="@drawable/meal_button_background"
+            android:paddingVertical="10dp"
+            android:paddingHorizontal="4dp"
+            android:layout_marginEnd="6dp">
+
+            <ImageView
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:src="@drawable/ic_sunset" />
+
+            <TextView
+                android:id="@+id/dinner_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Dinner"
+                android:textColor="#94A3B8"
+                android:textSize="9sp"
+                android:layout_marginTop="4dp" />
+
+            <TextView
+                android:id="@+id/dinner_calories"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0"
+                android:textColor="#3B82F6"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:layout_marginTop="2dp" />
+        </LinearLayout>
+
+        <!-- Snack -->
+        <LinearLayout
+            android:id="@+id/btn_snack"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:background="@drawable/meal_button_background"
+            android:paddingVertical="10dp"
+            android:paddingHorizontal="4dp">
+
+            <ImageView
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:src="@drawable/ic_milk" />
+
+            <TextView
+                android:id="@+id/snack_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Snack"
+                android:textColor="#94A3B8"
+                android:textSize="9sp"
+                android:layout_marginTop="4dp" />
+
+            <TextView
+                android:id="@+id/snack_calories"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0"
+                android:textColor="#3B82F6"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:layout_marginTop="2dp" />
+        </LinearLayout>
+
+    </LinearLayout>
+
+</LinearLayout>

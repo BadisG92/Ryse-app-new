@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../services/global_state_manager.dart';
 import '../services/navigation_preloader.dart';
+import '../services/water_service.dart';
+import 'ai_scanner_screen.dart';
 
 /// EXEMPLE: Comment optimiser n'importe quel écran existant
 /// Copiez ce pattern dans vos screens pour éliminer la latence

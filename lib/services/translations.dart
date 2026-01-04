@@ -207,6 +207,34 @@ class AppTranslations {
       'fr': 'Annuler',
       'en': 'Cancel',
     },
+    'add_ingredient': {
+      'fr': 'Ajouter un aliment',
+      'en': 'Add a food',
+    },
+    'ingredient_name': {
+      'fr': 'Nom de l\'aliment',
+      'en': 'Food name',
+    },
+    'ingredient_name_placeholder': {
+      'fr': 'Ex: Poulet grillé',
+      'en': 'Ex: Grilled chicken',
+    },
+    'ingredient_added_success': {
+      'fr': 'Aliment ajouté',
+      'en': 'Food added',
+    },
+    'ingredient_not_recognized': {
+      'fr': 'Aliment non reconnu',
+      'en': 'Food not recognized',
+    },
+    'quantity_required': {
+      'fr': 'La quantité est obligatoire',
+      'en': 'Quantity is required',
+    },
+    'name_required': {
+      'fr': 'Le nom est obligatoire',
+      'en': 'Name is required',
+    },
     'loading': {
       'fr': 'Chargement...',
       'en': 'Loading...',
@@ -4032,6 +4060,44 @@ class AppTranslations {
       'fr': 'Exercice {current}/{total}',
       'en': 'Exercise {current}/{total}',
     },
+    // Exercise info bottom sheet
+    'exercise_description': {
+      'fr': 'Description',
+      'en': 'Description',
+    },
+    'exercise_how_to_perform': {
+      'fr': 'Comment effectuer',
+      'en': 'How to perform',
+    },
+    'exercise_watch_tutorial': {
+      'fr': 'Voir des tutoriels',
+      'en': 'Watch tutorials',
+    },
+    'exercise_no_instructions': {
+      'fr': 'Aucune instruction disponible pour cet exercice.',
+      'en': 'No instructions available for this exercise.',
+    },
+    'exercise_loading': {
+      'fr': 'Chargement...',
+      'en': 'Loading...',
+    },
+    'exercise_error': {
+      'fr': 'Erreur de chargement',
+      'en': 'Loading error',
+    },
+    // Set options menu
+    'set_voice_input': {
+      'fr': 'Entrée vocale',
+      'en': 'Voice input',
+    },
+    'set_copy_to_next': {
+      'fr': 'Copier vers suivante',
+      'en': 'Copy to next',
+    },
+    'set_delete': {
+      'fr': 'Supprimer',
+      'en': 'Delete',
+    },
     'workout_volume': {
       'fr': 'Volume',
       'en': 'Volume',
@@ -6187,14 +6253,17 @@ class AppTranslations {
     },
   };
 
+  /// Getter public pour accéder aux traductions (utilisé par TranslationChecker)
+  static Map<String, Map<String, String>> get translations => _translations;
+
   static String get(String key, String languageCode) {
-    final translations = _translations[key];
-    if (translations == null) {
+    final trans = _translations[key];
+    if (trans == null) {
       return key; // Retourne la clé si pas de traduction trouvée
     }
     
     
-    return translations[languageCode] ?? translations['fr'] ?? key;
+    return trans[languageCode] ?? trans['fr'] ?? key;
   }
 }
 

@@ -23,6 +23,9 @@ import '../services/native_speech_service.dart';
 import '../services/celebration_service.dart';
 import '../services/haptic_service.dart';
 import '../services/unit_service.dart';
+import '../services/localized_exercise_service.dart';
+import '../bottom_sheets/exercise_info_bottom_sheet.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:provider/provider.dart';
 
 class WorkoutSessionScreen extends StatefulWidget {
@@ -152,6 +155,11 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
   int _voiceRetryCount = 0;
   static const int _maxRetries = 3;
 
+  // Données d'info exercice (pour affichage inline)
+  Map<String, dynamic>? _currentExerciseEnrichedData;
+  bool _isLoadingExerciseInfo = false;
+  String? _lastLoadedExerciseId; // Pour éviter les rechargements inutiles
+
   @override
   void initState() {
     super.initState();
@@ -174,11 +182,16 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
     for (final exercise in _exercises) {
       _initializeControllersForExercise(exercise);
     }
-    
+
     _startTimer();
-    
+
     // Initialiser le service offline et écouter les changements de statut
     _initOfflineMode();
+
+    // Charger les infos de l'exercice courant (si exercices pré-remplis)
+    if (_exercises.isNotEmpty) {
+      _loadCurrentExerciseInfo();
+    }
   }
   
   void _initOfflineMode() async {
@@ -190,6 +203,63 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
         });
       }
     });
+  }
+
+  /// Charge les données enrichies de l'exercice courant (description, instructions, URL tutoriel)
+  Future<void> _loadCurrentExerciseInfo() async {
+    if (_exercises.isEmpty) return;
+
+    final currentExercise = _exercises[_currentExerciseIndex].exercise;
+    final exerciseId = currentExercise.id;
+
+    // Éviter de recharger si c'est le même exercice
+    if (_lastLoadedExerciseId == exerciseId && _currentExerciseEnrichedData != null) {
+      return;
+    }
+
+    setState(() {
+      _isLoadingExerciseInfo = true;
+    });
+
+    try {
+      final data = await LocalizedExerciseService.getExerciseEnrichedDetails(exerciseId);
+      if (mounted) {
+        setState(() {
+          _currentExerciseEnrichedData = data;
+          _lastLoadedExerciseId = exerciseId;
+          _isLoadingExerciseInfo = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Erreur chargement info exercice: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingExerciseInfo = false;
+        });
+      }
+    }
+  }
+
+  /// Parse les instructions séparées par | en liste d'étapes
+  List<String> _parseInstructions(String? instructions) {
+    if (instructions == null || instructions.isEmpty) {
+      return [];
+    }
+    return instructions.split('|').map((s) => s.trim()).toList();
+  }
+
+  /// Ouvre le lien tutoriel dans le navigateur
+  Future<void> _openTutorialLink(String url) async {
+    final uri = Uri.parse(url);
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      try {
+        await launchUrl(uri, mode: LaunchMode.platformDefault);
+      } catch (e2) {
+        debugPrint('Impossible d\'ouvrir le lien: $e2');
+      }
+    }
   }
 
   @override
@@ -404,14 +474,107 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
 
   void _removeSet(int setIndex) {
     if (_exercises.isEmpty) return;
-    
+
     final currentExercise = _exercises[_currentExerciseIndex];
     if (setIndex >= currentExercise.sets.length || currentExercise.sets.length <= 1) return;
-    
+
     setState(() {
       final updatedSets = List<ExerciseSet>.from(currentExercise.sets);
       updatedSets.removeAt(setIndex);
       _exercises[_currentExerciseIndex] = currentExercise.copyWith(sets: updatedSets);
+    });
+  }
+
+  /// Affiche le menu d'options pour une série (micro, copier, supprimer)
+  void _showSetOptionsMenu(BuildContext context, Offset position, int setIndex) {
+    final lang = LocalizationService.instance.currentLanguageCode;
+    final canShowVoice = _canShowVoiceButtonForSet(setIndex);
+    final currentExercise = _exercises[_currentExerciseIndex];
+    final canDelete = currentExercise.sets.length > 1;
+
+    showMenu<String>(
+      context: context,
+      position: RelativeRect.fromLTRB(
+        position.dx - 150, // Décaler vers la gauche pour que le menu apparaisse à gauche du bouton
+        position.dy,
+        position.dx,
+        position.dy + 100,
+      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      color: const Color(0xFF1C2951),
+      items: [
+        // Option micro (si disponible)
+        if (canShowVoice)
+          PopupMenuItem<String>(
+            value: 'voice',
+            child: Row(
+              children: [
+                Icon(
+                  LucideIcons.mic,
+                  color: _isVoiceListening && _activeSetIndex == setIndex
+                      ? const Color(0xFF10B981)
+                      : Colors.white.withValues(alpha: 0.7),
+                  size: 18,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'set_voice_input'.tr(lang),
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                ),
+              ],
+            ),
+          ),
+        // Option copier vers série suivante
+        PopupMenuItem<String>(
+          value: 'copy',
+          child: Row(
+            children: [
+              Icon(
+                LucideIcons.arrowDown,
+                color: Colors.white.withValues(alpha: 0.7),
+                size: 18,
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'set_copy_to_next'.tr(lang),
+                style: const TextStyle(color: Colors.white, fontSize: 14),
+              ),
+            ],
+          ),
+        ),
+        // Option supprimer
+        if (canDelete)
+          PopupMenuItem<String>(
+            value: 'delete',
+            child: Row(
+              children: [
+                Icon(
+                  LucideIcons.trash2,
+                  color: Colors.white.withValues(alpha: 0.7),
+                  size: 18,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'set_delete'.tr(lang),
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                ),
+              ],
+            ),
+          ),
+      ],
+    ).then((value) {
+      if (value == null) return;
+      switch (value) {
+        case 'voice':
+          _startVoiceInputForSet(setIndex);
+          break;
+        case 'copy':
+          _copyToNextSet(setIndex);
+          break;
+        case 'delete':
+          _removeSet(setIndex);
+          break;
+      }
     });
   }
 
@@ -447,6 +610,9 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
         _currentExerciseIndex = _exercises.length - 1;
       }
     });
+
+    // Charger les infos de l'exercice
+    _loadCurrentExerciseInfo();
   }
   
   void _initializeControllersForExercise(WorkoutExercise exercise) {
@@ -564,7 +730,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
       _showHistoryBubble = !_showHistoryBubble;
     });
   }
-  
+
   void _hideHistoryBubble() {
     setState(() {
       _showHistoryBubble = false;
@@ -626,6 +792,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
       setState(() {
         _currentExerciseIndex--;
       });
+      _loadCurrentExerciseInfo();
     }
   }
 
@@ -634,6 +801,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
       setState(() {
         _currentExerciseIndex++;
       });
+      _loadCurrentExerciseInfo();
     }
   }
 
@@ -1057,27 +1225,36 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                                 imagePath = 'assets/images/muscle_groups/cardio.png';
                                 break;
                               case 'personnalisé':
+                              case 'custom':
                                 imagePath = 'assets/images/muscle_groups/custom.png';
                                 break;
                               case 'pectoraux':
+                              case 'chest':
                                 imagePath = 'assets/images/muscle_groups/chest.png';
                                 break;
                               case 'dos':
+                              case 'back':
                                 imagePath = 'assets/images/muscle_groups/back.png';
                                 break;
                               case 'jambes':
+                              case 'legs':
                                 imagePath = 'assets/images/muscle_groups/legs.png';
                                 break;
                               case 'épaules':
+                              case 'shoulders':
                                 imagePath = 'assets/images/muscle_groups/shoulders.png';
                                 break;
                               case 'bras':
+                              case 'arms':
                                 imagePath = 'assets/images/muscle_groups/arms.png';
                                 break;
                               case 'abdos':
+                              case 'core':
+                              case 'abs':
                                 imagePath = 'assets/images/muscle_groups/abs.png';
                                 break;
                               case 'corps complet':
+                              case 'full body':
                                 imagePath = 'assets/images/muscle_groups/full_body.png';
                                 break;
                               default:
@@ -1474,6 +1651,36 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                                         ],
                                       ),
                                     ),
+                                    // Icône info (seulement pour les exercices non-custom)
+                                    if (!exercise.isCustom) ...[
+                                      const SizedBox(width: 6),
+                                      GestureDetector(
+                                        onTap: () {
+                                          ExerciseInfoBottomSheet.show(
+                                            context,
+                                            exerciseId: exercise.id,
+                                            exerciseName: exercise.name,
+                                          );
+                                        },
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF94A3B8).withValues(alpha: 0.15),
+                                            borderRadius: BorderRadius.circular(8),
+                                            border: Border.all(color: const Color(0xFF94A3B8).withValues(alpha: 0.3), width: 1),
+                                          ),
+                                          child: const Text(
+                                            '?',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
+                                              color: Color(0xFF64748B),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                    ],
                                     if (exercise.isCustom)
                                       IconButton(
                                         icon: const Icon(LucideIcons.eyeOff, size: 16, color: Color(0xFF64748B)),
@@ -2952,45 +3159,16 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                     ),
                     
                     Expanded(
-                      child: Column(
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  _exercises[_currentExerciseIndex].exercise.name,
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              GestureDetector(
-                                key: _historyIconKey,
-                                onTap: _toggleHistoryBubble,
-                                child: Container(
-                                  padding: const EdgeInsets.all(6),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.2),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Icon(
-                                    LucideIcons.calendar,
-                                    size: 18,
-                                    color: Colors.white.withOpacity(0.9),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          // Supprimé l'affichage du groupe musculaire
-                        ],
+                      child: Text(
+                        _exercises[_currentExerciseIndex].exercise.name,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     
@@ -3007,17 +3185,41 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
 
                 const SizedBox(height: 8),
 
-                                 // Indicateur d'exercice
-                 Consumer<LocalizationService>(
-                   builder: (context, locService, _) => Text(
-                     'workout_exercise_counter'.tr(locService.currentLanguageCode)
-                       .replaceAll('{current}', '${_currentExerciseIndex + 1}')
-                       .replaceAll('{total}', '${_exercises.length}'),
-                     style: TextStyle(
-                       fontSize: 12,
-                       color: Colors.white.withOpacity(0.5),
+                                 // Indicateur d'exercice + icônes historique et info
+                 Row(
+                   mainAxisAlignment: MainAxisAlignment.center,
+                   children: [
+                     // Icône historique
+                     GestureDetector(
+                       key: _historyIconKey,
+                       onTap: _toggleHistoryBubble,
+                       child: Container(
+                         padding: const EdgeInsets.all(6),
+                         decoration: BoxDecoration(
+                           color: Colors.white.withValues(alpha: 0.15),
+                           borderRadius: BorderRadius.circular(6),
+                         ),
+                         child: Icon(
+                           LucideIcons.calendar,
+                           size: 14,
+                           color: Colors.white.withValues(alpha: 0.7),
+                         ),
+                       ),
                      ),
-                   ),
+                     const SizedBox(width: 12),
+                     // Texte "Exercise X/Y"
+                     Consumer<LocalizationService>(
+                       builder: (context, locService, _) => Text(
+                         'workout_exercise_counter'.tr(locService.currentLanguageCode)
+                           .replaceAll('{current}', '${_currentExerciseIndex + 1}')
+                           .replaceAll('{total}', '${_exercises.length}'),
+                         style: TextStyle(
+                           fontSize: 12,
+                           color: Colors.white.withOpacity(0.5),
+                         ),
+                       ),
+                     ),
+                    ],
                  ),
 
               const SizedBox(height: 16),
@@ -3198,6 +3400,9 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                   ),
                 ),
               ),
+
+              // Section infos exercice (description, instructions, tutoriel)
+              _buildExerciseInfoSection(),
             ],
           ),
                 ],
@@ -3295,73 +3500,20 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
           
           const SizedBox(width: 12),
 
-          // 🎤 Bouton micro par série (visible si série précédente non vide)
-          if (_canShowVoiceButtonForSet(setIndex))
-            GestureDetector(
-              onTap: () => _startVoiceInputForSet(setIndex),
-              child: Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  gradient: _isVoiceListening && _activeSetIndex == setIndex
-                      ? const LinearGradient(
-                          colors: [
-                            Color(0xFF10B981), // Vert emerald-500
-                            Color(0xFF059669), // Vert emerald-600
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        )
-                      : null,
-                  color: _isVoiceListening && _activeSetIndex == setIndex
-                      ? null
-                      : const Color(0xFF1C2951), // Bleu de l'app (visible)
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  LucideIcons.mic,
-                  color: Colors.white,
-                  size: 16,
-                ),
-              ),
-            ),
-
-          const SizedBox(width: 8),
-
-          // ➕ NOUVEAU : Bouton copier vers série suivante
+          // Bouton menu options (3 points verticaux)
           GestureDetector(
-            onTap: () => _copyToNextSet(setIndex),
+            onTapDown: (details) => _showSetOptionsMenu(context, details.globalPosition, setIndex),
             child: Container(
               width: 32,
               height: 32,
               decoration: BoxDecoration(
-                color: const Color(0xFF1C2951).withOpacity(0.3), // Bleu de l'app
+                color: Colors.white.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(
-                LucideIcons.arrowDown,
-                color: Colors.white, // Blanc
-                size: 16,
-              ),
-            ),
-          ),
-
-          const SizedBox(width: 8),
-
-          // Bouton Supprimer
-          GestureDetector(
-            onTap: () => _removeSet(setIndex),
-            child: Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(
-                LucideIcons.x,
-                color: Colors.red,
-                size: 16,
+              child: Icon(
+                LucideIcons.ellipsisVertical,
+                color: Colors.white.withValues(alpha: 0.7),
+                size: 18,
               ),
             ),
           ),
@@ -3727,6 +3879,186 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                 decoration: TextDecoration.none,
               ),
               textAlign: TextAlign.center,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Widget affichant les informations d'exercice inline (description, instructions, tutoriel)
+  Widget _buildExerciseInfoSection() {
+    final lang = LocalizationService.instance.currentLanguageCode;
+
+    // Si pas de données ou en cours de chargement
+    if (_isLoadingExerciseInfo) {
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 24),
+        child: Center(
+          child: CircularProgressIndicator(
+            color: Colors.white.withValues(alpha: 0.7),
+            strokeWidth: 2,
+          ),
+        ),
+      );
+    }
+
+    if (_currentExerciseEnrichedData == null) {
+      return const SizedBox.shrink();
+    }
+
+    final description = _currentExerciseEnrichedData?['localized_description'] as String?;
+    final instructions = _currentExerciseEnrichedData?['localized_instructions'] as String?;
+    final searchUrl = _currentExerciseEnrichedData?['localized_search_url'] as String?;
+
+    final steps = _parseInstructions(instructions);
+    final hasContent = (description != null && description.isNotEmpty && description != 'Non disponible') ||
+        steps.isNotEmpty;
+
+    if (!hasContent && (searchUrl == null || searchUrl.isEmpty)) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Séparateur
+        Container(
+          margin: const EdgeInsets.symmetric(vertical: 20),
+          height: 1,
+          color: Colors.white.withValues(alpha: 0.2),
+        ),
+
+        // Bouton tutoriel
+        if (searchUrl != null && searchUrl.isNotEmpty)
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.only(bottom: 16),
+            child: OutlinedButton.icon(
+              onPressed: () => _openTutorialLink(searchUrl),
+              icon: Icon(
+                LucideIcons.externalLink,
+                size: 18,
+                color: Colors.white.withValues(alpha: 0.9),
+              ),
+              label: Text(
+                'exercise_watch_tutorial'.tr(lang),
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white.withValues(alpha: 0.9),
+                ),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(color: Colors.white.withValues(alpha: 0.3), width: 1.5),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+
+        // Description avec titre
+        if (description != null && description.isNotEmpty && description != 'Non disponible') ...[
+          Text(
+            'exercise_description'.tr(lang),
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: Colors.white.withValues(alpha: 0.9),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.1),
+                width: 1,
+              ),
+            ),
+            child: Text(
+              description,
+              style: TextStyle(
+                fontSize: 14,
+                height: 1.5,
+                color: Colors.white.withValues(alpha: 0.85),
+              ),
+            ),
+          ),
+        ],
+
+        // Instructions
+        if (steps.isNotEmpty) ...[
+          Text(
+            'exercise_how_to_perform'.tr(lang),
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: Colors.white.withValues(alpha: 0.9),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Container(
+            height: 2,
+            width: 50,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(1),
+            ),
+          ),
+          const SizedBox(height: 12),
+          ...steps.asMap().entries.map((entry) => _buildInlineStep(entry.key + 1, entry.value)),
+        ],
+      ],
+    );
+  }
+
+  /// Widget pour une étape d'instruction inline
+  Widget _buildInlineStep(int number, String text) {
+    // Enlever le préfixe numérique si présent (ex: "1. ", "2. ")
+    final cleanText = text.replaceFirst(RegExp(r'^\d+\.\s*'), '');
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 24,
+            height: 24,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Center(
+              child: Text(
+                '$number',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white.withValues(alpha: 0.9),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(
+                cleanText,
+                style: TextStyle(
+                  fontSize: 14,
+                  height: 1.4,
+                  color: Colors.white.withValues(alpha: 0.8),
+                ),
+              ),
             ),
           ),
         ],

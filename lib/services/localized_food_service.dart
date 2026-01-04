@@ -323,7 +323,7 @@ class LocalizedFoodService {
       debugPrint('Erreur lors du calcul des statistiques nutritionnelles: $e');
       return {
         'error': 'Impossible de récupérer les statistiques',
-        'current_language': locService.instance.currentLanguageCode,
+        'current_language': LocalizationService.instance.currentLanguageCode,
       };
     }
   }

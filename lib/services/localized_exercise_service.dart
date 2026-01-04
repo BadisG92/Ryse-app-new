@@ -17,9 +17,9 @@ class LocalizedExerciseService {
   }) async {
     final locService = LocalizationService.instance;
     final suffix = locService.getColumnSuffix(); // '_fr' ou '_en'
-    
+
     try {
-      var query = _supabase
+      final baseQuery = _supabase
           .from('exercises')
           .select('''
             id,
@@ -32,18 +32,19 @@ class LocalizedExerciseService {
             video_url,
             image_url
           ''');
-      
-      if (muscleGroup != null) {
-        // Filtrer par le groupe musculaire dans la langue appropriée
-        query = query.eq('muscle_group$suffix', muscleGroup);
-      }
-      
+
+      // Appliquer les filtres optionnels
+      final filteredQuery = muscleGroup != null
+          ? baseQuery.eq('muscle_group$suffix', muscleGroup)
+          : baseQuery;
+
+      // Appliquer limit et order
       if (limit != null) {
-        query = query.limit(limit);
+        return await filteredQuery.order('name$suffix').limit(limit);
       }
-      
-      return await query.order('name$suffix');
-      
+
+      return await filteredQuery.order('name$suffix');
+
     } catch (e) {
       debugPrint('Erreur lors de la récupération des exercices: $e');
       return [];
@@ -239,7 +240,7 @@ class LocalizedExerciseService {
   static Future<Map<String, dynamic>?> getExerciseDetails(String exerciseId) async {
     final locService = LocalizationService.instance;
     final suffix = locService.getColumnSuffix();
-    
+
     try {
       final result = await _supabase
           .from('exercises')
@@ -261,18 +262,59 @@ class LocalizedExerciseService {
           ''')
           .eq('id', exerciseId)
           .maybeSingle();
-      
+
       if (result != null) {
         // Ajouter des informations de localisation pour le client
         result['localized_name'] = getLocalizedText(result, 'name');
         result['localized_instructions'] = getLocalizedText(result, 'instructions');
         result['current_language'] = locService.currentLanguageCode;
       }
-      
+
       return result;
-      
+
     } catch (e) {
       debugPrint('Erreur lors de la récupération des détails de l\'exercice: $e');
+      return null;
+    }
+  }
+
+  /// Récupère les détails enrichis d'un exercice (description, instructions, URL tutoriel)
+  /// Utilisé par le bottom sheet d'info exercice pendant un workout
+  static Future<Map<String, dynamic>?> getExerciseEnrichedDetails(String exerciseId) async {
+    final locService = LocalizationService.instance;
+    final suffix = locService.getColumnSuffix(); // '_fr' ou '_en'
+
+    try {
+      final result = await _supabase
+          .from('exercises')
+          .select('''
+            id,
+            name$suffix,
+            description$suffix,
+            instructions$suffix,
+            search_url$suffix,
+            muscle_group_fr,
+            muscle_group_en,
+            equipment,
+            difficulty_level
+          ''')
+          .eq('id', exerciseId)
+          .maybeSingle();
+
+      if (result != null) {
+        // Ajouter des champs localisés pour faciliter l'accès
+        result['localized_name'] = getLocalizedText(result, 'name');
+        result['localized_description'] = getLocalizedText(result, 'description');
+        result['localized_instructions'] = getLocalizedText(result, 'instructions');
+        result['localized_search_url'] = result['search_url$suffix'] as String?;
+        result['localized_muscle_group'] = getLocalizedText(result, 'muscle_group');
+        result['current_language'] = locService.currentLanguageCode;
+      }
+
+      return result;
+
+    } catch (e) {
+      debugPrint('Erreur lors de la récupération des détails enrichis: $e');
       return null;
     }
   }

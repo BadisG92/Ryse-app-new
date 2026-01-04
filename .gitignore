@@ -102,6 +102,13 @@ FINAL_API_STATUS.md
 firebase-debug.log
 .firebase/
 
+# Android Release Signing - NEVER COMMIT
+android/key.properties
+android/app/*.jks
+android/app/*.keystore
+*.jks
+*.keystore
+
 # Database
 *.sqlite
 *.sqlite3

@@ -26,7 +26,7 @@ import 'services/exercise_ai_analysis_service.dart';
 import 'services/coach_ryze_nutrition_service.dart';
 import 'services/unified_subscription_service.dart';
 import 'services/notification_service.dart';
-import 'package:uni_links/uni_links.dart';
+import 'package:app_links/app_links.dart';
 import 'services/widget_deep_link_handler.dart';
 import 'services/widget_water_handler.dart';
 import 'services/meal_widget_data_provider.dart';
@@ -52,9 +52,12 @@ void main() async {
   // Initialize AppNavigator service for global access to navigator context
   AppNavigator().initialize(navigatorKey);
 
-  // NOUVEAU: Handle initial link (app opened from widget)
+  // NOUVEAU: Handle deep links for iOS/Android widgets
+  final appLinks = AppLinks();
+
+  // Handle initial link (app opened from widget)
   try {
-    final initialLink = await getInitialLink();
+    final initialLink = await appLinks.getInitialLinkString();
     if (initialLink != null) {
       debugPrint('🔗 Initial deep link detected: $initialLink');
       // Le lien sera géré après que l'app soit complètement initialisée
@@ -66,8 +69,8 @@ void main() async {
     debugPrint('❌ Error getting initial link: $e');
   }
 
-  // NOUVEAU: Listen for incoming links (widget tapped while app is running)
-  linkStream.listen((String? link) {
+  // Listen for incoming links (widget tapped while app is running)
+  appLinks.stringLinkStream.listen((String? link) {
     if (link != null) {
       debugPrint('🔗 Deep link received: $link');
       WidgetDeepLinkHandler.handleDeepLink(Uri.parse(link));

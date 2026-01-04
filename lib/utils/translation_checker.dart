@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import '../services/translations.dart';
 
 class TranslationChecker {
-  static final Map<String, Map<String, String>> _translations = TranslationService._translations;
+  static Map<String, Map<String, String>> get _translations => AppTranslations.translations;
 
   static TranslationCheckResult findExistingTranslation({
     required String frenchText,

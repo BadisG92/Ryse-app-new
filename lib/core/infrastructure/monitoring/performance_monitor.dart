@@ -217,7 +217,7 @@ class _PerformanceThresholds {
 }
 
 /// Extensions pour faciliter l'usage
-extension PerformanceMonitoringExtensions on Future<T> {
+extension PerformanceMonitoringExtensions<T> on Future<T> {
   /// Monitor automatiquement un Future
   Future<T> monitored(String operationName) {
     return PerformanceMonitor.instance.monitor(operationName, () => this);

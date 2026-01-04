@@ -18,7 +18,7 @@ class TranslationChecker {
     if (_initialized) return;
 
     // Parcourir toutes les traductions pour créer l'index
-    AppTranslations._translations.forEach((key, translations) {
+    AppTranslations.translations.forEach((key, translations) {
       final frenchText = translations['fr']?.toLowerCase().trim();
       final englishText = translations['en']?.toLowerCase().trim();
 

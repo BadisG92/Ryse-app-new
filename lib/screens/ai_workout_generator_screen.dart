@@ -13,6 +13,7 @@ import '../services/feature_trial_service.dart';
 import '../services/unit_service.dart';
 import '../models/sport_models.dart';
 import '../components/ui/coach_ryze_avatar.dart';
+import '../bottom_sheets/exercise_info_bottom_sheet.dart';
 import 'workout_session_screen.dart';
 
 class AIWorkoutGeneratorScreen extends StatefulWidget {
@@ -1101,6 +1102,31 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> wit
                             ],
                           ),
                         ),
+                        // Icône info (seulement pour les exercices non-custom)
+                        if (!workoutEx.exercise.isCustom) ...[
+                          const SizedBox(width: 8),
+                          GestureDetector(
+                            onTap: () {
+                              ExerciseInfoBottomSheet.show(
+                                context,
+                                exerciseId: workoutEx.exercise.id,
+                                exerciseName: workoutEx.exercise.name,
+                              );
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF1F5F9),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Icon(
+                                LucideIcons.info,
+                                size: 14,
+                                color: Color(0xFF64748B),
+                              ),
+                            ),
+                          ),
+                        ],
                         const SizedBox(width: 8),
                         // Mode édition : bouton supprimer
                         if (_isEditMode)

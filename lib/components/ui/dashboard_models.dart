@@ -175,6 +175,7 @@ class DailyGoal {
   final double? currentValue;
   final double? targetValue;
   final String? unit;
+  final bool? isPending;
 
   const DailyGoal({
     required this.id,
@@ -185,6 +186,7 @@ class DailyGoal {
     this.currentValue,
     this.targetValue,
     this.unit,
+    this.isPending,
   });
 
   // Progress en pourcentage (0.0 à 1.0)
@@ -220,6 +222,31 @@ class DailyGoal {
     return '$progress%';
   }
 
+  /// Crée une copie de l'objectif avec les valeurs modifiées
+  DailyGoal copyWith({
+    String? id,
+    String? label,
+    int? progress,
+    bool? completed,
+    bool? isPremium,
+    double? currentValue,
+    double? targetValue,
+    String? unit,
+    bool? isPending,
+  }) {
+    return DailyGoal(
+      id: id ?? this.id,
+      label: label ?? this.label,
+      progress: progress ?? this.progress,
+      completed: completed ?? this.completed,
+      isPremium: isPremium ?? this.isPremium,
+      currentValue: currentValue ?? this.currentValue,
+      targetValue: targetValue ?? this.targetValue,
+      unit: unit ?? this.unit,
+      isPending: isPending ?? this.isPending,
+    );
+  }
+
   factory DailyGoal.fromMap(Map<String, dynamic> map) {
     return DailyGoal(
       id: map['id']?.toString() ?? 'unknown',
@@ -232,6 +259,7 @@ class DailyGoal {
       currentValue: (map['currentValue'] as num?)?.toDouble(),
       targetValue: (map['targetValue'] as num?)?.toDouble(),
       unit: map['unit'],
+      isPending: map['isPending'] ?? false,
     );
   }
 }

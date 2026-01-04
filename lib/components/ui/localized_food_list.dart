@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/localized_database_service.dart';
 import '../../services/localization_service.dart';
+import '../../services/translations.dart';
 
 /// Exemple d'utilisation du service de base de données localisé
 /// Ce widget affiche une liste d'aliments avec nom et description traduits

@@ -4,8 +4,8 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../models/sport_models.dart';
 import '../services/database_service.dart';
 import '../services/translations.dart';
-import '../services/localization_service.dart';
 import 'package:provider/provider.dart';
+import 'exercise_info_bottom_sheet.dart';
 
 class ProgramSelectionBottomSheet extends StatefulWidget {
   final Function(WorkoutProgram program) onProgramSelected;
@@ -298,7 +298,7 @@ class _ProgramSelectionBottomSheetState extends State<ProgramSelectionBottomShee
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
               child: Wrap(
               spacing: 8,
-              runSpacing: 4,
+              runSpacing: 6,
               children: program.exercises.map((programExercise) {
                 return Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -307,13 +307,36 @@ class _ProgramSelectionBottomSheetState extends State<ProgramSelectionBottomShee
                     borderRadius: BorderRadius.circular(6),
                     border: Border.all(color: const Color(0xFFE2E8F0)),
                   ),
-                  child: Text(
-                    '${programExercise.exercise.name} (${programExercise.sets}x)',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: Color(0xFF64748B),
-                      fontWeight: FontWeight.w500,
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '${programExercise.exercise.name} (${programExercise.sets}x)',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF64748B),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      // Icône info (seulement pour les exercices non-custom)
+                      if (!programExercise.exercise.isCustom) ...[
+                        const SizedBox(width: 4),
+                        GestureDetector(
+                          onTap: () {
+                            ExerciseInfoBottomSheet.show(
+                              context,
+                              exerciseId: programExercise.exercise.id,
+                              exerciseName: programExercise.exercise.name,
+                            );
+                          },
+                          child: const Icon(
+                            LucideIcons.info,
+                            size: 12,
+                            color: Color(0xFF94A3B8),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 );
               }).toList(),

@@ -31,3 +31,21 @@
 -keep class io.supabase.** { *; }
 -keep class okhttp3.** { *; }
 -keep class retrofit2.** { *; }
+
+# RevenueCat (Subscriptions)
+-keep class com.revenuecat.purchases.** { *; }
+-keep class com.android.vending.billing.** { *; }
+
+# Firebase
+-keep class com.google.firebase.** { *; }
+-keepattributes Signature
+-keepattributes *Annotation*
+
+# Gson (used by various libraries)
+-keep class com.google.gson.** { *; }
+-keep class * implements com.google.gson.TypeAdapterFactory
+-keep class * implements com.google.gson.JsonSerializer
+-keep class * implements com.google.gson.JsonDeserializer
+
+# Home Widget (for Android widgets)
+-keep class es.antonborri.home_widget.** { *; }

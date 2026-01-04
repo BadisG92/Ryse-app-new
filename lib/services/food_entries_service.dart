@@ -8,6 +8,7 @@ import 'localization_service.dart';
 import 'translations.dart';
 import 'global_state_manager.dart';
 import 'meal_widget_data_provider.dart';
+import 'notification_service.dart';
 
 class FoodEntriesService {
   static final _supabase = Supabase.instance.client;
@@ -361,6 +362,9 @@ class FoodEntriesService {
 
       // NOUVEAU: Mettre à jour les données du widget iOS
       await MealWidgetDataProvider.updateWidgetData();
+
+      // Mettre à jour l'activité pour les notifications de réengagement
+      unawaited(NotificationService().updateLastActivity());
 
       return true;
     } catch (e) {

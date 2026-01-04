@@ -24,6 +24,13 @@ class NotificationService {
   bool _initialized = false;
   NotificationPreferences? _preferences;
 
+  // Anti-doublon: timestamp du dernier scheduling
+  DateTime? _lastScheduleTime;
+  bool _isScheduling = false;
+
+  // Compteur pour IDs uniques de notifications immédiates
+  static int _immediateNotificationCounter = 0;
+
   static const String _prefsKey = 'notification_preferences';
 
   /// Initialiser le service de notifications
@@ -117,58 +124,80 @@ class NotificationService {
   }
 
   /// Planifier toutes les notifications selon les préférences
-  Future<void> scheduleAllNotifications() async {
+  /// Avec protection anti-doublon et debounce intégré
+  Future<void> scheduleAllNotifications({bool force = false}) async {
     if (!_initialized) await initialize();
 
-    final prefs = getPreferences();
-
-    // Annuler toutes les notifications existantes
-    await _notifications.cancelAll();
-
-    if (!prefs.notificationsEnabled) {
-      if (kDebugMode) debugPrint('⏸️ Notifications disabled, skipping schedule');
+    // Protection anti-appels multiples simultanés
+    if (_isScheduling && !force) {
+      if (kDebugMode) debugPrint('⏸️ Already scheduling notifications, skipping');
       return;
     }
 
-    // Planifier les rappels de repas
-    if (prefs.mealRemindersEnabled) {
-      await _scheduleMealReminders(prefs);
+    // Debounce: ignorer si appelé il y a moins de 2 secondes
+    final now = DateTime.now();
+    if (!force && _lastScheduleTime != null) {
+      final diff = now.difference(_lastScheduleTime!).inMilliseconds;
+      if (diff < 2000) {
+        if (kDebugMode) debugPrint('⏸️ Debounce: skipping schedule (last was ${diff}ms ago)');
+        return;
+      }
     }
 
-    // Planifier les rappels d'hydratation
-    if (prefs.waterRemindersEnabled) {
-      await _scheduleWaterReminders(prefs);
+    _isScheduling = true;
+    _lastScheduleTime = now;
+
+    try {
+      final prefs = getPreferences();
+
+      // Annuler toutes les notifications existantes
+      await _notifications.cancelAll();
+
+      if (!prefs.notificationsEnabled) {
+        if (kDebugMode) debugPrint('⏸️ Notifications disabled, skipping schedule');
+        return;
+      }
+
+      // Planifier les rappels de repas
+      if (prefs.mealRemindersEnabled) {
+        await _scheduleMealReminders(prefs);
+      }
+
+      // Planifier les rappels d'hydratation
+      if (prefs.waterRemindersEnabled) {
+        await _scheduleWaterReminders(prefs);
+      }
+
+      // Planifier la protection de série (notification intelligente)
+      if (prefs.streakProtectionEnabled) {
+        await _scheduleStreakProtection(prefs);
+      }
+
+      // Planifier le résumé quotidien (notification intelligente)
+      if (prefs.dailyGoalsSummaryEnabled) {
+        await _scheduleDailyGoalsSummary(prefs);
+      }
+
+      // Planifier les rappels d'entraînement
+      if (prefs.workoutRemindersEnabled) {
+        await _scheduleWorkoutReminders(prefs);
+      }
+
+      // Planifier le résumé hebdomadaire
+      if (prefs.weeklyRecapEnabled) {
+        await _scheduleWeeklyRecap(prefs);
+      }
+
+      // Planifier la vérification "rien logué aujourd'hui" à 17h
+      await _scheduleNothingLoggedCheck(prefs);
+
+      // Note: Les notifications de réengagement sont gérées séparément
+      // et annulées quand l'utilisateur est actif
+
+      if (kDebugMode) debugPrint('✅ All notifications scheduled');
+    } finally {
+      _isScheduling = false;
     }
-
-    // Planifier la protection de série
-    if (prefs.streakProtectionEnabled) {
-      await _scheduleStreakProtection(prefs);
-    }
-
-    // Planifier le résumé quotidien
-    if (prefs.dailyGoalsSummaryEnabled) {
-      await _scheduleDailyGoalsSummary(prefs);
-    }
-
-    // Planifier les rappels d'entraînement
-    if (prefs.workoutRemindersEnabled) {
-      await _scheduleWorkoutReminders(prefs);
-    }
-
-    // Planifier le résumé hebdomadaire
-    if (prefs.weeklyRecapEnabled) {
-      await _scheduleWeeklyRecap(prefs);
-    }
-
-    // Planifier la vérification "rien logué aujourd'hui" à 17h
-    await _scheduleNothingLoggedCheck(prefs);
-
-    // Planifier les notifications de réengagement (J+1, J+2, J+3)
-    if (prefs.reengagementEnabled) {
-      await scheduleReengagementNotifications();
-    }
-
-    if (kDebugMode) debugPrint('✅ All notifications scheduled');
   }
 
   /// Planifier les rappels de repas
@@ -243,13 +272,33 @@ class NotificationService {
     if (kDebugMode) debugPrint('✅ Meal reminders scheduled');
   }
 
-  /// Planifier les rappels d'hydratation
+  /// Planifier les rappels d'hydratation selon la fréquence choisie
   Future<void> _scheduleWaterReminders(NotificationPreferences prefs) async {
     final firstName = await _getUserFirstName();
     final isFrench = LocalizationService.instance.currentLanguageCode == 'fr';
 
-    // Rappels à 11h, 15h et 18h pour encourager l'hydratation
-    final waterHours = [11, 15, 18];
+    // Heures selon la fréquence choisie (1-4 par jour)
+    // Fréquence 1: 14h (milieu de journée)
+    // Fréquence 2: 11h, 16h
+    // Fréquence 3: 10h, 14h, 17h
+    // Fréquence 4: 9h, 12h, 15h, 18h
+    final List<int> waterHours;
+    switch (prefs.waterReminderFrequency) {
+      case 1:
+        waterHours = [14];
+        break;
+      case 2:
+        waterHours = [11, 16];
+        break;
+      case 3:
+        waterHours = [10, 14, 17];
+        break;
+      case 4:
+      default:
+        waterHours = [9, 12, 15, 18];
+        break;
+    }
+
     for (int i = 0; i < waterHours.length; i++) {
       await _scheduleDailyNotification(
         id: 10 + i,
@@ -266,40 +315,59 @@ class NotificationService {
       );
     }
 
-    if (kDebugMode) debugPrint('✅ Water reminders scheduled (11h, 15h, 18h)');
+    if (kDebugMode) debugPrint('✅ Water reminders scheduled (${waterHours.length}x/day at $waterHours)');
   }
 
-  /// Planifier la protection de série
+  /// Planifier la protection de série avec message engageant
   Future<void> _scheduleStreakProtection(NotificationPreferences prefs) async {
-    // Vérifier chaque soir à 19h si l'utilisateur a une série à protéger
+    final firstName = await _getUserFirstName();
+    final isFrench = LocalizationService.instance.currentLanguageCode == 'fr';
+
+    // Message générique engageant pour protéger la série
+    // Le vrai contenu contextuel sera envoyé via checkAndSendStreakProtection()
+    final title = isFrench
+        ? '🔥 ${firstName.isNotEmpty ? "$firstName, p" : "P"}rotège ta série !'
+        : '🔥 ${firstName.isNotEmpty ? "$firstName, p" : "P"}rotect your streak!';
+    final body = isFrench
+        ? 'Tu n\'as pas encore logué aujourd\'hui. Ne perds pas ta progression !'
+        : 'You haven\'t logged anything today. Don\'t lose your progress!';
+
     await _scheduleDailyNotification(
       id: 20,
       hour: 19,
       minute: 0,
-      title: '', // Sera calculé dynamiquement
-      body: '',  // Sera calculé dynamiquement
+      title: title,
+      body: body,
       payload: NotificationPayload(
         type: NotificationType.streakProtection,
       ).toJson(),
-      checkBeforeSending: _shouldSendStreakProtection,
     );
 
     if (kDebugMode) debugPrint('✅ Streak protection scheduled (19h)');
   }
 
-  /// Planifier le résumé des objectifs quotidiens
+  /// Planifier le résumé des objectifs quotidiens avec message engageant
   Future<void> _scheduleDailyGoalsSummary(NotificationPreferences prefs) async {
-    // Résumé à 20h
+    final firstName = await _getUserFirstName();
+    final isFrench = LocalizationService.instance.currentLanguageCode == 'fr';
+
+    // Message motivant pour le résumé du soir
+    final title = isFrench
+        ? '📊 ${firstName.isNotEmpty ? "$firstName, c" : "C"}\'est l\'heure du bilan !'
+        : '📊 ${firstName.isNotEmpty ? "$firstName, t" : "T"}ime for your daily recap!';
+    final body = isFrench
+        ? 'Viens voir ta progression du jour et termine en beauté 💪'
+        : 'Check your daily progress and finish strong 💪';
+
     await _scheduleDailyNotification(
       id: 30,
       hour: 20,
       minute: 0,
-      title: '', // Sera calculé dynamiquement
-      body: '',  // Sera calculé dynamiquement
+      title: title,
+      body: body,
       payload: NotificationPayload(
         type: NotificationType.dailyGoalsSummary,
       ).toJson(),
-      checkBeforeSending: _shouldSendDailyGoalsSummary,
     );
 
     if (kDebugMode) debugPrint('✅ Daily goals summary scheduled (20h)');
@@ -359,7 +427,6 @@ class NotificationService {
     required String title,
     required String body,
     required String payload,
-    Future<bool> Function()? checkBeforeSending,
   }) async {
     final now = tz.TZDateTime.now(tz.local);
     var scheduledDate = tz.TZDateTime(
@@ -452,91 +519,6 @@ class NotificationService {
     );
   }
 
-  /// Vérifier et envoyer la protection de série si nécessaire
-  Future<bool> _shouldSendStreakProtection() async {
-    try {
-      final streak = await StreakService.getCurrentStreak();
-      // Envoyer seulement si série >= 3 jours
-      if (streak >= 3) {
-        final firstName = await _getUserFirstName();
-        final isFrench = LocalizationService.instance.currentLanguageCode == 'fr';
-
-        await sendImmediateNotification(
-          title: NotificationMessages.getStreakProtectionTitle(
-            isFrench: isFrench,
-            streakDays: streak,
-            firstName: firstName,
-          ),
-          body: NotificationMessages.getStreakProtectionBody(
-            isFrench: isFrench,
-            streakDays: streak,
-          ),
-          type: NotificationType.streakProtection,
-        );
-
-        return false; // On a déjà envoyé, pas besoin de la notif planifiée
-      }
-      return false;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  /// Vérifier et envoyer le résumé des objectifs si nécessaire
-  Future<bool> _shouldSendDailyGoalsSummary() async {
-    try {
-      final goals = await DashboardService.getDailyGoals();
-      final completedCount = goals.where((g) => g.completed).length;
-      final totalGoals = goals.length;
-
-      // Envoyer si au moins 1 objectif complété mais pas tous
-      if (completedCount >= 1 && completedCount < totalGoals) {
-        final firstName = await _getUserFirstName();
-        final isFrench = LocalizationService.instance.currentLanguageCode == 'fr';
-
-        // Trouver les objectifs manquants
-        final missingGoals = goals.where((g) => !g.completed).toList();
-        final missingLabels = <String>[];
-
-        for (var goal in missingGoals.take(2)) {
-          if (goal.label.toLowerCase().contains('eau') ||
-              goal.label.toLowerCase().contains('water')) {
-            missingLabels.add(isFrench ? 'ton eau' : 'your water');
-          } else if (goal.label.toLowerCase().contains('repas') ||
-                     goal.label.toLowerCase().contains('meal')) {
-            missingLabels.add(isFrench ? 'ton repas' : 'your meal');
-          } else if (goal.label.toLowerCase().contains('calorie')) {
-            missingLabels.add(isFrench ? 'tes calories' : 'your calories');
-          } else if (goal.label.toLowerCase().contains('sport') ||
-                     goal.label.toLowerCase().contains('workout')) {
-            missingLabels.add(isFrench ? 'ton workout' : 'your workout');
-          }
-        }
-
-        await sendImmediateNotification(
-          title: NotificationMessages.getDailyGoalsSummaryTitle(
-            isFrench: isFrench,
-            completed: completedCount,
-            total: totalGoals,
-            firstName: firstName,
-          ),
-          body: NotificationMessages.getDailyGoalsSummaryBody(
-            isFrench: isFrench,
-            completed: completedCount,
-            total: totalGoals,
-            missingGoals: missingLabels.isNotEmpty ? missingLabels : null,
-          ),
-          type: NotificationType.dailyGoalsSummary,
-        );
-
-        return false; // On a déjà envoyé
-      }
-      return false;
-    } catch (e) {
-      return false;
-    }
-  }
-
   /// Callback quand une notification est tapée
   void _onNotificationTapped(NotificationResponse response) {
     if (kDebugMode) debugPrint('📲 Notification tapped: ${response.payload}');
@@ -547,6 +529,7 @@ class NotificationService {
   }
 
   /// Envoyer une notification immédiate (pour milestones/celebrations)
+  /// Utilise un compteur pour éviter les collisions d'IDs
   Future<void> sendImmediateNotification({
     required String title,
     required String body,
@@ -557,17 +540,28 @@ class NotificationService {
     final prefs = getPreferences();
     if (!prefs.notificationsEnabled) return;
 
+    // Vérifier quiet hours
+    if (!prefs.canSendNotificationAt(DateTime.now())) {
+      if (kDebugMode) debugPrint('⏸️ Immediate notification skipped (quiet hours)');
+      return;
+    }
+
     // Vérifier les milestones sont activés si c'est ce type
     if (type == NotificationType.milestone && !prefs.milestonesEnabled) return;
 
+    // ID unique garanti: combinaison timestamp + compteur
+    _immediateNotificationCounter++;
+    final uniqueId = (DateTime.now().millisecondsSinceEpoch % 90000) +
+                     (_immediateNotificationCounter % 10000);
+
     await _notifications.show(
-      DateTime.now().millisecondsSinceEpoch % 100000, // ID unique
+      uniqueId,
       title,
       body,
       _notificationDetails(),
     );
 
-    if (kDebugMode) debugPrint('✅ Immediate notification sent: $title');
+    if (kDebugMode) debugPrint('✅ Immediate notification sent (ID: $uniqueId): $title');
   }
 
   /// Annuler toutes les notifications
@@ -594,6 +588,7 @@ class NotificationService {
 
   /// Mettre à jour le timestamp de dernière activité
   /// Appeler cette méthode chaque fois que l'utilisateur log quelque chose
+  /// Annule automatiquement les notifications de réengagement car l'utilisateur est actif
   Future<void> updateLastActivity() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -604,6 +599,11 @@ class NotificationService {
       if (streak > 0) {
         await prefs.setInt(_previousStreakKey, streak);
       }
+
+      // IMPORTANT: Annuler les notifications de réengagement car l'utilisateur est actif
+      await cancelReengagementNotifications();
+
+      if (kDebugMode) debugPrint('✅ Last activity updated, reengagement notifications cancelled');
     } catch (e) {
       if (kDebugMode) debugPrint('❌ Error updating last activity: $e');
     }
@@ -784,20 +784,30 @@ class NotificationService {
   }
 
   /// Planifier une notification "rien logué" à 17h chaque jour
+  /// Message engageant pour ramener l'utilisateur
   Future<void> _scheduleNothingLoggedCheck(NotificationPreferences prefs) async {
+    final firstName = await _getUserFirstName();
+    final isFrench = LocalizationService.instance.currentLanguageCode == 'fr';
+
+    // Message engageant pour rappeler à l'utilisateur de logger
+    final title = isFrench
+        ? '👋 ${firstName.isNotEmpty ? "$firstName, o" : "O"}n ne t\'a pas vu aujourd\'hui !'
+        : '👋 ${firstName.isNotEmpty ? "$firstName, w" : "W"}e haven\'t seen you today!';
+    final body = isFrench
+        ? 'Prends 30 secondes pour logger ton repas ou ton activité 🎯'
+        : 'Take 30 seconds to log your meal or activity 🎯';
+
     await _scheduleDailyNotification(
       id: 70,
       hour: 17,
       minute: 0,
-      title: '', // Sera vérifié dynamiquement
-      body: '',
+      title: title,
+      body: body,
       payload: NotificationPayload(
         type: NotificationType.nothingLogged,
       ).toJson(),
-      checkBeforeSending: () async {
-        await checkAndSendNothingLoggedNotification();
-        return false; // On gère l'envoi manuellement
-      },
     );
+
+    if (kDebugMode) debugPrint('✅ Nothing logged check scheduled (17h)');
   }
 }

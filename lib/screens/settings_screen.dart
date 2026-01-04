@@ -3341,10 +3341,10 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
 
   // Cartouche Premium (uniquement pour non-premium)
   Widget _buildPremiumBanner(String languageCode) {
-    final revenueCat = RevenueCatService();
+    final subscriptionService = UnifiedSubscriptionService();
 
     // Ne rien afficher si l'utilisateur est premium
-    if (revenueCat.isPremium()) {
+    if (subscriptionService.isPremium) {
       return const SizedBox.shrink();
     }
 

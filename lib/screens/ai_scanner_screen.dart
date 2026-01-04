@@ -10,6 +10,7 @@ import '../models/ai_analysis_models.dart';
 import '../bottom_sheets/editable_food_details_bottom_sheet.dart';
 import '../bottom_sheets/meal_selection_bottom_sheet.dart';
 import '../bottom_sheets/new_meal_type_bottom_sheet.dart';
+import '../bottom_sheets/add_ingredient_bottom_sheet.dart';
 import '../models/nutrition_models.dart';
 import '../services/food_entries_service.dart';
 import '../services/auth_service.dart';
@@ -1173,6 +1174,47 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
                       ),
                     ),
                   ),
+
+                // Bouton ajouter un ingrédient
+                if (_analysisResult != null && (_analysisResult?.success ?? false))
+                  Padding(
+                    padding: const EdgeInsets.only(top: 16),
+                    child: GestureDetector(
+                      onTap: _showAddIngredientBottomSheet,
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: const Color(0xFFE5E7EB),
+                            width: 1,
+                            style: BorderStyle.solid,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              LucideIcons.plus,
+                              size: 20,
+                              color: Color(0xFF0B132B),
+                            ),
+                            const SizedBox(width: 8),
+                            Consumer<LocalizationService>(
+                              builder: (context, locService, child) => Text(
+                                'add_ingredient'.tr(locService.currentLanguageCode),
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF0B132B),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -1248,7 +1290,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
                     ),
                     child: Consumer<LocalizationService>(
                       builder: (context, locService, child) => Text(
-                        locService.currentLanguageCode == 'fr' ? 'Ajouter tous les aliments' : 'Add all foods',
+                        locService.currentLanguageCode == 'fr' ? 'Enregistrer le repas' : 'Save meal',
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w500,
@@ -1263,8 +1305,10 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
                   width: double.infinity,
                   child: OutlinedButton(
                     onPressed: () {
-                      // Retourner à la caméra
-                      Navigator.of(context).popUntil((route) => route.isFirst);
+                      // Retourner à la caméra en fermant les 2 écrans (AIAnalysisScreen → AIPreviewScreen)
+                      Navigator.of(context).pop(); // Ferme AIAnalysisScreen
+                      Navigator.of(context).pop(); // Ferme AIPreviewScreen
+                      // Maintenant on est sur AIScannerScreen (caméra)
                     },
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
@@ -1513,20 +1557,69 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
               ],
             ),
           ),
-          GestureDetector(
-            onTap: () => _editDetectedFood(name, calories, quantity, food),
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                color: Colors.transparent,
-              ),
-              child: const Icon(
-                LucideIcons.pencil,
-                size: 16,
-                color: Color(0xFF64748B),
-              ),
+          PopupMenuButton<String>(
+            icon: const Icon(
+              LucideIcons.ellipsisVertical,
+              size: 18,
+              color: Color(0xFF64748B),
             ),
+            padding: EdgeInsets.zero,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            onSelected: (value) {
+              if (value == 'edit') {
+                _editDetectedFood(name, calories, quantity, food);
+              } else if (value == 'delete') {
+                _deleteDetectedFood(food);
+              }
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem<String>(
+                value: 'edit',
+                child: Consumer<LocalizationService>(
+                  builder: (context, locService, child) => Row(
+                    children: [
+                      const Icon(
+                        LucideIcons.pencil,
+                        size: 16,
+                        color: Color(0xFF64748B),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        'edit'.tr(locService.currentLanguageCode),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF1A1A1A),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'delete',
+                child: Consumer<LocalizationService>(
+                  builder: (context, locService, child) => Row(
+                    children: [
+                      const Icon(
+                        LucideIcons.trash2,
+                        size: 16,
+                        color: Color(0xFFDC2626),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        'delete'.tr(locService.currentLanguageCode),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFFDC2626),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -1546,9 +1639,65 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
       quantity: quantity,
       isModified: false,
       onFoodSaved: (foodItem) {
-        if (kDebugMode) debugPrint('Aliment ${foodItem.name} enregistré avec modifications');
+        // Mettre à jour l'aliment dans la liste des aliments détectés
+        setState(() {
+          final index = _analysisResult?.detectedFoods.indexOf(food) ?? -1;
+          if (index != -1 && _analysisResult != null) {
+            // Extraire la quantité du portion string (ex: "150 g" -> 150.0)
+            final portionGrams = double.tryParse(
+              foodItem.portion.replaceAll(RegExp(r'[^0-9.]'), '')
+            ) ?? 100.0;
+
+            final updatedFood = DetectedFood.fromAIResponse(
+              name: foodItem.name,
+              confidence: food.confidence,
+              portionGrams: portionGrams,
+              proteins: foodItem.proteins,
+              carbs: foodItem.carbs,
+              fats: foodItem.fats,
+              isLiquid: food.isLiquid,
+            );
+            _analysisResult!.detectedFoods[index] = updatedFood;
+          }
+        });
+        if (kDebugMode) debugPrint('Aliment ${foodItem.name} mis à jour avec modifications');
       },
     );
+  }
+
+  void _showAddIngredientBottomSheet() {
+    AddIngredientBottomSheet.show(
+      context,
+      onIngredientAdded: (DetectedFood newFood) {
+        setState(() {
+          _analysisResult?.detectedFoods.add(newFood);
+        });
+        if (kDebugMode) debugPrint('Nouvel ingrédient ajouté: ${newFood.name}');
+      },
+    );
+  }
+
+  void _deleteDetectedFood(DetectedFood food) {
+    final locService = LocalizationService.instance;
+
+    setState(() {
+      _analysisResult?.detectedFoods.remove(food);
+    });
+
+    // Afficher un snackbar de confirmation
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          locService.currentLanguageCode == 'fr'
+              ? '${food.name} supprimé'
+              : '${food.name} deleted',
+        ),
+        backgroundColor: const Color(0xFF0B132B),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+
+    if (kDebugMode) debugPrint('Ingrédient supprimé: ${food.name}');
   }
 
   Future<void> _addFoodsToSpecificMeal(String mealName, String mealId) async {
