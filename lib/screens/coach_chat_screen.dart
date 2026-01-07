@@ -631,7 +631,8 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
         ],
       ),
       actions: [
-        if (_rateLimitStatus != null && !_rateLimitStatus!.isPremium)
+        // N'afficher le compteur que pour les utilisateurs non-premium
+        if (_rateLimitStatus != null && !_rateLimitStatus!.isPremium && !SubscriptionService.instance.isPremium)
           Container(
             margin: const EdgeInsets.only(right: 16),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),

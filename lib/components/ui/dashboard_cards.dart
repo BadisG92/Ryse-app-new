@@ -348,22 +348,28 @@ class DailyGoalItem extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Text(
-                    goal.label,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF1A1A1A),
+              Expanded(
+                child: Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        goal.label,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1A1A1A),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
-                  if (goal.isPremium && !isPremium) ...[
-                    const SizedBox(width: 4),
-                    const Icon(LucideIcons.crown, size: 12, color: Color(0xFF0B132B)),
+                    if (goal.isPremium && !isPremium) ...[
+                      const SizedBox(width: 4),
+                      const Icon(LucideIcons.crown, size: 12, color: Color(0xFF0B132B)),
+                    ],
                   ],
-                ],
+                ),
               ),
+              const SizedBox(width: 8),
               Text(
                 goal.progressText,
                 style: const TextStyle(
