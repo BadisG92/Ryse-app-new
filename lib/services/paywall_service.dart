@@ -461,55 +461,47 @@ class PaywallService {
         ];
 
       default:
-        // Benefices generiques
+        // Benefices generiques (5 points)
         return [
+          {
+            'icon': '🎯',
+            'text': isGerman
+                ? 'Erreiche deine Ziele 2x schneller mit einem persönlichen KI-Coach'
+                : isFrench
+                    ? 'Atteins tes objectifs 2x plus vite avec un coach IA dédié'
+                    : 'Reach your goals 2x faster with a dedicated AI coach',
+          },
           {
             'icon': '📸',
             'text': isGerman
-                ? 'Unbegrenzte Scans - Coach Ryze erkennt alles'
+                ? 'Scanne jedes Gericht in 2 Sekunden — Kalorien und Makros sofort'
                 : isFrench
-                    ? 'Scans illimités - Le Coach Ryze reconnaît tout'
-                    : 'Unlimited scans - Coach Ryze recognizes everything',
+                    ? 'Scanne n\'importe quel plat en 2 secondes — calories et macros instantanés'
+                    : 'Scan any meal in 2 seconds — instant calories and macros',
           },
           {
-            'icon': '🤖',
+            'icon': '🍽️',
             'text': isGerman
-                ? 'Personalisierte Workouts von deinem Coach'
+                ? 'Iss, was du liebst, und mache trotzdem Fortschritte'
                 : isFrench
-                    ? 'Workouts personnalisés générés par ton Coach'
-                    : 'Personalized workouts by your Coach',
-          },
-          {
-            'icon': '📊',
-            'text': isGerman
-                ? 'Taeglicher Bericht und massgeschneiderte Tipps'
-                : isFrench
-                    ? 'Bilan quotidien et conseils sur-mesure'
-                    : 'Daily report and custom advice',
-          },
-          {
-            'icon': '💬',
-            'text': isGerman
-                ? 'Sprach-/Text-Chat mit Coach Ryze'
-                : isFrench
-                    ? 'Chat vocal/texte avec le Coach Ryze'
-                    : 'Voice/text chat with Coach Ryze',
+                    ? 'Mange ce que tu aimes tout en progressant'
+                    : 'Eat what you love while still making progress',
           },
           {
             'icon': '💪',
             'text': isGerman
-                ? 'Fortschrittsanalyse pro Uebung'
+                ? 'Workouts, die jede Woche an DEIN Level angepasst sind'
                 : isFrench
-                    ? 'Analyse de progression par exercice'
-                    : 'Exercise-by-exercise progress analysis',
+                    ? 'Entraînements adaptés à TON niveau chaque semaine'
+                    : 'Workouts adapted to YOUR level every week',
           },
           {
-            'icon': '📈',
+            'icon': '📊',
             'text': isGerman
-                ? 'Vollstaendiger Verlauf und erweiterte Grafiken'
+                ? 'Visualisiere deine Fortschritte und bleib motiviert'
                 : isFrench
-                    ? 'Historique complet et graphiques avancés'
-                    : 'Full history and advanced charts',
+                    ? 'Visualise tes progrès et reste motivé'
+                    : 'Visualize your progress and stay motivated',
           },
         ];
     }

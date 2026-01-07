@@ -773,11 +773,11 @@ class _PaywallScreenState extends State<PaywallScreen>
   Widget _buildBenefits(List<Map<String, String>> benefits, bool isFrench, bool isGerman) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: benefits.take(3).toList().asMap().entries.map((entry) {
+      children: benefits.take(5).toList().asMap().entries.map((entry) {
         final index = entry.key;
         final benefit = entry.value;
         return Padding(
-          padding: EdgeInsets.only(bottom: index < 2 ? 10.0 : 0),
+          padding: EdgeInsets.only(bottom: index < 4 ? 10.0 : 0),
           child: Text(
             '${benefit['icon']} ${benefit['text']}',
             style: const TextStyle(

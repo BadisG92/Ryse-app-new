@@ -1819,32 +1819,6 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
 
                               const SizedBox(height: 12),
 
-                              // Weekly Recap
-                              _buildNotificationCategory(
-                                icon: LucideIcons.calendar,
-                                title: locService.currentLanguageCode == 'fr'
-                                    ? 'Résumé hebdomadaire'
-                                    : locService.currentLanguageCode == 'de'
-                                        ? 'Wöchentlicher Rückblick'
-                                        : 'Weekly recap',
-                                subtitle: locService.currentLanguageCode == 'fr'
-                                    ? 'Chaque dimanche à 18h'
-                                    : locService.currentLanguageCode == 'de'
-                                        ? 'Jeden Sonntag um 18 Uhr'
-                                        : 'Every Sunday at 6 PM',
-                                enabled: _notificationPrefs.weeklyRecapEnabled,
-                                onToggle: (value) {
-                                  setState(() {
-                                    _notificationPrefs = _notificationPrefs.copyWith(
-                                      weeklyRecapEnabled: value,
-                                    );
-                                  });
-                                  _saveNotificationPreferences();
-                                },
-                              ),
-
-                              const SizedBox(height: 12),
-
                               // Milestones
                               _buildNotificationCategory(
                                 icon: LucideIcons.trophy,
@@ -3273,10 +3247,9 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
     if (_notificationPrefs.workoutRemindersEnabled) activeCount++;
     if (_notificationPrefs.streakProtectionEnabled) activeCount++;
     if (_notificationPrefs.dailyGoalsSummaryEnabled) activeCount++;
-    if (_notificationPrefs.weeklyRecapEnabled) activeCount++;
     if (_notificationPrefs.milestonesEnabled) activeCount++;
 
-    if (activeCount == 7) {
+    if (activeCount == 6) {
       return isFrench ? 'Toutes actives' : isGerman ? 'Alle aktiviert' : 'All enabled';
     }
 
