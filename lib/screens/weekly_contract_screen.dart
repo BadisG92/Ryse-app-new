@@ -166,39 +166,42 @@ class _WeeklyContractScreenState extends State<WeeklyContractScreen> {
 
               // Day selector
               Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: _days.map((day) {
                   final isSelected = _selectedDay == day.value;
-                  return GestureDetector(
-                    onTap: () => setState(() => _selectedDay = day.value),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      width: 40,
-                      height: 40,
-                      margin: const EdgeInsets.symmetric(horizontal: 4),
-                      decoration: BoxDecoration(
-                        gradient: isSelected
-                            ? const LinearGradient(
-                                colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              )
-                            : null,
-                        color: isSelected ? null : const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(12),
-                        border: isSelected
-                            ? null
-                            : Border.all(color: const Color(0xFFE2E8F0)),
-                      ),
-                      child: Center(
-                        child: Text(
-                          isFr ? day.shortFr : isDe ? day.shortDe : day.shortEn,
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: isSelected
-                                ? Colors.white
-                                : const Color(0xFF64748B),
+                  return Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 2),
+                      child: GestureDetector(
+                        onTap: () => setState(() => _selectedDay = day.value),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          height: 40,
+                          decoration: BoxDecoration(
+                            gradient: isSelected
+                                ? const LinearGradient(
+                                    colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  )
+                                : null,
+                            color: isSelected ? null : const Color(0xFFF8FAFC),
+                            borderRadius: BorderRadius.circular(12),
+                            border: isSelected
+                                ? null
+                                : Border.all(color: const Color(0xFFE2E8F0)),
+                          ),
+                          child: Center(
+                            child: Text(
+                              isFr ? day.shortFr : isDe ? day.shortDe : day.shortEn,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: isSelected
+                                    ? Colors.white
+                                    : const Color(0xFF64748B),
+                              ),
+                            ),
                           ),
                         ),
                       ),

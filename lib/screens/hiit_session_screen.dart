@@ -117,7 +117,8 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => Dialog(
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => Dialog(
         backgroundColor: Colors.transparent,
         child: Container(
           decoration: BoxDecoration(
@@ -255,16 +256,14 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
                  SizedBox(
                    width: double.infinity,
                    child: ElevatedButton(
-                     onPressed: _sessionSaved ? null : () async {
+                     onPressed: () async {
                        // Protection contre double clic
                        if (_sessionSaved) {
                          debugPrint('⚠️ Session HIIT déjà sauvegardée, ignorer');
                          return;
                        }
 
-                       setState(() {
-                         _sessionSaved = true;
-                       });
+                       setDialogState(() => _sessionSaved = true);
 
                        // Historiser la session HIIT dans Supabase
                        try {
@@ -274,21 +273,14 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
                            roundsCompleted: roundsCompleted,
                          );
                          debugPrint('✅ Session HIIT sauvegardée');
-
-                         // UNE SEULE mise à jour du GlobalState pour éviter les doublons
                          GlobalStateManager.instance.updateWorkout(true);
-                         debugPrint('✅ GlobalStateManager: HIIT marqué comme complété');
                        } catch (e) {
                          debugPrint('❌ Erreur sauvegarde session HIIT: $e');
-                         setState(() {
-                           _sessionSaved = false; // Réinitialiser en cas d'erreur
-                         });
-                         // Continuer même en cas d'erreur pour ne pas bloquer l'utilisateur
                        }
 
                        if (mounted) {
-                         Navigator.pop(context); // Fermer le dialog
-                         _exitSession(); // Puis fermer la session HIIT
+                         Navigator.pop(dialogContext); // Fermer le dialog
+                         _exitSession();
                        }
                      },
                      style: ElevatedButton.styleFrom(
@@ -309,11 +301,32 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
                      ),
                    ),
                  ),
+
+                 const SizedBox(height: 12),
+
+                 // Bouton annuler (quitter sans sauvegarder)
+                 SizedBox(
+                   width: double.infinity,
+                   child: TextButton(
+                     onPressed: () {
+                       Navigator.pop(dialogContext); // Fermer le dialog
+                       _exitSession();
+                     },
+                     child: Text(
+                       'cancel'.tr(LocalizationService.instance.currentLanguageCode),
+                       style: const TextStyle(
+                         fontSize: 14,
+                         fontWeight: FontWeight.w500,
+                         color: Color(0xFF64748B),
+                       ),
+                     ),
+                   ),
+                 ),
               ],
             ),
           ),
         ),
-      ),
+      )),
     );
   }
 

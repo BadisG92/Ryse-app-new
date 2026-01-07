@@ -813,7 +813,7 @@ class _PaywallScreenState extends State<PaywallScreen>
       ),
       child: Center(
         child: Text(
-          isFrench ? '7 JOURS GRATUITS' : isGerman ? '7 TAGE KOSTENLOS TESTEN' : '7 DAYS FREE TRIAL',
+          isFrench ? '7 JOURS GRATUITS' : isGerman ? '7 TAGE GRATIS TESTEN' : '7 DAYS FREE TRIAL',
           style: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w900,

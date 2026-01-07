@@ -1024,7 +1024,11 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
                 children: [
                   Consumer<LocalizationService>(
                     builder: (context, locService, child) => Text(
-                      locService.currentLanguageCode == 'fr' ? 'Nom du plat' : 'Dish name',
+                      locService.currentLanguageCode == 'fr'
+                          ? 'Nom du plat'
+                          : locService.currentLanguageCode == 'de'
+                              ? 'Gerichtname'
+                              : 'Dish name',
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
@@ -1290,7 +1294,11 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
                     ),
                     child: Consumer<LocalizationService>(
                       builder: (context, locService, child) => Text(
-                        locService.currentLanguageCode == 'fr' ? 'Enregistrer le repas' : 'Save meal',
+                        locService.currentLanguageCode == 'fr'
+                            ? 'Enregistrer le repas'
+                            : locService.currentLanguageCode == 'de'
+                                ? 'Mahlzeit speichern'
+                                : 'Save meal',
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w500,
@@ -1322,7 +1330,11 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
                     ),
                     child: Consumer<LocalizationService>(
                       builder: (context, locService, child) => Text(
-                        locService.currentLanguageCode == 'fr' ? 'Reprendre une photo' : 'Take another photo',
+                        locService.currentLanguageCode == 'fr'
+                            ? 'Reprendre une photo'
+                            : locService.currentLanguageCode == 'de'
+                                ? 'Neues Foto aufnehmen'
+                                : 'Take another photo',
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w500,

@@ -313,7 +313,7 @@ class CardioActivityType {
 
   factory CardioActivityType.fromJson(Map<String, dynamic> json) {
     final formatsJson = json['formats'] as List<dynamic>? ?? [];
-    
+
     return CardioActivityType(
       id: json['id'] as String,
       activityKey: json['activity_key'] as String,

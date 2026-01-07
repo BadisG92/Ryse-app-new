@@ -100,6 +100,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   CoachPersonalityType _coachPersonality = CoachPersonalityType.friendly;
   String? _coachPersonalityCustom;
   bool _loadingCoachSettings = true;
+  final TextEditingController _customPersonalityController = TextEditingController();
 
   @override
   void initState() {
@@ -136,6 +137,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
         setState(() {
           _coachPersonality = personality.type;
           _coachPersonalityCustom = personality.customText;
+          _customPersonalityController.text = personality.customText ?? '';
           _loadingCoachSettings = false;
         });
       }
@@ -1177,6 +1179,12 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   }
 
   @override
+  void dispose() {
+    _customPersonalityController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -1202,7 +1210,11 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                       builder: (context, locService, child) => _buildExpandableSection(
                         key: 'application',
                         icon: LucideIcons.smartphone,
-                        title: 'Application',
+                        title: locService.currentLanguageCode == 'fr'
+                            ? 'Application'
+                            : locService.currentLanguageCode == 'de'
+                                ? 'App'
+                                : 'Application',
                         subtitle: locService.isFrench
                             ? 'Évaluez et partagez votre expérience'
                             : locService.isGerman
@@ -1462,10 +1474,14 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                               _buildSwitchTile(
                                 title: locService.currentLanguageCode == 'fr'
                                     ? 'Toutes les notifications'
-                                    : 'All notifications',
+                                    : locService.currentLanguageCode == 'de'
+                                        ? 'Alle Benachrichtigungen'
+                                        : 'All notifications',
                                 subtitle: locService.currentLanguageCode == 'fr'
                                     ? 'Active ou désactive toutes les notifications'
-                                    : 'Enable or disable all notifications',
+                                    : locService.currentLanguageCode == 'de'
+                                        ? 'Alle Benachrichtigungen ein- oder ausschalten'
+                                        : 'Enable or disable all notifications',
                                 value: _notificationPrefs.notificationsEnabled,
                                 onChanged: (value) {
                                   setState(() {
@@ -1494,7 +1510,9 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                         Text(
                                           locService.currentLanguageCode == 'fr'
                                               ? 'Heures silencieuses'
-                                              : 'Quiet hours',
+                                              : locService.currentLanguageCode == 'de'
+                                                  ? 'Ruhezeiten'
+                                                  : 'Quiet hours',
                                           style: const TextStyle(
                                             color: Color(0xFF0B132B),
                                             fontSize: 14,
@@ -1508,7 +1526,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                       children: [
                                         Expanded(
                                           child: _buildTimeSelector(
-                                            label: locService.currentLanguageCode == 'fr' ? 'Début' : 'Start',
+                                            label: locService.currentLanguageCode == 'fr' ? 'Début' : locService.currentLanguageCode == 'de' ? 'Beginn' : 'Start',
                                             hour: _notificationPrefs.quietHoursStart,
                                             onChanged: (value) {
                                               setState(() {
@@ -1523,7 +1541,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                         const SizedBox(width: 12),
                                         Expanded(
                                           child: _buildTimeSelector(
-                                            label: locService.currentLanguageCode == 'fr' ? 'Fin' : 'End',
+                                            label: locService.currentLanguageCode == 'fr' ? 'Fin' : locService.currentLanguageCode == 'de' ? 'Ende' : 'End',
                                             hour: _notificationPrefs.quietHoursEnd,
                                             onChanged: (value) {
                                               setState(() {
@@ -1550,7 +1568,9 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                 icon: LucideIcons.utensils,
                                 title: locService.currentLanguageCode == 'fr'
                                     ? 'Rappels de repas'
-                                    : 'Meal reminders',
+                                    : locService.currentLanguageCode == 'de'
+                                        ? 'Mahlzeit-Erinnerungen'
+                                        : 'Meal reminders',
                                 enabled: _notificationPrefs.mealRemindersEnabled,
                                 onToggle: (value) {
                                   setState(() {
@@ -1565,7 +1585,9 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                         _buildMealTimeRow(
                                           label: locService.currentLanguageCode == 'fr'
                                               ? 'Petit-déjeuner'
-                                              : 'Breakfast',
+                                              : locService.currentLanguageCode == 'de'
+                                                  ? 'Frühstück'
+                                                  : 'Breakfast',
                                           hour: _notificationPrefs.breakfastTime,
                                           onChanged: (value) {
                                             setState(() {
@@ -1579,7 +1601,9 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                         _buildMealTimeRow(
                                           label: locService.currentLanguageCode == 'fr'
                                               ? 'Déjeuner'
-                                              : 'Lunch',
+                                              : locService.currentLanguageCode == 'de'
+                                                  ? 'Mittagessen'
+                                                  : 'Lunch',
                                           hour: _notificationPrefs.lunchTime,
                                           onChanged: (value) {
                                             setState(() {
@@ -1593,7 +1617,9 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                         _buildMealTimeRow(
                                           label: locService.currentLanguageCode == 'fr'
                                               ? 'Dîner'
-                                              : 'Dinner',
+                                              : locService.currentLanguageCode == 'de'
+                                                  ? 'Abendessen'
+                                                  : 'Dinner',
                                           hour: _notificationPrefs.dinnerTime,
                                           onChanged: (value) {
                                             setState(() {
@@ -1615,7 +1641,9 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                 icon: LucideIcons.droplet,
                                 title: locService.currentLanguageCode == 'fr'
                                     ? 'Hydratation'
-                                    : 'Hydration',
+                                    : locService.currentLanguageCode == 'de'
+                                        ? 'Trinkerinnerung'
+                                        : 'Hydration',
                                 enabled: _notificationPrefs.waterRemindersEnabled,
                                 onToggle: (value) {
                                   setState(() {
@@ -1635,7 +1663,9 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                                 child: Text(
                                                   locService.currentLanguageCode == 'fr'
                                                       ? 'Fréquence par jour'
-                                                      : 'Frequency per day',
+                                                      : locService.currentLanguageCode == 'de'
+                                                          ? 'Häufigkeit pro Tag'
+                                                          : 'Frequency per day',
                                                   style: const TextStyle(
                                                     color: Color(0xFF64748B),
                                                     fontSize: 13,
@@ -1701,7 +1731,9 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                 icon: LucideIcons.dumbbell,
                                 title: locService.currentLanguageCode == 'fr'
                                     ? 'Entraînement'
-                                    : 'Workout',
+                                    : locService.currentLanguageCode == 'de'
+                                        ? 'Training'
+                                        : 'Workout',
                                 enabled: _notificationPrefs.workoutRemindersEnabled,
                                 onToggle: (value) {
                                   setState(() {
@@ -1716,7 +1748,9 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                         _buildMealTimeRow(
                                           label: locService.currentLanguageCode == 'fr'
                                               ? 'Heure préférée'
-                                              : 'Preferred time',
+                                              : locService.currentLanguageCode == 'de'
+                                                  ? 'Bevorzugte Zeit'
+                                                  : 'Preferred time',
                                           hour: _notificationPrefs.workoutReminderTime,
                                           onChanged: (value) {
                                             setState(() {
@@ -1738,10 +1772,14 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                 icon: LucideIcons.flame,
                                 title: locService.currentLanguageCode == 'fr'
                                     ? 'Protection de série'
-                                    : 'Streak protection',
+                                    : locService.currentLanguageCode == 'de'
+                                        ? 'Serie-Schutz'
+                                        : 'Streak protection',
                                 subtitle: locService.currentLanguageCode == 'fr'
                                     ? 'Te rappelle de log une activité si tu as une série active'
-                                    : 'Reminds you to log an activity if you have an active streak',
+                                    : locService.currentLanguageCode == 'de'
+                                        ? 'Erinnert dich, eine Aktivität zu loggen, wenn du eine aktive Serie hast'
+                                        : 'Reminds you to log an activity if you have an active streak',
                                 enabled: _notificationPrefs.streakProtectionEnabled,
                                 onToggle: (value) {
                                   setState(() {
@@ -1760,10 +1798,14 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                 icon: LucideIcons.target,
                                 title: locService.currentLanguageCode == 'fr'
                                     ? 'Résumé quotidien'
-                                    : 'Daily summary',
+                                    : locService.currentLanguageCode == 'de'
+                                        ? 'Tägliche Zusammenfassung'
+                                        : 'Daily summary',
                                 subtitle: locService.currentLanguageCode == 'fr'
                                     ? 'Résumé de tes objectifs chaque soir'
-                                    : 'Summary of your goals each evening',
+                                    : locService.currentLanguageCode == 'de'
+                                        ? 'Zusammenfassung deiner Ziele jeden Abend'
+                                        : 'Summary of your goals each evening',
                                 enabled: _notificationPrefs.dailyGoalsSummaryEnabled,
                                 onToggle: (value) {
                                   setState(() {
@@ -1782,10 +1824,14 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                 icon: LucideIcons.calendar,
                                 title: locService.currentLanguageCode == 'fr'
                                     ? 'Résumé hebdomadaire'
-                                    : 'Weekly recap',
+                                    : locService.currentLanguageCode == 'de'
+                                        ? 'Wöchentlicher Rückblick'
+                                        : 'Weekly recap',
                                 subtitle: locService.currentLanguageCode == 'fr'
                                     ? 'Chaque dimanche à 18h'
-                                    : 'Every Sunday at 6 PM',
+                                    : locService.currentLanguageCode == 'de'
+                                        ? 'Jeden Sonntag um 18 Uhr'
+                                        : 'Every Sunday at 6 PM',
                                 enabled: _notificationPrefs.weeklyRecapEnabled,
                                 onToggle: (value) {
                                   setState(() {
@@ -1804,10 +1850,14 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                 icon: LucideIcons.trophy,
                                 title: locService.currentLanguageCode == 'fr'
                                     ? 'Jalons & célébrations'
-                                    : 'Milestones & celebrations',
+                                    : locService.currentLanguageCode == 'de'
+                                        ? 'Meilensteine & Erfolge'
+                                        : 'Milestones & celebrations',
                                 subtitle: locService.currentLanguageCode == 'fr'
                                     ? 'Célèbre tes succès (séries, objectifs parfaits)'
-                                    : 'Celebrate your achievements (streaks, perfect goals)',
+                                    : locService.currentLanguageCode == 'de'
+                                        ? 'Feiere deine Erfolge (Serien, perfekte Ziele)'
+                                        : 'Celebrate your achievements (streaks, perfect goals)',
                                 enabled: _notificationPrefs.milestonesEnabled,
                                 onToggle: (value) {
                                   setState(() {
@@ -2316,7 +2366,11 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
               const SizedBox(width: 16),
               // Titre
               Text(
-                locService.currentLanguageCode == 'fr' ? 'Paramètres' : 'Settings',
+                locService.currentLanguageCode == 'fr'
+                    ? 'Paramètres'
+                    : locService.currentLanguageCode == 'de'
+                        ? 'Einstellungen'
+                        : 'Settings',
                 style: const TextStyle(
                   color: Color(0xFF0B132B),
                   fontSize: 24,
@@ -2382,21 +2436,29 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
     Color? borderColor,
   }) {
     final isExpanded = _expandedSections[key] ?? false;
+    final hasGoldBorder = borderColor != null;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: borderColor != null
-            ? Border.all(color: borderColor, width: 2)
+        border: hasGoldBorder
+            ? Border.all(color: const Color(0xFFFFD700), width: 1.5)
             : null,
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
+          if (hasGoldBorder)
+            BoxShadow(
+              color: const Color(0xFFFFD700).withOpacity(0.15),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            )
+          else
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
         ],
       ),
       child: Column(
@@ -3237,23 +3299,47 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<CoachPersonalityType>(
           value: _coachPersonality,
-          icon: const Icon(LucideIcons.chevronDown, size: 18),
+          icon: const Icon(LucideIcons.chevronDown, size: 18, color: Color(0xFF64748B)),
           isExpanded: true,
+          dropdownColor: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(10),
           items: personalities.map((type) {
-            final emoji = CoachPersonalityService.getEmoji(type);
             final label = CoachPersonalityService.getLocalizedLabel(type, languageCode);
             return DropdownMenuItem(
               value: type,
-              child: Text('$emoji $label', style: const TextStyle(fontSize: 14)),
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF1A1A1A),
+                ),
+              ),
             );
           }).toList(),
+          selectedItemBuilder: (context) {
+            return personalities.map((type) {
+              final label = CoachPersonalityService.getLocalizedLabel(type, languageCode);
+              return Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF0B132B),
+                  ),
+                ),
+              );
+            }).toList();
+          },
           onChanged: (value) async {
             if (value != null) {
               setState(() => _coachPersonality = value);
@@ -3275,15 +3361,15 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
             ? 'Beschreibe die Persönlichkeit, die du für deinen Coach möchtest...'
             : 'Describe the personality you want for your coach...';
 
-    final charCount = _coachPersonalityCustom?.length ?? 0;
+    final charCount = _customPersonalityController.text.length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(8),
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(10),
             border: Border.all(color: const Color(0xFFE2E8F0)),
           ),
           child: TextField(
@@ -3291,20 +3377,24 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
             maxLength: 100,
             decoration: InputDecoration(
               hintText: placeholder,
-              hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+              hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
               border: InputBorder.none,
               contentPadding: const EdgeInsets.all(12),
               counterText: '',
             ),
-            style: const TextStyle(fontSize: 14),
-            controller: TextEditingController(text: _coachPersonalityCustom),
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF1A1A1A),
+            ),
+            controller: _customPersonalityController,
             onChanged: (value) {
               setState(() => _coachPersonalityCustom = value);
             },
-            onSubmitted: (value) async {
+            onEditingComplete: () async {
               await CoachPersonalityService.instance.setPersonality(
                 CoachPersonalityType.custom,
-                customText: value,
+                customText: _customPersonalityController.text,
               );
             },
           ),
@@ -3313,19 +3403,22 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              languageCode == 'fr'
-                  ? 'Le coach adaptera son ton selon ta description'
-                  : languageCode == 'de'
-                      ? 'Der Coach passt seinen Ton deiner Beschreibung an'
-                      : 'The coach will adapt its tone based on your description',
-              style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
+            Expanded(
+              child: Text(
+                languageCode == 'fr'
+                    ? 'Le coach adaptera son ton selon ta description'
+                    : languageCode == 'de'
+                        ? 'Der Coach passt seinen Ton deiner Beschreibung an'
+                        : 'The coach will adapt its tone based on your description',
+                style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
+              ),
             ),
             Text(
               '$charCount/100',
               style: TextStyle(
                 color: charCount > 90 ? const Color(0xFFEF4444) : const Color(0xFF94A3B8),
                 fontSize: 11,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ],
@@ -3793,10 +3886,6 @@ class _SettingsPremiumBadgeState extends State<_SettingsPremiumBadge>
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: const Color(0xFFFFD700),
-            width: 1.5,
-          ),
           boxShadow: [
             BoxShadow(
               color: const Color(0xFFFFD700).withOpacity(0.4),
@@ -3809,13 +3898,13 @@ class _SettingsPremiumBadgeState extends State<_SettingsPremiumBadge>
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              LucideIcons.lock,
+              LucideIcons.lockOpen,
               size: 12,
               color: Colors.white,
             ),
             SizedBox(width: 4),
             Text(
-              'PREMIUM',
+              'UPGRADE',
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w900,

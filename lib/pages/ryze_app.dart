@@ -289,7 +289,7 @@ class _RyzeAppState extends State<RyzeApp> {
       final customMessage = locService.isFrench
           ? 'Profitez de 7 jours d\'essai gratuit'
           : locService.isGerman
-              ? '7 Tage kostenlos testen'
+              ? '7 Tage gratis testen'
               : 'Enjoy 7 days free trial';
 
       Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(

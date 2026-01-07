@@ -727,7 +727,7 @@ class GlobalStateManager {
         'completed': _mealsCount >= 3,
         'currentValue': _mealsCount.toDouble(),
         'targetValue': 3.0,
-        'unit': languageCode == 'fr' ? 'repas' : 'meals',
+        'unit': 'meals'.tr(languageCode),
       },
       {
         'id': 'workout',
@@ -736,7 +736,7 @@ class GlobalStateManager {
         'completed': _sportSessions >= 1,
         'currentValue': _sportSessions.toDouble(),
         'targetValue': 1.0,
-        'unit': languageCode == 'fr' ? (_sportSessions <= 1 ? 'séance' : 'séances') : (_sportSessions <= 1 ? 'session' : 'sessions'),
+        'unit': 'sessions'.tr(languageCode),
       },
     ];
   }

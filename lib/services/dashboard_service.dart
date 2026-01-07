@@ -216,7 +216,7 @@ class DashboardService {
           completed: mealsCount >= 3,
           currentValue: mealsCount.toDouble(),
           targetValue: 3,
-          unit: '',
+          unit: 'meals'.tr(languageCode),
         ),
         DailyGoal(
           id: 'water',
@@ -378,14 +378,14 @@ class DashboardService {
         completed: completed,
         currentValue: totalSessions.toDouble(),
         targetValue: 1,
-        unit: '',
+        unit: 'sessions'.tr(languageCode),
       );
     } catch (e) {
       if (kDebugMode) debugPrint('❌ Erreur lors de la récupération de l\'objectif workout: $e');
       // Get language for translations (fallback)
       final locService = LocalizationService.instance;
       final languageCode = locService.currentLanguageCode;
-      
+
       return DailyGoal(
         id: 'workout',
         label: 'complete_workout'.tr(languageCode),
@@ -393,7 +393,7 @@ class DashboardService {
         completed: false,
         currentValue: 0,
         targetValue: 1,
-        unit: '',
+        unit: 'sessions'.tr(languageCode),
       );
     }
   }
@@ -593,7 +593,7 @@ class DashboardService {
           completed: uniqueMeals >= 3,
           currentValue: uniqueMeals.toDouble(),
           targetValue: 3,
-          unit: 'repas',
+          unit: 'meals'.tr(languageCode),
         ),
         // Objectif workout
         DailyGoal(
@@ -603,7 +603,7 @@ class DashboardService {
           completed: hasWorkout,
           currentValue: hasWorkout ? 1 : 0,
           targetValue: 1,
-          unit: 'séance',
+          unit: 'sessions'.tr(languageCode),
         ),
       ];
 

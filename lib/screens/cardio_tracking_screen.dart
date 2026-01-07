@@ -1002,12 +1002,13 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
                       isPrimary: true,
                     ),
 
-                  // Bouton stop
-                  _buildControlButton(
-                    icon: LucideIcons.square,
-                    onPressed: _stopTracking,
-                    isPrimary: false,
-                  ),
+                  // Bouton stop - visible uniquement si session démarrée (isRunning ou isPaused)
+                  if (_session.isRunning || _session.isPaused)
+                    _buildControlButton(
+                      icon: LucideIcons.square,
+                      onPressed: _stopTracking,
+                      isPrimary: false,
+                    ),
                 ],
               ),
             ],

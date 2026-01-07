@@ -3234,9 +3234,9 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
 
               const SizedBox(height: 16),
 
-              // En-têtes des colonnes (figés)
+              // En-têtes des colonnes (figés) - alignés avec les inputs des séries
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        padding: const EdgeInsets.symmetric(horizontal: 12), // Même padding que le container des séries
                         child: Row(
                           children: [
                             Expanded(
@@ -3264,7 +3264,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 136), // Espace pour 3 boutons (micro + copier + supprimer) = ~32*3 + 8*3 = 120 + marges
+                            const SizedBox(width: 56), // Espace pour le bouton menu (12 + 32 + 12 = 56)
                   ],
                 ),
               ),

@@ -193,6 +193,13 @@ class MyApp extends StatelessWidget {
             brightness: Brightness.light,
           ),
           useMaterial3: true,
+          snackBarTheme: SnackBarThemeData(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: const Color(0xFF0B132B),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
         ),
         home: const AppInitializer(),
         routes: {

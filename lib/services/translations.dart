@@ -71,7 +71,7 @@ class AppTranslations {
     'trial_badge': {
       'fr': 'ESSAI GRATUIT',
       'en': 'TRY FREE',
-      'de': 'KOSTENLOS TESTEN',
+      'de': 'GRATIS TESTEN',
     },
     'must_be_connected': {
       'fr': 'Vous devez être connecté pour enregistrer l\'hydratation',
@@ -1492,6 +1492,38 @@ class AppTranslations {
       'en': 'Recent sessions',
       'de': 'Letzte Einheiten',
     },
+    // Empty journal panda message
+    'what_eating_today': {
+      'fr': 'Qu\'est-ce qu\'on mange aujourd\'hui ?',
+      'en': 'What are we eating today?',
+      'de': 'Was essen wir heute?',
+    },
+    // Recipe details translations
+    'nutritional_facts': {
+      'fr': 'Bilan nutritionnel',
+      'en': 'Nutritional facts',
+      'de': 'Nährwertangaben',
+    },
+    'nutritional_facts_per_serving': {
+      'fr': 'Bilan nutritionnel (par portion)',
+      'en': 'Nutritional facts (per serving)',
+      'de': 'Nährwertangaben (pro Portion)',
+    },
+    'ingredients_title': {
+      'fr': 'Ingrédients',
+      'en': 'Ingredients',
+      'de': 'Zutaten',
+    },
+    'add_to_meal': {
+      'fr': 'Ajouter à un repas',
+      'en': 'Add to a meal',
+      'de': 'Zu einer Mahlzeit hinzufügen',
+    },
+    'modify_ingredients': {
+      'fr': 'Modifier les aliments',
+      'en': 'Modify ingredients',
+      'de': 'Zutaten anpassen',
+    },
     'tracked_exercises': {
       'fr': 'Exercices suivis',
       'en': 'Tracked exercises',
@@ -1992,7 +2024,7 @@ class AppTranslations {
     'weightlifting': {
       'fr': 'Musculation',
       'en': 'Workout',
-      'de': 'Training',
+      'de': 'Krafttraining',
     },
     'rest': {
       'fr': 'Repos',
@@ -2063,7 +2095,7 @@ class AppTranslations {
     'cardio': {
       'fr': 'Cardio',
       'en': 'Cardio',
-      'de': 'Kardio',
+      'de': 'Cardio',
     },
     'musculation': {
       'fr': 'Musculation',
@@ -2284,7 +2316,7 @@ class AppTranslations {
     'try_7_days_free': {
       'fr': 'Essayer 7 jours gratuits',
       'en': 'Try 7 days free',
-      'de': '7 Tage kostenlos testen',
+      'de': '7 Tage gratis testen',
     },
     'then_price_monthly': {
       'fr': 'Puis 15€/mois • Annulable à tout moment',
@@ -7754,7 +7786,7 @@ class AppTranslations {
       'en':
           'Premium unlocks:\n\n• Unlimited food scanner\n• Custom recipes\n• Advanced workout programs\n• Detailed statistics\n• Priority support\n\n7-day free trial, then €9.99/month.',
       'de':
-          'Premium schaltet frei:\n\n• Unbegrenzter Lebensmittelscanner\n• Individuelle Rezepte\n• Fortgeschrittene Trainingsprogramme\n• Detaillierte Statistiken\n• Prioritäts-Support\n\n7 Tage kostenlos testen, dann 9,99€/Monat.',
+          'Premium schaltet frei:\n\n• Unbegrenzter Lebensmittelscanner\n• Individuelle Rezepte\n• Fortgeschrittene Trainingsprogramme\n• Detaillierte Statistiken\n• Prioritäts-Support\n\n7 Tage gratis testen, dann 9,99€/Monat.',
     },
     'guides': {
       'fr': 'Guides',

@@ -19,6 +19,7 @@ import '../services/optimistic_update_service.dart';
 import '../services/localization_service.dart';
 import '../services/translations.dart';
 import 'ui/custom_snackbar.dart';
+import 'ui/snackbar_utils.dart';
 import '../bottom_sheets/add_meal_bottom_sheet.dart';
 import 'coach_ryze_nutrition_button.dart';
 import '../services/workout_service.dart';
@@ -254,11 +255,9 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
   Future<void> _selectNewMealType(String mealType) async {
     final user = AuthService().currentUser;
     if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Vous devez être connecté pour ajouter un repas'),
-          backgroundColor: Colors.red,
-        ),
+      SnackBarUtils.showErrorSnackBar(
+        context,
+        message: 'Vous devez être connecté pour ajouter un repas',
       );
       return;
     }
@@ -279,22 +278,18 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
 
       // Afficher un message de confirmation
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Nouveau repas "$mealId" prêt, ajoutez vos aliments !'),
-            backgroundColor: const Color(0xFF0B132B),
-            duration: const Duration(seconds: 3),
-          ),
+        SnackBarUtils.showSuccessSnackBar(
+          context,
+          message: 'Nouveau repas "$mealId" prêt, ajoutez vos aliments !',
+          duration: const Duration(seconds: 3),
         );
       }
     } else {
       // Erreur lors de la génération de l'ID
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('error_meal_creation'.tr(LocalizationService.instance.currentLanguageCode)),
-            backgroundColor: Colors.red,
-          ),
+        SnackBarUtils.showErrorSnackBar(
+          context,
+          message: 'error_meal_creation'.tr(LocalizationService.instance.currentLanguageCode),
         );
       }
     }
@@ -435,11 +430,9 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
                           );
                         } else {
                           if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('error_database_add_failed'.tr(LocalizationService.instance.currentLanguageCode)),
-                                backgroundColor: Colors.red,
-                              ),
+                            SnackBarUtils.showErrorSnackBar(
+                              context,
+                              message: 'error_database_add_failed'.tr(LocalizationService.instance.currentLanguageCode),
                             );
                           }
                         }
@@ -514,21 +507,17 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
                             );
                           } else {
                             if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('error_meal_creation'.tr(LocalizationService.instance.currentLanguageCode)),
-                                  backgroundColor: Colors.red,
-                                ),
+                              SnackBarUtils.showErrorSnackBar(
+                                context,
+                                message: 'error_meal_creation'.tr(LocalizationService.instance.currentLanguageCode),
                               );
                             }
                           }
                         } else {
                           if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('error_meal_id_generation'.tr(LocalizationService.instance.currentLanguageCode)),
-                                backgroundColor: Colors.red,
-                              ),
+                            SnackBarUtils.showErrorSnackBar(
+                              context,
+                              message: 'error_meal_id_generation'.tr(LocalizationService.instance.currentLanguageCode),
                             );
                           }
                         }
@@ -673,9 +662,7 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
                               // Coach Ryze Chef Header
                               Consumer<LocalizationService>(
                                 builder: (context, locService, child) {
-                                  final message = locService.currentLanguageCode == 'fr'
-                                    ? 'Qu\'est-ce qu\'on mange aujourd\'hui ?'
-                                    : 'What are we eating today?';
+                                  final message = 'what_eating_today'.tr(locService.currentLanguageCode);
 
                                   return Padding(
                                     padding: const EdgeInsets.fromLTRB(0, 8, 0, 24),

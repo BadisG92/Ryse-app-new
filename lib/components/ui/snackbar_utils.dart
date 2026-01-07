@@ -1,8 +1,44 @@
 import 'package:flutter/material.dart';
 
+/// Extension pour faciliter l'affichage des snackbars en haut
+extension TopSnackBarExtension on BuildContext {
+  void showTopSnackBar({
+    required String message,
+    Color? backgroundColor,
+    Duration? duration,
+  }) {
+    SnackBarUtils.show(
+      this,
+      message: message,
+      backgroundColor: backgroundColor,
+      duration: duration,
+    );
+  }
+}
+
 class SnackBarUtils {
   /// Affiche un message en haut de l'écran en utilisant un Overlay
   static OverlayEntry? _currentOverlay;
+
+  /// Méthode principale pour afficher un snackbar en haut
+  /// Remplace ScaffoldMessenger.of(context).showSnackBar()
+  static void show(
+    BuildContext context, {
+    required String message,
+    Color? backgroundColor,
+    Color? textColor,
+    Duration? duration,
+    IconData? icon,
+  }) {
+    showTopSnackBar(
+      context,
+      message: message,
+      backgroundColor: backgroundColor ?? const Color(0xFF0B132B),
+      textColor: textColor,
+      duration: duration,
+      icon: icon,
+    );
+  }
 
   static void showTopSnackBar(
     BuildContext context, {

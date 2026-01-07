@@ -11,6 +11,7 @@ import '../models/ai_analysis_models.dart';
 import '../bottom_sheets/editable_food_details_bottom_sheet.dart';
 import '../bottom_sheets/meal_selection_bottom_sheet.dart';
 import '../bottom_sheets/new_meal_type_bottom_sheet.dart';
+import '../bottom_sheets/add_ingredient_bottom_sheet.dart';
 import '../services/food_entries_service.dart';
 import '../services/global_state_manager.dart';
 import '../services/dashboard_service.dart';
@@ -452,20 +453,17 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
                             valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
                         )
-                      : Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(LucideIcons.plus, color: Colors.white),
-                            const SizedBox(width: 8),
-                            Text(
-                              'add_all_foods'.tr(locService.currentLanguageCode),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ],
+                      : Text(
+                          locService.currentLanguageCode == 'fr'
+                              ? 'Enregistrer le repas'
+                              : locService.currentLanguageCode == 'de'
+                                  ? 'Mahlzeit speichern'
+                                  : 'Save meal',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16,
+                          ),
                         ),
                 ),
               ),
@@ -583,33 +581,43 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              'Aliments détectés',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1A1A1A),
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: const Color(0xFF0B132B).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                '${_analysisResult.detectedFoods.length} aliments',
+        Consumer<LocalizationService>(
+          builder: (context, locService, child) => Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                locService.currentLanguageCode == 'fr'
+                    ? 'Aliments détectés'
+                    : locService.currentLanguageCode == 'de'
+                        ? 'Erkannte Lebensmittel'
+                        : 'Detected foods',
                 style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF0B132B),
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1A1A1A),
                 ),
               ),
-            ),
-          ],
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0B132B).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  locService.currentLanguageCode == 'fr'
+                      ? '${_analysisResult.detectedFoods.length} aliments'
+                      : locService.currentLanguageCode == 'de'
+                          ? '${_analysisResult.detectedFoods.length} Lebensmittel'
+                          : '${_analysisResult.detectedFoods.length} foods',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF0B132B),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 12),
         ...List.generate(
@@ -619,7 +627,60 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
             child: _buildFoodItem(_analysisResult.detectedFoods[index]),
           ),
         ),
+        // Bouton ajouter un ingrédient
+        Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: GestureDetector(
+            onTap: _showAddIngredientBottomSheet,
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: const Color(0xFFE5E7EB),
+                  width: 1,
+                  style: BorderStyle.solid,
+                ),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    LucideIcons.plus,
+                    size: 20,
+                    color: Color(0xFF0B132B),
+                  ),
+                  const SizedBox(width: 8),
+                  Consumer<LocalizationService>(
+                    builder: (context, locService, child) => Text(
+                      'add_ingredient'.tr(locService.currentLanguageCode),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF0B132B),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ],
+    );
+  }
+
+  void _showAddIngredientBottomSheet() {
+    AddIngredientBottomSheet.show(
+      context,
+      onIngredientAdded: (DetectedFood newFood) {
+        setState(() {
+          _analysisResult.detectedFoods.add(newFood);
+        });
+        // Redémarrer l'animation avec les nouvelles valeurs
+        _restartAnimation();
+        debugPrint('Nouvel ingrédient ajouté: ${newFood.name}');
+      },
     );
   }
 
@@ -689,39 +750,65 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
               ],
             ),
           ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Bouton édition
-              GestureDetector(
-                onTap: () => _editFood(food),
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    color: Colors.transparent,
-                  ),
-                  child: const Icon(
-                    LucideIcons.pencil,
-                    size: 16,
-                    color: Color(0xFF64748B),
+          PopupMenuButton<String>(
+            icon: const Icon(
+              LucideIcons.ellipsisVertical,
+              size: 18,
+              color: Color(0xFF64748B),
+            ),
+            padding: EdgeInsets.zero,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            onSelected: (value) {
+              if (value == 'edit') {
+                _editFood(food);
+              } else if (value == 'delete') {
+                _deleteFood(food);
+              }
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem<String>(
+                value: 'edit',
+                child: Consumer<LocalizationService>(
+                  builder: (context, locService, child) => Row(
+                    children: [
+                      const Icon(
+                        LucideIcons.pencil,
+                        size: 16,
+                        color: Color(0xFF64748B),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        'edit'.tr(locService.currentLanguageCode),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF1A1A1A),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-              const SizedBox(width: 4),
-              // Bouton suppression (croix comme dans le journal)
-              GestureDetector(
-                onTap: () => _deleteFood(food),
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    color: Colors.transparent,
-                  ),
-                  child: const Icon(
-                    LucideIcons.x,
-                    size: 16,
-                    color: Color(0xFFEF4444),
+              PopupMenuItem<String>(
+                value: 'delete',
+                child: Consumer<LocalizationService>(
+                  builder: (context, locService, child) => Row(
+                    children: [
+                      const Icon(
+                        LucideIcons.trash2,
+                        size: 16,
+                        color: Color(0xFFDC2626),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        'delete'.tr(locService.currentLanguageCode),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFFDC2626),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),

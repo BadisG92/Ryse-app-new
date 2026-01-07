@@ -49,13 +49,33 @@ class _AddIngredientBottomSheetState extends State<AddIngredientBottomSheet> {
   String? _quantityError;
   String? _generalError;
 
+  // Clés d'unités (pas les labels affichés)
+  final List<String> _unitKeys = ['g', 'ml', 'portion', 'spoon', 'unit'];
+
   final Map<String, double> _unitDefaults = {
     'g': 100.0,
     'ml': 100.0,
     'portion': 1.0,
-    'cuillère': 1.0,
-    'unité': 1.0,
+    'spoon': 1.0,
+    'unit': 1.0,
   };
+
+  String _getUnitLabel(String unitKey, String languageCode) {
+    switch (unitKey) {
+      case 'g':
+        return 'g';
+      case 'ml':
+        return 'ml';
+      case 'portion':
+        return languageCode == 'fr' ? 'portion' : languageCode == 'de' ? 'Portion' : 'portion';
+      case 'spoon':
+        return languageCode == 'fr' ? 'cuillère' : languageCode == 'de' ? 'Löffel' : 'spoon';
+      case 'unit':
+        return languageCode == 'fr' ? 'unité' : languageCode == 'de' ? 'Stück' : 'unit';
+      default:
+        return unitKey;
+    }
+  }
 
   @override
   void dispose() {
@@ -157,10 +177,13 @@ class _AddIngredientBottomSheetState extends State<AddIngredientBottomSheet> {
     } catch (e) {
       if (kDebugMode) debugPrint('❌ Error adding ingredient: $e');
       if (mounted) {
+        final langCode = LocalizationService.instance.currentLanguageCode;
         setState(() {
-          _generalError = LocalizationService.instance.currentLanguageCode == 'fr'
+          _generalError = langCode == 'fr'
               ? 'Une erreur est survenue'
-              : 'An error occurred';
+              : langCode == 'de'
+                  ? 'Ein Fehler ist aufgetreten'
+                  : 'An error occurred';
         });
       }
     } finally {
@@ -287,7 +310,11 @@ class _AddIngredientBottomSheetState extends State<AddIngredientBottomSheet> {
                     // Quantité
                     Consumer<LocalizationService>(
                       builder: (context, locService, child) => Text(
-                        locService.currentLanguageCode == 'fr' ? 'Quantité' : 'Quantity',
+                        locService.currentLanguageCode == 'fr'
+                            ? 'Quantité'
+                            : locService.currentLanguageCode == 'de'
+                                ? 'Menge'
+                                : 'Quantity',
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w500,
@@ -296,74 +323,110 @@ class _AddIngredientBottomSheetState extends State<AddIngredientBottomSheet> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        // Champ quantité
-                        Expanded(
-                          flex: 2,
-                          child: NumericTextField(
-                            controller: _quantityController,
-                            decoration: InputDecoration(
-                              hintText: '100',
-                              border: const OutlineInputBorder(
-                                borderRadius: BorderRadius.all(Radius.circular(8)),
-                                borderSide: BorderSide(color: Color(0xFFE5E7EB)),
+                    // Champ quantité + Sélecteur d'unité sur la même ligne
+                    Consumer<LocalizationService>(
+                      builder: (context, locService, child) => Row(
+                        children: [
+                          // Champ quantité
+                          Expanded(
+                            flex: 2,
+                            child: NumericTextField(
+                              controller: _quantityController,
+                              decoration: InputDecoration(
+                                hintText: '100',
+                                border: const OutlineInputBorder(
+                                  borderRadius: BorderRadius.all(Radius.circular(10)),
+                                  borderSide: BorderSide(color: Color(0xFFE2E8F0)),
+                                ),
+                                enabledBorder: const OutlineInputBorder(
+                                  borderRadius: BorderRadius.all(Radius.circular(10)),
+                                  borderSide: BorderSide(color: Color(0xFFE2E8F0)),
+                                ),
+                                focusedBorder: const OutlineInputBorder(
+                                  borderRadius: BorderRadius.all(Radius.circular(10)),
+                                  borderSide: BorderSide(color: Color(0xFF0B132B)),
+                                ),
+                                errorBorder: const OutlineInputBorder(
+                                  borderRadius: BorderRadius.all(Radius.circular(10)),
+                                  borderSide: BorderSide(color: Color(0xFFDC2626)),
+                                ),
+                                filled: true,
+                                fillColor: const Color(0xFFF8FAFC),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                                errorText: _quantityError,
                               ),
-                              focusedBorder: const OutlineInputBorder(
-                                borderRadius: BorderRadius.all(Radius.circular(8)),
-                                borderSide: BorderSide(color: Color(0xFF3B82F6)),
-                              ),
-                              errorBorder: const OutlineInputBorder(
-                                borderRadius: BorderRadius.all(Radius.circular(8)),
-                                borderSide: BorderSide(color: Color(0xFFDC2626)),
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                              errorText: _quantityError,
+                              onChanged: (_) {
+                                if (_quantityError != null) {
+                                  setState(() => _quantityError = null);
+                                }
+                              },
                             ),
-                            onChanged: (_) {
-                              if (_quantityError != null) {
-                                setState(() => _quantityError = null);
-                              }
-                            },
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        // Sélecteur d'unité
-                        Expanded(
-                          flex: 3,
-                          child: DropdownButtonFormField<String>(
-                            value: _selectedUnit,
-                            decoration: const InputDecoration(
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.all(Radius.circular(8)),
-                                borderSide: BorderSide(color: Color(0xFFE5E7EB)),
+                          const SizedBox(width: 12),
+                          // Sélecteur d'unité
+                          Expanded(
+                            flex: 3,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF8FAFC),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: const Color(0xFFE2E8F0)),
                               ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.all(Radius.circular(8)),
-                                borderSide: BorderSide(color: Color(0xFF3B82F6)),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<String>(
+                                  value: _selectedUnit,
+                                  icon: const Icon(LucideIcons.chevronDown, size: 18, color: Color(0xFF64748B)),
+                                  isExpanded: true,
+                                  dropdownColor: const Color(0xFFF8FAFC),
+                                  borderRadius: BorderRadius.circular(10),
+                                  items: _unitKeys.map((unitKey) {
+                                    final label = _getUnitLabel(unitKey, locService.currentLanguageCode);
+                                    return DropdownMenuItem<String>(
+                                      value: unitKey,
+                                      child: Text(
+                                        label,
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w500,
+                                          color: Color(0xFF1A1A1A),
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                  selectedItemBuilder: (context) {
+                                    return _unitKeys.map((unitKey) {
+                                      final label = _getUnitLabel(unitKey, locService.currentLanguageCode);
+                                      return Align(
+                                        alignment: Alignment.centerLeft,
+                                        child: Text(
+                                          label,
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                            color: Color(0xFF0B132B),
+                                          ),
+                                        ),
+                                      );
+                                    }).toList();
+                                  },
+                                  onChanged: (String? newUnit) {
+                                    if (newUnit != null) {
+                                      setState(() {
+                                        _selectedUnit = newUnit;
+                                        // Mettre à jour la quantité par défaut pour cette unité
+                                        _quantityController.text = _unitDefaults[newUnit]!.toStringAsFixed(
+                                          _unitDefaults[newUnit]!.truncateToDouble() == _unitDefaults[newUnit]! ? 0 : 1
+                                        );
+                                      });
+                                    }
+                                  },
+                                ),
                               ),
-                              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                             ),
-                            items: _unitDefaults.keys.map((String unit) {
-                              return DropdownMenuItem<String>(
-                                value: unit,
-                                child: Text(unit),
-                              );
-                            }).toList(),
-                            onChanged: (String? newUnit) {
-                              if (newUnit != null) {
-                                setState(() {
-                                  _selectedUnit = newUnit;
-                                  // Mettre à jour la quantité par défaut pour cette unité
-                                  _quantityController.text = _unitDefaults[newUnit]!.toStringAsFixed(
-                                    _unitDefaults[newUnit]!.truncateToDouble() == _unitDefaults[newUnit]! ? 0 : 1
-                                  );
-                                });
-                              }
-                            },
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
 
                     // Message d'erreur général
