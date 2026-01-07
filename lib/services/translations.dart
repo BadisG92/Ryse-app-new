@@ -1196,6 +1196,11 @@ class AppTranslations {
       'en': 'Join us',
       'de': 'Mach mit',
     },
+    'onboarding_lets_meet': {
+      'fr': 'Faisons connaissance',
+      'en': 'Let\'s get to know each other',
+      'de': 'Lass uns kennenlernen',
+    },
     'welcome_premium': {
       'fr': 'Bienvenue dans Ryze Premium ! 🎉',
       'en': 'Welcome to Ryze Premium! 🎉',

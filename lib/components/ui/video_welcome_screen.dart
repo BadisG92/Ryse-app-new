@@ -1,3 +1,4 @@
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
@@ -112,9 +113,12 @@ class _VideoWelcomeScreenState extends State<VideoWelcomeScreen>
 
   @override
   Widget build(BuildContext context) {
-    // Determine button text based on locale
-    final locale = Localizations.localeOf(context);
-    final langCode = locale.languageCode;
+    // Determine button text based on device locale (not Flutter's Localizations)
+    // At this early stage, Flutter's Localizations may not be properly set up yet
+    final deviceLocale = Platform.localeName; // e.g., "fr_FR" or "en_US"
+    final rawLang = deviceLocale.split('_').first; // Extract "fr" or "en"
+    // Only support fr, de, otherwise fallback to en
+    final langCode = (rawLang == 'fr' || rawLang == 'de') ? rawLang : 'en';
     final buttonLabel = widget.buttonText ?? 'welcome_join_us'.tr(langCode);
 
     return Scaffold(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'ui/video_welcome_screen.dart';
+import 'ui/onboarding_video_screen.dart';
 import 'onboarding_gamified_hybrid.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/onboarding_chat_screen.dart';
@@ -9,7 +10,7 @@ import '../screens/weekly_contract_screen.dart';
 /// Widget qui encapsule Video Welcome + Onboarding
 /// Flow:
 /// - Non connecté: Video Welcome → Login/Signup
-/// - Connecté mais pas onboardé: Video Welcome → Onboarding IA → Contract → Onboarding classique
+/// - Connecté mais pas onboardé: Video Welcome → Video Onboarding → Onboarding IA → Contract → Onboarding classique
 class OnboardingWithValueProp extends StatefulWidget {
   final VoidCallback onComplete;
   final bool showValuePropFirst;
@@ -29,13 +30,14 @@ class OnboardingWithValueProp extends StatefulWidget {
 }
 
 class _OnboardingWithValuePropState extends State<OnboardingWithValueProp> {
-  // 0: Video Welcome, 1: Onboarding IA, 2: Contract/Pacte, 3: Onboarding classique
+  // 0: Video Welcome, 1: Video Onboarding, 2: Onboarding IA, 3: Contract/Pacte, 4: Onboarding classique
   int _currentStep = 0;
 
   @override
   void initState() {
     super.initState();
-    // Toujours commencer par la vidéo (sauf si skipValueProp pour des cas spéciaux)
+    // Toujours commencer par la vidéo welcome (sauf si skipValueProp pour des cas spéciaux)
+    // Si skipValueProp, on saute directement à la vidéo onboarding (étape 1)
     _currentStep = widget.skipValueProp ? 1 : 0;
   }
 
@@ -47,10 +49,10 @@ class _OnboardingWithValuePropState extends State<OnboardingWithValueProp> {
 
     if (!mounted) return;
 
-    // Si l'utilisateur est connecté → Onboarding IA
+    // Si l'utilisateur est connecté → Video Onboarding
     if (widget.isUserLoggedIn) {
       setState(() {
-        _currentStep = 1; // Passer à l'onboarding IA
+        _currentStep = 1; // Passer à la vidéo onboarding
       });
     } else {
       // Si non connecté → Login/Signup
@@ -60,11 +62,20 @@ class _OnboardingWithValuePropState extends State<OnboardingWithValueProp> {
     }
   }
 
+  /// Callback quand la vidéo onboarding est terminée → passer au chat IA
+  void _onOnboardingVideoComplete() {
+    if (mounted) {
+      setState(() {
+        _currentStep = 2; // Passer à l'onboarding IA
+      });
+    }
+  }
+
   /// Callback quand l'onboarding IA est terminé → passer au contrat
   void _onOnboardingIAComplete() {
     if (mounted) {
       setState(() {
-        _currentStep = 2; // Passer au contrat/pacte
+        _currentStep = 3; // Passer au contrat/pacte
       });
     }
   }
@@ -73,7 +84,7 @@ class _OnboardingWithValuePropState extends State<OnboardingWithValueProp> {
   void _onContractComplete() {
     if (mounted) {
       setState(() {
-        _currentStep = 3; // Passer à l'onboarding classique
+        _currentStep = 4; // Passer à l'onboarding classique
       });
     }
   }
@@ -87,17 +98,22 @@ class _OnboardingWithValuePropState extends State<OnboardingWithValueProp> {
           onContinue: _onVideoWelcomeComplete,
         );
       case 1:
+        // Vidéo onboarding (explique l'app avant le chat IA)
+        return OnboardingVideoScreen(
+          onContinue: _onOnboardingVideoComplete,
+        );
+      case 2:
         // Onboarding IA (chat avec Coach Ryze)
         return OnboardingChatScreen(
           onComplete: _onOnboardingIAComplete,
         );
-      case 2:
+      case 3:
         // Contrat/Pacte avec Coach Ryze
         return WeeklyContractScreen(
           onComplete: _onContractComplete,
           onSkip: _onContractComplete, // Skip va aussi à l'étape suivante
         );
-      case 3:
+      case 4:
       default:
         // Onboarding classique (questions)
         return OnboardingGamifiedHybrid(
