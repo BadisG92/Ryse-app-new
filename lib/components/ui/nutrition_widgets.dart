@@ -29,11 +29,11 @@ import '../../services/celebration_service.dart';
 // Badge Premium compact pour boutons d'action rapide
 class _QuickActionBadge extends StatefulWidget {
   final bool isLocked;
-  final bool isFrench;
+  final String langCode;
 
   const _QuickActionBadge({
     required this.isLocked,
-    required this.isFrench,
+    required this.langCode,
   });
 
   @override
@@ -103,8 +103,8 @@ class _QuickActionBadgeState extends State<_QuickActionBadge> with SingleTickerP
           const SizedBox(width: 3),
           Text(
             widget.isLocked
-              ? 'unlock_badge'.tr(widget.isFrench ? 'fr' : 'en')
-              : 'trial_badge'.tr(widget.isFrench ? 'fr' : 'en'),
+              ? 'unlock_badge'.tr(widget.langCode)
+              : 'trial_badge'.tr(widget.langCode),
             style: const TextStyle(
               fontSize: 8,
               fontWeight: FontWeight.bold,
@@ -184,7 +184,7 @@ class _QuickActionButtonState extends State<_QuickActionButton> {
   Widget build(BuildContext context) {
     final paywallContext = _getPaywallContext(widget.actionId);
     final isPremium = SubscriptionService.instance.isPremium;
-    final isFrench = LocalizationService.instance.currentLanguageCode == 'fr';
+    final langCode = LocalizationService.instance.currentLanguageCode;
     final isLocked = _isLocked ?? false;
 
     // Déterminer la position du badge selon le bouton
@@ -237,7 +237,7 @@ class _QuickActionButtonState extends State<_QuickActionButton> {
               left: !isBadgeTop ? -10 : null,
               child: _QuickActionBadge(
                 isLocked: isLocked,
-                isFrench: isFrench,
+                langCode: langCode,
               ),
             ),
         ],

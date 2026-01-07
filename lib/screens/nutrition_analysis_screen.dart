@@ -99,7 +99,7 @@ class _NutritionAnalysisScreenState extends State<NutritionAnalysisScreen> with 
   Widget build(BuildContext context) {
     return Consumer<LocalizationService>(
       builder: (context, locService, _) {
-        final isFrench = locService.currentLanguageCode == 'fr';
+        final langCode = locService.currentLanguageCode;
 
         return Scaffold(
           backgroundColor: Colors.white, // Fond blanc
@@ -111,7 +111,7 @@ class _NutritionAnalysisScreenState extends State<NutritionAnalysisScreen> with 
               onPressed: () => Navigator.pop(context),
             ),
             title: Text(
-              isFrench ? 'Suivi de Coach Ryze' : 'Coach Ryze Tracking',
+              _tr(langCode, 'Coach Ryze Tracking', 'Suivi de Coach Ryze', 'Coach Ryze Tracking'),
               style: AppTextStyles.h2,
             ),
             actions: [
@@ -127,7 +127,7 @@ class _NutritionAnalysisScreenState extends State<NutritionAnalysisScreen> with 
                     Navigator.pop(context);
                     widget.onRegenerate();
                   },
-                  tooltip: isFrench ? 'Régénérer l\'analyse' : 'Regenerate analysis',
+                  tooltip: _tr(langCode, 'Regenerate analysis', 'Régénérer l\'analyse', 'Analyse neu generieren'),
                 ),
               ),
             ],
@@ -137,41 +137,41 @@ class _NutritionAnalysisScreenState extends State<NutritionAnalysisScreen> with 
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Date et heure de l'analyse
-                _buildDateHeader(isFrench),
+                _buildDateHeader(langCode),
 
                 // Header avec panda Coach Ryze
-                _buildHeader(isFrench),
+                _buildHeader(langCode),
 
                 const SizedBox(height: 12),
 
                 // Score nutritionnel horizontal compact
                 if (widget.analysis.score != null) ...[
-                  _buildEnhancedScoreCard(isFrench),
+                  _buildEnhancedScoreCard(langCode),
                   const SizedBox(height: Spacing.xl),
                   _buildDivider(),
                   const SizedBox(height: Spacing.xl),
                 ],
 
                 // Bloc premium Analyse + Recommandations
-                _buildCoachRyzeAnalysisBlock(isFrench),
+                _buildCoachRyzeAnalysisBlock(langCode),
 
                 const SizedBox(height: Spacing.xl),
                 _buildDivider(),
                 const SizedBox(height: Spacing.xl),
 
                 // Métriques nutritionnelles
-                _buildMetricsSection(isFrench),
+                _buildMetricsSection(langCode),
 
                 // Contexte workout
                 if (widget.analysis.metadata.hasWorkoutToday) ...[
                   const SizedBox(height: Spacing.lg),
-                  _buildWorkoutContextCard(isFrench),
+                  _buildWorkoutContextCard(langCode),
                 ],
 
                 const SizedBox(height: Spacing.xl),
 
                 // Bouton retour en style secondaire
-                _buildSecondaryActionButton(context, isFrench),
+                _buildSecondaryActionButton(context, langCode),
 
                 const SizedBox(height: Spacing.xl),
               ],
@@ -180,6 +180,13 @@ class _NutritionAnalysisScreenState extends State<NutritionAnalysisScreen> with 
         );
       },
     );
+  }
+
+  // Helper pour traductions trilingues (en, fr, de)
+  String _tr(String langCode, String en, String fr, String de) {
+    if (langCode == 'de') return de;
+    if (langCode == 'fr') return fr;
+    return en;
   }
 
   // Séparateur visuel
@@ -200,47 +207,48 @@ class _NutritionAnalysisScreenState extends State<NutritionAnalysisScreen> with 
   }
 
   /// Retourne un message dynamique selon le contexte
-  String _getContextMessage(String context, bool isFrench) {
-    if (isFrench) {
-      switch (context) {
-        case 'empty_day':
-          return 'Ta journée est vide, commençons ensemble !';
-        case 'post_workout':
-          return 'Belle séance ! Analysons ta récupération nutrition';
-        case 'end_of_day':
-          return 'Faisons le bilan de ta journée !';
-        case 'in_progress':
-          return 'Analysons ta journée ensemble !';
-        default:
-          return 'Analysons ta nutrition ensemble !';
-      }
-    } else {
-      switch (context) {
-        case 'empty_day':
-          return 'Your day is empty, let\'s start together!';
-        case 'post_workout':
-          return 'Great session! Let\'s analyze your nutrition recovery';
-        case 'end_of_day':
-          return 'Let\'s review your day!';
-        case 'in_progress':
-          return 'Let\'s analyze your day together!';
-        default:
-          return 'Let\'s analyze your nutrition together!';
-      }
+  String _getContextMessage(String context, String langCode) {
+    switch (context) {
+      case 'empty_day':
+        return _tr(langCode,
+          'Your day is empty, let\'s start together!',
+          'Ta journée est vide, commençons ensemble !',
+          'Dein Tag ist leer, lass uns zusammen starten!');
+      case 'post_workout':
+        return _tr(langCode,
+          'Great session! Let\'s analyze your nutrition recovery',
+          'Belle séance ! Analysons ta récupération nutrition',
+          'Tolle Einheit! Lass uns deine Ernährungserholung analysieren');
+      case 'end_of_day':
+        return _tr(langCode,
+          'Let\'s review your day!',
+          'Faisons le bilan de ta journée !',
+          'Lass uns deinen Tag zusammenfassen!');
+      case 'in_progress':
+        return _tr(langCode,
+          'Let\'s analyze your day together!',
+          'Analysons ta journée ensemble !',
+          'Lass uns deinen Tag zusammen analysieren!');
+      default:
+        return _tr(langCode,
+          'Let\'s analyze your nutrition together!',
+          'Analysons ta nutrition ensemble !',
+          'Lass uns deine Ernährung zusammen analysieren!');
     }
   }
 
   /// Date et heure de l'analyse
-  Widget _buildDateHeader(bool isFrench) {
+  Widget _buildDateHeader(String langCode) {
     final dateStr = DateFormat('dd/MM/yyyy').format(widget.analysis.date);
     final timeStr = DateFormat('HH:mm').format(widget.analysis.timestamp);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
       child: Text(
-        isFrench
-            ? 'Bilan du $dateStr fait à $timeStr'
-            : 'Report for $dateStr made at $timeStr',
+        _tr(langCode,
+          'Report for $dateStr made at $timeStr',
+          'Bilan du $dateStr fait à $timeStr',
+          'Bericht vom $dateStr um $timeStr'),
         style: const TextStyle(
           fontSize: 13,
           color: Color(0xFF94A3B8),
@@ -249,14 +257,14 @@ class _NutritionAnalysisScreenState extends State<NutritionAnalysisScreen> with 
     );
   }
 
-  Widget _buildHeader(bool isFrench) {
+  Widget _buildHeader(String langCode) {
     return Consumer<AuthService>(
       builder: (context, authService, child) {
         // Capitaliser le prénom (même méthode que le dashboard)
-        final rawName = authService.currentUser?.firstName ?? (isFrench ? 'Champion' : 'Champion');
+        final rawName = authService.currentUser?.firstName ?? 'Champion';
         final userName = rawName[0].toUpperCase() + rawName.substring(1).toLowerCase();
-        final greeting = isFrench ? 'Salut' : 'Hey';
-        final contextMessage = _getContextMessage(widget.analysis.context, isFrench);
+        final greeting = _tr(langCode, 'Hey', 'Salut', 'Hey');
+        final contextMessage = _getContextMessage(widget.analysis.context, langCode);
 
         return Padding(
           padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
@@ -309,9 +317,9 @@ class _NutritionAnalysisScreenState extends State<NutritionAnalysisScreen> with 
   }
 
   // Badge contexte avec design impactant
-  Widget _buildEnhancedContextBadge(String context, bool isFrench) {
+  Widget _buildEnhancedContextBadge(String context, String langCode) {
     final color = _getContextColor(context);
-    final label = _getContextBadge(context, isFrench);
+    final label = _getContextBadge(context, langCode);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -355,10 +363,10 @@ class _NutritionAnalysisScreenState extends State<NutritionAnalysisScreen> with 
   }
 
   // Score avec gauge circulaire impactante
-  Widget _buildEnhancedScoreCard(bool isFrench) {
+  Widget _buildEnhancedScoreCard(String langCode) {
     final score = widget.analysis.score!;
     final scoreColor = _getScoreColor(score);
-    final scoreLabel = _getScoreLabel(score, isFrench);
+    final scoreLabel = _getScoreLabel(score, langCode);
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: Spacing.md),
@@ -432,7 +440,7 @@ class _NutritionAnalysisScreenState extends State<NutritionAnalysisScreen> with 
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  isFrench ? 'Score Nutritionnel' : 'Nutrition Score',
+                  _tr(langCode, 'Nutrition Score', 'Score Nutritionnel', 'Ernährungs-Score'),
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
@@ -475,7 +483,7 @@ class _NutritionAnalysisScreenState extends State<NutritionAnalysisScreen> with 
   }
 
   // Bloc premium Coach Ryze : Analyse + Recommandations dans un seul gradient
-  Widget _buildCoachRyzeAnalysisBlock(bool isFrench) {
+  Widget _buildCoachRyzeAnalysisBlock(String langCode) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: Spacing.md),
       padding: const EdgeInsets.all(24),
@@ -549,7 +557,7 @@ class _NutritionAnalysisScreenState extends State<NutritionAnalysisScreen> with 
               ),
               const SizedBox(width: 10),
               Text(
-                isFrench ? 'Analyse' : 'Analysis',
+                _tr(langCode, 'Analysis', 'Analyse', 'Analyse'),
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -604,7 +612,7 @@ class _NutritionAnalysisScreenState extends State<NutritionAnalysisScreen> with 
                 ),
                 const SizedBox(width: 10),
                 Text(
-                  isFrench ? 'Recommandations' : 'Recommendations',
+                  _tr(langCode, 'Recommendations', 'Recommandations', 'Empfehlungen'),
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
@@ -690,7 +698,7 @@ class _NutritionAnalysisScreenState extends State<NutritionAnalysisScreen> with 
   }
 
   // Section Recommandations avec cards séparées - Version épurée
-  Widget _buildRecommendationsSection(bool isFrench) {
+  Widget _buildRecommendationsSection(String langCode) {
     // Utiliser directement widget.analysis.recommendations (maintenant structuré par Gemini)
     final recos = widget.analysis.recommendations;
 
@@ -716,7 +724,7 @@ class _NutritionAnalysisScreenState extends State<NutritionAnalysisScreen> with 
               ),
               const SizedBox(width: Spacing.sm),
               Text(
-                isFrench ? 'Recommandations' : 'Recommendations',
+                _tr(langCode, 'Recommendations', 'Recommandations', 'Empfehlungen'),
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
@@ -781,8 +789,8 @@ class _NutritionAnalysisScreenState extends State<NutritionAnalysisScreen> with 
   }
 
   // Parser les recommandations depuis le texte complet
-  List<String> _parseRecommendationsFromText(String text, bool isFrench) {
-    final keyword = isFrench ? '**Recommandations**' : '**Recommendations**';
+  List<String> _parseRecommendationsFromText(String text, String langCode) {
+    final keyword = langCode == 'fr' ? '**Recommandations**' : (langCode == 'de' ? '**Empfehlungen**' : '**Recommendations**');
     if (!text.contains(keyword)) {
       // Debug
       debugPrint('❌ Keyword "$keyword" non trouvé dans le texte');
@@ -887,7 +895,7 @@ class _NutritionAnalysisScreenState extends State<NutritionAnalysisScreen> with 
   }
 
   // Section Métriques redessinée selon le dashboard nutrition
-  Widget _buildMetricsSection(bool isFrench) {
+  Widget _buildMetricsSection(String langCode) {
     final meta = widget.analysis.metadata;
 
     return Container(
@@ -897,7 +905,7 @@ class _NutritionAnalysisScreenState extends State<NutritionAnalysisScreen> with 
         children: [
           // Titre sans icône
           Text(
-            isFrench ? 'Tes Métriques' : 'Your Metrics',
+            _tr(langCode, 'Your Metrics', 'Tes Métriques', 'Deine Werte'),
             style: AppTextStyles.h2,
           ),
           const SizedBox(height: Spacing.lg),
@@ -946,7 +954,7 @@ class _NutritionAnalysisScreenState extends State<NutritionAnalysisScreen> with 
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          isFrench ? 'Consommé' : 'Consumed',
+                          _tr(langCode, 'Consumed', 'Consommé', 'Verbraucht'),
                           style: const TextStyle(
                             fontSize: 12,
                             color: Color(0xFF64748B),
@@ -964,27 +972,27 @@ class _NutritionAnalysisScreenState extends State<NutritionAnalysisScreen> with 
 
           // Macros avec barres horizontales
           _buildMacroBar(
-            label: isFrench ? 'Protéines' : 'Protein',
+            label: _tr(langCode, 'Protein', 'Protéines', 'Protein'),
             value: meta.totalProteins,
             target: meta.proteinTarget,
             color: const Color(0xFF000000), // Noir
-            isFrench: isFrench,
+            langCode: langCode,
           ),
           const SizedBox(height: 16),
           _buildMacroBar(
-            label: isFrench ? 'Glucides' : 'Carbs',
+            label: _tr(langCode, 'Carbs', 'Glucides', 'Kohlenhydrate'),
             value: meta.totalCarbs,
             target: meta.carbsTarget,
             color: const Color(0xFF000000), // Noir
-            isFrench: isFrench,
+            langCode: langCode,
           ),
           const SizedBox(height: 16),
           _buildMacroBar(
-            label: isFrench ? 'Lipides' : 'Fats',
+            label: _tr(langCode, 'Fats', 'Lipides', 'Fette'),
             value: meta.totalFats,
             target: meta.fatsTarget,
             color: const Color(0xFF000000), // Noir
-            isFrench: isFrench,
+            langCode: langCode,
           ),
         ],
       ),
@@ -1019,7 +1027,7 @@ class _NutritionAnalysisScreenState extends State<NutritionAnalysisScreen> with 
     required double value,
     required double target,
     required Color color,
-    required bool isFrench,
+    required String langCode,
   }) {
     final progress = (value / target).clamp(0.0, 1.0);
     final percentage = (progress * 100).toInt();
@@ -1086,7 +1094,7 @@ class _NutritionAnalysisScreenState extends State<NutritionAnalysisScreen> with 
     required double target,
     required String unit,
     required Color color,
-    required bool isFrench,
+    required String langCode,
   }) {
     final progress = (value / target).clamp(0.0, 1.0);
     final percentage = (progress * 100).toInt();
@@ -1177,7 +1185,7 @@ class _NutritionAnalysisScreenState extends State<NutritionAnalysisScreen> with 
 
           // Pourcentage
           Text(
-            '$percentage% ${isFrench ? 'de ton objectif' : 'of your goal'}',
+            '$percentage% ${_tr(langCode, 'of your goal', 'de ton objectif', 'deines Ziels')}',
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w500,
@@ -1189,7 +1197,7 @@ class _NutritionAnalysisScreenState extends State<NutritionAnalysisScreen> with 
     );
   }
 
-  Widget _buildWorkoutContextCard(bool isFrench) {
+  Widget _buildWorkoutContextCard(String langCode) {
     final meta = widget.analysis.metadata;
 
     return Container(
@@ -1223,7 +1231,7 @@ class _NutritionAnalysisScreenState extends State<NutritionAnalysisScreen> with 
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  isFrench ? 'Entraînement effectué' : 'Workout completed',
+                  _tr(langCode, 'Workout completed', 'Entraînement effectué', 'Training absolviert'),
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
@@ -1233,7 +1241,7 @@ class _NutritionAnalysisScreenState extends State<NutritionAnalysisScreen> with 
                 if (meta.caloriesBurned != null) ...[
                   const SizedBox(height: 4),
                   Text(
-                    '${meta.caloriesBurned} kcal ${isFrench ? 'brûlées' : 'burned'}',
+                    '${meta.caloriesBurned} kcal ${_tr(langCode, 'burned', 'brûlées', 'verbrannt')}',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
@@ -1250,7 +1258,7 @@ class _NutritionAnalysisScreenState extends State<NutritionAnalysisScreen> with 
   }
 
   // Bouton retour en style secondaire
-  Widget _buildSecondaryActionButton(BuildContext context, bool isFrench) {
+  Widget _buildSecondaryActionButton(BuildContext context, String langCode) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: Spacing.md),
       width: double.infinity,
@@ -1258,7 +1266,7 @@ class _NutritionAnalysisScreenState extends State<NutritionAnalysisScreen> with 
         onPressed: () => Navigator.pop(context),
         icon: const Icon(LucideIcons.arrowLeft, size: 18),
         label: Text(
-          isFrench ? 'Retour au journal' : 'Back to journal',
+          _tr(langCode, 'Back to journal', 'Retour au journal', 'Zurück zum Journal'),
           style: const TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.w600,
@@ -1289,18 +1297,29 @@ class _NutritionAnalysisScreenState extends State<NutritionAnalysisScreen> with 
     return '🔴';
   }
 
-  String _getScoreLabel(double score, bool isFrench) {
-    if (isFrench) {
-      if (score >= 80) return 'Super ! Équilibre nutritionnel optimal';
-      if (score >= 60) return 'Bien ! Quelques petits ajustements';
-      if (score >= 40) return 'Pas mal, mais on peut mieux faire';
-      return 'Améliore ton équilibre nutritionnel';
-    } else {
-      if (score >= 80) return 'Great! Optimal nutritional balance';
-      if (score >= 60) return 'Good! A few minor tweaks needed';
-      if (score >= 40) return 'Not bad, but we can do better';
-      return 'Improve your nutritional balance';
+  String _getScoreLabel(double score, String langCode) {
+    if (score >= 80) {
+      return _tr(langCode,
+        'Great! Optimal nutritional balance',
+        'Super ! Équilibre nutritionnel optimal',
+        'Super! Optimale Nährstoffbalance');
     }
+    if (score >= 60) {
+      return _tr(langCode,
+        'Good! A few minor tweaks needed',
+        'Bien ! Quelques petits ajustements',
+        'Gut! Ein paar kleine Anpassungen nötig');
+    }
+    if (score >= 40) {
+      return _tr(langCode,
+        'Not bad, but we can do better',
+        'Pas mal, mais on peut mieux faire',
+        'Nicht schlecht, aber da geht noch mehr');
+    }
+    return _tr(langCode,
+      'Improve your nutritional balance',
+      'Améliore ton équilibre nutritionnel',
+      'Verbessere deine Nährstoffbalance');
   }
 
   IconData _getRecommendationIcon(String recommendation) {
@@ -1337,43 +1356,33 @@ class _NutritionAnalysisScreenState extends State<NutritionAnalysisScreen> with 
     return colors[index % colors.length];
   }
 
-  String _getContextLabel(String context, bool isFrench) {
-    if (isFrench) {
-      switch (context) {
-        case 'empty_day': return 'Journée vide';
-        case 'post_workout': return 'Post-entraînement';
-        case 'end_of_day': return 'Fin de journée';
-        case 'in_progress': return 'Journée en cours';
-        default: return 'Analyse';
-      }
-    } else {
-      switch (context) {
-        case 'empty_day': return 'Empty day';
-        case 'post_workout': return 'Post-workout';
-        case 'end_of_day': return 'End of day';
-        case 'in_progress': return 'Day in progress';
-        default: return 'Analysis';
-      }
+  String _getContextLabel(String context, String langCode) {
+    switch (context) {
+      case 'empty_day':
+        return _tr(langCode, 'Empty day', 'Journée vide', 'Leerer Tag');
+      case 'post_workout':
+        return _tr(langCode, 'Post-workout', 'Post-entraînement', 'Nach dem Training');
+      case 'end_of_day':
+        return _tr(langCode, 'End of day', 'Fin de journée', 'Tagesende');
+      case 'in_progress':
+        return _tr(langCode, 'Day in progress', 'Journée en cours', 'Tag läuft');
+      default:
+        return _tr(langCode, 'Analysis', 'Analyse', 'Analyse');
     }
   }
 
-  String _getContextBadge(String context, bool isFrench) {
-    if (isFrench) {
-      switch (context) {
-        case 'empty_day': return 'JOURNÉE VIDE';
-        case 'post_workout': return 'POST-ENTRAÎNEMENT';
-        case 'end_of_day': return 'BILAN';
-        case 'in_progress': return 'JOURNÉE EN COURS';
-        default: return 'ANALYSE';
-      }
-    } else {
-      switch (context) {
-        case 'empty_day': return 'EMPTY DAY';
-        case 'post_workout': return 'POST-WORKOUT';
-        case 'end_of_day': return 'SUMMARY';
-        case 'in_progress': return 'DAY IN PROGRESS';
-        default: return 'ANALYSIS';
-      }
+  String _getContextBadge(String context, String langCode) {
+    switch (context) {
+      case 'empty_day':
+        return _tr(langCode, 'EMPTY DAY', 'JOURNÉE VIDE', 'LEERER TAG');
+      case 'post_workout':
+        return _tr(langCode, 'POST-WORKOUT', 'POST-ENTRAÎNEMENT', 'NACH DEM TRAINING');
+      case 'end_of_day':
+        return _tr(langCode, 'SUMMARY', 'BILAN', 'ZUSAMMENFASSUNG');
+      case 'in_progress':
+        return _tr(langCode, 'DAY IN PROGRESS', 'JOURNÉE EN COURS', 'TAG LÄUFT');
+      default:
+        return _tr(langCode, 'ANALYSIS', 'ANALYSE', 'ANALYSE');
     }
   }
 

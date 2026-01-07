@@ -4,7 +4,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:ui' as ui;
 import 'ai_workout_generation_service.dart';
 import 'dashboard_service.dart';
+import 'global_state_manager.dart';
 import 'header_cache_service.dart';
+import 'offline_workout_service.dart';
+import 'progress_service_v2.dart';
+import 'recipe_service.dart';
 import 'sport_dashboard_service.dart';
 import 'widget_sync_service.dart';
 import 'workout_cache_service.dart';
@@ -19,6 +23,7 @@ class LocalizationService extends ChangeNotifier {
   String get currentLanguageCode => _currentLocale.languageCode;
   bool get isFrench => _currentLocale.languageCode == 'fr';
   bool get isEnglish => _currentLocale.languageCode == 'en';
+  bool get isGerman => _currentLocale.languageCode == 'de';
   bool get isInitialized => _isInitialized;
   
   static LocalizationService? _instance;
@@ -39,13 +44,15 @@ class LocalizationService extends ChangeNotifier {
       // Première fois : détecter la langue du système
       final systemLocales = ui.PlatformDispatcher.instance.locales;
       final systemLanguage = systemLocales.isNotEmpty ? systemLocales.first.languageCode : 'en';
-      
-      // Si le système est en français, utiliser français, sinon anglais par défaut
-      savedLanguage = systemLanguage == 'fr' ? 'fr' : 'en';
-      
+
+      // Détecter français, allemand, sinon anglais par défaut
+      savedLanguage = systemLanguage == 'fr' ? 'fr'
+                    : systemLanguage == 'de' ? 'de'
+                    : 'en';
+
       // Sauvegarder ce choix
       await prefs.setString(_languageKey, savedLanguage);
-      
+
       debugPrint('🌍 Langue système détectée: $systemLanguage -> Application configurée en: $savedLanguage');
     }
     
@@ -66,6 +73,10 @@ class LocalizationService extends ChangeNotifier {
       SportDashboardService.invalidateCache();
       HeaderCacheService.clearCache();
       AIWorkoutGenerationService.invalidateCache();
+      ProgressServiceV2.forceRefresh();
+      GlobalStateManager.instance.invalidateWeeklyData();
+      await OfflineWorkoutService().clearAllCache();
+      await RecipeService.invalidateCache();
 
       notifyListeners();
 
@@ -75,14 +86,16 @@ class LocalizationService extends ChangeNotifier {
   }
   
   String getColumnSuffix() {
-    return isFrench ? '_fr' : '_en';
+    return isFrench ? '_fr' : isGerman ? '_de' : '_en';
   }
-  
-  String getTextFromColumns(String? frenchText, String? englishText) {
+
+  String getTextFromColumns(String? frenchText, String? englishText, [String? germanText]) {
     if (isFrench) {
-      return frenchText ?? englishText ?? '';
+      return frenchText ?? englishText ?? germanText ?? '';
+    } else if (isGerman) {
+      return germanText ?? englishText ?? frenchText ?? '';
     } else {
-      return englishText ?? frenchText ?? '';
+      return englishText ?? frenchText ?? germanText ?? '';
     }
   }
 }

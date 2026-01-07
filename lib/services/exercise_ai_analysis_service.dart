@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../config/gemini_config.dart';
 import 'unit_service.dart';
+import 'coach_personality_service.dart';
 
 /// Service pour l'analyse IA des performances d'exercice avec Gemini 2.0 Flash
 class ExerciseAiAnalysisService {
@@ -111,7 +112,7 @@ class ExerciseAiAnalysisService {
     final sessions = sessionHistory.take(_maxSessionsForAnalysis).toList();
 
     // Construire le prompt
-    final prompt = _buildPrompt(
+    final prompt = await _buildPrompt(
       exerciseName: exerciseName,
       sessions: sessions,
       languageCode: languageCode,
@@ -246,26 +247,34 @@ class ExerciseAiAnalysisService {
   }
 
   /// Construit le prompt pour Gemini
-  static String _buildPrompt({
+  static Future<String> _buildPrompt({
     required String exerciseName,
     required List<Map<String, dynamic>> sessions,
     required String languageCode,
-  }) {
+  }) async {
+    // Get user's personality preference
+    final personalityInstruction = await CoachPersonalityService.instance.buildPersonalityInstruction(languageCode);
+
     if (languageCode == 'fr') {
-      return _buildFrenchPrompt(exerciseName, sessions);
+      return _buildFrenchPrompt(exerciseName, sessions, personalityInstruction);
+    } else if (languageCode == 'de') {
+      return _buildGermanPrompt(exerciseName, sessions, personalityInstruction);
     } else {
-      return _buildEnglishPrompt(exerciseName, sessions);
+      return _buildEnglishPrompt(exerciseName, sessions, personalityInstruction);
     }
   }
 
   static String _buildFrenchPrompt(
     String exerciseName,
     List<Map<String, dynamic>> sessions,
+    String personalityInstruction,
   ) {
     final buffer = StringBuffer();
     final unitService = UnitService.instance;
 
     buffer.writeln('Tu es Coach Ryze, un coach sportif expert en musculation et progression.');
+    buffer.writeln('');
+    buffer.writeln(personalityInstruction);
     buffer.writeln('');
     buffer.writeln('MISSION : Analyse concise et actionnable des performances sur "$exerciseName".');
     buffer.writeln('');
@@ -364,11 +373,14 @@ class ExerciseAiAnalysisService {
   static String _buildEnglishPrompt(
     String exerciseName,
     List<Map<String, dynamic>> sessions,
+    String personalityInstruction,
   ) {
     final buffer = StringBuffer();
     final unitService = UnitService.instance;
 
     buffer.writeln('You are Coach Ryze, an expert fitness coach in strength training and progression.');
+    buffer.writeln('');
+    buffer.writeln(personalityInstruction);
     buffer.writeln('');
     buffer.writeln('MISSION: Concise and actionable performance analysis on "$exerciseName".');
     buffer.writeln('');
@@ -457,6 +469,112 @@ class ExerciseAiAnalysisService {
     buffer.writeln('    {');
     buffer.writeln('      "title": "Technique before load",');
     buffer.writeln('      "description": "Master the movement perfectly with moderate load before increasing. Focus on full contraction."');
+    buffer.writeln('    }');
+    buffer.writeln('  ]');
+    buffer.writeln('}');
+
+    return buffer.toString();
+  }
+
+  static String _buildGermanPrompt(
+    String exerciseName,
+    List<Map<String, dynamic>> sessions,
+    String personalityInstruction,
+  ) {
+    final buffer = StringBuffer();
+    final unitService = UnitService.instance;
+
+    buffer.writeln('Du bist Coach Ryze, ein Experte für Krafttraining und Progression.');
+    buffer.writeln('');
+    buffer.writeln(personalityInstruction);
+    buffer.writeln('');
+    buffer.writeln('MISSION: Prägnante und umsetzbare Leistungsanalyse für "$exerciseName".');
+    buffer.writeln('');
+    buffer.writeln('EINHEITENSYSTEM: ${unitService.isImperial ? "Imperial (lbs)" : "Metrisch (kg)"}');
+    buffer.writeln('- Verwende ${unitService.weightUnit} für alle Gewichte in deinen Empfehlungen');
+    buffer.writeln('');
+    buffer.writeln('⚠️ ABSOLUTE EINSCHRÄNKUNGEN:');
+    buffer.writeln('- GESAMTLÄNGE: 100 Wörter MAXIMUM (nicht mehr)');
+    buffer.writeln('- ANALYSE: 40-50 Wörter (2-3 kurze Sätze)');
+    buffer.writeln('- EMPFEHLUNGEN: 2 Tipps × maximal 25 Wörter jeweils');
+    buffer.writeln('- Wenn du 100 Wörter überschreitest, LÖSCHE sekundäre Details');
+    buffer.writeln('');
+    buffer.writeln('TRAININGSDATEN (letzte ${sessions.length} Einheiten, chronologisch):');
+    buffer.writeln('');
+
+    for (int i = 0; i < sessions.length; i++) {
+      final session = sessions[i];
+      final date = session['date'] ?? '';
+      final allSets = session['allSets'] as List<String>? ?? [];
+
+      buffer.writeln('Einheit ${i + 1} - $date:');
+      if (allSets.isNotEmpty) {
+        for (int j = 0; j < allSets.length; j++) {
+          buffer.writeln('  Satz ${j + 1}: ${allSets[j]}');
+        }
+      } else {
+        buffer.writeln('  Leistung: ${session['weight']} x ${session['reps']} Wiederholungen');
+      }
+      buffer.writeln('');
+    }
+
+    buffer.writeln('PFLICHT-ANTWORTFORMAT (JSON):');
+    buffer.writeln('Antworte NUR mit diesem exakten JSON-Format:');
+    buffer.writeln('');
+    buffer.writeln('{');
+    buffer.writeln('  "analysis": "Deine Analyse in 40-50 Wörtern",');
+    buffer.writeln('  "recommendations": [');
+    buffer.writeln('    {');
+    buffer.writeln('      "title": "Kurzer Titel (3-5 Wörter)",');
+    buffer.writeln('      "description": "Beschreibung in 20-25 Wörtern"');
+    buffer.writeln('    },');
+    buffer.writeln('    {');
+    buffer.writeln('      "title": "Kurzer Titel (3-5 Wörter)",');
+    buffer.writeln('      "description": "Beschreibung in 20-25 Wörtern"');
+    buffer.writeln('    }');
+    buffer.writeln('  ]');
+    buffer.writeln('}');
+    buffer.writeln('');
+    buffer.writeln('REGELN FÜR DIE ANALYSE:');
+    buffer.writeln('- NICHT schreiben "Analyse deiner Progression bei [Übung]"');
+    buffer.writeln('- Beginne DIREKT mit der Beobachtung: "Du machst Fortschritte..." oder "Deine Leistung..."');
+    buffer.writeln('- Keine Einleitung, keine Vorrede');
+    buffer.writeln('- Hauptbeobachtung in 1 Satz (Fortschritt/Plateau/Rückschritt)');
+    buffer.writeln('- Schlüsselbeobachtung in 1-2 Sätzen (Variationen, Muster)');
+    buffer.writeln('- Vermeide genaue Daten (sage "kürzlich", "anfangs")');
+    buffer.writeln('- Maximal 40-50 Wörter');
+    buffer.writeln('');
+    buffer.writeln('REGELN FÜR EMPFEHLUNGEN:');
+    buffer.writeln('- Genau 2 Empfehlungen');
+    buffer.writeln('- Kurzer Titel (3-5 Wörter): Konkrete Aktion mit Zahlen wenn möglich');
+    buffer.writeln('- Umsetzbare Beschreibung (20-25 Wörter)');
+    buffer.writeln('');
+    buffer.writeln('Beispiele nach Situation:');
+    buffer.writeln('- Bei Fortschritt → "Erhöhe um [X]${unitService.weightUnit} bei der nächsten Einheit"');
+    buffer.writeln('- Bei Plateau → "Ändere das Format: Wechsle zu [X] Sätzen mit [Y] Wiederholungen"');
+    buffer.writeln('- Bei Ermüdung → "Reduziere auf [X]${unitService.weightUnit} für 1 Woche, dann wieder steigern"');
+    buffer.writeln('- Als Anfänger → "Halte [X]${unitService.weightUnit} für 2 Einheiten, dann steigern"');
+    buffer.writeln('');
+    buffer.writeln('STIL:');
+    buffer.writeln('- Direkter und professioneller Ton, Duzen');
+    buffer.writeln('- Kurze und einfache Sätze');
+    buffer.writeln('- Genaue Zahlen (Gewicht, Wiederholungen, Prozentsätze)');
+    buffer.writeln('- Motivierend aber realistisch');
+    buffer.writeln('- KEINE Emojis, KEINE Symbole (📊 💡 •)');
+    buffer.writeln('- Keine Füllwörter');
+    buffer.writeln('');
+    buffer.writeln('JSON-ANTWORTBEISPIEL:');
+    buffer.writeln('');
+    buffer.writeln('{');
+    buffer.writeln('  "analysis": "Deine Leistung zeigt Unregelmäßigkeiten mit erheblichen Lastvariationen. Du bist von hohen zu leichteren Lasten gewechselt, was auf Ermüdungsmanagement oder mangelnde Strukturierung hindeuten kann.",');
+    buffer.writeln('  "recommendations": [');
+    buffer.writeln('    {');
+    buffer.writeln('      "title": "Plane deine Progression",');
+    buffer.writeln('      "description": "Steigere alle 2 Einheiten um ${unitService.isImperial ? "5lbs" : "2,5kg"} bei 3 Sätzen mit 15-20 Wiederholungen."');
+    buffer.writeln('    },');
+    buffer.writeln('    {');
+    buffer.writeln('      "title": "Technik vor Last",');
+    buffer.writeln('      "description": "Beherrsche die Bewegung perfekt mit moderater Last, bevor du steigerst. Fokus auf volle Kontraktion."');
     buffer.writeln('    }');
     buffer.writeln('  ]');
     buffer.writeln('}');

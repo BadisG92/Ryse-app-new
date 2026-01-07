@@ -233,7 +233,11 @@ class _TutorialImageOverlayState extends State<TutorialImageOverlay>
                             TextButton(
                               onPressed: widget.onSkip,
                               child: Text(
-                                widget.languageCode == 'fr' ? 'Passer' : 'Skip',
+                                widget.languageCode == 'fr'
+                                    ? 'Passer'
+                                    : widget.languageCode == 'de'
+                                        ? 'Überspringen'
+                                        : 'Skip',
                                 style: TextStyle(
                                   color: Colors.grey[600],
                                   fontSize: 14,
@@ -262,10 +266,14 @@ class _TutorialImageOverlayState extends State<TutorialImageOverlay>
                                 _currentStep < widget.steps.length - 1
                                     ? (widget.languageCode == 'fr'
                                         ? 'Suivant'
-                                        : 'Next')
+                                        : widget.languageCode == 'de'
+                                            ? 'Weiter'
+                                            : 'Next')
                                     : (widget.languageCode == 'fr'
                                         ? 'Terminer'
-                                        : 'Finish'),
+                                        : widget.languageCode == 'de'
+                                            ? 'Beenden'
+                                            : 'Finish'),
                                 style: const TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,

@@ -182,6 +182,7 @@ class _TrialOfferScreenV2State extends State<TrialOfferScreenV2>
     final locService = Provider.of<LocalizationService>(context);
     final languageCode = locService.currentLanguageCode;
     final isFrench = languageCode == 'fr';
+    final isGerman = languageCode == 'de';
 
     return Scaffold(
       backgroundColor: const Color(0xFF0A0E27),
@@ -211,22 +212,22 @@ class _TrialOfferScreenV2State extends State<TrialOfferScreenV2>
                             const SizedBox(height: 40),
 
                             // Hero section with Coach Ryze
-                            _buildHeroSection(isFrench),
+                            _buildHeroSection(isFrench, isGerman),
 
                             const SizedBox(height: 40),
 
                             // Achievement cards
-                            _buildAchievementCards(isFrench),
+                            _buildAchievementCards(isFrench, isGerman),
 
                             const SizedBox(height: 40),
 
                             // Stats section
-                            _buildStatsSection(isFrench),
+                            _buildStatsSection(isFrench, isGerman),
 
                             const SizedBox(height: 40),
 
                             // CTA section
-                            _buildCTASection(isFrench),
+                            _buildCTASection(isFrench, isGerman),
 
                             const SizedBox(height: 32),
                           ],
@@ -245,7 +246,7 @@ class _TrialOfferScreenV2State extends State<TrialOfferScreenV2>
             right: 24,
             child: FadeTransition(
               opacity: _fadeAnimation,
-              child: _buildSkipButton(isFrench),
+              child: _buildSkipButton(isFrench, isGerman),
             ),
           ),
         ],
@@ -316,7 +317,7 @@ class _TrialOfferScreenV2State extends State<TrialOfferScreenV2>
     });
   }
 
-  Widget _buildHeroSection(bool isFrench) {
+  Widget _buildHeroSection(bool isFrench, bool isGerman) {
     return Column(
       children: [
         // Level badge
@@ -341,7 +342,7 @@ class _TrialOfferScreenV2State extends State<TrialOfferScreenV2>
               const Icon(LucideIcons.trophy, color: Colors.white, size: 20),
               const SizedBox(width: 8),
               Text(
-                isFrench ? 'NIVEAU PREMIUM' : 'PREMIUM LEVEL',
+                isFrench ? 'NIVEAU PREMIUM' : isGerman ? 'PREMIUM-STUFE' : 'PREMIUM LEVEL',
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 14,
@@ -433,7 +434,9 @@ class _TrialOfferScreenV2State extends State<TrialOfferScreenV2>
           child: Text(
             isFrench
                 ? 'Débloquez votre\nPotentiel Maximum'
-                : 'Unlock Your\nFull Potential',
+                : isGerman
+                    ? 'Entfessle dein\nvolles Potenzial'
+                    : 'Unlock Your\nFull Potential',
             style: const TextStyle(
               fontSize: 36,
               fontWeight: FontWeight.w900,
@@ -451,7 +454,9 @@ class _TrialOfferScreenV2State extends State<TrialOfferScreenV2>
         Text(
           isFrench
               ? 'Rejoignez 10,000+ athlètes qui ont transformé leur physique'
-              : 'Join 10,000+ athletes who transformed their body',
+              : isGerman
+                  ? 'Schließe dich 10.000+ Athleten an, die ihren Körper transformiert haben'
+                  : 'Join 10,000+ athletes who transformed their body',
           style: TextStyle(
             fontSize: 16,
             color: Colors.white.withOpacity(0.7),
@@ -463,42 +468,42 @@ class _TrialOfferScreenV2State extends State<TrialOfferScreenV2>
     );
   }
 
-  Widget _buildAchievementCards(bool isFrench) {
+  Widget _buildAchievementCards(bool isFrench, bool isGerman) {
     final achievements = [
       {
         'icon': '📸',
-        'title': isFrench ? 'Scanner IA' : 'AI Scanner',
-        'desc': isFrench ? 'Photos → Calories' : 'Photos → Calories',
+        'title': isFrench ? 'Scanner IA' : isGerman ? 'KI-Scanner' : 'AI Scanner',
+        'desc': isFrench ? 'Photos → Calories' : isGerman ? 'Fotos → Kalorien' : 'Photos → Calories',
         'color': const Color(0xFF10B981),
       },
       {
         'icon': '🎯',
-        'title': isFrench ? 'Précision Max' : 'Max Precision',
-        'desc': isFrench ? '99.9% exact' : '99.9% accurate',
+        'title': isFrench ? 'Précision Max' : isGerman ? 'Max. Präzision' : 'Max Precision',
+        'desc': isFrench ? '99.9% exact' : isGerman ? '99,9% genau' : '99.9% accurate',
         'color': const Color(0xFF6366F1),
       },
       {
         'icon': '💪',
-        'title': isFrench ? 'Coach Personnel' : 'Personal Coach',
-        'desc': isFrench ? '24/7 disponible' : '24/7 available',
+        'title': isFrench ? 'Coach Personnel' : isGerman ? 'Persönlicher Coach' : 'Personal Coach',
+        'desc': isFrench ? '24/7 disponible' : isGerman ? '24/7 verfügbar' : '24/7 available',
         'color': const Color(0xFFF59E0B),
       },
       {
         'icon': '🔥',
-        'title': isFrench ? 'Résultats' : 'Results',
-        'desc': isFrench ? 'Dès 7 jours' : 'In 7 days',
+        'title': isFrench ? 'Résultats' : isGerman ? 'Ergebnisse' : 'Results',
+        'desc': isFrench ? 'Dès 7 jours' : isGerman ? 'In 7 Tagen' : 'In 7 days',
         'color': const Color(0xFFEF4444),
       },
       {
         'icon': '📊',
-        'title': isFrench ? 'Analytics Pro' : 'Pro Analytics',
-        'desc': isFrench ? 'Graphiques avancés' : 'Advanced charts',
+        'title': isFrench ? 'Analytics Pro' : isGerman ? 'Pro Analytics' : 'Pro Analytics',
+        'desc': isFrench ? 'Graphiques avancés' : isGerman ? 'Erweiterte Diagramme' : 'Advanced charts',
         'color': const Color(0xFF8B5CF6),
       },
       {
         'icon': '🚀',
-        'title': isFrench ? 'Boost x10' : 'x10 Boost',
-        'desc': isFrench ? 'Progression accélérée' : 'Accelerated progress',
+        'title': isFrench ? 'Boost x10' : isGerman ? 'x10 Boost' : 'x10 Boost',
+        'desc': isFrench ? 'Progression accélérée' : isGerman ? 'Beschleunigter Fortschritt' : 'Accelerated progress',
         'color': const Color(0xFF14B8A6),
       },
     ];
@@ -631,7 +636,7 @@ class _TrialOfferScreenV2State extends State<TrialOfferScreenV2>
     );
   }
 
-  Widget _buildStatsSection(bool isFrench) {
+  Widget _buildStatsSection(bool isFrench, bool isGerman) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -646,19 +651,19 @@ class _TrialOfferScreenV2State extends State<TrialOfferScreenV2>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _buildStatItem('10K+', isFrench ? 'Utilisateurs' : 'Users'),
+              _buildStatItem('10K+', isFrench ? 'Utilisateurs' : isGerman ? 'Nutzer' : 'Users'),
               Container(
                 height: 40,
                 width: 1,
                 color: Colors.white.withOpacity(0.2),
               ),
-              _buildStatItem('4.9★', isFrench ? 'Note App' : 'App Rating'),
+              _buildStatItem('4.9★', isFrench ? 'Note App' : isGerman ? 'App-Bewertung' : 'App Rating'),
               Container(
                 height: 40,
                 width: 1,
                 color: Colors.white.withOpacity(0.2),
               ),
-              _buildStatItem('97%', isFrench ? 'Satisfaits' : 'Satisfied'),
+              _buildStatItem('97%', isFrench ? 'Satisfaits' : isGerman ? 'Zufrieden' : 'Satisfied'),
             ],
           ),
         ],
@@ -695,7 +700,7 @@ class _TrialOfferScreenV2State extends State<TrialOfferScreenV2>
     );
   }
 
-  Widget _buildCTASection(bool isFrench) {
+  Widget _buildCTASection(bool isFrench, bool isGerman) {
     return Column(
       children: [
         // Price badge
@@ -716,7 +721,7 @@ class _TrialOfferScreenV2State extends State<TrialOfferScreenV2>
               ),
               const SizedBox(width: 8),
               Text(
-                isFrench ? '7 JOURS GRATUITS' : '7 DAYS FREE',
+                isFrench ? '7 JOURS GRATUITS' : isGerman ? '7 TAGE KOSTENLOS' : '7 DAYS FREE',
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 16,
@@ -733,7 +738,7 @@ class _TrialOfferScreenV2State extends State<TrialOfferScreenV2>
         // Main CTA button
         GestureDetector(
           onTapDown: (_) => HapticService.instance.mediumImpact(),
-          onTap: _isLoading ? null : () => _startTrial(isFrench),
+          onTap: _isLoading ? null : () => _startTrial(isFrench, isGerman),
           child: Container(
             width: double.infinity,
             height: 72,
@@ -803,8 +808,8 @@ class _TrialOfferScreenV2State extends State<TrialOfferScreenV2>
                               children: [
                                 Text(
                                   SubscriptionService.TEST_MODE
-                                      ? (isFrench ? '🧪 SIMULER ACTIVATION' : '🧪 SIMULATE ACTIVATION')
-                                      : (isFrench ? 'ACTIVER MON COACH' : 'ACTIVATE MY COACH'),
+                                      ? (isFrench ? '🧪 SIMULER ACTIVATION' : isGerman ? '🧪 AKTIVIERUNG SIMULIEREN' : '🧪 SIMULATE ACTIVATION')
+                                      : (isFrench ? 'ACTIVER MON COACH' : isGerman ? 'MEINEN COACH AKTIVIEREN' : 'ACTIVATE MY COACH'),
                                   style: const TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.w900,
@@ -814,7 +819,7 @@ class _TrialOfferScreenV2State extends State<TrialOfferScreenV2>
                                 ),
                                 if (!SubscriptionService.TEST_MODE)
                                   Text(
-                                    isFrench ? 'Annulation facile' : 'Easy cancellation',
+                                    isFrench ? 'Annulation facile' : isGerman ? 'Einfache Kündigung' : 'Easy cancellation',
                                     style: TextStyle(
                                       fontSize: 11,
                                       color: Colors.white.withOpacity(0.9),
@@ -836,10 +841,12 @@ class _TrialOfferScreenV2State extends State<TrialOfferScreenV2>
         // Price info
         Text(
           SubscriptionService.TEST_MODE
-              ? (isFrench ? 'Mode TEST activé' : 'TEST mode enabled')
+              ? (isFrench ? 'Mode TEST activé' : isGerman ? 'TEST-Modus aktiviert' : 'TEST mode enabled')
               : (isFrench
                   ? 'Puis 9,99€/mois après la période d\'essai'
-                  : 'Then €9.99/month after trial period'),
+                  : isGerman
+                      ? 'Dann 9,99€/Monat nach der Testphase'
+                      : 'Then €9.99/month after trial period'),
           style: TextStyle(
             fontSize: 14,
             color: Colors.white.withOpacity(0.6),
@@ -851,9 +858,9 @@ class _TrialOfferScreenV2State extends State<TrialOfferScreenV2>
     );
   }
 
-  Widget _buildSkipButton(bool isFrench) {
+  Widget _buildSkipButton(bool isFrench, bool isGerman) {
     return GestureDetector(
-      onTap: () => _skipTrial(isFrench),
+      onTap: () => _skipTrial(isFrench, isGerman),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         decoration: BoxDecoration(
@@ -867,7 +874,7 @@ class _TrialOfferScreenV2State extends State<TrialOfferScreenV2>
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              isFrench ? 'Passer' : 'Skip',
+              isFrench ? 'Passer' : isGerman ? 'Überspringen' : 'Skip',
               style: TextStyle(
                 color: Colors.white.withOpacity(0.8),
                 fontSize: 14,
@@ -886,7 +893,7 @@ class _TrialOfferScreenV2State extends State<TrialOfferScreenV2>
     );
   }
 
-  Future<void> _startTrial(bool isFrench) async {
+  Future<void> _startTrial(bool isFrench, bool isGerman) async {
     setState(() => _isLoading = true);
     HapticService.instance.mediumImpact();
 
@@ -945,7 +952,7 @@ class _TrialOfferScreenV2State extends State<TrialOfferScreenV2>
     }
   }
 
-  void _skipTrial(bool isFrench) {
+  void _skipTrial(bool isFrench, bool isGerman) {
     HapticService.instance.selectionClick();
 
     showDialog(
@@ -959,7 +966,7 @@ class _TrialOfferScreenV2State extends State<TrialOfferScreenV2>
             side: BorderSide(color: Colors.white.withOpacity(0.1)),
           ),
           title: Text(
-            isFrench ? 'Êtes-vous sûr ?' : 'Are you sure?',
+            isFrench ? 'Êtes-vous sûr ?' : isGerman ? 'Bist du sicher?' : 'Are you sure?',
             style: const TextStyle(
               color: Colors.white,
               fontSize: 20,
@@ -969,7 +976,9 @@ class _TrialOfferScreenV2State extends State<TrialOfferScreenV2>
           content: Text(
             isFrench
                 ? 'Vous perdrez l\'accès aux fonctionnalités premium comme le scanner IA et le coach personnel.'
-                : 'You\'ll lose access to premium features like AI scanner and personal coach.',
+                : isGerman
+                    ? 'Du verlierst den Zugang zu Premium-Funktionen wie KI-Scanner und persönlichem Coach.'
+                    : 'You\'ll lose access to premium features like AI scanner and personal coach.',
             style: TextStyle(
               color: Colors.white.withOpacity(0.8),
               fontSize: 14,
@@ -980,7 +989,7 @@ class _TrialOfferScreenV2State extends State<TrialOfferScreenV2>
             TextButton(
               onPressed: () => Navigator.pop(context),
               child: Text(
-                isFrench ? 'Retour' : 'Back',
+                isFrench ? 'Retour' : isGerman ? 'Zurück' : 'Back',
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w600,
@@ -1001,7 +1010,7 @@ class _TrialOfferScreenV2State extends State<TrialOfferScreenV2>
                 ),
               ),
               child: Text(
-                isFrench ? 'Continuer gratuitement' : 'Continue for free',
+                isFrench ? 'Continuer gratuitement' : isGerman ? 'Kostenlos fortfahren' : 'Continue for free',
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w600,

@@ -217,9 +217,9 @@ class _NutritionSectionState extends State<NutritionSection>
                           minimumSize: Size.zero,
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
-                        child: const Text(
-                          'Compris',
-                          style: TextStyle(
+                        child: Text(
+                          'understood'.tr(LocalizationService.instance.currentLanguageCode),
+                          style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w600,
                             fontSize: 14,
@@ -284,9 +284,9 @@ class _NutritionSectionState extends State<NutritionSection>
                           minimumSize: Size.zero,
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
-                        child: const Text(
-                          'Compris',
-                          style: TextStyle(
+                        child: Text(
+                          'understood'.tr(LocalizationService.instance.currentLanguageCode),
+                          style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w600,
                             fontSize: 14,
@@ -351,9 +351,9 @@ class _NutritionSectionState extends State<NutritionSection>
                           minimumSize: Size.zero,
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
-                        child: const Text(
-                          'Compris',
-                          style: TextStyle(
+                        child: Text(
+                          'understood'.tr(LocalizationService.instance.currentLanguageCode),
+                          style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w600,
                             fontSize: 14,

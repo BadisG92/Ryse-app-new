@@ -162,6 +162,7 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
   @override
   Widget build(BuildContext context) {
     final isFrench = widget.languageCode == 'fr';
+    final isGerman = widget.languageCode == 'de';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -169,7 +170,7 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
         child: Column(
           children: [
             // Header avec bouton Skip
-            _buildHeader(isFrench),
+            _buildHeader(isFrench, isGerman),
 
             // Slides
             Expanded(
@@ -177,16 +178,16 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
                 controller: _pageController,
                 onPageChanged: _onPageChanged,
                 children: [
-                  _buildWelcomeSlide(isFrench),
-                  _buildSlide1(isFrench),
-                  _buildSlide2(isFrench),
-                  _buildSlide3(isFrench),
+                  _buildWelcomeSlide(isFrench, isGerman),
+                  _buildSlide1(isFrench, isGerman),
+                  _buildSlide2(isFrench, isGerman),
+                  _buildSlide3(isFrench, isGerman),
                 ],
               ),
             ),
 
             // Footer avec navigation
-            _buildFooter(isFrench),
+            _buildFooter(isFrench, isGerman),
           ],
         ),
       ),
@@ -194,7 +195,7 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
   }
 
   /// Header avec bouton Skip
-  Widget _buildHeader(bool isFrench) {
+  Widget _buildHeader(bool isFrench, bool isGerman) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 2, 20, 2),
       child: Row(
@@ -209,7 +210,7 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
               child: Text(
-                isFrench ? 'Passer' : 'Skip',
+                isFrench ? 'Passer' : isGerman ? 'Überspringen' : 'Skip',
                 style: const TextStyle(
                   fontSize: 14,
                   color: Color(0xFF64748B),
@@ -223,7 +224,7 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
   }
 
   /// Footer avec pagination et navigation
-  Widget _buildFooter(bool isFrench) {
+  Widget _buildFooter(bool isFrench, bool isGerman) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
       child: Column(
@@ -257,7 +258,7 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
                 TextButton.icon(
                   onPressed: _previousPage,
                   icon: const Icon(Icons.arrow_back, size: 18),
-                  label: Text(isFrench ? 'Retour' : 'Back'),
+                  label: Text(isFrench ? 'Retour' : isGerman ? 'Zurück' : 'Back'),
                   style: TextButton.styleFrom(
                     foregroundColor: const Color(0xFF64748B),
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -285,8 +286,8 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
                   children: [
                     Text(
                       _currentPage < 3
-                          ? (isFrench ? 'Suivant' : 'Next')
-                          : (isFrench ? Slide3Data.ctaButtonFr : Slide3Data.ctaButtonEn),
+                          ? (isFrench ? 'Suivant' : isGerman ? 'Weiter' : 'Next')
+                          : (isFrench ? Slide3Data.ctaButtonFr : isGerman ? Slide3Data.ctaButtonDe : Slide3Data.ctaButtonEn),
                       style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
@@ -305,7 +306,7 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
   }
 
   /// SLIDE WELCOME : Écran de bienvenue avec Coach Ryze (première slide)
-  Widget _buildWelcomeSlide(bool isFrench) {
+  Widget _buildWelcomeSlide(bool isFrench, bool isGerman) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
@@ -385,7 +386,9 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
           Text(
             isFrench
                 ? 'Salut, je suis Coach Ryze !'
-                : 'Hi, I\'m Coach Ryze!',
+                : isGerman
+                    ? 'Hallo, ich bin Coach Ryze!'
+                    : 'Hi, I\'m Coach Ryze!',
             style: const TextStyle(
               fontSize: 32,
               fontWeight: FontWeight.w800,
@@ -402,7 +405,9 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
           Text(
             isFrench
                 ? 'Ton coach nutrition & sport'
-                : 'Your nutrition & fitness coach',
+                : isGerman
+                    ? 'Dein Ernährungs- & Fitness-Coach'
+                    : 'Your nutrition & fitness coach',
             style: const TextStyle(
               fontSize: 18,
               color: Color(0xFF64748B),
@@ -418,7 +423,9 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
           Text(
             isFrench
                 ? 'Je vais te montrer comment atteindre\ntes objectifs sans te compliquer la vie'
-                : 'Let me show you how to reach your goals\nwithout overcomplicating things',
+                : isGerman
+                    ? 'Ich zeige dir, wie du deine Ziele\nerreichst, ohne es kompliziert zu machen'
+                    : 'Let me show you how to reach your goals\nwithout overcomplicating things',
             style: const TextStyle(
               fontSize: 17,
               color: Color(0xFF64748B),
@@ -435,7 +442,7 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
   }
 
   /// SLIDE 1 : Simplicité d'input
-  Widget _buildSlide1(bool isFrench) {
+  Widget _buildSlide1(bool isFrench, bool isGerman) {
     // Slide 1 : pas de mockup, donc beaucoup plus d'espace
     const double spacing = 20.0;
 
@@ -470,7 +477,7 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
                               Padding(
                                 padding: const EdgeInsets.only(left: 8, bottom: 6),
                                 child: Text(
-                                  isFrench ? Slide1Data.coachNameFr : Slide1Data.coachNameEn,
+                                  isFrench ? Slide1Data.coachNameFr : isGerman ? Slide1Data.coachNameDe : Slide1Data.coachNameEn,
                                   style: const TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w700,
@@ -498,7 +505,7 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
                                   ],
                                 ),
                                 child: Text(
-                                  isFrench ? Slide1Data.coachMessageFr : Slide1Data.coachMessageEn,
+                                  isFrench ? Slide1Data.coachMessageFr : isGerman ? Slide1Data.coachMessageDe : Slide1Data.coachMessageEn,
                                   style: const TextStyle(
                                     fontSize: 14,
                                     color: Colors.white,
@@ -553,7 +560,7 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
               child: FadeTransition(
                 opacity: _titleOpacity,
                 child: Text(
-              isFrench ? Slide1Data.titleFr : Slide1Data.titleEn,
+              isFrench ? Slide1Data.titleFr : isGerman ? Slide1Data.titleDe : Slide1Data.titleEn,
               style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.w800,
@@ -584,8 +591,8 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
                       },
                       child: _buildMethodCard(
                         iconData: LucideIcons.camera,
-                        label: isFrench ? Slide1Data.methods[0].labelFr : Slide1Data.methods[0].labelEn,
-                        description: isFrench ? Slide1Data.methods[0].descriptionFr : Slide1Data.methods[0].descriptionEn,
+                        label: isFrench ? Slide1Data.methods[0].labelFr : isGerman ? Slide1Data.methods[0].labelDe : Slide1Data.methods[0].labelEn,
+                        description: isFrench ? Slide1Data.methods[0].descriptionFr : isGerman ? Slide1Data.methods[0].descriptionDe : Slide1Data.methods[0].descriptionEn,
                         index: 0,
                       ),
                     ),
@@ -610,8 +617,8 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
                       },
                       child: _buildMethodCard(
                         iconData: LucideIcons.mic,
-                        label: isFrench ? Slide1Data.methods[1].labelFr : Slide1Data.methods[1].labelEn,
-                        description: isFrench ? Slide1Data.methods[1].descriptionFr : Slide1Data.methods[1].descriptionEn,
+                        label: isFrench ? Slide1Data.methods[1].labelFr : isGerman ? Slide1Data.methods[1].labelDe : Slide1Data.methods[1].labelEn,
+                        description: isFrench ? Slide1Data.methods[1].descriptionFr : isGerman ? Slide1Data.methods[1].descriptionDe : Slide1Data.methods[1].descriptionEn,
                         index: 1,
                       ),
                     ),
@@ -636,8 +643,8 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
                       },
                       child: _buildMethodCard(
                         iconData: LucideIcons.keyboard,
-                        label: isFrench ? Slide1Data.methods[2].labelFr : Slide1Data.methods[2].labelEn,
-                        description: isFrench ? Slide1Data.methods[2].descriptionFr : Slide1Data.methods[2].descriptionEn,
+                        label: isFrench ? Slide1Data.methods[2].labelFr : isGerman ? Slide1Data.methods[2].labelDe : Slide1Data.methods[2].labelEn,
+                        description: isFrench ? Slide1Data.methods[2].descriptionFr : isGerman ? Slide1Data.methods[2].descriptionDe : Slide1Data.methods[2].descriptionEn,
                         index: 2,
                       ),
                     ),
@@ -685,7 +692,7 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      isFrench ? Slide1Data.benefitFr : Slide1Data.benefitEn,
+                      isFrench ? Slide1Data.benefitFr : isGerman ? Slide1Data.benefitDe : Slide1Data.benefitEn,
                       style: const TextStyle(
                         fontSize: 14,
                         color: Color(0xFF0B132B),
@@ -707,7 +714,7 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
   }
 
   /// SLIDE 2 : Coach sur demande
-  Widget _buildSlide2(bool isFrench) {
+  Widget _buildSlide2(bool isFrench, bool isGerman) {
     const double minSpacing = 8.0;
 
     return FadeTransition(
@@ -767,7 +774,9 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
                         child: Text(
                           isFrench
                             ? Slide2Data.coachMessageFr
-                            : Slide2Data.coachMessageEn,
+                            : isGerman
+                                ? Slide2Data.coachMessageDe
+                                : Slide2Data.coachMessageEn,
                           style: const TextStyle(
                             fontSize: 14,
                             color: Colors.white,
@@ -820,7 +829,7 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
               child: FadeTransition(
                 opacity: _titleOpacity,
                 child: Text(
-                  isFrench ? Slide2Data.titleFr : Slide2Data.titleEn,
+                  isFrench ? Slide2Data.titleFr : isGerman ? Slide2Data.titleDe : Slide2Data.titleEn,
                   style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.w800,
@@ -847,9 +856,9 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
                     scale: 0.85,
                     child: Column(
                       children: [
-                        _buildNutritionJournalMockup(isFrench),
+                        _buildNutritionJournalMockup(isFrench, isGerman),
                         const SizedBox(height: 12),
-                        _buildAnalyzeButton(isFrench),
+                        _buildAnalyzeButton(isFrench, isGerman),
                       ],
                     ),
                   ),
@@ -882,7 +891,7 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
                               .transform(_slide2StaggerController.value),
                             child: _buildFeatureCard(
                               icon: LucideIcons.search,
-                              title: isFrench ? "Analyse" : "Analyze",
+                              title: isFrench ? "Analyse" : isGerman ? "Analysieren" : "Analyze",
                               isFrench: isFrench,
                             ),
                           ),
@@ -906,7 +915,7 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
                               .transform(_slide2StaggerController.value),
                             child: _buildFeatureCard(
                               icon: LucideIcons.settings,
-                              title: isFrench ? "Ajuste" : "Adjust",
+                              title: isFrench ? "Ajuste" : isGerman ? "Anpassen" : "Adjust",
                               isFrench: isFrench,
                             ),
                           ),
@@ -930,7 +939,7 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
                               .transform(_slide2StaggerController.value),
                             child: _buildFeatureCard(
                               icon: LucideIcons.handMetal,
-                              title: isFrench ? "Contrôle" : "Control",
+                              title: isFrench ? "Contrôle" : isGerman ? "Kontrolle" : "Control",
                               isFrench: isFrench,
                             ),
                           ),
@@ -981,7 +990,7 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      isFrench ? Slide2Data.benefitFr : Slide2Data.benefitEn,
+                      isFrench ? Slide2Data.benefitFr : isGerman ? Slide2Data.benefitDe : Slide2Data.benefitEn,
                       style: const TextStyle(
                         fontSize: 14,
                         color: Color(0xFF0B132B),
@@ -1003,7 +1012,7 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
   }
 
   /// SLIDE 3 : Analyse sport
-  Widget _buildSlide3(bool isFrench) {
+  Widget _buildSlide3(bool isFrench, bool isGerman) {
     const double minSpacing = 8.0;
 
     return FadeTransition(
@@ -1063,7 +1072,9 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
                         child: Text(
                           isFrench
                             ? Slide3Data.coachMessageFr
-                            : Slide3Data.coachMessageEn,
+                            : isGerman
+                                ? Slide3Data.coachMessageDe
+                                : Slide3Data.coachMessageEn,
                           style: const TextStyle(
                             fontSize: 14,
                             color: Colors.white,
@@ -1116,7 +1127,7 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
               child: FadeTransition(
                 opacity: _titleOpacity,
                 child: Text(
-                  isFrench ? Slide3Data.titleFr : Slide3Data.titleEn,
+                  isFrench ? Slide3Data.titleFr : isGerman ? Slide3Data.titleDe : Slide3Data.titleEn,
                   style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.w800,
@@ -1141,7 +1152,7 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Transform.scale(
                     scale: 0.75,
-                    child: _buildProgressGraph(isFrench),
+                    child: _buildProgressGraph(isFrench, isGerman),
                   ),
                 ),
               ),
@@ -1172,7 +1183,7 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
                               .transform(_slide3StaggerController.value),
                             child: _buildFeatureCard(
                               icon: LucideIcons.zap,
-                              title: isFrench ? "Plus fort" : "Stronger",
+                              title: isFrench ? "Plus fort" : isGerman ? "Stärker" : "Stronger",
                               isFrench: isFrench,
                             ),
                           ),
@@ -1196,7 +1207,7 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
                               .transform(_slide3StaggerController.value),
                             child: _buildFeatureCard(
                               icon: LucideIcons.award,
-                              title: isFrench ? "Plus confiant" : "Confident",
+                              title: isFrench ? "Plus confiant" : isGerman ? "Selbstbewusster" : "Confident",
                               isFrench: isFrench,
                             ),
                           ),
@@ -1220,7 +1231,7 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
                               .transform(_slide3StaggerController.value),
                             child: _buildFeatureCard(
                               icon: LucideIcons.trendingUp,
-                              title: isFrench ? "Résultats réels" : "Real results",
+                              title: isFrench ? "Résultats réels" : isGerman ? "Echte Ergebnisse" : "Real results",
                               isFrench: isFrench,
                             ),
                           ),
@@ -1271,7 +1282,7 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      isFrench ? Slide3Data.benefitFr : Slide3Data.benefitEn,
+                      isFrench ? Slide3Data.benefitFr : isGerman ? Slide3Data.benefitDe : Slide3Data.benefitEn,
                       style: const TextStyle(
                         fontSize: 14,
                         color: Color(0xFF0B132B),
@@ -1446,7 +1457,7 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
   }
 
   /// Mockup du journal nutrition (Slide 2) - Version compacte
-  Widget _buildNutritionJournalMockup(bool isFrench) {
+  Widget _buildNutritionJournalMockup(bool isFrench, bool isGerman) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
@@ -1474,7 +1485,7 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
               ),
               const SizedBox(width: 6),
               Text(
-                isFrench ? "Bilan calorique" : "Calorie summary",
+                isFrench ? "Bilan calorique" : isGerman ? "Kalorienbilanz" : "Calorie summary",
                 style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -1501,7 +1512,7 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
                     ),
                   ),
                   TextSpan(
-                    text: isFrench ? " / 2723 kcal consommées" : " / 2723 kcal consumed",
+                    text: isFrench ? " / 2723 kcal consommées" : isGerman ? " / 2723 kcal verbraucht" : " / 2723 kcal consumed",
                     style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
@@ -1532,9 +1543,9 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildMacroSimple("34g", isFrench ? "Protéines" : "Protein"),
-              _buildMacroSimple("119g", isFrench ? "Glucides" : "Carbs"),
-              _buildMacroSimple("71g", isFrench ? "Lipides" : "Fats"),
+              _buildMacroSimple("34g", isFrench ? "Protéines" : isGerman ? "Protein" : "Protein"),
+              _buildMacroSimple("119g", isFrench ? "Glucides" : isGerman ? "Kohlenhydrate" : "Carbs"),
+              _buildMacroSimple("71g", isFrench ? "Lipides" : isGerman ? "Fette" : "Fats"),
             ],
           ),
         ],
@@ -1635,7 +1646,7 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
   }
 
   /// Bouton "Analyser ma journée" avec logo Ryze (Slide 2)
-  Widget _buildAnalyzeButton(bool isFrench) {
+  Widget _buildAnalyzeButton(bool isFrench, bool isGerman) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
@@ -1677,7 +1688,7 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
           const SizedBox(width: 12),
           // Texte
           Text(
-            isFrench ? Slide2Data.buttonTextFr : Slide2Data.buttonTextEn,
+            isFrench ? Slide2Data.buttonTextFr : isGerman ? Slide2Data.buttonTextDe : Slide2Data.buttonTextEn,
             style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w700,
@@ -1691,7 +1702,7 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
   }
 
   /// Mockup interface nutrition (Slide 2)
-  Widget _buildNutritionMockup(bool isFrench) {
+  Widget _buildNutritionMockup(bool isFrench, bool isGerman) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -1711,12 +1722,12 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
           // Données nutrition
           _buildMockupRow(
             'Calories',
-            isFrench ? Slide2Data.mockupCaloriesFr : Slide2Data.mockupCaloriesEn,
+            isFrench ? Slide2Data.mockupCaloriesFr : isGerman ? Slide2Data.mockupCaloriesDe : Slide2Data.mockupCaloriesEn,
           ),
           const SizedBox(height: 12),
           _buildMockupRow(
-            isFrench ? 'Protéines' : 'Protein',
-            isFrench ? Slide2Data.mockupProteinsFr : Slide2Data.mockupProteinsEn,
+            isFrench ? 'Protéines' : isGerman ? 'Protein' : 'Protein',
+            isFrench ? Slide2Data.mockupProteinsFr : isGerman ? Slide2Data.mockupProteinsDe : Slide2Data.mockupProteinsEn,
           ),
 
           const SizedBox(height: 20),
@@ -1743,7 +1754,7 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
                 const Icon(Icons.analytics_outlined, size: 20),
                 const SizedBox(width: 8),
                 Text(
-                  isFrench ? Slide2Data.buttonTextFr : Slide2Data.buttonTextEn,
+                  isFrench ? Slide2Data.buttonTextFr : isGerman ? Slide2Data.buttonTextDe : Slide2Data.buttonTextEn,
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
@@ -1855,7 +1866,7 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
   }
 
   /// Mockup programme d'entraînement (Slide 3)
-  Widget _buildProgressGraph(bool isFrench) {
+  Widget _buildProgressGraph(bool isFrench, bool isGerman) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
@@ -1877,7 +1888,7 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                isFrench ? "Coach Ryze - Jambes" : "Coach Ryze - Legs",
+                isFrench ? "Coach Ryze - Jambes" : isGerman ? "Coach Ryze - Beine" : "Coach Ryze - Legs",
                 style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
@@ -1890,7 +1901,7 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
           const SizedBox(height: 2),
 
           Text(
-            isFrench ? "5 exercices" : "5 exercises",
+            isFrench ? "5 exercices" : isGerman ? "5 Übungen" : "5 exercises",
             style: const TextStyle(
               fontSize: 12,
               color: Color(0xFF64748B),
@@ -1901,11 +1912,11 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
           const SizedBox(height: 12),
 
           // Exercices
-          _buildExerciseRow("1", "Squat", isFrench ? "Jambes" : "Legs", "4×10", "12.5kg"),
+          _buildExerciseRow("1", isFrench ? "Squat" : isGerman ? "Kniebeuge" : "Squat", isFrench ? "Jambes" : isGerman ? "Beine" : "Legs", "4×10", "12.5kg"),
           const SizedBox(height: 8),
-          _buildExerciseRow("2", isFrench ? "Développé couché" : "Bench Press", isFrench ? "Pectoraux" : "Chest", "4×10", "10kg"),
+          _buildExerciseRow("2", isFrench ? "Développé couché" : isGerman ? "Bankdrücken" : "Bench Press", isFrench ? "Pectoraux" : isGerman ? "Brust" : "Chest", "4×10", "10kg"),
           const SizedBox(height: 8),
-          _buildExerciseRow("3", isFrench ? "Rowing à la barre" : "Barbell Row", isFrench ? "Dos" : "Back", "4×10", "12.5kg"),
+          _buildExerciseRow("3", isFrench ? "Rowing à la barre" : isGerman ? "Langhantelrudern" : "Barbell Row", isFrench ? "Dos" : isGerman ? "Rücken" : "Back", "4×10", "12.5kg"),
 
           const SizedBox(height: 12),
 
@@ -1935,7 +1946,9 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
                   child: Text(
                     isFrench
                       ? "Conseils de Coach Ryze"
-                      : "Coach Ryze's Tips",
+                      : isGerman
+                          ? "Coach Ryzes Tipps"
+                          : "Coach Ryze's Tips",
                     style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
@@ -2041,10 +2054,12 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
   }
 
   /// Card analyse sport (Slide 3)
-  Widget _buildSportAnalysisCard(bool isFrench) {
+  Widget _buildSportAnalysisCard(bool isFrench, bool isGerman) {
     final recommendations = isFrench
         ? Slide3Data.recommendationsFr
-        : Slide3Data.recommendationsEn;
+        : isGerman
+            ? Slide3Data.recommendationsDe
+            : Slide3Data.recommendationsEn;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -2103,7 +2118,7 @@ class _ValuePropositionSlidesState extends State<ValuePropositionSlides>
 
           // Analyse
           Text(
-            isFrench ? Slide3Data.analysisSummaryFr : Slide3Data.analysisSummaryEn,
+            isFrench ? Slide3Data.analysisSummaryFr : isGerman ? Slide3Data.analysisSummaryDe : Slide3Data.analysisSummaryEn,
             style: const TextStyle(
               fontSize: 15,
               color: Color(0xFF1A1A1A),

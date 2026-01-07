@@ -94,6 +94,47 @@ class CelebrationService {
     "You're building your ideal body!",
   ];
 
+  // GERMAN - Workout celebration messages
+  static const List<String> _workoutMessagesDe = [
+    "Gut gemacht! 💪",
+    "Hervorragende Arbeit!",
+    "Du bist ein Champion!",
+    "Weiter so!",
+    "Tolle Leistung!",
+    "Du machst Fortschritte!",
+    "Stolz auf dich!",
+    "Beast Modus!",
+    "Nichts hält dich auf!",
+    "Ziel erreicht!",
+    "Was für ein Training! 🔥",
+    "Du gibst alles!",
+    "Beeindruckend!",
+    "Du bist on fire! 💥",
+    "Beast Modus aktiviert!",
+    "Training abgeschlossen! ✅",
+    "Champion des Tages!",
+    "Du hast alles gegeben!",
+    "Respekt! 👊",
+    "Kraft und Ehre!",
+  ];
+
+  static const List<String> _workoutSubtitlesDe = [
+    "Noch ein Training näher an deinem Ziel!",
+    "Dein Körper dankt dir!",
+    "Du wirst jeden Tag stärker!",
+    "Beständigkeit zahlt sich immer aus!",
+    "Bleib am Ball!",
+    "Du bist auf dem richtigen Weg!",
+    "Jede Anstrengung zählt!",
+    "Deine Entschlossenheit ist inspirierend!",
+    "Noch ein Schritt zum Erfolg!",
+    "Du überwindest deine Grenzen!",
+    "Kontinuität führt zum Erfolg!",
+    "Dein zukünftiges Ich dankt dir!",
+    "Jedes Training bringt dich näher!",
+    "Du baust deinen idealen Körper auf!",
+  ];
+
   // FRENCH - Nutrition celebration messages
   static const List<String> _nutritionMessagesFr = [
     "Super choix ! 🍎",
@@ -170,6 +211,44 @@ class CelebrationService {
     "Excellence starts on the plate!",
   ];
 
+  // GERMAN - Nutrition celebration messages
+  static const List<String> _nutritionMessagesDe = [
+    "Gute Wahl! 🍎",
+    "Gut gemacht!",
+    "Ernährung top!",
+    "Weiter so!",
+    "Tolles Tracking!",
+    "Super Dokumentation!",
+    "Du managst deine Ernährung!",
+    "Kluge Wahl!",
+    "Ernährungsziel in Sicht!",
+    "Mahlzeit erfasst! ✅",
+    "Du isst smart! 🧠",
+    "Wahl eines Champions!",
+    "Deine Ernährung ist perfekt! 👌",
+    "Gute Entscheidung!",
+    "Du tankt deinen Erfolg!",
+    "Perfekt für deine Ziele!",
+    "Krieger-Ernährung! 🥗",
+    "Du triffst die richtigen Entscheidungen!",
+    "Tolle Disziplin!",
+  ];
+
+  static const List<String> _nutritionSubtitlesDe = [
+    "Jede Mahlzeit zählt für dein Ziel!",
+    "Gut essen ist der Schlüssel!",
+    "Dein Körper sagt danke!",
+    "Ernährung macht 70% des Ergebnisses aus!",
+    "Du ernährst deinen Körper klug!",
+    "Noch ein Schritt zu deinen Zielen!",
+    "Deine Ernährung ist dein Treibstoff!",
+    "Du baust deinen Körper am Tisch auf!",
+    "Disziplin zahlt sich immer aus!",
+    "Jede Wahl zählt!",
+    "Du kümmerst dich um dich selbst!",
+    "Exzellenz beginnt auf dem Teller!",
+  ];
+
   /// Show celebration popup after completing a workout
   void celebrateWorkoutCompletion(
     BuildContext context, {
@@ -180,14 +259,14 @@ class CelebrationService {
     String? workoutType,
     int? exerciseCount,
   }) {
-    final isEnglish = LocalizationService.instance.currentLanguageCode == 'en';
-    final messages = isEnglish ? _workoutMessagesEn : _workoutMessagesFr;
-    final subtitles = isEnglish ? _workoutSubtitlesEn : _workoutSubtitlesFr;
+    final langCode = LocalizationService.instance.currentLanguageCode;
+    final messages = langCode == 'de' ? _workoutMessagesDe : (langCode == 'en' ? _workoutMessagesEn : _workoutMessagesFr);
+    final subtitles = langCode == 'de' ? _workoutSubtitlesDe : (langCode == 'en' ? _workoutSubtitlesEn : _workoutSubtitlesFr);
 
     final message = customMessage ?? messages[_random.nextInt(messages.length)];
     final subtitle = customSubtitle ?? subtitles[_random.nextInt(subtitles.length)];
     final actionText = actionDescription ?? _buildWorkoutActionDescription(
-      isEnglish: isEnglish,
+      langCode: langCode,
       sessionName: sessionName,
       workoutType: workoutType,
       exerciseCount: exerciseCount,
@@ -248,14 +327,14 @@ class CelebrationService {
     debugPrint('🎊 CelebrationService.celebrateFoodEntry - START');
     debugPrint('   Context: $context');
 
-    final isEnglish = LocalizationService.instance.currentLanguageCode == 'en';
-    final messages = isEnglish ? _nutritionMessagesEn : _nutritionMessagesFr;
-    final subtitles = isEnglish ? _nutritionSubtitlesEn : _nutritionSubtitlesFr;
+    final langCode = LocalizationService.instance.currentLanguageCode;
+    final messages = langCode == 'de' ? _nutritionMessagesDe : (langCode == 'en' ? _nutritionMessagesEn : _nutritionMessagesFr);
+    final subtitles = langCode == 'de' ? _nutritionSubtitlesDe : (langCode == 'en' ? _nutritionSubtitlesEn : _nutritionSubtitlesFr);
 
     final message = customMessage ?? messages[_random.nextInt(messages.length)];
     final subtitle = customSubtitle ?? subtitles[_random.nextInt(subtitles.length)];
     final actionText = actionDescription ?? _buildFoodActionDescription(
-      isEnglish: isEnglish,
+      langCode: langCode,
       foodName: foodName,
       mealName: mealName,
     );
@@ -317,14 +396,14 @@ class CelebrationService {
     Duration? duration,
     double? distanceKm,
   }) {
-    final isEnglish = LocalizationService.instance.currentLanguageCode == 'en';
-    final messages = isEnglish ? _workoutMessagesEn : _workoutMessagesFr;
-    final subtitles = isEnglish ? _workoutSubtitlesEn : _workoutSubtitlesFr;
+    final langCode = LocalizationService.instance.currentLanguageCode;
+    final messages = langCode == 'de' ? _workoutMessagesDe : (langCode == 'en' ? _workoutMessagesEn : _workoutMessagesFr);
+    final subtitles = langCode == 'de' ? _workoutSubtitlesDe : (langCode == 'en' ? _workoutSubtitlesEn : _workoutSubtitlesFr);
 
     final message = customMessage ?? messages[_random.nextInt(messages.length)];
     final subtitle = customSubtitle ?? subtitles[_random.nextInt(subtitles.length)];
     final actionText = actionDescription ?? _buildCardioActionDescription(
-      isEnglish: isEnglish,
+      langCode: langCode,
       activityTitle: activityTitle,
       duration: duration,
       distanceKm: distanceKm,
@@ -375,9 +454,9 @@ class CelebrationService {
 
   /// Show celebration popup after completing a HIIT session
   void celebrateHiitCompletion(BuildContext context, {String? customMessage}) {
-    final isEnglish = LocalizationService.instance.currentLanguageCode == 'en';
-    final messages = isEnglish ? _workoutMessagesEn : _workoutMessagesFr;
-    final subtitles = isEnglish ? _workoutSubtitlesEn : _workoutSubtitlesFr;
+    final langCode = LocalizationService.instance.currentLanguageCode;
+    final messages = langCode == 'de' ? _workoutMessagesDe : (langCode == 'en' ? _workoutMessagesEn : _workoutMessagesFr);
+    final subtitles = langCode == 'de' ? _workoutSubtitlesDe : (langCode == 'en' ? _workoutSubtitlesEn : _workoutSubtitlesFr);
 
     final message = customMessage ?? messages[_random.nextInt(messages.length)];
     final subtitle = subtitles[_random.nextInt(subtitles.length)];
@@ -408,33 +487,35 @@ class CelebrationService {
   }
 
   String? _buildFoodActionDescription({
-    required bool isEnglish,
+    required String langCode,
     String? foodName,
     String? mealName,
   }) {
     if (foodName != null && mealName != null) {
-      return isEnglish
-          ? '$foodName added to $mealName'
-          : '$foodName a été ajouté au repas $mealName';
+      if (langCode == 'de') return '$foodName zu $mealName hinzugefügt';
+      if (langCode == 'en') return '$foodName added to $mealName';
+      return '$foodName a été ajouté au repas $mealName';
     }
 
     if (foodName != null) {
-      return isEnglish
-          ? '$foodName saved to your journal'
-          : '$foodName a été enregistré dans ton journal';
+      if (langCode == 'de') return '$foodName in deinem Journal gespeichert';
+      if (langCode == 'en') return '$foodName saved to your journal';
+      return '$foodName a été enregistré dans ton journal';
     }
 
     if (mealName != null) {
-      return isEnglish
-          ? 'Entry added to $mealName'
-          : 'Entrée ajoutée au repas $mealName';
+      if (langCode == 'de') return 'Eintrag zu $mealName hinzugefügt';
+      if (langCode == 'en') return 'Entry added to $mealName';
+      return 'Entrée ajoutée au repas $mealName';
     }
 
-    return isEnglish ? 'Nutrition entry saved' : 'Entrée nutrition enregistrée';
+    if (langCode == 'de') return 'Ernährungseintrag gespeichert';
+    if (langCode == 'en') return 'Nutrition entry saved';
+    return 'Entrée nutrition enregistrée';
   }
 
   String? _buildCardioActionDescription({
-    required bool isEnglish,
+    required String langCode,
     String? activityTitle,
     Duration? duration,
     double? distanceKm,
@@ -442,14 +523,20 @@ class CelebrationService {
     final buffer = StringBuffer();
 
     if (activityTitle != null) {
-      buffer.write(isEnglish ? '$activityTitle session logged' : 'Séance $activityTitle validée');
+      if (langCode == 'de') {
+        buffer.write('$activityTitle Training erfasst');
+      } else if (langCode == 'en') {
+        buffer.write('$activityTitle session logged');
+      } else {
+        buffer.write('Séance $activityTitle validée');
+      }
     }
 
     if (duration != null && duration.inMinutes > 0) {
       final minutes = duration.inMinutes;
       final durationText = minutes >= 60
-          ? (isEnglish ? '${(minutes / 60).floor()}h${minutes % 60}min' : '${(minutes / 60).floor()}h${minutes % 60}min')
-          : (isEnglish ? '$minutes min' : '$minutes min');
+          ? '${(minutes / 60).floor()}h${minutes % 60}min'
+          : '$minutes min';
       buffer.write(buffer.isEmpty ? durationText : ' · $durationText');
     }
 
@@ -460,14 +547,16 @@ class CelebrationService {
     }
 
     if (buffer.isEmpty) {
-      return isEnglish ? 'Cardio session completed' : 'Séance cardio complétée';
+      if (langCode == 'de') return 'Cardio-Training abgeschlossen';
+      if (langCode == 'en') return 'Cardio session completed';
+      return 'Séance cardio complétée';
     }
 
     return buffer.toString();
   }
 
   String? _buildWorkoutActionDescription({
-    required bool isEnglish,
+    required String langCode,
     String? sessionName,
     String? workoutType,
     int? exerciseCount,
@@ -475,36 +564,47 @@ class CelebrationService {
     final parts = <String>[];
 
     if (sessionName != null && sessionName.trim().isNotEmpty) {
-      parts.add(isEnglish
-          ? 'Session "$sessionName"'
-          : 'Séance "$sessionName"');
+      if (langCode == 'de') {
+        parts.add('Training "$sessionName"');
+      } else if (langCode == 'en') {
+        parts.add('Session "$sessionName"');
+      } else {
+        parts.add('Séance "$sessionName"');
+      }
     }
 
     if (workoutType != null) {
       String? typeText;
       switch (workoutType) {
         case 'guided':
-          typeText = isEnglish ? 'Guided program' : 'Programme guidé';
+          typeText = langCode == 'de' ? 'Geführtes Programm' : (langCode == 'en' ? 'Guided program' : 'Programme guidé');
           break;
         case 'coach':
-          typeText = isEnglish ? 'Coach Ryze session' : 'Séance Coach Ryze';
+          typeText = langCode == 'de' ? 'Coach Ryze Training' : (langCode == 'en' ? 'Coach Ryze session' : 'Séance Coach Ryze');
           break;
         case 'manual':
-          typeText = isEnglish ? 'Manual workout' : 'Séance manuelle';
+          typeText = langCode == 'de' ? 'Manuelles Training' : (langCode == 'en' ? 'Manual workout' : 'Séance manuelle');
           break;
       }
       if (typeText != null) parts.add(typeText);
     }
 
     if (exerciseCount != null && exerciseCount > 0) {
-      final label = isEnglish
-          ? '$exerciseCount exercise${exerciseCount > 1 ? 's' : ''}'
-          : '$exerciseCount exercice${exerciseCount > 1 ? 's' : ''}';
+      String label;
+      if (langCode == 'de') {
+        label = '$exerciseCount Übung${exerciseCount > 1 ? 'en' : ''}';
+      } else if (langCode == 'en') {
+        label = '$exerciseCount exercise${exerciseCount > 1 ? 's' : ''}';
+      } else {
+        label = '$exerciseCount exercice${exerciseCount > 1 ? 's' : ''}';
+      }
       parts.add(label);
     }
 
     if (parts.isEmpty) {
-      return isEnglish ? 'Workout logged' : 'Séance enregistrée';
+      if (langCode == 'de') return 'Training erfasst';
+      if (langCode == 'en') return 'Workout logged';
+      return 'Séance enregistrée';
     }
 
     return parts.join(' · ');

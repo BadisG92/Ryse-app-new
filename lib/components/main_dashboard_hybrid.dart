@@ -22,6 +22,7 @@ class MainDashboardHybrid extends StatefulWidget {
   final GlobalKey? nutritionTabKey; // Pour le tutorial
   final GlobalKey? sportTabKey; // Pour le tutorial
   final GlobalKey? progressTabKey; // Pour le tutorial
+  final GlobalKey? coachFabKey; // Pour le tutorial - FAB Coach Ryze
 
   const MainDashboardHybrid({
     super.key,
@@ -29,6 +30,7 @@ class MainDashboardHybrid extends StatefulWidget {
     this.nutritionTabKey,
     this.sportTabKey,
     this.progressTabKey,
+    this.coachFabKey,
   });
 
   @override
@@ -97,6 +99,7 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
       nutritionTabKey: widget.nutritionTabKey ?? GlobalKey(),
       sportTabKey: widget.sportTabKey ?? GlobalKey(),
       progressTabKey: widget.progressTabKey ?? GlobalKey(),
+      coachFabKey: widget.coachFabKey ?? GlobalKey(),
       languageCode: locService.currentLanguageCode,
       pandaImagePath: 'assets/images/coach_ryze_welcome.png',
       userName: globalState.userName,
@@ -1037,12 +1040,14 @@ class GamifiedActionsSection extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Actions rapides',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF1A1A1A),
+            Consumer<LocalizationService>(
+              builder: (context, locService, child) => Text(
+                'quick_actions'.tr(locService.currentLanguageCode),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1A1A1A),
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -1216,9 +1221,10 @@ class GamifiedActionsSection extends StatelessWidget {
         break;
       case 'weight_tracking':
         // TODO: Ouvrir saisie de poids
+        final locService = LocalizationService.instance;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Enregistrement du poids'),
+            content: Text('weight_recording'.tr(locService.currentLanguageCode)),
             duration: const Duration(seconds: 2),
             backgroundColor: const Color(0xFF0B132B).withOpacity(0.9),
             behavior: SnackBarBehavior.floating,
@@ -1644,18 +1650,20 @@ class DetailedProgressSection extends StatelessWidget {
                   color: Color(0xFF0B132B),
                 ),
                 const SizedBox(width: 12),
-                const Text(
-                  'Progression détaillée',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1A1A),
+                Consumer<LocalizationService>(
+                  builder: (context, locService, child) => Text(
+                    'detailed_progress'.tr(locService.currentLanguageCode),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1A1A1A),
+                    ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
-            
+
             ...goals.map((goal) => 
               Padding(
                 padding: const EdgeInsets.only(bottom: 16),

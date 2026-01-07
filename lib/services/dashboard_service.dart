@@ -29,6 +29,7 @@ class DashboardService {
     _cachedGoalsDate = null;
     _cachedModules = null;
     _cachedModulesDate = null;
+    FastCacheService.invalidateDashboard();
     if (kDebugMode) debugPrint('🧹 Cache dashboard vidé');
   }
 
@@ -219,9 +220,11 @@ class DashboardService {
         ),
         DailyGoal(
           id: 'water',
-          label: languageCode == 'fr' 
+          label: languageCode == 'fr'
             ? 'Boire ${dailyWaterGoal.toStringAsFixed(1)}L d\'eau'
-            : 'Drink ${dailyWaterGoal.toStringAsFixed(1)}L of water',
+            : languageCode == 'de'
+              ? '${dailyWaterGoal.toStringAsFixed(1)}L Wasser trinken'
+              : 'Drink ${dailyWaterGoal.toStringAsFixed(1)}L of water',
           progress: ((currentWaterL / dailyWaterGoal) * 100).round().clamp(0, 100),
           completed: currentWaterL >= dailyWaterGoal,
           currentValue: currentWaterL,
@@ -409,7 +412,7 @@ class DashboardService {
           icon: LucideIcons.dumbbell,
           stats: {
             'calories'.tr(languageCode): '0 kcal',
-            'sessions'.tr(languageCode): languageCode == 'fr' ? '0 auj.' : '0 today',
+            'sessions'.tr(languageCode): languageCode == 'fr' ? '0 auj.' : languageCode == 'de' ? '0 heute' : '0 today',
           },
           gradientColors: const [Color(0xFF0B132B), Color(0xFF1C2951)],
         );
@@ -489,7 +492,7 @@ class DashboardService {
         icon: LucideIcons.dumbbell,
         stats: {
           'calories'.tr(languageCode): '$totalCalories kcal',
-          'sessions'.tr(languageCode): languageCode == 'fr' ? '$totalSessions auj.' : '$totalSessions today',
+          'sessions'.tr(languageCode): languageCode == 'fr' ? '$totalSessions auj.' : languageCode == 'de' ? '$totalSessions heute' : '$totalSessions today',
         },
         gradientColors: const [Color(0xFF0B132B), Color(0xFF1C2951)],
       );

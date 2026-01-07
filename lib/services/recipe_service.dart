@@ -89,7 +89,7 @@ class RecipeService {
     // Charger tous les ingrédients avec leurs noms pour la recherche
     final ingredientsResponse = await _supabase
         .from('recipe_ingredient_database')
-        .select('recipe_id, food_database!inner(name_fr, name_en)');
+        .select('recipe_id, food_database!inner(name_fr, name_en, name_de)');
 
     // Créer un map recipe_id -> liste de noms d'ingrédients
     final locService = LocalizationService.instance;
@@ -98,7 +98,7 @@ class RecipeService {
       final recipeId = ing['recipe_id'] as int;
       final food = ing['food_database'];
       if (food != null) {
-        final ingredientName = locService.getTextFromColumns(food['name_fr'], food['name_en']);
+        final ingredientName = locService.getTextFromColumns(food['name_fr'], food['name_en'], food['name_de']);
         if (ingredientName.isNotEmpty) {
           recipeIngredientNames.putIfAbsent(recipeId, () => []);
           recipeIngredientNames[recipeId]!.add(ingredientName);
@@ -214,7 +214,7 @@ class RecipeService {
       // Récupérer les ingrédients avec les données nutritionnelles
       final ingredientsResponse = await _supabase
           .from('recipe_ingredient_database')
-          .select('id, recipe_id, food_id, quantity, display_order, unite_fr, unite_en, food_database!inner(*)')
+          .select('id, recipe_id, food_id, quantity, display_order, unite_fr, unite_en, unite_de, food_database!inner(*)')
           .eq('recipe_id', recipeId)
           .order('display_order');
 
@@ -238,9 +238,9 @@ class RecipeService {
         final locService = LocalizationService.instance;
         ingredients.add(RecipeIngredient(
           id: ing['id'].toString(),
-          name: locService.getTextFromColumns(food['name_fr'], food['name_en']),
+          name: locService.getTextFromColumns(food['name_fr'], food['name_en'], food['name_de']),
           quantity: baseQuantity * servings, // Quantité totale pour toute la recette
-          unit: locService.getTextFromColumns(ing['unite_fr'], ing['unite_en']) ?? '',
+          unit: locService.getTextFromColumns(ing['unite_fr'], ing['unite_en'], ing['unite_de']),
           caloriesPer100g: double.parse((food['calories'] ?? 0).toString()),
           proteinsPer100g: double.parse((food['proteins'] ?? 0).toString()),
           carbsPer100g: double.parse((food['carbs'] ?? 0).toString()),
@@ -269,7 +269,7 @@ class RecipeService {
     final locService = LocalizationService.instance;
     return Recipe(
       id: int.parse(recipeData['id'].toString()),
-      name: locService.getTextFromColumns(recipeData['name_fr'], recipeData['name_en']),
+      name: locService.getTextFromColumns(recipeData['name_fr'], recipeData['name_en'], recipeData['name_de']),
       image: recipeData['image_url'] ?? "/placeholder.svg?height=200&width=200",
       duration: _formatDuration(recipeData['duration']),
       // Utiliser les valeurs directement depuis la table recipes (déjà par portion)
@@ -288,13 +288,13 @@ class RecipeService {
 
   /// Convertit les données Supabase en modèle Recipe
   static Recipe _mapToRecipeFromData(
-    Map<String, dynamic> recipeData, 
+    Map<String, dynamic> recipeData,
     List<dynamic> ingredients
   ) {
     final locService = LocalizationService.instance;
     return Recipe(
       id: int.parse(recipeData['id'].toString()),
-      name: locService.getTextFromColumns(recipeData['name_fr'], recipeData['name_en']),
+      name: locService.getTextFromColumns(recipeData['name_fr'], recipeData['name_en'], recipeData['name_de']),
       image: recipeData['image_url'] ?? "/placeholder.svg?height=200&width=200",
       duration: _formatDuration(recipeData['duration']),
       // Utiliser les valeurs directement depuis la table recipes (déjà par portion)
@@ -317,11 +317,11 @@ class RecipeService {
   }
 
   static List<String> _convertTags(Map<String, dynamic> recipeData) {
-    // Utiliser les tags français ou anglais selon la langue actuelle
+    // Utiliser les tags français, anglais ou allemand selon la langue actuelle
     final locService = LocalizationService.instance;
-    String tagsString = locService.getTextFromColumns(recipeData['tags_fr'], recipeData['tags_en']);
+    String tagsString = locService.getTextFromColumns(recipeData['tags_fr'], recipeData['tags_en'], recipeData['tags_de']);
     dynamic tags = tagsString.isEmpty ? recipeData['tags'] : tagsString;
-    
+
     if (tags == null) return [];
     if (tags is List) return tags.cast<String>();
     return [];
@@ -331,17 +331,17 @@ class RecipeService {
     final locService = LocalizationService.instance;
     return ingredients.map((ing) {
       final food = ing['food_database'];
-      final foodName = locService.getTextFromColumns(food['name_fr'], food['name_en']);
+      final foodName = locService.getTextFromColumns(food['name_fr'], food['name_en'], food['name_de']);
       final quantity = ing['quantity'].toString();
-      final unit = locService.getTextFromColumns(ing['unite_fr'], ing['unite_en']) ?? '';
+      final unit = locService.getTextFromColumns(ing['unite_fr'], ing['unite_en'], ing['unite_de']);
       return "$quantity $unit - $foodName";
     }).cast<String>().toList();
   }
 
   static List<String> _getStepsFromData(Map<String, dynamic> recipeData) {
     final locService = LocalizationService.instance;
-    final stepsString = locService.getTextFromColumns(recipeData['steps_fr'], recipeData['steps_en']);
-    
+    final stepsString = locService.getTextFromColumns(recipeData['steps_fr'], recipeData['steps_en'], recipeData['steps_de']);
+
     if (stepsString.isNotEmpty) {
       // Les étapes sont séparées par des "|" - utiliser la même logique que recipe_models.dart
       final stepsList = stepsString.split('|').map((step) {
@@ -357,15 +357,15 @@ class RecipeService {
 
   static String _translateDifficulty(String? difficulty) {
     if (difficulty == null) return "Facile";
-    
+
     final locService = LocalizationService.instance;
     final translations = {
-      'easy': locService.isFrench ? 'Facile' : 'Easy',
-      'medium': locService.isFrench ? 'Moyen' : 'Medium', 
-      'hard': locService.isFrench ? 'Difficile' : 'Hard',
-      'spicy': locService.isFrench ? 'Épicé' : 'Spicy',
+      'easy': locService.isFrench ? 'Facile' : locService.isGerman ? 'Einfach' : 'Easy',
+      'medium': locService.isFrench ? 'Moyen' : locService.isGerman ? 'Mittel' : 'Medium',
+      'hard': locService.isFrench ? 'Difficile' : locService.isGerman ? 'Schwer' : 'Hard',
+      'spicy': locService.isFrench ? 'Épicé' : locService.isGerman ? 'Scharf' : 'Spicy',
     };
-    
+
     return translations[difficulty.toLowerCase()] ?? difficulty;
   }
 
@@ -380,22 +380,22 @@ class RecipeService {
   static Future<Set<String>> getAllUniqueTags() async {
     try {
       debugPrint('🔍 RecipeService.getAllUniqueTags - Récupération des tags...');
-      
+
       // Récupérer toutes les recettes
       final recipesResponse = await _supabase
           .from('recipes_database')
-          .select('tags_fr, tags_en')
+          .select('tags_fr, tags_en, tags_de')
           .eq('is_public', true);
 
       debugPrint('🔍 Found ${recipesResponse.length} recipes to extract tags from');
 
       final locService = LocalizationService.instance;
       Set<String> allTags = {};
-      
+
       for (var recipe in recipesResponse) {
         // Récupérer les tags selon la langue actuelle
-        String tagsString = locService.getTextFromColumns(recipe['tags_fr'], recipe['tags_en']);
-        
+        String tagsString = locService.getTextFromColumns(recipe['tags_fr'], recipe['tags_en'], recipe['tags_de']);
+
         if (tagsString.isNotEmpty) {
           // Séparer les tags par virgule et les nettoyer
           List<String> tags = tagsString
@@ -403,11 +403,11 @@ class RecipeService {
               .map((tag) => tag.trim())
               .where((tag) => tag.isNotEmpty)
               .toList();
-          
+
           allTags.addAll(tags);
         }
       }
-      
+
       debugPrint('✅ Extracted ${allTags.length} unique tags: ${allTags.take(10).toList()}...');
       return allTags;
     } catch (e) {

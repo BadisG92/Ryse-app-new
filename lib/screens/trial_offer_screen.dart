@@ -112,6 +112,7 @@ class _TrialOfferScreenState extends State<TrialOfferScreen> with SingleTickerPr
   Widget build(BuildContext context) {
     final locService = Provider.of<LocalizationService>(context);
     final isFrench = locService.currentLanguageCode == 'fr';
+    final isGerman = locService.currentLanguageCode == 'de';
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -139,7 +140,9 @@ class _TrialOfferScreenState extends State<TrialOfferScreen> with SingleTickerPr
                   Text(
                     isFrench
                         ? 'Débloque tout ton potentiel'
-                        : 'Unlock your full potential',
+                        : isGerman
+                            ? 'Entfessle dein volles Potenzial'
+                            : 'Unlock your full potential',
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       fontSize: 32,
@@ -163,7 +166,9 @@ class _TrialOfferScreenState extends State<TrialOfferScreen> with SingleTickerPr
                     child: Text(
                       isFrench
                           ? '7 jours gratuits, puis 9,99€/mois'
-                          : '7 days free, then €9.99/month',
+                          : isGerman
+                              ? '7 Tage kostenlos, dann 9,99€/Monat'
+                              : '7 days free, then €9.99/month',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
@@ -177,40 +182,48 @@ class _TrialOfferScreenState extends State<TrialOfferScreen> with SingleTickerPr
                   // Features Premium avec Coach Ryze
                   _buildFeature(
                     icon: '📸',
-                    title: isFrench ? 'Scans illimités' : 'Unlimited scans',
+                    title: isFrench ? 'Scans illimités' : isGerman ? 'Unbegrenzte Scans' : 'Unlimited scans',
                     description: isFrench
                         ? 'Le Coach Ryze analyse tes repas instantanément'
-                        : 'Coach Ryze analyzes your meals instantly',
+                        : isGerman
+                            ? 'Coach Ryze analysiert deine Mahlzeiten sofort'
+                            : 'Coach Ryze analyzes your meals instantly',
                   ),
 
                   const SizedBox(height: 16),
 
                   _buildFeature(
                     icon: '🤖',
-                    title: isFrench ? 'Générateur de workouts' : 'Workout generator',
+                    title: isFrench ? 'Générateur de workouts' : isGerman ? 'Workout-Generator' : 'Workout generator',
                     description: isFrench
                         ? 'Le Coach Ryze crée des séances personnalisées'
-                        : 'Coach Ryze creates personalized workouts',
+                        : isGerman
+                            ? 'Coach Ryze erstellt personalisierte Trainingseinheiten'
+                            : 'Coach Ryze creates personalized workouts',
                   ),
 
                   const SizedBox(height: 16),
 
                   _buildFeature(
                     icon: '📊',
-                    title: isFrench ? 'Bilan quotidien' : 'Daily report',
+                    title: isFrench ? 'Bilan quotidien' : isGerman ? 'Täglicher Bericht' : 'Daily report',
                     description: isFrench
                         ? 'Le Coach Ryze analyse ta journée et te conseille'
-                        : 'Coach Ryze analyzes your day and advises you',
+                        : isGerman
+                            ? 'Coach Ryze analysiert deinen Tag und berät dich'
+                            : 'Coach Ryze analyzes your day and advises you',
                   ),
 
                   const SizedBox(height: 16),
 
                   _buildFeature(
                     icon: '💪',
-                    title: isFrench ? 'Analyse de progression' : 'Progress analysis',
+                    title: isFrench ? 'Analyse de progression' : isGerman ? 'Fortschrittsanalyse' : 'Progress analysis',
                     description: isFrench
                         ? 'Le Coach Ryze suit tes performances'
-                        : 'Coach Ryze tracks your performance',
+                        : isGerman
+                            ? 'Coach Ryze verfolgt deine Leistungen'
+                            : 'Coach Ryze tracks your performance',
                   ),
 
                   const SizedBox(height: 40),
@@ -245,7 +258,9 @@ class _TrialOfferScreenState extends State<TrialOfferScreen> with SingleTickerPr
                                 Text(
                                   isFrench
                                       ? 'Commencer 7 jours gratuits'
-                                      : 'Start 7 days free',
+                                      : isGerman
+                                          ? '7 Tage kostenlos starten'
+                                          : 'Start 7 days free',
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 16,
@@ -268,7 +283,9 @@ class _TrialOfferScreenState extends State<TrialOfferScreen> with SingleTickerPr
                     child: Text(
                       isFrench
                           ? 'Continuer avec la version limitée'
-                          : 'Continue with limited version',
+                          : isGerman
+                              ? 'Mit eingeschränkter Version fortfahren'
+                              : 'Continue with limited version',
                       style: const TextStyle(
                         color: Color(0xFF64748B),
                         fontSize: 15,
@@ -301,7 +318,9 @@ class _TrialOfferScreenState extends State<TrialOfferScreen> with SingleTickerPr
                               child: Text(
                                 isFrench
                                     ? 'Annule à tout moment dans Réglages iOS'
-                                    : 'Cancel anytime in iOS Settings',
+                                    : isGerman
+                                        ? 'Jederzeit in iOS-Einstellungen kündigen'
+                                        : 'Cancel anytime in iOS Settings',
                                 style: const TextStyle(
                                   fontSize: 13,
                                   color: Color(0xFF64748B),
@@ -316,7 +335,9 @@ class _TrialOfferScreenState extends State<TrialOfferScreen> with SingleTickerPr
                         Text(
                           isFrench
                               ? 'Aucun engagement. Paiement après 7 jours.'
-                              : 'No commitment. Payment after 7 days.',
+                              : isGerman
+                                  ? 'Keine Verpflichtung. Zahlung nach 7 Tagen.'
+                                  : 'No commitment. Payment after 7 days.',
                           style: const TextStyle(
                             fontSize: 12,
                             color: Color(0xFF94A3B8),

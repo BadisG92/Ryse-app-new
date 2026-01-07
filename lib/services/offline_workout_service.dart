@@ -225,7 +225,7 @@ class OfflineWorkoutService {
       final suffix = locService.getColumnSuffix();
       final rows = await _client
           .from('exercises')
-          .select('id, name_en, name_fr, muscle_group_fr, muscle_group_en, equipment, description, is_custom')
+          .select('id, name_en, name_fr, name_de, muscle_group_fr, muscle_group_en, muscle_group_de, equipment, description, is_custom')
           .order('name$suffix', ascending: true)
           .limit(500);
           
@@ -235,8 +235,8 @@ class OfflineWorkoutService {
           
           return Exercise(
             id: map['id']?.toString() ?? '',
-            name: locService.getTextFromColumns(map['name_fr'], map['name_en']),
-            muscleGroup: locService.getTextFromColumns(map['muscle_group_fr'], map['muscle_group_en']) ?? '',
+            name: locService.getTextFromColumns(map['name_fr'], map['name_en'], map['name_de']),
+            muscleGroup: locService.getTextFromColumns(map['muscle_group_fr'], map['muscle_group_en'], map['muscle_group_de']),
             equipment: (map['equipment'] as String?) ?? '',
             description: (map['description'] as String?) ?? '',
             isCustom: (map['is_custom'] as bool?) ?? false,
@@ -249,7 +249,7 @@ class OfflineWorkoutService {
       if (userId != null) {
         final customRows = await _client
             .from('custom_exercises')
-            .select('id, name, muscle_group_fr, muscle_group_en, equipment, description, visible_list')
+            .select('id, name, muscle_group_fr, muscle_group_en, muscle_group_de, equipment, description, visible_list')
             .eq('user_id', userId)
             .eq('visible_list', true)
             .order('created_at', ascending: false);
@@ -260,7 +260,7 @@ class OfflineWorkoutService {
             return Exercise(
               id: map['id']?.toString() ?? '',
               name: (map['name'] as String?) ?? '',
-              muscleGroup: locService.getTextFromColumns(map['muscle_group_fr'], map['muscle_group_en']) ?? '',
+              muscleGroup: locService.getTextFromColumns(map['muscle_group_fr'], map['muscle_group_en'], map['muscle_group_de']),
               equipment: (map['equipment'] as String?) ?? '',
               description: (map['description'] as String?) ?? '',
               isCustom: true,

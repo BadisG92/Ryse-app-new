@@ -550,12 +550,28 @@ class NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
   List<Meal> _createMealsWithTranslations(Map<String, double> mealCalories) {
     final locService = Provider.of<LocalizationService>(context, listen: false);
     final lang = locService.currentLanguageCode;
-    
+
+    // Helper function for short names
+    String getShortName(String mealType) {
+      switch (mealType) {
+        case 'breakfast':
+          return lang == 'de' ? 'Früh' : (lang == 'fr' ? 'P.déj' : 'Brkf');
+        case 'lunch':
+          return lang == 'de' ? 'Mitt' : (lang == 'fr' ? 'Déj' : 'Lnch');
+        case 'snack':
+          return lang == 'de' ? 'Snck' : (lang == 'fr' ? 'Coll' : 'Snck');
+        case 'dinner':
+          return lang == 'de' ? 'Abnd' : (lang == 'fr' ? 'Dîner' : 'Dnnr');
+        default:
+          return mealType;
+      }
+    }
+
     return [
       Meal(
         id: 'breakfast',
         name: 'breakfast'.tr(lang),
-        shortName: locService.isFrench ? 'P.déj' : 'Brkf',
+        shortName: getShortName('breakfast'),
         calories: mealCalories['breakfast']?.round() ?? 0,
         isCompleted: (mealCalories['breakfast'] ?? 0) > 0,
         time: const TimeOfDay(hour: 8, minute: 0),
@@ -563,7 +579,7 @@ class NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
       Meal(
         id: 'lunch',
         name: 'lunch'.tr(lang),
-        shortName: locService.isFrench ? 'Déj' : 'Lnch',
+        shortName: getShortName('lunch'),
         calories: mealCalories['lunch']?.round() ?? 0,
         isCompleted: (mealCalories['lunch'] ?? 0) > 0,
         time: const TimeOfDay(hour: 12, minute: 30),
@@ -571,7 +587,7 @@ class NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
       Meal(
         id: 'snack',
         name: 'snack'.tr(lang),
-        shortName: locService.isFrench ? 'Coll' : 'Snck',
+        shortName: getShortName('snack'),
         calories: mealCalories['snack']?.round() ?? 0,
         isCompleted: (mealCalories['snack'] ?? 0) > 0,
         time: const TimeOfDay(hour: 16, minute: 0),
@@ -579,7 +595,7 @@ class NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
       Meal(
         id: 'dinner',
         name: 'dinner'.tr(lang),
-        shortName: locService.isFrench ? 'Dîner' : 'Dnnr',
+        shortName: getShortName('dinner'),
         calories: mealCalories['dinner']?.round() ?? 0,
         isCompleted: (mealCalories['dinner'] ?? 0) > 0,
         time: const TimeOfDay(hour: 20, minute: 0),

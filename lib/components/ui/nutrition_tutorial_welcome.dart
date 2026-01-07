@@ -57,13 +57,17 @@ class _NutritionTutorialWelcomeState extends State<NutritionTutorialWelcome>
   String _getRyzeMessage() {
     return widget.languageCode == 'fr'
         ? 'Bienvenue dans la partie Nutrition ! Je vais te montrer comment suivre tes repas facilement.'
-        : 'Welcome to the Nutrition section! I\'ll show you how to track your meals easily.';
+        : widget.languageCode == 'de'
+            ? 'Willkommen im Ernährungs-Bereich! Ich zeige dir, wie du deine Mahlzeiten einfach verfolgen kannst.'
+            : 'Welcome to the Nutrition section! I\'ll show you how to track your meals easily.';
   }
 
   String _getDescription() {
     return widget.languageCode == 'fr'
         ? 'Ici, je t\'aide à suivre tes habitudes alimentaires et t\'accompagne pour avoir un régime équilibré et cohérent avec tes objectifs.'
-        : 'Here, I help you track your eating habits and guide you towards a balanced diet that matches your goals.';
+        : widget.languageCode == 'de'
+            ? 'Hier helfe ich dir, deine Essgewohnheiten zu verfolgen und begleite dich zu einer ausgewogenen Ernährung, die zu deinen Zielen passt.'
+            : 'Here, I help you track your eating habits and guide you towards a balanced diet that matches your goals.';
   }
 
   @override
@@ -196,7 +200,9 @@ class _NutritionTutorialWelcomeState extends State<NutritionTutorialWelcome>
                                 Text(
                                   widget.languageCode == 'fr'
                                       ? 'Commencer la visite'
-                                      : 'Start the tour',
+                                      : widget.languageCode == 'de'
+                                          ? 'Tour starten'
+                                          : 'Start the tour',
                                   style: const TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w600,
@@ -231,7 +237,11 @@ class _NutritionTutorialWelcomeState extends State<NutritionTutorialWelcome>
                 ),
               ),
               child: Text(
-                widget.languageCode == 'fr' ? 'Passer' : 'Skip',
+                widget.languageCode == 'fr'
+                    ? 'Passer'
+                    : widget.languageCode == 'de'
+                        ? 'Überspringen'
+                        : 'Skip',
                 style: TextStyle(
                   color: Colors.white.withOpacity(0.7),
                   fontSize: 16,

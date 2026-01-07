@@ -107,9 +107,9 @@ struct CoachWidgetData {
     let languageCode: String
 
     // Localized macro labels
-    var proteinLabel: String { languageCode == "fr" ? "P" : "P" }
-    var carbsLabel: String { languageCode == "fr" ? "G" : "C" }
-    var fatsLabel: String { languageCode == "fr" ? "L" : "F" }
+    var proteinLabel: String { languageCode == "fr" ? "P" : languageCode == "de" ? "E" : "P" }
+    var carbsLabel: String { languageCode == "fr" ? "G" : languageCode == "de" ? "K" : "C" }
+    var fatsLabel: String { languageCode == "fr" ? "L" : languageCode == "de" ? "F" : "F" }
 
     static func placeholder() -> CoachWidgetData {
         return CoachWidgetData(

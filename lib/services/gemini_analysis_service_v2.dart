@@ -88,7 +88,8 @@ class GeminiAnalysisServiceV2 {
       // Get user's preferred language from LocalizationService
       final languageCode = LocalizationService.instance.currentLanguageCode;
       final isFrench = languageCode == 'fr';
-      final responseLanguage = isFrench ? 'French' : 'English';
+      final isGerman = languageCode == 'de';
+      final responseLanguage = isFrench ? 'French' : isGerman ? 'German' : 'English';
 
       // Create detailed prompt for food analysis with user note integration
       final hasUserNote = userNote != null && userNote.trim().isNotEmpty;
@@ -104,7 +105,7 @@ IMPORTANT: You MUST respond entirely in $responseLanguage. All food names, meal 
 Please provide a detailed JSON response with the following structure:
 
 {
-  "meal_name": "Creative name for this meal/dish in $responseLanguage (e.g., ${isFrench ? "'Salade méditerranéenne', 'Plat du jour'" : "'Mediterranean salad', 'Daily special'"})",
+  "meal_name": "Creative name for this meal/dish in $responseLanguage (e.g., ${isFrench ? "'Salade méditerranéenne', 'Plat du jour'" : isGerman ? "'Mediterraner Salat', 'Tagesgericht'" : "'Mediterranean salad', 'Daily special'"})",
   "foods": [
     {
       "name": "Food name in $responseLanguage",
@@ -212,7 +213,8 @@ Be precise with your estimations and only include foods you can confidently iden
       // Get user's preferred language from LocalizationService
       final languageCode = LocalizationService.instance.currentLanguageCode;
       final isFrench = languageCode == 'fr';
-      final responseLanguage = isFrench ? 'French' : 'English';
+      final isGerman = languageCode == 'de';
+      final responseLanguage = isFrench ? 'French' : isGerman ? 'German' : 'English';
 
       // Create detailed prompt for food analysis with user note integration
       final hasUserNote = userNote != null && userNote.trim().isNotEmpty;
@@ -228,7 +230,7 @@ IMPORTANT: You MUST respond entirely in $responseLanguage. All food names, meal 
 Please provide a detailed JSON response with the following structure:
 
 {
-  "meal_name": "Creative name for this meal/dish in $responseLanguage (e.g., ${isFrench ? "'Salade méditerranéenne', 'Plat du jour'" : "'Mediterranean salad', 'Daily special'"})",
+  "meal_name": "Creative name for this meal/dish in $responseLanguage (e.g., ${isFrench ? "'Salade méditerranéenne', 'Plat du jour'" : isGerman ? "'Mediterraner Salat', 'Tagesgericht'" : "'Mediterranean salad', 'Daily special'"})",
   "foods": [
     {
       "name": "Food name in $responseLanguage",
@@ -574,12 +576,16 @@ Be precise with your estimations and only include foods you can confidently iden
     required String languageCode,
   }) {
     final isFrench = languageCode == 'fr';
+    final isGerman = languageCode == 'de';
+    final responseLanguage = isFrench ? 'French' : isGerman ? 'German' : 'English';
     final errorSuggestion = isFrench
       ? "Veuillez décrire un repas ou des aliments avec leurs quantités. Bonnes pratiques :\n• Listez les aliments du repas avec leurs portions (ex: '250ml jus d'orange', '2 œufs avec 50g de fromage')\n• Précisez les quantités en ml pour les liquides, en g pour les solides\n• Ajoutez des détails importants (mode de cuisson, accompagnements, etc.)\n\nExemples : '250ml de jus de carotte', '150g de poulet grillé avec 100g de riz', '1 pomme et 200ml de lait'"
+      : isGerman
+      ? "Bitte beschreiben Sie eine Mahlzeit oder Lebensmittel mit Mengenangaben. Beste Vorgehensweise:\n• Listen Sie die Mahlzeiten mit Portionen auf (z.B. '250ml Orangensaft', '2 Eier mit 50g Käse')\n• Geben Sie Mengen in ml für Flüssigkeiten, in g für Feststoffe an\n• Fügen Sie wichtige Details hinzu (Zubereitungsart, Beilagen, etc.)\n\nBeispiele: '250ml Karottensaft', '150g gegrilltes Hähnchen mit 100g Reis', '1 Apfel und 200ml Milch'"
       : "Please describe a meal or food items with quantities. Best practices:\n• List meal items with portions (e.g., '250ml orange juice', '2 eggs with 50g cheese')\n• Specify quantities in ml for liquids, in g for solids\n• Add important details (cooking method, sides, etc.)\n\nExamples: '250ml carrot juice', '150g grilled chicken with 100g rice', '1 apple and 200ml milk'";
 
     return '''
-You are a nutrition expert AI. Analyze this text description of food and provide detailed nutritional information in ${isFrench ? 'French' : 'English'}.
+You are a nutrition expert AI. Analyze this text description of food and provide detailed nutritional information in $responseLanguage.
 
 Text description: "$textDescription"
 

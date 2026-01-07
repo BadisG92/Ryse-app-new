@@ -1142,7 +1142,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                     if (searchController.text.isEmpty && selectedMuscleFilters.isEmpty) ...[
                       Consumer<LocalizationService>(
                         builder: (context, locService, _) => Text(
-                          locService.isFrench ? 'Choisir par groupe musculaire' : 'Choose by muscle group',
+                          locService.isGerman ? 'Nach Muskelgruppe wählen' : (locService.isFrench ? 'Choisir par groupe musculaire' : 'Choose by muscle group'),
                           style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
@@ -1199,7 +1199,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                                     const SizedBox(height: 8),
                                     Consumer<LocalizationService>(
                                       builder: (context, locService, _) => Text(
-                                        locService.isFrench ? 'Personnalisé' : 'Custom',
+                                        locService.isGerman ? 'Benutzerdefiniert' : (locService.isFrench ? 'Personnalisé' : 'Custom'),
                                         style: const TextStyle(
                                           fontSize: 11,
                                           fontWeight: FontWeight.w600,
@@ -1226,35 +1226,43 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                                 break;
                               case 'personnalisé':
                               case 'custom':
+                              case 'benutzerdefiniert':
                                 imagePath = 'assets/images/muscle_groups/custom.png';
                                 break;
                               case 'pectoraux':
                               case 'chest':
+                              case 'brust':
                                 imagePath = 'assets/images/muscle_groups/chest.png';
                                 break;
                               case 'dos':
                               case 'back':
+                              case 'rücken':
                                 imagePath = 'assets/images/muscle_groups/back.png';
                                 break;
                               case 'jambes':
                               case 'legs':
+                              case 'beine':
                                 imagePath = 'assets/images/muscle_groups/legs.png';
                                 break;
                               case 'épaules':
                               case 'shoulders':
+                              case 'schultern':
                                 imagePath = 'assets/images/muscle_groups/shoulders.png';
                                 break;
                               case 'bras':
                               case 'arms':
+                              case 'arme':
                                 imagePath = 'assets/images/muscle_groups/arms.png';
                                 break;
                               case 'abdos':
                               case 'core':
                               case 'abs':
+                              case 'rumpf':
                                 imagePath = 'assets/images/muscle_groups/abs.png';
                                 break;
                               case 'corps complet':
                               case 'full body':
+                              case 'ganzkörper':
                                 imagePath = 'assets/images/muscle_groups/full_body.png';
                                 break;
                               default:
@@ -1347,7 +1355,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                                     ),
                                     const SizedBox(width: 3),
                                     Text(
-                                      locService.isFrench ? 'Tout' : 'All',
+                                      locService.isGerman ? 'Alle' : (locService.isFrench ? 'Tout' : 'All'),
                                       style: const TextStyle(
                                         color: Colors.white,
                                         fontSize: 12,
@@ -1609,7 +1617,7 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                                                           borderRadius: BorderRadius.circular(8),
                                                         ),
                                                         child: Text(
-                                                          LocalizationService.instance.isFrench ? 'Nouveau' : 'New',
+                                                          LocalizationService.instance.isGerman ? 'Neu' : (LocalizationService.instance.isFrench ? 'Nouveau' : 'New'),
                                                           style: const TextStyle(
                                                             fontSize: 10,
                                                             fontWeight: FontWeight.w600,
@@ -1632,9 +1640,11 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                                                           border: Border.all(color: const Color(0xFF0B132B).withOpacity(0.3), width: 1),
                                                         ),
                                                         child: Text(
-                                                          LocalizationService.instance.isFrench
+                                                          LocalizationService.instance.isGerman
+                                                              ? '$sessionCount ${sessionCount == 1 ? 'Mal' : 'Mal'}'
+                                                              : (LocalizationService.instance.isFrench
                                                               ? '$sessionCount ${sessionCount == 1 ? 'fois' : 'fois'}'
-                                                              : '$sessionCount ${sessionCount == 1 ? 'time' : 'times'}',
+                                                              : '$sessionCount ${sessionCount == 1 ? 'time' : 'times'}'),
                                                           style: const TextStyle(
                                                             fontSize: 10,
                                                             fontWeight: FontWeight.w600,

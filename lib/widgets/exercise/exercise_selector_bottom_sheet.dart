@@ -61,11 +61,12 @@ class _ExerciseSelectorBottomSheetState extends State<ExerciseSelectorBottomShee
       final locService = LocalizationService.instance;
       final suffix = locService.getColumnSuffix();
       debugPrint('🔍 Loading exercises with suffix: $suffix');
+      debugPrint('🌍 Current language: ${locService.currentLanguageCode}, isGerman: ${locService.isGerman}');
 
       // Charger les exercices système avec TOUTES les colonnes localisées
       final exercisesData = await client
           .from('exercises')
-          .select('id, name_en, name_fr, muscle_group_fr, muscle_group_en, equipment, description, is_custom')
+          .select('id, name_en, name_fr, name_de, muscle_group_fr, muscle_group_en, muscle_group_de, equipment, description, is_custom')
           .order('name$suffix');
 
       // Charger les exercices custom
@@ -103,8 +104,13 @@ class _ExerciseSelectorBottomSheetState extends State<ExerciseSelectorBottomShee
       final muscleGroupsSet = <String>{};
 
       for (final row in exercisesData) {
-        final name = locService.getTextFromColumns(row['name_fr'], row['name_en']);
-        final muscleGroup = locService.getTextFromColumns(row['muscle_group_fr'], row['muscle_group_en']) ?? '';
+        final name = locService.getTextFromColumns(row['name_fr'], row['name_en'], row['name_de']);
+        final muscleGroup = locService.getTextFromColumns(row['muscle_group_fr'], row['muscle_group_en'], row['muscle_group_de']);
+
+        // Debug pour les premiers exercices
+        if (exercisesData.indexOf(row) < 3) {
+          debugPrint('🏋️ Exercise: name_de="${row['name_de']}", name_en="${row['name_en']}" -> final name="$name"');
+        }
 
         final exercise = Exercise(
           id: row['id'] as String,
@@ -324,7 +330,7 @@ class _ExerciseSelectorBottomSheetState extends State<ExerciseSelectorBottomShee
                 if (searchController.text.isEmpty && selectedMuscleFilters.isEmpty) ...[
                   Consumer<LocalizationService>(
                     builder: (context, locService, _) => Text(
-                      locService.isFrench ? 'Choisir par groupe musculaire' : 'Choose by muscle group',
+                      locService.isGerman ? 'Nach Muskelgruppe wählen' : (locService.isFrench ? 'Choisir par groupe musculaire' : 'Choose by muscle group'),
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
@@ -388,15 +394,22 @@ class _ExerciseSelectorBottomSheetState extends State<ExerciseSelectorBottomShee
         final group = availableMuscleGroups[index];
         final groupLower = group.toLowerCase().trim();
 
+        // Normaliser les umlauts allemands pour la recherche
+        final groupNormalized = groupLower
+            .replaceAll('\u00FC', 'ue')  // ü -> ue
+            .replaceAll('\u00F6', 'oe')  // ö -> oe
+            .replaceAll('\u00E4', 'ae')  // ä -> ae
+            .replaceAll('\u00DF', 'ss'); // ß -> ss
+
         // Map explicite pour éviter tout problème de switch
         final Map<String, String> muscleGroupImages = {
           // Français
           'cardio': 'assets/images/muscle_groups/cardio.png',
-          'personnalisé': 'assets/images/muscle_groups/custom.png',
+          'personnalise': 'assets/images/muscle_groups/custom.png',
           'pectoraux': 'assets/images/muscle_groups/chest.png',
           'dos': 'assets/images/muscle_groups/back.png',
           'jambes': 'assets/images/muscle_groups/legs.png',
-          'épaules': 'assets/images/muscle_groups/shoulders.png',
+          'epaules': 'assets/images/muscle_groups/shoulders.png',
           'bras': 'assets/images/muscle_groups/arms.png',
           'abdos': 'assets/images/muscle_groups/abs.png',
           'corps complet': 'assets/images/muscle_groups/full_body.png',
@@ -410,11 +423,22 @@ class _ExerciseSelectorBottomSheetState extends State<ExerciseSelectorBottomShee
           'core': 'assets/images/muscle_groups/abs.png',
           'abs': 'assets/images/muscle_groups/abs.png',
           'full body': 'assets/images/muscle_groups/full_body.png',
+          // Allemand (normalisé sans umlauts)
+          'arme': 'assets/images/muscle_groups/arms.png',
+          'beine': 'assets/images/muscle_groups/legs.png',
+          'brust': 'assets/images/muscle_groups/chest.png',
+          'ruecken': 'assets/images/muscle_groups/back.png',
+          'schultern': 'assets/images/muscle_groups/shoulders.png',
+          'rumpf': 'assets/images/muscle_groups/abs.png',
+          'ganzkoerper': 'assets/images/muscle_groups/full_body.png',
+          'benutzerdefiniert': 'assets/images/muscle_groups/custom.png',
         };
 
-        final imagePath = muscleGroupImages[groupLower];
+        // Essayer d'abord avec la version normalisée, puis avec l'original
+        var imagePath = muscleGroupImages[groupNormalized];
+        imagePath ??= muscleGroupImages[groupLower];
 
-        debugPrint('🔴 DEBUG MAPPING: group="$group" | groupLower="$groupLower" | found=${imagePath != null} | path=${imagePath ?? "DEFAULT chest.png"}');
+        debugPrint('🔴 DEBUG MAPPING: group="$group" | groupLower="$groupLower" | normalized="$groupNormalized" | found=${imagePath != null}');
 
         final finalPath = imagePath ?? 'assets/images/muscle_groups/chest.png';
 
@@ -518,7 +542,7 @@ class _ExerciseSelectorBottomSheetState extends State<ExerciseSelectorBottomShee
                     ),
                     const SizedBox(width: 3),
                     Text(
-                      locService.isFrench ? 'Tout' : 'All',
+                      locService.isGerman ? 'Alle' : (locService.isFrench ? 'Tout' : 'All'),
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 12,
@@ -723,7 +747,7 @@ class _ExerciseSelectorBottomSheetState extends State<ExerciseSelectorBottomShee
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
-                            LocalizationService.instance.isFrench ? 'Nouveau' : 'New',
+                            LocalizationService.instance.isGerman ? 'Neu' : (LocalizationService.instance.isFrench ? 'Nouveau' : 'New'),
                             style: const TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w600,

@@ -169,6 +169,8 @@ class _PaywallComparisonScreenState extends State<PaywallComparisonScreen> {
                       _buildLanguageChip('FR', 'fr'),
                       const SizedBox(width: 8),
                       _buildLanguageChip('EN', 'en'),
+                      const SizedBox(width: 8),
+                      _buildLanguageChip('DE', 'de'),
                     ],
                   ),
                 ],
@@ -195,22 +197,23 @@ class _PaywallComparisonScreenState extends State<PaywallComparisonScreen> {
   // Get paywall context name with translations
   String _getContextName(PaywallContext context) {
     final isFrench = _currentLanguage == 'fr';
+    final isGerman = _currentLanguage == 'de';
 
     switch (context) {
       case PaywallContext.scanner:
-        return isFrench ? '📸 Scanner automatique' : '📸 AI Scanner';
+        return isFrench ? '📸 Scanner automatique' : isGerman ? '📸 Automatischer Scanner' : '📸 AI Scanner';
       case PaywallContext.barcodeScanner:
-        return isFrench ? '📱 Scanner codes-barres' : '📱 Barcode Scanner';
+        return isFrench ? '📱 Scanner codes-barres' : isGerman ? '📱 Barcode-Scanner' : '📱 Barcode Scanner';
       case PaywallContext.chatInput:
-        return isFrench ? '💬 Chat Coach Ryze' : '💬 Chat with Coach Ryze';
+        return isFrench ? '💬 Chat Coach Ryze' : isGerman ? '💬 Chat mit KI-Coach' : '💬 Chat with Coach Ryze';
       case PaywallContext.workoutGenerator:
-        return isFrench ? '🤖 Générateur workouts' : '🤖 Workout Generator';
+        return isFrench ? '🤖 Générateur workouts' : isGerman ? '🤖 Workout-Generator' : '🤖 Workout Generator';
       case PaywallContext.nutritionAnalysis:
-        return isFrench ? '📊 Bilan nutritionnel' : '📊 Nutrition Analysis';
+        return isFrench ? '📊 Bilan nutritionnel' : isGerman ? '📊 Ernährungsanalyse' : '📊 Nutrition Analysis';
       case PaywallContext.exerciseAnalysis:
-        return isFrench ? '💪 Analyse exercices' : '💪 Exercise Analysis';
+        return isFrench ? '💪 Analyse exercices' : isGerman ? '💪 Übungsanalyse' : '💪 Exercise Analysis';
       case PaywallContext.genericUpgrade:
-        return isFrench ? '💎 Upgrade générique' : '💎 Generic Upgrade';
+        return isFrench ? '💎 Upgrade générique' : isGerman ? '💎 Allgemeines Upgrade' : '💎 Generic Upgrade';
     }
   }
 

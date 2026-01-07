@@ -144,21 +144,36 @@ class DatabaseService {
     List<models.Exercise> base = [];
 
     // Source unique: table exercises (plus custom_exercises visibles)
+    // Déterminer la colonne de tri selon la langue
+    final orderColumn = lang == 'fr' ? 'name_fr' : lang == 'de' ? 'name_de' : 'name_en';
+
     try {
       final rows = await _client
           .from('exercises')
-          .select('id, name_en, name_fr, muscle_group_fr, muscle_group_en, equipment, description, is_custom')
-          .order(lang == 'fr' ? 'name_fr' : 'name_en', ascending: true)
+          .select('id, name_en, name_fr, name_de, muscle_group_fr, muscle_group_en, muscle_group_de, equipment, description, is_custom')
+          .order(orderColumn, ascending: true)
           .limit(500);
       if (rows is List && rows.isNotEmpty) {
         base = rows.map<models.Exercise>((json) {
           final map = json as Map<String, dynamic>;
-          final name = lang == 'fr'
-              ? (map['name_fr'] as String? ?? '')
-              : (map['name_en'] as String? ?? '');
-          final muscleGroup = lang == 'fr'
-              ? (map['muscle_group_fr'] as String? ?? '')
-              : (map['muscle_group_en'] as String? ?? '');
+          // Sélectionner le nom selon la langue avec fallback
+          String name;
+          if (lang == 'fr') {
+            name = map['name_fr'] as String? ?? map['name_en'] as String? ?? map['name_de'] as String? ?? '';
+          } else if (lang == 'de') {
+            name = map['name_de'] as String? ?? map['name_en'] as String? ?? map['name_fr'] as String? ?? '';
+          } else {
+            name = map['name_en'] as String? ?? map['name_fr'] as String? ?? map['name_de'] as String? ?? '';
+          }
+          // Sélectionner le groupe musculaire selon la langue avec fallback
+          String muscleGroup;
+          if (lang == 'fr') {
+            muscleGroup = map['muscle_group_fr'] as String? ?? map['muscle_group_en'] as String? ?? map['muscle_group_de'] as String? ?? '';
+          } else if (lang == 'de') {
+            muscleGroup = map['muscle_group_de'] as String? ?? map['muscle_group_en'] as String? ?? map['muscle_group_fr'] as String? ?? '';
+          } else {
+            muscleGroup = map['muscle_group_en'] as String? ?? map['muscle_group_fr'] as String? ?? map['muscle_group_de'] as String? ?? '';
+          }
           return models.Exercise(
             id: map['id']?.toString() ?? '',
             name: name,
@@ -177,25 +192,31 @@ class DatabaseService {
         if (userId != null) {
           final customRows = await _client
               .from('custom_exercises')
-              .select('id, name, muscle_group_fr, muscle_group_en, equipment, description, visible_list')
+              .select('id, name, muscle_group_fr, muscle_group_en, muscle_group_de, equipment, description, visible_list')
               .eq('user_id', userId)
               .eq('visible_list', true)
               .order('created_at', ascending: false);
           if (customRows is List && customRows.isNotEmpty) {
             final customs = customRows.map<models.Exercise>((m) {
               final map = m as Map<String, dynamic>;
-              final muscleGroup = lang == 'fr'
-                  ? (map['muscle_group_fr'] as String? ?? '')
-                  : (map['muscle_group_en'] as String? ?? '');
-          return models.Exercise(
+              // Sélectionner le groupe musculaire selon la langue avec fallback
+              String muscleGroup;
+              if (lang == 'fr') {
+                muscleGroup = map['muscle_group_fr'] as String? ?? map['muscle_group_en'] as String? ?? map['muscle_group_de'] as String? ?? '';
+              } else if (lang == 'de') {
+                muscleGroup = map['muscle_group_de'] as String? ?? map['muscle_group_en'] as String? ?? map['muscle_group_fr'] as String? ?? '';
+              } else {
+                muscleGroup = map['muscle_group_en'] as String? ?? map['muscle_group_fr'] as String? ?? map['muscle_group_de'] as String? ?? '';
+              }
+              return models.Exercise(
                 id: map['id']?.toString() ?? '',
                 name: (map['name'] as String?) ?? '',
                 muscleGroup: muscleGroup,
                 equipment: (map['equipment'] as String?) ?? '',
                 description: (map['description'] as String?) ?? '',
                 isCustom: true,
-          );
-        }).toList();
+              );
+            }).toList();
             // Dédoublonnage par nom (priorité aux customs)
             final existingNames = base.map((e) => e.name.toLowerCase()).toSet();
             for (final cx in customs) {

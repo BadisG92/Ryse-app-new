@@ -257,7 +257,11 @@ class _TutorialLiveOverlayState extends State<TutorialLiveOverlay>
                   TextButton(
                     onPressed: widget.onSkip,
                     child: Text(
-                      widget.languageCode == 'fr' ? 'Passer' : 'Skip',
+                      widget.languageCode == 'fr'
+                          ? 'Passer'
+                          : widget.languageCode == 'de'
+                              ? 'Überspringen'
+                              : 'Skip',
                       style: TextStyle(
                         color: Colors.grey[600],
                         fontSize: 14,
@@ -284,8 +288,16 @@ class _TutorialLiveOverlayState extends State<TutorialLiveOverlay>
                     ),
                     child: Text(
                       _currentStep < widget.steps.length - 1
-                          ? (widget.languageCode == 'fr' ? 'Compris' : 'Got it')
-                          : (widget.languageCode == 'fr' ? 'Terminer' : 'Finish'),
+                          ? (widget.languageCode == 'fr'
+                              ? 'Compris'
+                              : widget.languageCode == 'de'
+                                  ? 'Verstanden'
+                                  : 'Got it')
+                          : (widget.languageCode == 'fr'
+                              ? 'Terminer'
+                              : widget.languageCode == 'de'
+                                  ? 'Beenden'
+                                  : 'Finish'),
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,

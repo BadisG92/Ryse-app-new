@@ -158,6 +158,7 @@ class _PaywallScreenV2State extends State<PaywallScreenV2>
     final locService = Provider.of<LocalizationService>(context);
     final languageCode = locService.currentLanguageCode;
     final isFrench = languageCode == 'fr';
+    final isGerman = languageCode == 'de';
 
     // Contextual content
     final avatarType = PaywallService.getContextAvatar(widget.context);
@@ -229,12 +230,12 @@ class _PaywallScreenV2State extends State<PaywallScreenV2>
                         const SizedBox(height: 40),
 
                         // Glassmorphism pricing cards
-                        _buildPricingSection(isFrench),
+                        _buildPricingSection(isFrench, isGerman),
 
                         const SizedBox(height: 32),
 
                         // CTA section
-                        _buildCTASection(isFrench),
+                        _buildCTASection(isFrench, isGerman),
 
                         const SizedBox(height: 40),
                       ],
@@ -479,7 +480,7 @@ class _PaywallScreenV2State extends State<PaywallScreenV2>
     );
   }
 
-  Widget _buildPricingSection(bool isFrench) {
+  Widget _buildPricingSection(bool isFrench, bool isGerman) {
     return Container(
       height: 280,
       padding: const EdgeInsets.symmetric(vertical: 16),
@@ -492,36 +493,39 @@ class _PaywallScreenV2State extends State<PaywallScreenV2>
             period: SubscriptionPeriod.annual,
             price: '69,99€',
             originalPrice: '119,88€',
-            interval: isFrench ? '/an' : '/year',
+            interval: isFrench ? '/an' : isGerman ? '/Jahr' : '/year',
             monthlyEquivalent: '5,83€',
-            badge: isFrench ? 'ÉCONOMISE 42%' : 'SAVE 42%',
+            badge: isFrench ? 'ÉCONOMISE 42%' : isGerman ? 'SPARE 42%' : 'SAVE 42%',
             isPopular: false,
             gradientColors: [const Color(0xFFFBBF24), const Color(0xFFF59E0B)],
             isFrench: isFrench,
+            isGerman: isGerman,
           ),
           const SizedBox(width: 16),
           _buildPricingCard(
             period: SubscriptionPeriod.monthly,
             price: '9,99€',
             originalPrice: null,
-            interval: isFrench ? '/mois' : '/month',
+            interval: isFrench ? '/mois' : isGerman ? '/Monat' : '/month',
             monthlyEquivalent: null,
-            badge: isFrench ? 'LE PLUS POPULAIRE' : 'MOST POPULAR',
+            badge: isFrench ? 'LE PLUS POPULAIRE' : isGerman ? 'AM BELIEBTESTEN' : 'MOST POPULAR',
             isPopular: true,
             gradientColors: [const Color(0xFF8B5CF6), const Color(0xFF7C3AED)],
             isFrench: isFrench,
+            isGerman: isGerman,
           ),
           const SizedBox(width: 16),
           _buildPricingCard(
             period: SubscriptionPeriod.weekly,
             price: '2,99€',
             originalPrice: null,
-            interval: isFrench ? '/semaine' : '/week',
+            interval: isFrench ? '/semaine' : isGerman ? '/Woche' : '/week',
             monthlyEquivalent: '12,96€',
-            badge: isFrench ? 'ESSAI COURT' : 'SHORT TRIAL',
+            badge: isFrench ? 'ESSAI COURT' : isGerman ? 'KURZER TEST' : 'SHORT TRIAL',
             isPopular: false,
             gradientColors: [const Color(0xFF06B6D4), const Color(0xFF0891B2)],
             isFrench: isFrench,
+            isGerman: isGerman,
           ),
         ],
       ),
@@ -538,6 +542,7 @@ class _PaywallScreenV2State extends State<PaywallScreenV2>
     required bool isPopular,
     required List<Color> gradientColors,
     required bool isFrench,
+    required bool isGerman,
   }) {
     final isSelected = _selectedPeriod == period;
 
@@ -656,7 +661,7 @@ class _PaywallScreenV2State extends State<PaywallScreenV2>
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        '${isFrench ? "soit" : "or"} $monthlyEquivalent${isFrench ? "/mois" : "/mo"}',
+                        '${isFrench ? "soit" : isGerman ? "oder" : "or"} $monthlyEquivalent${isFrench ? "/mois" : isGerman ? "/Mo." : "/mo"}',
                         style: TextStyle(
                           fontSize: 11,
                           color: Colors.white.withOpacity(0.8),
@@ -692,7 +697,7 @@ class _PaywallScreenV2State extends State<PaywallScreenV2>
     );
   }
 
-  Widget _buildCTASection(bool isFrench) {
+  Widget _buildCTASection(bool isFrench, bool isGerman) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 32),
       child: Column(
@@ -709,9 +714,9 @@ class _PaywallScreenV2State extends State<PaywallScreenV2>
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _buildTrustBadge('🔒', isFrench ? 'Sécurisé' : 'Secure'),
-                _buildTrustBadge('🎯', isFrench ? 'Garanti' : 'Guaranteed'),
-                _buildTrustBadge('⚡', isFrench ? 'Instantané' : 'Instant'),
+                _buildTrustBadge('🔒', isFrench ? 'Sécurisé' : isGerman ? 'Sicher' : 'Secure'),
+                _buildTrustBadge('🎯', isFrench ? 'Garanti' : isGerman ? 'Garantiert' : 'Guaranteed'),
+                _buildTrustBadge('⚡', isFrench ? 'Instantané' : isGerman ? 'Sofort' : 'Instant'),
               ],
             ),
           ),
@@ -763,7 +768,7 @@ class _PaywallScreenV2State extends State<PaywallScreenV2>
                                   ),
                                   const SizedBox(width: 12),
                                   Text(
-                                    _getCTAText(isFrench),
+                                    _getCTAText(isFrench, isGerman),
                                     style: const TextStyle(
                                       fontSize: 18,
                                       fontWeight: FontWeight.w800,
@@ -785,7 +790,7 @@ class _PaywallScreenV2State extends State<PaywallScreenV2>
 
           // Legal text
           Text(
-            _getLegalText(isFrench),
+            _getLegalText(isFrench, isGerman),
             style: TextStyle(
               fontSize: 12,
               color: Colors.white.withOpacity(0.6),
@@ -803,7 +808,7 @@ class _PaywallScreenV2State extends State<PaywallScreenV2>
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
             child: Text(
-              isFrench ? 'Peut-être plus tard' : 'Maybe later',
+              isFrench ? 'Peut-être plus tard' : isGerman ? 'Vielleicht später' : 'Maybe later',
               style: TextStyle(
                 fontSize: 15,
                 color: Colors.white.withOpacity(0.7),
@@ -833,9 +838,9 @@ class _PaywallScreenV2State extends State<PaywallScreenV2>
     );
   }
 
-  String _getCTAText(bool isFrench) {
+  String _getCTAText(bool isFrench, bool isGerman) {
     if (SubscriptionService.TEST_MODE) {
-      return isFrench ? '🧪 SIMULER PAIEMENT' : '🧪 SIMULATE PAYMENT';
+      return isFrench ? '🧪 SIMULER PAIEMENT' : isGerman ? '🧪 ZAHLUNG SIMULIEREN' : '🧪 SIMULATE PAYMENT';
     }
 
     switch (_selectedPeriod) {
@@ -844,26 +849,26 @@ class _PaywallScreenV2State extends State<PaywallScreenV2>
       case SubscriptionPeriod.annual:
         return isFrench
             ? 'DÉBUTER MON ESSAI GRATUIT'
-            : 'START MY FREE TRIAL';
+            : isGerman ? 'KOSTENLOSE TESTVERSION STARTEN' : 'START MY FREE TRIAL';
       case SubscriptionPeriod.lifetime:
-        return isFrench ? 'CONTINUER' : 'CONTINUE';
+        return isFrench ? 'CONTINUER' : isGerman ? 'WEITER' : 'CONTINUE';
     }
   }
 
-  String _getLegalText(bool isFrench) {
+  String _getLegalText(bool isFrench, bool isGerman) {
     switch (_selectedPeriod) {
       case SubscriptionPeriod.weekly:
         return isFrench
             ? '7 jours gratuits, puis 2,99€/semaine\nAnnulation en 1 clic'
-            : '7 days free, then €2.99/week\nCancel with 1 click';
+            : isGerman ? '7 Tage kostenlos, dann 2,99€/Woche\nMit 1 Klick kündigen' : '7 days free, then €2.99/week\nCancel with 1 click';
       case SubscriptionPeriod.monthly:
         return isFrench
             ? '7 jours gratuits, puis 9,99€/mois\nAnnulation en 1 clic'
-            : '7 days free, then €9.99/month\nCancel with 1 click';
+            : isGerman ? '7 Tage kostenlos, dann 9,99€/Monat\nMit 1 Klick kündigen' : '7 days free, then €9.99/month\nCancel with 1 click';
       case SubscriptionPeriod.annual:
         return isFrench
             ? '7 jours gratuits, puis 69,99€/an\nAnnulation en 1 clic'
-            : '7 days free, then €69.99/year\nCancel with 1 click';
+            : isGerman ? '7 Tage kostenlos, dann 69,99€/Jahr\nMit 1 Klick kündigen' : '7 days free, then €69.99/year\nCancel with 1 click';
       case SubscriptionPeriod.lifetime:
         return '';
     }

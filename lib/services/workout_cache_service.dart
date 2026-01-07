@@ -32,16 +32,17 @@ class WorkoutCacheService {
       // Chercher l'exercice dans la table exercises avec un seul appel
       final exerciseData = await _client
         .from('exercises')
-        .select('name_fr, name_en')
-        .or('name_fr.eq.$exerciseName,name_en.eq.$exerciseName')
+        .select('name_fr, name_en, name_de')
+        .or('name_fr.eq.$exerciseName,name_en.eq.$exerciseName,name_de.eq.$exerciseName')
         .limit(1)
         .maybeSingle();
-        
+
       if (exerciseData != null) {
         return locService.getTextFromColumns(
-          exerciseData['name_fr'], 
-          exerciseData['name_en']
-        ) ?? exerciseName;
+          exerciseData['name_fr'],
+          exerciseData['name_en'],
+          exerciseData['name_de']
+        );
       } else {
         // Fallback : chercher dans les exercices custom
         final customExerciseData = await _client
@@ -439,7 +440,7 @@ class WorkoutCacheService {
       
       final systemExercises = await _client
           .from('exercises')
-          .select('id, name$suffix, name_fr, name_en')
+          .select('id, name$suffix, name_fr, name_en, name_de')
           .eq('name$suffix', exerciseName);
       
       if (kDebugMode) debugPrint('🏋️ Exercices système trouvés: ${systemExercises.length}');
@@ -450,7 +451,7 @@ class WorkoutCacheService {
         if (kDebugMode) debugPrint('🔍 Recherche d\'exercices similaires...');
         final similarExercises = await _client
             .from('exercises')
-            .select('id, name_fr, name_en')
+            .select('id, name_fr, name_en, name_de')
             .ilike('name$suffix', '%squat%')
             .limit(5);
         if (kDebugMode) debugPrint('🔍 Exercices avec "squat" trouvés: $similarExercises');
@@ -537,17 +538,23 @@ class WorkoutCacheService {
         if (kDebugMode) debugPrint('🔍 Recherche par exercise_name="$exerciseName": ${fallbackRows.length} résultats');
         
         if (fallbackRows.isEmpty) {
-          // Essayer avec le nom dans l'autre langue (FR si on cherche en EN et vice versa)
-          final otherSuffix = suffix == '_fr' ? '_en' : '_fr';
+          // Essayer avec le nom dans une autre langue (FR, EN, DE)
           final possibleExercises = await _client
               .from('exercises')
-              .select('name_fr, name_en')
+              .select('name_fr, name_en, name_de')
               .eq('name$suffix', exerciseName);
-          
+
           if (possibleExercises.isNotEmpty) {
-            final rawName = possibleExercises.first['name$otherSuffix'];
-            if (kDebugMode) debugPrint('🔍 Essai avec nom dans autre langue: "$rawName"');
-            if (rawName != null) {
+            // Essayer avec chaque langue alternative
+            final exercise = possibleExercises.first;
+            final alternativeNames = [
+              exercise['name_fr'],
+              exercise['name_en'],
+              exercise['name_de'],
+            ].where((n) => n != null && n != exerciseName).toList();
+
+            for (final rawName in alternativeNames) {
+              if (kDebugMode) debugPrint('🔍 Essai avec nom dans autre langue: "$rawName"');
               fallbackRows = await _client
                   .from('workout_set_history')
                   .select('history_session_id, performed_at, weight, reps, best_set, set_order, exercise_name')
@@ -556,6 +563,7 @@ class WorkoutCacheService {
                   .gte('performed_at', dateFilter)
                   .order('performed_at', ascending: true)
                   .order('set_order', ascending: true);
+              if (fallbackRows.isNotEmpty) break;
             }
           }
         }
@@ -751,14 +759,14 @@ class WorkoutCacheService {
     // Vérifier les exercices dans la table exercises
     final exercisesData = await _client
         .from('exercises')
-        .select('id, name_fr, name_en')
+        .select('id, name_fr, name_en, name_de')
         .ilike('name_fr', '%squat%')
-        .or('name_en.ilike.%squat%')
+        .or('name_en.ilike.%squat%,name_de.ilike.%squat%')
         .limit(10);
-    
+
     if (kDebugMode) debugPrint('🏋️ Exercices avec "squat" dans la table exercises:');
     for (final ex in exercisesData) {
-      if (kDebugMode) debugPrint('  - ID: ${ex['id']}, FR: "${ex['name_fr']}", EN: "${ex['name_en']}"');
+      if (kDebugMode) debugPrint('  - ID: ${ex['id']}, FR: "${ex['name_fr']}", EN: "${ex['name_en']}", DE: "${ex['name_de']}"');
     }
     
     // Vérifier l'historique des workouts pour cet utilisateur avec des noms contenant squat

@@ -7,7 +7,10 @@ import '../config/gemini_config.dart';
 import '../models/coach_chat_models.dart';
 import 'coach_context_builder.dart';
 import 'coach_preference_extractor.dart';
+import 'coach_personality_service.dart';
+import 'global_state_manager.dart';
 import 'subscription_service.dart';
+import 'weekly_bilan_service.dart';
 
 /// Main service for Coach Ryze chat functionality
 /// Handles conversations, messages, rate limiting, and Gemini API calls
@@ -406,6 +409,104 @@ class CoachChatService {
       }
     } catch (e) {
       if (kDebugMode) debugPrint('❌ CoachChatService: Error streaming message: $e');
+      yield '[Erreur: ${e.toString()}]';
+    }
+  }
+
+  /// Stream weekly bilan response from Coach Ryze
+  /// Does NOT display user message - only Ryze's analysis
+  Stream<String> streamBilanResponse(String lang) async* {
+    if (_currentConversation == null) {
+      await getOrCreateConversation();
+    }
+
+    if (_currentConversation == null || _currentChatSession == null) {
+      yield '[Erreur: Impossible de démarrer la conversation]';
+      return;
+    }
+
+    final user = _supabase.auth.currentUser;
+    if (user == null) {
+      yield '[Erreur: Utilisateur non connecté]';
+      return;
+    }
+
+    try {
+      // Get weekly stats
+      final stats = await WeeklyBilanService.instance.getWeeklyStats();
+      final personality = await CoachPersonalityService.instance.getPersonality();
+      final userName = GlobalStateManager.instance.userName.isNotEmpty
+          ? GlobalStateManager.instance.userName
+          : 'Champion';
+      final opener = await CoachPersonalityService.instance.getBilanOpener(
+        lang,
+        userName,
+      );
+
+      // Build bilan prompt (sent to AI but not displayed)
+      final isFr = lang == 'fr';
+      final isDe = lang == 'de';
+
+      final bilanPrompt = '''
+[INSTRUCTION SYSTÈME - BILAN HEBDOMADAIRE]
+L'utilisateur a cliqué sur "Faire le bilan". Tu dois lui donner son bilan hebdomadaire complet.
+
+DONNÉES DE LA SEMAINE:
+${stats.toPromptString()}
+
+INSTRUCTIONS:
+1. Commence par l'opener adapté à ta personnalité: "$opener"
+2. Donne un résumé des données (jours trackés, calories moyennes, sport)
+3. Donne ton AVIS GÉNÉRAL sur la semaine (${isFr ? 'bonne semaine, peut mieux faire, excellent, etc.' : isDe ? 'gute Woche, kann besser werden, ausgezeichnet, usw.' : 'good week, room for improvement, excellent, etc.'})
+4. ${isFr ? 'Termine avec un message motivant personnalisé' : isDe ? 'Beende mit einer personalisierten motivierenden Nachricht' : 'End with a personalized motivating message'}
+
+IMPORTANT:
+- Réponds en ${isFr ? 'français' : isDe ? 'allemand' : 'anglais'}
+- Adapte ton ton à ta personnalité: ${personality.type.name}
+- Si les données sont à zéro, encourage l'utilisateur à tracker la semaine prochaine
+- Sois concis mais complet (max 150 mots)
+''';
+
+      // Send to Gemini (no user message saved)
+      final responseStream = _currentChatSession!.sendMessageStream(
+        Content.text(bilanPrompt),
+      );
+
+      final buffer = StringBuffer();
+
+      await for (final response in responseStream) {
+        if (response.text != null) {
+          buffer.write(response.text);
+          yield response.text!;
+        }
+      }
+
+      // Save only assistant response to database
+      final fullResponse = buffer.toString();
+      if (fullResponse.isNotEmpty) {
+        final tokensUsed = (bilanPrompt.length + fullResponse.length) ~/ 4;
+
+        final assistantMsgResponse = await _supabase
+            .from('coach_messages')
+            .insert({
+              'conversation_id': _currentConversation!.id,
+              'user_id': user.id,
+              'role': 'assistant',
+              'content': fullResponse,
+              'tokens_used': tokensUsed,
+            })
+            .select()
+            .single();
+
+        final assistantMsgModel = CoachMessage.fromJson(assistantMsgResponse);
+        _currentMessages.add(assistantMsgModel);
+      }
+
+      // Mark bilan as done for this week
+      await WeeklyBilanService.instance.markBilanDone();
+
+    } catch (e) {
+      if (kDebugMode) debugPrint('❌ CoachChatService: Error streaming bilan: $e');
       yield '[Erreur: ${e.toString()}]';
     }
   }

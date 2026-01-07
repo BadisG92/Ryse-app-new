@@ -91,7 +91,7 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
       final recipesResponse = await SupabaseConfig.client
           .from('recipes_database')
           .select('id')
-          .or('name_fr.eq.${widget.recipe.name},name_en.eq.${widget.recipe.name}')
+          .or('name_fr.eq.${widget.recipe.name},name_en.eq.${widget.recipe.name},name_de.eq.${widget.recipe.name}')
           .limit(1);
       
       if (recipesResponse.isEmpty) {
@@ -112,7 +112,7 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
       // Récupérer les ingrédients avec les données nutritionnelles
       final ingredientsResponse = await SupabaseConfig.client
           .from('recipe_ingredient_database')
-          .select('id, recipe_id, food_id, quantity, display_order, unite_fr, unite_en, food_database!inner(*)')
+          .select('id, recipe_id, food_id, quantity, display_order, unite_fr, unite_en, unite_de, food_database!inner(*)')
           .eq('recipe_id', recipeId)
           .order('display_order');
 
@@ -131,11 +131,11 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
         
         ingredients.add(DetailedIngredient(
           id: ing['id'].toString(),
-          name: LocalizationService.instance.getTextFromColumns(food['name_fr'], food['name_en']).isEmpty 
-              ? 'Aliment inconnu' 
-              : LocalizationService.instance.getTextFromColumns(food['name_fr'], food['name_en']),
+          name: LocalizationService.instance.getTextFromColumns(food['name_fr'], food['name_en'], food['name_de']).isEmpty
+              ? 'Aliment inconnu'
+              : LocalizationService.instance.getTextFromColumns(food['name_fr'], food['name_en'], food['name_de']),
           baseQuantity: double.parse(ing['quantity'].toString()),
-          unit: LocalizationService.instance.getTextFromColumns(ing['unite_fr'], ing['unite_en']) ?? '',
+          unit: LocalizationService.instance.getTextFromColumns(ing['unite_fr'], ing['unite_en'], ing['unite_de']),
           caloriesPer100g: double.parse((food['calories'] ?? 0).toString()),
           proteinsPer100g: double.parse((food['proteins'] ?? 0).toString()),
           carbsPer100g: double.parse((food['carbs'] ?? 0).toString()),

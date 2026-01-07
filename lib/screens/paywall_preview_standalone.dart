@@ -67,10 +67,11 @@ class _PaywallPreviewStandaloneState extends State<PaywallPreviewStandalone> wit
 
   @override
   Widget build(BuildContext context) {
-    // Détection de la langue (fr ou en)
+    // Détection de la langue (fr, de ou en)
     final locale = Localizations.localeOf(context);
-    final languageCode = locale.languageCode == 'fr' ? 'fr' : 'en';
+    final languageCode = locale.languageCode == 'fr' ? 'fr' : locale.languageCode == 'de' ? 'de' : 'en';
     final isFrench = languageCode == 'fr';
+    final isGerman = languageCode == 'de';
 
     // Contenu contextuel
     final avatarType = PaywallService.getContextAvatar(widget.paywallContext);
@@ -250,7 +251,7 @@ class _PaywallPreviewStandaloneState extends State<PaywallPreviewStandalone> wit
               ),
               child: Center(
                 child: Text(
-                  isFrench ? '7 JOURS GRATUITS' : '7 DAYS FREE TRIAL',
+                  isFrench ? '7 JOURS GRATUITS' : isGerman ? '7 TAGE KOSTENLOS' : '7 DAYS FREE TRIAL',
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w900,
@@ -276,14 +277,15 @@ class _PaywallPreviewStandaloneState extends State<PaywallPreviewStandalone> wit
                     child: _buildPricingCard(
                       period: SubscriptionPeriod.annual,
                       price: '69,99€',
-                      interval: '/an',
-                      badge: isFrench ? 'Meilleure valeur' : 'Best value',
+                      interval: isFrench ? '/an' : isGerman ? '/Jahr' : '/yr',
+                      badge: isFrench ? 'Meilleure valeur' : isGerman ? 'Bester Wert' : 'Best value',
                       badgeColor: const Color(0xFFFFD700),
                       description: 'Économise 49%',
-                      equivalentPrice: isFrench ? '5,83€/mois' : '€5.83/mo',
-                      savingsText: isFrench ? 'Économise 49%' : 'Save 49%',
+                      equivalentPrice: isFrench ? '5,83€/mois' : isGerman ? '5,83€/Monat' : '€5.83/mo',
+                      savingsText: isFrench ? 'Économise 49%' : isGerman ? 'Spare 49%' : 'Save 49%',
                       isHighlighted: true,
                       isFrench: isFrench,
+                      isGerman: isGerman,
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -292,11 +294,12 @@ class _PaywallPreviewStandaloneState extends State<PaywallPreviewStandalone> wit
                     child: _buildPricingCard(
                       period: SubscriptionPeriod.monthly,
                       price: '9,99€',
-                      interval: '/mois',
-                      badge: isFrench ? 'Le plus choisi' : 'Most popular',
+                      interval: isFrench ? '/mois' : isGerman ? '/Monat' : '/mo',
+                      badge: isFrench ? 'Le plus choisi' : isGerman ? 'Am beliebtesten' : 'Most popular',
                       badgeColor: const Color(0xFFFF8C00),
-                      description: 'Sans engagement',
+                      description: isFrench ? 'Sans engagement' : isGerman ? 'Ohne Bindung' : 'No commitment',
                       isFrench: isFrench,
+                      isGerman: isGerman,
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -305,11 +308,12 @@ class _PaywallPreviewStandaloneState extends State<PaywallPreviewStandalone> wit
                     child: _buildPricingCard(
                       period: SubscriptionPeriod.weekly,
                       price: '2,99€',
-                      interval: '/sem',
-                      badge: isFrench ? 'Pour tester' : 'Try it',
+                      interval: isFrench ? '/sem' : isGerman ? '/Woche' : '/wk',
+                      badge: isFrench ? 'Pour tester' : isGerman ? 'Zum Testen' : 'Try it',
                       badgeColor: const Color(0xFF5AC8FA),
-                      equivalentPrice: isFrench ? '12,96€/mois' : '€12.96/mo',
+                      equivalentPrice: isFrench ? '12,96€/mois' : isGerman ? '12,96€/Monat' : '€12.96/mo',
                       isFrench: isFrench,
+                      isGerman: isGerman,
                     ),
                   ),
                 ],
@@ -352,7 +356,7 @@ class _PaywallPreviewStandaloneState extends State<PaywallPreviewStandalone> wit
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          isFrench ? 'DÉBLOQUER MON COACH' : 'UNLOCK MY COACH',
+                          isFrench ? 'DEBLOQUER MON COACH' : isGerman ? 'MEINEN COACH FREISCHALTEN' : 'UNLOCK MY COACH',
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 15,
@@ -362,7 +366,7 @@ class _PaywallPreviewStandaloneState extends State<PaywallPreviewStandalone> wit
                           ),
                         ),
                         Text(
-                          isFrench ? '7 JOURS GRATUITS' : '7 DAYS FREE',
+                          isFrench ? '7 JOURS GRATUITS' : isGerman ? '7 TAGE KOSTENLOS' : '7 DAYS FREE',
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 15,
@@ -378,10 +382,10 @@ class _PaywallPreviewStandaloneState extends State<PaywallPreviewStandalone> wit
                 const SizedBox(height: 8),
                 Text(
                   _selectedPeriod == SubscriptionPeriod.monthly
-                      ? (isFrench ? 'Puis 9,99€/mois • Annule en 1 clic' : 'Then €9.99/mo • Cancel in 1 click')
+                      ? (isFrench ? 'Puis 9,99€/mois • Annule en 1 clic' : isGerman ? 'Dann 9,99€/Monat • Mit 1 Klick kundigen' : 'Then €9.99/mo • Cancel in 1 click')
                       : _selectedPeriod == SubscriptionPeriod.annual
-                          ? (isFrench ? 'Puis 69,99€/an • Annule en 1 clic' : 'Then €69.99/yr • Cancel in 1 click')
-                          : (isFrench ? 'Puis 2,99€/sem • Annule en 1 clic' : 'Then €2.99/wk • Cancel in 1 click'),
+                          ? (isFrench ? 'Puis 69,99€/an • Annule en 1 clic' : isGerman ? 'Dann 69,99€/Jahr • Mit 1 Klick kundigen' : 'Then €69.99/yr • Cancel in 1 click')
+                          : (isFrench ? 'Puis 2,99€/sem • Annule en 1 clic' : isGerman ? 'Dann 2,99€/Woche • Mit 1 Klick kundigen' : 'Then €2.99/wk • Cancel in 1 click'),
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontSize: 11,
@@ -401,7 +405,7 @@ class _PaywallPreviewStandaloneState extends State<PaywallPreviewStandalone> wit
             child: TextButton(
               onPressed: _showCloseButton ? () => Navigator.pop(context) : null,
               child: Text(
-                isFrench ? 'Peut-être plus tard' : 'Maybe later',
+                isFrench ? 'Peut-etre plus tard' : isGerman ? 'Vielleicht spater' : 'Maybe later',
                 style: const TextStyle(
                   fontSize: 14,
                   color: Color(0xFF9CA3AF),
@@ -462,17 +466,18 @@ class _PaywallPreviewStandaloneState extends State<PaywallPreviewStandalone> wit
     String? savingsText,
     bool isHighlighted = false,
     required bool isFrench,
+    bool isGerman = false,
   }) {
     final isSelected = _selectedPeriod == period;
 
     // Nom de l'abonnement
     String periodName = '';
     if (period == SubscriptionPeriod.annual) {
-      periodName = isFrench ? 'Annuel' : 'Annual';
+      periodName = isFrench ? 'Annuel' : isGerman ? 'Jahrlich' : 'Annual';
     } else if (period == SubscriptionPeriod.monthly) {
-      periodName = isFrench ? 'Mensuel' : 'Monthly';
+      periodName = isFrench ? 'Mensuel' : isGerman ? 'Monatlich' : 'Monthly';
     } else {
-      periodName = isFrench ? 'Hebdo' : 'Weekly';
+      periodName = isFrench ? 'Hebdo' : isGerman ? 'Wochentlich' : 'Weekly';
     }
 
     return GestureDetector(

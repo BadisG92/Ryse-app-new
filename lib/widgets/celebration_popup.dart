@@ -262,9 +262,11 @@ class _CelebrationPopupState extends State<CelebrationPopup>
                             decoration: TextDecoration.none,
                           ),
                           child: Text(
-                            LocalizationService.instance.currentLanguageCode == 'en'
-                                ? "Tap anywhere to continue"
-                                : "Touche l'écran pour continuer",
+                            LocalizationService.instance.isGerman
+                                ? "Tippe irgendwo, um fortzufahren"
+                                : (LocalizationService.instance.currentLanguageCode == 'en'
+                                    ? "Tap anywhere to continue"
+                                    : "Touche l'écran pour continuer"),
                             style: TextStyle(
                               fontSize: 14,
                               color: Colors.white.withOpacity(0.7),

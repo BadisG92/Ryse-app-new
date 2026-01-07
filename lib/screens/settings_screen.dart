@@ -38,6 +38,8 @@ import 'package:url_launcher/url_launcher.dart';
 import '../services/analytics_service.dart';
 import '../services/haptic_service.dart';
 import '../services/unit_service.dart';
+import '../services/coach_personality_service.dart';
+import '../services/subscription_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -93,7 +95,12 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   
   // Restrictions alimentaires
   List<String> _dietaryRestrictions = [];
-  
+
+  // Coach Ryze - Personnalité
+  CoachPersonalityType _coachPersonality = CoachPersonalityType.friendly;
+  String? _coachPersonalityCustom;
+  bool _loadingCoachSettings = true;
+
   @override
   void initState() {
     super.initState();
@@ -112,9 +119,32 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
     _expandedSections['application'] = false;
     _expandedSections['objectives'] = false;
     _expandedSections['notifications'] = false;
+    _expandedSections['coach'] = false;
     _expandedSections['preferences'] = false;
     _expandedSections['restrictions'] = false;
     _expandedSections['account'] = false;
+
+    // Charger les paramètres du coach
+    _loadCoachSettings();
+  }
+
+  Future<void> _loadCoachSettings() async {
+    try {
+      final personality = await CoachPersonalityService.instance.getPersonality();
+
+      if (mounted) {
+        setState(() {
+          _coachPersonality = personality.type;
+          _coachPersonalityCustom = personality.customText;
+          _loadingCoachSettings = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _loadingCoachSettings = false);
+      }
+      debugPrint('❌ Error loading coach settings: $e');
+    }
   }
   
   void _loadFromCache() {
@@ -220,7 +250,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
       // Pas besoin de charger depuis SharedPreferences ici
 
       // Synchroniser avec le service de localisation
-      _language = locService.isFrench ? 'Français' : 'English';
+      _language = locService.isFrench ? 'Français' : locService.isGerman ? 'Deutsch' : 'English';
 
       // Synchroniser avec le UnitService
       _measurementUnit = unitService.isImperial ? 'imperial' : 'metric';
@@ -1172,10 +1202,12 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                       builder: (context, locService, child) => _buildExpandableSection(
                         key: 'application',
                         icon: LucideIcons.smartphone,
-                        title: locService.currentLanguageCode == 'fr' ? 'Application' : 'Application',
-                        subtitle: locService.currentLanguageCode == 'fr'
+                        title: 'Application',
+                        subtitle: locService.isFrench
                             ? 'Évaluez et partagez votre expérience'
-                            : 'Rate and share your experience',
+                            : locService.isGerman
+                                ? 'Bewerten und teilen Sie Ihre Erfahrung'
+                                : 'Rate and share your experience',
                         children: [
                           _buildSectionContent(
                             padding: EdgeInsets.zero,
@@ -1185,9 +1217,11 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                 Consumer<LocalizationService>(
                                   builder: (context, locService, _) => _buildListTile(
                                     icon: LucideIcons.star,
-                                    title: locService.currentLanguageCode == 'fr'
+                                    title: locService.isFrench
                                         ? 'Noter l\'application'
-                                        : 'Rate the App',
+                                        : locService.isGerman
+                                            ? 'App bewerten'
+                                            : 'Rate the App',
                                     onTap: () async {
                                       await AppReviewService().openAppStore();
                                     },
@@ -1197,20 +1231,26 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                 Consumer<LocalizationService>(
                                   builder: (context, locService, _) => _buildListTile(
                                     icon: LucideIcons.share2,
-                                    title: locService.currentLanguageCode == 'fr'
+                                    title: locService.isFrench
                                         ? 'Partager l\'application'
-                                        : 'Share the App',
+                                        : locService.isGerman
+                                            ? 'App teilen'
+                                            : 'Share the App',
                                     onTap: () async {
                                       final appUrl = 'https://apps.apple.com/app/id6752426474';
-                                      final message = locService.currentLanguageCode == 'fr'
+                                      final message = locService.isFrench
                                           ? 'J\'utilise Ryze pour mes entraînements et ma nutrition ! Rejoins-moi 💪\n\n$appUrl'
-                                          : 'I use Ryze for my workouts and nutrition! Join me 💪\n\n$appUrl';
+                                          : locService.isGerman
+                                              ? 'Ich nutze Ryze für mein Training und meine Ernährung! Mach mit 💪\n\n$appUrl'
+                                              : 'I use Ryze for my workouts and nutrition! Join me 💪\n\n$appUrl';
 
                                       await Share.share(
                                         message,
-                                        subject: locService.currentLanguageCode == 'fr'
+                                        subject: locService.isFrench
                                             ? 'Découvre Ryze'
-                                            : 'Check out Ryze',
+                                            : locService.isGerman
+                                                ? 'Entdecke Ryze'
+                                                : 'Check out Ryze',
                                       );
 
                                       // Analytics
@@ -1222,9 +1262,11 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                 Consumer<LocalizationService>(
                                   builder: (context, locService, _) => _buildListTile(
                                     icon: LucideIcons.lightbulb,
-                                    title: locService.currentLanguageCode == 'fr'
+                                    title: locService.isFrench
                                         ? 'Proposer une idée'
-                                        : 'Suggest an idea',
+                                        : locService.isGerman
+                                            ? 'Idee vorschlagen'
+                                            : 'Suggest an idea',
                                     onTap: () => _sendFeedbackEmail(context, locService.currentLanguageCode),
                                   ),
                                 ),
@@ -1782,7 +1824,44 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                       ],
                       ),
                     ),
-                    
+
+                    // Section Coach Ryze (gold border + badge only if NOT premium)
+                    Consumer<LocalizationService>(
+                      builder: (context, locService, child) {
+                        final isPremium = SubscriptionService.instance.isPremium;
+                        return _buildExpandableSection(
+                          key: 'coach',
+                          icon: LucideIcons.messageCircle,
+                          title: 'Coach Ryze',
+                          subtitle: _getCoachSummary(locService.currentLanguageCode),
+                          badge: isPremium ? null : const _SettingsPremiumBadge(),
+                          borderColor: isPremium ? null : const Color(0xFFFBBF24),
+                          children: [
+                          _buildSectionContent(
+                            child: Column(
+                              children: [
+                                // Personnalité du coach
+                                _buildInputRow(
+                                  label: locService.isFrench
+                                      ? 'Personnalité du coach'
+                                      : locService.isGerman
+                                          ? 'Coach-Persönlichkeit'
+                                          : 'Coach personality',
+                                  child: _buildPersonalitySelector(locService.currentLanguageCode),
+                                ),
+                                // Option personnalisé si sélectionné
+                                if (_coachPersonality == CoachPersonalityType.custom) ...[
+                                  const SizedBox(height: 12),
+                                  _buildCustomPersonalityInput(locService.currentLanguageCode),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
+                      );
+                      },
+                    ),
+
                     // Section Préférences
                     Consumer<LocalizationService>(
                       builder: (context, locService, child) => _buildExpandableSection(
@@ -1859,6 +1938,39 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                         child: const Center(
                                           child: Text(
                                             '🇺🇸',
+                                            style: TextStyle(fontSize: 20),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 24),
+                                    GestureDetector(
+                                      onTap: () async {
+                                        setState(() => _language = 'Deutsch');
+                                        await LocalizationService.instance.setLanguage('de');
+                                        _saveSettings();
+                                      },
+                                      child: Container(
+                                        width: 40,
+                                        height: 40,
+                                        decoration: BoxDecoration(
+                                          borderRadius: BorderRadius.circular(20),
+                                          color: _language == 'Deutsch' ? const Color(0xFF0B132B) : Colors.white,
+                                          border: Border.all(
+                                            color: const Color(0xFFE2E8F0),
+                                            width: 1,
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withOpacity(0.1),
+                                              blurRadius: 4,
+                                              offset: const Offset(0, 2),
+                                            ),
+                                          ],
+                                        ),
+                                        child: const Center(
+                                          child: Text(
+                                            '🇩🇪',
                                             style: TextStyle(fontSize: 20),
                                           ),
                                         ),
@@ -2266,14 +2378,19 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
     required String title,
     required String subtitle,
     required List<Widget> children,
+    Widget? badge,
+    Color? borderColor,
   }) {
     final isExpanded = _expandedSections[key] ?? false;
-    
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
+        border: borderColor != null
+            ? Border.all(color: borderColor, width: 2)
+            : null,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
@@ -2309,13 +2426,21 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          title,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF1A1A1A),
-                          ),
+                        Row(
+                          children: [
+                            Text(
+                              title,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF1A1A1A),
+                              ),
+                            ),
+                            if (badge != null) ...[
+                              const SizedBox(width: 8),
+                              badge,
+                            ],
+                          ],
                         ),
                         const SizedBox(height: 2),
                         Text(
@@ -2345,8 +2470,8 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
             duration: const Duration(milliseconds: 200),
             firstChild: const SizedBox.shrink(),
             secondChild: Column(children: children),
-            crossFadeState: isExpanded 
-                ? CrossFadeState.showSecond 
+            crossFadeState: isExpanded
+                ? CrossFadeState.showSecond
                 : CrossFadeState.showFirst,
           ),
         ],
@@ -3067,14 +3192,17 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   }
   
   String _getPreferencesSummary(String languageCode) {
-    final language = _language == 'Français' ? 'Français' : 'English';
+    final language = _language == 'Français' ? 'Français' : _language == 'Deutsch' ? 'Deutsch' : 'English';
     final measurement = _measurementUnit.tr(languageCode); // _measurementUnit est maintenant une clé
     return '$language • $measurement';
   }
 
   String _getNotificationSummary(String languageCode) {
+    final isFrench = languageCode == 'fr';
+    final isGerman = languageCode == 'de';
+
     if (!_notificationPrefs.notificationsEnabled) {
-      return languageCode == 'fr' ? 'Désactivées' : 'Disabled';
+      return isFrench ? 'Désactivées' : isGerman ? 'Deaktiviert' : 'Disabled';
     }
 
     int activeCount = 0;
@@ -3087,12 +3215,123 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
     if (_notificationPrefs.milestonesEnabled) activeCount++;
 
     if (activeCount == 7) {
-      return languageCode == 'fr' ? 'Toutes actives' : 'All enabled';
+      return isFrench ? 'Toutes actives' : isGerman ? 'Alle aktiviert' : 'All enabled';
     }
 
-    return languageCode == 'fr'
+    return isFrench
         ? '$activeCount catégorie${activeCount > 1 ? 's' : ''} active${activeCount > 1 ? 's' : ''}'
-        : '$activeCount categor${activeCount > 1 ? 'ies' : 'y'} enabled';
+        : isGerman
+            ? '$activeCount Kategorie${activeCount > 1 ? 'n' : ''} aktiviert'
+            : '$activeCount categor${activeCount > 1 ? 'ies' : 'y'} enabled';
+  }
+
+  String _getCoachSummary(String languageCode) {
+    final personality = CoachPersonalityService.getLocalizedLabel(_coachPersonality, languageCode);
+    final emoji = CoachPersonalityService.getEmoji(_coachPersonality);
+    return '$emoji $personality';
+  }
+
+  Widget _buildPersonalitySelector(String languageCode) {
+    final personalities = CoachPersonalityType.values.toList();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<CoachPersonalityType>(
+          value: _coachPersonality,
+          icon: const Icon(LucideIcons.chevronDown, size: 18),
+          isExpanded: true,
+          items: personalities.map((type) {
+            final emoji = CoachPersonalityService.getEmoji(type);
+            final label = CoachPersonalityService.getLocalizedLabel(type, languageCode);
+            return DropdownMenuItem(
+              value: type,
+              child: Text('$emoji $label', style: const TextStyle(fontSize: 14)),
+            );
+          }).toList(),
+          onChanged: (value) async {
+            if (value != null) {
+              setState(() => _coachPersonality = value);
+              await CoachPersonalityService.instance.setPersonality(
+                value,
+                customText: value == CoachPersonalityType.custom ? _coachPersonalityCustom : null,
+              );
+            }
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCustomPersonalityInput(String languageCode) {
+    final placeholder = languageCode == 'fr'
+        ? 'Décris la personnalité que tu veux pour ton coach...'
+        : languageCode == 'de'
+            ? 'Beschreibe die Persönlichkeit, die du für deinen Coach möchtest...'
+            : 'Describe the personality you want for your coach...';
+
+    final charCount = _coachPersonalityCustom?.length ?? 0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: TextField(
+            maxLines: 2,
+            maxLength: 100,
+            decoration: InputDecoration(
+              hintText: placeholder,
+              hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.all(12),
+              counterText: '',
+            ),
+            style: const TextStyle(fontSize: 14),
+            controller: TextEditingController(text: _coachPersonalityCustom),
+            onChanged: (value) {
+              setState(() => _coachPersonalityCustom = value);
+            },
+            onSubmitted: (value) async {
+              await CoachPersonalityService.instance.setPersonality(
+                CoachPersonalityType.custom,
+                customText: value,
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 4),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              languageCode == 'fr'
+                  ? 'Le coach adaptera son ton selon ta description'
+                  : languageCode == 'de'
+                      ? 'Der Coach passt seinen Ton deiner Beschreibung an'
+                      : 'The coach will adapt its tone based on your description',
+              style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
+            ),
+            Text(
+              '$charCount/100',
+              style: TextStyle(
+                color: charCount > 90 ? const Color(0xFFEF4444) : const Color(0xFF94A3B8),
+                fontSize: 11,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
   }
 
   List<String> _getMeasurementOptions(String languageCode) {
@@ -3158,7 +3397,9 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   Future<void> _showArchitectureTestDialog(BuildContext context) async {
     final locService = LocalizationService.instance;
     final languageCode = locService.currentLanguageCode;
-    
+    final isFrench = languageCode == 'fr';
+    final isGerman = languageCode == 'de';
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -3168,16 +3409,20 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              languageCode == 'fr' 
+              isFrench
                 ? 'Nouvelle architecture disponible pour test'
-                : 'New architecture available for testing',
+                : isGerman
+                    ? 'Neue Architektur zum Testen verfügbar'
+                    : 'New architecture available for testing',
               style: const TextStyle(fontSize: 14),
             ),
             const SizedBox(height: 16),
             Text(
-              languageCode == 'fr'
+              isFrench
                 ? '• Repository Pattern\n• Cache unifié\n• Optimisations performances'
-                : '• Repository Pattern\n• Unified cache\n• Performance optimizations',
+                : isGerman
+                    ? '• Repository Pattern\n• Einheitlicher Cache\n• Leistungsoptimierungen'
+                    : '• Repository Pattern\n• Unified cache\n• Performance optimizations',
               style: const TextStyle(fontSize: 12, color: Colors.grey),
             ),
           ],
@@ -3185,14 +3430,14 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text(languageCode == 'fr' ? 'Annuler' : 'Cancel'),
+            child: Text(isFrench ? 'Annuler' : isGerman ? 'Abbrechen' : 'Cancel'),
           ),
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
               await _testNewArchitecture(context);
             },
-            child: Text(languageCode == 'fr' ? 'Tester' : 'Test'),
+            child: Text(isFrench ? 'Tester' : isGerman ? 'Testen' : 'Test'),
           ),
           TextButton(
             onPressed: () async {
@@ -3200,7 +3445,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
               await _activateNewArchitecture(context);
             },
             style: TextButton.styleFrom(foregroundColor: Colors.green),
-            child: Text(languageCode == 'fr' ? 'Activer' : 'Activate'),
+            child: Text(isFrench ? 'Activer' : isGerman ? 'Aktivieren' : 'Activate'),
           ),
         ],
       ),
@@ -3493,6 +3738,94 @@ class _PremiumBannerPulseState extends State<_PremiumBannerPulse>
     return ScaleTransition(
       scale: _scaleAnimation,
       child: widget.child,
+    );
+  }
+}
+
+/// Badge PREMIUM avec pulsation pour les sections premium
+class _SettingsPremiumBadge extends StatefulWidget {
+  const _SettingsPremiumBadge();
+
+  @override
+  State<_SettingsPremiumBadge> createState() => _SettingsPremiumBadgeState();
+}
+
+class _SettingsPremiumBadgeState extends State<_SettingsPremiumBadge>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _pulseAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    );
+
+    _pulseAnimation = Tween<double>(
+      begin: 1.0,
+      end: 1.08,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOut,
+    ));
+
+    _controller.repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ScaleTransition(
+      scale: _pulseAnimation,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: const Color(0xFFFFD700),
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFFFD700).withOpacity(0.4),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              LucideIcons.lock,
+              size: 12,
+              color: Colors.white,
+            ),
+            SizedBox(width: 4),
+            Text(
+              'PREMIUM',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
+                color: Colors.white,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -112,8 +112,9 @@ class _PaywallPreviewStandaloneV2State extends State<PaywallPreviewStandaloneV2>
   @override
   Widget build(BuildContext context) {
     final locale = Localizations.localeOf(context);
-    final languageCode = locale.languageCode == 'fr' ? 'fr' : 'en';
+    final languageCode = locale.languageCode == 'fr' ? 'fr' : locale.languageCode == 'de' ? 'de' : 'en';
     final isFrench = languageCode == 'fr';
+    final isGerman = languageCode == 'de';
 
     // Contextual content
     final avatarType = PaywallService.getContextAvatar(widget.paywallContext);
@@ -182,19 +183,19 @@ class _PaywallPreviewStandaloneV2State extends State<PaywallPreviewStandaloneV2>
                   const SizedBox(height: 12),
 
                   // Free trial banner
-                  _buildTrialBanner(isFrench),
+                  _buildTrialBanner(isFrench, isGerman),
                   const SizedBox(height: 12),
 
                   // Pricing cards (3 columns)
-                  _buildPricingCards(isFrench),
+                  _buildPricingCards(isFrench, isGerman),
                   const SizedBox(height: 32),
 
                   // CTA button
-                  _buildCTA(isFrench),
+                  _buildCTA(isFrench, isGerman),
                   const SizedBox(height: 12),
 
                   // Skip button
-                  if (_showCloseButton) _buildSkipButton(isFrench),
+                  if (_showCloseButton) _buildSkipButton(isFrench, isGerman),
 
                   // Bottom padding
                   SizedBox(height: MediaQuery.of(context).padding.bottom + 8),
@@ -404,7 +405,7 @@ class _PaywallPreviewStandaloneV2State extends State<PaywallPreviewStandaloneV2>
     );
   }
 
-  Widget _buildTrialBanner(bool isFrench) {
+  Widget _buildTrialBanner(bool isFrench, bool isGerman) {
     return Container(
       height: 32,
       margin: const EdgeInsets.symmetric(horizontal: 24),
@@ -431,7 +432,7 @@ class _PaywallPreviewStandaloneV2State extends State<PaywallPreviewStandaloneV2>
             ),
             const SizedBox(width: 8),
             Text(
-              isFrench ? '7 JOURS GRATUITS' : '7 DAYS FREE',
+              isFrench ? '7 JOURS GRATUITS' : isGerman ? '7 TAGE KOSTENLOS' : '7 DAYS FREE',
               style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w900,
@@ -445,7 +446,7 @@ class _PaywallPreviewStandaloneV2State extends State<PaywallPreviewStandaloneV2>
     );
   }
 
-  Widget _buildPricingCards(bool isFrench) {
+  Widget _buildPricingCards(bool isFrench, bool isGerman) {
     return SizedBox(
       height: 115,
       child: Padding(
@@ -457,13 +458,14 @@ class _PaywallPreviewStandaloneV2State extends State<PaywallPreviewStandaloneV2>
               child: _buildPricingCard(
                 period: SubscriptionPeriod.annual,
                 price: '69,99€',
-                interval: isFrench ? '/an' : '/yr',
-                badge: isFrench ? 'Meilleur prix' : 'Best value',
+                interval: isFrench ? '/an' : isGerman ? '/Jahr' : '/yr',
+                badge: isFrench ? 'Meilleur prix' : isGerman ? 'Bester Preis' : 'Best value',
                 badgeGradient: const LinearGradient(
                   colors: [Color(0xFFFBBF24), Color(0xFFF59E0B)],
                 ),
                 equivalent: '5,83€',
                 isFrench: isFrench,
+                isGerman: isGerman,
               ),
             ),
             const SizedBox(width: 8),
@@ -473,13 +475,14 @@ class _PaywallPreviewStandaloneV2State extends State<PaywallPreviewStandaloneV2>
               child: _buildPricingCard(
                 period: SubscriptionPeriod.monthly,
                 price: '9,99€',
-                interval: isFrench ? '/mois' : '/mo',
-                badge: isFrench ? 'Populaire' : 'Popular',
+                interval: isFrench ? '/mois' : isGerman ? '/Mon.' : '/mo',
+                badge: isFrench ? 'Populaire' : isGerman ? 'Beliebt' : 'Popular',
                 badgeGradient: const LinearGradient(
                   colors: [Color(0xFF7C3AED), Color(0xFF6366F1)],
                 ),
                 isPopular: true,
                 isFrench: isFrench,
+                isGerman: isGerman,
               ),
             ),
             const SizedBox(width: 8),
@@ -489,12 +492,13 @@ class _PaywallPreviewStandaloneV2State extends State<PaywallPreviewStandaloneV2>
               child: _buildPricingCard(
                 period: SubscriptionPeriod.weekly,
                 price: '2,99€',
-                interval: isFrench ? '/sem' : '/wk',
-                badge: isFrench ? 'Test' : 'Try',
+                interval: isFrench ? '/sem' : isGerman ? '/Wo.' : '/wk',
+                badge: isFrench ? 'Test' : isGerman ? 'Test' : 'Try',
                 badgeGradient: const LinearGradient(
                   colors: [Color(0xFF06B6D4), Color(0xFF0891B2)],
                 ),
                 isFrench: isFrench,
+                isGerman: isGerman,
               ),
             ),
           ],
@@ -512,6 +516,7 @@ class _PaywallPreviewStandaloneV2State extends State<PaywallPreviewStandaloneV2>
     String? equivalent,
     bool isPopular = false,
     required bool isFrench,
+    required bool isGerman,
   }) {
     final isSelected = _selectedPeriod == period;
 
@@ -613,7 +618,7 @@ class _PaywallPreviewStandaloneV2State extends State<PaywallPreviewStandaloneV2>
                   if (equivalent != null) ...[
                     const SizedBox(height: 4),
                     Text(
-                      '${isFrench ? "soit" : "or"} $equivalent${isFrench ? "/mois" : "/mo"}',
+                      '${isFrench ? "soit" : isGerman ? "nur" : "or"} $equivalent${isFrench ? "/mois" : isGerman ? "/Mon." : "/mo"}',
                       style: TextStyle(
                         fontSize: 9,
                         color: isSelected
@@ -664,7 +669,7 @@ class _PaywallPreviewStandaloneV2State extends State<PaywallPreviewStandaloneV2>
     );
   }
 
-  Widget _buildCTA(bool isFrench) {
+  Widget _buildCTA(bool isFrench, bool isGerman) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
@@ -703,7 +708,7 @@ class _PaywallPreviewStandaloneV2State extends State<PaywallPreviewStandaloneV2>
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(
-                              isFrench ? 'DÉBLOQUER MON COACH' : 'UNLOCK MY COACH',
+                              isFrench ? 'DÉBLOQUER MON COACH' : isGerman ? 'MEINEN COACH FREISCHALTEN' : 'UNLOCK MY COACH',
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 15,
@@ -712,7 +717,7 @@ class _PaywallPreviewStandaloneV2State extends State<PaywallPreviewStandaloneV2>
                               ),
                             ),
                             Text(
-                              isFrench ? '7 JOURS GRATUITS' : '7 DAYS FREE',
+                              isFrench ? '7 JOURS GRATUITS' : isGerman ? '7 TAGE KOSTENLOS' : '7 DAYS FREE',
                               style: TextStyle(
                                 color: Colors.white.withOpacity(0.9),
                                 fontSize: 13,
@@ -730,7 +735,7 @@ class _PaywallPreviewStandaloneV2State extends State<PaywallPreviewStandaloneV2>
           ),
           const SizedBox(height: 8),
           Text(
-            _getLegalText(isFrench),
+            _getLegalText(isFrench, isGerman),
             textAlign: TextAlign.center,
             style: const TextStyle(
               fontSize: 11,
@@ -743,14 +748,14 @@ class _PaywallPreviewStandaloneV2State extends State<PaywallPreviewStandaloneV2>
     );
   }
 
-  Widget _buildSkipButton(bool isFrench) {
+  Widget _buildSkipButton(bool isFrench, bool isGerman) {
     return TextButton(
       onPressed: () {
         HapticService.instance.lightImpact();
         Navigator.pop(context);
       },
       child: Text(
-        isFrench ? 'Peut-être plus tard' : 'Maybe later',
+        isFrench ? 'Peut-être plus tard' : isGerman ? 'Vielleicht später' : 'Maybe later',
         style: const TextStyle(
           fontSize: 13,
           color: Color(0xFF9CA3AF),
@@ -761,20 +766,26 @@ class _PaywallPreviewStandaloneV2State extends State<PaywallPreviewStandaloneV2>
     );
   }
 
-  String _getLegalText(bool isFrench) {
+  String _getLegalText(bool isFrench, bool isGerman) {
     switch (_selectedPeriod) {
       case SubscriptionPeriod.weekly:
         return isFrench
             ? 'Puis 2,99€/sem • Annule en 1 clic'
-            : 'Then €2.99/wk • Cancel in 1 click';
+            : isGerman
+                ? 'Dann 2,99€/Wo. • Mit 1 Klick kündigen'
+                : 'Then €2.99/wk • Cancel in 1 click';
       case SubscriptionPeriod.monthly:
         return isFrench
             ? 'Puis 9,99€/mois • Annule en 1 clic'
-            : 'Then €9.99/mo • Cancel in 1 click';
+            : isGerman
+                ? 'Dann 9,99€/Mon. • Mit 1 Klick kündigen'
+                : 'Then €9.99/mo • Cancel in 1 click';
       case SubscriptionPeriod.annual:
         return isFrench
             ? 'Puis 69,99€/an • Annule en 1 clic'
-            : 'Then €69.99/yr • Cancel in 1 click';
+            : isGerman
+                ? 'Dann 69,99€/Jahr • Mit 1 Klick kündigen'
+                : 'Then €69.99/yr • Cancel in 1 click';
       case SubscriptionPeriod.lifetime:
         return '';
     }

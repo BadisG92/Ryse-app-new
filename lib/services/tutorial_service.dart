@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'translations.dart';
+import 'localization_service.dart';
 import '../components/ui/tutorial_welcome_screen.dart';
 
 /// Service de gestion des tutoriels interactifs (Feature Discovery)
@@ -286,7 +287,7 @@ class TutorialService {
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                       child: Text(
-                        'understood'.tr('fr'), // Par défaut FR, sera dynamique
+                        'understood'.tr(LocalizationService.instance.currentLanguageCode),
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w600,
@@ -314,6 +315,7 @@ class TutorialService {
     required GlobalKey nutritionTabKey,
     required GlobalKey sportTabKey,
     required GlobalKey progressTabKey,
+    required GlobalKey coachFabKey,
     String languageCode = 'fr',
     String? pandaImagePath,
     String? userName,
@@ -430,6 +432,16 @@ class TutorialService {
         keyTarget: progressTabKey,
         title: 'tutorial_dashboard_progress_tab_title'.tr(languageCode),
         description: 'tutorial_dashboard_progress_tab_desc'.tr(languageCode),
+        align: ContentAlign.top,
+        shape: ShapeLightFocus.Circle,
+      ),
+
+      // 7. FAB Coach Ryze (dernier step)
+      _createTarget(
+        identify: 'coach_fab',
+        keyTarget: coachFabKey,
+        title: 'tutorial_dashboard_coach_fab_title'.tr(languageCode),
+        description: 'tutorial_dashboard_coach_fab_desc'.tr(languageCode),
         align: ContentAlign.top,
         shape: ShapeLightFocus.Circle,
       ),

@@ -936,6 +936,7 @@ class _LoadingStepState extends State<LoadingStep> {
   Widget build(BuildContext context) {
     final languageCode = Provider.of<LocalizationService>(context, listen: false).currentLanguageCode;
     final isFrench = languageCode == 'fr';
+    final isGerman = languageCode == 'de';
 
     return Container(
       decoration: const BoxDecoration(
@@ -963,7 +964,11 @@ class _LoadingStepState extends State<LoadingStep> {
               ),
               const SizedBox(height: 40),
               Text(
-                isFrench ? 'Coach Ryze prépare ton plan...' : 'Coach Ryze is preparing your plan...',
+                isFrench
+                    ? 'Coach Ryze prépare ton plan...'
+                    : isGerman
+                        ? 'Coach Ryze bereitet deinen Plan vor...'
+                        : 'Coach Ryze is preparing your plan...',
                 style: const TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -997,7 +1002,11 @@ class _LoadingStepState extends State<LoadingStep> {
               ),
               const SizedBox(height: 16),
               Text(
-                isFrench ? 'Encore quelques secondes...' : 'Just a few more seconds...',
+                isFrench
+                    ? 'Encore quelques secondes...'
+                    : isGerman
+                        ? 'Noch ein paar Sekunden...'
+                        : 'Just a few more seconds...',
                 style: const TextStyle(
                   fontSize: 14,
                   color: Color(0xFF64748B),

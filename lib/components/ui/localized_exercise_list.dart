@@ -186,15 +186,15 @@ class _LocalizedExerciseListState extends State<LocalizedExerciseList> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: locService.isFrench ? Colors.blue.shade50 : Colors.green.shade50,
+                  color: _getLanguageColor(locService.currentLanguageCode).withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  locService.isFrench ? '🇫🇷 Français' : '🇺🇸 English',
+                  _getLanguageLabel(locService.currentLanguageCode),
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: locService.isFrench ? Colors.blue.shade700 : Colors.green.shade700,
+                    color: _getLanguageColor(locService.currentLanguageCode),
                   ),
                 ),
               ),
@@ -211,7 +211,7 @@ class _LocalizedExerciseListState extends State<LocalizedExerciseList> {
               // Bouton pour changer de langue (test)
               GestureDetector(
                 onTap: () {
-                  final newLang = locService.isFrench ? 'en' : 'fr';
+                  final newLang = _getNextLanguage(locService.currentLanguageCode);
                   locService.setLanguage(newLang);
                 },
                 child: Container(
@@ -444,7 +444,7 @@ class _LocalizedExerciseListState extends State<LocalizedExerciseList> {
 
   Widget _buildFrequencyTag(int sessionCount, LocalizationService locService) {
     if (sessionCount == 0) {
-      // Tag "New" / "Nouveau" pour les exercices jamais utilisés
+      // Tag "New" / "Nouveau" / "Neu" pour les exercices jamais utilises
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
@@ -453,7 +453,7 @@ class _LocalizedExerciseListState extends State<LocalizedExerciseList> {
           border: Border.all(color: Colors.green.shade300, width: 1),
         ),
         child: Text(
-          locService.isFrench ? 'Nouveau' : 'New',
+          _getNewLabel(locService.currentLanguageCode),
           style: TextStyle(
             fontSize: 10,
             fontWeight: FontWeight.w600,
@@ -462,7 +462,7 @@ class _LocalizedExerciseListState extends State<LocalizedExerciseList> {
         ),
       );
     } else if (sessionCount >= 3) {
-      // Tag avec le nombre de sessions pour les exercices fréquents
+      // Tag avec le nombre de sessions pour les exercices frequents
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
@@ -471,7 +471,7 @@ class _LocalizedExerciseListState extends State<LocalizedExerciseList> {
           border: Border.all(color: const Color(0xFF0B132B).withOpacity(0.3), width: 1),
         ),
         child: Text(
-          locService.isFrench ? '$sessionCount séances' : '$sessionCount sessions',
+          _getSessionsLabel(sessionCount, locService.currentLanguageCode),
           style: const TextStyle(
             fontSize: 10,
             fontWeight: FontWeight.w600,
@@ -616,7 +616,7 @@ class _LocalizedExerciseListState extends State<LocalizedExerciseList> {
                 const SizedBox(height: 8),
               ],
               Text(
-                'Langue actuelle: ${locService.isFrench ? "Français" : "English"}',
+                _getCurrentLanguageText(locService.currentLanguageCode),
                 style: const TextStyle(
                   fontSize: 12,
                   fontStyle: FontStyle.italic,
@@ -654,12 +654,12 @@ class _LocalizedExerciseListState extends State<LocalizedExerciseList> {
               const SizedBox(height: 8),
             ],
             Text(
-              'Clé d\'activité: ${activity['activity_key'] ?? 'N/A'}',
+              'Cle d\'activite: ${activity['activity_key'] ?? 'N/A'}',
               style: const TextStyle(fontSize: 12, color: Colors.grey),
             ),
             const SizedBox(height: 8),
             Text(
-              'Langue actuelle: ${locService.isFrench ? "Français" : "English"}',
+              _getCurrentLanguageText(locService.currentLanguageCode),
               style: const TextStyle(
                 fontSize: 12,
                 fontStyle: FontStyle.italic,
@@ -676,5 +676,85 @@ class _LocalizedExerciseListState extends State<LocalizedExerciseList> {
         ],
       ),
     );
+  }
+
+  // === Methodes utilitaires pour le support multilingue ===
+
+  /// Retourne la couleur associee a la langue
+  Color _getLanguageColor(String langCode) {
+    switch (langCode) {
+      case 'fr':
+        return Colors.blue.shade700;
+      case 'de':
+        return Colors.amber.shade700;
+      case 'en':
+      default:
+        return Colors.green.shade700;
+    }
+  }
+
+  /// Retourne le label de la langue avec drapeau
+  String _getLanguageLabel(String langCode) {
+    switch (langCode) {
+      case 'fr':
+        return 'FR Francais';
+      case 'de':
+        return 'DE Deutsch';
+      case 'en':
+      default:
+        return 'US English';
+    }
+  }
+
+  /// Retourne la langue suivante dans le cycle FR -> EN -> DE -> FR
+  String _getNextLanguage(String currentLang) {
+    switch (currentLang) {
+      case 'fr':
+        return 'en';
+      case 'en':
+        return 'de';
+      case 'de':
+      default:
+        return 'fr';
+    }
+  }
+
+  /// Retourne le label "Nouveau" / "New" / "Neu"
+  String _getNewLabel(String langCode) {
+    switch (langCode) {
+      case 'fr':
+        return 'Nouveau';
+      case 'de':
+        return 'Neu';
+      case 'en':
+      default:
+        return 'New';
+    }
+  }
+
+  /// Retourne le label "X seances" / "X sessions" / "X Einheiten"
+  String _getSessionsLabel(int count, String langCode) {
+    switch (langCode) {
+      case 'fr':
+        return '$count seances';
+      case 'de':
+        return '$count Einheiten';
+      case 'en':
+      default:
+        return '$count sessions';
+    }
+  }
+
+  /// Retourne le texte "Langue actuelle: X"
+  String _getCurrentLanguageText(String langCode) {
+    switch (langCode) {
+      case 'fr':
+        return 'Langue actuelle: Francais';
+      case 'de':
+        return 'Aktuelle Sprache: Deutsch';
+      case 'en':
+      default:
+        return 'Current language: English';
+    }
   }
 }

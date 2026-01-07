@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Video Position Debug</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #333;
+            font-family: Arial, sans-serif;
+            color: white;
+        }
+        .container {
+            position: relative;
+            display: inline-block;
+        }
+        .background {
+            display: block;
+            width: 1024px;
+            height: 1024px;
+        }
+        .video-frame {
+            position: absolute;
+            left: 242px;
+            top: 0px;
+            width: 540px;
+            height: 960px;
+            border: 3px solid red;
+            box-sizing: border-box;
+            pointer-events: none;
+        }
+        .label {
+            position: absolute;
+            background: red;
+            color: white;
+            padding: 5px 10px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .label-bg {
+            top: -25px;
+            left: 0;
+        }
+        .label-video {
+            top: -25px;
+            left: 242px;
+        }
+        .info {
+            margin-top: 20px;
+            padding: 15px;
+            background: #444;
+            border-radius: 8px;
+        }
+        .info p {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>📐 Position de la vidéo sur le background</h1>
+    
+    <div class="container">
+        <span class="label label-bg">Background: 1024x1024</span>
+        <span class="label label-video">Video: 540x960 @ (242, 0)</span>
+        <img src="images/welcome_background.png" class="background" alt="Background">
+        <div class="video-frame"></div>
+    </div>
+    
+    <div class="info">
+        <h3>📊 Dimensions:</h3>
+        <p><strong>Background:</strong> 1024 x 1024 pixels</p>
+        <p><strong>Vidéo:</strong> 540 x 960 pixels</p>
+        <p><strong>Position vidéo:</strong> x = 242, y = 0</p>
+        <p><strong>Espace à gauche:</strong> 242px</p>
+        <p><strong>Espace à droite:</strong> 1024 - 242 - 540 = 242px (symétrique ✓)</p>
+        <p><strong>Espace en bas:</strong> 1024 - 960 = 64px</p>
+    </div>
+</body>
+</html>
+

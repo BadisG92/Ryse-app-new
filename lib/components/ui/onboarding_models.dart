@@ -473,7 +473,7 @@ class MetabolicCalculations {
   }
 
   /// Génère le texte de recommandation de séances pour l'UI
-  static String getWorkoutRecommendationText(UserProfile profile, {required bool isFrench}) {
+  static String getWorkoutRecommendationText(UserProfile profile, {required String languageCode}) {
     final recommendation = getWorkoutRecommendation(profile);
 
     if (recommendation['minSessions'] == 0) {
@@ -492,7 +492,20 @@ class MetabolicCalculations {
     }
 
     String typeText;
-    if (isFrench) {
+    if (languageCode == 'de') {
+      switch (type) {
+        case 'strength':
+          typeText = 'Krafttraining';
+          break;
+        case 'cardio':
+          typeText = 'Cardio';
+          break;
+        case 'mixed':
+        default:
+          typeText = 'Sport';
+      }
+      return '$sessionText $typeText-Einheiten / Woche empfohlen';
+    } else if (languageCode == 'fr') {
       switch (type) {
         case 'strength':
           typeText = 'musculation';
@@ -504,7 +517,7 @@ class MetabolicCalculations {
         default:
           typeText = 'sport';
       }
-      return '$sessionText séances de $typeText / semaine recommandées';
+      return '$sessionText seances de $typeText / semaine recommandees';
     } else {
       switch (type) {
         case 'strength':

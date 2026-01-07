@@ -1,25 +1,27 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'ui/value_proposition_slides.dart';
+import 'ui/video_welcome_screen.dart';
 import 'onboarding_gamified_hybrid.dart';
-import '../services/localization_service.dart';
 import '../screens/auth/login_screen.dart';
+import '../screens/onboarding_chat_screen.dart';
+import '../screens/weekly_contract_screen.dart';
 
-/// Widget qui encapsule Value Proposition Slides (4 slides incluant welcome) + Onboarding
-/// Flow: 4 Slides de Value Prop (Welcome + 3 autres) → Onboarding/Login
+/// Widget qui encapsule Video Welcome + Onboarding
+/// Flow:
+/// - Non connecté: Video Welcome → Login/Signup
+/// - Connecté mais pas onboardé: Video Welcome → Onboarding IA → Contract → Onboarding classique
 class OnboardingWithValueProp extends StatefulWidget {
   final VoidCallback onComplete;
   final bool showValuePropFirst;
   final bool isUserLoggedIn;
-  final bool skipValueProp; // Nouveau: pour aller directement à l'onboarding
+  final bool skipValueProp; // Pour aller directement à l'onboarding (skip vidéo)
 
   const OnboardingWithValueProp({
     Key? key,
     required this.onComplete,
     this.showValuePropFirst = false,
     this.isUserLoggedIn = false,
-    this.skipValueProp = false, // Par défaut, afficher les slides
+    this.skipValueProp = false,
   }) : super(key: key);
 
   @override
@@ -27,82 +29,80 @@ class OnboardingWithValueProp extends StatefulWidget {
 }
 
 class _OnboardingWithValuePropState extends State<OnboardingWithValueProp> {
-  int _currentStep = 1; // 1: Value Prop Slides (4 slides), 2: Onboarding
+  // 0: Video Welcome, 1: Onboarding IA, 2: Contract/Pacte, 3: Onboarding classique
+  int _currentStep = 0;
 
   @override
   void initState() {
     super.initState();
-    // Si skipValueProp est true, aller directement à l'onboarding
-    _currentStep = widget.skipValueProp ? 2 : 1;
+    // Toujours commencer par la vidéo (sauf si skipValueProp pour des cas spéciaux)
+    _currentStep = widget.skipValueProp ? 1 : 0;
   }
 
-  Future<void> _onValuePropComplete() async {
-    // Marquer que l'utilisateur a vu les slides (pour le flow AAA)
+  /// Callback quand l'utilisateur clique sur le bouton "Rejoins-nous" de la vidéo
+  void _onVideoWelcomeComplete() async {
+    // Marquer que l'utilisateur a vu l'intro
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('has_seen_intro', true);
 
-    // Si l'utilisateur n'est PAS connecté → aller vers Login
-    if (!widget.isUserLoggedIn) {
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const LoginScreen()),
-        );
-      }
-      return;
-    }
+    if (!mounted) return;
 
-    // Si l'utilisateur EST connecté → continuer vers Onboarding
+    // Si l'utilisateur est connecté → Onboarding IA
+    if (widget.isUserLoggedIn) {
+      setState(() {
+        _currentStep = 1; // Passer à l'onboarding IA
+      });
+    } else {
+      // Si non connecté → Login/Signup
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+      );
+    }
+  }
+
+  /// Callback quand l'onboarding IA est terminé → passer au contrat
+  void _onOnboardingIAComplete() {
     if (mounted) {
       setState(() {
-        _currentStep = 2; // Passer à l'onboarding
+        _currentStep = 2; // Passer au contrat/pacte
       });
     }
   }
 
-  void _onSkipValueProp() {
-    // Si l'utilisateur n'est PAS connecté → aller vers Login
-    if (!widget.isUserLoggedIn) {
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const LoginScreen()),
-        );
-      }
-      return;
-    }
-
-    // Si l'utilisateur EST connecté → continuer vers Onboarding
+  /// Callback quand le contrat est signé → passer à l'onboarding classique
+  void _onContractComplete() {
     if (mounted) {
       setState(() {
-        _currentStep = 2; // Passer à l'onboarding
+        _currentStep = 3; // Passer à l'onboarding classique
       });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final languageCode = Provider.of<LocalizationService>(context).currentLanguageCode;
-
-    return Stack(
-      children: [
-        // Value Prop Slides (4 slides incluant welcome) - visible au step 1
-        Offstage(
-          offstage: _currentStep != 1,
-          child: ValuePropositionSlides(
-            languageCode: languageCode,
-            onComplete: _onValuePropComplete,
-            onSkip: _onSkipValueProp,
-            onBack: null, // Pas de retour possible depuis la première slide
-          ),
-        ),
-
-        // Onboarding - visible au step 2
-        Offstage(
-          offstage: _currentStep != 2,
-          child: OnboardingGamifiedHybrid(
-            onComplete: widget.onComplete,
-          ),
-        ),
-      ],
-    );
+    switch (_currentStep) {
+      case 0:
+        // Vidéo de bienvenue
+        return VideoWelcomeScreen(
+          onContinue: _onVideoWelcomeComplete,
+        );
+      case 1:
+        // Onboarding IA (chat avec Coach Ryze)
+        return OnboardingChatScreen(
+          onComplete: _onOnboardingIAComplete,
+        );
+      case 2:
+        // Contrat/Pacte avec Coach Ryze
+        return WeeklyContractScreen(
+          onComplete: _onContractComplete,
+          onSkip: _onContractComplete, // Skip va aussi à l'étape suivante
+        );
+      case 3:
+      default:
+        // Onboarding classique (questions)
+        return OnboardingGamifiedHybrid(
+          onComplete: widget.onComplete,
+        );
+    }
   }
 }

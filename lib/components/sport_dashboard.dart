@@ -498,17 +498,17 @@ class SportDashboardState extends State<SportDashboard> with TickerProviderState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Row(
+              Row(
                 children: [
-                  Icon(
+                  const Icon(
                     LucideIcons.activity,
                     size: 20,
                     color: Color(0xFF0B132B),
                   ),
-                  SizedBox(width: 12),
+                  const SizedBox(width: 12),
                   Text(
-                    'Séances récentes',
-                    style: TextStyle(
+                    'sport_recent_sessions'.tr(LocalizationService.instance.currentLanguageCode),
+                    style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                       color: Color(0xFF1A1A1A),
@@ -866,11 +866,13 @@ class SportDashboardState extends State<SportDashboard> with TickerProviderState
       {
         'icon': LucideIcons.activity,
         'label': 'sport_cardio'.tr(locService.currentLanguageCode),
+        'type': 'cardio',
         'colors': [const Color(0xFF0B132B).withOpacity(0.8), const Color(0xFF1C2951).withOpacity(0.8)]
       },
       {
         'icon': LucideIcons.dumbbell,
         'label': 'sport_muscle_training'.tr(locService.currentLanguageCode),
+        'type': 'musculation',
         'colors': [const Color(0xFF0B132B), const Color(0xFF1C2951)]
       },
     ];
@@ -900,7 +902,7 @@ class SportDashboardState extends State<SportDashboard> with TickerProviderState
                       right: action == actions.last ? 0 : 16,
                     ),
                     child: GestureDetector(
-                      onTap: () => _showActivityBottomSheet(action['label']),
+                      onTap: () => _showActivityBottomSheet(action['type']),
                       child: Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
@@ -998,17 +1000,17 @@ class SportDashboardState extends State<SportDashboard> with TickerProviderState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Row(
+                    Row(
                       children: [
-                  Icon(
+                  const Icon(
                     LucideIcons.trendingUp,
                     size: 16,
                     color: Color(0xFF0B132B),
                         ),
-                        SizedBox(width: 8),
+                        const SizedBox(width: 8),
                         Text(
-                    'Activités du jour',
-                          style: TextStyle(
+                    'sport_todays_activities'.tr(locService.currentLanguageCode),
+                          style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                             color: Color(0xFF1A1A1A),
@@ -1064,15 +1066,15 @@ class SportDashboardState extends State<SportDashboard> with TickerProviderState
                 // Séances musculation
                 ...musculationSessions.map((session) => _buildActivityItem(
                   iconData: LucideIcons.dumbbell,
-                  name: session['session_name'] ?? 'Musculation',
+                  name: session['session_name'] ?? 'sport_muscle_training'.tr(locService.currentLanguageCode),
                   duration: _formatDuration(session['duration_minutes'] ?? 0),
                   calories: session['calories_burned'] ?? 0,
                 )),
-                
+
                 // Séances cardio
                 ...cardioSessions.map((session) => _buildActivityItem(
                   iconData: _getCardioIcon(session['activity_type'] ?? ''),
-                  name: session['activity_title'] ?? 'Cardio',
+                  name: session['activity_title'] ?? 'sport_cardio'.tr(locService.currentLanguageCode),
                   duration: _formatDurationSeconds(session['duration_seconds'] ?? 0),
                   calories: session['calories'] ?? 0,
                 )),
@@ -1175,9 +1177,9 @@ class SportDashboardState extends State<SportDashboard> with TickerProviderState
 
   // Méthodes pour les bottom sheets des activités
   void _showActivityBottomSheet(String activityType) {
-    if (activityType == 'Musculation') {
+    if (activityType == 'musculation') {
       WorkoutActions.showMusculationBottomSheet(context);
-    } else if (activityType == 'Cardio') {
+    } else if (activityType == 'cardio') {
       _showCardioBottomSheet();
     }
   }
@@ -1282,61 +1284,69 @@ class SportDashboardState extends State<SportDashboard> with TickerProviderState
               ),
               
               const SizedBox(height: 8),
-              
-              const Text(
-                'Choisissez votre objectif',
-                style: TextStyle(
+
+              Text(
+                'sport_choose_objective'.tr(LocalizationService.instance.currentLanguageCode),
+                style: const TextStyle(
                   fontSize: 14,
                   color: Color(0xFF64748B),
                 ),
               ),
               
               const SizedBox(height: 24),
-              
+
               // Options d'objectif
-              Column(
-                children: [
-                  _buildObjectiveOption(
-                    icon: LucideIcons.timer,
-                    title: 'Séance libre',
-                    subtitle: 'Pas d\'objectif spécifique',
-                    onTap: () => _startCardioTracking(activityType, activityTitle, 'Séance libre', null),
-                  ),
-                  const SizedBox(height: 12),
-                                     _buildObjectiveOption(
-                     icon: LucideIcons.clock,
-                     title: 'Objectif temps',
-                     subtitle: '30 minutes',
-                     onTap: () => _startCardioTracking(
-                       activityType, 
-                       activityTitle, 
-                       'Objectif temps', 
-                       CardioObjective(
-                         type: 'duration',
-                         activityType: activityType,
-                         formatTitle: 'Objectif temps',
-                         targetDuration: const Duration(minutes: 30),
-                       ),
-                     ),
-                   ),
-                   const SizedBox(height: 12),
-                   _buildObjectiveOption(
-                     icon: LucideIcons.mapPin,
-                     title: 'Objectif distance',
-                     subtitle: '5 ${UnitService.instance.distanceUnit}',
-                     onTap: () => _startCardioTracking(
-                       activityType,
-                       activityTitle,
-                       'Objectif distance',
-                       CardioObjective(
-                         type: 'distance',
-                         activityType: activityType,
-                         formatTitle: 'Objectif distance',
-                         targetDistance: UnitService.instance.storageDistance(5.0), // 5 dans l'unité utilisateur → km
-                       ),
-                     ),
-                   ),
-                ],
+              Builder(
+                builder: (context) {
+                  final lang = LocalizationService.instance.currentLanguageCode;
+                  final freeSessionTitle = 'sport_free_session'.tr(lang);
+                  final timeObjectiveTitle = 'sport_time_objective'.tr(lang);
+                  final distanceObjectiveTitle = 'sport_distance_objective'.tr(lang);
+                  return Column(
+                    children: [
+                      _buildObjectiveOption(
+                        icon: LucideIcons.timer,
+                        title: freeSessionTitle,
+                        subtitle: 'sport_no_specific_goal'.tr(lang),
+                        onTap: () => _startCardioTracking(activityType, activityTitle, freeSessionTitle, null),
+                      ),
+                      const SizedBox(height: 12),
+                      _buildObjectiveOption(
+                        icon: LucideIcons.clock,
+                        title: timeObjectiveTitle,
+                        subtitle: 'sport_30_minutes'.tr(lang),
+                        onTap: () => _startCardioTracking(
+                          activityType,
+                          activityTitle,
+                          timeObjectiveTitle,
+                          CardioObjective(
+                            type: 'duration',
+                            activityType: activityType,
+                            formatTitle: timeObjectiveTitle,
+                            targetDuration: const Duration(minutes: 30),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      _buildObjectiveOption(
+                        icon: LucideIcons.mapPin,
+                        title: distanceObjectiveTitle,
+                        subtitle: '5 ${UnitService.instance.distanceUnit}',
+                        onTap: () => _startCardioTracking(
+                          activityType,
+                          activityTitle,
+                          distanceObjectiveTitle,
+                          CardioObjective(
+                            type: 'distance',
+                            activityType: activityType,
+                            formatTitle: distanceObjectiveTitle,
+                            targetDistance: UnitService.instance.storageDistance(5.0), // 5 dans l'unité utilisateur -> km
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
               
               const SizedBox(height: 24),
@@ -1454,21 +1464,21 @@ class SportDashboardState extends State<SportDashboard> with TickerProviderState
               ),
               
               const SizedBox(height: 24),
-              
-              const Text(
-                'HIIT',
-                style: TextStyle(
+
+              Text(
+                'sport_hiit'.tr(LocalizationService.instance.currentLanguageCode),
+                style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                   color: Color(0xFF1A1A1A),
                 ),
               ),
-              
+
               const SizedBox(height: 8),
-              
-              const Text(
-                'Choisissez votre workout HIIT',
-                style: TextStyle(
+
+              Text(
+                'sport_choose_hiit_workout'.tr(LocalizationService.instance.currentLanguageCode),
+                style: const TextStyle(
                   fontSize: 14,
                   color: Color(0xFF64748B),
                 ),
@@ -1758,35 +1768,35 @@ class _CardioSelectionBottomSheetState extends State<_CardioSelectionBottomSheet
             ),
             
             const SizedBox(height: 24),
-            
-            const Text(
-              'Cardio',
-              style: TextStyle(
+
+            Text(
+              'sport_cardio'.tr(LocalizationService.instance.currentLanguageCode),
+              style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
                 color: Color(0xFF1A1A1A),
               ),
             ),
-            
+
             const SizedBox(height: 8),
-            
-            const Text(
-              'Choisissez votre activité cardio',
-              style: TextStyle(
+
+            Text(
+              'sport_choose_activity'.tr(LocalizationService.instance.currentLanguageCode),
+              style: const TextStyle(
                 fontSize: 14,
                 color: Color(0xFF64748B),
               ),
             ),
-            
+
             const SizedBox(height: 24),
-            
+
             if (_loading)
               const Center(child: CircularProgressIndicator())
             else if (_activities.isEmpty)
-              const Center(
+              Center(
                 child: Text(
-                  'Aucune activité disponible',
-                  style: TextStyle(color: Color(0xFF64748B)),
+                  'cardio_no_activity_available'.tr(LocalizationService.instance.currentLanguageCode),
+                  style: const TextStyle(color: Color(0xFF64748B)),
                 ),
               )
             else
@@ -1970,10 +1980,10 @@ class _ActivityFormatsModal extends StatelessWidget {
             ),
             
             const SizedBox(height: 8),
-            
-            const Text(
-              'Choisissez votre format',
-              style: TextStyle(
+
+            Text(
+              'sport_choose_format'.tr(LocalizationService.instance.currentLanguageCode),
+              style: const TextStyle(
                 fontSize: 14,
                 color: Color(0xFF64748B),
               ),

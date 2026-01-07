@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
@@ -9,8 +10,12 @@ import '../services/coach_chat_service.dart';
 import '../services/localization_service.dart';
 import '../services/subscription_service.dart';
 import '../services/translations.dart';
+import '../services/weekly_bilan_service.dart';
+import '../services/paywall_service.dart';
 import '../components/ui/coach_ryze_avatar.dart';
 import '../components/ui/chat_message_bubble.dart';
+import '../components/ui/microphone_permission_dialog.dart';
+import 'paywall_screen.dart';
 
 /// Main chat screen for conversation with Coach Ryze
 class CoachChatScreen extends StatefulWidget {
@@ -35,6 +40,8 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
   bool _isSending = false;
   String _streamingResponse = '';
   CoachRateLimitStatus? _rateLimitStatus;
+  bool _showBilanBanner = false;
+  bool _localeInitialized = false;
 
   // Speech to text
   final stt.SpeechToText _speech = stt.SpeechToText();
@@ -44,8 +51,32 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
   @override
   void initState() {
     super.initState();
+    _initLocale();
     _loadConversation();
     _initSpeech();
+    _checkBilanBanner();
+  }
+
+  Future<void> _initLocale() async {
+    try {
+      await initializeDateFormatting('fr_FR', null);
+      await initializeDateFormatting('en_US', null);
+      await initializeDateFormatting('de_DE', null);
+    } catch (e) {
+      // Locale data may already be initialized
+    }
+    if (mounted) {
+      setState(() => _localeInitialized = true);
+    }
+  }
+
+  Future<void> _checkBilanBanner() async {
+    // Note: Test mode is controlled in WeeklyBilanService.kTestMode
+    // shouldShowBilanBanner() respects _bilanStartedThisSession flag
+    final shouldShow = await WeeklyBilanService.instance.shouldShowBilanBanner();
+    if (mounted) {
+      setState(() => _showBilanBanner = shouldShow);
+    }
   }
 
   @override
@@ -58,6 +89,22 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
   }
 
   Future<void> _initSpeech() async {
+    // Don't initialize yet - wait for user to tap the mic button
+    // This avoids showing permission dialog on screen load
+    _speechAvailable = false;
+  }
+
+  Future<void> _initSpeechWithPermission() async {
+    // Show explanation dialog first
+    final shouldContinue = await MicrophonePermissionDialog.showExplanationIfNeeded(
+      context,
+      isMounted: () => mounted,
+    );
+
+    if (!shouldContinue || !mounted) {
+      return;
+    }
+
     try {
       _speechAvailable = await _speech.initialize(
         onStatus: (status) {
@@ -69,6 +116,7 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
           if (mounted) setState(() => _isListening = false);
         },
       );
+      if (mounted) setState(() {});
     } catch (e) {
       _speechAvailable = false;
     }
@@ -204,7 +252,13 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
   }
 
   void _startListening() async {
-    if (!_speechAvailable || _isListening) return;
+    if (_isListening) return;
+
+    // If speech not initialized yet, show permission dialog first
+    if (!_speechAvailable) {
+      await _initSpeechWithPermission();
+      if (!_speechAvailable || !mounted) return;
+    }
 
     final locService = Provider.of<LocalizationService>(context, listen: false);
     final localeId = locService.currentLanguageCode == 'fr' ? 'fr_FR' : 'en_US';
@@ -234,30 +288,119 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
     final locService = Provider.of<LocalizationService>(context, listen: false);
     final lang = locService.currentLanguageCode;
 
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('coach_chat_limit_reached'.tr(lang)),
-        content: Text('coach_chat_limit_reached_message'.tr(lang)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('coach_chat_later'.tr(lang)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              // TODO: Navigate to paywall
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0B132B),
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        padding: EdgeInsets.only(
+          left: 24,
+          right: 24,
+          top: 16,
+          bottom: MediaQuery.of(context).padding.bottom + 24,
+        ),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: const Color(0xFFE2E8F0),
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
-            child: Text(
-              'coach_chat_upgrade_to_premium'.tr(lang),
-              style: const TextStyle(color: Colors.white),
+            const SizedBox(height: 24),
+            // Lock icon
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFBBF24).withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(36),
+              ),
+              child: const Center(
+                child: Icon(
+                  LucideIcons.lock,
+                  size: 32,
+                  color: Color(0xFFFBBF24),
+                ),
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: 20),
+            // Title
+            Text(
+              'coach_chat_limit_reached'.tr(lang),
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF0B132B),
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            // Message
+            Text(
+              'coach_chat_limit_reached_message'.tr(lang),
+              style: const TextStyle(
+                fontSize: 15,
+                color: Color(0xFF64748B),
+                height: 1.4,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 28),
+            // Premium button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => PaywallScreen(
+                        context: PaywallContext.genericUpgrade,
+                      ),
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0B132B),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: Text(
+                  'coach_chat_upgrade_to_premium'.tr(lang),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            // Later button
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'coach_chat_later'.tr(lang),
+                style: const TextStyle(
+                  fontSize: 15,
+                  color: Color(0xFF64748B),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -269,6 +412,7 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
       appBar: _buildAppBar(),
       body: Column(
         children: [
+          if (_showBilanBanner) _buildBilanBanner(),
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
@@ -278,6 +422,169 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildBilanBanner() {
+    final locService = Provider.of<LocalizationService>(context, listen: false);
+    final lang = locService.currentLanguageCode;
+
+    final title = lang == 'fr'
+        ? 'Ton bilan hebdo est disponible!'
+        : lang == 'de'
+            ? 'Dein Wochenbericht ist verfügbar!'
+            : 'Your weekly summary is available!';
+
+    final buttonText = lang == 'fr'
+        ? 'Faire le bilan'
+        : lang == 'de'
+            ? 'Zusammenfassung starten'
+            : 'Start summary';
+
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0B132B).withValues(alpha: 0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // Panda image
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(24),
+              child: Image.asset(
+                'assets/images/coach_ryze_ai_chat_nutrition.png',
+                width: 40,
+                height: 40,
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          // Text
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          // Button
+          TextButton(
+            onPressed: _startWeeklyBilan,
+            style: TextButton.styleFrom(
+              backgroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: Text(
+              buttonText,
+              style: const TextStyle(
+                color: Color(0xFF0B132B),
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _startWeeklyBilan() async {
+    setState(() => _showBilanBanner = false);
+    WeeklyBilanService.instance.markBilanStarted();
+
+    final locService = Provider.of<LocalizationService>(context, listen: false);
+    final lang = locService.currentLanguageCode;
+
+    setState(() {
+      _isSending = true;
+      _streamingResponse = '';
+    });
+
+    try {
+      // Stream bilan response directly (no user message displayed)
+      final stream = CoachChatService.instance.streamBilanResponse(lang);
+
+      // Add streaming placeholder for Ryze's response
+      final streamingMessage = CoachMessage.streaming(
+        conversationId: widget.conversation.id,
+        userId: '',
+      );
+      setState(() {
+        _messages.add(streamingMessage);
+      });
+
+      String fullResponse = '';
+      String displayedText = '';
+
+      await for (final chunk in stream) {
+        if (mounted) {
+          fullResponse += chunk;
+
+          // Typing effect
+          while (displayedText.length < fullResponse.length && mounted) {
+            final charsToAdd = (fullResponse.length - displayedText.length).clamp(1, 3);
+            displayedText = fullResponse.substring(0, displayedText.length + charsToAdd);
+
+            setState(() {
+              _streamingResponse = displayedText;
+              if (_messages.isNotEmpty) {
+                final lastIndex = _messages.length - 1;
+                _messages[lastIndex] = _messages[lastIndex].copyWith(
+                  content: displayedText,
+                );
+              }
+            });
+
+            await Future.delayed(const Duration(milliseconds: 15));
+          }
+
+          _scrollToBottom();
+        }
+      }
+
+      // Reload to get the saved message from DB
+      await _loadConversation();
+
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur: ${e.toString()}')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSending = false;
+          _streamingResponse = '';
+        });
+      }
+    }
   }
 
   PreferredSizeWidget _buildAppBar() {
@@ -331,7 +638,7 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
             decoration: BoxDecoration(
               color: _rateLimitStatus!.canSendMessage
                   ? const Color(0xFFF1F5F9)
-                  : Colors.red.withOpacity(0.1),
+                  : Colors.red.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
@@ -357,15 +664,22 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
     final messageDay = DateTime(date.year, date.month, date.day);
 
     if (messageDay == today) {
-      return lang == 'fr' ? "Aujourd'hui" : 'Today';
+      return lang == 'fr' ? "Aujourd'hui" : lang == 'de' ? 'Heute' : 'Today';
     } else if (messageDay == yesterday) {
-      return lang == 'fr' ? 'Hier' : 'Yesterday';
+      return lang == 'fr' ? 'Hier' : lang == 'de' ? 'Gestern' : 'Yesterday';
     } else {
       // Format: "Lundi 6 jan" or "Monday, Jan 6"
-      if (lang == 'fr') {
-        return DateFormat('EEEE d MMM', 'fr_FR').format(date);
-      } else {
-        return DateFormat('EEEE, MMM d', 'en_US').format(date);
+      try {
+        if (lang == 'fr') {
+          return DateFormat('EEEE d MMM', 'fr_FR').format(date);
+        } else if (lang == 'de') {
+          return DateFormat('EEEE, d. MMM', 'de_DE').format(date);
+        } else {
+          return DateFormat('EEEE, MMM d', 'en_US').format(date);
+        }
+      } catch (e) {
+        // Fallback if locale not initialized
+        return DateFormat('yyyy-MM-dd').format(date);
       }
     }
   }
@@ -531,27 +845,26 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
       ),
       child: Row(
         children: [
-          // Voice button
-          if (_speechAvailable)
-            GestureDetector(
-              onTap: _isListening ? _stopListening : _startListening,
-              child: Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: _isListening
-                      ? Colors.red.withOpacity(0.1)
-                      : const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(22),
-                ),
-                child: Icon(
-                  _isListening ? LucideIcons.micOff : LucideIcons.mic,
-                  size: 22,
-                  color: _isListening ? Colors.red : const Color(0xFF64748B),
-                ),
+          // Voice button - always show, will prompt for permission on first tap
+          GestureDetector(
+            onTap: _isListening ? _stopListening : _startListening,
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: _isListening
+                    ? Colors.red.withValues(alpha: 0.1)
+                    : const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(22),
+              ),
+              child: Icon(
+                _isListening ? LucideIcons.micOff : LucideIcons.mic,
+                size: 22,
+                color: _isListening ? Colors.red : const Color(0xFF64748B),
               ),
             ),
-          if (_speechAvailable) const SizedBox(width: 12),
+          ),
+          const SizedBox(width: 12),
 
           // Text input
           Expanded(

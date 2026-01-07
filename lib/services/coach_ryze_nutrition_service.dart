@@ -7,6 +7,7 @@ import '../config/gemini_config.dart';
 import '../models/nutrition_analysis.dart';
 import '../models/nutrition_models.dart';
 import 'package:intl/intl.dart';
+import 'coach_personality_service.dart';
 
 /// Service pour l'analyse nutritionnelle IA avec Coach Ryze et Gemini 2.0 Flash
 class CoachRyzeNutritionService {
@@ -132,7 +133,7 @@ class CoachRyzeNutritionService {
     );
 
     // Construire le prompt adaptatif
-    final prompt = _buildPrompt(
+    final prompt = await _buildPrompt(
       context: context,
       metadata: metadata,
       todayMeals: todayMeals,
@@ -354,16 +355,21 @@ class CoachRyzeNutritionService {
   }
 
   /// Construit le prompt adaptatif selon le contexte
-  static String _buildPrompt({
+  static Future<String> _buildPrompt({
     required String context,
     required NutritionMetadata metadata,
     required List<Meal> todayMeals,
     required String languageCode,
-  }) {
-    if (languageCode == 'fr') {
-      return _buildFrenchPrompt(context, metadata, todayMeals);
+  }) async {
+    // Get user's personality preference
+    final personalityInstruction = await CoachPersonalityService.instance.buildPersonalityInstruction(languageCode);
+
+    if (languageCode == 'de') {
+      return _buildGermanPrompt(context, metadata, todayMeals, personalityInstruction);
+    } else if (languageCode == 'fr') {
+      return _buildFrenchPrompt(context, metadata, todayMeals, personalityInstruction);
     } else {
-      return _buildEnglishPrompt(context, metadata, todayMeals);
+      return _buildEnglishPrompt(context, metadata, todayMeals, personalityInstruction);
     }
   }
 
@@ -371,9 +377,12 @@ class CoachRyzeNutritionService {
     String context,
     NutritionMetadata metadata,
     List<Meal> todayMeals,
+    String personalityInstruction,
   ) {
     final buffer = StringBuffer();
     buffer.writeln('Tu es Coach Ryze, un coach nutrition expert en fitness et alimentation saine.');
+    buffer.writeln('');
+    buffer.writeln(personalityInstruction);
     buffer.writeln('');
 
     // Contexte adaptatif
@@ -504,9 +513,12 @@ class CoachRyzeNutritionService {
     String context,
     NutritionMetadata metadata,
     List<Meal> todayMeals,
+    String personalityInstruction,
   ) {
     final buffer = StringBuffer();
     buffer.writeln('You are Coach Ryze, an expert nutrition coach in fitness and healthy eating.');
+    buffer.writeln('');
+    buffer.writeln(personalityInstruction);
     buffer.writeln('');
 
     // Contexte adaptatif
@@ -630,6 +642,153 @@ class CoachRyzeNutritionService {
     buffer.writeln('⚠️ IMPORTANT: Respond ONLY with JSON, no other text before or after.');
 
     return buffer.toString();
+  }
+
+  static String _buildGermanPrompt(
+    String context,
+    NutritionMetadata metadata,
+    List<Meal> todayMeals,
+    String personalityInstruction,
+  ) {
+    final buffer = StringBuffer();
+    buffer.writeln('Du bist Coach Ryze, ein Experte für Ernährungscoaching im Bereich Fitness und gesunde Ernährung.');
+    buffer.writeln('');
+    buffer.writeln(personalityInstruction);
+    buffer.writeln('');
+
+    // Kontextabhängig
+    switch (context) {
+      case 'empty_day':
+        buffer.writeln('KONTEXT: Leerer Ernährungstag - Es ist ${_getTimeLabelGerman(metadata.timeOfDay)} und der Nutzer hat noch nichts gegessen.');
+        buffer.writeln('MISSION: Motiviere den Nutzer, seinen Ernährungstag zu beginnen.');
+        break;
+
+      case 'post_workout':
+        buffer.writeln('KONTEXT: Nach dem Training - Der Nutzer hat gerade ein ${metadata.workoutType ?? 'Training'} absolviert (${metadata.caloriesBurned ?? 0} kcal verbrannt).');
+        buffer.writeln('MISSION: Optimiere die Erholung mit Ernährungsempfehlungen nach dem Training.');
+        break;
+
+      case 'end_of_day':
+        buffer.writeln('KONTEXT: Tagesende - Komplette Übersicht des Ernährungstages.');
+        buffer.writeln('MISSION: Gesamtanalyse und Tipps für morgen.');
+        break;
+
+      case 'in_progress':
+      default:
+        buffer.writeln('KONTEXT: Tag im Verlauf - Es ist ${_getTimeLabelGerman(metadata.timeOfDay)} und der Ernährungstag schreitet voran.');
+        buffer.writeln('MISSION: Analysiere den Fortschritt und gib Hinweise für den Rest des Tages.');
+        break;
+    }
+
+    buffer.writeln('');
+    buffer.writeln('⚠️ ABSOLUTE EINSCHRÄNKUNGEN:');
+    buffer.writeln('- LÄNGE: 120 Wörter MAXIMUM');
+    buffer.writeln('- ANALYSE: 50-60 Wörter (2-3 Sätze)');
+    buffer.writeln('- EMPFEHLUNGEN: 2 Tipps × max. 30 Wörter jeweils');
+    buffer.writeln('');
+
+    // Ernährungsdaten
+    buffer.writeln('ERNÄHRUNGSDATEN (${DateFormat('dd.MM.yyyy').format(DateTime.now())}):');
+    buffer.writeln('');
+    buffer.writeln('Kalorien: ${metadata.totalCalories} / ${metadata.calorieTarget} kcal (verbleibend: ${metadata.caloriesRemaining})');
+    buffer.writeln('Protein: ${metadata.totalProteins.toStringAsFixed(1)}g / ${metadata.proteinTarget.toStringAsFixed(0)}g (${metadata.proteinPercentage.toStringAsFixed(0)}%)');
+    buffer.writeln('Kohlenhydrate: ${metadata.totalCarbs.toStringAsFixed(1)}g / ${metadata.carbsTarget.toStringAsFixed(0)}g (${metadata.carbsPercentage.toStringAsFixed(0)}%)');
+    buffer.writeln('Fette: ${metadata.totalFats.toStringAsFixed(1)}g / ${metadata.fatsTarget.toStringAsFixed(0)}g (${metadata.fatsPercentage.toStringAsFixed(0)}%)');
+    buffer.writeln('Wasser: ${metadata.waterIntake}ml');
+    buffer.writeln('');
+
+    // Mahlzeitenverteilung
+    buffer.writeln('VERTEILUNG:');
+    if (metadata.breakfastCalories > 0) buffer.writeln('- Frühstück: ${metadata.breakfastCalories} kcal');
+    if (metadata.lunchCalories > 0) buffer.writeln('- Mittagessen: ${metadata.lunchCalories} kcal');
+    if (metadata.dinnerCalories > 0) buffer.writeln('- Abendessen: ${metadata.dinnerCalories} kcal');
+    if (metadata.snacksCalories > 0) buffer.writeln('- Snacks: ${metadata.snacksCalories} kcal');
+    buffer.writeln('');
+
+    // Sport-Kontext wenn relevant
+    if (metadata.hasWorkoutToday) {
+      buffer.writeln('TRAINING HEUTE:');
+      buffer.writeln('- Art: ${metadata.workoutType ?? 'Nicht angegeben'}');
+      if (metadata.caloriesBurned != null) {
+        buffer.writeln('- Verbrauch: ${metadata.caloriesBurned} kcal');
+      }
+      buffer.writeln('');
+    }
+
+    buffer.writeln('PFLICHT-ANTWORTFORMAT (JSON):');
+    buffer.writeln('Antworte NUR mit diesem exakten JSON-Format:');
+    buffer.writeln('');
+    buffer.writeln('{');
+    buffer.writeln('  "analysis": "Deine Analyse in 50-60 Wörtern",');
+    buffer.writeln('  "recommendations": [');
+    buffer.writeln('    {');
+    buffer.writeln('      "title": "Kurzer Titel (3-5 Wörter)",');
+    buffer.writeln('      "description": "Beschreibung in 20-30 Wörtern"');
+    buffer.writeln('    },');
+    buffer.writeln('    {');
+    buffer.writeln('      "title": "Kurzer Titel (3-5 Wörter)",');
+    buffer.writeln('      "description": "Beschreibung in 20-30 Wörtern"');
+    buffer.writeln('    }');
+    buffer.writeln('  ]');
+    buffer.writeln('}');
+    buffer.writeln('');
+    buffer.writeln('REGELN FÜR DIE ANALYSE:');
+    buffer.writeln('- Maximal 50-60 Wörter');
+    buffer.writeln('- Beginne DIREKT mit der Hauptbeobachtung');
+    buffer.writeln('- Keine Einleitung wie "Analyse deines Tages..."');
+    buffer.writeln('- Bewerte Kalorienbilanz und Makros');
+    buffer.writeln('- Passe den Ton dem Kontext an (motivierend wenn leer, gratulierend wenn gut, konstruktiv wenn verbesserungswürdig)');
+    buffer.writeln('');
+    buffer.writeln('REGELN FÜR EMPFEHLUNGEN:');
+    buffer.writeln('- Genau 2 Empfehlungen');
+    buffer.writeln('- Titel: 3-5 Wörter');
+    buffer.writeln('- Beschreibung: 20-30 Wörter mit konkreter Aktion und genauen Zahlen');
+    buffer.writeln('');
+    buffer.writeln('   Beispiele je nach Kontext:');
+    if (context == 'empty_day') {
+      buffer.writeln('   {');
+      buffer.writeln('     "title": "Starte mit dem Frühstück",');
+      buffer.writeln('     "description": "Bereite ein ausgewogenes Frühstück mit 400-500 kcal mit Protein, komplexen Kohlenhydraten und Obst vor, um gut in den Tag zu starten."');
+      buffer.writeln('   }');
+    } else if (context == 'post_workout') {
+      buffer.writeln('   {');
+      buffer.writeln('     "title": "Protein auftanken",');
+      buffer.writeln('     "description": "Nimm innerhalb von 2 Stunden nach dem Training 20-30g Protein mit einem Shake oder griechischem Joghurt zu dir, um die Muskelregeneration zu optimieren."');
+      buffer.writeln('   }');
+    } else if (context == 'end_of_day') {
+      buffer.writeln('   {');
+      buffer.writeln('     "title": "Leichtes Abendessen heute",');
+      buffer.writeln('     "description": "Bevorzuge leichte Proteine wie Fisch und Gemüse für eine Mahlzeit mit 300-400 kcal, die einen guten Schlaf fördert."');
+      buffer.writeln('   }');
+    } else {
+      buffer.writeln('   {');
+      buffer.writeln('     "title": "Mehr Gemüse essen",');
+      buffer.writeln('     "description": "Füge deiner nächsten Mahlzeit 150g verschiedenes Gemüse hinzu, um die Ballaststoff- und Mikronährstoffzufuhr zu erhöhen."');
+      buffer.writeln('   }');
+    }
+    buffer.writeln('');
+    buffer.writeln('STIL:');
+    buffer.writeln('- Fürsorglicher, ermutigender und positiver Ton (niemals alarmistisch)');
+    buffer.writeln('- Duzen');
+    buffer.writeln('- Kurze und wirkungsvolle Sätze');
+    buffer.writeln('- Genaue Zahlen');
+    buffer.writeln('- KEINE Emojis');
+    buffer.writeln('- Vermeide aggressive Ausrufezeichen');
+    buffer.writeln('');
+    buffer.writeln('⚠️ WICHTIG: Antworte NUR mit dem JSON, kein anderer Text davor oder danach.');
+
+    return buffer.toString();
+  }
+
+  /// Helper für deutsche Zeit-Labels
+  static String _getTimeLabelGerman(String timeOfDay) {
+    switch (timeOfDay) {
+      case 'morning': return 'Morgen';
+      case 'afternoon': return 'Nachmittag';
+      case 'evening': return 'Abend';
+      case 'night': return 'Nacht';
+      default: return '';
+    }
   }
 
   /// Helper pour les labels de temps

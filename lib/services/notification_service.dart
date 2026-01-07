@@ -321,16 +321,22 @@ class NotificationService {
   /// Planifier la protection de série avec message engageant
   Future<void> _scheduleStreakProtection(NotificationPreferences prefs) async {
     final firstName = await _getUserFirstName();
-    final isFrench = LocalizationService.instance.currentLanguageCode == 'fr';
+    final languageCode = LocalizationService.instance.currentLanguageCode;
+    final isFrench = languageCode == 'fr';
+    final isGerman = languageCode == 'de';
 
     // Message générique engageant pour protéger la série
     // Le vrai contenu contextuel sera envoyé via checkAndSendStreakProtection()
     final title = isFrench
         ? '🔥 ${firstName.isNotEmpty ? "$firstName, p" : "P"}rotège ta série !'
-        : '🔥 ${firstName.isNotEmpty ? "$firstName, p" : "P"}rotect your streak!';
+        : isGerman
+            ? '🔥 ${firstName.isNotEmpty ? "$firstName, s" : "S"}chütze deine Serie!'
+            : '🔥 ${firstName.isNotEmpty ? "$firstName, p" : "P"}rotect your streak!';
     final body = isFrench
         ? 'Tu n\'as pas encore logué aujourd\'hui. Ne perds pas ta progression !'
-        : 'You haven\'t logged anything today. Don\'t lose your progress!';
+        : isGerman
+            ? 'Du hast heute noch nichts eingetragen. Verliere nicht deinen Fortschritt!'
+            : 'You haven\'t logged anything today. Don\'t lose your progress!';
 
     await _scheduleDailyNotification(
       id: 20,
@@ -349,15 +355,21 @@ class NotificationService {
   /// Planifier le résumé des objectifs quotidiens avec message engageant
   Future<void> _scheduleDailyGoalsSummary(NotificationPreferences prefs) async {
     final firstName = await _getUserFirstName();
-    final isFrench = LocalizationService.instance.currentLanguageCode == 'fr';
+    final languageCode = LocalizationService.instance.currentLanguageCode;
+    final isFrench = languageCode == 'fr';
+    final isGerman = languageCode == 'de';
 
     // Message motivant pour le résumé du soir
     final title = isFrench
         ? '📊 ${firstName.isNotEmpty ? "$firstName, c" : "C"}\'est l\'heure du bilan !'
-        : '📊 ${firstName.isNotEmpty ? "$firstName, t" : "T"}ime for your daily recap!';
+        : isGerman
+            ? '📊 ${firstName.isNotEmpty ? "$firstName, z" : "Z"}eit für deine Tageszusammenfassung!'
+            : '📊 ${firstName.isNotEmpty ? "$firstName, t" : "T"}ime for your daily recap!';
     final body = isFrench
         ? 'Viens voir ta progression du jour et termine en beauté 💪'
-        : 'Check your daily progress and finish strong 💪';
+        : isGerman
+            ? 'Schau dir deinen Tagesfortschritt an und beende den Tag stark 💪'
+            : 'Check your daily progress and finish strong 💪';
 
     await _scheduleDailyNotification(
       id: 30,
@@ -787,15 +799,21 @@ class NotificationService {
   /// Message engageant pour ramener l'utilisateur
   Future<void> _scheduleNothingLoggedCheck(NotificationPreferences prefs) async {
     final firstName = await _getUserFirstName();
-    final isFrench = LocalizationService.instance.currentLanguageCode == 'fr';
+    final languageCode = LocalizationService.instance.currentLanguageCode;
+    final isFrench = languageCode == 'fr';
+    final isGerman = languageCode == 'de';
 
     // Message engageant pour rappeler à l'utilisateur de logger
     final title = isFrench
         ? '👋 ${firstName.isNotEmpty ? "$firstName, o" : "O"}n ne t\'a pas vu aujourd\'hui !'
-        : '👋 ${firstName.isNotEmpty ? "$firstName, w" : "W"}e haven\'t seen you today!';
+        : isGerman
+            ? '👋 ${firstName.isNotEmpty ? "$firstName, w" : "W"}ir haben dich heute nicht gesehen!'
+            : '👋 ${firstName.isNotEmpty ? "$firstName, w" : "W"}e haven\'t seen you today!';
     final body = isFrench
         ? 'Prends 30 secondes pour logger ton repas ou ton activité 🎯'
-        : 'Take 30 seconds to log your meal or activity 🎯';
+        : isGerman
+            ? 'Nimm dir 30 Sekunden zum Eintragen deiner Mahlzeit oder Aktivität 🎯'
+            : 'Take 30 seconds to log your meal or activity 🎯';
 
     await _scheduleDailyNotification(
       id: 70,

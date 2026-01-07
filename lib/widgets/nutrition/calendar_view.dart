@@ -317,12 +317,18 @@ class _CalendarViewState extends State<CalendarView> {
   }
 
   String _getMonthName(DateTime date, String languageCode) {
-    final monthNames = languageCode == 'en' 
-        ? ['January', 'February', 'March', 'April', 'May', 'June',
-           'July', 'August', 'September', 'October', 'November', 'December']
-        : ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
-           'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
-    
+    List<String> monthNames;
+    if (languageCode == 'de') {
+      monthNames = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
+                    'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
+    } else if (languageCode == 'en') {
+      monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                    'July', 'August', 'September', 'October', 'November', 'December'];
+    } else {
+      monthNames = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+                    'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+    }
+
     return '${monthNames[date.month - 1]} ${date.year}';
   }
 }

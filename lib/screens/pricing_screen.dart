@@ -22,11 +22,12 @@ class _PricingScreenState extends State<PricingScreen> {
   Widget build(BuildContext context) {
     final locService = Provider.of<LocalizationService>(context);
     final isFrench = locService.currentLanguageCode == 'fr';
+    final isGerman = locService.currentLanguageCode == 'de';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: Text(isFrench ? 'Plans & Tarifs' : 'Plans & Pricing'),
+        title: Text(isFrench ? 'Plans & Tarifs' : isGerman ? 'Pläne & Preise' : 'Plans & Pricing'),
         backgroundColor: const Color(0xFF0B132B),
         foregroundColor: Colors.white,
         elevation: 0,
@@ -44,7 +45,9 @@ class _PricingScreenState extends State<PricingScreen> {
                   Text(
                     isFrench
                         ? 'Débloque ton potentiel complet'
-                        : 'Unlock your full potential',
+                        : isGerman
+                            ? 'Entfessle dein volles Potenzial'
+                            : 'Unlock your full potential',
                     style: const TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
@@ -56,7 +59,9 @@ class _PricingScreenState extends State<PricingScreen> {
                   Text(
                     isFrench
                         ? 'Scans IA illimités • Bilan quotidien • Générateur workouts'
-                        : 'Unlimited AI scans • Daily analysis • Workout generator',
+                        : isGerman
+                            ? 'Unbegrenzte KI-Scans • Tägliche Analyse • Workout-Generator'
+                            : 'Unlimited AI scans • Daily analysis • Workout generator',
                     style: const TextStyle(
                       fontSize: 14,
                       color: Color(0xFF94A3B8),
@@ -76,7 +81,7 @@ class _PricingScreenState extends State<PricingScreen> {
                 children: SubscriptionPlan.availablePlans.map((plan) {
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 12),
-                    child: _buildPlanCard(plan, isFrench),
+                    child: _buildPlanCard(plan, isFrench, isGerman),
                   );
                 }).toList(),
               ),
@@ -93,7 +98,9 @@ class _PricingScreenState extends State<PricingScreen> {
                   Text(
                     isFrench
                         ? 'Tout ce qui est inclus:'
-                        : 'Everything included:',
+                        : isGerman
+                            ? 'Alles inklusive:'
+                            : 'Everything included:',
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -146,7 +153,7 @@ class _PricingScreenState extends State<PricingScreen> {
                                   const Icon(LucideIcons.testTube, size: 20),
                                   const SizedBox(width: 12),
                                   Text(
-                                    isFrench ? '🧪 SIMULER PAIEMENT (TEST)' : '🧪 SIMULATE PAYMENT (TEST)',
+                                    isFrench ? '🧪 SIMULER PAIEMENT (TEST)' : isGerman ? '🧪 ZAHLUNG SIMULIEREN (TEST)' : '🧪 SIMULATE PAYMENT (TEST)',
                                     style: const TextStyle(
                                       color: Colors.white,
                                       fontWeight: FontWeight.w600,
@@ -161,7 +168,9 @@ class _PricingScreenState extends State<PricingScreen> {
                     Text(
                       isFrench
                           ? 'Mode TEST: Aucun paiement réel'
-                          : 'TEST Mode: No real payment',
+                          : isGerman
+                              ? 'TEST-Modus: Keine echte Zahlung'
+                              : 'TEST Mode: No real payment',
                       style: const TextStyle(
                         fontSize: 12,
                         color: Color(0xFF10B981),
@@ -191,7 +200,7 @@ class _PricingScreenState extends State<PricingScreen> {
                                 ),
                               )
                             : Text(
-                                isFrench ? 'Commencer maintenant' : 'Start now',
+                                isFrench ? 'Commencer maintenant' : isGerman ? 'Jetzt starten' : 'Start now',
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.w600,
@@ -212,7 +221,7 @@ class _PricingScreenState extends State<PricingScreen> {
     );
   }
 
-  Widget _buildPlanCard(SubscriptionPlan plan, bool isFrench) {
+  Widget _buildPlanCard(SubscriptionPlan plan, bool isFrench, bool isGerman) {
     final isSelected = _selectedPeriod == plan.period;
     final isRecommended = plan.period == SubscriptionPeriod.monthly;
 
@@ -288,7 +297,7 @@ class _PricingScreenState extends State<PricingScreen> {
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
-                            isFrench ? 'Populaire' : 'Popular',
+                            isFrench ? 'Populaire' : isGerman ? 'Beliebt' : 'Popular',
                             style: const TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
@@ -339,7 +348,7 @@ class _PricingScreenState extends State<PricingScreen> {
                 Padding(
                   padding: const EdgeInsets.only(bottom: 6),
                   child: Text(
-                    _getPeriodLabel(plan.period, isFrench),
+                    _getPeriodLabel(plan.period, isFrench, isGerman),
                     style: const TextStyle(
                       fontSize: 14,
                       color: Color(0xFF64748B),
@@ -353,7 +362,7 @@ class _PricingScreenState extends State<PricingScreen> {
                 plan.period != SubscriptionPeriod.monthly) ...[
               const SizedBox(height: 8),
               Text(
-                '${plan.pricePerMonth.toStringAsFixed(2)}€ ${isFrench ? 'par mois' : 'per month'}',
+                '${plan.pricePerMonth.toStringAsFixed(2)}€ ${isFrench ? 'par mois' : isGerman ? 'pro Monat' : 'per month'}',
                 style: const TextStyle(
                   fontSize: 13,
                   color: Color(0xFF64748B),
@@ -403,16 +412,16 @@ class _PricingScreenState extends State<PricingScreen> {
     );
   }
 
-  String _getPeriodLabel(SubscriptionPeriod period, bool isFrench) {
+  String _getPeriodLabel(SubscriptionPeriod period, bool isFrench, bool isGerman) {
     switch (period) {
       case SubscriptionPeriod.weekly:
-        return isFrench ? '/semaine' : '/week';
+        return isFrench ? '/semaine' : isGerman ? '/Woche' : '/week';
       case SubscriptionPeriod.monthly:
-        return isFrench ? '/mois' : '/month';
+        return isFrench ? '/mois' : isGerman ? '/Monat' : '/month';
       case SubscriptionPeriod.annual:
-        return isFrench ? '/an' : '/year';
+        return isFrench ? '/an' : isGerman ? '/Jahr' : '/year';
       case SubscriptionPeriod.lifetime:
-        return isFrench ? 'une fois' : 'one-time';
+        return isFrench ? 'une fois' : isGerman ? 'einmalig' : 'one-time';
     }
   }
 

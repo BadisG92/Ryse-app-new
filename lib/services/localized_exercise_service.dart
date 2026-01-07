@@ -16,7 +16,7 @@ class LocalizedExerciseService {
     int? limit,
   }) async {
     final locService = LocalizationService.instance;
-    final suffix = locService.getColumnSuffix(); // '_fr' ou '_en'
+    final suffix = locService.getColumnSuffix(); // '_fr', '_en' ou '_de'
 
     try {
       final baseQuery = _supabase
@@ -27,6 +27,7 @@ class LocalizedExerciseService {
             instructions$suffix,
             muscle_group_fr,
             muscle_group_en,
+            muscle_group_de,
             equipment,
             difficulty_level,
             video_url,
@@ -169,6 +170,7 @@ class LocalizedExerciseService {
               name$suffix,
               muscle_group_fr,
               muscle_group_en,
+              muscle_group_de,
               equipment,
               difficulty_level
             )
@@ -229,10 +231,11 @@ class LocalizedExerciseService {
   static String getLocalizedText(Map<String, dynamic> data, String baseColumnName) {
     final locService = LocalizationService.instance;
     final suffix = locService.getColumnSuffix();
-    
-    return data['$baseColumnName$suffix'] as String? ?? 
-           data['${baseColumnName}_fr'] as String? ?? 
-           data['${baseColumnName}_en'] as String? ?? 
+
+    return data['$baseColumnName$suffix'] as String? ??
+           data['${baseColumnName}_de'] as String? ??
+           data['${baseColumnName}_fr'] as String? ??
+           data['${baseColumnName}_en'] as String? ??
            'Non disponible';
   }
 
@@ -250,6 +253,7 @@ class LocalizedExerciseService {
             instructions$suffix,
             muscle_group_fr,
             muscle_group_en,
+            muscle_group_de,
             equipment,
             description,
             difficulty_level,
@@ -282,7 +286,7 @@ class LocalizedExerciseService {
   /// Utilisé par le bottom sheet d'info exercice pendant un workout
   static Future<Map<String, dynamic>?> getExerciseEnrichedDetails(String exerciseId) async {
     final locService = LocalizationService.instance;
-    final suffix = locService.getColumnSuffix(); // '_fr' ou '_en'
+    final suffix = locService.getColumnSuffix(); // '_fr', '_en' ou '_de'
 
     try {
       final result = await _supabase
@@ -295,6 +299,7 @@ class LocalizedExerciseService {
             search_url$suffix,
             muscle_group_fr,
             muscle_group_en,
+            muscle_group_de,
             equipment,
             difficulty_level
           ''')

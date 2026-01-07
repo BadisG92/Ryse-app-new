@@ -7,7 +7,9 @@ import '../services/localization_service.dart';
 class NotificationHelper {
   /// Célébrer un jalon de série (7, 14, 30, 60, 100 jours)
   static Future<void> celebrateStreakMilestone(int streakDays) async {
-    final isFrench = LocalizationService.instance.currentLanguageCode == 'fr';
+    final languageCode = LocalizationService.instance.currentLanguageCode;
+    final isFrench = languageCode == 'fr';
+    final isGerman = languageCode == 'de';
 
     // Seulement célébrer les jalons spécifiques
     if (![7, 14, 30, 60, 100].contains(streakDays)) return;
@@ -16,30 +18,60 @@ class NotificationHelper {
     String body;
 
     if (streakDays == 7) {
-      title = isFrench ? '🎉 7 jours d\'affilée !' : '🎉 7 days in a row!';
+      title = isFrench
+          ? '🎉 7 jours d\'affilée !'
+          : isGerman
+              ? '🎉 7 Tage am Stück!'
+              : '🎉 7 days in a row!';
       body = isFrench
           ? 'Incroyable ! Tu construis une vraie routine'
-          : 'Amazing! You\'re building a real habit';
+          : isGerman
+              ? 'Unglaublich! Du baust eine echte Routine auf'
+              : 'Amazing! You\'re building a real habit';
     } else if (streakDays == 14) {
-      title = isFrench ? '🔥 2 semaines parfaites !' : '🔥 2 perfect weeks!';
+      title = isFrench
+          ? '🔥 2 semaines parfaites !'
+          : isGerman
+              ? '🔥 2 perfekte Wochen!'
+              : '🔥 2 perfect weeks!';
       body = isFrench
           ? 'Tu es sur la bonne voie. Continue comme ça !'
-          : 'You\'re on the right track. Keep it up!';
+          : isGerman
+              ? 'Du bist auf dem richtigen Weg. Weiter so!'
+              : 'You\'re on the right track. Keep it up!';
     } else if (streakDays == 30) {
-      title = isFrench ? '🏆 30 JOURS DE SÉRIE !' : '🏆 30-DAY STREAK!';
+      title = isFrench
+          ? '🏆 30 JOURS DE SÉRIE !'
+          : isGerman
+              ? '🏆 30-TAGE-SERIE!'
+              : '🏆 30-DAY STREAK!';
       body = isFrench
           ? 'Champion ! Coach Ryze est fier de toi 🐼'
-          : 'Champion! Coach Ryze is proud of you 🐼';
+          : isGerman
+              ? 'Champion! Coach Ryze ist stolz auf dich 🐼'
+              : 'Champion! Coach Ryze is proud of you 🐼';
     } else if (streakDays == 60) {
-      title = isFrench ? '⚡ 2 MOIS CONSÉCUTIFS !' : '⚡ 2 MONTHS STRAIGHT!';
+      title = isFrench
+          ? '⚡ 2 MOIS CONSÉCUTIFS !'
+          : isGerman
+              ? '⚡ 2 MONATE AM STÜCK!'
+              : '⚡ 2 MONTHS STRAIGHT!';
       body = isFrench
           ? 'Incroyable discipline ! Tu es une machine'
-          : 'Incredible discipline! You\'re unstoppable';
+          : isGerman
+              ? 'Unglaubliche Disziplin! Du bist unaufhaltsam'
+              : 'Incredible discipline! You\'re unstoppable';
     } else if (streakDays == 100) {
-      title = isFrench ? '💯 CENTENAIRE LÉGENDAIRE !' : '💯 LEGENDARY 100 DAYS!';
+      title = isFrench
+          ? '💯 CENTENAIRE LÉGENDAIRE !'
+          : isGerman
+              ? '💯 LEGENDÄRE 100 TAGE!'
+              : '💯 LEGENDARY 100 DAYS!';
       body = isFrench
           ? 'TU ES UNE LÉGENDE ! 🏆 Partage ton succès !'
-          : 'YOU ARE A LEGEND! 🏆 Share your success!';
+          : isGerman
+              ? 'DU BIST EINE LEGENDE! 🏆 Teile deinen Erfolg!'
+              : 'YOU ARE A LEGEND! 🏆 Share your success!';
     } else {
       return;
     }
@@ -52,13 +84,21 @@ class NotificationHelper {
 
   /// Célébrer une journée parfaite (4/4 objectifs)
   static Future<void> celebratePerfectDay({String? firstName}) async {
-    final isFrench = LocalizationService.instance.currentLanguageCode == 'fr';
+    final languageCode = LocalizationService.instance.currentLanguageCode;
+    final isFrench = languageCode == 'fr';
+    final isGerman = languageCode == 'de';
     final name = firstName != null && firstName.isNotEmpty ? '$firstName, ' : '';
 
-    final title = isFrench ? '${name}JOUR PARFAIT ! 💯' : '${name}PERFECT DAY! 💯';
+    final title = isFrench
+        ? '${name}JOUR PARFAIT ! 💯'
+        : isGerman
+            ? '${name}PERFEKTER TAG! 💯'
+            : '${name}PERFECT DAY! 💯';
     final body = isFrench
         ? '4/4 objectifs validés. Tu es une machine !'
-        : '4/4 goals completed. You\'re unstoppable!';
+        : isGerman
+            ? '4/4 Ziele erreicht. Du bist unaufhaltsam!'
+            : '4/4 goals completed. You\'re unstoppable!';
 
     await NotificationService().sendImmediateNotification(
       title: title,
@@ -68,13 +108,21 @@ class NotificationHelper {
 
   /// Célébrer une semaine parfaite
   static Future<void> celebratePerfectWeek({String? firstName}) async {
-    final isFrench = LocalizationService.instance.currentLanguageCode == 'fr';
+    final languageCode = LocalizationService.instance.currentLanguageCode;
+    final isFrench = languageCode == 'fr';
+    final isGerman = languageCode == 'de';
     final name = firstName != null && firstName.isNotEmpty ? '$firstName, ' : '';
 
-    final title = isFrench ? '${name}SEMAINE PARFAITE ! 🎉' : '${name}PERFECT WEEK! 🎉';
+    final title = isFrench
+        ? '${name}SEMAINE PARFAITE ! 🎉'
+        : isGerman
+            ? '${name}PERFEKTE WOCHE! 🎉'
+            : '${name}PERFECT WEEK! 🎉';
     final body = isFrench
         ? '7/7 jours d\'objectifs complétés. Incroyable !'
-        : '7/7 days of goals completed. Amazing!';
+        : isGerman
+            ? '7/7 Tage Ziele erreicht. Unglaublich!'
+            : '7/7 days of goals completed. Amazing!';
 
     await NotificationService().sendImmediateNotification(
       title: title,
@@ -88,22 +136,36 @@ class NotificationHelper {
     required String goalType, // 'lose' ou 'gain'
     String? firstName,
   }) async {
-    final isFrench = LocalizationService.instance.currentLanguageCode == 'fr';
+    final languageCode = LocalizationService.instance.currentLanguageCode;
+    final isFrench = languageCode == 'fr';
+    final isGerman = languageCode == 'de';
     final name = firstName != null && firstName.isNotEmpty ? '$firstName, ' : '';
 
     String title;
     String body;
 
     if (goalType == 'lose') {
-      title = isFrench ? '${name}OBJECTIF POIDS ATTEINT ! 🎯' : '${name}WEIGHT GOAL REACHED! 🎯';
+      title = isFrench
+          ? '${name}OBJECTIF POIDS ATTEINT ! 🎯'
+          : isGerman
+              ? '${name}GEWICHTSZIEL ERREICHT! 🎯'
+              : '${name}WEIGHT GOAL REACHED! 🎯';
       body = isFrench
           ? 'Félicitations ! Tu as atteint ${targetWeight}kg'
-          : 'Congratulations! You reached ${targetWeight}kg';
+          : isGerman
+              ? 'Herzlichen Glückwunsch! Du hast ${targetWeight}kg erreicht'
+              : 'Congratulations! You reached ${targetWeight}kg';
     } else {
-      title = isFrench ? '${name}OBJECTIF POIDS ATTEINT ! 💪' : '${name}WEIGHT GOAL REACHED! 💪';
+      title = isFrench
+          ? '${name}OBJECTIF POIDS ATTEINT ! 💪'
+          : isGerman
+              ? '${name}GEWICHTSZIEL ERREICHT! 💪'
+              : '${name}WEIGHT GOAL REACHED! 💪';
       body = isFrench
           ? 'Bravo ! Tu as atteint ${targetWeight}kg'
-          : 'Well done! You reached ${targetWeight}kg';
+          : isGerman
+              ? 'Gut gemacht! Du hast ${targetWeight}kg erreicht'
+              : 'Well done! You reached ${targetWeight}kg';
     }
 
     await NotificationService().sendImmediateNotification(
@@ -114,27 +176,47 @@ class NotificationHelper {
 
   /// Message motivant si l'utilisateur n'a rien logué depuis X jours
   static Future<void> sendReengagementNotification(int daysInactive, {String? firstName}) async {
-    final isFrench = LocalizationService.instance.currentLanguageCode == 'fr';
+    final languageCode = LocalizationService.instance.currentLanguageCode;
+    final isFrench = languageCode == 'fr';
+    final isGerman = languageCode == 'de';
     final name = firstName != null && firstName.isNotEmpty ? '$firstName, ' : '';
 
     String title;
     String body;
 
     if (daysInactive == 3) {
-      title = isFrench ? '${name}tu nous manques ! 👋' : '${name}we miss you! 👋';
+      title = isFrench
+          ? '${name}tu nous manques ! 👋'
+          : isGerman
+              ? '${name}wir vermissen dich! 👋'
+              : '${name}we miss you! 👋';
       body = isFrench
           ? '3 jours sans nouvelle. Reprends où tu en étais'
-          : '3 days away. Pick up where you left off';
+          : isGerman
+              ? '3 Tage weg. Mach weiter, wo du aufgehört hast'
+              : '3 days away. Pick up where you left off';
     } else if (daysInactive == 7) {
-      title = isFrench ? '${name}Coach Ryze veut te revoir 🐼' : '${name}Coach Ryze wants to see you 🐼';
+      title = isFrench
+          ? '${name}Coach Ryze veut te revoir 🐼'
+          : isGerman
+              ? '${name}Coach Ryze möchte dich wiedersehen 🐼'
+              : '${name}Coach Ryze wants to see you 🐼';
       body = isFrench
           ? 'Reviens quand tu veux. Ton objectif nutrition t\'attend'
-          : 'Come back anytime. Your nutrition goal is waiting';
+          : isGerman
+              ? 'Komm zurück, wann du willst. Dein Ernährungsziel wartet'
+              : 'Come back anytime. Your nutrition goal is waiting';
     } else if (daysInactive == 14) {
-      title = isFrench ? '${name}prêt à recommencer ? 💪' : '${name}ready to restart? 💪';
+      title = isFrench
+          ? '${name}prêt à recommencer ? 💪'
+          : isGerman
+              ? '${name}bereit neu zu starten? 💪'
+              : '${name}ready to restart? 💪';
       body = isFrench
           ? '14 jours sans log. On est là pour t\'aider à revenir'
-          : '14 days away. We\'re here to help you get back on track';
+          : isGerman
+              ? '14 Tage weg. Wir helfen dir wieder auf Kurs zu kommen'
+              : '14 days away. We\'re here to help you get back on track';
     } else {
       return;
     }

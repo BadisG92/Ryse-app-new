@@ -11,11 +11,12 @@ class PaywallPreviewScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isFrench = LocalizationService.instance.currentLanguageCode == 'fr';
+    final isGerman = LocalizationService.instance.currentLanguageCode == 'de';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: Text(isFrench ? '🎨 Prévisualisation Paywalls' : '🎨 Paywall Preview'),
+        title: Text(isFrench ? '🎨 Prévisualisation Paywalls' : isGerman ? '🎨 Paywall-Vorschau' : '🎨 Paywall Preview'),
         backgroundColor: const Color(0xFF0B132B),
         foregroundColor: Colors.white,
         elevation: 0,
@@ -38,7 +39,9 @@ class PaywallPreviewScreen extends StatelessWidget {
                   child: Text(
                     isFrench
                         ? 'Clique sur une carte pour voir le paywall'
-                        : 'Tap a card to see the paywall',
+                        : isGerman
+                            ? 'Tippe auf eine Karte, um die Paywall zu sehen'
+                            : 'Tap a card to see the paywall',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 14,
@@ -56,46 +59,54 @@ class PaywallPreviewScreen extends StatelessWidget {
           // NUTRITION PAYWALLS
           // ═══════════════════════════════════════════════════════
           _buildSectionTitle(
-            isFrench ? '🍎 Nutrition' : '🍎 Nutrition',
+            isFrench ? '🍎 Nutrition' : isGerman ? '🍎 Ernährung' : '🍎 Nutrition',
           ),
 
           _buildPaywallCard(
             context: context,
             paywallContext: PaywallContext.scanner,
-            title: isFrench ? '📸 Scanner Photo' : '📸 Photo Scanner',
+            title: isFrench ? '📸 Scanner Photo' : isGerman ? '📸 Foto-Scanner' : '📸 Photo Scanner',
             description: isFrench
                 ? 'Titre: "Arrête de Deviner tes Calories"\n6 bénéfices + Avatar nutrition'
-                : 'Title: "Stop Guessing Your Calories"\n6 benefits + Nutrition avatar',
+                : isGerman
+                    ? 'Titel: "Hör auf, deine Kalorien zu raten"\n6 Vorteile + Ernährungs-Avatar'
+                    : 'Title: "Stop Guessing Your Calories"\n6 benefits + Nutrition avatar',
             color: const Color(0xFF10B981),
           ),
 
           _buildPaywallCard(
             context: context,
             paywallContext: PaywallContext.barcodeScanner,
-            title: isFrench ? '📱 Scanner Barcode' : '📱 Barcode Scanner',
+            title: isFrench ? '📱 Scanner Barcode' : isGerman ? '📱 Barcode-Scanner' : '📱 Barcode Scanner',
             description: isFrench
                 ? 'Titre: "Fais tes Courses sans Stress"\n6 bénéfices + Avatar nutrition'
-                : 'Title: "Shop Stress-Free"\n6 benefits + Nutrition avatar',
+                : isGerman
+                    ? 'Titel: "Stressfrei einkaufen"\n6 Vorteile + Ernährungs-Avatar'
+                    : 'Title: "Shop Stress-Free"\n6 benefits + Nutrition avatar',
             color: const Color(0xFF3B82F6),
           ),
 
           _buildPaywallCard(
             context: context,
             paywallContext: PaywallContext.chatInput,
-            title: isFrench ? '💬 Chat Texte/Vocal' : '💬 Text/Voice Chat',
+            title: isFrench ? '💬 Chat Texte/Vocal' : isGerman ? '💬 Text-/Sprach-Chat' : '💬 Text/Voice Chat',
             description: isFrench
                 ? 'Titre: "Mange, Parle, C\'est Compté"\n6 bénéfices + Avatar nutrition'
-                : 'Title: "Eat, Talk, It\'s Tracked"\n6 benefits + Nutrition avatar',
+                : isGerman
+                    ? 'Titel: "Essen, Sprechen, Erfasst"\n6 Vorteile + Ernährungs-Avatar'
+                    : 'Title: "Eat, Talk, It\'s Tracked"\n6 benefits + Nutrition avatar',
             color: const Color(0xFF8B5CF6),
           ),
 
           _buildPaywallCard(
             context: context,
             paywallContext: PaywallContext.nutritionAnalysis,
-            title: isFrench ? '📊 Bilan Quotidien' : '📊 Daily Report',
+            title: isFrench ? '📊 Bilan Quotidien' : isGerman ? '📊 Tagesbericht' : '📊 Daily Report',
             description: isFrench
                 ? 'Titre: "Comprends VRAIMENT ta Nutrition"\n6 bénéfices + Avatar nutrition'
-                : 'Title: "TRULY Understand Your Nutrition"\n6 benefits + Nutrition avatar',
+                : isGerman
+                    ? 'Titel: "Verstehe WIRKLICH deine Ernährung"\n6 Vorteile + Ernährungs-Avatar'
+                    : 'Title: "TRULY Understand Your Nutrition"\n6 benefits + Nutrition avatar',
             color: const Color(0xFFF59E0B),
           ),
 
@@ -105,26 +116,30 @@ class PaywallPreviewScreen extends StatelessWidget {
           // SPORT PAYWALLS
           // ═══════════════════════════════════════════════════════
           _buildSectionTitle(
-            isFrench ? '💪 Sport' : '💪 Sport',
+            isFrench ? '💪 Sport' : isGerman ? '💪 Sport' : '💪 Sport',
           ),
 
           _buildPaywallCard(
             context: context,
             paywallContext: PaywallContext.workoutGenerator,
-            title: isFrench ? '🤖 Générateur Workout' : '🤖 Workout Generator',
+            title: isFrench ? '🤖 Générateur Workout' : isGerman ? '🤖 Workout-Generator' : '🤖 Workout Generator',
             description: isFrench
                 ? 'Titre: "Entraîne-toi comme un Pro"\n6 bénéfices + Avatar workout'
-                : 'Title: "Train Like a Pro"\n6 benefits + Workout avatar',
+                : isGerman
+                    ? 'Titel: "Trainiere wie ein Profi"\n6 Vorteile + Workout-Avatar'
+                    : 'Title: "Train Like a Pro"\n6 benefits + Workout avatar',
             color: const Color(0xFFEF4444),
           ),
 
           _buildPaywallCard(
             context: context,
             paywallContext: PaywallContext.exerciseAnalysis,
-            title: isFrench ? '📈 Analyse Progression' : '📈 Progress Analysis',
+            title: isFrench ? '📈 Analyse Progression' : isGerman ? '📈 Fortschrittsanalyse' : '📈 Progress Analysis',
             description: isFrench
                 ? 'Titre: "Progresse sur Chaque Exercice"\n6 bénéfices + Avatar workout'
-                : 'Title: "Progress on Every Exercise"\n6 benefits + Workout avatar',
+                : isGerman
+                    ? 'Titel: "Fortschritt bei jeder Übung"\n6 Vorteile + Workout-Avatar'
+                    : 'Title: "Progress on Every Exercise"\n6 benefits + Workout avatar',
             color: const Color(0xFFEC4899),
           ),
 
@@ -134,16 +149,18 @@ class PaywallPreviewScreen extends StatelessWidget {
           // GENERIC PAYWALL
           // ═══════════════════════════════════════════════════════
           _buildSectionTitle(
-            isFrench ? '💎 Générique' : '💎 Generic',
+            isFrench ? '💎 Générique' : isGerman ? '💎 Generisch' : '💎 Generic',
           ),
 
           _buildPaywallCard(
             context: context,
             paywallContext: PaywallContext.genericUpgrade,
-            title: isFrench ? '🚀 Paywall Générique' : '🚀 Generic Paywall',
+            title: isFrench ? '🚀 Paywall Générique' : isGerman ? '🚀 Generische Paywall' : '🚀 Generic Paywall',
             description: isFrench
                 ? 'Titre: "Transforme ton Corps"\n6 bénéfices génériques + Avatar chef'
-                : 'Title: "Transform Your Body"\n6 generic benefits + Chef avatar',
+                : isGerman
+                    ? 'Titel: "Transformiere deinen Körper"\n6 generische Vorteile + Chef-Avatar'
+                    : 'Title: "Transform Your Body"\n6 generic benefits + Chef avatar',
             color: const Color(0xFF64748B),
           ),
 

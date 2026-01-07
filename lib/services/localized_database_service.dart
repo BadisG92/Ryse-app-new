@@ -3,17 +3,17 @@ import '../config/supabase_config.dart';
 import 'localization_service.dart';
 
 /// Service utilitaire pour gérer les requêtes de base de données localisées
-/// 
-/// Ce service fournit des méthodes pour récupérer des données depuis la base 
-/// en utilisant les colonnes appropriées selon la langue sélectionnée (_fr ou _en)
+///
+/// Ce service fournit des méthodes pour récupérer des données depuis la base
+/// en utilisant les colonnes appropriées selon la langue sélectionnée (_fr, _en ou _de)
 class LocalizedDatabaseService {
   static SupabaseClient get _supabase => SupabaseConfig.client;
 
   /// Récupère des données avec colonnes localisées
   /// 
   /// [tableName] - nom de la table
-  /// [baseColumns] - colonnes de base (non localisées) 
-  /// [localizedColumns] - colonnes qui ont des variantes _fr/_en
+  /// [baseColumns] - colonnes de base (non localisées)
+  /// [localizedColumns] - colonnes qui ont des variantes _fr/_en/_de
   static Future<List<Map<String, dynamic>>> getLocalizedData({
     required String tableName,
     List<String> baseColumns = const [],
@@ -106,6 +106,7 @@ class LocalizedDatabaseService {
       instructions$suffix,
       muscle_group_fr,
       muscle_group_en,
+      muscle_group_de,
       difficulty_level,
       equipment_needed
     ''';
@@ -142,16 +143,18 @@ class LocalizedDatabaseService {
         .order('name$suffix');
   }
 
-  /// Méthode générique pour récupérer du texte localisé depuis deux colonnes
+  /// Méthode générique pour récupérer du texte localisé depuis les colonnes FR/EN/DE
   static String getLocalizedText(
     Map<String, dynamic> data,
     String baseColumnName,
   ) {
     final locService = LocalizationService.instance;
     if (locService.isFrench) {
-      return data['${baseColumnName}_fr'] ?? data['${baseColumnName}_en'] ?? '';
+      return data['${baseColumnName}_fr'] ?? data['${baseColumnName}_en'] ?? data['${baseColumnName}_de'] ?? '';
+    } else if (locService.isGerman) {
+      return data['${baseColumnName}_de'] ?? data['${baseColumnName}_en'] ?? data['${baseColumnName}_fr'] ?? '';
     } else {
-      return data['${baseColumnName}_en'] ?? data['${baseColumnName}_fr'] ?? '';
+      return data['${baseColumnName}_en'] ?? data['${baseColumnName}_fr'] ?? data['${baseColumnName}_de'] ?? '';
     }
   }
 
@@ -161,8 +164,8 @@ class LocalizedDatabaseService {
     final suffix = locService.getColumnSuffix();
     
     return columns.map((column) {
-      // Si la colonne contient déjà _fr ou _en, la retourner telle quelle
-      if (column.contains('_fr') || column.contains('_en')) {
+      // Si la colonne contient déjà _fr, _en ou _de, la retourner telle quelle
+      if (column.contains('_fr') || column.contains('_en') || column.contains('_de')) {
         return column;
       }
       // Sinon, vérifier si c'est une colonne qui devrait être localisée

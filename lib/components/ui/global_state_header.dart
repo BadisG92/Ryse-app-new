@@ -29,6 +29,7 @@ class _GlobalStateHeaderWidgetState extends State<GlobalStateHeaderWidget> with 
     final globalState = GlobalStateManager.instance;
     final locService = Provider.of<LocalizationService>(context);
     final isEnglish = locService.currentLanguageCode == 'en';
+    final isGerman = locService.currentLanguageCode == 'de';
     final topInset = MediaQuery.of(context).padding.top;
 
     return Container(
@@ -85,7 +86,7 @@ class _GlobalStateHeaderWidgetState extends State<GlobalStateHeaderWidget> with 
             _buildStatItem(
               icon: Icons.local_fire_department,
               value: '${globalState.currentStreak}',
-              label: isEnglish ? 'days' : 'jours',
+              label: isEnglish ? 'days' : isGerman ? 'Tage' : 'jours',
               progress: 1.0, // Streak n'a pas de progression
               color: const Color(0xFFFF6B35),
             ),

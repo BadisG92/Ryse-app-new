@@ -148,10 +148,13 @@ class Recipe {
   // Données brutes pour le cache (optionnelles - utilisées seulement pour la sérialisation)
   final String? nameFr;
   final String? nameEn;
+  final String? nameDe;
   final String? tagsFr;
   final String? tagsEn;
+  final String? tagsDe;
   final String? stepsFr;
   final String? stepsEn;
+  final String? stepsDe;
 
   // Noms des ingrédients pour la recherche (chargés depuis recipe_ingredient_database)
   final List<String> ingredientNames;
@@ -172,10 +175,13 @@ class Recipe {
     required this.difficulty,
     this.nameFr,
     this.nameEn,
+    this.nameDe,
     this.tagsFr,
     this.tagsEn,
+    this.tagsDe,
     this.stepsFr,
     this.stepsEn,
+    this.stepsDe,
     this.ingredientNames = const [],
   });
 
@@ -183,7 +189,7 @@ class Recipe {
   factory Recipe.fromJson(Map<String, dynamic> json) {
     try {
       final id = json['id'] is int ? json['id'] : int.tryParse(json['id'].toString()) ?? 0;
-      final name = LocalizationService.instance.getTextFromColumns(json['name_fr'], json['name_en']);
+      final name = LocalizationService.instance.getTextFromColumns(json['name_fr'], json['name_en'], json['name_de']);
 
       // Protection contre les valeurs infinies ou invalides
       int _safeInt(dynamic value, int defaultValue) {
@@ -230,13 +236,16 @@ class Recipe {
         ingredients: [], // Les ingrédients seront chargés séparément
         steps: steps,
         difficulty: json['difficulty'] ?? 'Facile',
-        // Préserver les données brutes pour le cache
+        // Préserver les données brutes pour le cache (FR/EN/DE)
         nameFr: json['name_fr']?.toString(),
         nameEn: json['name_en']?.toString(),
+        nameDe: json['name_de']?.toString(),
         tagsFr: json['tags_fr']?.toString(),
         tagsEn: json['tags_en']?.toString(),
+        tagsDe: json['tags_de']?.toString(),
         stepsFr: json['steps_fr']?.toString(),
         stepsEn: json['steps_en']?.toString(),
+        stepsDe: json['steps_de']?.toString(),
         ingredientNames: ingredientNames,
       );
     } catch (e) {
@@ -250,7 +259,7 @@ class Recipe {
     try {
       // Utiliser LocalizationService pour sélectionner la bonne langue
       final locService = LocalizationService.instance;
-      final tagsText = locService.getTextFromColumns(json['tags_fr'], json['tags_en']);
+      final tagsText = locService.getTextFromColumns(json['tags_fr'], json['tags_en'], json['tags_de']);
       
       if (tagsText.isNotEmpty) {
         final tagsList = tagsText.split(',').map((tag) => tag.trim()).toList();
@@ -268,7 +277,7 @@ class Recipe {
     try {
       // Utiliser LocalizationService pour sélectionner la bonne langue
       final locService = LocalizationService.instance;
-      final stepsText = locService.getTextFromColumns(json['steps_fr'], json['steps_en']);
+      final stepsText = locService.getTextFromColumns(json['steps_fr'], json['steps_en'], json['steps_de']);
       
       if (stepsText.isNotEmpty) {
         // D'après les logs, les étapes sont séparées par des "|", pas des points
@@ -288,23 +297,26 @@ class Recipe {
   }
 
   // Conversion en JSON pour le cache
-  // IMPORTANT: On stocke les données brutes FR/EN pour préserver les deux langues
+  // IMPORTANT: On stocke les données brutes FR/EN/DE pour préserver les trois langues
   Map<String, dynamic> toJson() {
     return {
       'id': id,
       'name_fr': nameFr ?? name, // Utiliser les données brutes si disponibles
       'name_en': nameEn ?? name,
+      'name_de': nameDe ?? name,
       'image_url': image,
       'duration': duration,
       'calories per portion': calories,
       'servings': servings,
       'tags_fr': tagsFr ?? tags.join(', '),
       'tags_en': tagsEn ?? tags.join(', '),
+      'tags_de': tagsDe ?? tags.join(', '),
       'proteins per portion': proteins,
       'carbs per portion': carbs,
       'fat per portion': fats,
       'steps_fr': stepsFr ?? steps.join(' | '),
       'steps_en': stepsEn ?? steps.join(' | '),
+      'steps_de': stepsDe ?? steps.join(' | '),
       'difficulty': difficulty,
       'ingredient_names': ingredientNames,
     };

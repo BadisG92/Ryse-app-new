@@ -45,14 +45,14 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> wit
 
   // 8 chips de suggestions rapides
   final List<Map<String, String>> _quickChips = [
-    {'label_fr': 'Haut du corps', 'label_en': 'Upper body', 'emoji': '💪'},
-    {'label_fr': 'Jambes', 'label_en': 'Legs', 'emoji': '🦵'},
-    {'label_fr': 'Full body', 'label_en': 'Full body', 'emoji': '🏋️'},
-    {'label_fr': 'Push', 'label_en': 'Push', 'emoji': '🔥'},
-    {'label_fr': 'Pull', 'label_en': 'Pull', 'emoji': '💙'},
-    {'label_fr': 'Abdos/Core', 'label_en': 'Abs/Core', 'emoji': '🎯'},
-    {'label_fr': 'Bras', 'label_en': 'Arms', 'emoji': '💪'},
-    {'label_fr': 'Circuit training', 'label_en': 'Circuit training', 'emoji': '🔥'},
+    {'label_fr': 'Haut du corps', 'label_en': 'Upper body', 'label_de': 'Oberkörper', 'emoji': '💪'},
+    {'label_fr': 'Jambes', 'label_en': 'Legs', 'label_de': 'Beine', 'emoji': '🦵'},
+    {'label_fr': 'Full body', 'label_en': 'Full body', 'label_de': 'Ganzkörper', 'emoji': '🏋️'},
+    {'label_fr': 'Push', 'label_en': 'Push', 'label_de': 'Drücken', 'emoji': '🔥'},
+    {'label_fr': 'Pull', 'label_en': 'Pull', 'label_de': 'Ziehen', 'emoji': '💙'},
+    {'label_fr': 'Abdos/Core', 'label_en': 'Abs/Core', 'label_de': 'Bauch/Rumpf', 'emoji': '🎯'},
+    {'label_fr': 'Bras', 'label_en': 'Arms', 'label_de': 'Arme', 'emoji': '💪'},
+    {'label_fr': 'Circuit training', 'label_en': 'Circuit training', 'label_de': 'Zirkeltraining', 'emoji': '🔥'},
   ];
 
   @override
@@ -176,6 +176,7 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> wit
 
   /// Génère un nom de séance intelligent basé sur les groupes musculaires
   String _generateSessionName(List<WorkoutExercise> exercises, bool isFrench) {
+    final isGerman = LocalizationService.instance.isGerman;
     // Compter les groupes musculaires
     final muscleGroups = <String, int>{};
     for (final ex in exercises) {
@@ -183,7 +184,7 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> wit
       muscleGroups[group] = (muscleGroups[group] ?? 0) + 1;
     }
 
-    // Mapper vers noms français/anglais
+    // Mapper vers noms français/anglais/allemand
     final muscleNamesFr = {
       'chest': 'Pectoraux',
       'pectoraux': 'Pectoraux',
@@ -230,7 +231,30 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> wit
       'mollets': 'Calves',
     };
 
-    final nameMap = isFrench ? muscleNamesFr : muscleNamesEn;
+    final muscleNamesDe = {
+      'chest': 'Brust',
+      'pectoraux': 'Brust',
+      'back': 'Rücken',
+      'dorsaux': 'Rücken',
+      'legs': 'Beine',
+      'quadriceps': 'Beine',
+      'ischio-jambiers': 'Beine',
+      'hamstrings': 'Beine',
+      'shoulders': 'Schultern',
+      'épaules': 'Schultern',
+      'arms': 'Arme',
+      'biceps': 'Arme',
+      'triceps': 'Arme',
+      'core': 'Rumpf',
+      'abdominaux': 'Rumpf',
+      'abs': 'Rumpf',
+      'glutes': 'Gesäß',
+      'fessiers': 'Gesäß',
+      'calves': 'Waden',
+      'mollets': 'Waden',
+    };
+
+    final nameMap = isGerman ? muscleNamesDe : (isFrench ? muscleNamesFr : muscleNamesEn);
 
     // Trouver les groupes dominants (>= 2 exercices)
     final dominantGroups = <String>[];
@@ -258,26 +282,29 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> wit
 
     // Construire le nom
     if (dominantGroups.isEmpty) {
-      return isFrench ? 'Coach Ryze - Full Body' : 'Coach Ryze - Full Body';
+      return isGerman ? 'Coach Ryze - Ganzkörper' : (isFrench ? 'Coach Ryze - Full Body' : 'Coach Ryze - Full Body');
     } else if (dominantGroups.length == 1) {
       return 'Coach Ryze - ${dominantGroups[0]}';
     } else if (dominantGroups.length == 2) {
       return 'Coach Ryze - ${dominantGroups[0]} + ${dominantGroups[1]}';
     } else if (dominantGroups.length >= 3) {
-      return isFrench ? 'Coach Ryze - Full Body' : 'Coach Ryze - Full Body';
+      return isGerman ? 'Coach Ryze - Ganzkörper' : (isFrench ? 'Coach Ryze - Full Body' : 'Coach Ryze - Full Body');
     }
 
-    return isFrench ? 'Coach Ryze - Séance' : 'Coach Ryze - Workout';
+    return isGerman ? 'Coach Ryze - Training' : (isFrench ? 'Coach Ryze - Séance' : 'Coach Ryze - Workout');
   }
 
   /// Génère un message contextuel basé sur l'heure et l'état de l'utilisateur
   String _getContextualMessage(bool isFrench, String userName) {
     final hour = DateTime.now().hour;
+    final isGerman = LocalizationService.instance.isGerman;
 
     // Message selon l'heure de la journée
     if (_generatedWorkout != null) {
       // Si un workout est déjà généré
-      if (isFrench) {
+      if (isGerman) {
+        return 'Dein Training ist bereit! Gib alles 💪';
+      } else if (isFrench) {
         return 'Ta séance est prête ! Lance-toi et donne tout 💪';
       } else {
         return 'Your workout is ready! Let\'s crush it 💪';
@@ -285,21 +312,29 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> wit
     } else {
       // Aucun workout généré encore
       if (hour >= 5 && hour < 12) {
-        return isFrench
-          ? 'Prêt à commencer la journée en force ?'
-          : 'Ready to start your day strong?';
+        return isGerman
+          ? 'Bereit, stark in den Tag zu starten?'
+          : (isFrench
+            ? 'Prêt à commencer la journée en force ?'
+            : 'Ready to start your day strong?');
       } else if (hour >= 12 && hour < 18) {
-        return isFrench
-          ? 'C\'est le moment parfait pour t\'entraîner !'
-          : 'Perfect time for a workout!';
+        return isGerman
+          ? 'Die perfekte Zeit für ein Training!'
+          : (isFrench
+            ? 'C\'est le moment parfait pour t\'entraîner !'
+            : 'Perfect time for a workout!');
       } else if (hour >= 18 && hour < 22) {
-        return isFrench
-          ? 'Une bonne séance pour finir la journée ?'
-          : 'End your day with a great session?';
+        return isGerman
+          ? 'Eine gute Einheit zum Tagesabschluss?'
+          : (isFrench
+            ? 'Une bonne séance pour finir la journée ?'
+            : 'End your day with a great session?');
       } else {
-        return isFrench
-          ? 'Motivé pour une séance nocturne ?'
-          : 'Motivated for a late workout?';
+        return isGerman
+          ? 'Motiviert für ein spätes Training?'
+          : (isFrench
+            ? 'Motivé pour une séance nocturne ?'
+            : 'Motivated for a late workout?');
       }
     }
   }
@@ -349,8 +384,8 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> wit
                 });
               },
               tooltip: _isEditMode
-                  ? (isFrench ? 'Valider' : 'Confirm')
-                  : (isFrench ? 'Modifier' : 'Edit'),
+                  ? (locService.isGerman ? 'Bestätigen' : (isFrench ? 'Valider' : 'Confirm'))
+                  : (locService.isGerman ? 'Bearbeiten' : (isFrench ? 'Modifier' : 'Edit')),
             ),
         ],
       ),
@@ -364,9 +399,10 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> wit
     return Consumer<AuthService>(
       builder: (context, authService, child) {
         // Capitaliser le prénom (même méthode que le dashboard)
-        final rawName = authService.currentUser?.firstName ?? (isFrench ? 'Champion' : 'Champion');
+        final rawName = authService.currentUser?.firstName ?? 'Champion';
         final userName = rawName.isEmpty ? rawName : rawName[0].toUpperCase() + rawName.substring(1).toLowerCase();
-        final greeting = isFrench ? 'Salut' : 'Hey';
+        final isGerman = LocalizationService.instance.isGerman;
+        final greeting = isGerman ? 'Hallo' : (isFrench ? 'Salut' : 'Hey');
 
         return SingleChildScrollView(
           child: Column(
@@ -393,9 +429,11 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> wit
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            isFrench
-                              ? 'Prêt pour une séance sur-mesure ?'
-                              : 'Ready for a custom workout?',
+                            isGerman
+                              ? 'Bereit für ein individuelles Training?'
+                              : (isFrench
+                                  ? 'Prêt pour une séance sur-mesure ?'
+                                  : 'Ready for a custom workout?'),
                             style: const TextStyle(
                               fontSize: 16,
                               color: Color(0xFF64748B),
@@ -438,7 +476,9 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> wit
               ),
               const SizedBox(width: 8),
               Text(
-                isFrench ? 'Suggestions rapides' : 'Quick suggestions',
+                LocalizationService.instance.isGerman
+                    ? 'Schnelle Vorschläge'
+                    : (isFrench ? 'Suggestions rapides' : 'Quick suggestions'),
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -458,7 +498,9 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> wit
               itemCount: _quickChips.length,
               itemBuilder: (context, index) {
                 final chip = _quickChips[index];
-                final label = isFrench ? chip['label_fr']! : chip['label_en']!;
+                final label = LocalizationService.instance.isGerman
+                    ? chip['label_de']!
+                    : (isFrench ? chip['label_fr']! : chip['label_en']!);
                 final isSelected = _selectedChip == label;
 
                 return Padding(
@@ -510,7 +552,7 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> wit
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Text(
-                  isFrench ? 'ou' : 'or',
+                  isGerman ? 'oder' : (isFrench ? 'ou' : 'or'),
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
@@ -534,7 +576,9 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> wit
               ),
               const SizedBox(width: 8),
               Text(
-                isFrench ? 'Décris ta séance' : 'Describe your workout',
+                isGerman
+                    ? 'Beschreibe dein Training'
+                    : (isFrench ? 'Décris ta séance' : 'Describe your workout'),
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -550,9 +594,11 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> wit
             controller: _textController,
             maxLines: 3,
             decoration: InputDecoration(
-              hintText: isFrench
-                  ? 'Ex: Je veux travailler les pectoraux et les épaules'
-                  : 'Ex: I want to work chest and shoulders',
+              hintText: isGerman
+                  ? 'z.B.: Ich möchte Brust und Schultern trainieren'
+                  : (isFrench
+                      ? 'Ex: Je veux travailler les pectoraux et les épaules'
+                      : 'Ex: I want to work chest and shoulders'),
               hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
               filled: true,
               fillColor: const Color(0xFFF8FAFC),
@@ -602,7 +648,9 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> wit
                       const Icon(LucideIcons.settings, size: 20, color: Color(0xFF0B132B)),
                       const SizedBox(width: 8),
                       Text(
-                        isFrench ? 'Paramètres' : 'Settings',
+                        isGerman
+                            ? 'Einstellungen'
+                            : (isFrench ? 'Paramètres' : 'Settings'),
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
@@ -691,7 +739,9 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> wit
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          isFrench ? 'Générer ma séance' : 'Generate my workout',
+                          isGerman
+                              ? 'Training generieren'
+                              : (isFrench ? 'Générer ma séance' : 'Generate my workout'),
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
@@ -778,7 +828,7 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> wit
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '${workoutEx.sets.length} ${isFrench ? 'séries' : 'sets'} × ${workoutEx.sets.first.reps} ${isFrench ? 'reps' : 'reps'}',
+          '${workoutEx.sets.length} ${LocalizationService.instance.isGerman ? 'Sätze' : (isFrench ? 'séries' : 'sets')} × ${workoutEx.sets.first.reps} ${LocalizationService.instance.isGerman ? 'Wdh' : (isFrench ? 'reps' : 'reps')}',
           style: const TextStyle(
             fontSize: 14,
             color: Color(0xFF64748B),
@@ -806,6 +856,7 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> wit
   }
 
   Widget _buildParametersSection(bool isFrench) {
+    final isGerman = LocalizationService.instance.isGerman;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -818,7 +869,7 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> wit
         children: [
           // Durée
           Text(
-            isFrench ? 'Durée' : 'Duration',
+            isGerman ? 'Dauer' : (isFrench ? 'Durée' : 'Duration'),
             style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
@@ -858,7 +909,7 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> wit
 
           // Intensité
           Text(
-            isFrench ? 'Intensité' : 'Intensity',
+            isGerman ? 'Intensität' : (isFrench ? 'Intensité' : 'Intensity'),
             style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
@@ -872,17 +923,17 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> wit
             inactiveColor: const Color(0xFFE2E8F0),
             divisions: 2,
             label: _intensity < 0.33
-                ? (isFrench ? 'Léger' : 'Light')
+                ? (isGerman ? 'Leicht' : (isFrench ? 'Léger' : 'Light'))
                 : _intensity < 0.67
-                    ? (isFrench ? 'Modéré' : 'Moderate')
-                    : (isFrench ? 'Intense' : 'Intense'),
+                    ? (isGerman ? 'Mittel' : (isFrench ? 'Modéré' : 'Moderate'))
+                    : (isGerman ? 'Intensiv' : (isFrench ? 'Intense' : 'Intense')),
           ),
 
           const SizedBox(height: 8),
 
           // Focus
           Text(
-            isFrench ? 'Focus' : 'Focus',
+            isGerman ? 'Fokus' : (isFrench ? 'Focus' : 'Focus'),
             style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
@@ -893,9 +944,9 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> wit
           Wrap(
             spacing: 8,
             children: [
-              isFrench ? 'Force' : 'Strength',
-              isFrench ? 'Hypertrophie' : 'Hypertrophy',
-              isFrench ? 'Endurance' : 'Endurance',
+              isGerman ? 'Kraft' : (isFrench ? 'Force' : 'Strength'),
+              isGerman ? 'Hypertrophie' : (isFrench ? 'Hypertrophie' : 'Hypertrophy'),
+              isGerman ? 'Ausdauer' : (isFrench ? 'Endurance' : 'Endurance'),
             ].map((focus) {
               final isSelected = _focus == focus;
               return GestureDetector(
@@ -976,9 +1027,11 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> wit
 
                 // Nombre d'exercices
                 Text(
-                  isFrench
-                      ? '${_generatedWorkout!.length} exercices'
-                      : '${_generatedWorkout!.length} exercises',
+                  LocalizationService.instance.isGerman
+                      ? '${_generatedWorkout!.length} Übungen'
+                      : (isFrench
+                          ? '${_generatedWorkout!.length} exercices'
+                          : '${_generatedWorkout!.length} exercises'),
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
@@ -1160,7 +1213,9 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> wit
                   OutlinedButton.icon(
                     onPressed: _showAddExerciseToWorkout,
                     icon: const Icon(LucideIcons.plus, size: 18),
-                    label: Text(isFrench ? 'Ajouter un exercice' : 'Add exercise'),
+                    label: Text(LocalizationService.instance.isGerman
+                        ? 'Übung hinzufügen'
+                        : (isFrench ? 'Ajouter un exercice' : 'Add exercise')),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: const Color(0xFF0B132B),
                       side: const BorderSide(color: Color(0xFFE2E8F0)),
@@ -1218,7 +1273,9 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> wit
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Text(
-                                  isFrench ? 'Conseils de Coach Ryze' : 'Coach Ryze Tips',
+                                  LocalizationService.instance.isGerman
+                                      ? 'Coach Ryze Tipps'
+                                      : (isFrench ? 'Conseils de Coach Ryze' : 'Coach Ryze Tips'),
                                   style: const TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w600,
@@ -1286,7 +1343,9 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> wit
                     ),
                   ),
                   child: Text(
-                    isFrench ? 'Régénérer' : 'Regenerate',
+                    LocalizationService.instance.isGerman
+                        ? 'Neu generieren'
+                        : (isFrench ? 'Régénérer' : 'Regenerate'),
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -1315,7 +1374,9 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> wit
                       const Icon(LucideIcons.play, size: 20),
                       const SizedBox(width: 8),
                       Text(
-                        isFrench ? 'Commencer la séance' : 'Start workout',
+                        LocalizationService.instance.isGerman
+                            ? 'Training starten'
+                            : (isFrench ? 'Commencer la séance' : 'Start workout'),
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
@@ -1408,7 +1469,9 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> wit
                     children: [
                       Expanded(
                         child: Text(
-                          locService.isFrench ? 'Ajouter un exercice' : 'Add exercise',
+                          locService.isGerman
+                              ? 'Übung hinzufügen'
+                              : (locService.isFrench ? 'Ajouter un exercice' : 'Add exercise'),
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
@@ -1442,9 +1505,11 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> wit
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          locService.isFrench
-                              ? 'Les exercices ajoutés n\'auront pas de poids ou répétitions pré-remplis'
-                              : 'Added exercises won\'t have pre-filled weight or reps',
+                          locService.isGerman
+                              ? 'Hinzugefügte Übungen haben kein vorausgefülltes Gewicht oder Wiederholungen'
+                              : (locService.isFrench
+                                  ? 'Les exercices ajoutés n\'auront pas de poids ou répétitions pré-remplis'
+                                  : 'Added exercises won\'t have pre-filled weight or reps'),
                           style: const TextStyle(
                             fontSize: 13,
                             color: Color(0xFF1C2951),
@@ -1579,7 +1644,9 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> wit
           borderRadius: BorderRadius.circular(16),
         ),
         title: Text(
-          locService.isFrench ? 'Nom de la séance' : 'Session name',
+          locService.isGerman
+              ? 'Name des Trainings'
+              : (locService.isFrench ? 'Nom de la séance' : 'Session name'),
           style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w600,
@@ -1591,7 +1658,9 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> wit
           autofocus: true,
           maxLength: 50,
           decoration: InputDecoration(
-            hintText: locService.isFrench ? 'Ex: Coach Ryze - Pectoraux' : 'Ex: Coach Ryze - Chest',
+            hintText: locService.isGerman
+                ? 'z.B.: Coach Ryze - Brust'
+                : (locService.isFrench ? 'Ex: Coach Ryze - Pectoraux' : 'Ex: Coach Ryze - Chest'),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
@@ -1607,7 +1676,9 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> wit
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text(
-              locService.isFrench ? 'Annuler' : 'Cancel',
+              locService.isGerman
+                  ? 'Abbrechen'
+                  : (locService.isFrench ? 'Annuler' : 'Cancel'),
               style: const TextStyle(
                 fontSize: 16,
                 color: Color(0xFF64748B),
@@ -1633,7 +1704,9 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> wit
               elevation: 0,
             ),
             child: Text(
-              locService.isFrench ? 'Valider' : 'Confirm',
+              locService.isGerman
+                  ? 'Bestätigen'
+                  : (locService.isFrench ? 'Valider' : 'Confirm'),
               style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,

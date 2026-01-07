@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../components/ui/dashboard_models.dart';
 import '../core/cache/local_cache.dart';
 import '../services/dashboard_service.dart';
+import '../services/localization_service.dart';
 import '../services/optimistic_update_service.dart';
 import '../services/water_service.dart';
 import '../services/food_entries_service.dart';
@@ -20,6 +21,7 @@ class NutritionNotifier extends ChangeNotifier {
   List<ModulePreview> _modulePreviews = [];
   bool _isLoading = false;
   String? _errorMessage;
+  bool _languageListenerRegistered = false;
 
   // Getters publics
   List<DailyGoal> get dailyGoals => _dailyGoals;
@@ -34,6 +36,12 @@ class NutritionNotifier extends ChangeNotifier {
   /// Initialisation complète du dashboard avec cache-first
   Future<void> initializeDashboard() async {
     debugPrint('🚀 NutritionNotifier: Initialisation dashboard...');
+
+    // Écouter les changements de langue pour recharger les données traduites
+    if (!_languageListenerRegistered) {
+      LocalizationService.instance.addListener(_onLanguageChanged);
+      _languageListenerRegistered = true;
+    }
 
     _isLoading = true;
     _errorMessage = null;
@@ -52,6 +60,11 @@ class NutritionNotifier extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  void _onLanguageChanged() {
+    debugPrint('🌍 NutritionNotifier: Language changed, reloading data');
+    _syncFromServerInBackground();
   }
 
   /// Charger depuis le cache local (instantané)
@@ -638,6 +651,9 @@ class NutritionNotifier extends ChangeNotifier {
   @override
   void dispose() {
     debugPrint('🧹 NutritionNotifier: Nettoyage...');
+    if (_languageListenerRegistered) {
+      LocalizationService.instance.removeListener(_onLanguageChanged);
+    }
     super.dispose();
   }
 }

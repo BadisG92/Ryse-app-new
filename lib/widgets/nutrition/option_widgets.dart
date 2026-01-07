@@ -10,11 +10,11 @@ import '../../services/subscription_service.dart';
 // Badge Premium avec animation pulse pour trial
 class _PremiumBadge extends StatefulWidget {
   final bool isLocked;
-  final bool isFrench;
+  final String langCode;
 
   const _PremiumBadge({
     required this.isLocked,
-    required this.isFrench,
+    required this.langCode,
   });
 
   @override
@@ -86,8 +86,8 @@ class _PremiumBadgeState extends State<_PremiumBadge> with SingleTickerProviderS
           const SizedBox(width: 5),
           Text(
             widget.isLocked
-              ? 'unlock_badge'.tr(widget.isFrench ? 'fr' : 'en')
-              : 'trial_badge'.tr(widget.isFrench ? 'fr' : 'en'),
+              ? 'unlock_badge'.tr(widget.langCode)
+              : 'trial_badge'.tr(widget.langCode),
             style: const TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.bold,
@@ -164,7 +164,7 @@ class _FoodOptionWidgetState extends State<FoodOptionWidget> {
     if (widget.paywallContext != null && !_isLoading) {
       final isLocked = _isLocked ?? false;
       final isPremium = SubscriptionService.instance.isPremium;
-      final isFrench = LocalizationService.instance.currentLanguageCode == 'fr';
+      final langCode = LocalizationService.instance.currentLanguageCode;
 
       return Opacity(
         opacity: isLocked ? 0.85 : 1.0, // Légère opacité sur items bloqués
@@ -253,7 +253,7 @@ class _FoodOptionWidgetState extends State<FoodOptionWidget> {
                   right: 16,
                   child: _PremiumBadge(
                     isLocked: isLocked,
-                    isFrench: isFrench,
+                    langCode: langCode,
                   ),
                 ),
             ],

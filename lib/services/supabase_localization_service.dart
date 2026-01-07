@@ -6,20 +6,29 @@ import '../services/localization_service.dart';
 class SupabaseLocalizationService {
   static const String _englishSuffix = '_en';
   static const String _frenchSuffix = '_fr';
+  static const String _germanSuffix = '_de';
 
   /// Obtient le suffixe de colonne basé sur la langue actuelle
   static String getColumnSuffix() {
     final locService = LocalizationService.instance;
-    final isFrench = locService.isFrench;
-    
-    // Utiliser isFrench au lieu de comparer la string, plus fiable
-    return isFrench ? _frenchSuffix : _englishSuffix;
+
+    if (locService.isFrench) return _frenchSuffix;
+    if (locService.isGerman) return _germanSuffix;
+    return _englishSuffix;
   }
 
   /// Obtient le suffixe opposé pour les fallbacks
+  /// Chaîne de fallback: de → en → fr, fr → en, en → fr
   static String getFallbackColumnSuffix() {
     final currentLanguage = LocalizationService.instance.currentLanguageCode;
-    return currentLanguage == 'fr' ? _englishSuffix : _frenchSuffix;
+    switch (currentLanguage) {
+      case 'fr':
+        return _englishSuffix;
+      case 'de':
+        return _englishSuffix; // German falls back to English first
+      default:
+        return _frenchSuffix;
+    }
   }
 
   /// Génère automatiquement la liste des colonnes à sélectionner pour une requête

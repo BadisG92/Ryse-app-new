@@ -9,6 +9,7 @@ import '../screens/auth/login_screen.dart';
 import '../screens/auth/complete_profile_screen.dart';
 import '../screens/paywall_screen.dart';
 import '../services/paywall_service.dart';
+import '../services/localization_service.dart';
 
 /// RyzeApp - Implémentation du flow AAA (style MyFitnessPal, Headspace, etc.)
 ///
@@ -278,12 +279,25 @@ class _RyzeAppState extends State<RyzeApp> {
 
       // 🎯 Afficher le Paywall après l'onboarding
       // Quelle que soit l'issue (abonnement, plus tard, restauration), on va vers MainApp
+      // Traductions pour le paywall
+      final locService = LocalizationService.instance;
+      final customTitle = locService.isFrench
+          ? 'Débloquez Coach Ryze Premium'
+          : locService.isGerman
+              ? 'Coach Ryze Premium freischalten'
+              : 'Unlock Coach Ryze Premium';
+      final customMessage = locService.isFrench
+          ? 'Profitez de 7 jours d\'essai gratuit'
+          : locService.isGerman
+              ? '7 Tage kostenlos testen'
+              : 'Enjoy 7 days free trial';
+
       Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
         MaterialPageRoute(
           builder: (ctx) => PaywallScreen(
             context: PaywallContext.genericUpgrade,
-            customTitle: 'Débloquez Coach Ryze Premium',
-            customMessage: 'Profitez de 7 jours d\'essai gratuit',
+            customTitle: customTitle,
+            customMessage: customMessage,
             onDismiss: () {
               // Appelé quand l'utilisateur ferme le paywall (peu importe la raison)
               debugPrint('🏠 Paywall fermé → Navigation vers MainApp');

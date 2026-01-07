@@ -79,7 +79,7 @@ class _LocalizedFoodListState extends State<LocalizedFoodList> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      locService.isFrench ? '🇫🇷 FR' : '🇺🇸 EN',
+                      locService.isGerman ? '🇩🇪 DE' : (locService.isFrench ? '🇫🇷 FR' : '🇺🇸 EN'),
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
@@ -188,7 +188,7 @@ class _LocalizedFoodListState extends State<LocalizedFoodList> {
             Text('${'fats_label'.tr(locService.currentLanguageCode)}: ${food['fats_per_100g']}g${'per_100g'.tr(locService.currentLanguageCode)}'),
             const SizedBox(height: 8),
             Text(
-              'Langue actuelle: ${locService.isFrench ? "Français" : "English"}',
+              'Langue actuelle: ${locService.isGerman ? "Deutsch" : (locService.isFrench ? "Français" : "English")}',
               style: const TextStyle(
                 fontSize: 12,
                 fontStyle: FontStyle.italic,

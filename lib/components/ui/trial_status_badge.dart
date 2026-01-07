@@ -20,6 +20,7 @@ class TrialStatusBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final locService = LocalizationService.instance;
     final isFrench = locService.currentLanguageCode == 'fr';
+    final isGerman = locService.currentLanguageCode == 'de';
 
     return FutureBuilder<bool>(
       future: PaywallService.instance.isFeatureLocked(paywallContext),
@@ -57,7 +58,7 @@ class TrialStatusBadge extends StatelessWidget {
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  isFrench ? 'Plus d\'essai gratuit' : 'No free trial left',
+                  isFrench ? 'Plus d\'essai gratuit' : isGerman ? 'Keine kostenlose Testversion mehr' : 'No free trial left',
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
@@ -97,7 +98,7 @@ class TrialStatusBadge extends StatelessWidget {
               ),
               const SizedBox(width: 4),
               Text(
-                isFrench ? '1 ESSAI GRATUIT' : '1 FREE TRIAL',
+                isFrench ? '1 ESSAI GRATUIT' : isGerman ? '1 KOSTENLOSER TEST' : '1 FREE TRIAL',
                 style: const TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.bold,

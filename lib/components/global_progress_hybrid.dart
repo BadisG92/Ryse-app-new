@@ -69,6 +69,9 @@ class _GlobalProgressState extends State<GlobalProgress> {
     // Écouter les changements de poids
     WeightNotifier.instance.addListener(_onWeightChanged);
 
+    // Écouter les changements de langue pour recharger les données traduites
+    LocalizationService.instance.addListener(_onLanguageChanged);
+
     // Lancer le tutorial automatiquement la première fois
     _checkAndLaunchTutorial();
   }
@@ -284,10 +287,18 @@ class _GlobalProgressState extends State<GlobalProgress> {
   void dispose() {
     // Arrêter d'écouter les changements
     WeightNotifier.instance.removeListener(_onWeightChanged);
+    LocalizationService.instance.removeListener(_onLanguageChanged);
     _scrollController.dispose();
     super.dispose();
   }
-  
+
+  void _onLanguageChanged() {
+    debugPrint('🌍 GlobalProgress: Language changed, reloading data with new translations');
+    // Invalider le cache GlobalState pour forcer le rechargement
+    GlobalStateManager.instance.invalidateWeeklyData();
+    _loadProgressData();
+  }
+
   void _onWeightChanged() {
     debugPrint('🔄 GlobalProgress: Weight changed, reloading weight data');
     // Forcer le rechargement du poids uniquement (ne pas attendre le cache)

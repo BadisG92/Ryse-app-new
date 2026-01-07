@@ -42,6 +42,7 @@ dependencies:
   fl_chart: ^0.68.0
   lottie: ^2.7.0
   page_transition: ^2.1.0
+  video_player: ^2.8.6
   camera: ^0.11.2
   permission_handler: ^12.0.1
   image_picker: ^1.1.2
@@ -167,7 +168,7 @@ flutter:
     - assets/images/muscle_groups/
     - assets/images/image test/
     - assets/seed/
-    # - assets/animations/ # Ligne à supprimer ou commenter si elle existe encore
+    - assets/videos/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

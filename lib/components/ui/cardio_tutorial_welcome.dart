@@ -57,13 +57,17 @@ class _CardioTutorialWelcomeState extends State<CardioTutorialWelcome>
   String _getRyzeMessage() {
     return widget.languageCode == 'fr'
         ? 'Bienvenue dans ton espace Cardio ! Toutes tes activités au même endroit.'
-        : 'Welcome to your Cardio space! All your activities in one place.';
+        : widget.languageCode == 'de'
+            ? 'Willkommen in deinem Cardio-Bereich! Alle deine Aktivitäten an einem Ort.'
+            : 'Welcome to your Cardio space! All your activities in one place.';
   }
 
   String _getDescription() {
     return widget.languageCode == 'fr'
         ? 'Ici, je t\'aide à suivre toutes tes activités cardio : course, vélo, marche, HIIT... Découvre comment enregistrer tes séances et suivre tes progrès !'
-        : 'Here, I help you track all your cardio activities: running, cycling, walking, HIIT... Discover how to record your sessions and track your progress!';
+        : widget.languageCode == 'de'
+            ? 'Hier helfe ich dir, alle deine Cardio-Aktivitäten zu verfolgen: Laufen, Radfahren, Gehen, HIIT... Entdecke, wie du deine Trainingseinheiten aufzeichnen und deine Fortschritte verfolgen kannst!'
+            : 'Here, I help you track all your cardio activities: running, cycling, walking, HIIT... Discover how to record your sessions and track your progress!';
   }
 
   @override
@@ -196,7 +200,9 @@ class _CardioTutorialWelcomeState extends State<CardioTutorialWelcome>
                                 Text(
                                   widget.languageCode == 'fr'
                                       ? 'Commencer la visite'
-                                      : 'Start the tour',
+                                      : widget.languageCode == 'de'
+                                          ? 'Tour starten'
+                                          : 'Start the tour',
                                   style: const TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w600,
@@ -231,7 +237,11 @@ class _CardioTutorialWelcomeState extends State<CardioTutorialWelcome>
                 ),
               ),
               child: Text(
-                widget.languageCode == 'fr' ? 'Passer' : 'Skip',
+                widget.languageCode == 'fr'
+                    ? 'Passer'
+                    : widget.languageCode == 'de'
+                        ? 'Überspringen'
+                        : 'Skip',
                 style: TextStyle(
                   color: Colors.white.withOpacity(0.7),
                   fontSize: 16,

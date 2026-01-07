@@ -682,15 +682,16 @@ class MealRowItem extends StatelessWidget {
       builder: (context, localizationService, _) {
         // Generate translated short name based on current language
         String getTranslatedShortName() {
+          final lang = localizationService.currentLanguageCode;
           switch (meal.id) {
             case 'breakfast':
-              return localizationService.isFrench ? 'P.déj' : 'Brkf';
+              return lang == 'de' ? 'Früh' : (lang == 'fr' ? 'P.déj' : 'Brkf');
             case 'lunch':
-              return localizationService.isFrench ? 'Déj' : 'Lnch';
+              return lang == 'de' ? 'Mitt' : (lang == 'fr' ? 'Déj' : 'Lnch');
             case 'snack':
-              return localizationService.isFrench ? 'Coll' : 'Snck';
+              return lang == 'de' ? 'Snck' : (lang == 'fr' ? 'Coll' : 'Snck');
             case 'dinner':
-              return localizationService.isFrench ? 'Dîner' : 'Dnnr';
+              return lang == 'de' ? 'Abnd' : (lang == 'fr' ? 'Dîner' : 'Dnnr');
             default:
               return meal.shortName;
           }

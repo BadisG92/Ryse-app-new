@@ -14,11 +14,11 @@ import '../services/subscription_service.dart';
 // Badge Premium pour Coach Ryze
 class _CoachRyzePremiumBadge extends StatefulWidget {
   final bool isLocked;
-  final bool isFrench;
+  final String langCode;
 
   const _CoachRyzePremiumBadge({
     required this.isLocked,
-    required this.isFrench,
+    required this.langCode,
   });
 
   @override
@@ -88,8 +88,8 @@ class _CoachRyzePremiumBadgeState extends State<_CoachRyzePremiumBadge> with Sin
           const SizedBox(width: 5),
           Text(
             widget.isLocked
-              ? (widget.isFrench ? 'UPGRADE' : 'UPGRADE')
-              : (widget.isFrench ? 'ESSAI GRATUIT' : 'TRY FREE'),
+              ? 'UPGRADE'
+              : (widget.langCode == 'de' ? 'GRATIS TESTEN' : (widget.langCode == 'fr' ? 'ESSAI GRATUIT' : 'TRY FREE')),
             style: const TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.bold,
@@ -348,10 +348,10 @@ class _CoachRyzeNutritionButtonState extends State<CoachRyzeNutritionButton> {
   Widget build(BuildContext context) {
     return Consumer<LocalizationService>(
       builder: (context, locService, _) {
-        final isFrench = locService.currentLanguageCode == 'fr';
+        final langCode = locService.currentLanguageCode;
 
         // Déterminer l'apparence selon le contexte
-        final buttonConfig = _getButtonConfig(isFrench);
+        final buttonConfig = _getButtonConfig(langCode);
         final showEndOfDayBadge = _currentContext == 'end_of_day';
 
         final isPremium = SubscriptionService.instance.isPremium;
@@ -382,7 +382,7 @@ class _CoachRyzeNutritionButtonState extends State<CoachRyzeNutritionButton> {
                 ),
                 child: _isLoading
                     ? _buildLoadingState()
-                    : _buildButtonContent(buttonConfig, isFrench),
+                    : _buildButtonContent(buttonConfig, langCode),
               ),
               // Badge "Bilan dispo" en fin de journée
               if (showEndOfDayBadge && (isPremium || !isLocked))
@@ -403,7 +403,7 @@ class _CoachRyzeNutritionButtonState extends State<CoachRyzeNutritionButton> {
                       ],
                     ),
                     child: Text(
-                      isFrench ? 'Bilan dispo' : 'Summary ready',
+                      langCode == 'de' ? 'Bilanz bereit' : (langCode == 'fr' ? 'Bilan dispo' : 'Summary ready'),
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 12,
@@ -419,7 +419,7 @@ class _CoachRyzeNutritionButtonState extends State<CoachRyzeNutritionButton> {
                   right: 32,
                   child: _CoachRyzePremiumBadge(
                     isLocked: isLocked,
-                    isFrench: isFrench,
+                    langCode: langCode,
                   ),
                 ),
             ],
@@ -432,6 +432,7 @@ class _CoachRyzeNutritionButtonState extends State<CoachRyzeNutritionButton> {
   Widget _buildLoadingState() {
     return Consumer<LocalizationService>(
       builder: (context, locService, _) {
+        final isGerman = locService.currentLanguageCode == 'de';
         final isFrench = locService.currentLanguageCode == 'fr';
         return Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -446,7 +447,7 @@ class _CoachRyzeNutritionButtonState extends State<CoachRyzeNutritionButton> {
             ),
             const SizedBox(width: 12),
             Text(
-              isFrench ? 'Analyse en cours...' : 'Analyzing...',
+              isGerman ? 'Analyse läuft...' : (isFrench ? 'Analyse en cours...' : 'Analyzing...'),
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 15,
@@ -459,7 +460,7 @@ class _CoachRyzeNutritionButtonState extends State<CoachRyzeNutritionButton> {
     );
   }
 
-  Widget _buildButtonContent(_ButtonConfig config, bool isFrench) {
+  Widget _buildButtonContent(_ButtonConfig config, String langCode) {
     return Row(
       children: [
         // Logo Coach Ryze
@@ -527,14 +528,22 @@ class _CoachRyzeNutritionButtonState extends State<CoachRyzeNutritionButton> {
     );
   }
 
-  _ButtonConfig _getButtonConfig(bool isFrench) {
+  _ButtonConfig _getButtonConfig(String langCode) {
+    String getSubtitle(String fr, String en, String de) {
+      if (langCode == 'de') return de;
+      if (langCode == 'fr') return fr;
+      return en;
+    }
+
     switch (_currentContext) {
       case 'empty_day':
         return _ButtonConfig(
-          title: isFrench ? 'Coach Ryze Nutrition' : 'Coach Ryze Nutrition',
-          subtitle: isFrench
-              ? 'Commence ta journée alimentaire'
-              : 'Start your food day',
+          title: 'Coach Ryze Nutrition',
+          subtitle: getSubtitle(
+            'Commence ta journée alimentaire',
+            'Start your food day',
+            'Starte deinen Ernährungstag',
+          ),
           icon: LucideIcons.sparkles,
           gradientColors: [
             const Color(0xFFEC4899), // Rose
@@ -544,10 +553,12 @@ class _CoachRyzeNutritionButtonState extends State<CoachRyzeNutritionButton> {
 
       case 'post_workout':
         return _ButtonConfig(
-          title: isFrench ? 'Coach Ryze Nutrition' : 'Coach Ryze Nutrition',
-          subtitle: isFrench
-              ? 'Optimise ta récupération'
-              : 'Optimize your recovery',
+          title: 'Coach Ryze Nutrition',
+          subtitle: getSubtitle(
+            'Optimise ta récupération',
+            'Optimize your recovery',
+            'Optimiere deine Erholung',
+          ),
           icon: LucideIcons.zap,
           gradientColors: [
             const Color(0xFF8B5CF6), // Violet
@@ -557,10 +568,12 @@ class _CoachRyzeNutritionButtonState extends State<CoachRyzeNutritionButton> {
 
       case 'end_of_day':
         return _ButtonConfig(
-          title: isFrench ? 'Coach Ryze Nutrition' : 'Coach Ryze Nutrition',
-          subtitle: isFrench
-              ? 'Bilan de ta journée'
-              : 'Your daily summary',
+          title: 'Coach Ryze Nutrition',
+          subtitle: getSubtitle(
+            'Bilan de ta journée',
+            'Your daily summary',
+            'Deine Tagesbilanz',
+          ),
           icon: LucideIcons.circleCheck,
           gradientColors: [
             const Color(0xFF0B132B), // Bleu foncé Ryze
@@ -571,10 +584,10 @@ class _CoachRyzeNutritionButtonState extends State<CoachRyzeNutritionButton> {
       case 'in_progress':
       default:
         return _ButtonConfig(
-          title: isFrench ? 'Coach Ryze Nutrition' : 'Coach Ryze Nutrition',
+          title: 'Coach Ryze Nutrition',
           subtitle: _cachedAnalysis != null
-              ? (isFrench ? 'Voir ton analyse' : 'View your analysis')
-              : (isFrench ? 'Analyse ta journée' : 'Analyze your day'),
+              ? getSubtitle('Voir ton analyse', 'View your analysis', 'Deine Analyse ansehen')
+              : getSubtitle('Analyse ta journée', 'Analyze your day', 'Analysiere deinen Tag'),
           icon: _cachedAnalysis != null ? LucideIcons.eye : LucideIcons.activity,
           gradientColors: [
             const Color(0xFF0B132B), // Bleu foncé Ryze

@@ -35,31 +35,39 @@ class UserProfile {
   // Message de salutation engageant basé sur l'heure et le contexte
   String greetingMessage(String languageCode) {
     final hour = DateTime.now().hour;
-    final isFrench = languageCode == 'fr';
 
     // Selon l'heure de la journée
     if (hour >= 5 && hour < 12) {
       // Matin
-      return isFrench ? 'Bon retour $name !' : 'Welcome back $name!';
+      if (languageCode == 'de') return 'Willkommen zurück $name!';
+      if (languageCode == 'en') return 'Welcome back $name!';
+      return 'Bon retour $name !';
     } else if (hour >= 12 && hour < 18) {
       // Après-midi
       if (streak >= 7) {
-        return isFrench ? 'Content de te revoir $name !' : 'Great to see you $name!';
+        if (languageCode == 'de') return 'Schön dich zu sehen $name!';
+        if (languageCode == 'en') return 'Great to see you $name!';
+        return 'Content de te revoir $name !';
       }
-      return isFrench ? 'Salut $name !' : 'Hey $name!';
+      if (languageCode == 'de') return 'Hallo $name!';
+      if (languageCode == 'en') return 'Hey $name!';
+      return 'Salut $name !';
     } else if (hour >= 18 && hour < 22) {
       // Soirée
-      return isFrench ? 'Bonsoir $name !' : 'Good evening $name!';
+      if (languageCode == 'de') return 'Guten Abend $name!';
+      if (languageCode == 'en') return 'Good evening $name!';
+      return 'Bonsoir $name !';
     } else {
       // Nuit
-      return isFrench ? 'Bonsoir $name !' : 'Hey $name!';
+      if (languageCode == 'de') return 'Guten Abend $name!';
+      if (languageCode == 'en') return 'Hey $name!';
+      return 'Bonsoir $name !';
     }
   }
 
   // Message contextuel CTA basé sur l'heure et l'état de l'utilisateur
   String contextualMessage(String languageCode) {
     final hour = DateTime.now().hour;
-    final isFrench = languageCode == 'fr';
     final caloriesProgress = currentCalories / dailyCalories;
     final hasStartedDay = currentCalories > 0;
 
@@ -68,77 +76,79 @@ class UserProfile {
 
     // Si l'utilisateur a bien progressé aujourd'hui (≥ 70%)
     if (todayScore >= 70) {
-      return isFrench
-        ? 'Objectif presque atteint ! Finis ta journée en beauté.'
-        : 'Almost there! Finish your day strong.';
+      if (languageCode == 'de') return 'Fast geschafft! Beende deinen Tag stark.';
+      if (languageCode == 'en') return 'Almost there! Finish your day strong.';
+      return 'Objectif presque atteint ! Finis ta journée en beauté.';
     }
 
     // Messages selon l'heure et le contexte
     if (hour >= 5 && hour < 9) {
       // Matin (5h - 9h)
       if (!hasStartedDay) {
-        return isFrench
-          ? 'Enregistre ton petit-déjeuner pour bien démarrer.'
-          : 'Log your breakfast to start strong.';
+        if (languageCode == 'de') return 'Trage dein Frühstück ein für einen guten Start.';
+        if (languageCode == 'en') return 'Log your breakfast to start strong.';
+        return 'Enregistre ton petit-déjeuner pour bien démarrer.';
       } else {
-        return isFrench
-          ? 'Bon début ! N\'oublie pas de boire de l\'eau.'
-          : 'Great start! Don\'t forget to hydrate.';
+        if (languageCode == 'de') return 'Guter Start! Vergiss nicht zu trinken.';
+        if (languageCode == 'en') return 'Great start! Don\'t forget to hydrate.';
+        return 'Bon début ! N\'oublie pas de boire de l\'eau.';
       }
     } else if (hour >= 9 && hour < 12) {
       // Milieu de matinée (9h - 12h)
       if (caloriesProgress < 0.1) {
-        return isFrench
-          ? 'Ajoute ton petit-déjeuner dans le journal.'
-          : 'Add your breakfast to your journal.';
+        if (languageCode == 'de') return 'Füge dein Frühstück zum Tagebuch hinzu.';
+        if (languageCode == 'en') return 'Add your breakfast to your journal.';
+        return 'Ajoute ton petit-déjeuner dans le journal.';
       } else {
-        return isFrench
-          ? 'Continue comme ça ! Prêt pour une séance de sport ?'
-          : 'Keep it up! Ready for a workout?';
+        if (languageCode == 'de') return 'Weiter so! Bereit für ein Training?';
+        if (languageCode == 'en') return 'Keep it up! Ready for a workout?';
+        return 'Continue comme ça ! Prêt pour une séance de sport ?';
       }
     } else if (hour >= 12 && hour < 14) {
       // Midi (12h - 14h)
       if (caloriesProgress < 0.3) {
-        return 'scan_lunch_with_coach'.tr(isFrench ? 'fr' : 'en');
+        if (languageCode == 'de') return 'Scanne dein Mittagessen mit Coach Ryze.';
+        if (languageCode == 'en') return 'Scan your lunch with Coach Ryze.';
+        return 'Scanne ton déjeuner avec Coach Ryze.';
       } else {
-        return isFrench
-          ? 'Déjeuner enregistré ! Pense à t\'hydrater.'
-          : 'Lunch logged! Remember to drink water.';
+        if (languageCode == 'de') return 'Mittagessen eingetragen! Denk ans Trinken.';
+        if (languageCode == 'en') return 'Lunch logged! Remember to drink water.';
+        return 'Déjeuner enregistré ! Pense à t\'hydrater.';
       }
     } else if (hour >= 14 && hour < 18) {
       // Après-midi (14h - 18h)
       if (todayScore < 25) {
         // Pas de sport fait (approximation)
-        return isFrench
-          ? 'Besoin d\'énergie ? Lance une séance de sport.'
-          : 'Need energy? Start a workout session.';
+        if (languageCode == 'de') return 'Brauchst du Energie? Starte ein Training.';
+        if (languageCode == 'en') return 'Need energy? Start a workout session.';
+        return 'Besoin d\'énergie ? Lance une séance de sport.';
       } else {
         final remaining = dailyCalories - currentCalories;
-        return isFrench
-          ? 'Il te reste ${remaining} kcal à tracker.'
-          : '${remaining} kcal left to track.';
+        if (languageCode == 'de') return 'Noch $remaining kcal zu tracken.';
+        if (languageCode == 'en') return '$remaining kcal left to track.';
+        return 'Il te reste $remaining kcal à tracker.';
       }
     } else if (hour >= 18 && hour < 21) {
       // Soirée (18h - 21h)
       if (caloriesProgress < 0.7) {
-        return isFrench
-          ? 'Dîner au programme ? Enregistre-le maintenant.'
-          : 'Dinner planned? Log it now.';
+        if (languageCode == 'de') return 'Abendessen geplant? Trage es jetzt ein.';
+        if (languageCode == 'en') return 'Dinner planned? Log it now.';
+        return 'Dîner au programme ? Enregistre-le maintenant.';
       } else {
-        return isFrench
-          ? 'Tous tes repas tracés ! Vérifie ton bilan du jour.'
-          : 'All meals logged! Check your daily summary.';
+        if (languageCode == 'de') return 'Alle Mahlzeiten eingetragen! Prüfe deine Tagesbilanz.';
+        if (languageCode == 'en') return 'All meals logged! Check your daily summary.';
+        return 'Tous tes repas tracés ! Vérifie ton bilan du jour.';
       }
     } else {
       // Nuit (21h - 5h)
       if (todayScore < 50) {
-        return isFrench
-          ? 'Demain est un nouveau jour ! Prépare ton planning.'
-          : 'Tomorrow is a fresh start! Plan ahead.';
+        if (languageCode == 'de') return 'Morgen ist ein neuer Tag! Plane voraus.';
+        if (languageCode == 'en') return 'Tomorrow is a fresh start! Plan ahead.';
+        return 'Demain est un nouveau jour ! Prépare ton planning.';
       } else {
-        return isFrench
-          ? 'Bonne journée ! Prends du repos, tu l\'as mérité.'
-          : 'Great day! Rest well, you earned it.';
+        if (languageCode == 'de') return 'Toller Tag! Ruh dich aus, du hast es verdient.';
+        if (languageCode == 'en') return 'Great day! Rest well, you earned it.';
+        return 'Bonne journée ! Prends du repos, tu l\'as mérité.';
       }
     }
   }

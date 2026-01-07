@@ -57,13 +57,17 @@ class _ProgressionTutorialWelcomeState extends State<ProgressionTutorialWelcome>
   String _getRyzeMessage() {
     return widget.languageCode == 'fr'
         ? 'Bienvenue dans ton espace Progression ! Visualise tous tes résultats ici.'
-        : 'Welcome to your Progress space! Visualize all your results here.';
+        : widget.languageCode == 'de'
+            ? 'Willkommen in deinem Fortschritts-Bereich! Visualisiere hier alle deine Ergebnisse.'
+            : 'Welcome to your Progress space! Visualize all your results here.';
   }
 
   String _getDescription() {
     return widget.languageCode == 'fr'
         ? 'Ici, je t\'aide à suivre ton évolution : poids, bilan hebdomadaire, tracking nutrition et sport... Tout pour rester motivé et voir tes progrès !'
-        : 'Here, I help you track your evolution: weight, weekly balance, nutrition and sport tracking... Everything to stay motivated and see your progress!';
+        : widget.languageCode == 'de'
+            ? 'Hier helfe ich dir, deine Entwicklung zu verfolgen: Gewicht, Wochenbilanz, Ernährungs- und Sport-Tracking... Alles, um motiviert zu bleiben und deine Fortschritte zu sehen!'
+            : 'Here, I help you track your evolution: weight, weekly balance, nutrition and sport tracking... Everything to stay motivated and see your progress!';
   }
 
   @override
@@ -196,7 +200,9 @@ class _ProgressionTutorialWelcomeState extends State<ProgressionTutorialWelcome>
                                 Text(
                                   widget.languageCode == 'fr'
                                       ? 'Commencer la visite'
-                                      : 'Start the tour',
+                                      : widget.languageCode == 'de'
+                                          ? 'Tour starten'
+                                          : 'Start the tour',
                                   style: const TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w600,
@@ -231,7 +237,11 @@ class _ProgressionTutorialWelcomeState extends State<ProgressionTutorialWelcome>
                 ),
               ),
               child: Text(
-                widget.languageCode == 'fr' ? 'Passer' : 'Skip',
+                widget.languageCode == 'fr'
+                    ? 'Passer'
+                    : widget.languageCode == 'de'
+                        ? 'Überspringen'
+                        : 'Skip',
                 style: TextStyle(
                   color: Colors.white.withOpacity(0.7),
                   fontSize: 16,

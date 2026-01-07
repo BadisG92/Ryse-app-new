@@ -15,11 +15,11 @@ export '../services/exercise_ai_analysis_service.dart' show ExerciseAnalysis, Ex
 // Badge Premium pour Exercise Analysis
 class _ExerciseAnalysisPremiumBadge extends StatefulWidget {
   final bool isLocked;
-  final bool isFrench;
+  final String langCode;
 
   const _ExerciseAnalysisPremiumBadge({
     required this.isLocked,
-    required this.isFrench,
+    required this.langCode,
   });
 
   @override
@@ -89,8 +89,8 @@ class _ExerciseAnalysisPremiumBadgeState extends State<_ExerciseAnalysisPremiumB
           const SizedBox(width: 5),
           Text(
             widget.isLocked
-              ? (widget.isFrench ? 'UPGRADE' : 'UPGRADE')
-              : (widget.isFrench ? 'ESSAI GRATUIT' : 'TRY FREE'),
+              ? 'UPGRADE'
+              : (widget.langCode == 'de' ? 'GRATIS TESTEN' : (widget.langCode == 'fr' ? 'ESSAI GRATUIT' : 'TRY FREE')),
             style: const TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.bold,
@@ -282,21 +282,29 @@ class _ExerciseAiAnalysisWidgetState extends State<ExerciseAiAnalysisWidget> {
       final errorString = e.toString().toLowerCase();
 
       if (errorString.contains('api key') || errorString.contains('quota') || errorString.contains('billing')) {
-        errorMsg = languageCode == 'fr'
+        errorMsg = languageCode == 'de'
+            ? 'Der KI-Dienst ist vorübergehend nicht verfügbar. Bitte versuche es in wenigen Augenblicken erneut.'
+            : (languageCode == 'fr'
             ? 'Le service d\'IA est temporairement indisponible. Veuillez réessayer dans quelques instants.'
-            : 'AI service temporarily unavailable. Please try again in a few moments.';
+            : 'AI service temporarily unavailable. Please try again in a few moments.');
       } else if (errorString.contains('sessions are required') || errorString.contains('not enough data')) {
-        errorMsg = languageCode == 'fr'
+        errorMsg = languageCode == 'de'
+            ? 'Führe mindestens 3 Einheiten mit dieser Übung durch, um eine personalisierte Analyse zu erhalten.'
+            : (languageCode == 'fr'
             ? 'Effectuez au moins 3 séances avec cet exercice pour obtenir une analyse personnalisée.'
-            : 'Complete at least 3 sessions with this exercise to get a personalized analysis.';
+            : 'Complete at least 3 sessions with this exercise to get a personalized analysis.');
       } else if (errorString.contains('network') || errorString.contains('connection') || errorString.contains('timeout')) {
-        errorMsg = languageCode == 'fr'
+        errorMsg = languageCode == 'de'
+            ? 'Verbindungsproblem. Überprüfe deine Internetverbindung und versuche es erneut.'
+            : (languageCode == 'fr'
             ? 'Problème de connexion. Vérifiez votre connexion internet et réessayez.'
-            : 'Connection problem. Check your internet connection and try again.';
+            : 'Connection problem. Check your internet connection and try again.');
       } else {
-        errorMsg = languageCode == 'fr'
+        errorMsg = languageCode == 'de'
+            ? 'Ein Fehler ist aufgetreten. Bitte versuche es in wenigen Augenblicken erneut.'
+            : (languageCode == 'fr'
             ? 'Une erreur s\'est produite. Réessayez dans quelques instants.'
-            : 'An error occurred. Please try again in a few moments.';
+            : 'An error occurred. Please try again in a few moments.');
       }
 
       setState(() {
@@ -315,19 +323,25 @@ class _ExerciseAiAnalysisWidgetState extends State<ExerciseAiAnalysisWidget> {
 
     if (diff.inMinutes < 60) {
       final minutes = diff.inMinutes;
-      return languageCode == 'fr'
+      return languageCode == 'de'
+          ? 'Vor ${minutes}min'
+          : (languageCode == 'fr'
           ? 'Il y a ${minutes}min'
-          : '${minutes}min ago';
+          : '${minutes}min ago');
     } else if (diff.inHours < 24) {
       final hours = diff.inHours;
-      return languageCode == 'fr'
+      return languageCode == 'de'
+          ? 'Vor ${hours}h'
+          : (languageCode == 'fr'
           ? 'Il y a ${hours}h'
-          : '${hours}h ago';
+          : '${hours}h ago');
     } else {
       final days = diff.inDays;
-      return languageCode == 'fr'
+      return languageCode == 'de'
+          ? 'Vor ${days}T'
+          : (languageCode == 'fr'
           ? 'Il y a ${days}j'
-          : '${days}d ago';
+          : '${days}d ago');
     }
   }
 
@@ -426,7 +440,7 @@ class _ExerciseAiAnalysisWidgetState extends State<ExerciseAiAnalysisWidget> {
             right: 8,
             child: _ExerciseAnalysisPremiumBadge(
               isLocked: isLocked,
-              isFrench: languageCode == 'fr',
+              langCode: languageCode,
             ),
           ),
       ],
@@ -493,9 +507,11 @@ class _ExerciseAiAnalysisWidgetState extends State<ExerciseAiAnalysisWidget> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        languageCode == 'fr'
+                        languageCode == 'de'
+                            ? 'Noch ${sessionsNeeded} Einheit${sessionsNeeded > 1 ? 'en' : ''} erforderlich'
+                            : (languageCode == 'fr'
                             ? 'Encore ${sessionsNeeded} séance${sessionsNeeded > 1 ? 's' : ''} à faire'
-                            : '${sessionsNeeded} more session${sessionsNeeded > 1 ? 's' : ''} to go',
+                            : '${sessionsNeeded} more session${sessionsNeeded > 1 ? 's' : ''} to go'),
                         style: const TextStyle(
                           fontSize: 12,
                           color: Color(0xFF94A3B8),
@@ -516,7 +532,7 @@ class _ExerciseAiAnalysisWidgetState extends State<ExerciseAiAnalysisWidget> {
             right: 8,
             child: _ExerciseAnalysisPremiumBadge(
               isLocked: isLocked,
-              isFrench: languageCode == 'fr',
+              langCode: languageCode,
             ),
           ),
       ],
@@ -612,9 +628,11 @@ class _ExerciseAiAnalysisWidgetState extends State<ExerciseAiAnalysisWidget> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  languageCode == 'fr'
+                  languageCode == 'de'
+                      ? 'Coach Ryze analysiert deine Leistung...'
+                      : (languageCode == 'fr'
                       ? 'Le Coach Ryze analyse vos performances...'
-                      : 'Coach Ryze is analyzing your performance...',
+                      : 'Coach Ryze is analyzing your performance...'),
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.7),
                     fontSize: 12,
@@ -629,6 +647,7 @@ class _ExerciseAiAnalysisWidgetState extends State<ExerciseAiAnalysisWidget> {
   }
 
   Widget _buildAnalysisCard(String languageCode) {
+    final isGerman = languageCode == 'de';
     final isFrench = languageCode == 'fr';
 
     return Container(
@@ -720,7 +739,7 @@ class _ExerciseAiAnalysisWidgetState extends State<ExerciseAiAnalysisWidget> {
               ),
               const SizedBox(width: 10),
               Text(
-                isFrench ? 'Analyse' : 'Analysis',
+                isGerman ? 'Analyse' : (isFrench ? 'Analyse' : 'Analysis'),
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -775,7 +794,7 @@ class _ExerciseAiAnalysisWidgetState extends State<ExerciseAiAnalysisWidget> {
                 ),
                 const SizedBox(width: 10),
                 Text(
-                  isFrench ? 'Recommandations' : 'Recommendations',
+                  isGerman ? 'Empfehlungen' : (isFrench ? 'Recommandations' : 'Recommendations'),
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,

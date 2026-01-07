@@ -58,7 +58,7 @@ class AIWorkoutGenerationService {
 
       // Obtenir la langue de l'utilisateur
       final locService = LocalizationService.instance;
-      final userLanguage = locService.isFrench ? 'French' : 'English';
+      final userLanguage = locService.isFrench ? 'French' : locService.isGerman ? 'German' : 'English';
 
       // Construire la liste d'exercices disponibles AVEC IDs pour le prompt
       final exercisesList = _buildExercisesList(allExercises, locService);
@@ -287,9 +287,10 @@ class AIWorkoutGenerationService {
     // Grouper par groupe musculaire
     final Map<String, List<Exercise>> groupedExercises = {};
     for (final exercise in exercises) {
+      final isGerman = locService.isGerman;
       final group = exercise.muscleGroup.isNotEmpty
           ? exercise.muscleGroup
-          : (isFrench ? 'Autre' : 'Other');
+          : (isFrench ? 'Autre' : isGerman ? 'Andere' : 'Other');
 
       groupedExercises.putIfAbsent(group, () => []);
       groupedExercises[group]!.add(exercise);

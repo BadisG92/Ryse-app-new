@@ -149,7 +149,8 @@ class ProgressServiceV2 {
       return _getEmptyBalance();
     }
 
-    final cacheKey = 'weekly_balance_$userId';
+    final lang = LocalizationService.instance.currentLanguageCode;
+    final cacheKey = 'weekly_balance_${userId}_$lang';
     
     // Vérifier si on doit rafraîchir le cache (avec vérification d'activité récente)
     if (!(await _shouldRefreshCache(forceCheck: true)) && _weeklyCache.containsKey(cacheKey)) {
@@ -225,7 +226,8 @@ class ProgressServiceV2 {
       return _getEmptyTracking();
     }
 
-    final cacheKey = 'weekly_tracking_$userId';
+    final lang = LocalizationService.instance.currentLanguageCode;
+    final cacheKey = 'weekly_tracking_${userId}_$lang';
     if (!(await _shouldRefreshCache(forceCheck: true)) && _weeklyCache.containsKey(cacheKey)) {
       debugPrint('✅ Tracking hebdomadaire servi depuis le cache (semaine $_cachedWeekNumber)');
       return List<TrackingDay>.from(_weeklyCache[cacheKey]);
@@ -336,7 +338,8 @@ class ProgressServiceV2 {
       );
     }
 
-    final cacheKey = 'header_stats_$userId';
+    final lang = LocalizationService.instance.currentLanguageCode;
+    final cacheKey = 'header_stats_${userId}_$lang';
     if (!(await _shouldRefreshCache(forceCheck: true)) && _weeklyCache.containsKey(cacheKey)) {
       debugPrint('✅ Stats d\'en-tête servies depuis le cache (semaine $_cachedWeekNumber)');
       return _weeklyCache[cacheKey] as HeaderStats;
@@ -378,7 +381,8 @@ class ProgressServiceV2 {
       return [];
     }
 
-    final cacheKey = 'ai_recommendations_$userId';
+    final lang = LocalizationService.instance.currentLanguageCode;
+    final cacheKey = 'ai_recommendations_${userId}_$lang';
     if (!(await _shouldRefreshCache(forceCheck: true)) && _weeklyCache.containsKey(cacheKey)) {
       debugPrint('✅ Recommandations IA servies depuis le cache (semaine $_cachedWeekNumber)');
       return List<AIRecommendation>.from(_weeklyCache[cacheKey]);

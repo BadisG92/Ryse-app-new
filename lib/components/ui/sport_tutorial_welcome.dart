@@ -57,13 +57,17 @@ class _SportTutorialWelcomeState extends State<SportTutorialWelcome>
   String _getRyzeMessage() {
     return widget.languageCode == 'fr'
         ? 'Bienvenue dans ton espace Sport ! Découvre comment je peux t\'accompagner.'
-        : 'Welcome to your Sport space! Discover how I can support you.';
+        : widget.languageCode == 'de'
+            ? 'Willkommen in deinem Sport-Bereich! Entdecke, wie ich dich unterstützen kann.'
+            : 'Welcome to your Sport space! Discover how I can support you.';
   }
 
   String _getDescription() {
     return widget.languageCode == 'fr'
         ? 'Ici, je t\'accompagne pour suivre tes entraînements, gérer tes séances de cardio et musculation, et t\'aider à progresser vers tes objectifs fitness.'
-        : 'Here, I help you track your workouts, manage your cardio and strength training sessions, and help you progress towards your fitness goals.';
+        : widget.languageCode == 'de'
+            ? 'Hier begleite ich dich, um deine Trainings zu verfolgen, deine Cardio- und Krafttraining-Einheiten zu verwalten und dir zu helfen, deine Fitness-Ziele zu erreichen.'
+            : 'Here, I help you track your workouts, manage your cardio and strength training sessions, and help you progress towards your fitness goals.';
   }
 
   @override
@@ -196,7 +200,9 @@ class _SportTutorialWelcomeState extends State<SportTutorialWelcome>
                                 Text(
                                   widget.languageCode == 'fr'
                                       ? 'Commencer la visite'
-                                      : 'Start the tour',
+                                      : widget.languageCode == 'de'
+                                          ? 'Tour starten'
+                                          : 'Start the tour',
                                   style: const TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w600,
@@ -231,7 +237,11 @@ class _SportTutorialWelcomeState extends State<SportTutorialWelcome>
                 ),
               ),
               child: Text(
-                widget.languageCode == 'fr' ? 'Passer' : 'Skip',
+                widget.languageCode == 'fr'
+                    ? 'Passer'
+                    : widget.languageCode == 'de'
+                        ? 'Überspringen'
+                        : 'Skip',
                 style: TextStyle(
                   color: Colors.white.withOpacity(0.7),
                   fontSize: 16,

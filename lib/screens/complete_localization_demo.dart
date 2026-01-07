@@ -159,7 +159,7 @@ class _CompleteLocalizationDemoState extends State<CompleteLocalizationDemo>
             
             _buildInfoRow(
               'current_language'.tr(locService.currentLanguageCode),
-              locService.isFrench ? 'Français 🇫🇷' : 'English 🇺🇸',
+              locService.isFrench ? 'Français 🇫🇷' : locService.isGerman ? 'Deutsch 🇩🇪' : 'English 🇺🇸',
             ),
             
             _buildInfoRow(
@@ -177,7 +177,7 @@ class _CompleteLocalizationDemoState extends State<CompleteLocalizationDemo>
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: locService.isFrench ? Colors.blue.shade50 : Colors.green.shade50,
+                color: locService.isFrench ? Colors.blue.shade50 : locService.isGerman ? Colors.amber.shade50 : Colors.green.shade50,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
@@ -185,7 +185,7 @@ class _CompleteLocalizationDemoState extends State<CompleteLocalizationDemo>
                   Icon(
                     LucideIcons.info,
                     size: 16,
-                    color: locService.isFrench ? Colors.blue.shade700 : Colors.green.shade700,
+                    color: locService.isFrench ? Colors.blue.shade700 : locService.isGerman ? Colors.amber.shade700 : Colors.green.shade700,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -193,7 +193,7 @@ class _CompleteLocalizationDemoState extends State<CompleteLocalizationDemo>
                       'language_tip'.tr(locService.currentLanguageCode),
                       style: TextStyle(
                         fontSize: 12,
-                        color: locService.isFrench ? Colors.blue.shade700 : Colors.green.shade700,
+                        color: locService.isFrench ? Colors.blue.shade700 : locService.isGerman ? Colors.amber.shade700 : Colors.green.shade700,
                       ),
                     ),
                   ),
@@ -268,7 +268,7 @@ class _CompleteLocalizationDemoState extends State<CompleteLocalizationDemo>
             
             _buildFormatExample(
               'measurement_units'.tr(locService.currentLanguageCode),
-              locService.isFrench ? '70 kg, 175 cm' : '154 lbs, 5\'9"',
+              locService.isFrench ? '70 kg, 175 cm' : locService.isGerman ? '70 kg, 175 cm' : '154 lbs, 5\'9"',
             ),
           ],
         ),

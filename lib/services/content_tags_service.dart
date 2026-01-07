@@ -180,32 +180,35 @@ class ContentTagsService {
     return calorieKeywords.any((keyword) => tag.contains(keyword));
   }
 
-  /// Insère un tag multilingue dans content_tags s'il n'existe pas déjà
+  /// Insere un tag multilingue dans content_tags s'il n'existe pas deja
   static Future<void> _insertTagIfNotExists(String tagName, String category) async {
     try {
-      // Vérifier si le tag existe déjà (vérifier dans name_fr et name_en)
+      // Verifier si le tag existe deja (verifier dans name_fr, name_en et name_de)
       final existing = await _supabase
           .from('content_tags')
           .select('id')
-          .or('name_fr.eq.$tagName,name_en.eq.$tagName')
+          .or('name_fr.eq.$tagName,name_en.eq.$tagName,name_de.eq.$tagName')
           .eq('category', category)
           .maybeSingle();
 
       if (existing == null) {
-        // Déterminer si c'est français ou anglais
-        bool isFrench = _isFrenchTag(tagName);
-        
-        // Insérer le nouveau tag multilingue
+        // Determiner la langue du tag
+        final bool isGerman = _isGermanTag(tagName);
+        final bool isFrench = !isGerman && _isFrenchTag(tagName);
+
+        // Inserer le nouveau tag multilingue
         await _supabase
             .from('content_tags')
             .insert({
               'name_fr': isFrench ? tagName : null,
-              'name_en': isFrench ? null : tagName,
+              'name_en': (!isFrench && !isGerman) ? tagName : null,
+              'name_de': isGerman ? tagName : null,
               'category': category,
               'app part': 'recettes',
-              // Pas de couleur comme demandé
+              // Pas de couleur comme demande
             });
-        debugPrint('✅ Tag ajouté: $tagName ($category) [${isFrench ? 'FR' : 'EN'}]');
+        final String lang = isGerman ? 'DE' : (isFrench ? 'FR' : 'EN');
+        debugPrint('✅ Tag ajouté: $tagName ($category) [$lang]');
       } else {
         debugPrint('⚪ Tag existe déjà: $tagName');
       }
@@ -214,7 +217,18 @@ class ContentTagsService {
     }
   }
 
-  /// Détermine si un tag est en français
+  /// Determine si un tag est en allemand
+  static bool _isGermanTag(String tag) {
+    const germanIndicators = [
+      'ä', 'ö', 'ü', 'ß',
+      'frühstück', 'mittagessen', 'abendessen', 'snack',
+      'vegetarisch', 'vegan', 'glutenfrei', 'laktosefrei',
+      'schnell', 'einfach', 'schwierig', 'leicht', 'schwer'
+    ];
+    return germanIndicators.any((indicator) => tag.toLowerCase().contains(indicator));
+  }
+
+  /// Determine si un tag est en francais
   static bool _isFrenchTag(String tag) {
     const frenchIndicators = [
       'é', 'è', 'à', 'ç', 'ù', 'ê', 'â', 'î', 'ô', 'û', 'ë', 'ï', 'ÿ',
@@ -230,31 +244,27 @@ class ContentTagsService {
       final locService = LocalizationService.instance;
       final language = locService.currentLanguageCode;
       debugPrint('🔍 Récupération des tags depuis content_tags (langue: $language)...');
-      
-      // Sélectionner les colonnes selon la langue
-      final suffix = locService.getColumnSuffix();
-      final nameColumn = 'name$suffix';
-      final categoryColumn = 'category$suffix';
-      
+
+      // Sélectionner toutes les colonnes localisées (FR, EN, DE)
       final response = await _supabase
           .from('content_tags')
-          .select('$nameColumn, $categoryColumn, name_fr, name_en, category_fr, category_en')
+          .select('name_fr, name_en, name_de, category_fr, category_en, category_de')
           .eq('app part', 'recettes');
 
       debugPrint('🔍 Données brutes récupérées: ${response.length} tags');
       if (response.isNotEmpty) {
         debugPrint('🔍 Premier tag exemple: ${response[0]}');
       }
-      
+
       Map<String, List<String>> organizedTags = {};
-      
+
       for (var tagData in response) {
-        // Récupérer le nom et la catégorie selon la langue avec fallback automatique
-        final tagName = locService.getTextFromColumns(tagData['name_fr'], tagData['name_en']);
-        final categoryName = locService.getTextFromColumns(tagData['category_fr'], tagData['category_en']);
-        
+        // Récupérer le nom et la catégorie selon la langue avec fallback automatique (FR/EN/DE)
+        final tagName = locService.getTextFromColumns(tagData['name_fr'], tagData['name_en'], tagData['name_de']);
+        final categoryName = locService.getTextFromColumns(tagData['category_fr'], tagData['category_en'], tagData['category_de']);
+
         // Ajouter le tag à sa catégorie
-        if (tagName != null && tagName.isNotEmpty && categoryName != null && categoryName.isNotEmpty) {
+        if (tagName.isNotEmpty && categoryName.isNotEmpty) {
           if (!organizedTags.containsKey(categoryName)) {
             organizedTags[categoryName] = [];
           }

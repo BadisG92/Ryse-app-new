@@ -42,6 +42,19 @@ class LanguageSelector extends StatelessWidget {
                 ],
               ),
             ),
+            PopupMenuItem<String>(
+              value: 'de',
+              child: Row(
+                children: [
+                  const Text('🇩🇪'),
+                  const SizedBox(width: 8),
+                  const Text('Deutsch'),
+                  const Spacer(),
+                  if (locService.isGerman)
+                    const Icon(LucideIcons.check, size: 16, color: Color(0xFF0B132B)),
+                ],
+              ),
+            ),
           ],
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -53,10 +66,10 @@ class LanguageSelector extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(locService.isFrench ? '🇫🇷' : '🇺🇸'),
+                Text(locService.isFrench ? '🇫🇷' : locService.isGerman ? '🇩🇪' : '🇺🇸'),
                 const SizedBox(width: 4),
                 Text(
-                  locService.isFrench ? 'FR' : 'EN',
+                  locService.isFrench ? 'FR' : locService.isGerman ? 'DE' : 'EN',
                   style: const TextStyle(
                     fontWeight: FontWeight.w600,
                     color: Color(0xFF1A1A1A),

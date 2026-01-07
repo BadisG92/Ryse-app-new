@@ -22,11 +22,11 @@ import '../services/subscription_service.dart';
 // Badge Premium pour Coach Ryze Sport
 class _CoachRyzeSportPremiumBadge extends StatefulWidget {
   final bool isLocked;
-  final bool isFrench;
+  final String langCode;
 
   const _CoachRyzeSportPremiumBadge({
     required this.isLocked,
-    required this.isFrench,
+    required this.langCode,
   });
 
   @override
@@ -96,8 +96,8 @@ class _CoachRyzeSportPremiumBadgeState extends State<_CoachRyzeSportPremiumBadge
           const SizedBox(width: 5),
           Text(
             widget.isLocked
-              ? (widget.isFrench ? 'UPGRADE' : 'UPGRADE')
-              : (widget.isFrench ? 'ESSAI GRATUIT' : 'TRY FREE'),
+              ? 'UPGRADE'
+              : (widget.langCode == 'de' ? 'GRATIS TESTEN' : (widget.langCode == 'fr' ? 'ESSAI GRATUIT' : 'TRY FREE')),
             style: const TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.bold,
@@ -238,7 +238,7 @@ class SportMusculationHybridState extends State<SportMusculationHybrid> {
                   Expanded(
                     child: _buildCoachRyzeButton(
                       key: _coachRyzeButtonKey,
-                      title: locService.isFrench ? 'Coach Ryze' : 'Coach Ryze',
+                      title: 'Coach Ryze',
                       onTap: _navigateToAIWorkoutGenerator,
                     ),
                   ),
@@ -1369,7 +1369,7 @@ class _CoachRyzeButtonWithBadgeState extends State<_CoachRyzeButtonWithBadge> {
                 child: Center(
                   child: _CoachRyzeSportPremiumBadge(
                     isLocked: isLocked,
-                    isFrench: locService.currentLanguageCode == 'fr',
+                    langCode: locService.currentLanguageCode,
                   ),
                 ),
               ),

@@ -139,51 +139,64 @@ class PaywallService {
     return AppTranslations.get(key, languageCode);
   }
 
-  /// Obtenir les bénéfices émotionnels selon le contexte
+  /// Obtenir les benefices emotionnels selon le contexte
   static List<Map<String, String>> getContextBenefits(
     PaywallContext context,
     String languageCode,
   ) {
     final isFrench = languageCode == 'fr';
+    final isGerman = languageCode == 'de';
 
     switch (context) {
       case PaywallContext.scanner:
         return [
           {
             'icon': '⚡',
-            'text': isFrench
-                ? 'Prends une photo, obtiens les calories en 2 secondes'
-                : 'Take a photo, get calories in 2 seconds',
+            'text': isGerman
+                ? 'Mach ein Foto, erhalte Kalorien in 2 Sekunden'
+                : isFrench
+                    ? 'Prends une photo, obtiens les calories en 2 secondes'
+                    : 'Take a photo, get calories in 2 seconds',
           },
           {
             'icon': '🎯',
-            'text': isFrench
-                ? 'Fini les estimations approximatives qui ruinent tes progrès'
-                : 'No more rough estimates ruining your progress',
+            'text': isGerman
+                ? 'Schluss mit ungenauen Schaetzungen, die deinen Fortschritt ruinieren'
+                : isFrench
+                    ? 'Fini les estimations approximatives qui ruinent tes progrès'
+                    : 'No more rough estimates ruining your progress',
           },
           {
             'icon': '🔥',
-            'text': isFrench
-                ? 'Scanne tes 3 repas quotidiens en moins de 30 secondes'
-                : 'Scan your 3 daily meals in under 30 seconds',
+            'text': isGerman
+                ? 'Scanne deine 3 taeglichen Mahlzeiten in unter 30 Sekunden'
+                : isFrench
+                    ? 'Scanne tes 3 repas quotidiens en moins de 30 secondes'
+                    : 'Scan your 3 daily meals in under 30 seconds',
           },
           {
             'icon': '📊',
-            'text': isFrench
-                ? 'Vois exactement ce que tu manges (macros + micros)'
-                : 'See exactly what you\'re eating (macros + micros)',
+            'text': isGerman
+                ? 'Sieh genau, was du isst (Makros + Mikros)'
+                : isFrench
+                    ? 'Vois exactement ce que tu manges (macros + micros)'
+                    : 'See exactly what you\'re eating (macros + micros)',
           },
           {
             'icon': '💪',
-            'text': isFrench
-                ? 'Atteins tes objectifs 3x plus vite avec un tracking précis'
-                : 'Reach your goals 3x faster with precise tracking',
+            'text': isGerman
+                ? 'Erreiche deine Ziele 3x schneller mit praezisem Tracking'
+                : isFrench
+                    ? 'Atteins tes objectifs 3x plus vite avec un tracking précis'
+                    : 'Reach your goals 3x faster with precise tracking',
           },
           {
             'icon': '✨',
-            'text': isFrench
-                ? 'Plus de 10 000 athlètes scannent déjà leurs repas'
-                : 'Over 10,000 athletes already scan their meals',
+            'text': isGerman
+                ? 'Ueber 10.000 Athleten scannen bereits ihre Mahlzeiten'
+                : isFrench
+                    ? 'Plus de 10 000 athlètes scannent déjà leurs repas'
+                    : 'Over 10,000 athletes already scan their meals',
           },
         ];
 
@@ -191,39 +204,51 @@ class PaywallService {
         return [
           {
             'icon': '📱',
-            'text': isFrench
-                ? 'Scanne le code-barre, obtiens les vraies valeurs nutritionnelles'
-                : 'Scan the barcode, get the real nutritional values',
+            'text': isGerman
+                ? 'Scanne den Barcode, erhalte die echten Naehrwerte'
+                : isFrench
+                    ? 'Scanne le code-barre, obtiens les vraies valeurs nutritionnelles'
+                    : 'Scan the barcode, get the real nutritional values',
           },
           {
             'icon': '✅',
-            'text': isFrench
-                ? 'Calories, protéines, glucides, lipides 100% précis'
-                : '100% accurate calories, protein, carbs, fats',
+            'text': isGerman
+                ? 'Kalorien, Protein, Kohlenhydrate, Fette 100% genau'
+                : isFrench
+                    ? 'Calories, protéines, glucides, lipides 100% précis'
+                    : '100% accurate calories, protein, carbs, fats',
           },
           {
             'icon': '⚡',
-            'text': isFrench
-                ? 'Tracke tes aliments en 2 secondes chrono'
-                : 'Track your food in 2 seconds flat',
+            'text': isGerman
+                ? 'Tracke dein Essen in 2 Sekunden'
+                : isFrench
+                    ? 'Tracke tes aliments en 2 secondes chrono'
+                    : 'Track your food in 2 seconds flat',
           },
           {
             'icon': '🎯',
-            'text': isFrench
-                ? 'Fini les erreurs d\'estimation qui faussent tes résultats'
-                : 'No more estimation errors messing up your results',
+            'text': isGerman
+                ? 'Schluss mit Schaetzfehlern, die deine Ergebnisse verfaelschen'
+                : isFrench
+                    ? 'Fini les erreurs d\'estimation qui faussent tes résultats'
+                    : 'No more estimation errors messing up your results',
           },
           {
             'icon': '📊',
-            'text': isFrench
-                ? 'Base de données mondiale de millions de produits'
-                : 'Global database of millions of products',
+            'text': isGerman
+                ? 'Weltweite Datenbank mit Millionen von Produkten'
+                : isFrench
+                    ? 'Base de données mondiale de millions de produits'
+                    : 'Global database of millions of products',
           },
           {
             'icon': '💪',
-            'text': isFrench
-                ? 'Atteins tes objectifs avec un tracking ultra-précis'
-                : 'Reach your goals with ultra-precise tracking',
+            'text': isGerman
+                ? 'Erreiche deine Ziele mit ultra-praezisem Tracking'
+                : isFrench
+                    ? 'Atteins tes objectifs avec un tracking ultra-précis'
+                    : 'Reach your goals with ultra-precise tracking',
           },
         ];
 
@@ -231,39 +256,51 @@ class PaywallService {
         return [
           {
             'icon': '🗣️',
-            'text': isFrench
-                ? 'Dis juste "j\'ai mangé une pizza" et c\'est tracké'
-                : 'Just say "I ate a pizza" and it\'s tracked',
+            'text': isGerman
+                ? 'Sag einfach "Ich habe Pizza gegessen" und es ist getrackt'
+                : isFrench
+                    ? 'Dis juste "j\'ai mangé une pizza" et c\'est tracké'
+                    : 'Just say "I ate a pizza" and it\'s tracked',
           },
           {
             'icon': '⚡',
-            'text': isFrench
-                ? 'Le moyen le PLUS rapide de tracker (3 secondes chrono)'
-                : 'The FASTEST way to track (3 seconds flat)',
+            'text': isGerman
+                ? 'Die SCHNELLSTE Art zu tracken (3 Sekunden)'
+                : isFrench
+                    ? 'Le moyen le PLUS rapide de tracker (3 secondes chrono)'
+                    : 'The FASTEST way to track (3 seconds flat)',
           },
           {
             'icon': '🎤',
-            'text': isFrench
-                ? 'Déclare tes repas en vocal pendant que tu manges'
-                : 'Declare meals by voice while you eat',
+            'text': isGerman
+                ? 'Melde Mahlzeiten per Sprache waehrend du isst'
+                : isFrench
+                    ? 'Déclare tes repas en vocal pendant que tu manges'
+                    : 'Declare meals by voice while you eat',
           },
           {
             'icon': '🧠',
-            'text': isFrench
-                ? 'Le Coach Ryze comprend "2 œufs + tartines beurre"'
-                : 'Coach Ryze understands "2 eggs + buttered toast"',
+            'text': isGerman
+                ? 'Coach Ryze versteht "2 Eier + Buttertoast"'
+                : isFrench
+                    ? 'Le Coach Ryze comprend "2 œufs + tartines beurre"'
+                    : 'Coach Ryze understands "2 eggs + buttered toast"',
           },
           {
             'icon': '💪',
-            'text': isFrench
-                ? 'Reste constant dans ton tracking = résultats garantis'
-                : 'Stay consistent with tracking = guaranteed results',
+            'text': isGerman
+                ? 'Bleib konstant beim Tracken = garantierte Ergebnisse'
+                : isFrench
+                    ? 'Reste constant dans ton tracking = résultats garantis'
+                    : 'Stay consistent with tracking = guaranteed results',
           },
           {
             'icon': '📲',
-            'text': isFrench
-                ? 'Parfait quand t\'es au resto avec des potes'
-                : 'Perfect when you\'re at a restaurant with friends',
+            'text': isGerman
+                ? 'Perfekt wenn du mit Freunden im Restaurant bist'
+                : isFrench
+                    ? 'Parfait quand t\'es au resto avec des potes'
+                    : 'Perfect when you\'re at a restaurant with friends',
           },
         ];
 
@@ -271,39 +308,51 @@ class PaywallService {
         return [
           {
             'icon': '🤖',
-            'text': isFrench
-                ? 'Ton Coach crée des séances adaptées à TON niveau'
-                : 'Your Coach creates sessions adapted to YOUR level',
+            'text': isGerman
+                ? 'Dein Coach erstellt Einheiten angepasst an DEIN Level'
+                : isFrench
+                    ? 'Ton Coach crée des séances adaptées à TON niveau'
+                    : 'Your Coach creates sessions adapted to YOUR level',
           },
           {
             'icon': '📈',
-            'text': isFrench
-                ? 'Progression automatique basée sur tes performances'
-                : 'Automatic progression based on your performance',
+            'text': isGerman
+                ? 'Automatische Progression basierend auf deiner Leistung'
+                : isFrench
+                    ? 'Progression automatique basée sur tes performances'
+                    : 'Automatic progression based on your performance',
           },
           {
             'icon': '⚡',
-            'text': isFrench
-                ? 'Génère un workout complet en 10 secondes'
-                : 'Generate a complete workout in 10 seconds',
+            'text': isGerman
+                ? 'Generiere ein komplettes Workout in 10 Sekunden'
+                : isFrench
+                    ? 'Génère un workout complet en 10 secondes'
+                    : 'Generate a complete workout in 10 seconds',
           },
           {
             'icon': '💪',
-            'text': isFrench
-                ? 'Ne stagne plus jamais : le Coach augmente l\'intensité'
-                : 'Never plateau again: Coach increases intensity',
+            'text': isGerman
+                ? 'Nie wieder stagnieren: Coach erhoeht die Intensitaet'
+                : isFrench
+                    ? 'Ne stagne plus jamais : le Coach augmente l\'intensité'
+                    : 'Never plateau again: Coach increases intensity',
           },
           {
             'icon': '🎯',
-            'text': isFrench
-                ? 'Équilibrage intelligent de tous les groupes musculaires'
-                : 'Smart balancing of all muscle groups',
+            'text': isGerman
+                ? 'Intelligente Balance aller Muskelgruppen'
+                : isFrench
+                    ? 'Équilibrage intelligent de tous les groupes musculaires'
+                    : 'Smart balancing of all muscle groups',
           },
           {
             'icon': '🔥',
-            'text': isFrench
-                ? 'Atteins tes objectifs physiques 2x plus vite'
-                : 'Reach your physical goals 2x faster',
+            'text': isGerman
+                ? 'Erreiche deine koerperlichen Ziele 2x schneller'
+                : isFrench
+                    ? 'Atteins tes objectifs physiques 2x plus vite'
+                    : 'Reach your physical goals 2x faster',
           },
         ];
 
@@ -311,39 +360,51 @@ class PaywallService {
         return [
           {
             'icon': '📊',
-            'text': isFrench
-                ? 'Bilan quotidien personnalisé de ta journée'
-                : 'Personalized daily report of your day',
+            'text': isGerman
+                ? 'Personalisierter Tagesbericht deines Tages'
+                : isFrench
+                    ? 'Bilan quotidien personnalisé de ta journée'
+                    : 'Personalized daily report of your day',
           },
           {
             'icon': '💡',
-            'text': isFrench
-                ? 'Sais EXACTEMENT quoi ajuster pour progresser'
-                : 'Know EXACTLY what to adjust to progress',
+            'text': isGerman
+                ? 'Wisse GENAU, was du anpassen musst, um Fortschritte zu machen'
+                : isFrench
+                    ? 'Sais EXACTEMENT quoi ajuster pour progresser'
+                    : 'Know EXACTLY what to adjust to progress',
           },
           {
             'icon': '🎯',
-            'text': isFrench
-                ? 'Conseils adaptés à ton objectif (sèche, prise de masse...)'
-                : 'Advice adapted to your goal (cut, bulk...)',
+            'text': isGerman
+                ? 'Tipps angepasst an dein Ziel (Abnehmen, Aufbauen...)'
+                : isFrench
+                    ? 'Conseils adaptés à ton objectif (sèche, prise de masse...)'
+                    : 'Advice adapted to your goal (cut, bulk...)',
           },
           {
             'icon': '📈',
-            'text': isFrench
-                ? 'Visualise ta progression semaine après semaine'
-                : 'Visualize your progress week after week',
+            'text': isGerman
+                ? 'Visualisiere deinen Fortschritt Woche fuer Woche'
+                : isFrench
+                    ? 'Visualise ta progression semaine après semaine'
+                    : 'Visualize your progress week after week',
           },
           {
             'icon': '🔥',
-            'text': isFrench
-                ? 'Comprends pourquoi certains jours tu stagnes'
-                : 'Understand why some days you plateau',
+            'text': isGerman
+                ? 'Verstehe, warum du an manchen Tagen stagnierst'
+                : isFrench
+                    ? 'Comprends pourquoi certains jours tu stagnes'
+                    : 'Understand why some days you plateau',
           },
           {
             'icon': '✨',
-            'text': isFrench
-                ? 'Reçois des encouragements personnalisés chaque jour'
-                : 'Receive personalized encouragement every day',
+            'text': isGerman
+                ? 'Erhalte taeglich personalisierte Ermutigung'
+                : isFrench
+                    ? 'Reçois des encouragements personnalisés chaque jour'
+                    : 'Receive personalized encouragement every day',
           },
         ];
 
@@ -351,80 +412,104 @@ class PaywallService {
         return [
           {
             'icon': '💪',
-            'text': isFrench
-                ? 'Analyse de tes perfs exercice par exercice'
-                : 'Analysis of your performance exercise by exercise',
+            'text': isGerman
+                ? 'Analyse deiner Leistung Uebung fuer Uebung'
+                : isFrench
+                    ? 'Analyse de tes perfs exercice par exercice'
+                    : 'Analysis of your performance exercise by exercise',
           },
           {
             'icon': '📈',
-            'text': isFrench
-                ? 'Vois tes points faibles et comment les corriger'
-                : 'See your weak points and how to fix them',
+            'text': isGerman
+                ? 'Sieh deine Schwachstellen und wie du sie behebst'
+                : isFrench
+                    ? 'Vois tes points faibles et comment les corriger'
+                    : 'See your weak points and how to fix them',
           },
           {
             'icon': '🎯',
-            'text': isFrench
-                ? 'Recommandations pour ajouter 5-10kg sur chaque mouvement'
-                : 'Recommendations to add 5-10kg on each movement',
+            'text': isGerman
+                ? 'Empfehlungen, um 5-10kg bei jeder Bewegung zuzulegen'
+                : isFrench
+                    ? 'Recommandations pour ajouter 5-10kg sur chaque mouvement'
+                    : 'Recommendations to add 5-10kg on each movement',
           },
           {
             'icon': '⚡',
-            'text': isFrench
-                ? 'Détecte automatiquement quand tu dois progresser'
-                : 'Automatically detects when you should progress',
+            'text': isGerman
+                ? 'Erkennt automatisch, wann du steigern solltest'
+                : isFrench
+                    ? 'Détecte automatiquement quand tu dois progresser'
+                    : 'Automatically detects when you should progress',
           },
           {
             'icon': '🔥',
-            'text': isFrench
-                ? 'Compare tes perfs avec des athlètes de ton niveau'
-                : 'Compare your performance with athletes at your level',
+            'text': isGerman
+                ? 'Vergleiche deine Leistung mit Athleten deines Levels'
+                : isFrench
+                    ? 'Compare tes perfs avec des athlètes de ton niveau'
+                    : 'Compare your performance with athletes at your level',
           },
           {
             'icon': '💡',
-            'text': isFrench
-                ? 'Feedback immédiat après chaque séance'
-                : 'Immediate feedback after each session',
+            'text': isGerman
+                ? 'Sofortiges Feedback nach jeder Einheit'
+                : isFrench
+                    ? 'Feedback immédiat après chaque séance'
+                    : 'Immediate feedback after each session',
           },
         ];
 
       default:
-        // Bénéfices génériques
+        // Benefices generiques
         return [
           {
             'icon': '📸',
-            'text': isFrench
-                ? 'Scans illimités - Le Coach Ryze reconnaît tout'
-                : 'Unlimited scans - Coach Ryze recognizes everything',
+            'text': isGerman
+                ? 'Unbegrenzte Scans - Coach Ryze erkennt alles'
+                : isFrench
+                    ? 'Scans illimités - Le Coach Ryze reconnaît tout'
+                    : 'Unlimited scans - Coach Ryze recognizes everything',
           },
           {
             'icon': '🤖',
-            'text': isFrench
-                ? 'Workouts personnalisés générés par ton Coach'
-                : 'Personalized workouts by your Coach',
+            'text': isGerman
+                ? 'Personalisierte Workouts von deinem Coach'
+                : isFrench
+                    ? 'Workouts personnalisés générés par ton Coach'
+                    : 'Personalized workouts by your Coach',
           },
           {
             'icon': '📊',
-            'text': isFrench
-                ? 'Bilan quotidien et conseils sur-mesure'
-                : 'Daily report and custom advice',
+            'text': isGerman
+                ? 'Taeglicher Bericht und massgeschneiderte Tipps'
+                : isFrench
+                    ? 'Bilan quotidien et conseils sur-mesure'
+                    : 'Daily report and custom advice',
           },
           {
             'icon': '💬',
-            'text': isFrench
-                ? 'Chat vocal/texte avec le Coach Ryze'
-                : 'Voice/text chat with Coach Ryze',
+            'text': isGerman
+                ? 'Sprach-/Text-Chat mit Coach Ryze'
+                : isFrench
+                    ? 'Chat vocal/texte avec le Coach Ryze'
+                    : 'Voice/text chat with Coach Ryze',
           },
           {
             'icon': '💪',
-            'text': isFrench
-                ? 'Analyse de progression par exercice'
-                : 'Exercise-by-exercise progress analysis',
+            'text': isGerman
+                ? 'Fortschrittsanalyse pro Uebung'
+                : isFrench
+                    ? 'Analyse de progression par exercice'
+                    : 'Exercise-by-exercise progress analysis',
           },
           {
             'icon': '📈',
-            'text': isFrench
-                ? 'Historique complet et graphiques avancés'
-                : 'Full history and advanced charts',
+            'text': isGerman
+                ? 'Vollstaendiger Verlauf und erweiterte Grafiken'
+                : isFrench
+                    ? 'Historique complet et graphiques avancés'
+                    : 'Full history and advanced charts',
           },
         ];
     }
@@ -456,72 +541,113 @@ class PaywallService {
     return AppTranslations.get(key, languageCode);
   }
 
-  /// Obtenir le message personnalisé selon le contexte
+  /// Obtenir le message personnalise selon le contexte
   static Map<String, String> getPaywallContent(
     PaywallContext context,
     String languageCode,
   ) {
     final isFrench = languageCode == 'fr';
+    final isGerman = languageCode == 'de';
 
     switch (context) {
       // === FEATURES COACH RYZE (NOUVELLES) ===
 
       case PaywallContext.scanner:
         return {
-          'title': isFrench ? '📸 Scanner automatique - Premium' : '📸 Auto Scanner - Premium',
-          'message': isFrench
-              ? 'Le scanner automatique est réservé aux membres Premium.\n\n✨ Le Coach Ryze reconnaît tes aliments instantanément\n📊 Calories calculées automatiquement\n⚡ Plus rapide que l\'entrée manuelle'
-              : 'Auto scanner is reserved for Premium members.\n\n✨ Coach Ryze recognizes your food instantly\n📊 Calories calculated automatically\n⚡ Faster than manual entry',
+          'title': isGerman
+              ? '📸 Auto-Scanner - Premium'
+              : isFrench
+                  ? '📸 Scanner automatique - Premium'
+                  : '📸 Auto Scanner - Premium',
+          'message': isGerman
+              ? 'Der Auto-Scanner ist Premium-Mitgliedern vorbehalten.\n\n✨ Coach Ryze erkennt dein Essen sofort\n📊 Kalorien automatisch berechnet\n⚡ Schneller als manuelle Eingabe'
+              : isFrench
+                  ? 'Le scanner automatique est réservé aux membres Premium.\n\n✨ Le Coach Ryze reconnaît tes aliments instantanément\n📊 Calories calculées automatiquement\n⚡ Plus rapide que l\'entrée manuelle'
+                  : 'Auto scanner is reserved for Premium members.\n\n✨ Coach Ryze recognizes your food instantly\n📊 Calories calculated automatically\n⚡ Faster than manual entry',
         };
 
       case PaywallContext.barcodeScanner:
         return {
-          'title': isFrench ? '📱 Scanner codes-barres - Premium' : '📱 Barcode Scanner - Premium',
-          'message': isFrench
-              ? 'Le scanner de codes-barres est réservé aux membres Premium.\n\n✨ Scanne les produits du supermarché\n📊 Nutritions complètes automatiquement\n⚡ Gain de temps énorme'
-              : 'Barcode scanner is reserved for Premium members.\n\n✨ Scan supermarket products\n📊 Complete nutrition automatically\n⚡ Huge time saver',
+          'title': isGerman
+              ? '📱 Barcode-Scanner - Premium'
+              : isFrench
+                  ? '📱 Scanner codes-barres - Premium'
+                  : '📱 Barcode Scanner - Premium',
+          'message': isGerman
+              ? 'Der Barcode-Scanner ist Premium-Mitgliedern vorbehalten.\n\n✨ Scanne Supermarktprodukte\n📊 Komplette Naehrwerte automatisch\n⚡ Enorme Zeitersparnis'
+              : isFrench
+                  ? 'Le scanner de codes-barres est réservé aux membres Premium.\n\n✨ Scanne les produits du supermarché\n📊 Nutritions complètes automatiquement\n⚡ Gain de temps énorme'
+                  : 'Barcode scanner is reserved for Premium members.\n\n✨ Scan supermarket products\n📊 Complete nutrition automatically\n⚡ Huge time saver',
         };
 
       case PaywallContext.chatInput:
         return {
-          'title': isFrench ? '💬 Déclarer au Coach Ryze - Premium' : '💬 Tell Coach Ryze - Premium',
-          'message': isFrench
-              ? 'Déclarer tes repas au Coach Ryze est réservé aux membres Premium.\n\n🗣️ Dis simplement ce que tu as mangé\n✨ Le Coach Ryze comprend et calcule tout\n⚡ Vocal ou texte, ultra rapide'
-              : 'Telling Coach Ryze your meals is reserved for Premium members.\n\n🗣️ Simply say what you ate\n✨ Coach Ryze understands and calculates everything\n⚡ Voice or text, ultra fast',
+          'title': isGerman
+              ? '💬 Coach Ryze mitteilen - Premium'
+              : isFrench
+                  ? '💬 Déclarer au Coach Ryze - Premium'
+                  : '💬 Tell Coach Ryze - Premium',
+          'message': isGerman
+              ? 'Coach Ryze deine Mahlzeiten mitzuteilen ist Premium-Mitgliedern vorbehalten.\n\n🗣️ Sag einfach, was du gegessen hast\n✨ Coach Ryze versteht und berechnet alles\n⚡ Sprache oder Text, ultraschnell'
+              : isFrench
+                  ? 'Déclarer tes repas au Coach Ryze est réservé aux membres Premium.\n\n🗣️ Dis simplement ce que tu as mangé\n✨ Le Coach Ryze comprend et calcule tout\n⚡ Vocal ou texte, ultra rapide'
+                  : 'Telling Coach Ryze your meals is reserved for Premium members.\n\n🗣️ Simply say what you ate\n✨ Coach Ryze understands and calculates everything\n⚡ Voice or text, ultra fast',
         };
 
       case PaywallContext.workoutGenerator:
         return {
-          'title': isFrench ? '🤖 Coach Ryze - Premium' : '🤖 Coach Ryze - Premium',
-          'message': isFrench
-              ? 'Le générateur de séances personnalisées est réservé aux membres Premium.\n\n✨ Le Coach Ryze analyse ton historique\n💪 Crée des workouts adaptés à ton niveau\n📈 Suggère les bons poids automatiquement'
-              : 'Personalized workout generator is reserved for Premium members.\n\n✨ Coach Ryze analyzes your history\n💪 Creates workouts adapted to your level\n📈 Suggests the right weights automatically',
+          'title': isGerman
+              ? '🤖 Coach Ryze - Premium'
+              : isFrench
+                  ? '🤖 Coach Ryze - Premium'
+                  : '🤖 Coach Ryze - Premium',
+          'message': isGerman
+              ? 'Der personalisierte Workout-Generator ist Premium-Mitgliedern vorbehalten.\n\n✨ Coach Ryze analysiert deinen Verlauf\n💪 Erstellt Workouts angepasst an dein Level\n📈 Schlaegt automatisch die richtigen Gewichte vor'
+              : isFrench
+                  ? 'Le générateur de séances personnalisées est réservé aux membres Premium.\n\n✨ Le Coach Ryze analyse ton historique\n💪 Crée des workouts adaptés à ton niveau\n📈 Suggère les bons poids automatiquement'
+                  : 'Personalized workout generator is reserved for Premium members.\n\n✨ Coach Ryze analyzes your history\n💪 Creates workouts adapted to your level\n📈 Suggests the right weights automatically',
         };
 
       case PaywallContext.nutritionAnalysis:
         return {
-          'title': isFrench ? '📊 Bilan du Coach Ryze - Premium' : '📊 Coach Ryze Report - Premium',
-          'message': isFrench
-              ? 'Le bilan quotidien personnalisé est réservé aux membres Premium.\n\n✨ Le Coach Ryze analyse ta journée\n💡 Conseils personnalisés selon tes objectifs\n📈 Suivi de ta progression'
-              : 'Personalized daily report is reserved for Premium members.\n\n✨ Coach Ryze analyzes your day\n💡 Personalized advice based on your goals\n📈 Track your progress',
+          'title': isGerman
+              ? '📊 Coach Ryze Bericht - Premium'
+              : isFrench
+                  ? '📊 Bilan du Coach Ryze - Premium'
+                  : '📊 Coach Ryze Report - Premium',
+          'message': isGerman
+              ? 'Der personalisierte Tagesbericht ist Premium-Mitgliedern vorbehalten.\n\n✨ Coach Ryze analysiert deinen Tag\n💡 Personalisierte Tipps basierend auf deinen Zielen\n📈 Verfolge deinen Fortschritt'
+              : isFrench
+                  ? 'Le bilan quotidien personnalisé est réservé aux membres Premium.\n\n✨ Le Coach Ryze analyse ta journée\n💡 Conseils personnalisés selon tes objectifs\n📈 Suivi de ta progression'
+                  : 'Personalized daily report is reserved for Premium members.\n\n✨ Coach Ryze analyzes your day\n💡 Personalized advice based on your goals\n📈 Track your progress',
         };
 
       case PaywallContext.exerciseAnalysis:
         return {
-          'title': isFrench ? '💪 Analyse de progression - Premium' : '💪 Progress Analysis - Premium',
-          'message': isFrench
-              ? 'L\'analyse de progression est réservée aux membres Premium.\n\n✨ Le Coach Ryze analyse tes performances\n💡 Recommandations pour progresser\n📈 Feedback personnalisé'
-              : 'Progress analysis is reserved for Premium members.\n\n✨ Coach Ryze analyzes your performance\n💡 Recommendations to improve\n📈 Personalized feedback',
+          'title': isGerman
+              ? '💪 Fortschrittsanalyse - Premium'
+              : isFrench
+                  ? '💪 Analyse de progression - Premium'
+                  : '💪 Progress Analysis - Premium',
+          'message': isGerman
+              ? 'Die Fortschrittsanalyse ist Premium-Mitgliedern vorbehalten.\n\n✨ Coach Ryze analysiert deine Leistung\n💡 Empfehlungen zur Verbesserung\n📈 Personalisiertes Feedback'
+              : isFrench
+                  ? 'L\'analyse de progression est réservée aux membres Premium.\n\n✨ Le Coach Ryze analyse tes performances\n💡 Recommandations pour progresser\n📈 Feedback personnalisé'
+                  : 'Progress analysis is reserved for Premium members.\n\n✨ Coach Ryze analyzes your performance\n💡 Recommendations to improve\n📈 Personalized feedback',
         };
 
       case PaywallContext.genericUpgrade:
         return {
-          'title': isFrench
-              ? '💎 Passe Premium'
-              : '💎 Upgrade to Premium',
-          'message': isFrench
-              ? 'Débloque toutes les fonctionnalités Premium et atteins tes objectifs plus rapidement.'
-              : 'Unlock all Premium features and reach your goals faster.',
+          'title': isGerman
+              ? '💎 Werde Premium'
+              : isFrench
+                  ? '💎 Passe Premium'
+                  : '💎 Upgrade to Premium',
+          'message': isGerman
+              ? 'Schalte alle Premium-Funktionen frei und erreiche deine Ziele schneller.'
+              : isFrench
+                  ? 'Débloque toutes les fonctionnalités Premium et atteins tes objectifs plus rapidement.'
+                  : 'Unlock all Premium features and reach your goals faster.',
         };
     }
   }

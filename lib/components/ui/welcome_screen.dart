@@ -15,6 +15,7 @@ class WelcomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isFrench = languageCode == 'fr';
+    final isGerman = languageCode == 'de';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -97,8 +98,10 @@ class WelcomeScreen extends StatelessWidget {
               // Titre principal
               Text(
                 isFrench
-                  ? 'Salut, je suis Coach Ryze !'
-                  : 'Hi, I\'m Coach Ryze!',
+                    ? 'Salut, je suis Coach Ryze !'
+                    : isGerman
+                        ? 'Hallo, ich bin Coach Ryze!'
+                        : 'Hi, I\'m Coach Ryze!',
                 style: const TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.w800,
@@ -115,7 +118,9 @@ class WelcomeScreen extends StatelessWidget {
               Text(
                 isFrench
                     ? 'Ton coach nutrition & sport'
-                    : 'Your nutrition & fitness coach',
+                    : isGerman
+                        ? 'Dein Fitness- & Ernährungscoach'
+                        : 'Your nutrition & fitness coach',
                 style: const TextStyle(
                   fontSize: 18,
                   color: Color(0xFF64748B),
@@ -131,7 +136,9 @@ class WelcomeScreen extends StatelessWidget {
               Text(
                 isFrench
                     ? 'Je vais te montrer comment atteindre\ntes objectifs sans te compliquer la vie'
-                    : 'Let me show you how to reach your goals\nwithout overcomplicating things',
+                    : isGerman
+                        ? 'Ich werde dir helfen, deine Ziele zu erreichen\nohne es zu kompliziert zu machen'
+                        : 'Let me show you how to reach your goals\nwithout overcomplicating things',
                 style: const TextStyle(
                   fontSize: 17,
                   color: Color(0xFF64748B),
@@ -181,7 +188,11 @@ class WelcomeScreen extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        isFrench ? 'C\'est parti !' : 'Let\'s go!',
+                        isFrench
+                            ? 'C\'est parti !'
+                            : isGerman
+                                ? 'Starten!'
+                                : 'Let\'s go!',
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w700,

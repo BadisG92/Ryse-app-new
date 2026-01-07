@@ -268,6 +268,7 @@ class UserCoachPreferences {
   final List<String> fitnessConstraints;
   final List<String> preferredWorkoutTimes;
   final List<String> customNotes;
+  final String? onboardingInsights; // Insights from onboarding chat
   final DateTime? lastExtractionAt;
   final int extractionCount;
   final DateTime createdAt;
@@ -282,6 +283,7 @@ class UserCoachPreferences {
     this.fitnessConstraints = const [],
     this.preferredWorkoutTimes = const [],
     this.customNotes = const [],
+    this.onboardingInsights,
     this.lastExtractionAt,
     this.extractionCount = 0,
     required this.createdAt,
@@ -295,12 +297,17 @@ class UserCoachPreferences {
       foodPreferences.isEmpty &&
       fitnessConstraints.isEmpty &&
       preferredWorkoutTimes.isEmpty &&
-      customNotes.isEmpty;
+      customNotes.isEmpty &&
+      (onboardingInsights == null || onboardingInsights!.isEmpty);
 
   /// Get all preferences as a formatted string for prompt injection
   String toPromptString() {
     final parts = <String>[];
 
+    // Onboarding insights are prioritized (motivation, objectives, etc.)
+    if (onboardingInsights != null && onboardingInsights!.isNotEmpty) {
+      parts.add('=== CONTEXTE UTILISATEUR (onboarding) ===\n$onboardingInsights');
+    }
     if (allergies.isNotEmpty) {
       parts.add('Allergies: ${allergies.join(", ")}');
     }
@@ -336,6 +343,7 @@ class UserCoachPreferences {
       fitnessConstraints: List<String>.from(prefs['fitness_constraints'] ?? []),
       preferredWorkoutTimes: List<String>.from(prefs['preferred_workout_times'] ?? []),
       customNotes: List<String>.from(prefs['custom_notes'] ?? []),
+      onboardingInsights: prefs['onboarding_insights'] as String?,
       lastExtractionAt: json['last_extraction_at'] != null
           ? DateTime.parse(json['last_extraction_at'] as String)
           : null,

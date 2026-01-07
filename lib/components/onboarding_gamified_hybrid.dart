@@ -69,10 +69,11 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
   List<String> get _loadingMessages {
     final languageCode = Provider.of<LocalizationService>(context, listen: false).currentLanguageCode;
     final isFrench = languageCode == 'fr';
+    final isGerman = languageCode == 'de';
     return [
-      isFrench ? 'Analyse de ton profil...' : 'Analyzing your profile...',
-      isFrench ? 'Calcul de tes besoins nutritionnels...' : 'Calculating your nutritional needs...',
-      isFrench ? 'Création de ton plan personnalisé...' : 'Creating your personalized plan...',
+      isGerman ? 'Analyse deines Profils...' : (isFrench ? 'Analyse de ton profil...' : 'Analyzing your profile...'),
+      isGerman ? 'Berechnung deiner Ernahrungsbedurfnisse...' : (isFrench ? 'Calcul de tes besoins nutritionnels...' : 'Calculating your nutritional needs...'),
+      isGerman ? 'Erstellung deines personalisierten Plans...' : (isFrench ? 'Création de ton plan personnalisé...' : 'Creating your personalized plan...'),
     ];
   }
   String _currentLoadingMessage = '';
@@ -162,36 +163,37 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
   List<Map<String, dynamic>> getSteps(BuildContext context) {
     final languageCode = Provider.of<LocalizationService>(context, listen: false).currentLanguageCode;
     final isFrench = languageCode == 'fr';
+    final isGerman = languageCode == 'de';
 
     return [
       // Step 0: Genre + Âge (fusionné)
       {
-        'title': isFrench ? 'Parle-moi un peu de toi' : 'Tell me a bit about yourself',
-        'subtitle': isFrench ? 'Pour personnaliser tes conseils' : 'To personalize your advice',
+        'title': isGerman ? 'Erzahl mir etwas uber dich' : (isFrench ? 'Parle-moi un peu de toi' : 'Tell me a bit about yourself'),
+        'subtitle': isGerman ? 'Um deine Beratung zu personalisieren' : (isFrench ? 'Pour personnaliser tes conseils' : 'To personalize your advice'),
         'content': _buildGenderAndAgeStep(),
       },
       // Step 1: Objectif SEULEMENT (séparé des restrictions)
       {
-        'title': isFrench ? 'Quel est ton objectif ?' : 'What\'s your goal?',
-        'subtitle': isFrench ? 'Que veux-tu accomplir en priorité ?' : 'What do you want to achieve as a priority?',
+        'title': isGerman ? 'Was ist dein Ziel?' : (isFrench ? 'Quel est ton objectif ?' : 'What\'s your goal?'),
+        'subtitle': isGerman ? 'Was mochtest du vorrangig erreichen?' : (isFrench ? 'Que veux-tu accomplir en priorité ?' : 'What do you want to achieve as a priority?'),
         'content': _buildGoalStep(),
       },
       // Step 2: Taille + Poids + Target Weight (conditionnel)
       {
-        'title': isFrench ? 'Dis-moi ta taille et ton poids' : 'Tell me your height and weight',
-        'subtitle': isFrench ? 'Pour calculer tes besoins précis' : 'To calculate your precise needs',
+        'title': isGerman ? 'Sag mir deine Grosse und dein Gewicht' : (isFrench ? 'Dis-moi ta taille et ton poids' : 'Tell me your height and weight'),
+        'subtitle': isGerman ? 'Um deinen genauen Bedarf zu berechnen' : (isFrench ? 'Pour calculer tes besoins précis' : 'To calculate your precise needs'),
         'content': _buildHeightWeightAndTargetStep(),
       },
       // Step 3: Fréquence d'entraînement
       {
-        'title': isFrench ? 'Actuellement, tu fais du sport combien de fois par semaine ?' : 'How many times per week do you currently work out?',
+        'title': isGerman ? 'Wie oft pro Woche machst du aktuell Sport?' : (isFrench ? 'Actuellement, tu fais du sport combien de fois par semaine ?' : 'How many times per week do you currently work out?'),
         'subtitle': '',
         'content': _buildActivityStep(),
       },
       // Step 4: Restrictions alimentaires (remplace Obstacles)
       {
-        'title': isFrench ? 'As-tu des préférences alimentaires ?' : 'Do you have any dietary preferences?',
-        'subtitle': isFrench ? 'Allergies, régimes spéciaux, etc.' : 'Allergies, special diets, etc.',
+        'title': isGerman ? 'Hast du Ernahrungspraferenzen?' : (isFrench ? 'As-tu des préférences alimentaires ?' : 'Do you have any dietary preferences?'),
+        'subtitle': isGerman ? 'Allergien, spezielle Diaten, etc.' : (isFrench ? 'Allergies, régimes spéciaux, etc.' : 'Allergies, special diets, etc.'),
         'content': _buildRestrictionsStep(),
       },
     ];
@@ -201,6 +203,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
   Widget _buildGenderAndAgeStep() {
     final languageCode = Provider.of<LocalizationService>(context, listen: false).currentLanguageCode;
     final isFrench = languageCode == 'fr';
+    final isGerman = languageCode == 'de';
     final hasSelectedGender = userData['gender'].isNotEmpty;
 
     return Center(
@@ -213,7 +216,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
 
             // Section Genre
             Text(
-              isFrench ? 'Tu es...' : 'You are...',
+              isGerman ? 'Du bist...' : (isFrench ? 'Tu es...' : 'You are...'),
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
@@ -231,7 +234,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
 
             // Si genre sélectionné → Afficher CHIP COMPACT + option de modification
             if (hasSelectedGender) ...[
-              _buildCompactGenderChip(languageCode, isFrench),
+              _buildCompactGenderChip(languageCode, isFrench, isGerman),
 
               const SizedBox(height: 32),
 
@@ -243,7 +246,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      isFrench ? 'Quel âge as-tu ?' : 'How old are you?',
+                      isGerman ? 'Wie alt bist du?' : (isFrench ? 'Quel âge as-tu ?' : 'How old are you?'),
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
@@ -269,7 +272,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                             fontWeight: FontWeight.w600,
                             color: Color(0xFF64748B).withOpacity(0.4),
                           ),
-                          suffixText: isFrench ? 'ans' : 'years',
+                          suffixText: isGerman ? 'Jahre' : (isFrench ? 'ans' : 'years'),
                           suffixStyle: const TextStyle(
                             fontSize: 16,
                             color: Color(0xFF64748B),
@@ -326,14 +329,15 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
   Widget _buildGenderOption(String genderKey, IconData icon, String languageCode) {
     final isSelected = userData['gender'] == genderKey;
     final isFrench = languageCode == 'fr';
+    final isGerman = languageCode == 'de';
 
     String label;
     if (genderKey == 'Homme') {
-      label = isFrench ? 'Homme' : 'Male';
+      label = isGerman ? 'Mann' : (isFrench ? 'Homme' : 'Male');
     } else if (genderKey == 'Femme') {
-      label = isFrench ? 'Femme' : 'Female';
+      label = isGerman ? 'Frau' : (isFrench ? 'Femme' : 'Female');
     } else {
-      label = isFrench ? 'Autre' : 'Other';
+      label = isGerman ? 'Andere' : (isFrench ? 'Autre' : 'Other');
     }
 
     return SelectableCard(
@@ -345,18 +349,18 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
   }
 
   // Widget chip compact pour le genre sélectionné
-  Widget _buildCompactGenderChip(String languageCode, bool isFrench) {
+  Widget _buildCompactGenderChip(String languageCode, bool isFrench, bool isGerman) {
     String label;
     IconData icon;
 
     if (userData['gender'] == 'Homme') {
-      label = isFrench ? 'Homme' : 'Male';
+      label = isGerman ? 'Mann' : (isFrench ? 'Homme' : 'Male');
       icon = LucideIcons.mars;
     } else if (userData['gender'] == 'Femme') {
-      label = isFrench ? 'Femme' : 'Female';
+      label = isGerman ? 'Frau' : (isFrench ? 'Femme' : 'Female');
       icon = LucideIcons.venus;
     } else {
-      label = isFrench ? 'Autre' : 'Other';
+      label = isGerman ? 'Andere' : (isFrench ? 'Autre' : 'Other');
       icon = LucideIcons.users;
     }
 
@@ -394,7 +398,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
             child: Container(
               padding: const EdgeInsets.all(6),
               child: Text(
-                isFrench ? 'Modifier' : 'Change',
+                isGerman ? 'Andern' : (isFrench ? 'Modifier' : 'Change'),
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
@@ -412,24 +416,25 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
   Widget _buildGoalStep() {
     final languageCode = Provider.of<LocalizationService>(context, listen: false).currentLanguageCode;
     final isFrench = languageCode == 'fr';
+    final isGerman = languageCode == 'de';
 
     final goals = [
       {
         'key': 'lose',
-        'title': isFrench ? 'Perdre du poids' : 'Lose weight',
-        'description': isFrench ? 'Brûler de la graisse' : 'Burn fat',
+        'title': isGerman ? 'Abnehmen' : (isFrench ? 'Perdre du poids' : 'Lose weight'),
+        'description': isGerman ? 'Fett verbrennen' : (isFrench ? 'Brûler de la graisse' : 'Burn fat'),
         'icon': LucideIcons.trendingDown,
       },
       {
         'key': 'maintain',
-        'title': isFrench ? 'Maintenir mon poids' : 'Maintain weight',
-        'description': isFrench ? 'Rester stable' : 'Stay stable',
+        'title': isGerman ? 'Gewicht halten' : (isFrench ? 'Maintenir mon poids' : 'Maintain weight'),
+        'description': isGerman ? 'Stabil bleiben' : (isFrench ? 'Rester stable' : 'Stay stable'),
         'icon': LucideIcons.target,
       },
       {
         'key': 'gain',
-        'title': isFrench ? 'Prendre du poids' : 'Gain weight',
-        'description': isFrench ? 'Construire du muscle' : 'Build muscle',
+        'title': isGerman ? 'Zunehmen' : (isFrench ? 'Prendre du poids' : 'Gain weight'),
+        'description': isGerman ? 'Muskeln aufbauen' : (isFrench ? 'Construire du muscle' : 'Build muscle'),
         'icon': LucideIcons.trendingUp,
       },
     ];
@@ -487,6 +492,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
   void _showHeightPicker(BuildContext context) {
     final languageCode = Provider.of<LocalizationService>(context, listen: false).currentLanguageCode;
     final isFrench = languageCode == 'fr';
+    final isGerman = languageCode == 'de';
 
     // Générer toutes les hauteurs de 4'0" à 7'0" (48 à 84 inches)
     final heights = <String>[];
@@ -524,7 +530,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                   TextButton(
                     onPressed: () => Navigator.pop(context),
                     child: Text(
-                      isFrench ? 'Annuler' : 'Cancel',
+                      isGerman ? 'Abbrechen' : (isFrench ? 'Annuler' : 'Cancel'),
                       style: const TextStyle(
                         color: Color(0xFF64748B),
                         fontSize: 16,
@@ -532,7 +538,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                     ),
                   ),
                   Text(
-                    isFrench ? 'Taille' : 'Height',
+                    isGerman ? 'Grosse' : (isFrench ? 'Taille' : 'Height'),
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
@@ -542,7 +548,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                   TextButton(
                     onPressed: () => Navigator.pop(context),
                     child: Text(
-                      isFrench ? 'OK' : 'Done',
+                      isGerman ? 'OK' : (isFrench ? 'OK' : 'Done'),
                       style: const TextStyle(
                         color: Color(0xFF0B132B),
                         fontSize: 16,
@@ -583,7 +589,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
   }
 
   // Widget chip compact pour l'objectif sélectionné
-  Widget _buildCompactGoalChip(String languageCode, bool isFrench, List<Map<String, dynamic>> goals) {
+  Widget _buildCompactGoalChip(String languageCode, bool isFrench, bool isGerman, List<Map<String, dynamic>> goals) {
     final selectedGoal = goals.firstWhere((g) => g['key'] == userData['goal']);
     final label = selectedGoal['title'] as String;
     final icon = selectedGoal['icon'] as IconData;
@@ -625,7 +631,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
             child: Container(
               padding: const EdgeInsets.all(6),
               child: Text(
-                isFrench ? 'Modifier' : 'Change',
+                isGerman ? 'Andern' : (isFrench ? 'Modifier' : 'Change'),
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
@@ -643,6 +649,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
   Widget _buildHeightWeightAndTargetStep() {
     final languageCode = Provider.of<LocalizationService>(context, listen: false).currentLanguageCode;
     final isFrench = languageCode == 'fr';
+    final isGerman = languageCode == 'de';
     bool showTargetWeight = userData['goal'] == 'lose' || userData['goal'] == 'gain';
 
     return Center(
@@ -712,7 +719,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                         ),
                         child: Center(
                           child: Text(
-                            isFrench ? 'Impérial' : 'Imperial',
+                            isGerman ? 'Imperial' : (isFrench ? 'Imperial' : 'Imperial'),
                             style: TextStyle(
                               fontWeight: FontWeight.w600,
                               color: userData['isMetric'] == false ? Colors.black : Colors.grey,
@@ -773,7 +780,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                         ),
                         child: Center(
                           child: Text(
-                            isFrench ? 'Métrique' : 'Metric',
+                            isGerman ? 'Metrisch' : (isFrench ? 'Metrique' : 'Metric'),
                             style: TextStyle(
                               fontWeight: FontWeight.w600,
                               color: userData['isMetric'] == true ? Colors.black : Colors.grey,
@@ -800,7 +807,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          isFrench ? 'Taille' : 'Height',
+                          isGerman ? 'Grosse' : (isFrench ? 'Taille' : 'Height'),
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
@@ -861,7 +868,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          isFrench ? 'Poids' : 'Weight',
+                          isGerman ? 'Gewicht' : (isFrench ? 'Poids' : 'Weight'),
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
@@ -925,7 +932,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          isFrench ? 'Taille' : 'Height',
+                          isGerman ? 'Grosse' : (isFrench ? 'Taille' : 'Height'),
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
@@ -976,7 +983,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          isFrench ? 'Poids' : 'Weight',
+                          isGerman ? 'Gewicht' : (isFrench ? 'Poids' : 'Weight'),
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
@@ -1039,7 +1046,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    isFrench ? 'Poids objectif' : 'Target weight',
+                    isGerman ? 'Zielgewicht' : (isFrench ? 'Poids objectif' : 'Target weight'),
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -1383,29 +1390,30 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
   Widget _buildActivityStep() {
     final languageCode = Provider.of<LocalizationService>(context, listen: false).currentLanguageCode;
     final isFrench = languageCode == 'fr';
+    final isGerman = languageCode == 'de';
 
     final activities = [
       {
         'key': 'low',
-        'title': isFrench ? 'Rarement' : 'Rarely',
+        'title': isGerman ? 'Selten' : (isFrench ? 'Rarement' : 'Rarely'),
         'description': '',
         'icon': LucideIcons.house,
       },
       {
         'key': 'light',
-        'title': isFrench ? 'Quelques fois' : 'A few times',
+        'title': isGerman ? 'Manchmal' : (isFrench ? 'Quelques fois' : 'A few times'),
         'description': '',
         'icon': LucideIcons.footprints,
       },
       {
         'key': 'moderate',
-        'title': isFrench ? 'Régulièrement' : 'Regularly',
+        'title': isGerman ? 'Regelmassig' : (isFrench ? 'Regulierement' : 'Regularly'),
         'description': '',
         'icon': LucideIcons.bike,
       },
       {
         'key': 'high',
-        'title': isFrench ? 'Très souvent' : 'Very often',
+        'title': isGerman ? 'Sehr oft' : (isFrench ? 'Tres souvent' : 'Very often'),
         'description': '',
         'icon': LucideIcons.dumbbell,
       },
@@ -1438,13 +1446,14 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
   Widget _buildObstaclesStep() {
     final languageCode = Provider.of<LocalizationService>(context, listen: false).currentLanguageCode;
     final isFrench = languageCode == 'fr';
+    final isGerman = languageCode == 'de';
 
     final obstacles = [
-      {'title': isFrench ? 'Manque de temps' : 'Lack of time', 'icon': LucideIcons.clock},
-      {'title': isFrench ? 'Manque de motivation' : 'Lack of motivation', 'icon': LucideIcons.battery},
-      {'title': isFrench ? 'Fatigue' : 'Fatigue', 'icon': LucideIcons.moon},
-      {'title': isFrench ? 'Manque de connaissances' : 'Lack of knowledge', 'icon': LucideIcons.bookOpen},
-      {'title': isFrench ? 'Autres priorités' : 'Other priorities', 'icon': LucideIcons.calendar},
+      {'title': isGerman ? 'Zeitmangel' : (isFrench ? 'Manque de temps' : 'Lack of time'), 'icon': LucideIcons.clock},
+      {'title': isGerman ? 'Fehlende Motivation' : (isFrench ? 'Manque de motivation' : 'Lack of motivation'), 'icon': LucideIcons.battery},
+      {'title': isGerman ? 'Mudigkeit' : (isFrench ? 'Fatigue' : 'Fatigue'), 'icon': LucideIcons.moon},
+      {'title': isGerman ? 'Wissensmangel' : (isFrench ? 'Manque de connaissances' : 'Lack of knowledge'), 'icon': LucideIcons.bookOpen},
+      {'title': isGerman ? 'Andere Prioritaten' : (isFrench ? 'Autres priorites' : 'Other priorities'), 'icon': LucideIcons.calendar},
     ];
 
     return Center(
@@ -1525,17 +1534,18 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
   void _showGoodKarmaBottomSheet(int karmaNumber) {
     final languageCode = Provider.of<LocalizationService>(context, listen: false).currentLanguageCode;
     final isFrench = languageCode == 'fr';
+    final isGerman = languageCode == 'de';
 
     String message;
     String pandaImage;
 
     if (karmaNumber == 1) {
       // Après Step 2 (Restrictions)
-      message = isFrench ? 'Super ! Je commence à voir ton profil...' : 'Great! I\'m starting to see your profile...';
+      message = isGerman ? 'Super! Ich beginne dein Profil zu sehen...' : (isFrench ? 'Super ! Je commence a voir ton profil...' : 'Great! I\'m starting to see your profile...');
       pandaImage = 'assets/images/coach_ryze_karma_1.png';
     } else {
       // Après Step 4 (Activité)
-      message = isFrench ? 'Parfait ! Plus qu\'une question...' : 'Perfect! Just one more question...';
+      message = isGerman ? 'Perfekt! Nur noch eine Frage...' : (isFrench ? 'Parfait ! Plus qu\'une question...' : 'Perfect! Just one more question...');
       pandaImage = 'assets/images/coach_ryze_karma_2.png';
     }
 
@@ -2067,10 +2077,11 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
         child: Consumer<LocalizationService>(
           builder: (context, locService, _) {
             final isFrench = locService.currentLanguageCode == 'fr';
+            final isGerman = locService.currentLanguageCode == 'de';
             return CustomButton(
               text: currentStep == steps.length - 1
-                  ? (isFrench ? 'Terminer' : 'Finish')
-                  : (isFrench ? 'Continuer' : 'Continue'),
+                  ? (isGerman ? 'Fertig' : (isFrench ? 'Terminer' : 'Finish'))
+                  : (isGerman ? 'Weiter' : (isFrench ? 'Continuer' : 'Continue')),
               onPressed: canProceed() ? nextStep : null,
               icon: currentStep == steps.length - 1
                   ? const Icon(LucideIcons.check, color: Colors.white)
@@ -2171,8 +2182,9 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                               child: Consumer<LocalizationService>(
                                 builder: (context, locService, _) {
                                   final isFrench = locService.currentLanguageCode == 'fr';
+                                  final isGerman = locService.currentLanguageCode == 'de';
                                   return Text(
-                                    isFrench ? 'Voici ce que j\'ai préparé pour toi !' : 'Here\'s what I prepared for you!',
+                                    isGerman ? 'Hier ist, was ich fur dich vorbereitet habe!' : (isFrench ? 'Voici ce que j\'ai prepare pour toi !' : 'Here\'s what I prepared for you!'),
                                     style: const TextStyle(
                                       fontSize: 14,
                                       color: Colors.white,
@@ -2567,7 +2579,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
               final languageCode = Provider.of<LocalizationService>(context, listen: false).currentLanguageCode;
               final workoutText = MetabolicCalculations.getWorkoutRecommendationText(
                 profile,
-                isFrench: languageCode == 'fr',
+                languageCode: languageCode,
               );
 
               if (workoutText.isEmpty) {

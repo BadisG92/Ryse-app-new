@@ -125,7 +125,9 @@ class _TutorialWelcomeScreenState extends State<TutorialWelcomeScreen>
                                     child: Text(
                                       widget.languageCode == 'fr'
                                           ? 'Bienvenue dans le tutoriel ! Je vais te montrer où je peux t\'aider.'
-                                          : 'Welcome to the tutorial! I\'ll show you where I can help.',
+                                          : widget.languageCode == 'de'
+                                              ? 'Willkommen beim Tutorial! Ich zeige dir, wo ich dir helfen kann.'
+                                              : 'Welcome to the tutorial! I\'ll show you where I can help.',
                                       style: const TextStyle(
                                         fontSize: 14,
                                         color: Color(0xFF0B132B),
@@ -158,7 +160,9 @@ class _TutorialWelcomeScreenState extends State<TutorialWelcomeScreen>
                         Text(
                           widget.languageCode == 'fr'
                               ? 'Mon accompagnement'
-                              : 'My coaching',
+                              : widget.languageCode == 'de'
+                                  ? 'Meine Begleitung'
+                                  : 'My coaching',
                             style: const TextStyle(
                               fontSize: 28,
                               fontWeight: FontWeight.bold,
@@ -291,7 +295,9 @@ class _TutorialWelcomeScreenState extends State<TutorialWelcomeScreen>
           Text(
             widget.languageCode == 'fr'
                 ? 'Voici ce que je peux faire pour toi :'
-                : 'Here\'s what I can do for you:',
+                : widget.languageCode == 'de'
+                    ? 'Das kann ich für dich tun:'
+                    : 'Here\'s what I can do for you:',
             style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,

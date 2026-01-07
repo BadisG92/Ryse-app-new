@@ -61,6 +61,30 @@ class LanguageSwitchButtons extends StatelessWidget {
                 ),
               ),
             ),
+            const SizedBox(width: 8),
+            // Bouton DE
+            GestureDetector(
+              onTap: () => locService.setLanguage('de'),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: locService.isGerman ? Colors.blue : Colors.grey,
+                  borderRadius: BorderRadius.circular(15),
+                  border: Border.all(
+                    color: locService.isGerman ? Colors.blue : Colors.grey,
+                    width: 2,
+                  ),
+                ),
+                child: Text(
+                  'DE',
+                  style: TextStyle(
+                    color: locService.isGerman ? Colors.white : Colors.black54,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),

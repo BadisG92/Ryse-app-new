@@ -57,13 +57,17 @@ class _MusculationTutorialWelcomeState extends State<MusculationTutorialWelcome>
   String _getRyzeMessage() {
     return widget.languageCode == 'fr'
         ? 'Bienvenue dans ton espace Musculation ! Crée tes programmes sur mesure.'
-        : 'Welcome to your Strength Training space! Create your custom programs.';
+        : widget.languageCode == 'de'
+            ? 'Willkommen in deinem Krafttraining-Bereich! Erstelle deine individuellen Programme.'
+            : 'Welcome to your Strength Training space! Create your custom programs.';
   }
 
   String _getDescription() {
     return widget.languageCode == 'fr'
         ? 'Ici, je t\'aide à créer et suivre tes séances de musculation. Tu pourras enregistrer tes exercices, suivre ta progression et même créer des programmes personnalisés !'
-        : 'Here, I help you create and track your strength training sessions. You can record your exercises, track your progress, and even create personalized programs!';
+        : widget.languageCode == 'de'
+            ? 'Hier helfe ich dir, deine Krafttraining-Einheiten zu erstellen und zu verfolgen. Du kannst deine Übungen aufzeichnen, deinen Fortschritt verfolgen und sogar personalisierte Programme erstellen!'
+            : 'Here, I help you create and track your strength training sessions. You can record your exercises, track your progress, and even create personalized programs!';
   }
 
   @override
@@ -196,7 +200,9 @@ class _MusculationTutorialWelcomeState extends State<MusculationTutorialWelcome>
                                 Text(
                                   widget.languageCode == 'fr'
                                       ? 'Commencer la visite'
-                                      : 'Start the tour',
+                                      : widget.languageCode == 'de'
+                                          ? 'Tour starten'
+                                          : 'Start the tour',
                                   style: const TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w600,
@@ -231,7 +237,11 @@ class _MusculationTutorialWelcomeState extends State<MusculationTutorialWelcome>
                 ),
               ),
               child: Text(
-                widget.languageCode == 'fr' ? 'Passer' : 'Skip',
+                widget.languageCode == 'fr'
+                    ? 'Passer'
+                    : widget.languageCode == 'de'
+                        ? 'Überspringen'
+                        : 'Skip',
                 style: TextStyle(
                   color: Colors.white.withOpacity(0.7),
                   fontSize: 16,

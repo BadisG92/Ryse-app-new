@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 import '../../services/translations.dart';
+import '../../services/localization_service.dart';
 
 /// Système de tutorial qui affiche une page mockée avec tutorial_coach_mark par-dessus
 /// Remplace complètement l'écran actuel pendant le tutorial
@@ -159,9 +160,9 @@ class TutorialOverlaySystem {
                         minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
-                      child: const Text(
-                        'Compris',
-                        style: TextStyle(
+                      child: Text(
+                        'understood'.tr(LocalizationService.instance.currentLanguageCode),
+                        style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w600,
                           fontSize: 14,
