@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -7,10 +8,10 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/gemini_config.dart';
 import '../services/localization_service.dart';
-import '../components/ui/coach_ryze_avatar.dart';
 
-/// Onboarding chat screen with Coach Ryze
-/// 5 exchanges max, skip available after 3
+/// Onboarding chat screen with Coach Ryze - Glassmorphism design
+/// Background: Last frame of onboarding video
+/// Chat bubbles: Glass effect with BackdropFilter
 class OnboardingChatScreen extends StatefulWidget {
   final VoidCallback onComplete;
   final VoidCallback? onSkip;
@@ -25,14 +26,15 @@ class OnboardingChatScreen extends StatefulWidget {
   State<OnboardingChatScreen> createState() => _OnboardingChatScreenState();
 }
 
-class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
+class _OnboardingChatScreenState extends State<OnboardingChatScreen>
+    with SingleTickerProviderStateMixin {
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final FocusNode _focusNode = FocusNode();
 
   final List<_ChatMessage> _messages = [];
   bool _isSending = false;
-  bool _isConversationDone = false; // True when 5 exchanges are done
+  bool _isConversationDone = false;
   int _userExchangeCount = 0;
   static const int _maxExchanges = 5;
   static const int _minExchangesToSkip = 3;
@@ -41,9 +43,29 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
   GenerativeModel? _model;
   ChatSession? _chatSession;
 
+  // Animation for reveal effect (middle to edges)
+  late AnimationController _revealController;
+  late Animation<double> _revealAnimation;
+
   @override
   void initState() {
     super.initState();
+    // Immersive mode for premium feel
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+
+    // Setup reveal animation
+    _revealController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    _revealAnimation = CurvedAnimation(
+      parent: _revealController,
+      curve: Curves.easeOutCubic,
+    );
+
+    // Start reveal animation
+    _revealController.forward();
+
     _initializeChat();
   }
 
@@ -52,13 +74,13 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
     _textController.dispose();
     _scrollController.dispose();
     _focusNode.dispose();
+    _revealController.dispose();
     super.dispose();
   }
 
   Future<void> _initializeChat() async {
     final lang = Provider.of<LocalizationService>(context, listen: false).currentLanguageCode;
 
-    // Initialize Gemini model
     _model = GenerativeModel(
       model: GeminiConfig.modelName,
       apiKey: GeminiConfig.geminiApiKey,
@@ -70,36 +92,30 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
       ),
     );
 
-    // Build system prompt
     final systemPrompt = _buildOnboardingPrompt(lang);
 
-    // Start chat session with system prompt
     _chatSession = _model!.startChat(history: [
       Content.text('[SYSTEM INSTRUCTIONS]\n$systemPrompt'),
       Content.model([TextPart(_getAcknowledgement(lang))]),
     ]);
 
-    // Add welcome message - warm intro + open question
     final welcomeMessage = lang == 'fr'
-        ? "Hey, bienvenue ! 🐼 Moi c'est Coach Ryze, ton nouveau coach perso. Qu'est-ce qui t'a donné envie de télécharger l'app ?"
+        ? "Hey, bienvenue ! 🐼 On est les Coach Ryze, ton duo sport et nutrition. Ensemble, on va t'aider à atteindre tes objectifs. Qu'est-ce qui t'a donné envie de nous rejoindre ?"
         : lang == 'de'
-            ? "Hey, willkommen! 🐼 Ich bin Coach Ryze, dein neuer persönlicher Coach. Was hat dich dazu gebracht, die App herunterzuladen?"
-            : "Hey, welcome! 🐼 I'm Coach Ryze, your new personal coach. What made you download the app?";
+            ? "Hey, willkommen! 🐼 Wir sind die Coach Ryze, dein Sport- und Ernährungs-Duo. Zusammen werden wir dir helfen, deine Ziele zu erreichen. Was hat dich dazu gebracht, uns beizutreten?"
+            : "Hey, welcome! 🐼 We're the Coach Ryze team, your sport and nutrition duo. Together, we'll help you reach your goals. What made you want to join us?";
 
     setState(() {
-      _messages.add(_ChatMessage(
-        content: welcomeMessage,
-        isUser: false,
-      ));
+      _messages.add(_ChatMessage(content: welcomeMessage, isUser: false));
     });
   }
 
   String _getAcknowledgement(String lang) {
     return lang == 'fr'
-        ? "Compris ! Je suis Coach Ryze, prêt pour l'onboarding."
+        ? "Compris ! On est les Coach Ryze, prêts pour l'onboarding."
         : lang == 'de'
-            ? "Verstanden! Ich bin Coach Ryze, bereit für das Onboarding."
-            : "Got it! I'm Coach Ryze, ready for onboarding.";
+            ? "Verstanden! Wir sind die Coach Ryze, bereit für das Onboarding."
+            : "Got it! We're the Coach Ryze team, ready for onboarding.";
   }
 
   String _buildOnboardingPrompt(String lang) {
@@ -107,16 +123,16 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen> {
     final isGerman = lang == 'de';
 
     return '''
-Tu es Coach Ryze, coach fitness/nutrition. Tu es un EXCELLENT VENDEUR. Tu dois couvrir TOUS les sujets en 5 echanges.
+Tu es les Coach Ryze, un DUO de coachs : un coach sportif et un coach nutritionnel (les deux pandas qu'on voit). Tu parles au "NOUS". Tu es un EXCELLENT VENDEUR. Tu dois couvrir TOUS les sujets en 5 echanges.
 
-## REGLE ABSOLUE : PREMIERE PERSONNE
-Tu dis "JE vais t'aider", "JE te fais", "JE te guide". JAMAIS "l'app", "our app".
+## REGLE ABSOLUE : PREMIERE PERSONNE PLURIEL
+Tu dis "ON va t'aider", "ON te fait", "ON te guide", "NOUS sommes la". JAMAIS "l'app", "our app", jamais "je".
 
 ## OBJECTIF EN 5 ECHANGES
 Tu dois ABSOLUMENT couvrir ces themes (pas rester bloque sur un seul sujet):
 - Motivation profonde (pourquoi il veut changer)
 - Pain points (ce qui l'a empeche de reussir avant)
-- Comment TU vas l'aider (sport ET nutrition)
+- Comment ON va l'aider (sport ET nutrition - on est deux coachs!)
 - Projection emotionnelle (comment il va se SENTIR)
 - Engagement (le contrat)
 
@@ -130,9 +146,9 @@ ECHANGE 2 - PAIN POINTS
 -> Comprendre ce qui l'a bloque avant. Montrer de l'empathie.
 -> Question: "C'est quoi qui t'a empeche d'y arriver jusqu'ici ?" ou sur la nutrition
 
-ECHANGE 3 - COMMENT TU L'AIDES
--> Montrer tes features: programmes sport, scan repas, suivi calories, coaching H24
--> Couvrir SPORT et NUTRITION, pas juste un des deux
+ECHANGE 3 - COMMENT ON L'AIDE
+-> Montrer nos features: programmes sport, scan repas, suivi calories, coaching H24
+-> Mentionner qu'on est DEUX coachs: un pour le sport, un pour la nutrition
 -> Question: orienter vers ce qu'on n'a pas encore couvert
 
 ECHANGE 4 - PROJECTION EMOTIONNELLE
@@ -142,21 +158,21 @@ ECHANGE 4 - PROJECTION EMOTIONNELLE
 -> Question: preparer le terrain pour le contrat
 
 ECHANGE 5 - CONTRAT
--> Recapituler son objectif + ses blocages + comment tu l'aides
+-> Recapituler son objectif + ses blocages + comment on l'aide
 -> Proposer le deal: "Chaque semaine on fait le point ensemble, 2 min. Deal ? 🐼"
 
 ## VENTE EMOTIONNELLE
 - Utilise l'evenement mentionne (mariage, ete, etc.) pour creer l'urgence
 - Projette-le dans le futur: "Imagine la tete des gens quand ils vont te voir"
 - Parle de confiance en soi, energie, fierte
-- Montre que TU es la solution a ses problemes passes
+- Montre qu'ON est la solution a ses problemes passes (duo sport + nutrition)
 
-## CE QUE TU FAIS
-- Tu scannes ses repas en photo et tu comptes les calories
-- Tu crees des programmes sport personnalises
-- Tu le motives et tu le suis au quotidien
-- Tu lui rappelles de manger/s'entrainer
-- Tu es dispo H24 pour ses questions
+## CE QU'ON FAIT (en tant que duo)
+- On scanne ses repas en photo et on compte les calories (coach nutrition)
+- On cree des programmes sport personnalises (coach sport)
+- On le motive et on le suit au quotidien
+- On lui rappelle de manger/s'entrainer
+- On est dispo H24 pour ses questions
 
 ## FORMAT
 - MAX 5 phrases courtes. Pas de longs paragraphes.
@@ -170,29 +186,28 @@ ECHANGE 5 - CONTRAT
 - Markdown ou formatage special
 - Rester bloque sur le meme sujet
 - Oublier l'aspect emotionnel
-- Dire "l'app", "our app"
+- Dire "l'app", "our app", "je" (toujours "on" ou "nous")
 
 ## ECHANGE ACTUEL: ${_userExchangeCount + 1}/5
 ${_userExchangeCount == 0 ? "-> Focus: MOTIVATION - Creuser pourquoi il veut changer" : ""}
 ${_userExchangeCount == 1 ? "-> Focus: PAIN POINTS - Ce qui l'a bloque avant" : ""}
-${_userExchangeCount == 2 ? "-> Focus: COMMENT TU AIDES - Sport ET nutrition" : ""}
+${_userExchangeCount == 2 ? "-> Focus: COMMENT ON AIDE - Sport ET nutrition (duo de coachs)" : ""}
 ${_userExchangeCount == 3 ? "-> Focus: EMOTION - Comment il va se sentir, projection futur" : ""}
 ${_userExchangeCount >= 4 ? "-> Focus: CONTRAT - Recap + proposition du deal hebdo" : ''}
 
 ## LANGUE
-${isEnglish ? 'Respond in English.' : isGerman ? 'Antworte auf Deutsch.' : 'Reponds en francais.'}
+${isEnglish ? 'Respond in English. Use "we" not "I".' : isGerman ? 'Antworte auf Deutsch. Benutze "wir" nicht "ich".' : 'Reponds en francais. Utilise "on/nous" pas "je".'}
 ''';
   }
 
-  /// Clean markdown formatting from response
   String _cleanMarkdown(String text) {
     return text
-        .replaceAll(RegExp(r'\*\*([^*]+)\*\*'), r'$1') // Remove **bold**
-        .replaceAll(RegExp(r'\*([^*]+)\*'), r'$1') // Remove *italic*
-        .replaceAll(RegExp(r'__([^_]+)__'), r'$1') // Remove __bold__
-        .replaceAll(RegExp(r'_([^_]+)_'), r'$1') // Remove _italic_
-        .replaceAll(RegExp(r'^[-*]\s', multiLine: true), '') // Remove bullet points
-        .replaceAll(RegExp(r'^\d+\.\s', multiLine: true), '') // Remove numbered lists
+        .replaceAll(RegExp(r'\*\*([^*]+)\*\*'), r'$1')
+        .replaceAll(RegExp(r'\*([^*]+)\*'), r'$1')
+        .replaceAll(RegExp(r'__([^_]+)__'), r'$1')
+        .replaceAll(RegExp(r'_([^_]+)_'), r'$1')
+        .replaceAll(RegExp(r'^[-*]\s', multiLine: true), '')
+        .replaceAll(RegExp(r'^\d+\.\s', multiLine: true), '')
         .trim();
   }
 
@@ -221,19 +236,12 @@ ${isEnglish ? 'Respond in English.' : isGerman ? 'Antworte auf Deutsch.' : 'Repo
     _scrollToBottom();
 
     try {
-      // Rebuild prompt with updated exchange count
-      final lang = Provider.of<LocalizationService>(context, listen: false).currentLanguageCode;
       final contextPrompt = "[EXCHANGE ${_userExchangeCount}/$_maxExchanges]\n$text";
-
-      // Get response from Gemini
       final response = await _chatSession!.sendMessage(Content.text(contextPrompt));
       var responseText = response.text ?? '';
-
-      // Clean markdown formatting
       responseText = _cleanMarkdown(responseText);
 
       if (mounted && responseText.isNotEmpty) {
-        // Typing effect
         String displayedText = '';
         setState(() {
           _messages.add(_ChatMessage(content: '', isUser: false));
@@ -251,7 +259,6 @@ ${isEnglish ? 'Respond in English.' : isGerman ? 'Antworte auf Deutsch.' : 'Repo
           await Future.delayed(const Duration(milliseconds: 15));
         }
 
-        // Ensure full text is displayed
         setState(() {
           _messages[_messages.length - 1] = _ChatMessage(
             content: responseText,
@@ -260,7 +267,6 @@ ${isEnglish ? 'Respond in English.' : isGerman ? 'Antworte auf Deutsch.' : 'Repo
         });
         _scrollToBottom();
 
-        // Check if we've reached max exchanges
         if (_userExchangeCount >= _maxExchanges) {
           setState(() {
             _isConversationDone = true;
@@ -281,20 +287,17 @@ ${isEnglish ? 'Respond in English.' : isGerman ? 'Antworte auf Deutsch.' : 'Repo
     }
   }
 
-  /// Extract key insights from the onboarding conversation and save to preferences
   Future<void> _extractAndSaveInsights() async {
-    if (_messages.length < 2) return; // Need at least 1 user message
+    if (_messages.length < 2) return;
 
     try {
       final user = Supabase.instance.client.auth.currentUser;
       if (user == null) return;
 
-      // Build conversation text
       final conversationText = _messages
           .map((m) => '${m.isUser ? "User" : "Coach"}: ${m.content}')
           .join('\n\n');
 
-      // Use Gemini to extract key insights
       final extractionPrompt = '''
 Tu es un assistant qui extrait les informations clés d'une conversation d'onboarding fitness.
 
@@ -334,7 +337,6 @@ IMPORTANT:
         debugPrint('');
       }
 
-      // Get existing preferences to merge
       final existingResponse = await Supabase.instance.client
           .from('user_coach_preferences')
           .select('preferences')
@@ -346,10 +348,8 @@ IMPORTANT:
         existingPrefs = Map<String, dynamic>.from(existingResponse['preferences']);
       }
 
-      // Merge with existing preferences (don't overwrite other data)
       existingPrefs['onboarding_insights'] = insights;
 
-      // Save to user_coach_preferences
       await Supabase.instance.client.from('user_coach_preferences').upsert(
         {
           'user_id': user.id,
@@ -363,11 +363,9 @@ IMPORTANT:
       if (kDebugMode) debugPrint('✅ Onboarding insights saved to preferences');
     } catch (e) {
       if (kDebugMode) debugPrint('❌ Error extracting onboarding insights: $e');
-      // Don't block onboarding if extraction fails
     }
   }
 
-  /// Handle skip button - extract insights then complete
   Future<void> _handleSkip() async {
     await _extractAndSaveInsights();
     if (widget.onSkip != null) {
@@ -377,7 +375,6 @@ IMPORTANT:
     }
   }
 
-  /// Handle "Voir le contrat" button
   Future<void> _handleSeeContract() async {
     await _extractAndSaveInsights();
     if (mounted) {
@@ -389,138 +386,181 @@ IMPORTANT:
   Widget build(BuildContext context) {
     final locService = Provider.of<LocalizationService>(context, listen: false);
     final lang = locService.currentLanguageCode;
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: _buildAppBar(lang),
-      body: Column(
+      backgroundColor: Colors.black,
+      resizeToAvoidBottomInset: false, // Keep image fixed when keyboard opens
+      body: Stack(
+        fit: StackFit.expand,
         children: [
-          Expanded(child: _buildMessagesList()),
-          // Show contract button after 5 exchanges, otherwise show input
-          if (_isConversationDone)
-            _buildContractButton(lang)
-          else
-            _buildInputBar(lang),
-        ],
-      ),
-    );
-  }
+          // Background image with reveal animation (middle to edges)
+          AnimatedBuilder(
+            animation: _revealAnimation,
+            builder: (context, child) {
+              return ShaderMask(
+                shaderCallback: (Rect bounds) {
+                  // Reveal from middle: animation 0->1 expands the visible area
+                  final progress = _revealAnimation.value;
 
-  Widget _buildContractButton(String lang) {
-    return Container(
-      padding: EdgeInsets.only(
-        left: 24,
-        right: 24,
-        top: 16,
-        bottom: MediaQuery.of(context).padding.bottom + 24,
-      ),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(
-          top: BorderSide(color: Color(0xFFE2E8F0)),
-        ),
-      ),
-      child: GestureDetector(
-        onTap: _handleSeeContract,
-        child: Container(
-          width: double.infinity,
-          height: 56,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
-            ),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF0B132B).withOpacity(0.3),
-                blurRadius: 8,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Center(
-            child: Text(
-              lang == 'fr' ? 'Voir le contrat 🤝' : lang == 'de' ? 'Vertrag ansehen 🤝' : 'See the contract 🤝',
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  PreferredSizeWidget _buildAppBar(String lang) {
-    return AppBar(
-      backgroundColor: Colors.white,
-      elevation: 0,
-      automaticallyImplyLeading: false,
-      title: Row(
-        children: [
-          const CoachRyzeAvatar(
-            type: CoachRyzeAvatarType.nutritionChat,
-            size: CoachRyzeAvatarSize.small,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Coach Ryze 🐼',
-                  style: const TextStyle(
-                    color: Color(0xFF0B132B),
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  return LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: const [
+                      Colors.transparent,
+                      Colors.white,
+                      Colors.white,
+                      Colors.transparent,
+                    ],
+                    stops: [
+                      (0.4 - progress * 0.4).clamp(0.0, 1.0), // Top edge moves up
+                      (0.4 - progress * 0.3).clamp(0.0, 1.0), // Top fade
+                      (0.4 + progress * 0.5).clamp(0.0, 1.0), // Bottom fade
+                      (0.4 + progress * 0.6).clamp(0.0, 1.0), // Bottom edge moves down
+                    ],
+                  ).createShader(bounds);
+                },
+                blendMode: BlendMode.dstIn,
+                child: Image.asset(
+                  'assets/images/onboarding_chat_background.png',
+                  fit: BoxFit.fitHeight,
+                  alignment: Alignment.topCenter,
+                  width: double.infinity,
+                  height: double.infinity,
                 ),
-                if (_isSending)
-                  Text(
-                    lang == 'fr' ? 'écrit...' : lang == 'de' ? 'schreibt...' : 'typing...',
-                    style: const TextStyle(
-                      color: Color(0xFF64748B),
-                      fontSize: 12,
-                    ),
-                  ),
+              );
+            },
+          ),
+
+          // Gradient overlay at bottom only (for input bar transition)
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: screenHeight * 0.35,
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    const Color(0xFF1A1A1A).withOpacity(0.5),
+                    const Color(0xFF1A1A1A).withOpacity(0.85),
+                    const Color(0xFF1A1A1A),
+                  ],
+                  stops: const [0.0, 0.3, 0.6, 1.0],
+                ),
+              ),
+            ),
+          ),
+
+          // Counter badge - fixed at very top of screen
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 8,
+            right: 16,
+            child: _buildCounterBadge(lang),
+          ),
+
+          // Chat zone - moves up with keyboard like iMessage/WhatsApp
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+            top: keyboardHeight > 0
+                ? 60 // When keyboard is open, start near top (safe area)
+                : screenHeight * 0.30, // Normal: start at 30%
+            left: 0,
+            right: 0,
+            bottom: keyboardHeight > 0 ? keyboardHeight : 0,
+            child: Column(
+              children: [
+                // Messages list (takes remaining space above input)
+                Expanded(child: _buildMessagesList()),
+
+                // Input bar or contract button
+                Padding(
+                  padding: EdgeInsets.only(bottom: keyboardHeight > 0 ? 0 : bottomPadding),
+                  child: _isConversationDone
+                      ? _buildContractButton(lang, 0)
+                      : _buildInputBar(lang, 0),
+                ),
               ],
             ),
           ),
         ],
       ),
-      actions: [
+    );
+  }
+
+  Widget _buildCounterBadge(String lang) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
         // Exchange counter
-        Container(
-          margin: const EdgeInsets.only(right: 8),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF1F5F9),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Text(
-            '$_userExchangeCount/$_maxExchanges',
-            style: const TextStyle(
-              color: Color(0xFF64748B),
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-        // Skip button (visible after 3 exchanges)
-        if (_userExchangeCount >= _minExchangesToSkip)
-          TextButton(
-            onPressed: _handleSkip,
-            child: Text(
-              lang == 'fr' ? 'Passer' : lang == 'de' ? 'Überspringen' : 'Skip',
-              style: const TextStyle(
-                color: Color(0xFF64748B),
-                fontSize: 14,
+        ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white.withOpacity(0.2)),
+              ),
+              child: Text(
+                '$_userExchangeCount/$_maxExchanges',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.9),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  shadows: [
+                    Shadow(
+                      color: Colors.black.withOpacity(0.3),
+                      blurRadius: 4,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-        const SizedBox(width: 8),
+        ),
+        // Skip button
+        if (_userExchangeCount >= _minExchangesToSkip) ...[
+          const SizedBox(width: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              child: GestureDetector(
+                onTap: _handleSkip,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.white.withOpacity(0.2)),
+                  ),
+                  child: Text(
+                    lang == 'fr' ? 'Passer' : lang == 'de' ? 'Überspringen' : 'Skip',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.8),
+                      fontSize: 13,
+                      shadows: [
+                        Shadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 4,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -532,61 +572,62 @@ IMPORTANT:
       itemCount: _messages.length,
       itemBuilder: (context, index) {
         final message = _messages[index];
-        return _buildMessageBubble(message);
+        return _buildGlassMessageBubble(message);
       },
     );
   }
 
-  Widget _buildMessageBubble(_ChatMessage message) {
+  Widget _buildGlassMessageBubble(_ChatMessage message) {
     final isUser = message.isUser;
 
+    final borderRadius = BorderRadius.only(
+      topLeft: Radius.circular(isUser ? 20 : 4),
+      topRight: Radius.circular(isUser ? 4 : 20),
+      bottomLeft: const Radius.circular(20),
+      bottomRight: const Radius.circular(20),
+    );
+
     return Padding(
-      padding: EdgeInsets.only(bottom: 16, left: isUser ? 48 : 0, right: isUser ? 0 : 48),
+      padding: EdgeInsets.only(
+        bottom: 16,
+        left: isUser ? 48 : 16,
+        right: isUser ? 16 : 48,
+      ),
       child: Row(
         mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (!isUser) ...[
-            const CoachRyzeAvatar(
-              type: CoachRyzeAvatarType.nutritionChat,
-              size: CoachRyzeAvatarSize.small,
-            ),
-            const SizedBox(width: 12),
-          ],
           Flexible(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                // User: gradient, Coach: white (matches ChatMessageBubble)
-                gradient: isUser
-                    ? const LinearGradient(
-                        colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
-                      )
-                    : null,
-                color: isUser ? null : Colors.white,
-                // Exact same borderRadius as ChatMessageBubble
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(isUser ? 20 : 4),
-                  topRight: const Radius.circular(20),
-                  bottomLeft: const Radius.circular(20),
-                  bottomRight: Radius.circular(isUser ? 4 : 20),
-                ),
-                boxShadow: isUser
-                    ? null
-                    : [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
+            child: ClipRRect(
+              borderRadius: borderRadius,
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: isUser
+                        ? Colors.white.withOpacity(0.30)
+                        : Colors.white.withOpacity(0.40),
+                    borderRadius: borderRadius,
+                    border: Border.all(
+                      color: Colors.white.withOpacity(isUser ? 0.35 : 0.45),
+                    ),
+                  ),
+                  child: Text(
+                    message.content,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      height: 1.4,
+                      shadows: [
+                        Shadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 4,
+                          offset: const Offset(0, 1),
                         ),
                       ],
-              ),
-              child: Text(
-                message.content,
-                style: TextStyle(
-                  color: isUser ? Colors.white : const Color(0xFF0B132B),
-                  fontSize: 15,
-                  height: isUser ? 1.4 : 1.5,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -596,102 +637,136 @@ IMPORTANT:
     );
   }
 
-  Widget _buildInputBar(String lang) {
-    final charCount = _textController.text.length;
-    final showCharCount = charCount > 400;
-
+  Widget _buildInputBar(String lang, double bottomPadding) {
     return Container(
       padding: EdgeInsets.only(
         left: 16,
         right: 16,
         top: 12,
-        bottom: MediaQuery.of(context).padding.bottom + 12,
+        bottom: bottomPadding + 12,
       ),
       decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(
-          top: BorderSide(color: Color(0xFFE2E8F0)),
-        ),
+        color: Color(0xFF1A1A1A),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+      child: Row(
         children: [
-          Row(
-            children: [
-              // Text input
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: TextField(
-                    controller: _textController,
-                    focusNode: _focusNode,
-                    maxLines: 3,
-                    minLines: 1,
-                    maxLength: _maxCharacters,
-                    maxLengthEnforcement: MaxLengthEnforcement.enforced,
-                    textCapitalization: TextCapitalization.sentences,
-                    onChanged: (_) => setState(() {}),
-                    decoration: InputDecoration(
-                      hintText: lang == 'fr' ? 'Écris ton message...' : lang == 'de' ? 'Schreibe deine Nachricht...' : 'Type your message...',
-                      hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
-                      border: InputBorder.none,
-                      counterText: '', // Hide default counter
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                    ),
-                    onSubmitted: (_) => _sendMessage(),
+          // Text input
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF2D2D2D),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: Colors.white.withOpacity(0.1)),
+              ),
+              child: TextField(
+                controller: _textController,
+                focusNode: _focusNode,
+                maxLines: 3,
+                minLines: 1,
+                maxLength: _maxCharacters,
+                maxLengthEnforcement: MaxLengthEnforcement.enforced,
+                textCapitalization: TextCapitalization.sentences,
+                style: const TextStyle(color: Colors.white),
+                onChanged: (_) => setState(() {}),
+                decoration: InputDecoration(
+                  hintText: lang == 'fr'
+                      ? 'Écris ton message...'
+                      : lang == 'de'
+                          ? 'Schreibe deine Nachricht...'
+                          : 'Type your message...',
+                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
+                  border: InputBorder.none,
+                  counterText: '',
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
                   ),
                 ),
+                onSubmitted: (_) => _sendMessage(),
               ),
-              const SizedBox(width: 12),
-
-              // Send button
-              GestureDetector(
-                onTap: _isSending ? null : _sendMessage,
-                child: Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
-                    ),
-                    borderRadius: BorderRadius.circular(22),
-                  ),
-                  child: _isSending
-                      ? const Padding(
-                          padding: EdgeInsets.all(12),
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        )
-                      : const Icon(
-                          LucideIcons.send,
-                          size: 20,
-                          color: Colors.white,
-                        ),
-                ),
-              ),
-            ],
+            ),
           ),
-          // Character counter (visible when > 400)
-          if (showCharCount)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                '$charCount/$_maxCharacters',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: charCount > 480 ? Colors.orange : const Color(0xFF94A3B8),
+          const SizedBox(width: 12),
+
+          // Send button
+          GestureDetector(
+            onTap: _isSending ? null : _sendMessage,
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: Colors.white.withOpacity(0.2)),
+              ),
+              child: _isSending
+                  ? const Padding(
+                      padding: EdgeInsets.all(12),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : const Icon(
+                      LucideIcons.send,
+                      size: 20,
+                      color: Colors.white,
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContractButton(String lang, double bottomPadding) {
+    return Container(
+      padding: EdgeInsets.only(
+        left: 24,
+        right: 24,
+        top: 16,
+        bottom: bottomPadding + 24,
+      ),
+      decoration: const BoxDecoration(
+        color: Color(0xFF1A1A1A),
+      ),
+      child: GestureDetector(
+        onTap: _handleSeeContract,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              width: double.infinity,
+              height: 56,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white.withOpacity(0.3)),
+              ),
+              child: Center(
+                child: Text(
+                  lang == 'fr'
+                      ? 'Voir le contrat 🤝'
+                      : lang == 'de'
+                          ? 'Vertrag ansehen 🤝'
+                          : 'See the contract 🤝',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                    shadows: [
+                      Shadow(
+                        color: Colors.black.withOpacity(0.3),
+                        blurRadius: 4,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-        ],
+          ),
+        ),
       ),
     );
   }

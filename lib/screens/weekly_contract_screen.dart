@@ -100,9 +100,9 @@ class _WeeklyContractScreenState extends State<WeeklyContractScreen> {
 
               const Spacer(flex: 1),
 
-              // Coach Ryze image
+              // Coach Ryze duo image (sport + nutrition)
               Image.asset(
-                'assets/images/coach_ryze_welcome_arms.png',
+                'assets/images/coach_ryze_contract.png',
                 height: 160,
               ),
               const SizedBox(height: 24),
@@ -110,10 +110,10 @@ class _WeeklyContractScreenState extends State<WeeklyContractScreen> {
               // Coach commitment
               Text(
                 isFr
-                    ? '"Moi, Coach Ryze, je m\'engage à te suivre, te motiver, et jamais te juger."'
+                    ? '"Nous, tes Coach Ryze, on s\'engage à te suivre, te motiver, et jamais te juger."'
                     : isDe
-                        ? '"Ich, Coach Ryze, verpflichte mich, dich zu begleiten, zu motivieren und niemals zu verurteilen."'
-                        : '"I, Coach Ryze, commit to following you, motivating you, and never judging you."',
+                        ? '"Wir, deine Coach Ryze, verpflichten uns, dich zu begleiten, zu motivieren und niemals zu verurteilen."'
+                        : '"We, your Coach Ryze team, commit to following you, motivating you, and never judging you."',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 18,
@@ -127,10 +127,10 @@ class _WeeklyContractScreenState extends State<WeeklyContractScreen> {
               // User commitment
               Text(
                 isFr
-                    ? '"En échange, tu me donnes 5 min chaque semaine."'
+                    ? '"En échange, tu nous donnes 5 min chaque semaine."'
                     : isDe
-                        ? '"Im Gegenzug gibst du mir 5 Min pro Woche."'
-                        : '"In return, you give me 5 min each week."',
+                        ? '"Im Gegenzug gibst du uns 5 Min pro Woche."'
+                        : '"In return, you give us 5 min each week."',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 16,

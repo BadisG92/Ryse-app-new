@@ -39,6 +39,14 @@ class _OnboardingWithValuePropState extends State<OnboardingWithValueProp> {
     // Toujours commencer par la vidéo welcome (sauf si skipValueProp pour des cas spéciaux)
     // Si skipValueProp, on saute directement à la vidéo onboarding (étape 1)
     _currentStep = widget.skipValueProp ? 1 : 0;
+
+    // Precache the chat background image for smooth transition
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      precacheImage(
+        const AssetImage('assets/images/onboarding_chat_background.png'),
+        context,
+      );
+    });
   }
 
   /// Callback quand l'utilisateur clique sur le bouton "Rejoins-nous" de la vidéo
@@ -63,10 +71,11 @@ class _OnboardingWithValuePropState extends State<OnboardingWithValueProp> {
   }
 
   /// Callback quand la vidéo onboarding est terminée → passer au chat IA
+  /// Chat screen handles its own reveal animation (middle to edges)
   void _onOnboardingVideoComplete() {
     if (mounted) {
       setState(() {
-        _currentStep = 2; // Passer à l'onboarding IA
+        _currentStep = 2; // Go directly to chat - it has its own reveal animation
       });
     }
   }
@@ -103,7 +112,7 @@ class _OnboardingWithValuePropState extends State<OnboardingWithValueProp> {
           onContinue: _onOnboardingVideoComplete,
         );
       case 2:
-        // Onboarding IA (chat avec Coach Ryze)
+        // Onboarding IA (chat avec Coach Ryze) - has its own reveal animation
         return OnboardingChatScreen(
           onComplete: _onOnboardingIAComplete,
         );
