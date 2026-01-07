@@ -245,21 +245,10 @@ class AuthService extends ChangeNotifier {
         return false;
       }
 
-      // V7 API: Get server auth code for Supabase backend
-      // This is optional - Supabase can work with just idToken
-      String? serverAuthCode;
-      try {
-        final serverAuth = await googleUser.authorizationClient.authorizeServer(['email', 'profile']);
-        serverAuthCode = serverAuth?.serverAuthCode;
-      } catch (e) {
-        if (kDebugMode) debugPrint('⚠️ Could not get server auth code: $e');
-        // Continue anyway - Supabase can work with just idToken
-      }
-
+      // Sign in to Supabase with the ID token only
       final response = await _supabase.auth.signInWithIdToken(
         provider: OAuthProvider.google,
         idToken: googleAuth.idToken!,
-        accessToken: serverAuthCode,
       );
 
       if (response.user != null) {

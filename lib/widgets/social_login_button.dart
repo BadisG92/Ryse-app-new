@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class SocialLoginButton extends StatelessWidget {
@@ -61,14 +62,19 @@ class SocialLoginButton extends StatelessWidget {
           mainAxisAlignment: isLarge ? MainAxisAlignment.start : MainAxisAlignment.center,
           mainAxisSize: isLarge ? MainAxisSize.max : MainAxisSize.min,
           children: [
-            // Logo officiel Font Awesome
-            FaIcon(
-              isGoogle ? FontAwesomeIcons.google : FontAwesomeIcons.apple,
-              size: isLarge ? 20 : 18,
-              color: isGoogle
-                  ? const Color(0xFF4285F4) // Bleu Google officiel
-                  : (isApple ? Colors.white : Colors.black),
-            ),
+            // Logo
+            if (isGoogle)
+              SvgPicture.asset(
+                'assets/images/google_logo.svg',
+                width: isLarge ? 20 : 18,
+                height: isLarge ? 20 : 18,
+              )
+            else
+              FaIcon(
+                FontAwesomeIcons.apple,
+                size: isLarge ? 20 : 18,
+                color: isApple ? Colors.white : Colors.black,
+              ),
             if (isLarge) ...[
               const SizedBox(width: 16),
               Flexible(
