@@ -190,6 +190,17 @@ class CoachChatService {
     return _currentConversation;
   }
 
+  /// Force refresh of the chat session (e.g., after personality change)
+  /// This will rebuild the system prompt with the new personality and reload preferences
+  Future<void> refreshChatSession() async {
+    if (_currentConversation != null) {
+      if (kDebugMode) debugPrint('🔄 CoachChatService: Refreshing chat session with new personality');
+      // Reload preferences from database to get latest changes
+      await _loadUserPreferences();
+      await _startChatSession();
+    }
+  }
+
   // ==========================================
   // MESSAGE HANDLING
   // ==========================================
@@ -204,6 +215,15 @@ class CoachChatService {
     final systemPrompt = await CoachContextBuilder.instance.buildSystemPrompt(
       preferences: _userPreferences,
     );
+
+    if (kDebugMode) {
+      debugPrint('🤖 CoachChatService: System prompt built (${systemPrompt.length} chars)');
+      // Log first 500 chars of personality section
+      final personalityIndex = systemPrompt.indexOf('ADOPTE CE TON');
+      if (personalityIndex > 0) {
+        debugPrint('🎭 Personality section: ${systemPrompt.substring(personalityIndex, (personalityIndex + 200).clamp(0, systemPrompt.length))}...');
+      }
+    }
 
     // Convert existing messages to Gemini format
     final history = <Content>[];
@@ -616,19 +636,22 @@ IMPORTANT:
 
       await _supabase
           .from('user_coach_preferences')
-          .upsert({
-            'user_id': user.id,
-            'preferences': {
-              'allergies': preferences.allergies,
-              'dietary_restrictions': preferences.dietaryRestrictions,
-              'food_preferences': preferences.foodPreferences,
-              'fitness_constraints': preferences.fitnessConstraints,
-              'preferred_workout_times': preferences.preferredWorkoutTimes,
-              'custom_notes': preferences.customNotes,
+          .upsert(
+            {
+              'user_id': user.id,
+              'preferences': {
+                'allergies': preferences.allergies,
+                'dietary_restrictions': preferences.dietaryRestrictions,
+                'food_preferences': preferences.foodPreferences,
+                'fitness_constraints': preferences.fitnessConstraints,
+                'preferred_workout_times': preferences.preferredWorkoutTimes,
+                'custom_notes': preferences.customNotes,
+              },
+              'last_extraction_at': DateTime.now().toIso8601String(),
+              'updated_at': DateTime.now().toIso8601String(),
             },
-            'last_extraction_at': DateTime.now().toIso8601String(),
-            'updated_at': DateTime.now().toIso8601String(),
-          });
+            onConflict: 'user_id',
+          );
 
       _userPreferences = preferences;
 

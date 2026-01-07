@@ -34,29 +34,28 @@ Tu es Coach Ryze, le coach panda fitness et nutrition de ${context['userName']} 
 ## TA MISSION
 Tu connais tout de son parcours : ses repas, ses entraînements, sa progression. Tu es son allié au quotidien.
 
+## TA PERSONNALITÉ (PRIORITÉ ABSOLUE)
 $personalityInstruction
 
-## TA PERSONNALITÉ
-**TON STYLE :**
-- Pote motivant, jamais prof moralisateur
-- JAMAIS corporate ou robotique - tu parles comme un vrai pote, pas comme un assistant IA
-- Un peu taquin ("Allez, encore un effort, t'es pas venu pour enfiler des perles 🐼")
-- Tu célèbres TOUT : "3 jours de streak, on construit quelque chose là !"
-- Jamais culpabilisant, même si les macros sont explosées ("Bon, hier c'était freestyle, aujourd'hui on repart, pas de stress")
-
-**ADAPTATION :**
-- Message court de l'user → réponse courte
-- Emojis dans le message → tu peux en mettre
-- Question précise → réponse précise, pas de blabla
+**RÈGLES DE BASE :**
+- JAMAIS corporate ou robotique - tu parles comme un vrai coach, pas comme un assistant IA
+- Jamais culpabilisant, même si les macros sont explosées
 - Adapte ton ton à l'âge de l'utilisateur :
-  - Ado/jeune (< 25 ans) : plus casual, vocabulaire jeune, références actuelles
+  - Ado/jeune (< 25 ans) : plus casual, vocabulaire jeune
   - Adulte (25-45 ans) : équilibré, pro mais détendu
   - Senior (> 45 ans) : respectueux, moins d'argot, plus posé
 
+**ADAPTATION AU MESSAGE :**
+- Message court de l'user → réponse courte
+- Emojis dans le message → tu peux en mettre
+- Question précise → réponse précise, pas de blabla
+
 **ENGAGEMENT :**
 - Pose des questions plutôt que des monologues
-- Fais référence à ce que tu sais de l'utilisateur (ses préférences, son historique)
-- Termine souvent par une invitation à revenir ("Dis-moi comment ça s'est passé !", "On se retrouve après ton entraînement ?")
+- Fais référence à ce que tu sais de l'utilisateur (ses préférences, son historique, ses motivations)
+
+## CE QUE TU SAIS DE ${context['userName']} (MÉMOIRE IMPORTANTE)
+$prefsString
 
 ## CONTEXTE TEMPS RÉEL
 Heure actuelle: ${context['currentTime']}
@@ -91,9 +90,6 @@ ${context['recentWorkouts']}
 
 **7 dernières activités cardio:**
 ${context['recentCardio']}
-
-## PRÉFÉRENCES APPRISES
-$prefsString
 
 ## FORMAT DE RÉPONSE - REPAS
 Quand l'utilisateur demande une idée repas:
@@ -199,7 +195,7 @@ ${isEnglish ? 'Respond in English.' : isGerman ? 'Antworte auf Deutsch.' : 'Rép
       'targetWeight': userProfile['target_weight'] ?? userProfile['weight'] ?? 0,
       'activityLevel': userProfile['activity_level'] ?? 'moderate',
       'streak': globalState.currentStreak,
-      'userAge': _calculateAge(userProfile['date_of_birth']),
+      'userAge': userProfile['age'],
 
       // History
       'mealHistory14Days': mealHistory,
@@ -241,7 +237,7 @@ ${isEnglish ? 'Respond in English.' : isGerman ? 'Antworte auf Deutsch.' : 'Rép
 
       final response = await client
           .from('users')
-          .select('weight, fitness_goal, activity_level, target_weight, date_of_birth')
+          .select('weight, fitness_goal, activity_level, target_weight, age')
           .eq('id', user.id)
           .maybeSingle();
 
@@ -263,9 +259,14 @@ ${isEnglish ? 'Respond in English.' : isGerman ? 'Antworte auf Deutsch.' : 'Rép
       final startOfDay = DateTime(now.year, now.month, now.day);
       final endOfDay = startOfDay.add(const Duration(days: 1));
 
+      // Récupérer les entrées avec les noms des aliments (via jointures)
       final response = await client
           .from('food_entries')
-          .select('name, meal_type, calories, proteins, carbs, fats, consumed_at')
+          .select('''
+            meal_type, calories, proteins, carbs, fats, consumed_at, scanned_food_name,
+            food_database:food_id(name_fr, name_en),
+            custom_foods:custom_food_id(name)
+          ''')
           .eq('user_id', user.id)
           .gte('consumed_at', startOfDay.toIso8601String())
           .lt('consumed_at', endOfDay.toIso8601String())
@@ -299,9 +300,20 @@ ${isEnglish ? 'Respond in English.' : isGerman ? 'Antworte auf Deutsch.' : 'Rép
           buffer.writeln('${mealNames[mealType]} (~$totalCals kcal):');
 
           for (var food in foods) {
+            // Récupérer le nom depuis food_database, custom_foods ou scanned_food_name
+            String foodName = 'Aliment';
+            if (food['food_database'] != null) {
+              final db = food['food_database'];
+              foodName = (db['name_fr'] as String?) ?? (db['name_en'] as String?) ?? 'Aliment';
+            } else if (food['custom_foods'] != null && food['custom_foods']['name'] != null) {
+              foodName = food['custom_foods']['name'] as String;
+            } else if (food['scanned_food_name'] != null) {
+              foodName = food['scanned_food_name'] as String;
+            }
             final time = DateTime.parse(food['consumed_at'] as String);
             final timeStr = DateFormat('HH:mm').format(time);
-            buffer.writeln('  - ${food['name']} ($timeStr)');
+            final cals = (food['calories'] as num?)?.toInt() ?? 0;
+            buffer.writeln('  - $foodName ($cals kcal, $timeStr)');
           }
           buffer.writeln();
         }
@@ -314,7 +326,7 @@ ${isEnglish ? 'Respond in English.' : isGerman ? 'Antworte auf Deutsch.' : 'Rép
     }
   }
 
-  /// Get 14 days meal history to identify preferences
+  /// Get 14 days meal history to identify patterns
   Future<String> _getMealHistory14Days() async {
     try {
       final client = SupabaseConfig.client;
@@ -326,37 +338,37 @@ ${isEnglish ? 'Respond in English.' : isGerman ? 'Antworte auf Deutsch.' : 'Rép
 
       final response = await client
           .from('food_entries')
-          .select('name, meal_type, calories')
+          .select('meal_type, calories, consumed_at')
           .eq('user_id', user.id)
           .gte('consumed_at', twoWeeksAgo.toIso8601String())
           .order('consumed_at', ascending: false)
-          .limit(100); // Limit to avoid too much data
+          .limit(100);
 
       if (response.isEmpty) {
         return 'Pas d\'historique disponible';
       }
 
-      // Count food occurrences to identify favorites
-      final foodCounts = <String, int>{};
+      // Calculate average daily calories and meal distribution
+      final dailyCalories = <String, int>{};
+      final mealCounts = <String, int>{};
+
       for (var entry in response) {
-        final name = entry['name'] as String? ?? '';
-        if (name.isNotEmpty) {
-          foodCounts[name] = (foodCounts[name] ?? 0) + 1;
-        }
+        final date = (entry['consumed_at'] as String).substring(0, 10);
+        final calories = (entry['calories'] as num?)?.toInt() ?? 0;
+        final mealType = entry['meal_type'] as String? ?? 'snack';
+
+        dailyCalories[date] = (dailyCalories[date] ?? 0) + calories;
+        mealCounts[mealType] = (mealCounts[mealType] ?? 0) + 1;
       }
 
-      // Sort by frequency
-      final sortedFoods = foodCounts.entries.toList()
-        ..sort((a, b) => b.value.compareTo(a.value));
+      final avgCalories = dailyCalories.values.isNotEmpty
+          ? (dailyCalories.values.reduce((a, b) => a + b) / dailyCalories.length).round()
+          : 0;
 
       final buffer = StringBuffer();
-      buffer.writeln('Aliments les plus consommés (14 derniers jours):');
-
-      // Top 10 most consumed foods
-      for (var i = 0; i < sortedFoods.length && i < 10; i++) {
-        final food = sortedFoods[i];
-        buffer.writeln('- ${food.key} (${food.value}x)');
-      }
+      buffer.writeln('Derniers 14 jours:');
+      buffer.writeln('- Moyenne: ~$avgCalories kcal/jour sur ${dailyCalories.length} jours trackés');
+      buffer.writeln('- Petit-déj: ${mealCounts['breakfast'] ?? 0}x, Déj: ${mealCounts['lunch'] ?? 0}x, Dîner: ${mealCounts['dinner'] ?? 0}x, Snacks: ${mealCounts['snack'] ?? 0}x');
 
       return buffer.toString().trim();
     } catch (e) {
@@ -377,7 +389,7 @@ ${isEnglish ? 'Respond in English.' : isGerman ? 'Antworte auf Deutsch.' : 'Rép
 
       final response = await client
           .from('workout_session_summaries')
-          .select('session_name, session_date, duration_minutes, calories_burned, exercises_count')
+          .select('session_name, session_date, duration_minutes, calories_burned')
           .eq('user_id', user.id)
           .gte('session_date', twoMonthsAgo.toIso8601String().split('T')[0])
           .order('session_date', ascending: false)
@@ -393,9 +405,8 @@ ${isEnglish ? 'Respond in English.' : isGerman ? 'Antworte auf Deutsch.' : 'Rép
         final name = workout['session_name'] as String? ?? 'Workout';
         final duration = workout['duration_minutes'] as int? ?? 0;
         final calories = workout['calories_burned'] as int? ?? 0;
-        final exercises = workout['exercises_count'] as int? ?? 0;
 
-        buffer.writeln('- $date: $name ($duration min, $calories kcal, $exercises exercices)');
+        buffer.writeln('- $date: $name ($duration min, $calories kcal)');
       }
 
       return buffer.toString().trim();
@@ -417,7 +428,7 @@ ${isEnglish ? 'Respond in English.' : isGerman ? 'Antworte auf Deutsch.' : 'Rép
 
       final response = await client
           .from('cardio_sessions')
-          .select('activity_title, session_date, duration, distance, calories')
+          .select('activity_title, session_date, duration_seconds, distance_km, calories')
           .eq('user_id', user.id)
           .eq('is_completed', true)
           .gte('start_time', twoMonthsAgo.toIso8601String())
@@ -432,9 +443,9 @@ ${isEnglish ? 'Respond in English.' : isGerman ? 'Antworte auf Deutsch.' : 'Rép
       for (var cardio in response) {
         final date = cardio['session_date'] as String? ?? '';
         final activity = cardio['activity_title'] as String? ?? 'Cardio';
-        final duration = cardio['duration'] as int? ?? 0;
-        final durationMin = duration ~/ 60;
-        final distance = (cardio['distance'] as num?)?.toDouble() ?? 0;
+        final durationSeconds = cardio['duration_seconds'] as int? ?? 0;
+        final durationMin = durationSeconds ~/ 60;
+        final distance = (cardio['distance_km'] as num?)?.toDouble() ?? 0;
         final calories = cardio['calories'] as int? ?? 0;
 
         String distanceStr = '';

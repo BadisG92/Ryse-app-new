@@ -350,12 +350,15 @@ IMPORTANT:
       existingPrefs['onboarding_insights'] = insights;
 
       // Save to user_coach_preferences
-      await Supabase.instance.client.from('user_coach_preferences').upsert({
-        'user_id': user.id,
-        'preferences': existingPrefs,
-        'last_extraction_at': DateTime.now().toIso8601String(),
-        'updated_at': DateTime.now().toIso8601String(),
-      });
+      await Supabase.instance.client.from('user_coach_preferences').upsert(
+        {
+          'user_id': user.id,
+          'preferences': existingPrefs,
+          'last_extraction_at': DateTime.now().toIso8601String(),
+          'updated_at': DateTime.now().toIso8601String(),
+        },
+        onConflict: 'user_id',
+      );
 
       if (kDebugMode) debugPrint('✅ Onboarding insights saved to preferences');
     } catch (e) {

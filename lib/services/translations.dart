@@ -8355,6 +8355,57 @@ class AppTranslations {
       'en': 'Not now',
       'de': 'Nicht jetzt',
     },
+    // Weekly Bilan Settings
+    'weekly_bilan_enabled': {
+      'fr': 'Bilan hebdomadaire',
+      'en': 'Weekly check-in',
+      'de': 'Wöchentlicher Check-in',
+    },
+    'weekly_bilan_day': {
+      'fr': 'Jour du bilan',
+      'en': 'Check-in day',
+      'de': 'Check-in Tag',
+    },
+    'weekly_bilan_hour': {
+      'fr': 'Heure du bilan',
+      'en': 'Check-in time',
+      'de': 'Check-in Zeit',
+    },
+    'monday': {
+      'fr': 'Lundi',
+      'en': 'Monday',
+      'de': 'Montag',
+    },
+    'tuesday': {
+      'fr': 'Mardi',
+      'en': 'Tuesday',
+      'de': 'Dienstag',
+    },
+    'wednesday': {
+      'fr': 'Mercredi',
+      'en': 'Wednesday',
+      'de': 'Mittwoch',
+    },
+    'thursday': {
+      'fr': 'Jeudi',
+      'en': 'Thursday',
+      'de': 'Donnerstag',
+    },
+    'friday': {
+      'fr': 'Vendredi',
+      'en': 'Friday',
+      'de': 'Freitag',
+    },
+    'saturday': {
+      'fr': 'Samedi',
+      'en': 'Saturday',
+      'de': 'Samstag',
+    },
+    'sunday': {
+      'fr': 'Dimanche',
+      'en': 'Sunday',
+      'de': 'Sonntag',
+    },
   };
 
   /// Getter public pour accéder aux traductions (utilisé par TranslationChecker)

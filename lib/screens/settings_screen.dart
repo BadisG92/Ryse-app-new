@@ -40,6 +40,7 @@ import '../services/haptic_service.dart';
 import '../services/unit_service.dart';
 import '../services/coach_personality_service.dart';
 import '../services/subscription_service.dart';
+import '../services/weekly_bilan_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -102,6 +103,11 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   bool _loadingCoachSettings = true;
   final TextEditingController _customPersonalityController = TextEditingController();
 
+  // Coach Ryze - Bilan hebdomadaire
+  bool _weeklyBilanEnabled = false;
+  int _weeklyBilanDay = 7; // Dimanche par défaut
+  int _weeklyBilanHour = 19; // 19h par défaut
+
   @override
   void initState() {
     super.initState();
@@ -133,11 +139,19 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
     try {
       final personality = await CoachPersonalityService.instance.getPersonality();
 
+      // Charger les paramètres du bilan hebdomadaire
+      final bilanEnabled = await WeeklyBilanService.instance.isWeeklyBilanEnabled();
+      final bilanDay = await WeeklyBilanService.instance.getBilanDay();
+      final bilanHour = await WeeklyBilanService.instance.getBilanHour();
+
       if (mounted) {
         setState(() {
           _coachPersonality = personality.type;
           _coachPersonalityCustom = personality.customText;
           _customPersonalityController.text = personality.customText ?? '';
+          _weeklyBilanEnabled = bilanEnabled;
+          _weeklyBilanDay = bilanDay ?? 7;
+          _weeklyBilanHour = bilanHour;
           _loadingCoachSettings = false;
         });
       }
@@ -1180,6 +1194,16 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
 
   @override
   void dispose() {
+    // Sauvegarder le texte custom si l'utilisateur quitte sans valider
+    if (_coachPersonality == CoachPersonalityType.custom &&
+        _customPersonalityController.text.isNotEmpty) {
+      CoachPersonalityService.instance.setPersonality(
+        CoachPersonalityType.custom,
+        customText: _customPersonalityController.text,
+      ).then((_) {
+        CoachPersonalityService.instance.applyPersonalityToChat();
+      });
+    }
     _customPersonalityController.dispose();
     super.dispose();
   }
@@ -1853,6 +1877,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                     Consumer<LocalizationService>(
                       builder: (context, locService, child) {
                         final isPremium = SubscriptionService.instance.isPremium;
+                        final lang = locService.currentLanguageCode;
                         return _buildExpandableSection(
                           key: 'coach',
                           icon: LucideIcons.messageCircle,
@@ -1864,6 +1889,40 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                           _buildSectionContent(
                             child: Column(
                               children: [
+                                // Bilan hebdomadaire - Toggle (Premium only)
+                                if (isPremium) ...[
+                                  _buildInputRow(
+                                    label: 'weekly_bilan_enabled'.tr(lang),
+                                    child: Switch(
+                                      value: _weeklyBilanEnabled,
+                                      onChanged: (value) async {
+                                        setState(() => _weeklyBilanEnabled = value);
+                                        if (value) {
+                                          await WeeklyBilanService.instance.setBilanDay(_weeklyBilanDay);
+                                        } else {
+                                          await WeeklyBilanService.instance.disableBilan();
+                                        }
+                                      },
+                                      activeColor: const Color(0xFF0B132B),
+                                    ),
+                                  ),
+                                  // Jour et heure du bilan (visible si activé)
+                                  if (_weeklyBilanEnabled) ...[
+                                    const SizedBox(height: 12),
+                                    _buildInputRow(
+                                      label: 'weekly_bilan_day'.tr(lang),
+                                      child: _buildBilanDaySelector(lang),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    _buildInputRow(
+                                      label: 'weekly_bilan_hour'.tr(lang),
+                                      child: _buildBilanHourSelector(lang),
+                                    ),
+                                  ],
+                                  const SizedBox(height: 16),
+                                  const Divider(height: 1, color: Color(0xFFE2E8F0)),
+                                  const SizedBox(height: 16),
+                                ],
                                 // Personnalité du coach
                                 _buildInputRow(
                                   label: locService.isFrench
@@ -3320,6 +3379,8 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                 value,
                 customText: value == CoachPersonalityType.custom ? _coachPersonalityCustom : null,
               );
+              // Appliquer la nouvelle personnalité au chat
+              await CoachPersonalityService.instance.applyPersonalityToChat();
             }
           },
         ),
@@ -3346,14 +3407,14 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
             border: Border.all(color: const Color(0xFFE2E8F0)),
           ),
           child: TextField(
-            maxLines: 2,
-            maxLength: 100,
+            maxLines: 3,
+            maxLength: CoachPersonalityService.maxCustomLength,
             decoration: InputDecoration(
               hintText: placeholder,
               hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
               border: InputBorder.none,
               contentPadding: const EdgeInsets.all(12),
-              counterText: '',
+              counterText: '', // Hide native counter, we have our own below
             ),
             style: const TextStyle(
               fontSize: 13,
@@ -3365,10 +3426,13 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
               setState(() => _coachPersonalityCustom = value);
             },
             onEditingComplete: () async {
+              // Sauvegarder et appliquer seulement quand l'utilisateur valide
               await CoachPersonalityService.instance.setPersonality(
                 CoachPersonalityType.custom,
                 customText: _customPersonalityController.text,
               );
+              await CoachPersonalityService.instance.applyPersonalityToChat();
+              FocusScope.of(context).unfocus();
             },
           ),
         ),
@@ -3387,9 +3451,9 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
               ),
             ),
             Text(
-              '$charCount/100',
+              '$charCount/${CoachPersonalityService.maxCustomLength}',
               style: TextStyle(
-                color: charCount > 90 ? const Color(0xFFEF4444) : const Color(0xFF94A3B8),
+                color: charCount > CoachPersonalityService.maxCustomLength - 20 ? const Color(0xFFEF4444) : const Color(0xFF94A3B8),
                 fontSize: 11,
                 fontWeight: FontWeight.w500,
               ),
@@ -3397,6 +3461,82 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
           ],
         ),
       ],
+    );
+  }
+
+  Widget _buildBilanDaySelector(String lang) {
+    final days = [
+      (1, 'monday'.tr(lang)),
+      (2, 'tuesday'.tr(lang)),
+      (3, 'wednesday'.tr(lang)),
+      (4, 'thursday'.tr(lang)),
+      (5, 'friday'.tr(lang)),
+      (6, 'saturday'.tr(lang)),
+      (7, 'sunday'.tr(lang)),
+    ];
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<int>(
+          value: _weeklyBilanDay,
+          isExpanded: true,
+          icon: const Icon(LucideIcons.chevronDown, size: 18, color: Color(0xFF64748B)),
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Color(0xFF1A1A1A),
+          ),
+          dropdownColor: Colors.white,
+          items: days.map((day) => DropdownMenuItem<int>(
+            value: day.$1,
+            child: Text(day.$2),
+          )).toList(),
+          onChanged: (value) async {
+            if (value != null) {
+              setState(() => _weeklyBilanDay = value);
+              await WeeklyBilanService.instance.setBilanDay(value);
+            }
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBilanHourSelector(String lang) {
+    return GestureDetector(
+      onTap: () => _showTimePickerDialog(_weeklyBilanHour, (value) async {
+        setState(() => _weeklyBilanHour = value);
+        await WeeklyBilanService.instance.setBilanHour(value);
+      }),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(LucideIcons.clock, size: 16, color: Color(0xFF64748B)),
+            const SizedBox(width: 8),
+            Text(
+              '${_weeklyBilanHour.toString().padLeft(2, '0')}:00',
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF1A1A1A),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
