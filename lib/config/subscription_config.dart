@@ -54,11 +54,11 @@ class SubscriptionConfig {
   // ═══════════════════════════════════════════════════════════════════════════
 
   /// Durée du trial gratuit (jours)
-  static const int trialDurationDays = 7;
+  static const int trialDurationDays = 3;
 
   /// Message d'accroche trial
-  static const String trialCallToAction = 'Essai gratuit de 7 jours';
-  static const String trialDescription = 'Toutes les fonctionnalités IA débloquées pendant 7 jours';
+  static const String trialCallToAction = 'Essai gratuit de 3 jours';
+  static const String trialDescription = 'Toutes les fonctionnalités IA débloquées pendant 3 jours';
 
   // ═══════════════════════════════════════════════════════════════════════════
   // FEATURES PAR TIER
@@ -125,12 +125,12 @@ class SubscriptionConfig {
   static const String limitReachedTitle = 'Version Gratuite Limitée';
   static const String limitReachedMessage =
       'Cette fonctionnalité IA est réservée aux membres Premium. '
-      'Essayez Premium gratuitement pendant 7 jours !';
+      'Essayez Premium gratuitement pendant 3 jours !';
 
   /// Message trial expiré
   static const String trialExpiredTitle = 'Essai Gratuit Terminé';
   static const String trialExpiredMessage =
-      'Votre période d\'essai de 7 jours est terminée. '
+      'Votre période d\'essai de 3 jours est terminée. '
       'Passez à Premium pour continuer à utiliser les fonctionnalités IA !';
 
   /// Avantages Premium (pour le paywall)

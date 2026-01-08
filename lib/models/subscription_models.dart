@@ -75,17 +75,17 @@ class UserSubscription {
     );
   }
 
-  /// Factory: Trial Premium (7 jours)
+  /// Factory: Trial Premium (3 jours)
   factory UserSubscription.trial({bool isTestMode = false}) {
     final now = DateTime.now();
     return UserSubscription(
       tier: SubscriptionTier.premium,
       period: null,
       startDate: now,
-      expiryDate: now.add(const Duration(days: 7)),
+      expiryDate: now.add(const Duration(days: 3)),
       isTestMode: isTestMode,
       isTrial: true,
-      trialEndDate: now.add(const Duration(days: 7)),
+      trialEndDate: now.add(const Duration(days: 3)),
     );
   }
 
