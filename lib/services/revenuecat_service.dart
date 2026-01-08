@@ -20,7 +20,7 @@ import '../config/env_config.dart';
 /// - Weekly: 2,99€/semaine
 /// - Monthly: 9,99€/mois
 /// - Yearly: 69,99€/an (économie 42%)
-/// - Trial: 7 jours gratuits avec toutes les features IA
+/// - Trial: 3 jours gratuits avec toutes les features IA
 class RevenueCatService {
   static final RevenueCatService _instance = RevenueCatService._internal();
   factory RevenueCatService() => _instance;
