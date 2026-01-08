@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:ui' as ui;
 import 'ai_workout_generation_service.dart';
 import 'dashboard_service.dart';
@@ -12,6 +13,7 @@ import 'recipe_service.dart';
 import 'sport_dashboard_service.dart';
 import 'widget_sync_service.dart';
 import 'workout_cache_service.dart';
+import 'ai_notification_service.dart';
 
 class LocalizationService extends ChangeNotifier {
   static const String _languageKey = 'selected_language';
@@ -43,7 +45,9 @@ class LocalizationService extends ChangeNotifier {
     if (savedLanguage == null) {
       // Première fois : détecter la langue du système
       final systemLocales = ui.PlatformDispatcher.instance.locales;
+      debugPrint('🌍 Locales système disponibles: $systemLocales');
       final systemLanguage = systemLocales.isNotEmpty ? systemLocales.first.languageCode : 'en';
+      debugPrint('🌍 Langue système première: $systemLanguage');
 
       // Détecter français, allemand, sinon anglais par défaut
       savedLanguage = systemLanguage == 'fr' ? 'fr'
@@ -54,6 +58,8 @@ class LocalizationService extends ChangeNotifier {
       await prefs.setString(_languageKey, savedLanguage);
 
       debugPrint('🌍 Langue système détectée: $systemLanguage -> Application configurée en: $savedLanguage');
+    } else {
+      debugPrint('🌍 Langue déjà sauvegardée dans SharedPreferences: $savedLanguage');
     }
     
     _currentLocale = Locale(savedLanguage);
@@ -67,6 +73,9 @@ class LocalizationService extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_languageKey, languageCode);
 
+      // Sauvegarder dans Supabase pour les notifications IA
+      await _saveLanguageToSupabase(languageCode);
+
       // TRIGGER: Vider les caches pour forcer le rechargement avec la nouvelle langue
       DashboardService.clearGoalsCache();
       WorkoutCacheService.clearCache();
@@ -78,11 +87,43 @@ class LocalizationService extends ChangeNotifier {
       await OfflineWorkoutService().clearAllCache();
       await RecipeService.invalidateCache();
 
+      // Vider les notifications IA (elles seront régénérées dans la bonne langue)
+      await AiNotificationService.instance.clearUnusedMessages();
+
       notifyListeners();
 
       // Mettre à jour le widget repas pour refléter la nouvelle langue
       await WidgetSyncService.refreshMealWidget(force: true);
     }
+  }
+
+  /// Sauvegarder la langue dans Supabase (pour les notifications IA)
+  Future<void> _saveLanguageToSupabase(String languageCode) async {
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) {
+        debugPrint('❌ Language save failed: No user logged in');
+        return;
+      }
+
+      debugPrint('🔄 Saving language to Supabase: $languageCode for user ${user.id}');
+
+      final response = await Supabase.instance.client
+          .from('users')
+          .update({'language': languageCode})
+          .eq('id', user.id)
+          .select();
+
+      debugPrint('✅ Language saved to Supabase: $languageCode, response: $response');
+    } catch (e) {
+      debugPrint('❌ Error saving language to Supabase: $e');
+    }
+  }
+
+  /// Synchroniser la langue locale avec Supabase (appelé après login)
+  Future<void> syncLanguageToSupabase() async {
+    debugPrint('🌍 syncLanguageToSupabase: currentLocale = ${_currentLocale.languageCode}');
+    await _saveLanguageToSupabase(_currentLocale.languageCode);
   }
   
   String getColumnSuffix() {

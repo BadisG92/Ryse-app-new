@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
 import '../config/supabase_config.dart';
 import 'global_state_manager.dart';
+import 'localization_service.dart';
 import 'fast_cache_service.dart';
 import 'analytics_service.dart';
 import 'offline_workout_service.dart';
@@ -123,6 +124,19 @@ class AuthService extends ChangeNotifier {
         // 📊 Analytics: Sign up success
         await AnalyticsService.logSignUp(method: 'email');
         await AnalyticsService.setUserId(response.user!.id);
+
+        // 🌍 Mettre à jour la langue de l'utilisateur immédiatement après signup
+        final userLanguage = LocalizationService.instance.currentLanguageCode;
+        if (kDebugMode) debugPrint('🌍 Setting user language after signup: $userLanguage');
+        try {
+          await _supabase
+              .from('users')
+              .update({'language': userLanguage})
+              .eq('id', response.user!.id);
+          if (kDebugMode) debugPrint('✅ Language set to $userLanguage');
+        } catch (e) {
+          if (kDebugMode) debugPrint('⚠️ Failed to set language: $e');
+        }
 
         // OFFLINE: Télécharger le cache des exercices pour utilisation offline
         if (kDebugMode) debugPrint('💾 Téléchargement du cache des exercices après inscription...');
@@ -267,6 +281,18 @@ class AuthService extends ChangeNotifier {
 
         await _loadUserProfile(response.user!.id);
 
+        // 🌍 S'assurer que la langue est définie (pour nouveaux users Google)
+        final userLanguage = LocalizationService.instance.currentLanguageCode;
+        if (kDebugMode) debugPrint('🌍 Ensuring language is set after Google login: $userLanguage');
+        try {
+          await _supabase
+              .from('users')
+              .update({'language': userLanguage})
+              .eq('id', response.user!.id);
+        } catch (e) {
+          if (kDebugMode) debugPrint('⚠️ Failed to update language: $e');
+        }
+
         // Mettre à jour le profil avec le nom si disponible et si pas déjà renseigné
         if (firstName != null && _currentUser != null) {
           final needsUpdate = _currentUser!.firstName.isEmpty ||
@@ -375,6 +401,18 @@ class AuthService extends ChangeNotifier {
           firstName: firstName,
           lastName: lastName,
         );
+
+        // 🌍 S'assurer que la langue est définie (pour nouveaux users Apple)
+        final userLanguage = LocalizationService.instance.currentLanguageCode;
+        if (kDebugMode) debugPrint('🌍 Ensuring language is set after Apple login: $userLanguage');
+        try {
+          await _supabase
+              .from('users')
+              .update({'language': userLanguage})
+              .eq('id', response.user!.id);
+        } catch (e) {
+          if (kDebugMode) debugPrint('⚠️ Failed to update language: $e');
+        }
 
         if (kDebugMode) debugPrint('🔐 Storing access token securely...');
         await _storeTokenSecurely(response.session?.accessToken);
@@ -747,6 +785,17 @@ class AuthService extends ChangeNotifier {
         _currentUser = UserModel.fromJson(response);
         _safeNotifyListeners();
         if (kDebugMode) debugPrint('✅ User profile loaded successfully');
+
+        // Si la langue n'est pas définie, la mettre à jour avec la langue système
+        final existingLanguage = response['language'] as String?;
+        if (existingLanguage == null || existingLanguage.isEmpty) {
+          final userLanguage = LocalizationService.instance.currentLanguageCode;
+          if (kDebugMode) debugPrint('🌍 User has no language set, updating to: $userLanguage');
+          await _supabase
+              .from('users')
+              .update({'language': userLanguage})
+              .eq('id', userId);
+        }
       } else {
         // L'utilisateur n'existe pas encore → le créer
         if (kDebugMode) debugPrint('👤 User not found in database, creating...');
@@ -796,6 +845,17 @@ class AuthService extends ChangeNotifier {
         _currentUser = UserModel.fromJson(response);
         _safeNotifyListeners();
         if (kDebugMode) debugPrint('✅ User profile loaded successfully');
+
+        // Si la langue n'est pas définie, la mettre à jour avec la langue système
+        final existingLanguage = response['language'] as String?;
+        if (existingLanguage == null || existingLanguage.isEmpty) {
+          final userLanguage = LocalizationService.instance.currentLanguageCode;
+          if (kDebugMode) debugPrint('🌍 User has no language set, updating to: $userLanguage');
+          await _supabase
+              .from('users')
+              .update({'language': userLanguage})
+              .eq('id', userId);
+        }
 
         // Mettre à jour le nom si fourni et si le profil a 'User' comme nom
         if (firstName != null && _currentUser != null) {
@@ -848,11 +908,16 @@ class AuthService extends ChangeNotifier {
       if (kDebugMode) debugPrint('📝 Creating user profile in database...');
 
       // Créer l'utilisateur avec les données minimales
+      // Inclure la langue détectée par LocalizationService (basée sur la langue système)
+      final userLanguage = LocalizationService.instance.currentLanguageCode;
+      if (kDebugMode) debugPrint('🌍 Creating user with language: $userLanguage');
+
       final newUser = {
         'id': userId,
         'email': authUser.email ?? 'unknown',
         'first_name': firstName ?? 'User',
         'last_name': lastName ?? '',
+        'language': userLanguage,
         'created_at': DateTime.now().toIso8601String(),
         'updated_at': DateTime.now().toIso8601String(),
         'is_onboarded': false,

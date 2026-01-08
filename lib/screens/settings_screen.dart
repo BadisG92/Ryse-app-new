@@ -3422,15 +3422,16 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
               color: Color(0xFF1A1A1A),
             ),
             controller: _customPersonalityController,
-            onChanged: (value) {
+            onChanged: (value) async {
               setState(() => _coachPersonalityCustom = value);
-            },
-            onEditingComplete: () async {
-              // Sauvegarder et appliquer seulement quand l'utilisateur valide
+              // Sauvegarder automatiquement à chaque changement
               await CoachPersonalityService.instance.setPersonality(
                 CoachPersonalityType.custom,
-                customText: _customPersonalityController.text,
+                customText: value,
               );
+            },
+            onEditingComplete: () async {
+              // Appliquer au chat quand l'utilisateur ferme le clavier
               await CoachPersonalityService.instance.applyPersonalityToChat();
               FocusScope.of(context).unfocus();
             },

@@ -14,6 +14,7 @@ import '../services/dashboard_service.dart';
 import '../services/streak_service.dart';
 import '../services/global_state_manager.dart';
 import '../services/notification_messages.dart';
+import '../services/ai_notification_service.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -201,25 +202,36 @@ class NotificationService {
   }
 
   /// Planifier les rappels de repas
+  /// Avec 30% de chance d'utiliser un message IA personnalisé
   Future<void> _scheduleMealReminders(NotificationPreferences prefs) async {
     final firstName = await _getUserFirstName();
     final isFrench = LocalizationService.instance.currentLanguageCode == 'fr';
 
     // Petit-déjeuner (si activé)
     if (prefs.breakfastTime > 0) {
+      final defaultTitle = NotificationMessages.getMealReminderTitle(
+        mealType: 'breakfast',
+        isFrench: isFrench,
+        firstName: firstName,
+      );
+      final defaultBody = NotificationMessages.getMealReminderBody(
+        mealType: 'breakfast',
+        isFrench: isFrench,
+      );
+
+      // Essayer un message IA (30% de chance)
+      final content = await AiNotificationService.instance.getNotificationContent(
+        type: AiNotificationType.meal,
+        defaultTitle: defaultTitle,
+        defaultBody: defaultBody,
+      );
+
       await _scheduleDailyNotification(
         id: 1,
         hour: prefs.breakfastTime,
         minute: 0,
-        title: NotificationMessages.getMealReminderTitle(
-          mealType: 'breakfast',
-          isFrench: isFrench,
-          firstName: firstName,
-        ),
-        body: NotificationMessages.getMealReminderBody(
-          mealType: 'breakfast',
-          isFrench: isFrench,
-        ),
+        title: content.title,
+        body: content.body,
         payload: NotificationPayload(
           type: NotificationType.mealReminder,
           mealType: 'breakfast',
@@ -228,40 +240,60 @@ class NotificationService {
     }
 
     // Déjeuner
-    await _scheduleDailyNotification(
-      id: 2,
-      hour: prefs.lunchTime,
-      minute: 30,
-      title: NotificationMessages.getMealReminderTitle(
+    {
+      final defaultTitle = NotificationMessages.getMealReminderTitle(
         mealType: 'lunch',
         isFrench: isFrench,
         firstName: firstName,
-      ),
-      body: NotificationMessages.getMealReminderBody(
+      );
+      final defaultBody = NotificationMessages.getMealReminderBody(
         mealType: 'lunch',
         isFrench: isFrench,
-      ),
-      payload: NotificationPayload(
-        type: NotificationType.mealReminder,
-        mealType: 'lunch',
-      ).toJson(),
-    );
+      );
+
+      final content = await AiNotificationService.instance.getNotificationContent(
+        type: AiNotificationType.meal,
+        defaultTitle: defaultTitle,
+        defaultBody: defaultBody,
+      );
+
+      await _scheduleDailyNotification(
+        id: 2,
+        hour: prefs.lunchTime,
+        minute: 30,
+        title: content.title,
+        body: content.body,
+        payload: NotificationPayload(
+          type: NotificationType.mealReminder,
+          mealType: 'lunch',
+        ).toJson(),
+      );
+    }
 
     // Dîner (si activé)
     if (prefs.dinnerTime > 0) {
+      final defaultTitle = NotificationMessages.getMealReminderTitle(
+        mealType: 'dinner',
+        isFrench: isFrench,
+        firstName: firstName,
+      );
+      final defaultBody = NotificationMessages.getMealReminderBody(
+        mealType: 'dinner',
+        isFrench: isFrench,
+      );
+
+      final content = await AiNotificationService.instance.getNotificationContent(
+        type: AiNotificationType.meal,
+        defaultTitle: defaultTitle,
+        defaultBody: defaultBody,
+      );
+
       await _scheduleDailyNotification(
         id: 3,
         hour: prefs.dinnerTime,
         minute: 0,
-        title: NotificationMessages.getMealReminderTitle(
-          mealType: 'dinner',
-          isFrench: isFrench,
-          firstName: firstName,
-        ),
-        body: NotificationMessages.getMealReminderBody(
-          mealType: 'dinner',
-          isFrench: isFrench,
-        ),
+        title: content.title,
+        body: content.body,
         payload: NotificationPayload(
           type: NotificationType.mealReminder,
           mealType: 'dinner',
@@ -273,6 +305,7 @@ class NotificationService {
   }
 
   /// Planifier les rappels d'hydratation selon la fréquence choisie
+  /// Avec 30% de chance d'utiliser un message IA personnalisé
   Future<void> _scheduleWaterReminders(NotificationPreferences prefs) async {
     final firstName = await _getUserFirstName();
     final isFrench = LocalizationService.instance.currentLanguageCode == 'fr';
@@ -300,15 +333,25 @@ class NotificationService {
     }
 
     for (int i = 0; i < waterHours.length; i++) {
+      final defaultTitle = NotificationMessages.getWaterReminderTitle(
+        isFrench: isFrench,
+        firstName: firstName,
+      );
+      final defaultBody = NotificationMessages.getWaterReminderBody(isFrench: isFrench);
+
+      // Essayer un message IA (30% de chance)
+      final content = await AiNotificationService.instance.getNotificationContent(
+        type: AiNotificationType.water,
+        defaultTitle: defaultTitle,
+        defaultBody: defaultBody,
+      );
+
       await _scheduleDailyNotification(
         id: 10 + i,
         hour: waterHours[i],
         minute: 0,
-        title: NotificationMessages.getWaterReminderTitle(
-          isFrench: isFrench,
-          firstName: firstName,
-        ),
-        body: NotificationMessages.getWaterReminderBody(isFrench: isFrench),
+        title: content.title,
+        body: content.body,
         payload: NotificationPayload(
           type: NotificationType.waterReminder,
         ).toJson(),
@@ -319,6 +362,7 @@ class NotificationService {
   }
 
   /// Planifier la protection de série avec message engageant
+  /// Avec 30% de chance d'utiliser un message IA personnalisé
   Future<void> _scheduleStreakProtection(NotificationPreferences prefs) async {
     final firstName = await _getUserFirstName();
     final languageCode = LocalizationService.instance.currentLanguageCode;
@@ -326,24 +370,30 @@ class NotificationService {
     final isGerman = languageCode == 'de';
 
     // Message générique engageant pour protéger la série
-    // Le vrai contenu contextuel sera envoyé via checkAndSendStreakProtection()
-    final title = isFrench
+    final defaultTitle = isFrench
         ? '🔥 ${firstName.isNotEmpty ? "$firstName, p" : "P"}rotège ta série !'
         : isGerman
             ? '🔥 ${firstName.isNotEmpty ? "$firstName, s" : "S"}chütze deine Serie!'
             : '🔥 ${firstName.isNotEmpty ? "$firstName, p" : "P"}rotect your streak!';
-    final body = isFrench
+    final defaultBody = isFrench
         ? 'Tu n\'as pas encore logué aujourd\'hui. Ne perds pas ta progression !'
         : isGerman
             ? 'Du hast heute noch nichts eingetragen. Verliere nicht deinen Fortschritt!'
             : 'You haven\'t logged anything today. Don\'t lose your progress!';
 
+    // Essayer un message IA (30% de chance)
+    final content = await AiNotificationService.instance.getNotificationContent(
+      type: AiNotificationType.streak,
+      defaultTitle: defaultTitle,
+      defaultBody: defaultBody,
+    );
+
     await _scheduleDailyNotification(
       id: 20,
       hour: 19,
       minute: 0,
-      title: title,
-      body: body,
+      title: content.title,
+      body: content.body,
       payload: NotificationPayload(
         type: NotificationType.streakProtection,
       ).toJson(),
@@ -386,19 +436,30 @@ class NotificationService {
   }
 
   /// Planifier les rappels d'entraînement
+  /// Avec 30% de chance d'utiliser un message IA personnalisé
   Future<void> _scheduleWorkoutReminders(NotificationPreferences prefs) async {
     final firstName = await _getUserFirstName();
     final isFrench = LocalizationService.instance.currentLanguageCode == 'fr';
+
+    final defaultTitle = NotificationMessages.getWorkoutReminderTitle(
+      isFrench: isFrench,
+      firstName: firstName,
+    );
+    final defaultBody = NotificationMessages.getWorkoutReminderBody(isFrench: isFrench);
+
+    // Essayer un message IA (30% de chance)
+    final content = await AiNotificationService.instance.getNotificationContent(
+      type: AiNotificationType.workout,
+      defaultTitle: defaultTitle,
+      defaultBody: defaultBody,
+    );
 
     await _scheduleDailyNotification(
       id: 40,
       hour: prefs.workoutReminderTime,
       minute: 0,
-      title: NotificationMessages.getWorkoutReminderTitle(
-        isFrench: isFrench,
-        firstName: firstName,
-      ),
-      body: NotificationMessages.getWorkoutReminderBody(isFrench: isFrench),
+      title: content.title,
+      body: content.body,
       payload: NotificationPayload(
         type: NotificationType.workoutReminder,
       ).toJson(),

@@ -25,8 +25,9 @@ class CoachContextBuilder {
     final isEnglish = lang == 'en';
     final isGerman = lang == 'de';
 
-    // Get user's personality preference
-    final personalityInstruction = await CoachPersonalityService.instance.buildPersonalityInstruction(lang);
+    // Get user's personality preference with gender context
+    final userGender = context['userGender'] as String?;
+    final personalityInstruction = await CoachPersonalityService.instance.buildPersonalityInstruction(lang, gender: userGender);
 
     return '''
 Tu es Coach Ryze, le coach panda fitness et nutrition de ${context['userName']} dans l'app Ryse.
@@ -75,11 +76,14 @@ Jour de la semaine: ${context['dayOfWeek']}
 ${context['mealsToday']}
 
 ## PROFIL UTILISATEUR
+- Sexe: ${context['userGender'] == 'female' ? 'Femme' : context['userGender'] == 'male' ? 'Homme' : 'Non renseigné'}
 - Âge: ${context['userAge'] != null ? '${context['userAge']} ans' : 'Non renseigné'}
 - Objectif: ${context['fitnessGoal']}
 - Poids actuel: ${context['currentWeight']} kg → Objectif: ${context['targetWeight']} kg
 - Niveau activité: ${context['activityLevel']}
 - Streak actuel: ${context['streak']} jours 🔥
+
+**IMPORTANT - GENRE**: ${context['userGender'] == 'female' ? 'L\'utilisateur est une FEMME. Utilise des accords féminins et un langage approprié (pas de "mec", "gars", etc.)' : context['userGender'] == 'male' ? 'L\'utilisateur est un HOMME. Tu peux utiliser un langage masculin casual si approprié.' : 'Genre non spécifié, utilise un langage neutre.'}
 
 ## HISTORIQUE REPAS (14 derniers jours)
 ${context['mealHistory14Days']}
@@ -196,6 +200,7 @@ ${isEnglish ? 'Respond in English.' : isGerman ? 'Antworte auf Deutsch.' : 'Rép
       'activityLevel': userProfile['activity_level'] ?? 'moderate',
       'streak': globalState.currentStreak,
       'userAge': userProfile['age'],
+      'userGender': userProfile['gender'],
 
       // History
       'mealHistory14Days': mealHistory,
@@ -237,9 +242,13 @@ ${isEnglish ? 'Respond in English.' : isGerman ? 'Antworte auf Deutsch.' : 'Rép
 
       final response = await client
           .from('users')
-          .select('weight, fitness_goal, activity_level, target_weight, age')
+          .select('weight, fitness_goal, activity_level, target_weight, age, gender')
           .eq('id', user.id)
           .maybeSingle();
+
+      if (kDebugMode) {
+        debugPrint('👤 CoachContextBuilder: User profile loaded - gender: ${response?['gender']}');
+      }
 
       return response ?? {};
     } catch (e) {

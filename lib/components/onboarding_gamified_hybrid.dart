@@ -2280,6 +2280,11 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                                 'is_onboarded': true,
                               }).eq('id', user.id);
                               debugPrint('✅ Onboarding marqué comme terminé dans Supabase');
+
+                              // Sauvegarder la langue de l'utilisateur dans Supabase
+                              debugPrint('🔄 Tentative de sync langue...');
+                              await LocalizationService.instance.syncLanguageToSupabase();
+                              debugPrint('✅ Langue synchronisée dans Supabase');
                             } catch (e) {
                               debugPrint('⚠️ Erreur mise à jour onboarding Supabase: $e');
                             }

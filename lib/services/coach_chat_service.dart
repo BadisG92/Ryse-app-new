@@ -346,7 +346,7 @@ class CoachChatService {
   }
 
   /// Send a message with streaming response
-  Stream<String> streamMessage(String userMessage) async* {
+  Stream<String> streamMessage(String userMessage, {int retryCount = 0}) async* {
     if (_currentConversation == null) {
       await getOrCreateConversation();
     }
@@ -369,25 +369,34 @@ class CoachChatService {
       return;
     }
 
+    // Only save user message on first attempt (not on retry)
+    CoachMessage? userMsgModel;
+    if (retryCount == 0) {
+      try {
+        final userMsgResponse = await _supabase
+            .from('coach_messages')
+            .insert({
+              'conversation_id': _currentConversation!.id,
+              'user_id': user.id,
+              'role': 'user',
+              'content': userMessage,
+            })
+            .select()
+            .single();
+
+        userMsgModel = CoachMessage.fromJson(userMsgResponse);
+        _currentMessages.add(userMsgModel);
+
+        // Increment usage
+        await _incrementUsage();
+      } catch (e) {
+        if (kDebugMode) debugPrint('❌ CoachChatService: Error saving user message: $e');
+        yield '[Erreur: Impossible d\'envoyer le message]';
+        return;
+      }
+    }
+
     try {
-      // Save user message to database
-      final userMsgResponse = await _supabase
-          .from('coach_messages')
-          .insert({
-            'conversation_id': _currentConversation!.id,
-            'user_id': user.id,
-            'role': 'user',
-            'content': userMessage,
-          })
-          .select()
-          .single();
-
-      final userMsgModel = CoachMessage.fromJson(userMsgResponse);
-      _currentMessages.add(userMsgModel);
-
-      // Increment usage
-      await _incrementUsage();
-
       // Stream response from Gemini
       final responseStream = _currentChatSession!.sendMessageStream(
         Content.text(userMessage),
@@ -429,7 +438,25 @@ class CoachChatService {
       }
     } catch (e) {
       if (kDebugMode) debugPrint('❌ CoachChatService: Error streaming message: $e');
-      yield '[Erreur: ${e.toString()}]';
+
+      // Handle known SDK bug with empty responses - silent retry
+      if (e.toString().contains('Unhandled format for Content') && retryCount < 2) {
+        if (kDebugMode) debugPrint('🔄 CoachChatService: Retrying after SDK error (attempt ${retryCount + 1})');
+
+        // Reset chat session and retry
+        _currentChatSession = null;
+        await initialize();
+
+        // Small delay before retry
+        await Future.delayed(const Duration(milliseconds: 500));
+
+        // Retry silently
+        await for (final chunk in streamMessage(userMessage, retryCount: retryCount + 1)) {
+          yield chunk;
+        }
+      } else {
+        yield '[Erreur: Une erreur est survenue. Réessaie dans quelques instants.]';
+      }
     }
   }
 
