@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../components/onboarding_with_value_prop.dart';
+import '../components/ai_onboarding_flow.dart';
 import '../components/main_app.dart';
 import '../services/auth_service.dart';
 import '../screens/auth/login_screen.dart';
@@ -153,19 +154,27 @@ class _RyzeAppState extends State<RyzeApp> {
           try {
             final response = await supabase
                 .from('users')
-                .select('is_onboarded')
+                .select('is_onboarded, ai_onboarding_completed')
                 .eq('id', session.user.id)
                 .single()
                 .timeout(const Duration(seconds: 5));
 
             final isOnboarded = _forceOnboarding ? false : (response['is_onboarded'] ?? false);
+            final aiOnboardingCompleted = response['ai_onboarding_completed'] ?? false;
 
             // Synchroniser avec SharedPreferences
             await prefs.setBool('is_onboarded', isOnboarded);
 
-            if (isOnboarded) {
+            if (isOnboarded && !aiOnboardingCompleted) {
+              // 🤖 Utilisateur existant qui n'a pas fait l'onboarding IA
+              // → Flow simplifié: Chat IA + Contrat seulement
+              debugPrint('🤖 Utilisateur existant sans onboarding IA → AIOnboardingFlow');
+              targetScreen = AIOnboardingFlow(
+                onComplete: _completeAIOnboarding,
+              );
+            } else if (isOnboarded) {
               // ✨ Utilisateur complet → APP DIRECTEMENT (jamais de slides)
-              debugPrint('🎯 Utilisateur onboardé → App directement');
+              debugPrint('🎯 Utilisateur onboardé + IA complété → App directement');
               targetScreen = const MainApp();
             } else {
               // ⚠️ Compte existe mais onboarding incomplet
@@ -236,6 +245,24 @@ class _RyzeAppState extends State<RyzeApp> {
     }
   }
 
+  /// Appelée quand l'onboarding IA simplifié est terminé (utilisateurs existants)
+  /// Redirige directement vers MainApp (pas de paywall, ils l'ont déjà vu)
+  Future<void> _completeAIOnboarding() async {
+    debugPrint('🤖 _completeAIOnboarding appelé');
+
+    if (!mounted) {
+      debugPrint('⚠️ Widget non mounted, navigation annulée');
+      return;
+    }
+
+    // Navigation directe vers MainApp
+    debugPrint('🏠 AI Onboarding terminé → Navigation vers MainApp');
+    Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (context) => const MainApp()),
+      (route) => false,
+    );
+  }
+
   /// Appelée quand l'onboarding est terminé
   /// Affiche le paywall, puis redirige vers MainApp quelle que soit l'issue
   Future<void> _completeOnboarding() async {
@@ -255,8 +282,9 @@ class _RyzeAppState extends State<RyzeApp> {
       try {
         await supabase.from('users').update({
           'is_onboarded': true,
+          'ai_onboarding_completed': true, // Nouveaux utilisateurs ont fait l'onboarding IA
         }).eq('id', user.id);
-        debugPrint('✅ Onboarding marqué comme terminé dans Supabase');
+        debugPrint('✅ Onboarding + AI onboarding marqués comme terminés dans Supabase');
 
         // Sauvegarder la langue de l'utilisateur dans Supabase
         debugPrint('🔄 Tentative de sync langue...');
@@ -292,10 +320,10 @@ class _RyzeAppState extends State<RyzeApp> {
               ? 'Coach Ryze Premium freischalten'
               : 'Unlock Coach Ryze Premium';
       final customMessage = locService.isFrench
-          ? 'Profitez de 7 jours d\'essai gratuit'
+          ? 'Profitez de 3 jours d\'essai gratuit'
           : locService.isGerman
-              ? '7 Tage gratis testen'
-              : 'Enjoy 7 days free trial';
+              ? '3 Tage gratis testen'
+              : 'Enjoy 3 days free trial';
 
       Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
         MaterialPageRoute(

@@ -253,14 +253,25 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
             const SizedBox(width: 16),
             Expanded(
               child: Consumer<LocalizationService>(
-                builder: (context, locService, child) => Text(
-                  locService.currentLanguageCode == 'fr' ? 'Détails de la recette' : 'Recipe details',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1A1A),
-                  ),
-                ),
+                builder: (context, locService, child) {
+                  final lang = locService.currentLanguageCode;
+                  String title;
+                  if (lang == 'fr') {
+                    title = 'Détails de la recette';
+                  } else if (lang == 'de') {
+                    title = 'Rezeptdetails';
+                  } else {
+                    title = 'Recipe details';
+                  }
+                  return Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1A1A1A),
+                    ),
+                  );
+                },
               ),
             ),
           ],
@@ -288,14 +299,24 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
           ),
           const SizedBox(width: 8),
           Consumer<LocalizationService>(
-            builder: (context, locService, child) => Text(
-              locService.currentLanguageCode == 'fr' ? 'Macros mises à jour' : 'Macros updated',
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF16A34A),
-              ),
-            ),
+            builder: (context, locService, child) {
+              String text;
+              if (locService.currentLanguageCode == 'fr') {
+                text = 'Macros mises à jour';
+              } else if (locService.currentLanguageCode == 'de') {
+                text = 'Makros aktualisiert';
+              } else {
+                text = 'Macros updated';
+              }
+              return Text(
+                text,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF16A34A),
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -402,13 +423,25 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
             ),
             if (hasModifications) ...[
               const SizedBox(height: 4),
-              const Text(
-                'Adapté aux modifications',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Color(0xFF1C2951),
-                  fontStyle: FontStyle.italic,
-                ),
+              Consumer<LocalizationService>(
+                builder: (context, locService, child) {
+                  String text;
+                  if (locService.currentLanguageCode == 'fr') {
+                    text = 'Adapté aux modifications';
+                  } else if (locService.currentLanguageCode == 'de') {
+                    text = 'An Änderungen angepasst';
+                  } else {
+                    text = 'Adapted to modifications';
+                  }
+                  return Text(
+                    text,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF1C2951),
+                      fontStyle: FontStyle.italic,
+                    ),
+                  );
+                },
               ),
             ],
             const SizedBox(height: 12),
@@ -622,14 +655,24 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
               ),
               child: Center(
                 child: Consumer<LocalizationService>(
-                  builder: (context, locService, child) => Text(
-                    locService.currentLanguageCode == 'fr' ? 'Toucher pour voir plus...' : 'Tap to see more...',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: const Color(0xFF64748B).withOpacity(0.7),
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
+                  builder: (context, locService, child) {
+                    String text;
+                    if (locService.currentLanguageCode == 'fr') {
+                      text = 'Toucher pour voir plus...';
+                    } else if (locService.currentLanguageCode == 'de') {
+                      text = 'Tippen, um mehr zu sehen...';
+                    } else {
+                      text = 'Tap to see more...';
+                    }
+                    return Text(
+                      text,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: const Color(0xFF64748B).withOpacity(0.7),
+                        fontStyle: FontStyle.italic,
+                      ),
+                    );
+                  },
                 ),
               ),
             ),
@@ -650,15 +693,27 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
     }
 
     if (detailedIngredients.isEmpty) {
-      return const Center(
+      return Center(
         child: Padding(
-          padding: EdgeInsets.all(20),
-          child: Text(
-            'Aucun ingrédient trouvé',
-            style: TextStyle(
-              fontSize: 14,
-              color: Color(0xFF64748B),
-            ),
+          padding: const EdgeInsets.all(20),
+          child: Consumer<LocalizationService>(
+            builder: (context, locService, child) {
+              String text;
+              if (locService.currentLanguageCode == 'fr') {
+                text = 'Aucun ingrédient trouvé';
+              } else if (locService.currentLanguageCode == 'de') {
+                text = 'Keine Zutaten gefunden';
+              } else {
+                text = 'No ingredients found';
+              }
+              return Text(
+                text,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF64748B),
+                ),
+              );
+            },
           ),
         ),
       );
@@ -828,16 +883,28 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                       child: ElevatedButton(
               onPressed: _handleAddRecipeToMeal,
                             child: Consumer<LocalizationService>(
-                builder: (context, locService, child) => Text(
-                  widget.isFromDashboard 
-                    ? (locService.currentLanguageCode == 'fr' ? 'Ajouter au repas' : 'Add to meal')
-                    : 'add_to_meal'.tr(locService.currentLanguageCode),
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.white,
-                  ),
-                ),
+                builder: (context, locService, child) {
+                  String text;
+                  if (widget.isFromDashboard) {
+                    if (locService.currentLanguageCode == 'fr') {
+                      text = 'Ajouter au repas';
+                    } else if (locService.currentLanguageCode == 'de') {
+                      text = 'Zur Mahlzeit hinzufügen';
+                    } else {
+                      text = 'Add to meal';
+                    }
+                  } else {
+                    text = 'add_to_meal'.tr(locService.currentLanguageCode);
+                  }
+                  return Text(
+                    text,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white,
+                    ),
+                  );
+                },
               ),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF0B132B),
@@ -987,10 +1054,20 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
       // Fermer l'écran et afficher confirmation
       if (mounted) {
         Navigator.pop(context);
-        
+
+        final lang = LocalizationService.instance.currentLanguageCode;
+        String snackText;
+        if (lang == 'fr') {
+          snackText = '${foodItem.name} ajouté au ${meal.name}';
+        } else if (lang == 'de') {
+          snackText = '${foodItem.name} zu ${meal.name} hinzugefügt';
+        } else {
+          snackText = '${foodItem.name} added to ${meal.name}';
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${foodItem.name} ajouté au ${meal.name}'),
+            content: Text(snackText),
             backgroundColor: const Color(0xFF0B132B),
             duration: const Duration(seconds: 2),
           ),
@@ -1037,10 +1114,20 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
       // Fermer l'écran et afficher confirmation
       if (mounted) {
         Navigator.pop(context);
-        
+
+        final lang = LocalizationService.instance.currentLanguageCode;
+        String snackText;
+        if (lang == 'fr') {
+          snackText = '${foodItem.name} ajouté au nouveau $mealType';
+        } else if (lang == 'de') {
+          snackText = '${foodItem.name} zu neuem $mealType hinzugefügt';
+        } else {
+          snackText = '${foodItem.name} added to new $mealType';
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${foodItem.name} ajouté au nouveau $mealType'),
+            content: Text(snackText),
             backgroundColor: const Color(0xFF0B132B),
             duration: const Duration(seconds: 2),
           ),
@@ -1120,14 +1207,24 @@ class _EditIngredientsScreenState extends State<EditIngredientsScreen> {
           ),
         ),
         title: Consumer<LocalizationService>(
-          builder: (context, locService, child) => Text(
-            locService.currentLanguageCode == 'fr' ? 'Modifier les aliments' : 'Modify ingredients',
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF1A1A1A),
-            ),
-          ),
+          builder: (context, locService, child) {
+            String title;
+            if (locService.currentLanguageCode == 'fr') {
+              title = 'Modifier les aliments';
+            } else if (locService.currentLanguageCode == 'de') {
+              title = 'Zutaten bearbeiten';
+            } else {
+              title = 'Modify ingredients';
+            }
+            return Text(
+              title,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF1A1A1A),
+              ),
+            );
+          },
         ),
         centerTitle: true,
         actions: [
@@ -1137,14 +1234,24 @@ class _EditIngredientsScreenState extends State<EditIngredientsScreen> {
               Navigator.pop(context);
             },
             child: Consumer<LocalizationService>(
-              builder: (context, locService, child) => Text(
-                locService.currentLanguageCode == 'fr' ? 'Terminer' : 'Done',
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF0B132B),
-                ),
-              ),
+              builder: (context, locService, child) {
+                String text;
+                if (locService.currentLanguageCode == 'fr') {
+                  text = 'Terminer';
+                } else if (locService.currentLanguageCode == 'de') {
+                  text = 'Fertig';
+                } else {
+                  text = 'Done';
+                }
+                return Text(
+                  text,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF0B132B),
+                  ),
+                );
+              },
             ),
           ),
         ],
@@ -1268,10 +1375,20 @@ class _EditIngredientsScreenState extends State<EditIngredientsScreen> {
           String portionNumber = foodItem.portion.replaceAll(RegExp(r'[a-zA-Zàâäéèêëïîôùûüÿç\s]+'), '');
           tempCustomizedIngredients[ingredientKey] = double.tryParse(portionNumber) ?? currentQuantity;
         });
-        
+
+        final lang = LocalizationService.instance.currentLanguageCode;
+        String snackText;
+        if (lang == 'fr') {
+          snackText = '$name enregistré';
+        } else if (lang == 'de') {
+          snackText = '$name gespeichert';
+        } else {
+          snackText = '$name saved';
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('$name enregistré'),
+            content: Text(snackText),
             backgroundColor: const Color(0xFF0B132B),
           ),
         );

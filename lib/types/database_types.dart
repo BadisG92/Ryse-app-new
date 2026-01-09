@@ -66,6 +66,7 @@ class Food {
   final String id;
   final String nameEn;
   final String nameFr;
+  final String? nameDe;
   final int calories;
   final double proteins;
   final double carbs;
@@ -76,6 +77,7 @@ class Food {
   final DateTime? createdAt;
   final String? referenceUnitFr;
   final String? referenceUnitEn;
+  final String? referenceUnitDe;
   final double? referenceQuantity;
   final String? origin; // 'manual', 'barcode', ou null pour les aliments de base
   final String? barcode; // Code-barres du produit (nullable)
@@ -84,6 +86,7 @@ class Food {
     required this.id,
     required this.nameEn,
     required this.nameFr,
+    this.nameDe,
     required this.calories,
     this.proteins = 0.0,
     this.carbs = 0.0,
@@ -94,6 +97,7 @@ class Food {
     this.createdAt,
     this.referenceUnitFr,
     this.referenceUnitEn,
+    this.referenceUnitDe,
     this.referenceQuantity,
     this.origin,
     this.barcode,
@@ -102,9 +106,10 @@ class Food {
   factory Food.fromJson(Map<String, dynamic> json) {
     return Food(
       id: json['id']?.toString() ?? '',
-      nameEn: json['name_en'],
-      nameFr: json['name_fr'],
-      calories: json['calories'],
+      nameEn: json['name_en'] ?? json['name'] ?? '',
+      nameFr: json['name_fr'] ?? json['name'] ?? '',
+      nameDe: json['name_de'],
+      calories: json['calories'] ?? 0,
       proteins: (json['proteins'] ?? 0).toDouble(),
       carbs: (json['carbs'] ?? 0).toDouble(),
       fats: (json['fats'] ?? 0).toDouble(),
@@ -114,7 +119,8 @@ class Food {
       createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : null,
       referenceUnitFr: json['reference_unit_fr'],
       referenceUnitEn: json['reference_unit_en'],
-      referenceQuantity: (json['reference_quantity'] ?? json['base_quantity'])?.toDouble(), // Support base_quantity (food_database) et reference_quantity (custom_foods)
+      referenceUnitDe: json['reference_unit_de'],
+      referenceQuantity: (json['reference_quantity'] ?? json['base_quantity'])?.toDouble(),
       origin: json['origin'],
       barcode: json['barcode'],
     );
@@ -125,6 +131,7 @@ class Food {
       'id': id,
       'name_en': nameEn,
       'name_fr': nameFr,
+      'name_de': nameDe,
       'calories': calories,
       'proteins': proteins,
       'carbs': carbs,
@@ -135,6 +142,7 @@ class Food {
       'created_at': createdAt?.toIso8601String(),
       'reference_unit_fr': referenceUnitFr,
       'reference_unit_en': referenceUnitEn,
+      'reference_unit_de': referenceUnitDe,
       'reference_quantity': referenceQuantity,
       'origin': origin,
       'barcode': barcode,
@@ -142,11 +150,15 @@ class Food {
   }
 
   String getLocalizedName(String language) {
-    return language == 'fr' ? nameFr : nameEn;
+    if (language == 'fr') return nameFr;
+    if (language == 'de') return nameDe ?? nameEn;
+    return nameEn;
   }
 
   String? getLocalizedUnit(String language) {
-    return language == 'fr' ? referenceUnitFr : referenceUnitEn;
+    if (language == 'fr') return referenceUnitFr;
+    if (language == 'de') return referenceUnitDe ?? referenceUnitEn;
+    return referenceUnitEn;
   }
 }
 

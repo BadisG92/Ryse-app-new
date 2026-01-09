@@ -64,13 +64,6 @@ class _WeeklyContractScreenState extends State<WeeklyContractScreen> {
     }
   }
 
-  void _handleSkip() {
-    if (widget.onSkip != null) {
-      widget.onSkip!();
-    } else {
-      widget.onComplete();
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -290,21 +283,7 @@ class _WeeklyContractScreenState extends State<WeeklyContractScreen> {
                 ),
               ),
 
-              const SizedBox(height: 16),
-
-              // Skip link
-              TextButton(
-                onPressed: _handleSkip,
-                child: Text(
-                  isFr ? 'Passer cette étape' : isDe ? 'Diesen Schritt überspringen' : 'Skip this step',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[400],
-                  ),
-                ),
-              ),
-
-              SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
+              SizedBox(height: MediaQuery.of(context).padding.bottom + 32),
             ],
           ),
         ),

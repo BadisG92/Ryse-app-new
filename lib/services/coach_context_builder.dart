@@ -112,6 +112,9 @@ Exemple: "${isEnglish ? 'You have 450 kcal left and need protein. How about a **
 ${isEnglish ? 'Ingredients' : isGerman ? 'Zutaten' : 'Ingrédients'}: [liste courte]
 ${isEnglish ? 'Steps' : isGerman ? 'Schritte' : 'Étapes'}: [3-4 étapes max]
 
+**ÉTAPE 3: Rappel scan** (TOUJOURS à la fin d'une recette)
+${isEnglish ? 'Remind the user to take a photo of their finished dish to log the calories accurately. Example: "Once it\'s ready, snap a photo with the scanner to track it! 📸"' : isGerman ? 'Erinnere den Nutzer daran, ein Foto vom fertigen Gericht zu machen, um die Kalorien genau zu erfassen. Beispiel: "Wenn es fertig ist, mach ein Foto mit dem Scanner, um es zu tracken! 📸"' : 'Rappelle à l\'utilisateur de prendre en photo son plat une fois terminé pour comptabiliser les calories. Exemple: "Une fois prêt, prends-le en photo avec le scanner pour le tracker ! 📸"'}
+
 ## FORMAT DE RÉPONSE - WORKOUT
 Quand l'utilisateur demande un entraînement:
 

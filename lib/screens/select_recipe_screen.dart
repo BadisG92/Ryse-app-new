@@ -147,7 +147,7 @@ class _SelectRecipeScreenState extends State<SelectRecipeScreen> {
         ),
         title: Consumer<LocalizationService>(
           builder: (context, locService, child) => Text(
-            locService.currentLanguageCode == 'fr' ? 'Choisir une recette' : 'Choose a recipe',
+            'add_recipe_meal_title'.tr(locService.currentLanguageCode),
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
@@ -203,9 +203,9 @@ class _SelectRecipeScreenState extends State<SelectRecipeScreen> {
                       children: [
                         Consumer<LocalizationService>(
                           builder: (context, locService, child) => Text(
-                            hasActiveFilter ? 
-                              (locService.currentLanguageCode == 'fr' ? 'Résultats' : 'Results') : 
-                              (locService.currentLanguageCode == 'fr' ? 'Toutes les recettes' : 'All recipes'),
+                            hasActiveFilter ?
+                              'results'.tr(locService.currentLanguageCode) :
+                              'all_recipes'.tr(locService.currentLanguageCode),
                             style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w600,

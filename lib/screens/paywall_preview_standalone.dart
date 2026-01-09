@@ -226,7 +226,7 @@ class _PaywallPreviewStandaloneState extends State<PaywallPreviewStandalone> wit
           ),
           const SizedBox(height: 10),
 
-          // "7 JOURS GRATUITS" BANNER AVEC ANIMATION
+          // "3 JOURS GRATUITS" BANNER AVEC ANIMATION
           TweenAnimationBuilder<double>(
             duration: Duration(milliseconds: _startAnimations ? 1000 : 0),
             tween: Tween(begin: _startAnimations ? 0.0 : 1.0, end: 1.0),
@@ -251,7 +251,7 @@ class _PaywallPreviewStandaloneState extends State<PaywallPreviewStandalone> wit
               ),
               child: Center(
                 child: Text(
-                  isFrench ? '7 JOURS GRATUITS' : isGerman ? '7 TAGE KOSTENLOS' : '7 DAYS FREE TRIAL',
+                  isFrench ? '3 JOURS GRATUITS' : isGerman ? '3 TAGE KOSTENLOS' : '3 DAYS FREE TRIAL',
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w900,
@@ -366,7 +366,7 @@ class _PaywallPreviewStandaloneState extends State<PaywallPreviewStandalone> wit
                           ),
                         ),
                         Text(
-                          isFrench ? '7 JOURS GRATUITS' : isGerman ? '7 TAGE KOSTENLOS' : '7 DAYS FREE',
+                          isFrench ? '3 JOURS GRATUITS' : isGerman ? '3 TAGE KOSTENLOS' : '3 DAYS FREE',
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 15,

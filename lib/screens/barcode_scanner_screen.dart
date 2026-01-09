@@ -637,13 +637,25 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: const Text(
-                'Scanner un autre produit',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.white,
-                ),
+              child: Consumer<LocalizationService>(
+                builder: (context, locService, child) {
+                  String label;
+                  if (locService.currentLanguageCode == 'fr') {
+                    label = 'Scanner un autre produit';
+                  } else if (locService.currentLanguageCode == 'de') {
+                    label = 'Anderes Produkt scannen';
+                  } else {
+                    label = 'Scan another product';
+                  }
+                  return Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white,
+                    ),
+                  );
+                },
               ),
             ),
           ),
@@ -846,13 +858,23 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Text(
-                                  'Calories',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w500,
-                                    color: Color(0xFF1A1A1A),
-                                  ),
+                                Consumer<LocalizationService>(
+                                  builder: (context, locService, child) {
+                                    String label;
+                                    if (locService.currentLanguageCode == 'de') {
+                                      label = 'Kalorien';
+                                    } else {
+                                      label = 'Calories';
+                                    }
+                                    return Text(
+                                      label,
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w500,
+                                        color: Color(0xFF1A1A1A),
+                                      ),
+                                    );
+                                  },
                                 ),
                                 if (_isEditingNutritionalValues)
                                   Row(
@@ -934,7 +956,19 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Text('Glucides', style: TextStyle(fontSize: 14, color: Color(0xFF64748B))),
+                                Consumer<LocalizationService>(
+                                  builder: (context, locService, child) {
+                                    String label;
+                                    if (locService.currentLanguageCode == 'fr') {
+                                      label = 'Glucides';
+                                    } else if (locService.currentLanguageCode == 'de') {
+                                      label = 'Kohlenhydrate';
+                                    } else {
+                                      label = 'Carbs';
+                                    }
+                                    return Text(label, style: const TextStyle(fontSize: 14, color: Color(0xFF64748B)));
+                                  },
+                                ),
                                 if (_isEditingNutritionalValues)
                                   Row(
                                     children: [
@@ -970,7 +1004,19 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Text('Lipides', style: TextStyle(fontSize: 14, color: Color(0xFF64748B))),
+                                Consumer<LocalizationService>(
+                                  builder: (context, locService, child) {
+                                    String label;
+                                    if (locService.currentLanguageCode == 'fr') {
+                                      label = 'Lipides';
+                                    } else if (locService.currentLanguageCode == 'de') {
+                                      label = 'Fett';
+                                    } else {
+                                      label = 'Fat';
+                                    }
+                                    return Text(label, style: const TextStyle(fontSize: 14, color: Color(0xFF64748B)));
+                                  },
+                                ),
                                 if (_isEditingNutritionalValues)
                                   Row(
                                     children: [
@@ -1091,13 +1137,25 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: const Text(
-                      'Ajouter au repas',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.white,
-                      ),
+                    child: Consumer<LocalizationService>(
+                      builder: (context, locService, child) {
+                        String label;
+                        if (locService.currentLanguageCode == 'fr') {
+                          label = 'Ajouter au repas';
+                        } else if (locService.currentLanguageCode == 'de') {
+                          label = 'Zur Mahlzeit hinzufügen';
+                        } else {
+                          label = 'Add to meal';
+                        }
+                        return Text(
+                          label,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white,
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ),
@@ -1125,13 +1183,25 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: const Text(
-                      'Scanner un autre produit',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: Color(0xFF0B132B),
-                      ),
+                    child: Consumer<LocalizationService>(
+                      builder: (context, locService, child) {
+                        String label;
+                        if (locService.currentLanguageCode == 'fr') {
+                          label = 'Scanner un autre produit';
+                        } else if (locService.currentLanguageCode == 'de') {
+                          label = 'Anderes Produkt scannen';
+                        } else {
+                          label = 'Scan another product';
+                        }
+                        return Text(
+                          label,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF0B132B),
+                          ),
+                        );
+                      },
                     ),
             ),
           ),
@@ -1142,16 +1212,25 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
 
   String _buildProductSubtitle() {
     final parts = <String>[];
-    
+    final lang = LocalizationService.instance.currentLanguageCode;
+
     if ((_scannedProduct?.brands?.isNotEmpty ?? false)) {
-      parts.add('Marque: ${_scannedProduct?.brands}');
+      String brandLabel;
+      if (lang == 'fr') {
+        brandLabel = 'Marque';
+      } else if (lang == 'de') {
+        brandLabel = 'Marke';
+      } else {
+        brandLabel = 'Brand';
+      }
+      parts.add('$brandLabel: ${_scannedProduct?.brands}');
     }
-    
+
     if ((_scannedProduct?.quantity?.isNotEmpty ?? false)) {
       parts.add(_scannedProduct?.quantity ?? '');
     }
-    
-    return parts.isNotEmpty ? parts.join(' • ') : 'no_additional_info'.tr(LocalizationService.instance.currentLanguageCode);
+
+    return parts.isNotEmpty ? parts.join(' • ') : 'no_additional_info'.tr(lang);
   }
 
   double _getCalculatedCalories() {
@@ -1180,28 +1259,43 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
 
   // Widget placeholder pour l'image du produit
   Widget _buildImagePlaceholder() {
-    return const Center(
+    final lang = LocalizationService.instance.currentLanguageCode;
+
+    String imageTitle;
+    String noImageText;
+    if (lang == 'fr') {
+      imageTitle = 'Image du produit';
+      noImageText = 'Aucune image disponible';
+    } else if (lang == 'de') {
+      imageTitle = 'Produktbild';
+      noImageText = 'Kein Bild verfügbar';
+    } else {
+      imageTitle = 'Product image';
+      noImageText = 'No image available';
+    }
+
+    return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
+          const Icon(
             LucideIcons.package,
             size: 48,
             color: Color(0xFF64748B),
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
           Text(
-            'Image du produit',
-            style: TextStyle(
+            imageTitle,
+            style: const TextStyle(
               fontSize: 16,
               color: Color(0xFF64748B),
               fontWeight: FontWeight.w500,
             ),
           ),
-          SizedBox(height: 4),
+          const SizedBox(height: 4),
           Text(
-            'Aucune image disponible',
-            style: TextStyle(
+            noImageText,
+            style: const TextStyle(
               fontSize: 12,
               color: Color(0xFF94A3B8),
             ),
@@ -1285,7 +1379,11 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
   void _showManualBarcodeInput() {
     final TextEditingController barcodeController = TextEditingController();
     bool isLoading = false;
-    
+    final locService = LocalizationService.instance;
+    final lang = locService.currentLanguageCode;
+    final isFr = lang == 'fr';
+    final isDe = lang == 'de';
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -1310,9 +1408,9 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                     ),
                   ),
                   const SizedBox(width: 12),
-                  const Text(
-                    'Saisie manuelle',
-                    style: TextStyle(
+                  Text(
+                    isFr ? 'Saisie manuelle' : isDe ? 'Manuelle Eingabe' : 'Manual entry',
+                    style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
                       color: Color(0xFF0B132B),
@@ -1324,9 +1422,13 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Entrez le code-barres du produit que vous souhaitez ajouter :',
-                    style: TextStyle(
+                  Text(
+                    isFr
+                        ? 'Entrez le code-barres du produit que vous souhaitez ajouter :'
+                        : isDe
+                            ? 'Geben Sie den Barcode des Produkts ein:'
+                            : 'Enter the barcode of the product you want to add:',
+                    style: const TextStyle(
                       fontSize: 14,
                       color: Color(0xFF64748B),
                     ),
@@ -1373,9 +1475,9 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
               actions: [
                 TextButton(
                   onPressed: isLoading ? null : () => Navigator.pop(context),
-                  child: const Text(
-                    'Annuler',
-                    style: TextStyle(
+                  child: Text(
+                    isFr ? 'Annuler' : isDe ? 'Abbrechen' : 'Cancel',
+                    style: const TextStyle(
                       color: Color(0xFF64748B),
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
@@ -1413,9 +1515,9 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                             valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
                         )
-                      : const Text(
-                          'Rechercher',
-                          style: TextStyle(
+                      : Text(
+                          isFr ? 'Rechercher' : isDe ? 'Suchen' : 'Search',
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 16,
                             fontWeight: FontWeight.w500,
@@ -1664,16 +1766,28 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                 ),
                 
                 const SizedBox(height: 16),
-                
-                const Text(
-                  'Sauvegarder l\'aliment ?',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1A1A1A),
-                  ),
+
+                Consumer<LocalizationService>(
+                  builder: (context, locService, child) {
+                    String title;
+                    if (locService.currentLanguageCode == 'fr') {
+                      title = 'Sauvegarder l\'aliment ?';
+                    } else if (locService.currentLanguageCode == 'de') {
+                      title = 'Lebensmittel speichern?';
+                    } else {
+                      title = 'Save food item?';
+                    }
+                    return Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1A1A1A),
+                      ),
+                    );
+                  },
                 ),
-                
+
                 const SizedBox(height: 8),
 
                 Consumer<LocalizationService>(
@@ -1714,19 +1828,31 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        child: const Text(
-                          'Non',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF64748B),
-                          ),
+                        child: Consumer<LocalizationService>(
+                          builder: (context, locService, child) {
+                            String label;
+                            if (locService.currentLanguageCode == 'fr') {
+                              label = 'Non';
+                            } else if (locService.currentLanguageCode == 'de') {
+                              label = 'Nein';
+                            } else {
+                              label = 'No';
+                            }
+                            return Text(
+                              label,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF64748B),
+                              ),
+                            );
+                          },
                         ),
                       ),
                     ),
-                    
+
                     const SizedBox(width: 16),
-                    
+
                     Expanded(
                       child: ElevatedButton(
                         onPressed: () async {
@@ -1745,13 +1871,25 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        child: const Text(
-                          'Oui',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                          ),
+                        child: Consumer<LocalizationService>(
+                          builder: (context, locService, child) {
+                            String label;
+                            if (locService.currentLanguageCode == 'fr') {
+                              label = 'Oui';
+                            } else if (locService.currentLanguageCode == 'de') {
+                              label = 'Ja';
+                            } else {
+                              label = 'Yes';
+                            }
+                            return Text(
+                              label,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            );
+                          },
                         ),
                       ),
                     ),
@@ -1830,9 +1968,20 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
 
       // Afficher une confirmation
       if (mounted) {
-        final productName = _scannedProduct?.productName ?? 'meal_dish'.tr(LocalizationService.instance.currentLanguageCode);
-        final message = 'product_added_to_custom_foods'.tr(LocalizationService.instance.currentLanguageCode)
+        final lang = LocalizationService.instance.currentLanguageCode;
+        final productName = _scannedProduct?.productName ?? 'meal_dish'.tr(lang);
+        final message = 'product_added_to_custom_foods'.tr(lang)
             .replaceAll('{productName}', productName);
+
+        String viewLabel;
+        if (lang == 'fr') {
+          viewLabel = 'Voir';
+        } else if (lang == 'de') {
+          viewLabel = 'Ansehen';
+        } else {
+          viewLabel = 'View';
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(message),
@@ -1844,7 +1993,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
               right: 20,
             ),
             action: SnackBarAction(
-              label: 'Voir',
+              label: viewLabel,
               textColor: Colors.white,
               onPressed: () {
                 // TODO: Naviguer vers la liste des aliments personnalisés

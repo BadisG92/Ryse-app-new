@@ -859,16 +859,16 @@ class _PaywallScreenV2State extends State<PaywallScreenV2>
     switch (_selectedPeriod) {
       case SubscriptionPeriod.weekly:
         return isFrench
-            ? '7 jours gratuits, puis 2,99€/semaine\nAnnulation en 1 clic'
-            : isGerman ? '7 Tage kostenlos, dann 2,99€/Woche\nMit 1 Klick kündigen' : '7 days free, then €2.99/week\nCancel with 1 click';
+            ? '3 jours gratuits, puis 2,99€/semaine\nAnnulation en 1 clic'
+            : isGerman ? '3 Tage kostenlos, dann 2,99€/Woche\nMit 1 Klick kündigen' : '3 days free, then €2.99/week\nCancel with 1 click';
       case SubscriptionPeriod.monthly:
         return isFrench
-            ? '7 jours gratuits, puis 9,99€/mois\nAnnulation en 1 clic'
-            : isGerman ? '7 Tage kostenlos, dann 9,99€/Monat\nMit 1 Klick kündigen' : '7 days free, then €9.99/month\nCancel with 1 click';
+            ? '3 jours gratuits, puis 9,99€/mois\nAnnulation en 1 clic'
+            : isGerman ? '3 Tage kostenlos, dann 9,99€/Monat\nMit 1 Klick kündigen' : '3 days free, then €9.99/month\nCancel with 1 click';
       case SubscriptionPeriod.annual:
         return isFrench
-            ? '7 jours gratuits, puis 69,99€/an\nAnnulation en 1 clic'
-            : isGerman ? '7 Tage kostenlos, dann 69,99€/Jahr\nMit 1 Klick kündigen' : '7 days free, then €69.99/year\nCancel with 1 click';
+            ? '3 jours gratuits, puis 69,99€/an\nAnnulation en 1 clic'
+            : isGerman ? '3 Tage kostenlos, dann 69,99€/Jahr\nMit 1 Klick kündigen' : '3 days free, then €69.99/year\nCancel with 1 click';
       case SubscriptionPeriod.lifetime:
         return '';
     }

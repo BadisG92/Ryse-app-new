@@ -88,7 +88,7 @@ class _WorkingFilterModalState extends State<WorkingFilterModal> {
               children: [
                 Consumer<LocalizationService>(
                   builder: (context, locService, child) => Text(
-                    locService.currentLanguageCode == 'fr' ? 'Filtres' : 'Filters',
+                    locService.currentLanguageCode == 'fr' ? 'Filtres' : locService.currentLanguageCode == 'de' ? 'Filter' : 'Filters',
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w600,
@@ -104,7 +104,7 @@ class _WorkingFilterModalState extends State<WorkingFilterModal> {
                   },
                   child: Consumer<LocalizationService>(
                     builder: (context, locService, child) => Text(
-                      locService.currentLanguageCode == 'fr' ? 'Effacer tout' : 'Clear all',
+                      locService.currentLanguageCode == 'fr' ? 'Effacer tout' : locService.currentLanguageCode == 'de' ? 'Alles löschen' : 'Clear all',
                     ),
                   ),
                 ),
@@ -196,9 +196,11 @@ class _WorkingFilterModalState extends State<WorkingFilterModal> {
                 ),
                 child: Consumer<LocalizationService>(
                   builder: (context, locService, child) => Text(
-                    locService.currentLanguageCode == 'fr' 
+                    locService.currentLanguageCode == 'fr'
                       ? 'Valider (${localFilters.values.fold(0, (sum, set) => sum + set.length)})'
-                      : 'Apply (${localFilters.values.fold(0, (sum, set) => sum + set.length)})',
+                      : locService.currentLanguageCode == 'de'
+                        ? 'Anwenden (${localFilters.values.fold(0, (sum, set) => sum + set.length)})'
+                        : 'Apply (${localFilters.values.fold(0, (sum, set) => sum + set.length)})',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,

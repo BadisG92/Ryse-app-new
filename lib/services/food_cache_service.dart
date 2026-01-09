@@ -6,8 +6,8 @@ import '../types/database_types.dart';
 /// Service de cache persistant pour la base de données des aliments
 /// Permet de réduire la consommation de données mobiles en cachant les aliments localement
 class FoodCacheService {
-  static const String _cacheKey = 'foods_cache_v1';
-  static const String _cacheTimestampKey = 'foods_cache_timestamp';
+  static const String _cacheKey = 'foods_cache_v2'; // v2: ajout support name_de
+  static const String _cacheTimestampKey = 'foods_cache_timestamp_v2';
   static const Duration _cacheValidityDuration = Duration(days: 7); // Cache valide 7 jours
 
   /// Récupère les aliments depuis le cache local

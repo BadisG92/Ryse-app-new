@@ -432,7 +432,7 @@ class _PaywallPreviewStandaloneV2State extends State<PaywallPreviewStandaloneV2>
             ),
             const SizedBox(width: 8),
             Text(
-              isFrench ? '7 JOURS GRATUITS' : isGerman ? '7 TAGE KOSTENLOS' : '7 DAYS FREE',
+              isFrench ? '3 JOURS GRATUITS' : isGerman ? '3 TAGE KOSTENLOS' : '3 DAYS FREE',
               style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w900,
@@ -717,7 +717,7 @@ class _PaywallPreviewStandaloneV2State extends State<PaywallPreviewStandaloneV2>
                               ),
                             ),
                             Text(
-                              isFrench ? '7 JOURS GRATUITS' : isGerman ? '7 TAGE KOSTENLOS' : '7 DAYS FREE',
+                              isFrench ? '3 JOURS GRATUITS' : isGerman ? '3 TAGE KOSTENLOS' : '3 DAYS FREE',
                               style: TextStyle(
                                 color: Colors.white.withOpacity(0.9),
                                 fontSize: 13,

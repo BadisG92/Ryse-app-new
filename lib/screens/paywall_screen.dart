@@ -813,7 +813,7 @@ class _PaywallScreenState extends State<PaywallScreen>
       ),
       child: Center(
         child: Text(
-          isFrench ? '7 JOURS GRATUITS' : isGerman ? '7 TAGE GRATIS TESTEN' : '7 DAYS FREE TRIAL',
+          isFrench ? '3 JOURS GRATUITS' : isGerman ? '3 TAGE GRATIS TESTEN' : '3 DAYS FREE TRIAL',
           style: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w900,
@@ -1175,7 +1175,7 @@ class _PaywallScreenState extends State<PaywallScreen>
                         ),
                       ),
                       Text(
-                        isFrench ? '7 JOURS GRATUITS' : isGerman ? '7 TAGE KOSTENLOS' : '7 DAYS FREE',
+                        isFrench ? '3 JOURS GRATUITS' : isGerman ? '3 TAGE KOSTENLOS' : '3 DAYS FREE',
                         style: const TextStyle(
                           color: Color(0xFF1A1A1A),
                           fontSize: 15,

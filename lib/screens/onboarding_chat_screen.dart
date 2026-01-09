@@ -214,8 +214,9 @@ ${isEnglish ? 'Respond in English. Use "we" not "I".' : isGerman ? 'Antworte auf
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
+        // With reverse: true, scroll to 0 to show latest messages
         _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
+          0,
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOut,
         );
@@ -464,19 +465,15 @@ IMPORTANT:
             child: _buildCounterBadge(lang),
           ),
 
-          // Chat zone - moves up with keyboard like iMessage/WhatsApp
-          AnimatedPositioned(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOut,
-            top: keyboardHeight > 0
-                ? 60 // When keyboard is open, start near top (safe area)
-                : screenHeight * 0.30, // Normal: start at 30%
+          // Chat zone - full screen like iMessage/WhatsApp
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 40, // Below status bar + counter badge
             left: 0,
             right: 0,
             bottom: keyboardHeight > 0 ? keyboardHeight : 0,
             child: Column(
               children: [
-                // Messages list (takes remaining space above input)
+                // Messages list (takes all available space)
                 Expanded(child: _buildMessagesList()),
 
                 // Input bar or contract button
@@ -569,9 +566,11 @@ IMPORTANT:
     return ListView.builder(
       controller: _scrollController,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      reverse: true, // New messages at bottom, scroll naturally like iMessage
       itemCount: _messages.length,
       itemBuilder: (context, index) {
-        final message = _messages[index];
+        // Reverse index since list is reversed
+        final message = _messages[_messages.length - 1 - index];
         return _buildGlassMessageBubble(message);
       },
     );

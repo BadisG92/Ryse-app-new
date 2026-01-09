@@ -10,7 +10,7 @@ import '../models/subscription_models.dart';
 import '../components/ui/coach_ryze_avatar.dart';
 import '../components/main_app.dart';
 
-/// Écran de proposition d'essai gratuit 7 jours
+/// Écran de proposition d'essai gratuit 3 jours
 /// Affiché après l'onboarding pour proposer le trial App Store
 class TrialOfferScreen extends StatefulWidget {
   const TrialOfferScreen({Key? key}) : super(key: key);
@@ -59,7 +59,7 @@ class _TrialOfferScreenState extends State<TrialOfferScreen> with SingleTickerPr
     try {
       final unifiedService = UnifiedSubscriptionService();
 
-      // Lancer l'abonnement avec trial 7 jours (géré par App Store)
+      // Lancer l'abonnement avec trial 3 jours (géré par App Store)
       final success = await unifiedService.upgradeToPremium(
         period: SubscriptionPeriod.monthly, // Par défaut mensuel
       );
@@ -165,10 +165,10 @@ class _TrialOfferScreenState extends State<TrialOfferScreen> with SingleTickerPr
                     ),
                     child: Text(
                       isFrench
-                          ? '7 jours gratuits, puis 9,99€/mois'
+                          ? '3 jours gratuits, puis 9,99€/mois'
                           : isGerman
-                              ? '7 Tage kostenlos, dann 9,99€/Monat'
-                              : '7 days free, then €9.99/month',
+                              ? '3 Tage kostenlos, dann 9,99€/Monat'
+                              : '3 days free, then €9.99/month',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
@@ -257,10 +257,10 @@ class _TrialOfferScreenState extends State<TrialOfferScreen> with SingleTickerPr
                                 const SizedBox(width: 12),
                                 Text(
                                   isFrench
-                                      ? 'Commencer 7 jours gratuits'
+                                      ? 'Commencer 3 jours gratuits'
                                       : isGerman
-                                          ? '7 Tage kostenlos starten'
-                                          : 'Start 7 days free',
+                                          ? '3 Tage kostenlos starten'
+                                          : 'Start 3 days free',
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 16,
@@ -334,10 +334,10 @@ class _TrialOfferScreenState extends State<TrialOfferScreen> with SingleTickerPr
                         const SizedBox(height: 8),
                         Text(
                           isFrench
-                              ? 'Aucun engagement. Paiement après 7 jours.'
+                              ? 'Aucun engagement. Paiement après 3 jours.'
                               : isGerman
-                                  ? 'Keine Verpflichtung. Zahlung nach 7 Tagen.'
-                                  : 'No commitment. Payment after 7 days.',
+                                  ? 'Keine Verpflichtung. Zahlung nach 3 Tagen.'
+                                  : 'No commitment. Payment after 3 days.',
                           style: const TextStyle(
                             fontSize: 12,
                             color: Color(0xFF94A3B8),

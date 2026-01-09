@@ -201,7 +201,7 @@ class UnifiedSubscriptionService extends ChangeNotifier {
   // TRIAL
   // ═══════════════════════════════════════════════════════════════════════════
 
-  /// Démarrer un trial gratuit (7 jours)
+  /// Démarrer un trial gratuit (3 jours)
   Future<bool> startTrial() async {
     return await _subscription.startTrial();
   }

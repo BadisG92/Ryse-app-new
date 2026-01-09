@@ -78,7 +78,7 @@ class PaywallTestScreen extends StatelessWidget {
         child: PaywallScreen(
           context: PaywallContext.genericUpgrade,
           customTitle: 'Débloquez Coach Ryze Premium',
-          customMessage: 'Essai gratuit de 7 jours',
+          customMessage: 'Essai gratuit de 3 jours',
         ),
       ),
     );

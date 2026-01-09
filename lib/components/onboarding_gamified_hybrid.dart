@@ -2299,7 +2299,7 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                               builder: (ctx) => PaywallScreen(
                                 context: PaywallContext.genericUpgrade,
                                 customTitle: 'Débloquez Coach Ryze Premium',
-                                customMessage: 'Profitez de 7 jours d\'essai gratuit',
+                                customMessage: 'Profitez de 3 jours d\'essai gratuit',
                                 onDismiss: () {
                                   debugPrint('🏠 Paywall fermé → Navigation vers MainApp');
                                   Navigator.of(ctx, rootNavigator: true).pushAndRemoveUntil(

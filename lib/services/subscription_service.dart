@@ -112,7 +112,7 @@ class SubscriptionService extends ChangeNotifier {
     }
   }
 
-  /// Démarrer un trial gratuit (7 jours)
+  /// Démarrer un trial gratuit (3 jours)
   Future<bool> startTrial() async {
     try {
       // Vérifier si l'utilisateur a déjà eu un trial
@@ -125,7 +125,7 @@ class SubscriptionService extends ChangeNotifier {
       await _saveSubscriptionToDatabase();
       await _markTrialUsed();
 
-      debugPrint('✅ Trial started (7 days)');
+      debugPrint('✅ Trial started (3 days)');
       notifyListeners();
       return true;
     } catch (e) {

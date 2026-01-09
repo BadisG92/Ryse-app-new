@@ -491,7 +491,7 @@ class _TrialOfferScreenV2State extends State<TrialOfferScreenV2>
       {
         'icon': '🔥',
         'title': isFrench ? 'Résultats' : isGerman ? 'Ergebnisse' : 'Results',
-        'desc': isFrench ? 'Dès 7 jours' : isGerman ? 'In 7 Tagen' : 'In 7 days',
+        'desc': isFrench ? 'Dès 3 jours' : isGerman ? 'In 3 Tagen' : 'In 3 days',
         'color': const Color(0xFFEF4444),
       },
       {
@@ -721,7 +721,7 @@ class _TrialOfferScreenV2State extends State<TrialOfferScreenV2>
               ),
               const SizedBox(width: 8),
               Text(
-                isFrench ? '7 JOURS GRATUITS' : isGerman ? '7 TAGE KOSTENLOS' : '7 DAYS FREE',
+                isFrench ? '3 JOURS GRATUITS' : isGerman ? '3 TAGE KOSTENLOS' : '3 DAYS FREE',
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 16,

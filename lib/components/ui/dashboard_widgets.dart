@@ -1511,7 +1511,7 @@ class PremiumCTASection extends StatelessWidget {
             
             Consumer<LocalizationService>(
               builder: (context, locService, child) => CustomButton(
-                text: 'try_7_days_free'.tr(locService.currentLanguageCode),
+                text: 'try_3_days_free'.tr(locService.currentLanguageCode),
                 icon: const Icon(LucideIcons.sparkles, size: 16, color: Colors.white),
                 width: double.infinity,
                 onPressed: onUpgrade,

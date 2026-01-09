@@ -2318,10 +2318,10 @@ class AppTranslations {
           'Möchten Sie zu einer bestehenden Mahlzeit hinzufügen oder eine neue erstellen?',
     },
     // Premium CTA texts
-    'try_7_days_free': {
-      'fr': 'Essayer 7 jours gratuits',
-      'en': 'Try 7 days free',
-      'de': '7 Tage gratis testen',
+    'try_3_days_free': {
+      'fr': 'Essayer 3 jours gratuits',
+      'en': 'Try 3 days free',
+      'de': '3 Tage gratis testen',
     },
     'then_price_monthly': {
       'fr': 'Puis 15€/mois • Annulable à tout moment',
@@ -7368,14 +7368,14 @@ class AppTranslations {
 
     // Paywall - Common
     'paywall_banner_trial': {
-      'fr': '7 JOURS GRATUITS',
-      'en': '7 DAYS FREE',
-      'de': '7 TAGE KOSTENLOS',
+      'fr': '3 JOURS GRATUITS',
+      'en': '3 DAYS FREE',
+      'de': '3 TAGE KOSTENLOS',
     },
     'paywall_cta_button': {
-      'fr': 'DÉBLOQUER MON COACH\n7 JOURS GRATUITS',
-      'en': 'UNLOCK MY COACH\n7 DAYS FREE',
-      'de': 'MEINEN COACH FREISCHALTEN\n7 TAGE KOSTENLOS',
+      'fr': 'DÉBLOQUER MON COACH\n3 JOURS GRATUITS',
+      'en': 'UNLOCK MY COACH\n3 DAYS FREE',
+      'de': 'MEINEN COACH FREISCHALTEN\n3 TAGE KOSTENLOS',
     },
     'paywall_then_price': {
       'fr': 'Puis 9,99€/mois • Annule en 1 clic',
@@ -7787,11 +7787,11 @@ class AppTranslations {
     },
     'faq_premium_answer': {
       'fr':
-          'Le Premium débloque :\n\n• Scanner alimentaire illimité\n• Recettes personnalisées\n• Programmes d\'entraînement avancés\n• Statistiques détaillées\n• Support prioritaire\n\n7 jours d\'essai gratuit, puis 9,99€/mois.',
+          'Le Premium débloque :\n\n• Scanner alimentaire illimité\n• Recettes personnalisées\n• Programmes d\'entraînement avancés\n• Statistiques détaillées\n• Support prioritaire\n\n3 jours d\'essai gratuit, puis 9,99€/mois.',
       'en':
-          'Premium unlocks:\n\n• Unlimited food scanner\n• Custom recipes\n• Advanced workout programs\n• Detailed statistics\n• Priority support\n\n7-day free trial, then €9.99/month.',
+          'Premium unlocks:\n\n• Unlimited food scanner\n• Custom recipes\n• Advanced workout programs\n• Detailed statistics\n• Priority support\n\n3-day free trial, then €9.99/month.',
       'de':
-          'Premium schaltet frei:\n\n• Unbegrenzter Lebensmittelscanner\n• Individuelle Rezepte\n• Fortgeschrittene Trainingsprogramme\n• Detaillierte Statistiken\n• Prioritäts-Support\n\n7 Tage gratis testen, dann 9,99€/Monat.',
+          'Premium schaltet frei:\n\n• Unbegrenzter Lebensmittelscanner\n• Individuelle Rezepte\n• Fortgeschrittene Trainingsprogramme\n• Detaillierte Statistiken\n• Prioritäts-Support\n\n3 Tage gratis testen, dann 9,99€/Monat.',
     },
     'guides': {
       'fr': 'Guides',

@@ -1921,12 +1921,14 @@ class DatabaseService {
               id,
               name_en,
               name_fr,
+              name_de,
               calories,
               proteins,
               carbs,
               fats,
               reference_unit_fr,
-              reference_unit_en
+              reference_unit_en,
+              reference_unit_de
             )
           ''')
           .eq('user_id', userId)
@@ -1999,6 +2001,7 @@ class DatabaseService {
               id: foodData['id'].toString(),
               nameEn: foodData['name_en'],
               nameFr: foodData['name_fr'],
+              nameDe: foodData['name_de'],
               calories: foodData['calories'] ?? 0,
               proteins: (foodData['proteins'] ?? 0.0).toDouble(),
               carbs: (foodData['carbs'] ?? 0.0).toDouble(),
@@ -2007,6 +2010,7 @@ class DatabaseService {
               isCustom: false,
               referenceUnitFr: foodData['reference_unit_fr'],
               referenceUnitEn: foodData['reference_unit_en'],
+              referenceUnitDe: foodData['reference_unit_de'],
             ),
             'usage_count': entry.value,
             'type': 'regular'
