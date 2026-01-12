@@ -9,6 +9,8 @@ import 'translations.dart';
 import 'global_state_manager.dart';
 import 'meal_widget_data_provider.dart';
 import 'notification_service.dart';
+import 'weekly_planner_service.dart';
+import '../models/weekly_planner_models.dart';
 
 class FoodEntriesService {
   static final _supabase = Supabase.instance.client;
@@ -370,6 +372,20 @@ class FoodEntriesService {
 
       // Mettre à jour l'activité pour les notifications de réengagement
       unawaited(NotificationService().updateLastActivity());
+
+      // WEEKLY PLANNER SYNC: Marquer le repas planifié comme complété
+      try {
+        final plannedMeal = await WeeklyPlannerService.findPlannedMealForDate(mealType!, now);
+        if (plannedMeal != null) {
+          await WeeklyPlannerService.updateActivityStatus(
+            plannedMeal.id,
+            PlannedStatus.completed,
+          );
+          debugPrint('✅ Weekly Planner: Meal $mealType marqué comme complété');
+        }
+      } catch (plannerError) {
+        debugPrint('⚠️ Erreur sync Weekly Planner: $plannerError');
+      }
 
       return true;
     } catch (e) {
@@ -777,6 +793,20 @@ class FoodEntriesService {
 
       // NOUVEAU: Mettre à jour les données du widget iOS
       await MealWidgetDataProvider.updateWidgetData();
+
+      // WEEKLY PLANNER SYNC: Marquer le repas planifié comme complété
+      try {
+        final plannedMeal = await WeeklyPlannerService.findPlannedMealForDate(mealType!, targetDate);
+        if (plannedMeal != null) {
+          await WeeklyPlannerService.updateActivityStatus(
+            plannedMeal.id,
+            PlannedStatus.completed,
+          );
+          debugPrint('✅ Weekly Planner: Meal $mealType marqué comme complété');
+        }
+      } catch (plannerError) {
+        debugPrint('⚠️ Erreur sync Weekly Planner: $plannerError');
+      }
 
       return true;
     } catch (e) {

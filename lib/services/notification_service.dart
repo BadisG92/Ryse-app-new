@@ -190,7 +190,9 @@ class NotificationService {
       }
 
       // Planifier la vérification "rien logué aujourd'hui" à 17h
-      await _scheduleNothingLoggedCheck(prefs);
+      if (prefs.nothingLoggedEnabled) {
+        await _scheduleNothingLoggedCheck(prefs);
+      }
 
       // Note: Les notifications de réengagement sont gérées séparément
       // et annulées quand l'utilisateur est actif

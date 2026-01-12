@@ -8,6 +8,7 @@ import '../components/ui/global_progress_models.dart';
 import 'sport_dashboard_service.dart';
 import 'header_cache_service.dart';
 import 'app_review_service.dart';
+import 'unified_subscription_service.dart';
 
 /// Gestionnaire d'état global pour synchronisation instantanée entre pages
 /// Résout le problème de latence et de mise à jour non reflétée
@@ -83,7 +84,7 @@ class GlobalStateManager {
 
   // Getters - Informations utilisateur
   String get userName => _userName;
-  bool get isPremium => false; // Non utilisé dans l'app
+  bool get isPremium => UnifiedSubscriptionService().isPremium;
 
   // Getters - Progression (%)
   double get calorieProgress => _calorieGoal > 0 ? (_currentCalories / _calorieGoal * 100).clamp(0, 100) : 0;

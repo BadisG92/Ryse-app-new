@@ -40,6 +40,7 @@ class NotificationPreferences {
   bool weeklyRecapEnabled;
   bool milestonesEnabled;
   bool reengagementEnabled;
+  bool nothingLoggedEnabled; // Rappel "rien logué aujourd'hui" à 17h
 
   // Meal reminder times (hours in 24h format)
   int breakfastTime;  // Default: 8
@@ -56,18 +57,20 @@ class NotificationPreferences {
     this.notificationsEnabled = true,
     this.quietHoursStart = 22,
     this.quietHoursEnd = 7,
-    this.mealRemindersEnabled = true,
-    this.waterRemindersEnabled = true,
-    this.streakProtectionEnabled = true,
-    this.dailyGoalsSummaryEnabled = true,
-    this.workoutRemindersEnabled = true,
-    this.weeklyRecapEnabled = true,
-    this.milestonesEnabled = true,
-    this.reengagementEnabled = true,
+    // Par défaut: seulement les rappels essentiels (max 1 notif/heure)
+    this.mealRemindersEnabled = true,      // 3 rappels repas espacés
+    this.waterRemindersEnabled = false,    // Désactivé par défaut (évite spam)
+    this.streakProtectionEnabled = true,   // Important pour rétention
+    this.dailyGoalsSummaryEnabled = false, // Désactivé par défaut
+    this.workoutRemindersEnabled = false,  // Désactivé par défaut
+    this.weeklyRecapEnabled = true,        // 1x/semaine seulement
+    this.milestonesEnabled = true,         // Occasionnel (achievements)
+    this.reengagementEnabled = false,      // Désactivé par défaut
+    this.nothingLoggedEnabled = false,     // Désactivé par défaut (17h)
     this.breakfastTime = 8,
     this.lunchTime = 12,
     this.dinnerTime = 19,
-    this.waterReminderFrequency = 2,
+    this.waterReminderFrequency = 1,       // 1x/jour si activé
     this.workoutReminderTime = 18,
   });
 
@@ -85,6 +88,7 @@ class NotificationPreferences {
       'weeklyRecapEnabled': weeklyRecapEnabled,
       'milestonesEnabled': milestonesEnabled,
       'reengagementEnabled': reengagementEnabled,
+      'nothingLoggedEnabled': nothingLoggedEnabled,
       'breakfastTime': breakfastTime,
       'lunchTime': lunchTime,
       'dinnerTime': dinnerTime,
@@ -99,18 +103,20 @@ class NotificationPreferences {
       notificationsEnabled: json['notificationsEnabled'] ?? true,
       quietHoursStart: json['quietHoursStart'] ?? 22,
       quietHoursEnd: json['quietHoursEnd'] ?? 7,
+      // Mêmes defaults que le constructeur (max 1 notif/heure)
       mealRemindersEnabled: json['mealRemindersEnabled'] ?? true,
-      waterRemindersEnabled: json['waterRemindersEnabled'] ?? true,
+      waterRemindersEnabled: json['waterRemindersEnabled'] ?? false,
       streakProtectionEnabled: json['streakProtectionEnabled'] ?? true,
-      dailyGoalsSummaryEnabled: json['dailyGoalsSummaryEnabled'] ?? true,
-      workoutRemindersEnabled: json['workoutRemindersEnabled'] ?? true,
+      dailyGoalsSummaryEnabled: json['dailyGoalsSummaryEnabled'] ?? false,
+      workoutRemindersEnabled: json['workoutRemindersEnabled'] ?? false,
       weeklyRecapEnabled: json['weeklyRecapEnabled'] ?? true,
       milestonesEnabled: json['milestonesEnabled'] ?? true,
-      reengagementEnabled: json['reengagementEnabled'] ?? true,
+      reengagementEnabled: json['reengagementEnabled'] ?? false,
+      nothingLoggedEnabled: json['nothingLoggedEnabled'] ?? false,
       breakfastTime: json['breakfastTime'] ?? 8,
       lunchTime: json['lunchTime'] ?? 12,
       dinnerTime: json['dinnerTime'] ?? 19,
-      waterReminderFrequency: json['waterReminderFrequency'] ?? 2,
+      waterReminderFrequency: json['waterReminderFrequency'] ?? 1,
       workoutReminderTime: json['workoutReminderTime'] ?? 18,
     );
   }
@@ -128,6 +134,7 @@ class NotificationPreferences {
     bool? weeklyRecapEnabled,
     bool? milestonesEnabled,
     bool? reengagementEnabled,
+    bool? nothingLoggedEnabled,
     int? breakfastTime,
     int? lunchTime,
     int? dinnerTime,
@@ -146,6 +153,7 @@ class NotificationPreferences {
       weeklyRecapEnabled: weeklyRecapEnabled ?? this.weeklyRecapEnabled,
       milestonesEnabled: milestonesEnabled ?? this.milestonesEnabled,
       reengagementEnabled: reengagementEnabled ?? this.reengagementEnabled,
+      nothingLoggedEnabled: nothingLoggedEnabled ?? this.nothingLoggedEnabled,
       breakfastTime: breakfastTime ?? this.breakfastTime,
       lunchTime: lunchTime ?? this.lunchTime,
       dinnerTime: dinnerTime ?? this.dinnerTime,

@@ -40,12 +40,18 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen>
   static const int _minExchangesToSkip = 3;
   static const int _maxCharacters = 500;
 
+  // Ryse dark blue color for text
+  static const Color _ryseDarkBlue = Color(0xFF0B132B);
+
   GenerativeModel? _model;
   ChatSession? _chatSession;
 
   // Animation for reveal effect (middle to edges)
   late AnimationController _revealController;
   late Animation<double> _revealAnimation;
+
+  // Flag to show "typing" indicator before first message
+  bool _isCoachTyping = false;
 
   @override
   void initState() {
@@ -105,7 +111,24 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen>
             ? "Hey, willkommen! 🐼 Wir sind die Coach Ryze, dein Sport- und Ernährungs-Duo. Zusammen werden wir dir helfen, deine Ziele zu erreichen. Was hat dich dazu gebracht, uns beizutreten?"
             : "Hey, welcome! 🐼 We're the Coach Ryze team, your sport and nutrition duo. Together, we'll help you reach your goals. What made you want to join us?";
 
+    // Wait 1 second to simulate coach "typing" like iMessage
+    await Future.delayed(const Duration(milliseconds: 1000));
+
+    if (!mounted) return;
+
+    // Show typing indicator
     setState(() {
+      _isCoachTyping = true;
+    });
+
+    // Wait another 500ms for typing effect
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    if (!mounted) return;
+
+    // Add message with animation effect like iMessage
+    setState(() {
+      _isCoachTyping = false;
       _messages.add(_ChatMessage(content: welcomeMessage, isUser: false));
     });
   }
@@ -473,6 +496,9 @@ IMPORTANT:
             bottom: keyboardHeight > 0 ? keyboardHeight : 0,
             child: Column(
               children: [
+                // Header "Faisons connaissance"
+                _buildChatHeader(lang),
+
                 // Messages list (takes all available space)
                 Expanded(child: _buildMessagesList()),
 
@@ -562,17 +588,118 @@ IMPORTANT:
     );
   }
 
+  Widget _buildChatHeader(String lang) {
+    final headerText = lang == 'fr'
+        ? 'Faisons connaissance'
+        : lang == 'de'
+            ? 'Lass uns kennenlernen'
+            : "Let's get to know each other";
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.25),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white.withOpacity(0.3)),
+            ),
+            child: Text(
+              headerText,
+              style: const TextStyle(
+                color: _ryseDarkBlue,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.3,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildMessagesList() {
+    // Calculate total items: messages + typing indicator if active
+    final itemCount = _messages.length + (_isCoachTyping ? 1 : 0);
+
     return ListView.builder(
       controller: _scrollController,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       reverse: true, // New messages at bottom, scroll naturally like iMessage
-      itemCount: _messages.length,
+      itemCount: itemCount,
       itemBuilder: (context, index) {
-        // Reverse index since list is reversed
-        final message = _messages[_messages.length - 1 - index];
+        // Show typing indicator at the bottom (index 0 in reversed list)
+        if (_isCoachTyping && index == 0) {
+          return _buildTypingIndicator();
+        }
+
+        // Adjust index for messages when typing indicator is showing
+        final messageIndex = _isCoachTyping ? index - 1 : index;
+        final message = _messages[_messages.length - 1 - messageIndex];
         return _buildGlassMessageBubble(message);
       },
+    );
+  }
+
+  Widget _buildTypingIndicator() {
+    return Padding(
+      padding: const EdgeInsets.only(
+        bottom: 16,
+        left: 16,
+        right: 48,
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          ClipRRect(
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(4),
+              topRight: Radius.circular(20),
+              bottomLeft: Radius.circular(20),
+              bottomRight: Radius.circular(20),
+            ),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.40),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(4),
+                    topRight: Radius.circular(20),
+                    bottomLeft: Radius.circular(20),
+                    bottomRight: Radius.circular(20),
+                  ),
+                  border: Border.all(color: Colors.white.withOpacity(0.45)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildTypingDot(0),
+                    const SizedBox(width: 4),
+                    _buildTypingDot(1),
+                    const SizedBox(width: 4),
+                    _buildTypingDot(2),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTypingDot(int index) {
+    return _AnimatedTypingDot(
+      index: index,
+      color: _ryseDarkBlue,
     );
   }
 
@@ -614,17 +741,11 @@ IMPORTANT:
                   ),
                   child: Text(
                     message.content,
-                    style: TextStyle(
-                      color: Colors.white,
+                    style: const TextStyle(
+                      color: _ryseDarkBlue,
                       fontSize: 15,
                       height: 1.4,
-                      shadows: [
-                        Shadow(
-                          color: Colors.black.withOpacity(0.3),
-                          blurRadius: 4,
-                          offset: const Offset(0, 1),
-                        ),
-                      ],
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),
@@ -780,4 +901,81 @@ class _ChatMessage {
     required this.content,
     required this.isUser,
   });
+}
+
+/// Animated typing dot with continuous bounce animation like iMessage
+class _AnimatedTypingDot extends StatefulWidget {
+  final int index;
+  final Color color;
+
+  const _AnimatedTypingDot({
+    required this.index,
+    required this.color,
+  });
+
+  @override
+  State<_AnimatedTypingDot> createState() => _AnimatedTypingDotState();
+}
+
+class _AnimatedTypingDotState extends State<_AnimatedTypingDot>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
+
+    // Staggered delay based on dot index
+    final delay = widget.index * 0.15;
+    _animation = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween(begin: 0.0, end: 1.0).chain(CurveTween(curve: Curves.easeOut)),
+        weight: 30,
+      ),
+      TweenSequenceItem(
+        tween: Tween(begin: 1.0, end: 0.0).chain(CurveTween(curve: Curves.easeIn)),
+        weight: 30,
+      ),
+      TweenSequenceItem(
+        tween: ConstantTween(0.0),
+        weight: 40,
+      ),
+    ]).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Interval(delay, 1.0, curve: Curves.linear),
+    ));
+
+    _controller.repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        return Transform.translate(
+          offset: Offset(0, -4 * _animation.value),
+          child: Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: widget.color.withOpacity(0.5 + 0.3 * _animation.value),
+              shape: BoxShape.circle,
+            ),
+          ),
+        );
+      },
+    );
+  }
 }

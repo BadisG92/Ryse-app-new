@@ -15,6 +15,8 @@ import '../services/localization_service.dart';
 import '../services/global_state_manager.dart';
 import '../services/pedometer_service.dart';
 import '../services/unit_service.dart';
+import '../services/weekly_planner_service.dart';
+import '../models/weekly_planner_models.dart';
 
 class CardioTrackingScreen extends StatefulWidget {
   final String activityType;
@@ -628,6 +630,24 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
                         // UNE SEULE mise à jour du GlobalState pour éviter les doublons
                         GlobalStateManager.instance.updateWorkout(true);
                         debugPrint('✅ GlobalStateManager: Cardio marqué comme complété');
+
+                        // WEEKLY PLANNER SYNC: Marquer l'activité cardio planifiée comme complétée
+                        try {
+                          final today = DateTime.now();
+                          final plannedCardio = await WeeklyPlannerService.findPlannedCardioForDate(
+                            today,
+                            activityType: widget.activityType,
+                          );
+                          if (plannedCardio != null) {
+                            await WeeklyPlannerService.updateActivityStatus(
+                              plannedCardio.id,
+                              PlannedStatus.completed,
+                            );
+                            debugPrint('✅ Weekly Planner: Cardio marqué comme complété');
+                          }
+                        } catch (plannerError) {
+                          debugPrint('⚠️ Erreur sync Weekly Planner: $plannerError');
+                        }
 
                         // Marquer pour afficher le popup après retour écran
                         CelebrationService().celebrateCardioCompletionGlobal(

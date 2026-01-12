@@ -10,6 +10,7 @@ import 'ui/dashboard_cards.dart';
 import 'ui/dashboard_widgets.dart';
 import 'ui/custom_card.dart';
 import 'ui/global_state_header.dart';
+import 'weekly_planner/weekly_planner_widget.dart';
 import '../services/dashboard_service.dart';
 import '../services/localization_service.dart';
 import '../services/translations.dart';
@@ -367,12 +368,10 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
                     children: [
                       const SizedBox(height: 16),
 
-                          // Objectifs du jour - Toujours affiché
+                          // Weekly Planner pour tous les utilisateurs
                           Container(
-                            key: _caloriesCardKey, // Tutorial: Carte des calories
-                            child: EnhancedDailyGoalsSection(
-                              goals: dailyGoals.isNotEmpty ? dailyGoals : DashboardData.dailyGoals,
-                              profile: userProfile!,
+                            key: _caloriesCardKey,
+                            child: WeeklyPlannerWidget(
                               isPremium: userProfile!.isPremium,
                             ),
                           ),

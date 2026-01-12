@@ -24,6 +24,8 @@ import '../services/celebration_service.dart';
 import '../services/haptic_service.dart';
 import '../services/unit_service.dart';
 import '../services/localized_exercise_service.dart';
+import '../services/weekly_planner_service.dart';
+import '../models/weekly_planner_models.dart';
 import '../bottom_sheets/exercise_info_bottom_sheet.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:provider/provider.dart';
@@ -34,6 +36,7 @@ class WorkoutSessionScreen extends StatefulWidget {
   final bool isFromProgram;
   final String? guidedTemplateId; // si séance guidée, passer l'id du template
   final bool isFromAI; // ⚡ NEW: Identifie les séances Coach Ryze pour navigation 3-pop
+  final String? plannedWorkoutId; // ID du workout planifié (Weekly Planner)
   final Function(WorkoutProgram)? onProgramSaved;
   final Function(WorkoutSession)? onSessionCompleted;
 
@@ -52,6 +55,7 @@ class WorkoutSessionScreen extends StatefulWidget {
     this.isFromProgram = false,
     this.guidedTemplateId,
     this.isFromAI = false, // ⚡ Par défaut false (manuel et guidé)
+    this.plannedWorkoutId,
     this.onProgramSaved,
     this.onSessionCompleted,
     this.isEditMode = false,
@@ -2272,6 +2276,29 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
         await GlobalStateManager.instance.refreshSportData();
 
         if (kDebugMode) debugPrint('✅ Caches Sport invalidés après séance musculation');
+
+        // WEEKLY PLANNER SYNC: Marquer le workout planifié comme complété
+        try {
+          String? workoutIdToUpdate = widget.plannedWorkoutId;
+
+          // Si pas de plannedWorkoutId direct, chercher pour aujourd'hui (fallback)
+          if (workoutIdToUpdate == null) {
+            final today = DateTime.now();
+            final plannedWorkout = await WeeklyPlannerService.findPlannedWorkoutForDate(today);
+            workoutIdToUpdate = plannedWorkout?.id;
+          }
+
+          if (workoutIdToUpdate != null) {
+            await WeeklyPlannerService.updateWorkoutStatus(
+              workoutIdToUpdate,
+              PlannedStatus.completed,
+              linkedSessionId: completedSession.id,
+            );
+            if (kDebugMode) debugPrint('✅ Weekly Planner: Workout marqué comme complété (ID: $workoutIdToUpdate)');
+          }
+        } catch (plannerError) {
+          if (kDebugMode) debugPrint('⚠️ Erreur sync Weekly Planner: $plannerError');
+        }
       } catch (e) {
         if (kDebugMode) debugPrint('⚠️ Erreur invalidation caches: $e');
       }

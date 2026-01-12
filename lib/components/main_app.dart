@@ -7,6 +7,7 @@ import 'global_progress_hybrid.dart';
 import 'onboarding_gamified_hybrid.dart';
 import '../screens/coach_chat_screen.dart';
 import '../services/coach_chat_service.dart';
+import '../services/weekly_bilan_service.dart';
 
 class MainApp extends StatefulWidget {
   const MainApp({super.key});
@@ -17,12 +18,26 @@ class MainApp extends StatefulWidget {
 
 class _MainAppState extends State<MainApp> {
   String _activeTab = 'home';
+  bool _showBilanBadge = false;
 
   // GlobalKeys pour le tutorial (partagées entre Dashboard et BottomNavigation)
   final GlobalKey _nutritionTabKey = GlobalKey();
   final GlobalKey _sportTabKey = GlobalKey();
   final GlobalKey _progressTabKey = GlobalKey();
   final GlobalKey _coachFabKey = GlobalKey();
+
+  @override
+  void initState() {
+    super.initState();
+    _checkBilanAvailability();
+  }
+
+  Future<void> _checkBilanAvailability() async {
+    final shouldShow = await WeeklyBilanService.instance.shouldShowBilanBanner();
+    if (mounted && shouldShow != _showBilanBadge) {
+      setState(() => _showBilanBadge = shouldShow);
+    }
+  }
 
   void _onTabChange(String tab) {
     setState(() {
@@ -36,11 +51,14 @@ class _MainAppState extends State<MainApp> {
     final conversation = await CoachChatService.instance.getOrCreateConversation();
 
     if (conversation != null && mounted) {
-      Navigator.of(context).push(
+      await Navigator.of(context).push(
         MaterialPageRoute(
           builder: (context) => CoachChatScreen(conversation: conversation),
         ),
       );
+      // Re-vérifier la disponibilité du bilan après retour du chat
+      // (le bilan peut avoir été lancé dans le chat)
+      _checkBilanAvailability();
     }
   }
 
@@ -107,6 +125,7 @@ class _MainAppState extends State<MainApp> {
                 sportTabKey: _sportTabKey,
                 progressTabKey: _progressTabKey,
                 coachFabKey: _coachFabKey,
+                showBilanBadge: _showBilanBadge,
               ),
             ),
         ],

@@ -8411,6 +8411,190 @@ class AppTranslations {
       'en': 'Sunday',
       'de': 'Sonntag',
     },
+
+    // =====================================================
+    // Weekly Planner (Planificateur Hebdomadaire)
+    // =====================================================
+    'weekly_planner_title': {
+      'fr': 'Ma Semaine',
+      'en': 'My Week',
+      'de': 'Meine Woche',
+    },
+    'plan_with_ryze': {
+      'fr': 'Planifier avec Ryze',
+      'en': 'Plan with Ryze',
+      'de': 'Mit Ryze planen',
+    },
+    'plan_my_meals': {
+      'fr': 'Planifier mes repas',
+      'en': 'Plan my meals',
+      'de': 'Meine Mahlzeiten planen',
+    },
+    'plan_my_workouts': {
+      'fr': 'Planifier mes séances',
+      'en': 'Plan my workouts',
+      'de': 'Meine Trainings planen',
+    },
+    'planner_ai_hint': {
+      'fr': 'Demande-moi de planifier tes repas ou séances',
+      'en': 'Ask me to plan your meals or workouts',
+      'de': 'Frag mich, deine Mahlzeiten oder Training zu planen',
+    },
+    'planner_ai_subtitle': {
+      'fr': 'Ton assistant de planification',
+      'en': 'Your planning assistant',
+      'de': 'Dein Planungsassistent',
+    },
+    'planner_ai_placeholder': {
+      'fr': 'Ex: "Je veux 3 séances de sport"',
+      'en': 'E.g.: "I want 3 workout sessions"',
+      'de': 'Z.B.: "Ich möchte 3 Trainingseinheiten"',
+    },
+    'planner_meals_placeholder': {
+      'fr': 'Ex: "Un petit-déj protéiné lundi"',
+      'en': 'E.g.: "A protein breakfast Monday"',
+      'de': 'Z.B.: "Ein Protein-Frühstück Montag"',
+    },
+    'planner_workouts_placeholder': {
+      'fr': 'Ex: "3 séances de musculation"',
+      'en': 'E.g.: "3 strength training sessions"',
+      'de': 'Z.B.: "3 Krafttrainingseinheiten"',
+    },
+    'planner_add_activity': {
+      'fr': 'Ajouter une activité',
+      'en': 'Add activity',
+      'de': 'Aktivität hinzufügen',
+    },
+    'planner_meals_section': {
+      'fr': 'Repas',
+      'en': 'Meals',
+      'de': 'Mahlzeiten',
+    },
+    'planner_sport_section': {
+      'fr': 'Sport',
+      'en': 'Sport',
+      'de': 'Sport',
+    },
+    'planner_breakfast': {
+      'fr': 'Petit-déjeuner',
+      'en': 'Breakfast',
+      'de': 'Frühstück',
+    },
+    'planner_lunch': {
+      'fr': 'Déjeuner',
+      'en': 'Lunch',
+      'de': 'Mittagessen',
+    },
+    'planner_dinner': {
+      'fr': 'Dîner',
+      'en': 'Dinner',
+      'de': 'Abendessen',
+    },
+    'planner_snack': {
+      'fr': 'Collation',
+      'en': 'Snack',
+      'de': 'Snack',
+    },
+    'planner_cardio': {
+      'fr': 'Cardio',
+      'en': 'Cardio',
+      'de': 'Cardio',
+    },
+    'planner_workout': {
+      'fr': 'Musculation',
+      'en': 'Workout',
+      'de': 'Krafttraining',
+    },
+    'planner_confirm': {
+      'fr': 'Confirmer',
+      'en': 'Confirm',
+      'de': 'Bestätigen',
+    },
+    'planner_cancel': {
+      'fr': 'Annuler',
+      'en': 'Cancel',
+      'de': 'Abbrechen',
+    },
+    'planner_delete': {
+      'fr': 'Supprimer',
+      'en': 'Delete',
+      'de': 'Löschen',
+    },
+    'planner_completed': {
+      'fr': 'Terminé',
+      'en': 'Completed',
+      'de': 'Abgeschlossen',
+    },
+    'planner_missed': {
+      'fr': 'Manqué',
+      'en': 'Missed',
+      'de': 'Verpasst',
+    },
+    'planner_planned': {
+      'fr': 'Planifié',
+      'en': 'Planned',
+      'de': 'Geplant',
+    },
+    'planner_past_day_warning': {
+      'fr': 'Vous ne pouvez pas modifier les jours passés',
+      'en': 'You cannot modify past days',
+      'de': 'Vergangene Tage können nicht geändert werden',
+    },
+    'planner_exercises': {
+      'fr': 'exercices',
+      'en': 'exercises',
+      'de': 'Übungen',
+    },
+    'planner_sets': {
+      'fr': 'séries',
+      'en': 'sets',
+      'de': 'Sätze',
+    },
+    'planner_exercises_list': {
+      'fr': 'Exercices',
+      'en': 'Exercises',
+      'de': 'Übungen',
+    },
+    'planner_objectives': {
+      'fr': 'Objectifs',
+      'en': 'Objectives',
+      'de': 'Ziele',
+    },
+    'planner_start_workout': {
+      'fr': 'Commencer',
+      'en': 'Start',
+      'de': 'Starten',
+    },
+    'planner_start_cardio': {
+      'fr': 'Commencer',
+      'en': 'Start',
+      'de': 'Starten',
+    },
+    'planner_delete_workout_title': {
+      'fr': 'Supprimer la séance ?',
+      'en': 'Delete workout?',
+      'de': 'Training löschen?',
+    },
+    'planner_delete_workout_message': {
+      'fr': 'Cette séance sera supprimée de votre planning.',
+      'en': 'This workout will be removed from your schedule.',
+      'de': 'Dieses Training wird aus Ihrem Zeitplan entfernt.',
+    },
+    'planner_delete_cardio_title': {
+      'fr': 'Supprimer le cardio ?',
+      'en': 'Delete cardio?',
+      'de': 'Cardio löschen?',
+    },
+    'planner_delete_cardio_message': {
+      'fr': 'Cette activité cardio sera supprimée de votre planning.',
+      'en': 'This cardio activity will be removed from your schedule.',
+      'de': 'Diese Cardio-Aktivität wird aus Ihrem Zeitplan entfernt.',
+    },
+    'planner_exercise_details': {
+      'fr': '{sets} séries • {reps} reps',
+      'en': '{sets} sets • {reps} reps',
+      'de': '{sets} Sätze • {reps} Wdh',
+    },
   };
 
   /// Getter public pour accéder aux traductions (utilisé par TranslationChecker)

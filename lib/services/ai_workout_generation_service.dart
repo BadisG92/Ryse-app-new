@@ -258,17 +258,48 @@ class AIWorkoutGenerationService {
           buffer.writeln('    * Times performed: ${stats['count']}');
           buffer.writeln('    → Suggested weight: ${suggestedWeight}kg');
         }
+        // Calculer le niveau de force global de l'utilisateur
+        final allWeights = exerciseStats.values.map((s) => s['avg_weight'] as double).toList();
+        final avgOverallWeight = allWeights.isNotEmpty
+            ? allWeights.reduce((a, b) => a + b) / allWeights.length
+            : 0.0;
+        final isStrong = avgOverallWeight > 30;
+        final isIntermediate = avgOverallWeight > 15;
+
         buffer.writeln();
-        buffer.writeln('For exercises NOT in this list, suggest beginner-friendly weights based on muscle group:');
-        buffer.writeln('- Upper body (chest, back, shoulders): 10-15kg');
-        buffer.writeln('- Arms (biceps, triceps): 5-10kg');
-        buffer.writeln('- Legs (quads, hamstrings): 20-30kg');
+        buffer.writeln('USER STRENGTH LEVEL: ${isStrong ? "ADVANCED" : isIntermediate ? "INTERMEDIATE" : "BEGINNER"}');
+        buffer.writeln('Average weight across all exercises: ${avgOverallWeight.toStringAsFixed(1)}kg');
+        buffer.writeln();
+        buffer.writeln('For exercises NOT in this list, EXTRAPOLATE weights based on:');
+        buffer.writeln('1. Similar exercises in the same muscle group (use ~80% of that weight)');
+        buffer.writeln('2. The user\'s overall strength level shown above');
+        buffer.writeln();
+        if (isStrong) {
+          buffer.writeln('This is an ADVANCED lifter. Suggest meaningful weights:');
+          buffer.writeln('- Compound upper body (bench, rows, OHP): 30-50kg');
+          buffer.writeln('- Isolation upper body (curls, extensions): 10-20kg');
+          buffer.writeln('- Compound lower body (squat, deadlift, leg press): 60-100kg');
+          buffer.writeln('- Isolation lower body (leg curl, calf raise): 30-50kg');
+        } else if (isIntermediate) {
+          buffer.writeln('This is an INTERMEDIATE lifter. Suggest appropriate weights:');
+          buffer.writeln('- Compound upper body: 20-35kg');
+          buffer.writeln('- Isolation upper body: 8-15kg');
+          buffer.writeln('- Compound lower body: 40-70kg');
+          buffer.writeln('- Isolation lower body: 20-35kg');
+        } else {
+          buffer.writeln('Lighter weights recorded - suggest conservative weights:');
+          buffer.writeln('- Compound upper body: 10-20kg');
+          buffer.writeln('- Isolation upper body: 5-10kg');
+          buffer.writeln('- Compound lower body: 20-40kg');
+          buffer.writeln('- Isolation lower body: 10-20kg');
+        }
       } else {
         buffer.writeln('No previous performance data available.');
-        buffer.writeln('SUGGEST BEGINNER-FRIENDLY WEIGHTS:');
-        buffer.writeln('- Upper body exercises (chest, back, shoulders): 10-15kg');
-        buffer.writeln('- Arm exercises (biceps, triceps): 5-10kg');
-        buffer.writeln('- Leg exercises (quads, hamstrings): 20-30kg');
+        buffer.writeln('This appears to be a NEW USER. Suggest beginner-friendly weights:');
+        buffer.writeln('- Compound upper body exercises (bench, rows): 15-20kg');
+        buffer.writeln('- Isolation upper body (curls, extensions): 5-10kg');
+        buffer.writeln('- Compound lower body (squat, leg press): 20-40kg');
+        buffer.writeln('- Isolation lower body: 10-20kg');
         buffer.writeln('- Core exercises: bodyweight or 5-10kg');
       }
 
@@ -354,11 +385,14 @@ CRITICAL REQUIREMENTS:
 5. Order exercises logically: compound movements first, isolation exercises later
 6. Consider muscle group balance and recovery
 7. **CRITICAL - WEIGHT SUGGESTIONS**:
-   - Use the EXACT suggested weights from the performance history above (they are already calculated and rounded)
-   - For exercises the user has done: use the "Suggested weight" value provided
-   - For new exercises: use beginner weights (10-15kg upper body, 20-30kg legs, 5-10kg arms)
+   - For exercises the user has done: use the "Suggested weight" value provided in the history
+   - For NEW exercises: EXTRAPOLATE based on user's strength level:
+     * Look at similar exercises in the same muscle group (use ~80% of that weight)
+     * Consider the USER STRENGTH LEVEL indicated (ADVANCED/INTERMEDIATE/BEGINNER)
+     * An advanced lifter doing a new exercise should NOT get beginner weights!
    - **ALWAYS round to gym increments**: 2.5kg, 5kg, 7.5kg, 10kg, 12.5kg, 15kg, 17.5kg, 20kg, etc.
    - NEVER suggest weights like 16.4kg or 18.7kg - only multiples of 2.5kg
+   - Example: If user benches 60kg avg, suggest ~25-30kg for OHP (not 10kg!)
 8. Suggest appropriate reps (6-15) based on focus:
    - Strength: 4-6 reps, heavier weights
    - Hypertrophy: 8-12 reps, moderate weights
@@ -384,7 +418,7 @@ OUTPUT FORMAT (JSON):
   "suggestions": "1-2 SHORT personalized tips about THIS specific workout (focus, progression, technique) in $userLanguage - max 2 sentences"
 }
 
-EXAMPLE (if user requests "Haut du corps" and has done "Développé couché" at 40kg average):
+EXAMPLE (if user requests "Haut du corps" and has done "Développé couché" at 40kg average - INTERMEDIATE level):
 {
   "exercises": [
     {
@@ -393,7 +427,7 @@ EXAMPLE (if user requests "Haut du corps" and has done "Développé couché" at 
       "sets": 4,
       "target_reps": 10,
       "suggested_weight_kg": 35.0,
-      "notes": "Gardez les épaules en arrière, descendez la barre jusqu'au sternum"
+      "notes": "Poids basé sur ton historique (40kg moy → 35kg suggéré)"
     },
     {
       "exercise_name": "Rowing barre",
@@ -408,11 +442,11 @@ EXAMPLE (if user requests "Haut du corps" and has done "Développé couché" at 
       "exercise_id": "bbb-ccc-ddd",
       "sets": 3,
       "target_reps": 10,
-      "suggested_weight_kg": 12.5,
-      "notes": "Nouveau exercice - commencer léger pour la technique"
+      "suggested_weight_kg": 20.0,
+      "notes": "Nouvel exercice - extrapolé de ton développé couché (~50% du bench)"
     }
   ],
-  "suggestions": "Cette séance équilibre push et pull pour éviter les déséquilibres musculaires. Si tu réussis les 4 séries à 35kg au développé couché, passe à 37.5kg la prochaine fois."
+  "suggestions": "Cette séance équilibre push et pull. Le poids au développé militaire est estimé à partir de ton bench - ajuste si trop lourd/léger."
 }
 
 GOOD SUGGESTIONS EXAMPLES:

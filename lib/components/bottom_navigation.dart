@@ -18,6 +18,9 @@ class BottomNavigation extends StatelessWidget {
   final GlobalKey? sportTabKey;
   final GlobalKey? progressTabKey;
 
+  // Badge de notification pour le bilan hebdomadaire
+  final bool showBilanBadge;
+
   const BottomNavigation({
     super.key,
     required this.activeTab,
@@ -28,6 +31,7 @@ class BottomNavigation extends StatelessWidget {
     this.coachFabKey,
     this.sportTabKey,
     this.progressTabKey,
+    this.showBilanBadge = false,
   });
 
   @override
@@ -130,43 +134,77 @@ class BottomNavigation extends StatelessWidget {
       child: GestureDetector(
         key: coachFabKey,
         onTap: onCoachTap,
-        child: Container(
-          width: 60,
-          height: 60,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Color(0xFF0B132B),
-                Color(0xFF1C2951),
-              ],
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xFF0B132B),
+                    Color(0xFF1C2951),
+                  ],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF0B132B).withOpacity(0.4),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Center(
+                child: SvgPicture.asset(
+                  'assets/images/logo_seul.svg',
+                  width: 36,
+                  height: 36,
+                  colorFilter: const ColorFilter.mode(
+                    Colors.white,
+                    BlendMode.srcIn,
+                  ),
+                  placeholderBuilder: (context) => const Icon(
+                    LucideIcons.messageCircle,
+                    size: 28,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
             ),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF0B132B).withOpacity(0.4),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
+            // Badge de notification pour le bilan hebdomadaire
+            if (showBilanBadge)
+              Positioned(
+                top: -2,
+                right: -2,
+                child: Container(
+                  width: 18,
+                  height: 18,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981), // Vert émeraude
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF10B981).withOpacity(0.4),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: const Center(
+                    child: Icon(
+                      LucideIcons.sparkles,
+                      size: 10,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
               ),
-            ],
-          ),
-          child: Center(
-            child: SvgPicture.asset(
-              'assets/images/logo_seul.svg',
-              width: 36,
-              height: 36,
-              colorFilter: const ColorFilter.mode(
-                Colors.white,
-                BlendMode.srcIn,
-              ),
-              placeholderBuilder: (context) => const Icon(
-                LucideIcons.messageCircle,
-                size: 28,
-                color: Colors.white,
-              ),
-            ),
-          ),
+          ],
         ),
       ),
     );
