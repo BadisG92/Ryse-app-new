@@ -116,6 +116,8 @@ class GlobalStateManager {
   void invalidateWeeklyData() {
     _weeklyDataLastUpdate = null;
     if (kDebugMode) debugPrint('🔄 GlobalState: Cache hebdomadaire invalidé');
+    // Notifier les widgets du planner
+    _eventController.add(StateChangeEvent(type: ChangeType.planner, value: null));
   }
 
   /// Initialiser avec les données existantes de Supabase
@@ -960,6 +962,7 @@ enum ChangeType {
   goals,
   batch,
   dayReset,  // Nouveau jour détecté (minuit)
+  planner,   // Mise à jour du planner hebdomadaire
   other,
 }
 

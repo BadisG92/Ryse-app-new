@@ -3,6 +3,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/weekly_planner_models.dart';
 import '../models/sport_models.dart';
 import 'global_state_manager.dart';
+import 'sport_dashboard_service.dart';
+import 'cardio_service.dart';
 
 /// Service pour gérer le planificateur hebdomadaire
 class WeeklyPlannerService {
@@ -283,6 +285,114 @@ class WeeklyPlannerService {
     } catch (e) {
       debugPrint('❌ updateWorkoutStatus error: $e');
       return false;
+    }
+  }
+
+  /// Mettre à jour un workout planifié (type, durée, exercices)
+  /// Pour les modifications in-place sans delete+create
+  static Future<bool> updatePlannedWorkout(
+    String workoutId, {
+    String? workoutName,
+    int? durationMinutes,
+    List<WorkoutExercise>? exercises,
+  }) async {
+    try {
+      final updateData = <String, dynamic>{};
+
+      if (workoutName != null) {
+        updateData['workout_name'] = workoutName;
+      }
+      if (durationMinutes != null) {
+        updateData['duration_minutes'] = durationMinutes;
+      }
+      if (exercises != null) {
+        updateData['exercises_json'] = exercises.map((e) => e.toJson()).toList();
+      }
+
+      if (updateData.isEmpty) {
+        debugPrint('⚠️ updatePlannedWorkout: No data to update');
+        return false;
+      }
+
+      await _client
+          .from('planned_workouts')
+          .update(updateData)
+          .eq('id', workoutId);
+
+      debugPrint('✅ updatePlannedWorkout: $workoutId updated with ${updateData.keys.join(', ')}');
+
+      _invalidateCache();
+      _notifyPlannerUpdate();
+
+      return true;
+    } catch (e) {
+      debugPrint('❌ updatePlannedWorkout error: $e');
+      return false;
+    }
+  }
+
+  /// Mettre à jour une activité cardio planifiée
+  /// Pour les modifications in-place sans delete+create
+  static Future<bool> updatePlannedCardio(
+    String activityId, {
+    String? activityType,
+    int? durationMinutes,
+    double? targetKm,
+  }) async {
+    try {
+      // D'abord récupérer l'activité existante pour merger activity_data
+      final existing = await getPlannedActivityById(activityId);
+      if (existing == null) {
+        debugPrint('❌ updatePlannedCardio: Activity not found');
+        return false;
+      }
+
+      final currentData = existing.activityData ?? {};
+      final newData = Map<String, dynamic>.from(currentData);
+
+      if (activityType != null) {
+        newData['cardio_type'] = activityType;
+        newData['activity_key'] = activityType;
+        // Mettre à jour le nom selon le type
+        newData['activity_name'] = _getCardioActivityName(activityType);
+      }
+      if (durationMinutes != null) {
+        newData['duration_minutes'] = durationMinutes;
+      }
+      if (targetKm != null) {
+        newData['target_km'] = targetKm;
+      }
+
+      await _client
+          .from('planned_activities')
+          .update({'activity_data': newData})
+          .eq('id', activityId);
+
+      debugPrint('✅ updatePlannedCardio: $activityId updated');
+
+      _invalidateCache();
+      _notifyPlannerUpdate();
+
+      return true;
+    } catch (e) {
+      debugPrint('❌ updatePlannedCardio error: $e');
+      return false;
+    }
+  }
+
+  /// Helper pour obtenir le nom d'activité cardio
+  static String _getCardioActivityName(String activityType) {
+    switch (activityType) {
+      case 'running':
+        return 'Course à pied';
+      case 'bike':
+        return 'Vélo';
+      case 'walking':
+        return 'Marche';
+      case 'hiit':
+        return 'HIIT';
+      default:
+        return activityType;
     }
   }
 
@@ -988,6 +1098,478 @@ class WeeklyPlannerService {
     } catch (e) {
       debugPrint('❌ countActivitiesForDate error: $e');
       return {};
+    }
+  }
+
+  // =====================================================
+  // SYNC HISTORIQUE <-> PLANIFICATEUR
+  // =====================================================
+
+  /// Synchroniser une séance workout terminée vers le planificateur
+  /// Crée une entrée si elle n'existe pas, ou met à jour le statut si elle existe
+  static Future<String?> syncWorkoutSessionToPlanner({
+    required String sessionId,
+    required String workoutName,
+    required DateTime sessionDate,
+    int? durationMinutes,
+  }) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) {
+      debugPrint('❌ syncWorkoutSessionToPlanner: No user');
+      return null;
+    }
+
+    try {
+      // Vérifier si la date est dans la semaine courante
+      if (!isInCurrentWeek(sessionDate)) {
+        debugPrint('⚠️ syncWorkoutSessionToPlanner: Date hors semaine courante, skip');
+        return null;
+      }
+
+      // Chercher si un workout planifié existe déjà pour ce jour
+      final existingWorkout = await findPlannedWorkoutForDate(sessionDate);
+
+      if (existingWorkout != null) {
+        // Mettre à jour le statut existant
+        await updateWorkoutStatus(
+          existingWorkout.id,
+          PlannedStatus.completed,
+          linkedSessionId: sessionId,
+        );
+        debugPrint('✅ syncWorkoutSessionToPlanner: Workout existant mis à jour (${existingWorkout.id})');
+        return existingWorkout.id;
+      } else {
+        // Créer une nouvelle entrée planifiée avec statut complété
+        final dateStr = sessionDate.toIso8601String().split('T')[0];
+        final data = {
+          'user_id': userId,
+          'planned_date': dateStr,
+          'workout_name': workoutName,
+          'duration_minutes': durationMinutes ?? 45,
+          'exercises_json': <Map<String, dynamic>>[],
+          'status': PlannedStatus.completed.value,
+          'linked_session_id': sessionId,
+          'is_ai_generated': false,
+        };
+
+        final response = await _client
+            .from('planned_workouts')
+            .insert(data)
+            .select()
+            .single();
+
+        final newId = response['id'] as String;
+        debugPrint('✅ syncWorkoutSessionToPlanner: Nouvelle entrée créée ($newId)');
+
+        _invalidateCache();
+        // Ne pas notifier pendant la migration pour éviter les boucles
+        if (!_isMigrating) {
+          _notifyPlannerUpdate();
+        }
+
+        return newId;
+      }
+    } catch (e) {
+      debugPrint('❌ syncWorkoutSessionToPlanner error: $e');
+      return null;
+    }
+  }
+
+  /// Synchroniser une séance cardio terminée vers le planificateur
+  static Future<String?> syncCardioSessionToPlanner({
+    required String sessionId,
+    required String activityType,
+    required String activityTitle,
+    required DateTime sessionDate,
+    int? durationMinutes,
+    double? distanceKm,
+  }) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) {
+      debugPrint('❌ syncCardioSessionToPlanner: No user');
+      return null;
+    }
+
+    try {
+      // Vérifier si la date est dans la semaine courante
+      if (!isInCurrentWeek(sessionDate)) {
+        debugPrint('⚠️ syncCardioSessionToPlanner: Date hors semaine courante, skip');
+        return null;
+      }
+
+      // Chercher si un cardio planifié existe déjà pour ce jour
+      final existingCardio = await findPlannedCardioForDate(sessionDate);
+
+      if (existingCardio != null) {
+        // Mettre à jour le statut existant
+        await updateCardioStatus(
+          existingCardio.id,
+          PlannedStatus.completed,
+          linkedSessionId: sessionId,
+        );
+        debugPrint('✅ syncCardioSessionToPlanner: Cardio existant mis à jour (${existingCardio.id})');
+        return existingCardio.id;
+      } else {
+        // Créer une nouvelle entrée planifiée avec statut complété
+        final dateStr = sessionDate.toIso8601String().split('T')[0];
+        final data = {
+          'user_id': userId,
+          'planned_date': dateStr,
+          'activity_type': 'cardio',
+          'activity_data': {
+            'cardio_type': activityType,
+            'activity_key': activityType,
+            'activity_name': activityTitle,
+            'duration_minutes': durationMinutes,
+            'target_km': distanceKm,
+          },
+          'status': PlannedStatus.completed.value,
+          'linked_session_id': sessionId,
+          'is_ai_generated': false,
+        };
+
+        final response = await _client
+            .from('planned_activities')
+            .insert(data)
+            .select()
+            .single();
+
+        final newId = response['id'] as String;
+        debugPrint('✅ syncCardioSessionToPlanner: Nouvelle entrée créée ($newId)');
+
+        _invalidateCache();
+        // Ne pas notifier pendant la migration pour éviter les boucles
+        if (!_isMigrating) {
+          _notifyPlannerUpdate();
+        }
+
+        return newId;
+      }
+    } catch (e) {
+      debugPrint('❌ syncCardioSessionToPlanner error: $e');
+      return null;
+    }
+  }
+
+  /// Mettre à jour le statut d'un cardio
+  static Future<bool> updateCardioStatus(
+    String cardioId,
+    PlannedStatus status, {
+    String? linkedSessionId,
+  }) async {
+    try {
+      final updateData = <String, dynamic>{
+        'status': status.value,
+      };
+
+      if (linkedSessionId != null) {
+        updateData['linked_session_id'] = linkedSessionId;
+      }
+
+      await _client
+          .from('planned_activities')
+          .update(updateData)
+          .eq('id', cardioId);
+
+      debugPrint('✅ updateCardioStatus: $cardioId -> ${status.value}');
+
+      _invalidateCache();
+      _notifyPlannerUpdate();
+
+      return true;
+    } catch (e) {
+      debugPrint('❌ updateCardioStatus error: $e');
+      return false;
+    }
+  }
+
+  /// Supprimer une session de l'historique ET du planificateur
+  static Future<bool> deleteWorkoutWithSync(String workoutId) async {
+    try {
+      // Récupérer le workout pour avoir le linkedSessionId
+      final workout = await getPlannedWorkoutById(workoutId);
+
+      // Supprimer du planificateur
+      await deletePlannedWorkout(workoutId);
+
+      // Si lié à une session, supprimer de l'historique aussi
+      if (workout?.linkedSessionId != null) {
+        // Utiliser SportDashboardService pour supprimer correctement
+        // (gère workout_session_summaries et workout_set_history)
+        await SportDashboardService.deleteMusculationSession(workout!.linkedSessionId!);
+        debugPrint('✅ deleteWorkoutWithSync: Session historique supprimée (${workout.linkedSessionId})');
+      }
+
+      return true;
+    } catch (e) {
+      debugPrint('❌ deleteWorkoutWithSync error: $e');
+      return false;
+    }
+  }
+
+  /// Supprimer un cardio de l'historique ET du planificateur
+  static Future<bool> deleteCardioWithSync(String cardioId) async {
+    try {
+      // Récupérer le cardio pour avoir le linkedSessionId
+      final cardio = await getPlannedActivityById(cardioId);
+
+      // Supprimer du planificateur
+      await deletePlannedActivity(cardioId);
+
+      // Si lié à une session, supprimer de l'historique aussi
+      if (cardio?.linkedSessionId != null) {
+        // Utiliser CardioService pour supprimer correctement
+        await CardioService.deleteCardioSession(cardio!.linkedSessionId!);
+        debugPrint('✅ deleteCardioWithSync: Session historique supprimée (${cardio.linkedSessionId})');
+      }
+
+      return true;
+    } catch (e) {
+      debugPrint('❌ deleteCardioWithSync error: $e');
+      return false;
+    }
+  }
+
+  // =====================================================
+  // FIND BY SESSION ID (pour suppression bidirectionnelle)
+  // =====================================================
+
+  /// Trouver un workout planifié par son linked_session_id
+  static Future<PlannedWorkout?> findPlannedWorkoutBySessionId(String sessionId) async {
+    try {
+      final userId = _client.auth.currentUser?.id;
+      if (userId == null) return null;
+
+      final results = await _client
+          .from('planned_workouts')
+          .select()
+          .eq('user_id', userId)
+          .eq('linked_session_id', sessionId)
+          .limit(1);
+
+      if (results.isEmpty) return null;
+      return PlannedWorkout.fromJson(results.first);
+    } catch (e) {
+      debugPrint('❌ findPlannedWorkoutBySessionId error: $e');
+      return null;
+    }
+  }
+
+  /// Trouver un cardio planifié par son linked_session_id
+  static Future<PlannedActivity?> findPlannedCardioBySessionId(String sessionId) async {
+    try {
+      final userId = _client.auth.currentUser?.id;
+      if (userId == null) return null;
+
+      // Note: linked_session_id peut ne pas exister dans planned_activities
+      // On essaie quand même, si ça échoue on retourne null
+      final results = await _client
+          .from('planned_activities')
+          .select()
+          .eq('user_id', userId)
+          .eq('activity_type', 'cardio')
+          .limit(100);
+
+      // Chercher manuellement dans les résultats car linked_session_id peut ne pas exister
+      for (final result in results) {
+        if (result['linked_session_id'] == sessionId) {
+          return PlannedActivity.fromJson(result);
+        }
+      }
+      return null;
+    } catch (e) {
+      debugPrint('❌ findPlannedCardioBySessionId error: $e');
+      return null;
+    }
+  }
+
+  // =====================================================
+  // MIGRATION RÉTROACTIVE
+  // =====================================================
+
+  /// Migrer les séances existantes de l'historique vers le planificateur
+  /// Appelé une fois au chargement du planificateur pour sync rétroactive
+  /// Nettoyer les doublons dans le planificateur (garder un seul linked_session_id)
+  static Future<void> cleanupDuplicateLinkedSessions() async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) return;
+
+    try {
+      // 1. Nettoyer les doublons dans planned_workouts
+      final workouts = await _client
+          .from('planned_workouts')
+          .select('id, linked_session_id, created_at')
+          .eq('user_id', userId)
+          .order('created_at', ascending: true);
+
+      final seenWorkoutSessionIds = <String>{};
+      final workoutIdsToDelete = <String>[];
+
+      for (final workout in workouts) {
+        final linkedId = workout['linked_session_id'] as String?;
+        if (linkedId != null) {
+          if (seenWorkoutSessionIds.contains(linkedId)) {
+            // Doublon - à supprimer
+            workoutIdsToDelete.add(workout['id'] as String);
+            debugPrint('  🔍 Doublon workout trouvé: linked=$linkedId');
+          } else {
+            seenWorkoutSessionIds.add(linkedId);
+          }
+        }
+      }
+
+      if (workoutIdsToDelete.isNotEmpty) {
+        for (final id in workoutIdsToDelete) {
+          await _client.from('planned_workouts').delete().eq('id', id);
+        }
+        debugPrint('🧹 Supprimé ${workoutIdsToDelete.length} workouts en doublon');
+      }
+
+      // 2. Nettoyer les doublons dans planned_activities (cardio uniquement)
+      // Note: linked_session_id peut ne pas exister, on utilise activity_data
+      try {
+        final activities = await _client
+            .from('planned_activities')
+            .select('id, activity_type, activity_data, created_at')
+            .eq('user_id', userId)
+            .eq('activity_type', 'cardio')
+            .order('created_at', ascending: true);
+
+        final seenActivitySessionIds = <String>{};
+        final activityIdsToDelete = <String>[];
+
+        for (final activity in activities) {
+          // Essayer de récupérer linked_session_id depuis activity_data ou directement
+          String? linkedId;
+          try {
+            linkedId = activity['linked_session_id'] as String?;
+          } catch (_) {
+            // La colonne n'existe peut-être pas
+          }
+
+          if (linkedId != null) {
+            if (seenActivitySessionIds.contains(linkedId)) {
+              activityIdsToDelete.add(activity['id'] as String);
+              debugPrint('  🔍 Doublon cardio trouvé: linked=$linkedId');
+            } else {
+              seenActivitySessionIds.add(linkedId);
+            }
+          }
+        }
+
+        if (activityIdsToDelete.isNotEmpty) {
+          for (final id in activityIdsToDelete) {
+            await _client.from('planned_activities').delete().eq('id', id);
+          }
+          debugPrint('🧹 Supprimé ${activityIdsToDelete.length} activités cardio en doublon');
+        }
+      } catch (e) {
+        debugPrint('⚠️ Nettoyage activités skipped: $e');
+      }
+
+      // Invalider le cache après nettoyage
+      if (workoutIdsToDelete.isNotEmpty) {
+        _invalidateCache();
+      }
+
+      debugPrint('✅ Nettoyage doublons terminé');
+    } catch (e) {
+      debugPrint('❌ Erreur nettoyage doublons: $e');
+    }
+  }
+
+  // Flag pour éviter les notifications pendant la migration
+  static bool _isMigrating = false;
+
+  static Future<void> migrateHistoryToPlanner() async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) return;
+
+    // Éviter les migrations multiples simultanées
+    if (_isMigrating) return;
+    _isMigrating = true;
+
+    try {
+      // D'abord nettoyer les doublons existants
+      await cleanupDuplicateLinkedSessions();
+
+      // Calculer les dates de la semaine courante
+      final now = DateTime.now();
+      final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
+      final endOfWeek = startOfWeek.add(const Duration(days: 6));
+      final startDate = DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day);
+      final endDate = DateTime(endOfWeek.year, endOfWeek.month, endOfWeek.day, 23, 59, 59);
+
+      debugPrint('🔄 Migration historique → planificateur (${startDate.toIso8601String().split('T')[0]} - ${endDate.toIso8601String().split('T')[0]})');
+
+      // 1. Migrer les workouts
+      final workouts = await _client
+          .from('workout_session_summaries')
+          .select('id, session_name, duration_minutes, session_date')
+          .eq('user_id', userId)
+          .gte('session_date', startDate.toIso8601String())
+          .lte('session_date', endDate.toIso8601String());
+
+      int workoutsMigrated = 0;
+      for (final workout in workouts) {
+        final sessionId = workout['id'] as String;
+
+        // Vérifier si déjà dans le planificateur
+        final existing = await findPlannedWorkoutBySessionId(sessionId);
+        if (existing == null) {
+          // Créer l'entrée planifiée
+          await syncWorkoutSessionToPlanner(
+            sessionId: sessionId,
+            workoutName: workout['session_name'] ?? 'Musculation',
+            sessionDate: DateTime.parse(workout['session_date']),
+            durationMinutes: workout['duration_minutes'],
+          );
+          workoutsMigrated++;
+          debugPrint('  ✅ Migration workout: ${workout['session_name']}');
+        }
+      }
+
+      // 2. Migrer les cardios
+      final cardios = await _client
+          .from('cardio_sessions')
+          .select('id, activity_type, activity_title, duration_seconds, distance_km, session_date')
+          .eq('user_id', userId)
+          .gte('session_date', startDate.toIso8601String())
+          .lte('session_date', endDate.toIso8601String());
+
+      int cardiosMigrated = 0;
+      for (final cardio in cardios) {
+        final sessionId = cardio['id'] as String;
+
+        // Vérifier si déjà dans le planificateur
+        final existing = await findPlannedCardioBySessionId(sessionId);
+        if (existing == null) {
+          // Créer l'entrée planifiée
+          final durationSeconds = cardio['duration_seconds'] as int?;
+          await syncCardioSessionToPlanner(
+            sessionId: sessionId,
+            activityType: cardio['activity_type'] ?? 'cardio',
+            activityTitle: cardio['activity_title'] ?? 'Cardio',
+            sessionDate: DateTime.parse(cardio['session_date']),
+            durationMinutes: durationSeconds != null ? durationSeconds ~/ 60 : null,
+            distanceKm: (cardio['distance_km'] as num?)?.toDouble(),
+          );
+          cardiosMigrated++;
+          debugPrint('  ✅ Migration cardio: ${cardio['activity_title']}');
+        }
+      }
+
+      debugPrint('✅ Migration terminée: $workoutsMigrated workouts, $cardiosMigrated cardios');
+
+      // Invalider le cache si des migrations ont été effectuées
+      // Note: On ne notifie PAS les listeners ici car _loadData() va charger les données juste après
+      if (workoutsMigrated > 0 || cardiosMigrated > 0) {
+        _invalidateCache();
+      }
+    } catch (e) {
+      debugPrint('❌ Erreur migration historique: $e');
+    } finally {
+      _isMigrating = false;
     }
   }
 }

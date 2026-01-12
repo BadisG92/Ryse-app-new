@@ -80,11 +80,12 @@ class _PlannerAIBottomSheetState extends State<PlannerAIBottomSheet> {
   }
 
   /// Scroll vers le bas pour afficher le dernier message
+  /// Avec reverse: true, scroll vers 0 = messages récents (en bas visuellement)
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
+          0, // Avec reverse: true, 0 = bas de la liste (messages récents)
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOut,
         );
@@ -474,17 +475,15 @@ class _PlannerAIBottomSheetState extends State<PlannerAIBottomSheet> {
   Widget build(BuildContext context) {
     final locService = context.watch<LocalizationService>();
     final langCode = locService.currentLanguageCode;
-    final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
     final screenHeight = MediaQuery.of(context).size.height;
 
-    // Hauteur réduite pour voir le calendrier (50% ou 55% avec le clavier)
-    final sheetHeight = bottomPadding > 0
-        ? screenHeight * 0.55 // Plus grand avec le clavier pour avoir de l'espace
-        : screenHeight * 0.50; // 50% sans clavier pour voir le calendrier
+    // Hauteur FIXE - pattern iMessage/WhatsApp
+    // Le clavier pousse la zone input, pas le container
+    final sheetHeight = screenHeight * 0.55;
 
     return Container(
       height: sheetHeight,
-      padding: EdgeInsets.only(bottom: bottomPadding),
       decoration: const BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -507,7 +506,7 @@ class _PlannerAIBottomSheetState extends State<PlannerAIBottomSheet> {
           // Header
           _buildHeader(context, langCode),
 
-          // Messages
+          // Messages (avec reverse: true pour pattern chat)
           Expanded(
             child: _buildMessagesList(),
           ),
@@ -520,13 +519,16 @@ class _PlannerAIBottomSheetState extends State<PlannerAIBottomSheet> {
             _buildWorkoutPreview(langCode),
 
           // Paywall, Preview buttons, ou Input zone
-          // Note: Les boutons de confirmation sont maintenant inline dans le message (style ChatGPT/Claude)
+          // Le padding du clavier est appliqué uniquement sur la zone input
           if (_showPaywallButton)
             _buildPaywallButton(langCode)
           else if (_pendingWorkouts != null)
             _buildPreviewButtons(langCode)
           else
-            _buildInputZone(langCode),
+            Padding(
+              padding: EdgeInsets.only(bottom: keyboardHeight),
+              child: _buildInputZone(langCode),
+            ),
         ],
       ),
     );
@@ -1093,15 +1095,24 @@ class _PlannerAIBottomSheetState extends State<PlannerAIBottomSheet> {
   }
 
   Widget _buildMessagesList() {
+    final itemCount = _messages.length + (_isProcessing ? 1 : 0);
+
     return ListView.builder(
       controller: _scrollController,
-      padding: const EdgeInsets.all(16),
-      itemCount: _messages.length + (_isProcessing ? 1 : 0),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      reverse: true, // Pattern iMessage/WhatsApp - nouveaux messages en bas
+      itemCount: itemCount,
       itemBuilder: (context, index) {
-        if (index == _messages.length && _isProcessing) {
+        // Avec reverse: true, index 0 = bas de la liste
+        // Typing indicator en premier (en bas)
+        if (_isProcessing && index == 0) {
           return _buildTypingIndicator();
         }
-        return _buildMessageBubble(_messages[index], index);
+
+        // Ajuster l'index pour les messages
+        final messageIndex = _isProcessing ? index - 1 : index;
+        final actualIndex = _messages.length - 1 - messageIndex;
+        return _buildMessageBubble(_messages[actualIndex], actualIndex);
       },
     );
   }
@@ -1444,12 +1455,13 @@ class _PlannerAIBottomSheetState extends State<PlannerAIBottomSheet> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: const BoxDecoration(
+        color: Colors.white,
         border: Border(
           top: BorderSide(color: Color(0xFFE2E8F0)),
         ),
       ),
-      child: SafeArea(
-        child: Row(
+      // Plus de SafeArea ici - le padding clavier est géré au niveau parent
+      child: Row(
           children: [
             Expanded(
               child: Container(
@@ -1513,7 +1525,6 @@ class _PlannerAIBottomSheetState extends State<PlannerAIBottomSheet> {
             ),
           ],
         ),
-      ),
     );
   }
 }

@@ -6,9 +6,9 @@ import '../../services/weekly_planner_service.dart';
 import '../../services/localization_service.dart';
 import '../../services/translations.dart';
 import '../../services/global_state_manager.dart';
+import '../../screens/planner_chat_screen.dart';
 import 'day_column_widget.dart';
 import 'add_activity_bottom_sheet.dart';
-import 'planner_ai_bottom_sheet.dart';
 import 'workout_recap_bottom_sheet.dart';
 import 'cardio_recap_bottom_sheet.dart';
 
@@ -30,6 +30,7 @@ class WeeklyPlannerWidget extends StatefulWidget {
 class _WeeklyPlannerWidgetState extends State<WeeklyPlannerWidget> {
   WeeklyPlannerData _weekData = WeeklyPlannerData.empty();
   bool _isLoading = true;
+  bool _isMigrating = false; // Flag pour éviter les boucles de rechargement
   final ScrollController _scrollController = ScrollController();
 
   @override
@@ -47,8 +48,10 @@ class _WeeklyPlannerWidgetState extends State<WeeklyPlannerWidget> {
   }
 
   void _onGlobalStateChange(StateChangeEvent event) {
-    // Recharger si nécessaire
-    if (event.type == ChangeType.dayReset) {
+    // Recharger si nécessaire, mais pas pendant une migration
+    if (_isMigrating) return;
+
+    if (event.type == ChangeType.dayReset || event.type == ChangeType.planner) {
       _loadData();
     }
   }
@@ -62,6 +65,12 @@ class _WeeklyPlannerWidgetState extends State<WeeklyPlannerWidget> {
       // Nettoyer les activités manquées au chargement
       await WeeklyPlannerService.cleanupMissedActivities();
 
+      // Migrer les séances de l'historique vers le planificateur (sync rétroactive)
+      // On active le flag pour éviter les boucles de rechargement
+      _isMigrating = true;
+      await WeeklyPlannerService.migrateHistoryToPlanner();
+      _isMigrating = false;
+
       final data = await WeeklyPlannerService.getWeekData();
 
       if (mounted) {
@@ -74,6 +83,7 @@ class _WeeklyPlannerWidgetState extends State<WeeklyPlannerWidget> {
         _scrollToToday();
       }
     } catch (e) {
+      _isMigrating = false; // S'assurer de réinitialiser le flag en cas d'erreur
       if (mounted) {
         setState(() => _isLoading = false);
       }
@@ -115,19 +125,29 @@ class _WeeklyPlannerWidgetState extends State<WeeklyPlannerWidget> {
     );
   }
 
-  void _showAIBottomSheet(BuildContext context, {String? initialMode}) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => PlannerAIBottomSheet(
-        weekData: _weekData,
-        initialMode: initialMode,
-        onPlanningComplete: () {
-          _loadData();
+  void _openPlannerChat(BuildContext context, {required String mode}) {
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => PlannerChatScreen(
+          initialMode: mode,
+          weekData: _weekData,
+        ),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          // Laisser le Hero gérer l'animation principale
+          // Juste un léger fade pour le contenu qui n'est pas dans le Hero
+          return FadeTransition(
+            opacity: animation,
+            child: child,
+          );
         },
+        transitionDuration: const Duration(milliseconds: 600),
+        reverseTransitionDuration: const Duration(milliseconds: 500),
       ),
-    );
+    ).then((_) {
+      // Rafraîchir les données au retour
+      _loadData();
+    });
   }
 
   void _showWorkoutRecap(BuildContext context, PlannedWorkout workout) {
@@ -169,32 +189,38 @@ class _WeeklyPlannerWidgetState extends State<WeeklyPlannerWidget> {
     final locService = context.watch<LocalizationService>();
     final langCode = locService.currentLanguageCode;
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+    return Hero(
+      tag: 'weekly_planner_hero',
+      child: Material(
+        color: Colors.transparent,
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          _buildHeader(context, langCode),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              _buildHeader(context, langCode),
 
-          // Jours de la semaine
-          _buildWeekDays(context, langCode),
+              // Jours de la semaine
+              _buildWeekDays(context, langCode),
 
-          // Zone IA (planifier avec Ryze)
-          _buildAIZone(context, langCode),
-        ],
+              // Zone IA (planifier avec Ryze)
+              _buildAIZone(context, langCode),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -377,7 +403,7 @@ class _WeeklyPlannerWidgetState extends State<WeeklyPlannerWidget> {
     required String mode,
   }) {
     return InkWell(
-      onTap: () => _showAIBottomSheet(context, initialMode: mode),
+      onTap: () => _openPlannerChat(context, mode: mode),
       borderRadius: BorderRadius.circular(12),
       child: Container(
         width: double.infinity,

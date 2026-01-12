@@ -2277,25 +2277,16 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
 
         if (kDebugMode) debugPrint('✅ Caches Sport invalidés après séance musculation');
 
-        // WEEKLY PLANNER SYNC: Marquer le workout planifié comme complété
+        // WEEKLY PLANNER SYNC: Synchroniser la séance avec le planificateur
+        // Crée une entrée si elle n'existe pas, ou met à jour le statut si elle existe
         try {
-          String? workoutIdToUpdate = widget.plannedWorkoutId;
-
-          // Si pas de plannedWorkoutId direct, chercher pour aujourd'hui (fallback)
-          if (workoutIdToUpdate == null) {
-            final today = DateTime.now();
-            final plannedWorkout = await WeeklyPlannerService.findPlannedWorkoutForDate(today);
-            workoutIdToUpdate = plannedWorkout?.id;
-          }
-
-          if (workoutIdToUpdate != null) {
-            await WeeklyPlannerService.updateWorkoutStatus(
-              workoutIdToUpdate,
-              PlannedStatus.completed,
-              linkedSessionId: completedSession.id,
-            );
-            if (kDebugMode) debugPrint('✅ Weekly Planner: Workout marqué comme complété (ID: $workoutIdToUpdate)');
-          }
+          final plannerId = await WeeklyPlannerService.syncWorkoutSessionToPlanner(
+            sessionId: completedSession.id,
+            workoutName: widget.sessionName,
+            sessionDate: DateTime.now(),
+            durationMinutes: _displayedDuration.inMinutes,
+          );
+          if (kDebugMode) debugPrint('✅ Weekly Planner: Sync effectuée (plannerId: $plannerId)');
         } catch (plannerError) {
           if (kDebugMode) debugPrint('⚠️ Erreur sync Weekly Planner: $plannerError');
         }

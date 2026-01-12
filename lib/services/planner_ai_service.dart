@@ -2123,7 +2123,7 @@ IMPORTANT:
           'action_type': {
             'type': 'string',
             'description': 'Type of action to confirm',
-            'enum': ['delete_all_workouts', 'delete_all_cardio', 'delete_workout', 'delete_cardio'],
+            'enum': ['delete_all', 'delete_all_workouts', 'delete_all_cardio', 'delete_workout', 'delete_cardio'],
           },
           'action_description': {
             'type': 'string',
@@ -2142,6 +2142,15 @@ IMPORTANT:
           },
         },
         'required': ['action_type', 'action_description'],
+      },
+    },
+    {
+      'name': 'delete_all',
+      'description': 'Delete ALL planned activities (both workouts AND cardio) for this week. Use this when user says "supprime tout" / "efface tout" / "delete everything". Use request_confirmation first.',
+      'parameters': {
+        'type': 'object',
+        'properties': {},
+        'required': [],
       },
     },
     {
@@ -2268,6 +2277,71 @@ IMPORTANT:
       },
     },
     {
+      'name': 'modify_workout',
+      'description': 'Modify an existing workout session. Can change type, duration, day, or regenerate exercises. Use when user wants to change something about an existing planned workout (e.g., "change mardi en dos", "rallonge à 60min").',
+      'parameters': {
+        'type': 'object',
+        'properties': {
+          'current_day': {
+            'type': 'string',
+            'description': 'Current day of the workout to modify',
+            'enum': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+          },
+          'new_day': {
+            'type': 'string',
+            'description': 'New day for the workout (only if changing day)',
+            'enum': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+          },
+          'new_workout_type': {
+            'type': 'string',
+            'description': 'New workout type (only if changing type, e.g., "Dos", "Pecs", "Full Body")',
+          },
+          'new_duration_minutes': {
+            'type': 'integer',
+            'description': 'New duration in minutes (only if changing duration)',
+          },
+          'regenerate_exercises': {
+            'type': 'boolean',
+            'description': 'If true, regenerate all exercises for this workout. Set to true when changing workout_type.',
+          },
+        },
+        'required': ['current_day'],
+      },
+    },
+    {
+      'name': 'modify_cardio',
+      'description': 'Modify an existing cardio session. Can change activity type, duration, distance, or day. Use when user wants to change something about an existing cardio (e.g., "change mon cardio de lundi en vélo", "rallonge à 45min").',
+      'parameters': {
+        'type': 'object',
+        'properties': {
+          'current_day': {
+            'type': 'string',
+            'description': 'Current day of the cardio to modify',
+            'enum': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+          },
+          'new_day': {
+            'type': 'string',
+            'description': 'New day for the cardio (only if changing day)',
+            'enum': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+          },
+          'new_activity': {
+            'type': 'string',
+            'description': 'New activity type (only if changing activity). ONLY these 4 activities are supported in the app.',
+            'enum': ['running', 'bike', 'walking', 'hiit'],
+          },
+          'new_duration_minutes': {
+            'type': 'integer',
+            'description': 'New duration in minutes (only if changing duration)',
+          },
+          'new_target_km': {
+            'type': 'number',
+            'description': 'New target distance in km (only if changing distance)',
+          },
+        },
+        'required': ['current_day'],
+      },
+    },
+    {
       'name': 'create_cardio',
       'description': 'Create a cardio session for a specific day. IMPORTANT: You need either duration_minutes OR target_km. If user provides neither, use ask_clarification to ask. If user provides one, use only that one. If user provides both, use both.',
       'parameters': {
@@ -2280,8 +2354,8 @@ IMPORTANT:
           },
           'activity': {
             'type': 'string',
-            'description': 'Type of cardio activity',
-            'enum': ['running', 'cycling', 'swimming', 'walking', 'hiit', 'rowing', 'elliptical'],
+            'description': 'Type of cardio activity. ONLY these 4 activities are supported in the app.',
+            'enum': ['running', 'bike', 'walking', 'hiit'],
           },
           'duration_minutes': {
             'type': 'integer',
@@ -2366,59 +2440,141 @@ IMPORTANT:
 
       final systemPrompt = '''
 You are Ryze, a friendly fitness coach AI assistant. You help users plan their weekly workouts and cardio.
+ALWAYS respond in $languageName.
 
-⚠️ CRITICAL - DISTINGUISH BETWEEN TWO DIFFERENT TYPES:
-1. **WORKOUT** = musculation, strength training, séance de muscu, gym, poids, exercices
-   - Use: delete_all_workouts, delete_workout, create_workout, move_workout
-2. **CARDIO** = course, running, vélo, cycling, natation, marche, HIIT, cardio
-   - Use: delete_all_cardio, delete_cardio, create_cardio, move_cardio
+═══════════════════════════════════════════════════════════════
+                        4 MAIN ACTIONS
+═══════════════════════════════════════════════════════════════
+1. CREATE - create one or more sessions
+2. DELETE - delete one, several, or all sessions (requires confirmation)
+3. MOVE - change the date of a session
+4. MODIFY - change parameters of an existing session
 
-EXAMPLES:
-- "supprime mes séances de cardio" → delete_all_cardio (NOT delete_all_workouts!)
-- "supprime mes séances de musculation" → delete_all_workouts
-- "supprime mes séances" (ambiguous) → ask_clarification to know if cardio or workout
-- "du vélo vendredi" → ask_clarification "Combien de temps ou quelle distance?" (NO duration/distance given)
-- "30 min de vélo vendredi" → create_cardio(day="friday", activity="cycling", duration_minutes=30) (only duration)
-- "5km de course lundi" → create_cardio(day="monday", activity="running", target_km=5) (only distance)
-- "45 min de natation" → ask_clarification for the day, then create_cardio with duration_minutes=45
-- "ajoute un Full Body lundi 45min" → create_workout(day="monday", workout_type="Full Body", duration_minutes=45)
-- "une séance de muscu mardi" → ask_clarification "Quel type de séance (Pecs, Dos, Jambes, Full Body...) et combien de temps?"
-- "une séance pecs" → ask_clarification for the day and duration
-- "3 séances de sport" → ask_clarification for types and days
-- "déplace ma séance de muscu du lundi au mercredi" → move_workout(from_day="monday", to_day="wednesday")
-- "déplace mon cardio du jeudi au samedi" → move_cardio(from_day="thursday", to_day="saturday")
-- "mets ma course de vendredi à dimanche" → move_cardio(from_day="friday", to_day="sunday")
-- "annule" / "undo" / "reviens en arrière" / "annule ça" → undo_last_action
+═══════════════════════════════════════════════════════════════
+                        2 SESSION TYPES
+═══════════════════════════════════════════════════════════════
+WORKOUT (musculation, strength training, gym, poids):
+  → Tools: create_workout, delete_workout, delete_all_workouts, move_workout, modify_workout
 
-MULTIPLE ACTIONS IN ONE MESSAGE (call ALL tools together):
-- "supprime mes séances et ajoute du cardio mardi 30min" → [request_confirmation(delete_all_workouts), create_cardio(tuesday, 30min)]
-- "efface la séance de lundi et crée un Full Body mercredi" → [request_confirmation(delete_workout, monday), create_workout(wednesday)]
-- "supprime tout et refais moi 3 séances" → [request_confirmation(delete_all_workouts), create_workout(x3)]
+CARDIO - ONLY 4 activities supported: running, bike, walking, hiit
+  (course, vélo, marche, HIIT - NO swimming/natation, NO elliptique, NO rameur!)
+  → Tools: create_cardio, delete_cardio, delete_all_cardio, move_cardio, modify_cardio
 
-CONFIRMATION FORMAT:
-When using request_confirmation, action_description MUST include the action verb:
-- "supprimer toutes les séances de cardio de la semaine"
-- "supprimer toutes les séances de musculation de la semaine"
-- "supprimer la séance de cardio du lundi"
-- "supprimer la séance de musculation du mardi"
+BOTH (when user says "tout", "mes séances" without specifying):
+  → Tool: delete_all (for deletion only)
 
-IMPORTANT - action_args for single deletes:
-When action_type is "delete_cardio" or "delete_workout", you MUST include the day in action_args:
-- request_confirmation(action_type="delete_cardio", action_description="...", action_args={"day": "thursday"})
-- request_confirmation(action_type="delete_workout", action_description="...", action_args={"day": "monday"})
-The day must be in English lowercase: monday, tuesday, wednesday, thursday, friday, saturday, sunday
+═══════════════════════════════════════════════════════════════
+                    REQUIRED INFORMATION
+═══════════════════════════════════════════════════════════════
+FOR WORKOUT:
+  ✓ workout_type (Pecs, Dos, Jambes, Full Body, Bras, Épaules, PPL...) → MUST ASK if missing
+  ✓ duration_minutes (45, 60, 90...) → MUST ASK if missing
+  ✓ day(s) → CAN CHOOSE AUTOMATICALLY if missing (pick optimal days based on context)
 
-RULES:
-1. ALWAYS respond in $languageName
-2. For ANY DELETE, FIRST use request_confirmation with the ACTION you will perform
-3. When creating multiple items, call the tool multiple times
-4. If unclear whether cardio or workout, ASK with ask_clarification
-5. For CARDIO: you NEED either duration_minutes OR target_km (or both). If user didn't specify either, use ask_clarification to ask "Combien de temps ou quelle distance?" BEFORE creating. Only provide the values the user actually gave you - NEVER add default values.
-6. For WORKOUT/MUSCU: you NEED workout_type AND duration_minutes. If user didn't specify these, use ask_clarification to ask "Quel type de séance (Pecs, Dos, Jambes, Full Body...) et combien de temps?" BEFORE creating. NEVER use default values.
-7. IMPORTANT - MULTIPLE ACTIONS: When user asks for multiple things (e.g. "delete X and create Y"), you MUST call ALL tools in the SAME response:
-   - First: request_confirmation for the delete
-   - Then: create_cardio or create_workout for the creations
-   Example: "supprime mes séances et ajoute un jogging mardi 10km" → call request_confirmation AND create_cardio in the same response
+FOR CARDIO (ONLY: running, bike, walking, hiit):
+  ✓ activity_type (course/running, vélo/bike, marche/walking, HIIT) → MUST ASK if missing
+  ✓ duration_minutes OR target_km (at least one) → MUST ASK if both missing
+  ✓ day(s) → CAN CHOOSE AUTOMATICALLY if missing
+
+DAY DELEGATION - User can say:
+  "choisis pour moi" / "à toi de voir" / "décide" / "place les comme tu veux"
+  → AI should choose optimal days based on user's schedule and create directly
+
+═══════════════════════════════════════════════════════════════
+          ⚠️ CONTEXTUAL CLARIFICATIONS - ASK ONLY WHAT'S MISSING!
+═══════════════════════════════════════════════════════════════
+CRITICAL: Adapt your question to what's actually missing. DO NOT ask for info already provided!
+
+WORKOUT EXAMPLES:
+• "3 séances Full Body"
+  → type=✓ duration=✗ days=auto
+  → ASK: "Combien de temps pour chaque séance ? (ex: 45min, 60min)"
+
+• "une séance pecs mardi"
+  → type=✓ duration=✗ days=✓
+  → ASK: "Combien de temps pour ta séance Pecs ? (ex: 45min, 60min)"
+
+• "une séance de muscu mardi"
+  → type=✗ duration=✗ days=✓
+  → ASK: "Quel type de séance (Pecs, Dos, Jambes, Full Body...) et combien de temps ? (ex: 45min, 60min)"
+
+• "une séance pecs 45min"
+  → type=✓ duration=✓ days=auto
+  → CREATE directly, choose optimal day
+
+• "Full Body lundi 60min"
+  → type=✓ duration=✓ days=✓
+  → CREATE directly
+
+CARDIO EXAMPLES:
+• "du vélo vendredi"
+  → type=✓ duration/distance=✗ days=✓
+  → ASK: "Combien de temps ou quelle distance ?"
+
+• "30min de cardio"
+  → type=✗ duration=✓ days=auto
+  → ASK: "Quel type de cardio ? (course, vélo, natation...)"
+
+• "30min de vélo"
+  → type=✓ duration=✓ days=auto
+  → CREATE directly, choose optimal day
+
+• "10km de course lundi"
+  → type=✓ distance=✓ days=✓
+  → CREATE directly
+
+═══════════════════════════════════════════════════════════════
+                    MOVE vs DELETE DISTINCTION
+═══════════════════════════════════════════════════════════════
+MOVE keywords: "change X à Y", "de X à Y", "décale", "déplace", "mets X à Y"
+  → Use move_workout or move_cardio
+
+DELETE keywords: "supprime", "enlève", "retire", "efface", "annule" (without target day)
+  → Use delete_* tools with request_confirmation FIRST
+
+DELETE EXAMPLES:
+• "supprime tout" / "efface tout" → delete_all
+• "supprime mes séances" → delete_all (assume everything)
+• "supprime mes séances de muscu" → delete_all_workouts
+• "supprime mes séances de cardio" → delete_all_cardio
+• "supprime la séance de lundi" → delete_workout or delete_cardio (check context)
+
+MOVE EXAMPLES:
+• "change la séance de mardi à vendredi" → move_workout(tuesday→friday)
+• "décale mon cardio de jeudi à samedi" → move_cardio(thursday→saturday)
+
+═══════════════════════════════════════════════════════════════
+                    MODIFY - Change existing session
+═══════════════════════════════════════════════════════════════
+MODIFY keywords: "change en", "modifie", "rallonge", "raccourcis", "remplace par", "transformer"
+  → Use modify_workout or modify_cardio
+
+IMPORTANT: MODIFY ≠ MOVE!
+  MOVE = only change the day
+  MODIFY = change type, duration, or other parameters (not the day)
+
+MODIFY EXAMPLES:
+• "change ma séance de mardi en dos"
+  → modify_workout(current_day="tuesday", new_workout_type="Dos", regenerate_exercises=true)
+• "rallonge ma séance de lundi à 60min"
+  → modify_workout(current_day="monday", new_duration_minutes=60)
+• "change mon cardio de mercredi en vélo"
+  → modify_cardio(current_day="wednesday", new_activity="bike")
+• "modifie la durée du cardio de jeudi à 45min"
+  → modify_cardio(current_day="thursday", new_duration_minutes=45)
+
+═══════════════════════════════════════════════════════════════
+                    CONFIRMATION RULES
+═══════════════════════════════════════════════════════════════
+For ANY delete action, ALWAYS use request_confirmation FIRST.
+Include day in action_args for single deletes:
+  request_confirmation(action_type="delete_workout", action_args={"day": "monday"}, ...)
+
+═══════════════════════════════════════════════════════════════
+                    MULTIPLE ACTIONS
+═══════════════════════════════════════════════════════════════
+When user asks for multiple things, call ALL tools in the SAME response:
+• "supprime tout et ajoute 3 séances" → [request_confirmation(delete_all), create_workout x3]
 
 CONTEXT:
 - Today: ${DateTime.now().toIso8601String().split('T')[0]}
@@ -2635,6 +2791,19 @@ USER REQUEST: "$userMessage"
           'requires_confirmation': true,
         };
 
+      case 'delete_all':
+        // Supprimer TOUT (workouts + cardio) en une seule action
+        final workoutsToDelete = await WeeklyPlannerService.getAllWorkoutsThisWeek();
+        final cardiosToDelete = await WeeklyPlannerService.getAllCardioThisWeek();
+        _lastAction = {
+          'type': 'delete_all',
+          'deleted_workouts': workoutsToDelete.map((w) => w.toJson()).toList(),
+          'deleted_cardios': cardiosToDelete.map((c) => c.toJson()).toList(),
+        };
+        await WeeklyPlannerService.deleteAllWorkoutsThisWeek();
+        await WeeklyPlannerService.deleteAllCardioThisWeek();
+        return {'success': true, 'message': _getToolMessage(langCode, 'all_deleted')};
+
       case 'delete_all_workouts':
         // Stocker les workouts avant suppression pour undo
         final workoutsToDelete = await WeeklyPlannerService.getAllWorkoutsThisWeek();
@@ -2794,6 +2963,118 @@ USER REQUEST: "$userMessage"
         }
         return {'success': false, 'message': _getToolMessage(langCode, 'no_cardio')};
 
+      case 'modify_workout':
+        final currentDay = _parseSingleDay(args['current_day'] as String? ?? '');
+        if (currentDay == null) {
+          return {'success': false, 'message': 'Invalid day'};
+        }
+
+        // Trouver le workout existant
+        final existingWorkout = await WeeklyPlannerService.findPlannedWorkoutForDate(currentDay);
+        if (existingWorkout == null) {
+          return {'success': false, 'message': _getToolMessage(langCode, 'no_workout_found')};
+        }
+
+        // Stocker pour undo
+        _lastAction = {
+          'type': 'modify_workout',
+          'workout_id': existingWorkout.id,
+          'original_name': existingWorkout.workoutName,
+          'original_duration': existingWorkout.durationMinutes,
+          'original_day': currentDay.toIso8601String(),
+        };
+
+        // Appliquer les modifications
+        final newDay = args['new_day'] != null ? _parseSingleDay(args['new_day'] as String) : null;
+        final newType = args['new_workout_type'] as String?;
+        final newDuration = args['new_duration_minutes'] as int?;
+        final regenerate = args['regenerate_exercises'] as bool? ?? (newType != null);
+
+        // Si changement de jour → move
+        if (newDay != null && newDay != currentDay) {
+          await WeeklyPlannerService.movePlannedWorkout(existingWorkout.id, newDay);
+        }
+
+        // Si changement de type → regénérer les exercices
+        if (newType != null && regenerate) {
+          // Utiliser la durée existante si pas de nouvelle durée
+          final duration = newDuration ?? existingWorkout.durationMinutes ?? 45;
+
+          // Générer les nouveaux exercices avec l'IA
+          final result = await AIWorkoutGenerationService.generateWorkout(
+            userRequest: '$newType workout',
+            durationMinutes: duration,
+          );
+
+          if (result.success && result.exercises != null && result.exercises!.isNotEmpty) {
+            // Mettre à jour avec le nouveau type ET les nouveaux exercices
+            await WeeklyPlannerService.updatePlannedWorkout(
+              existingWorkout.id,
+              workoutName: newType,
+              durationMinutes: duration,
+              exercises: result.exercises,
+            );
+          } else {
+            // Fallback: mettre à jour seulement le nom si génération échoue
+            await WeeklyPlannerService.updatePlannedWorkout(
+              existingWorkout.id,
+              workoutName: newType,
+              durationMinutes: newDuration,
+            );
+          }
+        } else if (newDuration != null) {
+          // Seulement changement de durée, pas besoin de regénérer
+          await WeeklyPlannerService.updatePlannedWorkout(
+            existingWorkout.id,
+            durationMinutes: newDuration,
+          );
+        }
+
+        return {'success': true, 'message': _getToolMessage(langCode, 'workout_modified')};
+
+      case 'modify_cardio':
+        final currentDayCardio = _parseSingleDay(args['current_day'] as String? ?? '');
+        if (currentDayCardio == null) {
+          return {'success': false, 'message': 'Invalid day'};
+        }
+
+        // Trouver le cardio existant
+        final existingCardio = await WeeklyPlannerService.findPlannedCardioForDate(currentDayCardio);
+        if (existingCardio == null) {
+          return {'success': false, 'message': _getToolMessage(langCode, 'no_cardio_found')};
+        }
+
+        // Stocker pour undo
+        _lastAction = {
+          'type': 'modify_cardio',
+          'cardio_id': existingCardio.id,
+          'original_day': currentDayCardio.toIso8601String(),
+          'original_data': existingCardio.toJson(),
+        };
+
+        // Appliquer les modifications
+        final newDayCardio = args['new_day'] != null ? _parseSingleDay(args['new_day'] as String) : null;
+        final newActivity = args['new_activity'] as String?;
+        final newDurationCardio = args['new_duration_minutes'] as int?;
+        final newTargetKm = args['new_target_km'] as num?;
+
+        // Si changement de jour → move
+        if (newDayCardio != null && newDayCardio != currentDayCardio) {
+          await WeeklyPlannerService.movePlannedCardio(existingCardio.id, newDayCardio);
+        }
+
+        // Si changement d'autres paramètres → update cardio
+        if (newActivity != null || newDurationCardio != null || newTargetKm != null) {
+          await WeeklyPlannerService.updatePlannedCardio(
+            existingCardio.id,
+            activityType: newActivity,
+            durationMinutes: newDurationCardio,
+            targetKm: newTargetKm?.toDouble(),
+          );
+        }
+
+        return {'success': true, 'message': _getToolMessage(langCode, 'cardio_modified')};
+
       case 'create_cardio':
         final dayStr = args['day'] as String? ?? '';
         final activityKey = args['activity'] as String? ?? 'running';
@@ -2859,6 +3140,23 @@ USER REQUEST: "$userMessage"
         final actionType = _lastAction!['type'] as String;
         try {
           switch (actionType) {
+            case 'delete_all':
+              // Restaurer TOUT (workouts + cardio)
+              final deletedWorkouts = _lastAction!['deleted_workouts'] as List<dynamic>? ?? [];
+              final deletedCardios = _lastAction!['deleted_cardios'] as List<dynamic>? ?? [];
+              for (final workoutJson in deletedWorkouts) {
+                await WeeklyPlannerService.restorePlannedWorkout(workoutJson as Map<String, dynamic>);
+              }
+              for (final cardioJson in deletedCardios) {
+                await WeeklyPlannerService.restorePlannedActivity(cardioJson as Map<String, dynamic>);
+              }
+              _lastAction = null;
+              final totalRestored = deletedWorkouts.length + deletedCardios.length;
+              final msg0 = langCode == 'fr' ? '✅ $totalRestored séance(s) restaurée(s)'
+                  : langCode == 'de' ? '✅ $totalRestored Einheit(en) wiederhergestellt'
+                  : '✅ $totalRestored session(s) restored';
+              return {'success': true, 'message': msg0};
+
             case 'delete_all_workouts':
               // Restaurer tous les workouts supprimés
               final deletedWorkouts = _lastAction!['deleted_workouts'] as List<dynamic>? ?? [];
@@ -3111,7 +3409,7 @@ USER REQUEST: "$userMessage"
   /// Vérifie si une action nécessite une confirmation
   static bool _actionRequiresConfirmation(String actionName, Map<String, dynamic> args) {
     // Actions qui nécessitent toujours une confirmation
-    if (actionName == 'delete_all_workouts' || actionName == 'delete_all_cardio') {
+    if (actionName == 'delete_all' || actionName == 'delete_all_workouts' || actionName == 'delete_all_cardio') {
       return true;
     }
     // Suppression individuelle avec un jour spécifique
@@ -3130,6 +3428,13 @@ USER REQUEST: "$userMessage"
     }
 
     switch (actionName) {
+      case 'delete_all':
+        final msgs = {
+          'fr': '⚠️ Je vais supprimer TOUTES les séances de la semaine (musculation + cardio). Confirmer ?',
+          'en': '⚠️ I will delete ALL sessions for the week (workouts + cardio). Confirm?',
+          'de': '⚠️ Ich werde ALLE Einheiten der Woche löschen (Krafttraining + Cardio). Bestätigen?',
+        };
+        return msgs[langCode] ?? msgs['en']!;
       case 'delete_all_workouts':
         final msgs = {
           'fr': '⚠️ Je vais supprimer toutes les séances de musculation de la semaine. Confirmer ?',
@@ -3216,6 +3521,11 @@ USER REQUEST: "$userMessage"
   /// Messages pour les tools
   static String _getToolMessage(String langCode, String key) {
     final messages = {
+      'all_deleted': {
+        'fr': '✅ Toutes les séances ont été supprimées (musculation + cardio)',
+        'en': '✅ All sessions have been deleted (workouts + cardio)',
+        'de': '✅ Alle Einheiten wurden gelöscht (Krafttraining + Cardio)',
+      },
       'all_workouts_deleted': {
         'fr': '✅ Toutes les séances de musculation ont été supprimées',
         'en': '✅ All strength workouts have been deleted',
@@ -3256,20 +3566,38 @@ USER REQUEST: "$userMessage"
         'en': 'Cardio added',
         'de': 'Cardio hinzugefügt',
       },
+      'workout_modified': {
+        'fr': '✅ Séance modifiée',
+        'en': '✅ Workout modified',
+        'de': '✅ Training geändert',
+      },
+      'cardio_modified': {
+        'fr': '✅ Cardio modifié',
+        'en': '✅ Cardio modified',
+        'de': '✅ Cardio geändert',
+      },
+      'no_workout_found': {
+        'fr': '❌ Aucune séance trouvée ce jour-là',
+        'en': '❌ No workout found on that day',
+        'de': '❌ Kein Training an diesem Tag gefunden',
+      },
+      'no_cardio_found': {
+        'fr': '❌ Aucun cardio trouvé ce jour-là',
+        'en': '❌ No cardio found on that day',
+        'de': '❌ Kein Cardio an diesem Tag gefunden',
+      },
     };
     return messages[key]?[langCode] ?? messages[key]?['en'] ?? key;
   }
 
   /// Traduire le nom de l'activité cardio
+  /// Les 4 seules activités supportées: running, bike, walking, hiit
   static String _getCardioActivityName(String activityKey, String langCode) {
     final names = {
       'running': {'fr': 'Course à pied', 'en': 'Running', 'de': 'Laufen'},
-      'cycling': {'fr': 'Vélo', 'en': 'Cycling', 'de': 'Radfahren'},
-      'swimming': {'fr': 'Natation', 'en': 'Swimming', 'de': 'Schwimmen'},
+      'bike': {'fr': 'Vélo', 'en': 'Cycling', 'de': 'Radfahren'},
       'walking': {'fr': 'Marche', 'en': 'Walking', 'de': 'Gehen'},
       'hiit': {'fr': 'HIIT', 'en': 'HIIT', 'de': 'HIIT'},
-      'rowing': {'fr': 'Rameur', 'en': 'Rowing', 'de': 'Rudern'},
-      'elliptical': {'fr': 'Elliptique', 'en': 'Elliptical', 'de': 'Crosstrainer'},
     };
     return names[activityKey.toLowerCase()]?[langCode] ??
            names[activityKey.toLowerCase()]?['en'] ??

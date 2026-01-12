@@ -333,7 +333,8 @@ class WorkoutRecapBottomSheet extends StatelessWidget {
                 onPressed: () async {
                   final confirm = await _showDeleteConfirmation(context, langCode);
                   if (confirm == true) {
-                    await WeeklyPlannerService.deletePlannedWorkout(workout.id);
+                    // Suppression bidirectionnelle: planificateur + historique si lié
+                    await WeeklyPlannerService.deleteWorkoutWithSync(workout.id);
                     if (context.mounted) {
                       Navigator.pop(context);
                       onWorkoutDeleted?.call();

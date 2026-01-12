@@ -278,7 +278,8 @@ class CardioRecapBottomSheet extends StatelessWidget {
                 onPressed: () async {
                   final confirm = await _showDeleteConfirmation(context, langCode);
                   if (confirm == true) {
-                    await WeeklyPlannerService.deletePlannedActivity(activity.id);
+                    // Suppression bidirectionnelle: planificateur + historique si lié
+                    await WeeklyPlannerService.deleteCardioWithSync(activity.id);
                     if (context.mounted) {
                       Navigator.pop(context);
                       onCardioDeleted?.call();

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
@@ -9,6 +10,7 @@ import '../services/translations.dart';
 import '../services/localization_service.dart';
 import '../services/global_state_manager.dart';
 import '../services/unit_service.dart';
+import '../services/weekly_planner_service.dart';
 
 class ManualCardioEntryScreen extends StatefulWidget {
   final String activityType;
@@ -346,14 +348,30 @@ class _ManualCardioEntryScreenState extends State<ManualCardioEntryScreen> {
 
                         // Historiser la session dans Supabase
                         var savedSuccessfully = false;
+                        String? sessionId;
                         try {
-                          await _saveManualSessionToSupabase(entry);
-                          debugPrint('✅ Session manuelle cardio sauvegardée');
+                          sessionId = await _saveManualSessionToSupabase(entry);
+                          debugPrint('✅ Session manuelle cardio sauvegardée (id: $sessionId)');
                           savedSuccessfully = true;
 
                           // UNE SEULE mise à jour du GlobalState pour éviter les doublons
                           GlobalStateManager.instance.updateWorkout(true);
                           debugPrint('✅ GlobalStateManager: Cardio manuel marqué comme complété');
+
+                          // WEEKLY PLANNER SYNC: Synchroniser avec le planificateur
+                          try {
+                            await WeeklyPlannerService.syncCardioSessionToPlanner(
+                              sessionId: sessionId,
+                              activityType: widget.activityType,
+                              activityTitle: widget.activityTitle,
+                              sessionDate: _selectedDate,
+                              durationMinutes: entry.duration.inMinutes,
+                              distanceKm: entry.distance > 0 ? entry.distance : null,
+                            );
+                            if (kDebugMode) debugPrint('✅ Weekly Planner: Cardio manuel sync effectuée');
+                          } catch (plannerError) {
+                            if (kDebugMode) debugPrint('⚠️ Erreur sync Weekly Planner: $plannerError');
+                          }
                         } catch (e) {
                           debugPrint('❌ Erreur sauvegarde session manuelle: $e');
                           if (mounted) {
@@ -465,7 +483,8 @@ class _ManualCardioEntryScreenState extends State<ManualCardioEntryScreen> {
   }
 
   /// Sauvegarde la session manuelle dans Supabase
-  Future<void> _saveManualSessionToSupabase(ManualCardioEntry entry) async {
+  /// Retourne l'ID de la session créée
+  Future<String> _saveManualSessionToSupabase(ManualCardioEntry entry) async {
     try {
       // Convertir l'entrée manuelle en CardioSessionData
       final sessionData = CardioSessionData(
@@ -481,7 +500,7 @@ class _ManualCardioEntryScreenState extends State<ManualCardioEntryScreen> {
         averageSpeed: entry.calculateAverageSpeed(),
         currentSpeed: entry.calculateAverageSpeed(),
       );
-      
+
       // Utiliser l'intensité du slider pour la sauvegarde
       final locService = LocalizationService.instance;
       final intensityLabels = [
@@ -491,14 +510,16 @@ class _ManualCardioEntryScreenState extends State<ManualCardioEntryScreen> {
         'workout_intensity_very_high'.tr(locService.currentLanguageCode),// 4
       ];
 
-      await CardioService.saveCompletedCardioSession(
+      final sessionId = await CardioService.saveCompletedCardioSession(
         sessionData: sessionData,
         intensity: intensityLabels[entry.intensity - 1],
         notes: entry.notes,
       );
-      
+
       // Invalider le cache pour rafraîchir les données
       CardioService.invalidateCache();
+
+      return sessionId;
     } catch (e) {
       debugPrint('❌ Erreur lors de la sauvegarde manuelle: $e');
       rethrow;

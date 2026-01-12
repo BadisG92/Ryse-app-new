@@ -1,5 +1,110 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../models/weekly_planner_models.dart';
+
+/// Mini chip carré pour le grid layout du planner
+class MiniActivitySquare extends StatelessWidget {
+  final PlannedActivityType activityType;
+  final PlannedStatus status;
+  final VoidCallback? onTap;
+
+  const MiniActivitySquare({
+    super.key,
+    required this.activityType,
+    this.status = PlannedStatus.planned,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final baseColor = activityType.color;
+    final isCompleted = status == PlannedStatus.completed;
+    final isMissed = status == PlannedStatus.missed;
+
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        width: 14,
+        height: 14,
+        decoration: BoxDecoration(
+          color: isMissed
+              ? const Color(0xFFFEE2E2)
+              : isCompleted
+                  ? baseColor.withOpacity(0.3)
+                  : baseColor.withOpacity(0.15),
+          borderRadius: BorderRadius.circular(3),
+          border: isMissed
+              ? Border.all(color: const Color(0xFFEF4444).withOpacity(0.5), width: 1)
+              : isCompleted
+                  ? null
+                  : Border.all(color: baseColor.withOpacity(0.4), width: 1),
+        ),
+        child: Center(
+          child: Icon(
+            activityType.icon,
+            size: 8,
+            color: isMissed
+                ? const Color(0xFFEF4444)
+                : baseColor,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Mini chip carré pour workout dans le grid layout
+class MiniWorkoutSquare extends StatelessWidget {
+  final PlannedWorkout workout;
+  final VoidCallback? onTap;
+
+  const MiniWorkoutSquare({
+    super.key,
+    required this.workout,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final baseColor = workout.color;
+    final isCompleted = workout.status == PlannedStatus.completed;
+    final isMissed = workout.status == PlannedStatus.missed;
+    const completedColor = Color(0xFF10B981);
+    final displayColor = isCompleted ? completedColor : baseColor;
+
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        width: 14,
+        height: 14,
+        decoration: BoxDecoration(
+          color: isMissed
+              ? const Color(0xFFFEE2E2)
+              : isCompleted
+                  ? completedColor.withOpacity(0.3)
+                  : baseColor.withOpacity(0.15),
+          borderRadius: BorderRadius.circular(3),
+          border: isMissed
+              ? Border.all(color: const Color(0xFFEF4444).withOpacity(0.5), width: 1)
+              : isCompleted
+                  ? Border.all(color: completedColor.withOpacity(0.5), width: 1)
+                  : Border.all(color: baseColor.withOpacity(0.4), width: 1),
+        ),
+        child: Center(
+          child: Icon(
+            LucideIcons.dumbbell,
+            size: 8,
+            color: isMissed
+                ? const Color(0xFFEF4444)
+                : displayColor,
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 /// Chip représentant une activité (repas ou cardio) dans le planner
 class ActivityChipWidget extends StatelessWidget {
@@ -178,6 +283,9 @@ class WorkoutChipWidget extends StatelessWidget {
   }
 
   Widget _buildCompactChip(Color baseColor, bool isCompleted, bool isMissed) {
+    // Utiliser vert pour les séances complétées (plus visible)
+    final displayColor = isCompleted ? const Color(0xFF10B981) : baseColor;
+
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
@@ -188,13 +296,13 @@ class WorkoutChipWidget extends StatelessWidget {
           color: isMissed
               ? const Color(0xFFFEE2E2)
               : isCompleted
-                  ? baseColor.withOpacity(0.2)
+                  ? const Color(0xFF10B981).withOpacity(0.2) // Vert clair pour complété
                   : baseColor.withOpacity(0.1),
           borderRadius: BorderRadius.circular(4),
           border: isMissed
               ? Border.all(color: const Color(0xFFEF4444).withOpacity(0.5))
               : isCompleted
-                  ? null
+                  ? Border.all(color: const Color(0xFF10B981).withOpacity(0.5)) // Bordure verte
                   : Border.all(
                       color: baseColor.withOpacity(0.3),
                       style: BorderStyle.solid,
@@ -205,20 +313,12 @@ class WorkoutChipWidget extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              workout.icon,
+              isCompleted ? Icons.check : workout.icon, // Icône check si complété
               size: 12,
               color: isMissed
                   ? const Color(0xFFEF4444)
-                  : baseColor,
+                  : displayColor,
             ),
-            if (isCompleted) ...[
-              const SizedBox(width: 2),
-              Icon(
-                Icons.check,
-                size: 10,
-                color: baseColor,
-              ),
-            ],
           ],
         ),
       ),
@@ -226,6 +326,10 @@ class WorkoutChipWidget extends StatelessWidget {
   }
 
   Widget _buildFullChip(Color baseColor, bool isCompleted, bool isMissed) {
+    // Couleur verte pour les séances complétées (plus visible)
+    const completedColor = Color(0xFF10B981);
+    final displayColor = isCompleted ? completedColor : baseColor;
+
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
@@ -235,13 +339,13 @@ class WorkoutChipWidget extends StatelessWidget {
           color: isMissed
               ? const Color(0xFFFEE2E2)
               : isCompleted
-                  ? baseColor.withOpacity(0.15)
+                  ? completedColor.withOpacity(0.15) // Fond vert clair
                   : baseColor.withOpacity(0.1),
           borderRadius: BorderRadius.circular(8),
           border: isMissed
               ? Border.all(color: const Color(0xFFEF4444).withOpacity(0.5))
               : isCompleted
-                  ? Border.all(color: baseColor.withOpacity(0.3))
+                  ? Border.all(color: completedColor.withOpacity(0.5)) // Bordure verte
                   : Border.all(
                       color: baseColor.withOpacity(0.3),
                       style: BorderStyle.solid,
@@ -251,11 +355,11 @@ class WorkoutChipWidget extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              workout.icon,
+              isCompleted ? Icons.check_circle : workout.icon, // Icône check pour complété
               size: 16,
               color: isMissed
                   ? const Color(0xFFEF4444)
-                  : baseColor,
+                  : displayColor,
             ),
             const SizedBox(width: 8),
             Flexible(
@@ -270,7 +374,7 @@ class WorkoutChipWidget extends StatelessWidget {
                       fontWeight: FontWeight.w600,
                       color: isMissed
                           ? const Color(0xFFEF4444)
-                          : baseColor,
+                          : displayColor,
                       decoration: isMissed ? TextDecoration.lineThrough : null,
                     ),
                     maxLines: 1,
@@ -278,32 +382,19 @@ class WorkoutChipWidget extends StatelessWidget {
                   ),
                   if (workout.durationMinutes != null)
                     Text(
-                      '${workout.durationMinutes} min • ${workout.totalExercises} ex.',
+                      isCompleted
+                          ? '✓ Terminée'
+                          : '${workout.durationMinutes} min • ${workout.totalExercises} ex.',
                       style: TextStyle(
                         fontSize: 11,
                         color: isMissed
                             ? const Color(0xFFEF4444).withOpacity(0.7)
-                            : baseColor.withOpacity(0.7),
+                            : displayColor.withOpacity(0.7),
                       ),
                     ),
                 ],
               ),
             ),
-            if (isCompleted) ...[
-              const SizedBox(width: 6),
-              Container(
-                padding: const EdgeInsets.all(2),
-                decoration: BoxDecoration(
-                  color: baseColor,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.check,
-                  size: 10,
-                  color: Colors.white,
-                ),
-              ),
-            ],
           ],
         ),
       ),

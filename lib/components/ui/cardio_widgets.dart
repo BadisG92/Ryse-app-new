@@ -8,6 +8,7 @@ import 'numeric_text_field.dart';
 import '../../services/cardio_service.dart';
 import '../../services/translations.dart';
 import '../../services/localization_service.dart';
+import '../../services/weekly_planner_service.dart';
 import 'cardio_cards.dart';
 
 // Section des statistiques hebdomadaires (connectée à Supabase)
@@ -587,8 +588,19 @@ class _WeekSessionsSectionState extends State<WeekSessionsSection> {
     if (confirmed != true) return;
 
     try {
-      // Supprimer la séance
+      // Supprimer la séance de l'historique
       await CardioService.deleteCardioSession(sessionId);
+
+      // Suppression bidirectionnelle: supprimer aussi du planificateur si lié
+      try {
+        final linkedPlanned = await WeeklyPlannerService.findPlannedCardioBySessionId(sessionId);
+        if (linkedPlanned != null) {
+          await WeeklyPlannerService.deletePlannedActivity(linkedPlanned.id);
+          debugPrint('✅ Suppression planificateur cardio liée effectuée');
+        }
+      } catch (plannerError) {
+        debugPrint('⚠️ Erreur suppression planificateur cardio: $plannerError');
+      }
 
       // Recharger la liste
       await _loadWeekSessions();

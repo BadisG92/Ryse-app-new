@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
@@ -9,6 +10,7 @@ import '../services/celebration_service.dart';
 import '../services/translations.dart';
 import '../services/localization_service.dart';
 import '../services/global_state_manager.dart';
+import '../services/weekly_planner_service.dart';
 
 class HiitSessionScreen extends StatefulWidget {
   final HiitWorkout workout;
@@ -267,13 +269,27 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
 
                        // Historiser la session HIIT dans Supabase
                        try {
-                         await _saveHiitSessionToSupabase(
+                         final sessionId = await _saveHiitSessionToSupabase(
                            actualDuration: actualDuration.inMinutes,
                            caloriesBurned: caloriesBurned,
                            roundsCompleted: roundsCompleted,
                          );
-                         debugPrint('✅ Session HIIT sauvegardée');
+                         debugPrint('✅ Session HIIT sauvegardée (id: $sessionId)');
                          GlobalStateManager.instance.updateWorkout(true);
+
+                         // WEEKLY PLANNER SYNC: Synchroniser avec le planificateur
+                         try {
+                           await WeeklyPlannerService.syncCardioSessionToPlanner(
+                             sessionId: sessionId,
+                             activityType: 'hiit',
+                             activityTitle: 'HIIT',
+                             sessionDate: DateTime.now(),
+                             durationMinutes: actualDuration.inMinutes,
+                           );
+                           if (kDebugMode) debugPrint('✅ Weekly Planner: HIIT sync effectuée');
+                         } catch (plannerError) {
+                           if (kDebugMode) debugPrint('⚠️ Erreur sync Weekly Planner: $plannerError');
+                         }
                        } catch (e) {
                          debugPrint('❌ Erreur sauvegarde session HIIT: $e');
                        }
@@ -636,16 +652,31 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
 
                         // Historiser la session HIIT complète dans Supabase
                         try {
-                          await _saveHiitSessionToSupabase(
-                            actualDuration: _session.workout.totalDuration ~/ 60, // Convertir en minutes
-                            caloriesBurned: (_session.workout.totalDuration ~/ 60 * 12).round(), // Calcul basé sur minutes
+                          final actualDuration = _session.workout.totalDuration ~/ 60;
+                          final sessionId = await _saveHiitSessionToSupabase(
+                            actualDuration: actualDuration, // Convertir en minutes
+                            caloriesBurned: (actualDuration * 12).round(), // Calcul basé sur minutes
                             roundsCompleted: _session.workout.totalRounds,
                           );
-                          debugPrint('✅ Session HIIT complète sauvegardée');
+                          debugPrint('✅ Session HIIT complète sauvegardée (id: $sessionId)');
 
                           // UNE SEULE mise à jour du GlobalState pour éviter les doublons
                           GlobalStateManager.instance.updateWorkout(true);
                           debugPrint('✅ GlobalStateManager: HIIT complet marqué comme complété');
+
+                          // WEEKLY PLANNER SYNC: Synchroniser avec le planificateur
+                          try {
+                            await WeeklyPlannerService.syncCardioSessionToPlanner(
+                              sessionId: sessionId,
+                              activityType: 'hiit',
+                              activityTitle: 'HIIT',
+                              sessionDate: DateTime.now(),
+                              durationMinutes: actualDuration,
+                            );
+                            if (kDebugMode) debugPrint('✅ Weekly Planner: HIIT complet sync effectuée');
+                          } catch (plannerError) {
+                            if (kDebugMode) debugPrint('⚠️ Erreur sync Weekly Planner: $plannerError');
+                          }
                         } catch (e) {
                           debugPrint('❌ Erreur sauvegarde session HIIT complète: $e');
                           setState(() {
@@ -688,7 +719,8 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
   }
 
   /// Sauvegarde la session HIIT dans Supabase
-  Future<void> _saveHiitSessionToSupabase({
+  /// Retourne l'ID de la session créée
+  Future<String> _saveHiitSessionToSupabase({
     required int actualDuration,
     required int caloriesBurned,
     required int roundsCompleted,
@@ -708,8 +740,8 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
         averageSpeed: 0, // HIIT n'a pas de vitesse
         currentSpeed: 0, // HIIT n'a pas de vitesse
       );
-      
-      await CardioService.saveCompletedCardioSession(
+
+      final sessionId = await CardioService.saveCompletedCardioSession(
         sessionData: sessionData,
         intensity: 'Élevé', // HIIT est toujours à intensité élevée (valeur française pour la base de données)
         notes: '${'hiit_session_completed_rounds'.tr(LocalizationService.instance.currentLanguageCode)}: $roundsCompleted/${_session.workout.totalRounds}',
@@ -722,6 +754,8 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
       if (mounted) {
         CelebrationService().celebrateHiitCompletion(context);
       }
+
+      return sessionId;
     } catch (e) {
       debugPrint('❌ Erreur lors de la sauvegarde HIIT: $e');
       rethrow;

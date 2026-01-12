@@ -7,6 +7,7 @@ import 'localization_service.dart';
 import 'sport_dashboard_service.dart';
 import 'global_state_manager.dart';
 import 'unit_service.dart';
+import 'weekly_planner_service.dart';
 
 /// Service pour gérer les activités cardio depuis Supabase
 class CardioService {

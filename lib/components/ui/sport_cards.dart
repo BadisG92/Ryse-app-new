@@ -10,6 +10,7 @@ import '../../services/sport_dashboard_service.dart';
 import '../../services/global_state_manager.dart';
 import '../../services/workout_cache_service.dart';
 import '../../services/unit_service.dart';
+import '../../services/weekly_planner_service.dart';
 import 'package:provider/provider.dart';
 
 // Card pour les statistiques hebdomadaires individuelles
@@ -318,6 +319,17 @@ class _WorkoutHistoryCardState extends State<WorkoutHistoryCard> {
         .eq('user_id', userId);
 
     debugPrint('✅ Séance de musculation supprimée avec succès');
+
+    // Suppression bidirectionnelle: supprimer aussi du planificateur si lié
+    try {
+      final linkedPlanned = await WeeklyPlannerService.findPlannedWorkoutBySessionId(sessionId);
+      if (linkedPlanned != null) {
+        await WeeklyPlannerService.deletePlannedWorkout(linkedPlanned.id);
+        debugPrint('✅ Suppression planificateur workout liée effectuée');
+      }
+    } catch (plannerError) {
+      debugPrint('⚠️ Erreur suppression planificateur workout: $plannerError');
+    }
 
     // Invalider TOUS les caches
     WorkoutCacheService.invalidateUserCache(userId);

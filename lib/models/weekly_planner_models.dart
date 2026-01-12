@@ -199,6 +199,7 @@ class PlannedActivity {
   final PlannedActivityType activityType;
   final Map<String, dynamic> activityData;
   final PlannedStatus status;
+  final String? linkedSessionId;
   final bool isAiGenerated;
   final DateTime createdAt;
   final DateTime? updatedAt;
@@ -210,6 +211,7 @@ class PlannedActivity {
     required this.activityType,
     required this.activityData,
     this.status = PlannedStatus.planned,
+    this.linkedSessionId,
     this.isAiGenerated = false,
     required this.createdAt,
     this.updatedAt,
@@ -239,6 +241,7 @@ class PlannedActivity {
       activityType: PlannedActivityTypeExtension.fromString(json['activity_type']),
       activityData: json['activity_data'] ?? {},
       status: PlannedStatusExtension.fromString(json['status'] ?? 'planned'),
+      linkedSessionId: json['linked_session_id'],
       isAiGenerated: json['is_ai_generated'] ?? false,
       createdAt: DateTime.parse(json['created_at']),
       updatedAt: json['updated_at'] != null
@@ -255,6 +258,7 @@ class PlannedActivity {
       'activity_type': activityType.value,
       'activity_data': activityData,
       'status': status.value,
+      if (linkedSessionId != null) 'linked_session_id': linkedSessionId,
       'is_ai_generated': isAiGenerated,
       'created_at': createdAt.toIso8601String(),
       if (updatedAt != null) 'updated_at': updatedAt!.toIso8601String(),
@@ -268,6 +272,7 @@ class PlannedActivity {
     PlannedActivityType? activityType,
     Map<String, dynamic>? activityData,
     PlannedStatus? status,
+    String? linkedSessionId,
     bool? isAiGenerated,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -279,6 +284,7 @@ class PlannedActivity {
       activityType: activityType ?? this.activityType,
       activityData: activityData ?? this.activityData,
       status: status ?? this.status,
+      linkedSessionId: linkedSessionId ?? this.linkedSessionId,
       isAiGenerated: isAiGenerated ?? this.isAiGenerated,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

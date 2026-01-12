@@ -6,6 +6,7 @@ import '../../services/cardio_service.dart';
 import '../../services/translations.dart';
 import '../../services/localization_service.dart';
 import '../../services/unit_service.dart';
+import '../../services/weekly_planner_service.dart';
 import '../../screens/workout_edit_screen.dart';
 import '../../models/sport_models.dart';
 
@@ -63,8 +64,19 @@ class _DaySessionsBottomSheetState extends State<DaySessionsBottomSheet> {
       final confirmed = await _showDeleteConfirmation();
       if (!confirmed) return;
 
-      // Supprimer la séance
+      // Supprimer la séance de l'historique
       await CardioService.deleteCardioSession(sessionId);
+
+      // Suppression bidirectionnelle: supprimer aussi du planificateur si lié
+      try {
+        final linkedPlanned = await WeeklyPlannerService.findPlannedCardioBySessionId(sessionId);
+        if (linkedPlanned != null) {
+          await WeeklyPlannerService.deletePlannedActivity(linkedPlanned.id);
+          debugPrint('✅ Suppression planificateur cardio liée effectuée');
+        }
+      } catch (plannerError) {
+        debugPrint('⚠️ Erreur suppression planificateur cardio: $plannerError');
+      }
 
       // Mettre à jour la liste
       setState(() {
@@ -190,8 +202,19 @@ class _DaySessionsBottomSheetState extends State<DaySessionsBottomSheet> {
       final confirmed = await _showDeleteConfirmation();
       if (!confirmed) return;
 
-      // Supprimer la séance
+      // Supprimer la séance de l'historique
       await SportDashboardService.deleteMusculationSession(sessionId);
+
+      // Suppression bidirectionnelle: supprimer aussi du planificateur si lié
+      try {
+        final linkedPlanned = await WeeklyPlannerService.findPlannedWorkoutBySessionId(sessionId);
+        if (linkedPlanned != null) {
+          await WeeklyPlannerService.deletePlannedWorkout(linkedPlanned.id);
+          debugPrint('✅ Suppression planificateur workout liée effectuée');
+        }
+      } catch (plannerError) {
+        debugPrint('⚠️ Erreur suppression planificateur workout: $plannerError');
+      }
 
       // Mettre à jour la liste
       setState(() {

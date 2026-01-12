@@ -97,7 +97,11 @@ class _CelebrationPopupState extends State<CelebrationPopup>
 
     _animationController.reverse().then((_) {
       if (mounted) {
-        Navigator.of(context).pop();
+        // Utiliser le root navigator car on a été ouvert avec useRootNavigator: true
+        final navigator = Navigator.of(context, rootNavigator: true);
+        if (navigator.canPop()) {
+          navigator.pop();
+        }
         widget.onDismiss?.call();
       }
     });
