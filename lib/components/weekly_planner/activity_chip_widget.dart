@@ -7,12 +7,14 @@ class MiniActivitySquare extends StatelessWidget {
   final PlannedActivityType activityType;
   final PlannedStatus status;
   final VoidCallback? onTap;
+  final bool isCompact;
 
   const MiniActivitySquare({
     super.key,
     required this.activityType,
     this.status = PlannedStatus.planned,
     this.onTap,
+    this.isCompact = false,
   });
 
   @override
@@ -21,29 +23,33 @@ class MiniActivitySquare extends StatelessWidget {
     final isCompleted = status == PlannedStatus.completed;
     final isMissed = status == PlannedStatus.missed;
 
+    final size = isCompact ? 18.0 : 28.0;
+    final iconSize = isCompact ? 10.0 : 14.0;
+    final borderRadius = isCompact ? 4.0 : 7.0;
+
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Container(
-        width: 14,
-        height: 14,
+        width: size,
+        height: size,
         decoration: BoxDecoration(
           color: isMissed
               ? const Color(0xFFFEE2E2)
               : isCompleted
                   ? baseColor.withOpacity(0.3)
-                  : baseColor.withOpacity(0.15),
-          borderRadius: BorderRadius.circular(3),
+                  : baseColor.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(borderRadius),
           border: isMissed
               ? Border.all(color: const Color(0xFFEF4444).withOpacity(0.5), width: 1)
               : isCompleted
                   ? null
-                  : Border.all(color: baseColor.withOpacity(0.4), width: 1),
+                  : Border.all(color: baseColor.withOpacity(0.3), width: 1),
         ),
         child: Center(
           child: Icon(
             activityType.icon,
-            size: 8,
+            size: iconSize,
             color: isMissed
                 ? const Color(0xFFEF4444)
                 : baseColor,
@@ -58,11 +64,13 @@ class MiniActivitySquare extends StatelessWidget {
 class MiniWorkoutSquare extends StatelessWidget {
   final PlannedWorkout workout;
   final VoidCallback? onTap;
+  final bool isCompact;
 
   const MiniWorkoutSquare({
     super.key,
     required this.workout,
     this.onTap,
+    this.isCompact = false,
   });
 
   @override
@@ -73,29 +81,33 @@ class MiniWorkoutSquare extends StatelessWidget {
     const completedColor = Color(0xFF10B981);
     final displayColor = isCompleted ? completedColor : baseColor;
 
+    final size = isCompact ? 18.0 : 28.0;
+    final iconSize = isCompact ? 10.0 : 14.0;
+    final borderRadius = isCompact ? 4.0 : 7.0;
+
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Container(
-        width: 14,
-        height: 14,
+        width: size,
+        height: size,
         decoration: BoxDecoration(
           color: isMissed
               ? const Color(0xFFFEE2E2)
               : isCompleted
                   ? completedColor.withOpacity(0.3)
-                  : baseColor.withOpacity(0.15),
-          borderRadius: BorderRadius.circular(3),
+                  : baseColor.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(borderRadius),
           border: isMissed
               ? Border.all(color: const Color(0xFFEF4444).withOpacity(0.5), width: 1)
               : isCompleted
                   ? Border.all(color: completedColor.withOpacity(0.5), width: 1)
-                  : Border.all(color: baseColor.withOpacity(0.4), width: 1),
+                  : Border.all(color: baseColor.withOpacity(0.3), width: 1),
         ),
         child: Center(
           child: Icon(
             LucideIcons.dumbbell,
-            size: 8,
+            size: iconSize,
             color: isMissed
                 ? const Color(0xFFEF4444)
                 : displayColor,

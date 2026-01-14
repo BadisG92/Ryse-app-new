@@ -56,6 +56,18 @@ class _PlannerAIBottomSheetState extends State<PlannerAIBottomSheet> {
     PlannerAIService.clearHistory();
     // Message d'accueil
     _addBotMessage(_getWelcomeMessage());
+
+    // Scroll to bottom when keyboard opens
+    _focusNode.addListener(_onFocusChange);
+  }
+
+  void _onFocusChange() {
+    if (_focusNode.hasFocus) {
+      // Delay to let keyboard animation complete
+      Future.delayed(const Duration(milliseconds: 300), () {
+        _scrollToBottom();
+      });
+    }
   }
 
   Future<void> _loadFreeUsageStatus() async {
@@ -73,6 +85,7 @@ class _PlannerAIBottomSheetState extends State<PlannerAIBottomSheet> {
 
   @override
   void dispose() {
+    _focusNode.removeListener(_onFocusChange);
     _textController.dispose();
     _focusNode.dispose();
     _scrollController.dispose();
@@ -1097,23 +1110,27 @@ class _PlannerAIBottomSheetState extends State<PlannerAIBottomSheet> {
   Widget _buildMessagesList() {
     final itemCount = _messages.length + (_isProcessing ? 1 : 0);
 
-    return ListView.builder(
-      controller: _scrollController,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      reverse: true, // Pattern iMessage/WhatsApp - nouveaux messages en bas
-      itemCount: itemCount,
-      itemBuilder: (context, index) {
-        // Avec reverse: true, index 0 = bas de la liste
-        // Typing indicator en premier (en bas)
-        if (_isProcessing && index == 0) {
-          return _buildTypingIndicator();
-        }
+    return GestureDetector(
+      onTap: () => _focusNode.unfocus(), // Dismiss keyboard on tap outside
+      child: ListView.builder(
+        controller: _scrollController,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        reverse: true, // Pattern iMessage/WhatsApp - nouveaux messages en bas
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        itemCount: itemCount,
+        itemBuilder: (context, index) {
+          // Avec reverse: true, index 0 = bas de la liste
+          // Typing indicator en premier (en bas)
+          if (_isProcessing && index == 0) {
+            return _buildTypingIndicator();
+          }
 
-        // Ajuster l'index pour les messages
-        final messageIndex = _isProcessing ? index - 1 : index;
-        final actualIndex = _messages.length - 1 - messageIndex;
-        return _buildMessageBubble(_messages[actualIndex], actualIndex);
-      },
+          // Ajuster l'index pour les messages
+          final messageIndex = _isProcessing ? index - 1 : index;
+          final actualIndex = _messages.length - 1 - messageIndex;
+          return _buildMessageBubble(_messages[actualIndex], actualIndex);
+        },
+      ),
     );
   }
 

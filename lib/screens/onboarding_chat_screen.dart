@@ -72,11 +72,24 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen>
     // Start reveal animation
     _revealController.forward();
 
+    // Scroll to bottom when keyboard opens
+    _focusNode.addListener(_onFocusChange);
+
     _initializeChat();
+  }
+
+  void _onFocusChange() {
+    if (_focusNode.hasFocus) {
+      // Delay to let keyboard animation complete
+      Future.delayed(const Duration(milliseconds: 300), () {
+        _scrollToBottom();
+      });
+    }
   }
 
   @override
   void dispose() {
+    _focusNode.removeListener(_onFocusChange);
     _textController.dispose();
     _scrollController.dispose();
     _focusNode.dispose();
@@ -628,22 +641,26 @@ IMPORTANT:
     // Calculate total items: messages + typing indicator if active
     final itemCount = _messages.length + (_isCoachTyping ? 1 : 0);
 
-    return ListView.builder(
-      controller: _scrollController,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      reverse: true, // New messages at bottom, scroll naturally like iMessage
-      itemCount: itemCount,
-      itemBuilder: (context, index) {
-        // Show typing indicator at the bottom (index 0 in reversed list)
-        if (_isCoachTyping && index == 0) {
-          return _buildTypingIndicator();
-        }
+    return GestureDetector(
+      onTap: () => _focusNode.unfocus(), // Dismiss keyboard on tap outside
+      child: ListView.builder(
+        controller: _scrollController,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        reverse: true, // New messages at bottom, scroll naturally like iMessage
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        itemCount: itemCount,
+        itemBuilder: (context, index) {
+          // Show typing indicator at the bottom (index 0 in reversed list)
+          if (_isCoachTyping && index == 0) {
+            return _buildTypingIndicator();
+          }
 
-        // Adjust index for messages when typing indicator is showing
-        final messageIndex = _isCoachTyping ? index - 1 : index;
-        final message = _messages[_messages.length - 1 - messageIndex];
-        return _buildGlassMessageBubble(message);
-      },
+          // Adjust index for messages when typing indicator is showing
+          final messageIndex = _isCoachTyping ? index - 1 : index;
+          final message = _messages[_messages.length - 1 - messageIndex];
+          return _buildGlassMessageBubble(message);
+        },
+      ),
     );
   }
 

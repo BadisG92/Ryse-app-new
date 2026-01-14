@@ -7,8 +7,8 @@ import '../../services/localization_service.dart';
 import '../../services/translations.dart';
 import '../../services/global_state_manager.dart';
 import '../../screens/planner_chat_screen.dart';
+import '../../components/ui/custom_card.dart';
 import 'day_column_widget.dart';
-import 'add_activity_bottom_sheet.dart';
 import 'workout_recap_bottom_sheet.dart';
 import 'cardio_recap_bottom_sheet.dart';
 
@@ -65,10 +65,10 @@ class _WeeklyPlannerWidgetState extends State<WeeklyPlannerWidget> {
       // Nettoyer les activités manquées au chargement
       await WeeklyPlannerService.cleanupMissedActivities();
 
-      // Migrer les séances de l'historique vers le planificateur (sync rétroactive)
-      // On active le flag pour éviter les boucles de rechargement
+      // Sync complète: nettoie les orphelins + migre les sessions manquantes
+      // L'historique est la source de vérité
       _isMigrating = true;
-      await WeeklyPlannerService.migrateHistoryToPlanner();
+      await WeeklyPlannerService.fullSyncFromHistory();
       _isMigrating = false;
 
       final data = await WeeklyPlannerService.getWeekData();
@@ -109,20 +109,6 @@ class _WeeklyPlannerWidgetState extends State<WeeklyPlannerWidget> {
         );
       }
     });
-  }
-
-  void _showAddActivitySheet(BuildContext context, DateTime date) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => AddActivityBottomSheet(
-        selectedDate: date,
-        onActivityAdded: () {
-          _loadData();
-        },
-      ),
-    );
   }
 
   void _openPlannerChat(BuildContext context, {required String mode}) {
@@ -193,20 +179,8 @@ class _WeeklyPlannerWidgetState extends State<WeeklyPlannerWidget> {
       tag: 'weekly_planner_hero',
       child: Material(
         color: Colors.transparent,
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.04),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
+        child: CustomCard(
+          padding: EdgeInsets.zero,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -289,108 +263,129 @@ class _WeeklyPlannerWidgetState extends State<WeeklyPlannerWidget> {
 
     final dayNames = _getDayNames(langCode);
 
-    return SizedBox(
-      height: 130,
-      child: ListView.builder(
-        controller: _scrollController,
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        itemCount: 7,
-        itemBuilder: (context, index) {
-          final date = _weekData.weekStart.add(Duration(days: index));
-          final dayPlan = _weekData.getDayPlan(date);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final dayWidth = constraints.maxWidth / 7;
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: List.generate(7, (index) {
+              final date = _weekData.weekStart.add(Duration(days: index));
+              final dayPlan = _weekData.getDayPlan(date);
 
-          return DayColumnWidget(
-            date: date,
-            dayName: dayNames[index],
-            dayPlan: dayPlan,
-            onTap: () => _showAddActivitySheet(context, date),
-            onActivityTap: (activity) {
-              // Afficher le recap selon le type d'activité
-              if (activity.activityType == PlannedActivityType.cardio) {
-                _showCardioRecap(context, activity);
-              }
-              // TODO: Gérer les repas si nécessaire
-            },
-            onWorkoutTap: (workout) => _showWorkoutRecap(context, workout),
+              return SizedBox(
+                width: dayWidth,
+                child: DayColumnWidget(
+                  date: date,
+                  dayName: dayNames[index],
+                  dayPlan: dayPlan,
+                  onDataRefresh: _loadData,
+                  onActivityTap: (activity) {
+                    if (activity.activityType == PlannedActivityType.cardio) {
+                      _showCardioRecap(context, activity);
+                    }
+                  },
+                  onWorkoutTap: (workout) => _showWorkoutRecap(context, workout),
+                ),
+              );
+            }),
           );
         },
       ),
     );
   }
 
-  Widget _buildAddButton(BuildContext context, String langCode) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-
+  Widget _buildAIZone(BuildContext context, String langCode) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: InkWell(
-        onTap: () => _showAddActivitySheet(context, today),
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            border: Border.all(
-              color: const Color(0xFFE2E8F0),
-              style: BorderStyle.solid,
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      child: Column(
+        children: [
+          // Phrase d'accroche
+          const Padding(
+            padding: EdgeInsets.only(bottom: 10),
+            child: Text(
+              'Planifie ta semaine',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF0B132B),
+              ),
             ),
-            borderRadius: BorderRadius.circular(12),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+          // Boutons
+          Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0B132B).withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  LucideIcons.plus,
-                  size: 16,
-                  color: Color(0xFF0B132B),
+              // Bouton Repas
+              Expanded(
+                child: _buildCompactAIButton(
+                  context,
+                  icon: LucideIcons.utensils,
+                  label: 'Repas',
+                  mode: 'meals',
                 ),
               ),
-              const SizedBox(width: 8),
-              Text(
-                'planner_add_activity'.tr(langCode),
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF64748B),
+              const SizedBox(width: 12),
+              // Bouton Séances
+              Expanded(
+                child: _buildCompactAIButton(
+                  context,
+                  icon: LucideIcons.dumbbell,
+                  label: 'Séances',
+                  mode: 'workouts',
                 ),
               ),
             ],
           ),
-        ),
+        ],
       ),
     );
   }
 
-  Widget _buildAIZone(BuildContext context, String langCode) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-      child: Column(
-        children: [
-          // Bouton Planifier mes repas
-          _buildAIButton(
-            context,
-            langCode,
-            icon: LucideIcons.utensils,
-            label: 'plan_my_meals'.tr(langCode),
-            mode: 'meals',
+  Widget _buildCompactAIButton(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required String mode,
+  }) {
+    return InkWell(
+      onTap: () => _openPlannerChat(context, mode: mode),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
           ),
-          const SizedBox(height: 10),
-          // Bouton Planifier mes séances
-          _buildAIButton(
-            context,
-            langCode,
-            icon: LucideIcons.dumbbell,
-            label: 'plan_my_workouts'.tr(langCode),
-            mode: 'workouts',
-          ),
-        ],
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF0B132B).withOpacity(0.2),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 18,
+              color: Colors.white,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

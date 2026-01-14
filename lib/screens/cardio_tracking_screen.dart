@@ -616,37 +616,37 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
 
                       // Historiser la session avec GPS dans Supabase
                       try {
+                        String? sessionId;
                         if (_useGPS && _gpsPermissionGranted) {
-                          await CardioSessionManager.completeCardioSessionWithGPS(
+                          sessionId = await CardioSessionManager.completeCardioSessionWithGPS(
                             sessionData: _session,
                             intensity: 'Modéré',
                             notes: null,
                           );
                         } else {
-                          await _saveSessionToSupabase();
+                          sessionId = await _saveSessionToSupabase();
                         }
-                        debugPrint('✅ Session cardio sauvegardée');
+                        debugPrint('✅ Session cardio sauvegardée (id: $sessionId)');
 
                         // UNE SEULE mise à jour du GlobalState pour éviter les doublons
                         GlobalStateManager.instance.updateWorkout(true);
                         debugPrint('✅ GlobalStateManager: Cardio marqué comme complété');
 
-                        // WEEKLY PLANNER SYNC: Marquer l'activité cardio planifiée comme complétée
-                        try {
-                          final today = DateTime.now();
-                          final plannedCardio = await WeeklyPlannerService.findPlannedCardioForDate(
-                            today,
-                            activityType: widget.activityType,
-                          );
-                          if (plannedCardio != null) {
-                            await WeeklyPlannerService.updateActivityStatus(
-                              plannedCardio.id,
-                              PlannedStatus.completed,
+                        // WEEKLY PLANNER SYNC: Synchroniser avec le planificateur
+                        if (sessionId != null) {
+                          try {
+                            await WeeklyPlannerService.syncCardioSessionToPlanner(
+                              sessionId: sessionId,
+                              activityType: widget.activityType,
+                              activityTitle: widget.activityTitle,
+                              sessionDate: DateTime.now(),
+                              durationMinutes: _session.duration.inMinutes,
+                              distanceKm: _session.distance > 0 ? _session.distance : null,
                             );
-                            debugPrint('✅ Weekly Planner: Cardio marqué comme complété');
+                            debugPrint('✅ Weekly Planner: Cardio sync effectuée');
+                          } catch (plannerError) {
+                            debugPrint('⚠️ Erreur sync Weekly Planner: $plannerError');
                           }
-                        } catch (plannerError) {
-                          debugPrint('⚠️ Erreur sync Weekly Planner: $plannerError');
                         }
 
                         // Marquer pour afficher le popup après retour écran
@@ -1093,16 +1093,19 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
   }
 
   /// Sauvegarde la session dans Supabase
-  Future<void> _saveSessionToSupabase() async {
+  /// Retourne l'ID de la session créée pour la synchronisation avec le planner
+  Future<String> _saveSessionToSupabase() async {
     try {
-      await CardioService.saveCompletedCardioSession(
+      final sessionId = await CardioService.saveCompletedCardioSession(
         sessionData: _session,
         intensity: 'Modéré', // Valeur par défaut, pourrait être demandée à l'utilisateur
         notes: null,
       );
-      
+
       // Invalider le cache pour rafraîchir les données
       CardioService.invalidateCache();
+
+      return sessionId;
     } catch (e) {
       debugPrint('❌ Erreur lors de la sauvegarde: $e');
       rethrow;

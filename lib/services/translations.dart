@@ -8465,6 +8465,11 @@ class AppTranslations {
       'en': 'Add activity',
       'de': 'Aktivität hinzufügen',
     },
+    'planner_ai_section': {
+      'fr': 'Planifier avec Ryze',
+      'en': 'Plan with Ryze',
+      'de': 'Mit Ryze planen',
+    },
     'planner_meals_section': {
       'fr': 'Repas',
       'en': 'Meals',

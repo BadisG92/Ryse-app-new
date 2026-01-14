@@ -95,7 +95,8 @@ class CardioSessionManager {
   }
 
   /// Termine une séance cardio avec données GPS et s'assure qu'elle soit bien historisée
-  static Future<void> completeCardioSessionWithGPS({
+  /// Retourne l'ID de la session créée pour la synchronisation avec le planner
+  static Future<String> completeCardioSessionWithGPS({
     required CardioSessionData sessionData,
     String? intensity,
     String? notes,
@@ -108,10 +109,10 @@ class CardioSessionManager {
     try {
       // Récupérer les données GPS finales
       final gpsDistance = LocationService.calculateTotalDistance();
-      final gpsAverageSpeed = LocationService.calculateAverageSpeed(); 
+      final gpsAverageSpeed = LocationService.calculateAverageSpeed();
       final gpsRoute = LocationService.currentRoute;
       final gpsElevation = CardioCalculator.calculateElevationStats(gpsRoute);
-      
+
       // Calculer les calories avec les vraies données
       final finalCalories = CardioCalculator.calculateCalories(
         activityType: sessionData.activityType,
@@ -123,8 +124,8 @@ class CardioSessionManager {
       // Calculer l'allure pour la course
       final paceSeconds = LocationService.calculatePacePerKm();
 
-      // Sauvegarder la session complète
-      await CardioService.saveCompletedCardioSession(
+      // Sauvegarder la session complète et récupérer l'ID
+      final sessionId = await CardioService.saveCompletedCardioSession(
         sessionData: sessionData.copyWith(
           distance: gpsDistance > 0 ? gpsDistance : sessionData.distance,
           averageSpeed: gpsAverageSpeed > 0 ? gpsAverageSpeed : sessionData.averageSpeed,
@@ -136,7 +137,7 @@ class CardioSessionManager {
         notes: notes,
       );
 
-      debugPrint('✅ Cardio session avec GPS terminée - Distance: ${gpsDistance.toStringAsFixed(2)}km, Vitesse moy: ${gpsAverageSpeed.toStringAsFixed(1)}km/h');
+      debugPrint('✅ Cardio session avec GPS terminée - ID: $sessionId, Distance: ${gpsDistance.toStringAsFixed(2)}km, Vitesse moy: ${gpsAverageSpeed.toStringAsFixed(1)}km/h');
 
       // Nettoyer les données GPS
       LocationService.clearRoute();
@@ -144,6 +145,7 @@ class CardioSessionManager {
       // Invalider les caches (mais pas de mise à jour GlobalState ici pour éviter doublons)
       _invalidateAllCaches();
 
+      return sessionId;
     } catch (e) {
       debugPrint('❌ Error completing cardio session with GPS: $e');
       rethrow;
@@ -257,6 +259,9 @@ class CardioSessionManager {
           ? (distance * 3600 / duration.inSeconds)
           : null;
 
+      // session_date = date locale de la session (sans heure) pour les filtres SQL
+      final sessionDate = DateTime(startTime.year, startTime.month, startTime.day);
+
       final sessionData = {
         'user_id': userId,
         'activity_type': activityType,
@@ -264,6 +269,7 @@ class CardioSessionManager {
         'format_title': formatTitle,
         'start_time': startTime.toIso8601String(),
         'end_time': endTime.toIso8601String(),
+        'session_date': sessionDate.toIso8601String().split('T')[0], // Date pour filtres SQL
         'duration_seconds': duration.inSeconds,
         'distance_km': distance,
         'average_speed_kmh': averageSpeed,

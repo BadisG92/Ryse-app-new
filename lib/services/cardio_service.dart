@@ -121,6 +121,17 @@ class CardioService {
 
       debugPrint('✅ Séance cardio supprimée avec succès');
 
+      // SYNC BIDIRECTIONNEL: Supprimer aussi du planner si lié
+      try {
+        final linkedPlannedCardio = await WeeklyPlannerService.findPlannedCardioBySessionId(sessionId);
+        if (linkedPlannedCardio != null) {
+          await WeeklyPlannerService.forceDeletePlannedActivityFromSync(linkedPlannedCardio.id);
+          debugPrint('✅ Cardio planifié lié supprimé du planner (${linkedPlannedCardio.id})');
+        }
+      } catch (e) {
+        debugPrint('⚠️ Erreur sync planner cardio (non bloquante): $e');
+      }
+
       // Invalider les caches
       SportDashboardService.invalidateCache();
       GlobalStateManager.instance.invalidateWeeklyData();
@@ -179,6 +190,13 @@ class CardioService {
         debugPrint('⚠️ Format non trouvé pour: ${sessionData.formatTitle} (${sessionData.activityType})');
       }
       
+      // session_date = date locale de la session (sans heure) pour les filtres SQL
+      final sessionDate = DateTime(
+        sessionData.startTime.year,
+        sessionData.startTime.month,
+        sessionData.startTime.day,
+      );
+
       await _client.from('cardio_sessions').insert({
         'id': sessionId,
         'user_id': userId,
@@ -188,6 +206,7 @@ class CardioService {
         'activity_format_id': activityFormatId, // Ajout de l'ID du format
         'start_time': sessionData.startTime.toIso8601String(),
         'end_time': sessionData.endTime?.toIso8601String(),
+        'session_date': sessionDate.toIso8601String().split('T')[0], // Date pour filtres SQL
         'duration_seconds': sessionData.duration.inSeconds,
         'distance_km': sessionData.distance,
         'target_distance_km': sessionData.targetDistance,
@@ -213,6 +232,44 @@ class CardioService {
     }
   }
 
+  /// Migration: corrige les sessions sans session_date
+  static Future<void> _fixMissingSessionDates() async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) return;
+
+    try {
+      // Récupérer les sessions de l'utilisateur sans session_date
+      final sessions = await _client
+          .from('cardio_sessions')
+          .select('id, start_time')
+          .eq('user_id', userId)
+          .isFilter('session_date', null);
+
+      if (sessions.isEmpty) return;
+
+      debugPrint('🔧 Cardio: ${sessions.length} sessions à migrer (session_date manquante)');
+
+      for (final session in sessions) {
+        final startTime = session['start_time'];
+        if (startTime != null) {
+          final date = DateTime.parse(startTime);
+          final sessionDate = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+
+          await _client
+              .from('cardio_sessions')
+              .update({'session_date': sessionDate})
+              .eq('id', session['id']);
+
+          debugPrint('  ✅ Session ${session['id']} -> $sessionDate');
+        }
+      }
+
+      debugPrint('✅ Cardio: Migration session_date terminée');
+    } catch (e) {
+      debugPrint('⚠️ Cardio: Erreur migration session_date: $e');
+    }
+  }
+
   /// Récupère les données du dashboard cardio
   static Future<Map<String, dynamic>> getCardioDashboardData() async {
     final userId = _client.auth.currentUser?.id;
@@ -221,6 +278,9 @@ class CardioService {
     }
 
     try {
+      // Migration automatique des sessions sans session_date
+      await _fixMissingSessionDates();
+
       // Calculer la semaine courante (lundi-dimanche) en heure LOCALE de l'utilisateur
       final now = DateTime.now(); // Heure locale
       final weekday = now.weekday; // 1=Lundi, 7=Dimanche

@@ -117,26 +117,73 @@ extension PlannedStatusExtension on PlannedStatus {
   }
 }
 
+/// Configuration HIIT
+class HiitConfig {
+  final int workSeconds;
+  final int restSeconds;
+  final int rounds;
+  final String type; // 'tabata', 'hiit_beginner', 'hiit_intense', 'custom'
+
+  const HiitConfig({
+    required this.workSeconds,
+    required this.restSeconds,
+    required this.rounds,
+    required this.type,
+  });
+
+  factory HiitConfig.fromJson(Map<String, dynamic> json) {
+    return HiitConfig(
+      workSeconds: json['work_seconds'] ?? 30,
+      restSeconds: json['rest_seconds'] ?? 30,
+      rounds: json['rounds'] ?? 10,
+      type: json['type'] ?? 'custom',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'work_seconds': workSeconds,
+      'rest_seconds': restSeconds,
+      'rounds': rounds,
+      'type': type,
+    };
+  }
+
+  /// Durée totale en minutes
+  int get totalMinutes => ((workSeconds + restSeconds) * rounds / 60).ceil();
+}
+
 /// Données d'une activité cardio planifiée
 class PlannedCardioData {
   final String activityName;
-  final String activityKey; // 'running', 'bike', 'walking', etc.
+  final String activityKey; // 'running', 'bike', 'walking', 'hiit', etc.
   final int? targetMinutes;
   final double? targetKm;
+  final HiitConfig? hiitConfig; // Config HIIT si c'est une séance HIIT
 
   const PlannedCardioData({
     required this.activityName,
     required this.activityKey,
     this.targetMinutes,
     this.targetKm,
+    this.hiitConfig,
   });
 
+  /// Vérifie si c'est une séance HIIT
+  bool get isHiit => activityKey.toLowerCase() == 'hiit' && hiitConfig != null;
+
   factory PlannedCardioData.fromJson(Map<String, dynamic> json) {
+    HiitConfig? hiitConfig;
+    if (json['hiit_config'] != null) {
+      hiitConfig = HiitConfig.fromJson(json['hiit_config'] as Map<String, dynamic>);
+    }
+
     return PlannedCardioData(
       activityName: json['activity_name'] ?? '',
       activityKey: json['activity_key'] ?? '',
       targetMinutes: json['target_minutes'],
       targetKm: json['target_km']?.toDouble(),
+      hiitConfig: hiitConfig,
     );
   }
 
@@ -146,6 +193,7 @@ class PlannedCardioData {
       'activity_key': activityKey,
       if (targetMinutes != null) 'target_minutes': targetMinutes,
       if (targetKm != null) 'target_km': targetKm,
+      if (hiitConfig != null) 'hiit_config': hiitConfig!.toJson(),
     };
   }
 }

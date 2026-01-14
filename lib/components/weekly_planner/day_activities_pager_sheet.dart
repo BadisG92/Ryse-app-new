@@ -9,6 +9,8 @@ import '../../services/localization_service.dart';
 import '../../services/translations.dart';
 import '../../screens/workout_session_screen.dart';
 import '../../screens/cardio_tracking_screen.dart';
+import '../../screens/hiit_session_screen.dart';
+import '../../models/hiit_models.dart';
 
 /// Bottom sheet avec PageView pour naviguer entre les activités d'un jour
 class DayActivitiesPagerSheet extends StatefulWidget {
@@ -51,9 +53,14 @@ class _DayActivitiesPagerSheetState extends State<DayActivitiesPagerSheet> {
   List<_ActivityItem> _buildActivityList() {
     final List<_ActivityItem> items = [];
 
-    // Ajouter les workouts
-    for (final workout in widget.dayPlan.workouts) {
-      items.add(_ActivityItem(workout: workout));
+    // Ajouter les repas (triés par type: breakfast, lunch, dinner, snack)
+    final meals = List<PlannedActivity>.from(widget.dayPlan.meals);
+    meals.sort((a, b) {
+      final order = ['breakfast', 'lunch', 'dinner', 'snack'];
+      return order.indexOf(a.activityType.value).compareTo(order.indexOf(b.activityType.value));
+    });
+    for (final meal in meals) {
+      items.add(_ActivityItem(activity: meal));
     }
 
     // Ajouter les cardios
@@ -61,9 +68,9 @@ class _DayActivitiesPagerSheetState extends State<DayActivitiesPagerSheet> {
       items.add(_ActivityItem(activity: cardio));
     }
 
-    // Ajouter les repas
-    for (final meal in widget.dayPlan.meals) {
-      items.add(_ActivityItem(activity: meal));
+    // Ajouter les workouts
+    for (final workout in widget.dayPlan.workouts) {
+      items.add(_ActivityItem(workout: workout));
     }
 
     return items;
@@ -156,7 +163,7 @@ class _DayActivitiesPagerSheetState extends State<DayActivitiesPagerSheet> {
 
             // PageView pour swipe
             SizedBox(
-              height: 400,
+              height: 280,
               child: PageView.builder(
                 controller: _pageController,
                 itemCount: _activities.length,
@@ -440,13 +447,13 @@ class _DayActivitiesPagerSheetState extends State<DayActivitiesPagerSheet> {
           decoration: BoxDecoration(
             color: isCompleted
                 ? const Color(0xFF10B981).withOpacity(0.1)
-                : const Color(0xFF3B82F6).withOpacity(0.1),
+                : const Color(0xFF0B132B).withOpacity(0.1),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(
             isCompleted ? LucideIcons.circleCheck : activityIcon,
             size: 24,
-            color: isCompleted ? const Color(0xFF10B981) : const Color(0xFF3B82F6),
+            color: isCompleted ? const Color(0xFF10B981) : const Color(0xFF0B132B),
           ),
         ),
         const SizedBox(width: 12),
@@ -480,6 +487,11 @@ class _DayActivitiesPagerSheetState extends State<DayActivitiesPagerSheet> {
   }
 
   Widget _buildCardioObjectives(String langCode, PlannedCardioData cardioData) {
+    // Si c'est un HIIT, afficher les objectifs HIIT
+    if (cardioData.isHiit && cardioData.hiitConfig != null) {
+      return _buildHiitObjectives(langCode, cardioData.hiitConfig!);
+    }
+
     final hasDistance = cardioData.targetKm != null && cardioData.targetKm! > 0;
     final hasTime = cardioData.targetMinutes != null && cardioData.targetMinutes! > 0;
 
@@ -491,43 +503,65 @@ class _DayActivitiesPagerSheetState extends State<DayActivitiesPagerSheet> {
         color: const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Text('planner_objectives'.tr(langCode), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              if (hasTime)
-                Expanded(child: _buildObjectiveItem(LucideIcons.clock, '${cardioData.targetMinutes}', 'min', const Color(0xFF3B82F6))),
-              if (hasTime && hasDistance)
-                Container(width: 1, height: 50, margin: const EdgeInsets.symmetric(horizontal: 16), color: const Color(0xFFE2E8F0)),
-              if (hasDistance)
-                Expanded(child: _buildObjectiveItem(LucideIcons.mapPin, cardioData.targetKm!.toStringAsFixed(1), 'km', const Color(0xFFEF4444))),
-            ],
-          ),
+          if (hasTime)
+            Expanded(child: _buildStatItem(LucideIcons.clock, '${cardioData.targetMinutes}', 'min')),
+          if (hasTime && hasDistance)
+            Container(width: 1, height: 40, color: const Color(0xFFE2E8F0)),
+          if (hasDistance)
+            Expanded(child: _buildStatItem(LucideIcons.mapPin, cardioData.targetKm!.toStringAsFixed(1), 'km')),
         ],
       ),
     );
   }
 
-  Widget _buildObjectiveItem(IconData icon, String value, String label, Color color) {
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-          child: Icon(icon, size: 18, color: color),
-        ),
-        const SizedBox(width: 12),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(value, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF0B132B))),
-            Text(label, style: const TextStyle(fontSize: 14, color: Color(0xFF64748B))),
-          ],
-        ),
-      ],
+  Widget _buildHiitObjectives(String langCode, HiitConfig hiitConfig) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          // Effort
+          Expanded(
+            child: _buildStatItem(
+              LucideIcons.zap,
+              '${hiitConfig.workSeconds}s',
+              langCode == 'fr' ? 'effort' : 'work',
+            ),
+          ),
+          Container(width: 1, height: 40, color: const Color(0xFFE2E8F0)),
+          // Repos
+          Expanded(
+            child: _buildStatItem(
+              LucideIcons.pause,
+              '${hiitConfig.restSeconds}s',
+              langCode == 'fr' ? 'repos' : 'rest',
+            ),
+          ),
+          Container(width: 1, height: 40, color: const Color(0xFFE2E8F0)),
+          // Rounds
+          Expanded(
+            child: _buildStatItem(
+              LucideIcons.repeat,
+              '${hiitConfig.rounds}',
+              'rounds',
+            ),
+          ),
+          Container(width: 1, height: 40, color: const Color(0xFFE2E8F0)),
+          // Durée totale
+          Expanded(
+            child: _buildStatItem(
+              LucideIcons.clock,
+              '~${hiitConfig.totalMinutes}',
+              'min',
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -557,7 +591,7 @@ class _DayActivitiesPagerSheetState extends State<DayActivitiesPagerSheet> {
               icon: const Icon(LucideIcons.play, size: 18),
               label: Text('planner_start_cardio'.tr(langCode)),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF3B82F6),
+                backgroundColor: const Color(0xFF0B132B),
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -752,6 +786,12 @@ class _DayActivitiesPagerSheetState extends State<DayActivitiesPagerSheet> {
     final activityKey = cardioData?.activityKey ?? 'running';
     final activityName = cardioData?.activityName ?? 'Running';
 
+    // Si c'est un HIIT, lancer l'écran HIIT
+    if (cardioData != null && cardioData.isHiit && cardioData.hiitConfig != null) {
+      _startHiit(context, cardioData);
+      return;
+    }
+
     CardioObjective? objective;
     if (cardioData != null) {
       if (cardioData.targetKm != null && cardioData.targetKm! > 0) {
@@ -780,6 +820,32 @@ class _DayActivitiesPagerSheetState extends State<DayActivitiesPagerSheet> {
           activityTitle: activityName,
           formatTitle: activityName,
           objective: objective,
+        ),
+      ),
+    ).then((_) => widget.onActivityChanged());
+  }
+
+  void _startHiit(BuildContext context, PlannedCardioData cardioData) {
+    final hiitConfig = cardioData.hiitConfig!;
+
+    // Créer le workout HIIT avec la config stockée
+    final hiitWorkout = HiitWorkout(
+      id: hiitConfig.type,
+      title: cardioData.activityName,
+      description: '${hiitConfig.totalMinutes} min - ${hiitConfig.workSeconds}s effort / ${hiitConfig.restSeconds}s repos',
+      workDuration: hiitConfig.workSeconds,
+      restDuration: hiitConfig.restSeconds,
+      totalDuration: hiitConfig.totalMinutes,
+      totalRounds: hiitConfig.rounds,
+    );
+
+    Navigator.pop(context);
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => HiitSessionScreen(
+          workout: hiitWorkout,
+          isFromCustomConfig: hiitConfig.type == 'custom',
         ),
       ),
     ).then((_) => widget.onActivityChanged());

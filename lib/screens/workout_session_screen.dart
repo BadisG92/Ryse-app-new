@@ -2252,8 +2252,9 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
 
     // Historiser la séance (manuel, guidé, ou IA) avec fallback offline
     bool savedSuccessfully = false;
+    Map<String, String>? persistResult;
     try {
-      await db.DatabaseService.persistCompletedWorkoutAsHistory(
+      persistResult = await db.DatabaseService.persistCompletedWorkoutAsHistory(
         session: completedSession,
         guidedTemplateId: guidedTemplateId,
         sessionSource: sessionSource,
@@ -2262,8 +2263,8 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
         caloriesBurned: _estimatedCalories,
       );
 
-      savedSuccessfully = true;
-      isOffline = false;
+      savedSuccessfully = persistResult != null;
+      isOffline = persistResult == null;
 
       if (kDebugMode) debugPrint('✅ Séance sauvegardée en ligne avec succès');
 
@@ -2279,16 +2280,19 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
 
         // WEEKLY PLANNER SYNC: Synchroniser la séance avec le planificateur
         // Crée une entrée si elle n'existe pas, ou met à jour le statut si elle existe
-        try {
-          final plannerId = await WeeklyPlannerService.syncWorkoutSessionToPlanner(
-            sessionId: completedSession.id,
-            workoutName: widget.sessionName,
-            sessionDate: DateTime.now(),
-            durationMinutes: _displayedDuration.inMinutes,
-          );
-          if (kDebugMode) debugPrint('✅ Weekly Planner: Sync effectuée (plannerId: $plannerId)');
-        } catch (plannerError) {
-          if (kDebugMode) debugPrint('⚠️ Erreur sync Weekly Planner: $plannerError');
+        if (persistResult != null) {
+          try {
+            final plannerId = await WeeklyPlannerService.syncWorkoutSessionToPlanner(
+              sessionId: persistResult['summaryId']!,
+              workoutName: widget.sessionName,
+              sessionDate: DateTime.now(),
+              durationMinutes: _displayedDuration.inMinutes,
+              historySessionId: persistResult['historySessionId'],
+            );
+            if (kDebugMode) debugPrint('✅ Weekly Planner: Sync effectuée (plannerId: $plannerId)');
+          } catch (plannerError) {
+            if (kDebugMode) debugPrint('⚠️ Erreur sync Weekly Planner: $plannerError');
+          }
         }
       } catch (e) {
         if (kDebugMode) debugPrint('⚠️ Erreur invalidation caches: $e');

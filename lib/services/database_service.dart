@@ -1309,7 +1309,8 @@ class DatabaseService {
   }
 
   // Persist session details as per-set history rows
-  static Future<void> persistCompletedWorkoutAsHistory({
+  // Returns a Map with 'summaryId' and 'historySessionId' on success, or null if offline/error
+  static Future<Map<String, String>?> persistCompletedWorkoutAsHistory({
     required models.WorkoutSession session,
     String? guidedTemplateId,
     String sessionSource = 'manual', // 'manual' | 'guided_template' | 'ai_coach'
@@ -1330,7 +1331,7 @@ class DatabaseService {
         durationMinutes: durationMinutes,
         caloriesBurned: caloriesBurned,
       );
-      return;
+      return null;
     }
     
     final userId = _client.auth.currentUser?.id;
@@ -1488,6 +1489,7 @@ class DatabaseService {
     );
 
     // Create session summary row FIRST (parent must exist before children)
+    String summaryId = '';
     try {
       debugPrint('📝 Creating workout_session_summary:');
       debugPrint('  userId=$userId historySessionId=$historySessionId');
@@ -1496,7 +1498,7 @@ class DatabaseService {
       debugPrint('  caloriesBurned=${caloriesBurned ?? 0} intensity=$intensityValue');
       debugPrint('  session_source=$sessionSource template=$guidedTemplateId');
 
-      await _client.from('workout_session_summaries').insert({
+      final summaryResponse = await _client.from('workout_session_summaries').insert({
         'history_session_id': historySessionId,
         'user_id': userId,
         'session_name': sessionName,
@@ -1509,7 +1511,9 @@ class DatabaseService {
         'intensity': intensityValue,
         'session_source': sessionSource,
         'guided_template_id': guidedTemplateId,
-      });
+      }).select('id').single();
+
+      summaryId = summaryResponse['id'] as String;
 
       // Insert sets into workout_set_history AFTER summary exists (to respect CASCADE constraint)
       try {
@@ -1580,6 +1584,11 @@ class DatabaseService {
         }
       }
     } catch (_) {}
+
+    return {
+      'summaryId': summaryId,
+      'historySessionId': historySessionId,
+    };
   }
 
   static Future<HiitSession?> createHiitSession(HiitSession session) async {

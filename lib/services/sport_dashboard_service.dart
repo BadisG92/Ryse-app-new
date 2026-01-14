@@ -5,6 +5,7 @@ import 'workout_cache_service.dart';
 import 'calorie_target_service.dart';
 import 'global_state_manager.dart';
 import 'supabase_error_handler.dart';
+import 'weekly_planner_service.dart';
 
 /// Service unifié pour les données du tableau de bord Sport
 /// Combine les données cardio et musculation
@@ -688,6 +689,17 @@ class SportDashboardService {
           .eq('user_id', userId);
 
       debugPrint('✅ Séance de musculation supprimée avec succès');
+
+      // SYNC BIDIRECTIONNEL: Supprimer aussi du planner si lié
+      try {
+        final linkedPlannedWorkout = await WeeklyPlannerService.findPlannedWorkoutBySessionId(sessionId);
+        if (linkedPlannedWorkout != null) {
+          await WeeklyPlannerService.forceDeletePlannedWorkoutFromSync(linkedPlannedWorkout.id);
+          debugPrint('✅ Workout planifié lié supprimé du planner (${linkedPlannedWorkout.id})');
+        }
+      } catch (e) {
+        debugPrint('⚠️ Erreur sync planner (non bloquante): $e');
+      }
 
       // Invalider TOUS les caches
       WorkoutCacheService.invalidateUserCache(userId);

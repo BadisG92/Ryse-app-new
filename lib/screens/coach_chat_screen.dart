@@ -55,6 +55,18 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
     _loadConversation();
     _initSpeech();
     _checkBilanBanner();
+
+    // Scroll to bottom when keyboard opens
+    _focusNode.addListener(_onFocusChange);
+  }
+
+  void _onFocusChange() {
+    if (_focusNode.hasFocus) {
+      // Delay to let keyboard animation complete
+      Future.delayed(const Duration(milliseconds: 300), () {
+        _scrollToBottom();
+      });
+    }
   }
 
   Future<void> _initLocale() async {
@@ -81,6 +93,7 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
 
   @override
   void dispose() {
+    _focusNode.removeListener(_onFocusChange);
     _textController.dispose();
     _scrollController.dispose();
     _focusNode.dispose();
@@ -147,8 +160,9 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
+        // With reverse: true, scroll to 0 to show latest messages
         _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
+          0,
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOut,
         );
@@ -407,18 +421,30 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
+      resizeToAvoidBottomInset: false, // We handle keyboard manually for smoother UX
       appBar: _buildAppBar(),
       body: Column(
         children: [
           if (_showBilanBanner) _buildBilanBanner(),
           Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _buildMessagesList(),
+            child: GestureDetector(
+              onTap: () => _focusNode.unfocus(), // Dismiss keyboard on tap outside
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _buildMessagesList(),
+            ),
           ),
-          _buildInputBar(),
+          // Input bar with keyboard-aware padding
+          AnimatedPadding(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+            padding: EdgeInsets.only(bottom: keyboardHeight),
+            child: _buildInputBar(),
+          ),
         ],
       ),
     );
@@ -740,18 +766,23 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
     return ListView.builder(
       controller: _scrollController,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      reverse: true, // New messages at bottom, natural scroll behavior
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       itemCount: _messages.length,
       itemBuilder: (context, index) {
-        final message = _messages[index];
-        final needsSeparator = _needsDaySeparator(index);
+        // With reverse: true, index 0 is the last message
+        final reversedIndex = _messages.length - 1 - index;
+        final message = _messages[reversedIndex];
+        final needsSeparator = _needsDaySeparator(reversedIndex);
 
         return Column(
           children: [
-            if (needsSeparator) _buildDaySeparator(message.createdAt, lang),
+            // With reverse, separator comes after the message visually
             ChatMessageBubble(
               message: message,
-              isStreaming: _isSending && index == _messages.length - 1 && message.isAssistant,
+              isStreaming: _isSending && reversedIndex == _messages.length - 1 && message.isAssistant,
             ),
+            if (needsSeparator) _buildDaySeparator(message.createdAt, lang),
           ],
         );
       },
@@ -830,13 +861,15 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
   Widget _buildInputBar() {
     final locService = Provider.of<LocalizationService>(context, listen: false);
     final lang = locService.currentLanguageCode;
+    final keyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
 
     return Container(
       padding: EdgeInsets.only(
         left: 16,
         right: 16,
         top: 12,
-        bottom: MediaQuery.of(context).padding.bottom + 12,
+        // Only add safe area padding when keyboard is hidden
+        bottom: keyboardVisible ? 12 : MediaQuery.of(context).padding.bottom + 12,
       ),
       decoration: const BoxDecoration(
         color: Colors.white,

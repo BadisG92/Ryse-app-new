@@ -71,162 +71,202 @@ class _WeeklyContractScreenState extends State<WeeklyContractScreen> {
     final lang = locService.currentLanguageCode;
     final isFr = lang == 'fr';
     final isDe = lang == 'de';
+    final screenHeight = MediaQuery.of(context).size.height;
+    // Adapter la taille de l'image selon l'écran
+    final imageHeight = screenHeight < 700 ? 120.0 : 160.0;
 
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
-          child: Column(
-            children: [
-              const SizedBox(height: 24),
+        child: Column(
+          children: [
+            // Contenu scrollable
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: screenHeight -
+                        MediaQuery.of(context).padding.top -
+                        MediaQuery.of(context).padding.bottom -
+                        120, // Espace pour le bouton fixe en bas
+                  ),
+                  child: IntrinsicHeight(
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 24),
 
-              // Title at top
-              Text(
-                isFr ? 'Notre Pacte' : isDe ? 'Unser Pakt' : 'Our Pact',
-                style: const TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF0B132B),
-                ),
-              ),
+                        // Title at top
+                        Text(
+                          isFr ? 'Notre Pacte' : isDe ? 'Unser Pakt' : 'Our Pact',
+                          style: const TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF0B132B),
+                          ),
+                        ),
 
-              const Spacer(flex: 1),
+                        const SizedBox(height: 24),
 
-              // Coach Ryze duo image (sport + nutrition)
-              Image.asset(
-                'assets/images/coach_ryze_contract.png',
-                height: 160,
-              ),
-              const SizedBox(height: 24),
+                        // Coach Ryze duo image (sport + nutrition)
+                        Image.asset(
+                          'assets/images/coach_ryze_contract.png',
+                          height: imageHeight,
+                        ),
+                        const SizedBox(height: 24),
 
-              // Coach commitment
-              Text(
-                isFr
-                    ? '"Nous, tes Coach Ryze, on s\'engage à te suivre, te motiver, et jamais te juger."'
-                    : isDe
-                        ? '"Wir, deine Coach Ryze, verpflichten uns, dich zu begleiten, zu motivieren und niemals zu verurteilen."'
-                        : '"We, your Coach Ryze team, commit to following you, motivating you, and never judging you."',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF0B132B),
-                  height: 1.5,
-                ),
-              ),
-              const SizedBox(height: 24),
+                        // Coach commitment
+                        Text(
+                          isFr
+                              ? '"Nous, tes Coach Ryze, on s\'engage à te suivre, te motiver, et jamais te juger."'
+                              : isDe
+                                  ? '"Wir, deine Coach Ryze, verpflichten uns, dich zu begleiten, zu motivieren und niemals zu verurteilen."'
+                                  : '"We, your Coach Ryze team, commit to following you, motivating you, and never judging you."',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF0B132B),
+                            height: 1.5,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
 
-              // User commitment
-              Text(
-                isFr
-                    ? '"En échange, tu nous donnes 5 min chaque semaine."'
-                    : isDe
-                        ? '"Im Gegenzug gibst du uns 5 Min pro Woche."'
-                        : '"In return, you give us 5 min each week."',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey[600],
-                  height: 1.5,
-                ),
-              ),
+                        // User commitment
+                        Text(
+                          isFr
+                              ? '"En échange, tu nous donnes 5 min chaque semaine."'
+                              : isDe
+                                  ? '"Im Gegenzug gibst du uns 5 Min pro Woche."'
+                                  : '"In return, you give us 5 min each week."',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey[600],
+                            height: 1.5,
+                          ),
+                        ),
 
-              const SizedBox(height: 40),
+                        const SizedBox(height: 32),
 
-              // Divider
-              Container(
-                width: 60,
-                height: 2,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE2E8F0),
-                  borderRadius: BorderRadius.circular(1),
-                ),
-              ),
-
-              const SizedBox(height: 40),
-
-              // Day selection title
-              Text(
-                isFr ? 'Notre jour de check-in' : isDe ? 'Unser Check-in Tag' : 'Our check-in day',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF0B132B),
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // Day selector
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: _days.map((day) {
-                  final isSelected = _selectedDay == day.value;
-                  return Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 2),
-                      child: GestureDetector(
-                        onTap: () => setState(() => _selectedDay = day.value),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          height: 40,
+                        // Divider
+                        Container(
+                          width: 60,
+                          height: 2,
                           decoration: BoxDecoration(
-                            gradient: isSelected
-                                ? const LinearGradient(
-                                    colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  )
-                                : null,
-                            color: isSelected ? null : const Color(0xFFF8FAFC),
-                            borderRadius: BorderRadius.circular(12),
-                            border: isSelected
-                                ? null
-                                : Border.all(color: const Color(0xFFE2E8F0)),
+                            color: const Color(0xFFE2E8F0),
+                            borderRadius: BorderRadius.circular(1),
                           ),
-                          child: Center(
-                            child: Text(
-                              isFr ? day.shortFr : isDe ? day.shortDe : day.shortEn,
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: isSelected
-                                    ? Colors.white
-                                    : const Color(0xFF64748B),
+                        ),
+
+                        const SizedBox(height: 32),
+
+                        // Day selection title
+                        Text(
+                          isFr ? 'Notre jour de check-in' : isDe ? 'Unser Check-in Tag' : 'Our check-in day',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF0B132B),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Day selector
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: _days.map((day) {
+                            final isSelected = _selectedDay == day.value;
+                            return Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 2),
+                                child: GestureDetector(
+                                  onTap: () => setState(() => _selectedDay = day.value),
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 200),
+                                    height: 40,
+                                    decoration: BoxDecoration(
+                                      gradient: isSelected
+                                          ? const LinearGradient(
+                                              colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                            )
+                                          : null,
+                                      color: isSelected ? null : const Color(0xFFF8FAFC),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: isSelected
+                                          ? null
+                                          : Border.all(color: const Color(0xFFE2E8F0)),
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        isFr ? day.shortFr : isDe ? day.shortDe : day.shortEn,
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: isSelected
+                                              ? Colors.white
+                                              : const Color(0xFF64748B),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
                               ),
-                            ),
-                          ),
+                            );
+                          }).toList(),
                         ),
-                      ),
+
+                        // Selected day label
+                        const SizedBox(height: 12),
+                        AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 200),
+                          child: _selectedDay != null
+                              ? Text(
+                                  isFr
+                                      ? _days[_selectedDay! - 1].fullFr
+                                      : isDe
+                                          ? _days[_selectedDay! - 1].fullDe
+                                          : _days[_selectedDay! - 1].fullEn,
+                                  key: ValueKey(_selectedDay),
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey[500],
+                                  ),
+                                )
+                              : const SizedBox(height: 20),
+                        ),
+
+                        // Spacer flexible pour pousser le contenu vers le haut sur grands écrans
+                        const Spacer(),
+                        const SizedBox(height: 24),
+                      ],
                     ),
-                  );
-                }).toList(),
+                  ),
+                ),
               ),
+            ),
 
-              // Selected day label
-              const SizedBox(height: 12),
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 200),
-                child: _selectedDay != null
-                    ? Text(
-                        isFr
-                            ? _days[_selectedDay! - 1].fullFr
-                            : isDe
-                                ? _days[_selectedDay! - 1].fullDe
-                                : _days[_selectedDay! - 1].fullEn,
-                        key: ValueKey(_selectedDay),
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[500],
-                        ),
-                      )
-                    : const SizedBox(height: 20),
+            // Sign button - fixe en bas
+            Container(
+              padding: EdgeInsets.only(
+                left: 32,
+                right: 32,
+                top: 16,
+                bottom: MediaQuery.of(context).padding.bottom + 24,
               ),
-
-              const Spacer(flex: 3),
-
-              // Sign button
-              GestureDetector(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, -4),
+                  ),
+                ],
+              ),
+              child: GestureDetector(
                 onTap: _selectedDay != null && !_isSaving
                     ? _saveAndComplete
                     : null,
@@ -282,10 +322,8 @@ class _WeeklyContractScreenState extends State<WeeklyContractScreen> {
                   ),
                 ),
               ),
-
-              SizedBox(height: MediaQuery.of(context).padding.bottom + 32),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

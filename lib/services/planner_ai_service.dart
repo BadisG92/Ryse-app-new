@@ -9,6 +9,7 @@ import '../models/sport_models.dart';
 import '../models/ai_analysis_models.dart';
 import '../models/user_model.dart';
 import 'weekly_planner_service.dart';
+import 'planned_cardio_service.dart';
 import 'gemini_analysis_service_v2.dart';
 import 'ai_workout_generation_service.dart';
 import 'food_entries_service.dart';
@@ -1530,14 +1531,47 @@ class PlannerAIService {
       return 'No workouts planned yet';
     }
 
-    final buffer = StringBuffer();
-    for (final workout in workouts) {
-      final dayName = _formatDayName(workout.plannedDate, 'en').toLowerCase();
-      final status = workout.status.value;
-      final exerciseCount = workout.exercises.length;
+    // Séparer les séances complétées des planifiées
+    final completed = workouts.where((w) => w.status == PlannedStatus.completed).toList();
+    final planned = workouts.where((w) => w.status == PlannedStatus.planned).toList();
+    final missed = workouts.where((w) => w.status == PlannedStatus.missed).toList();
 
-      buffer.writeln('• $dayName (id: ${workout.id}): "${workout.workoutName}" - $exerciseCount exercises, status: $status');
+    final buffer = StringBuffer();
+
+    // Séances COMPLÉTÉES (ne pas les modifier, mais prendre en compte pour le planning)
+    if (completed.isNotEmpty) {
+      buffer.writeln('COMPLETED SESSIONS (DO NOT modify, count towards weekly total):');
+      for (final workout in completed) {
+        final dayName = _formatDayName(workout.plannedDate, 'en').toLowerCase();
+        final exercises = workout.exercises.map((e) => e.exercise.name).join(', ');
+        buffer.writeln('  ✓ $dayName: "${workout.workoutName}" - ${workout.exercises.length} exercises ($exercises)');
+      }
+      buffer.writeln();
     }
+
+    // Séances PLANIFIÉES (peuvent être modifiées/déplacées/supprimées)
+    if (planned.isNotEmpty) {
+      buffer.writeln('PLANNED SESSIONS (can be modified/moved/deleted):');
+      for (final workout in planned) {
+        final dayName = _formatDayName(workout.plannedDate, 'en').toLowerCase();
+        final exercises = workout.exercises.map((e) => e.exercise.name).join(', ');
+        buffer.writeln('  • $dayName (id: ${workout.id}): "${workout.workoutName}" - ${workout.exercises.length} exercises ($exercises)');
+      }
+      buffer.writeln();
+    }
+
+    // Séances MANQUÉES
+    if (missed.isNotEmpty) {
+      buffer.writeln('MISSED SESSIONS (past, cannot be recovered):');
+      for (final workout in missed) {
+        final dayName = _formatDayName(workout.plannedDate, 'en').toLowerCase();
+        buffer.writeln('  ✗ $dayName: "${workout.workoutName}" - missed');
+      }
+    }
+
+    // Résumé
+    final totalPlannedOrCompleted = completed.length + planned.length;
+    buffer.writeln('\nSUMMARY: ${completed.length} completed + ${planned.length} planned = $totalPlannedOrCompleted sessions this week');
 
     return buffer.toString().trim();
   }
@@ -1737,6 +1771,9 @@ NEVER use "chaque séance" if the user only asked for ONE session!
 3. Adapt to user's gender (more glutes/hamstrings for women, more upper body for men)
 4. Use their performance history to suggest appropriate weights
 5. AVOID exercises already planned this week - provide variety
+6. **CRITICAL**: COMPLETED sessions count towards weekly totals! If user says "3 sessions this week" and 1 is already completed, only plan 2 more
+7. **CRITICAL**: Only plan on FUTURE days (today or later). Never plan on past days
+8. When planning complementary sessions to existing ones, ensure muscle group balance (don't repeat same muscles within 48h)
 
 ## Gender-Specific Adaptations
 For WOMEN: More emphasis on glutes, hamstrings, core. Include hip thrusts, glute bridges, RDLs.
@@ -1763,7 +1800,8 @@ User: "Met ma séance A mardi" / "Put my Session A on Tuesday"
 → intent: "use_template", search for template named "Séance A" in user_templates, target_day: "tuesday"
 
 User: "Remplace la séance de mardi par du full body"
-→ intent: "modify_workout", delete_day: "tuesday" (delete existing), then create new workout for tuesday
+→ intent: "modify_workout", current_day: "tuesday", new_workout_type: "Full Body"
+IMPORTANT: Use ONLY modify_workout, do NOT call delete_workout first!
 
 User: "Enlève toutes mes séances et programme 5 séances" / "Clear my week and add 5 workouts"
 → intent: "workout", clear_week_first: true, workouts: [...5 workouts for different days...]
@@ -2051,8 +2089,9 @@ IMPORTANT:
 
   static Future<Map<String, dynamic>?> _callGeminiAPI(String prompt) async {
     try {
+      // Utiliser le modèle plus performant pour le planner (gemini-2.5-flash)
       final url = Uri.parse(
-        '${GeminiConfig.geminiApiUrl}?key=${GeminiConfig.geminiApiKey}',
+        '${GeminiConfig.plannerApiUrl}?key=${GeminiConfig.geminiApiKey}',
       );
 
       final body = {
@@ -2127,7 +2166,13 @@ IMPORTANT:
           },
           'action_description': {
             'type': 'string',
-            'description': 'Human-readable description of what will be deleted (in user language)',
+            'description': '''Human-readable description of what will be DELETED (in user language).
+MUST explicitly say "supprimer"/"delete" in the description!
+Examples:
+- FR: "supprimer toutes les séances de cardio de la semaine"
+- FR: "supprimer la séance de musculation de mardi"
+- EN: "delete all cardio sessions this week"
+- EN: "delete Tuesday's workout"''',
           },
           'action_args': {
             'type': 'object',
@@ -2278,14 +2323,25 @@ IMPORTANT:
     },
     {
       'name': 'modify_workout',
-      'description': 'Modify an existing workout session. Can change type, duration, day, or regenerate exercises. Use when user wants to change something about an existing planned workout (e.g., "change mardi en dos", "rallonge à 60min").',
+      'description': '''Modify an existing workout session. Can change type, duration, or convert to cardio/HIIT.
+IMPORTANT: Use this tool to REPLACE a workout with a new one. Do NOT call delete_workout before this!
+Use when user wants to change something about an existing planned workout:
+- "change mardi en dos" → modify_workout(current_day="tuesday", new_workout_type="Dos")
+- "remplace ma séance jambe par épaules" → modify_workout(current_workout_name="jambe", new_workout_type="Épaules")
+- "rallonge à 60min" → modify_workout(current_day=X, new_duration_minutes=60)
+- "remplace ma séance muscu par du HIIT" → modify_workout(current_day=X, new_workout_type="hiit") → will ask HIIT params
+- "change ma séance en cardio/course/vélo" → modify_workout(current_day=X, new_workout_type="running") → will ask duration''',
       'parameters': {
         'type': 'object',
         'properties': {
           'current_day': {
             'type': 'string',
-            'description': 'Current day of the workout to modify',
+            'description': 'Current day of the workout to modify. Use if user specifies day.',
             'enum': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+          },
+          'current_workout_name': {
+            'type': 'string',
+            'description': 'Name/type of the workout to modify (e.g., "jambe", "dos", "pecs"). Use if user specifies workout name instead of day.',
           },
           'new_day': {
             'type': 'string',
@@ -2294,7 +2350,7 @@ IMPORTANT:
           },
           'new_workout_type': {
             'type': 'string',
-            'description': 'New workout type (only if changing type, e.g., "Dos", "Pecs", "Full Body")',
+            'description': 'New workout type (e.g., "Dos", "Pecs", "Full Body", "Épaules", "Jambes", "Bras")',
           },
           'new_duration_minutes': {
             'type': 'integer',
@@ -2302,15 +2358,22 @@ IMPORTANT:
           },
           'regenerate_exercises': {
             'type': 'boolean',
-            'description': 'If true, regenerate all exercises for this workout. Set to true when changing workout_type.',
+            'description': 'If true, regenerate all exercises for this workout. Auto-set to true when changing workout_type.',
           },
         },
-        'required': ['current_day'],
+        'required': [],
       },
     },
     {
       'name': 'modify_cardio',
-      'description': 'Modify an existing cardio session. Can change activity type, duration, distance, or day. Use when user wants to change something about an existing cardio (e.g., "change mon cardio de lundi en vélo", "rallonge à 45min").',
+      'description': '''Modify an existing cardio session. Can change activity type, duration, distance, or day.
+If changing to HIIT: the system will automatically ask for HIIT type.
+IMPORTANT: When user specifies a distance (e.g., "5km run"), ALWAYS set new_target_km!
+Examples:
+- "change mon HIIT en course de 5km" → modify_cardio(current_day=X, new_activity="running", new_target_km=5)
+- "change mon cardio de lundi en vélo 10km" → modify_cardio(current_day="monday", new_activity="bike", new_target_km=10)
+- "change ma course en HIIT" → modify_cardio(current_day=X, new_activity="hiit") → will ask HIIT type
+- "modifie la durée à 45min" → modify_cardio(current_day=X, new_duration_minutes=45)''',
       'parameters': {
         'type': 'object',
         'properties': {
@@ -2326,8 +2389,13 @@ IMPORTANT:
           },
           'new_activity': {
             'type': 'string',
-            'description': 'New activity type (only if changing activity). ONLY these 4 activities are supported in the app.',
+            'description': 'New activity type. If "hiit", system will ask for HIIT config.',
             'enum': ['running', 'bike', 'walking', 'hiit'],
+          },
+          'hiit_type': {
+            'type': 'string',
+            'description': 'Only when new_activity="hiit". Type of HIIT workout.',
+            'enum': ['tabata', 'hiit_beginner', 'hiit_intense', 'custom'],
           },
           'new_duration_minutes': {
             'type': 'integer',
@@ -2335,7 +2403,7 @@ IMPORTANT:
           },
           'new_target_km': {
             'type': 'number',
-            'description': 'New target distance in km (only if changing distance)',
+            'description': 'New target distance in km (only for running/bike/walking, NOT for hiit)',
           },
         },
         'required': ['current_day'],
@@ -2343,7 +2411,9 @@ IMPORTANT:
     },
     {
       'name': 'create_cardio',
-      'description': 'Create a cardio session for a specific day. IMPORTANT: You need either duration_minutes OR target_km. If user provides neither, use ask_clarification to ask. If user provides one, use only that one. If user provides both, use both.',
+      'description': '''Create a cardio session (running, bike, walking) for a specific day.
+NOT for HIIT - use create_hiit instead!
+Need duration_minutes OR target_km (ask if neither provided).''',
       'parameters': {
         'type': 'object',
         'properties': {
@@ -2354,19 +2424,59 @@ IMPORTANT:
           },
           'activity': {
             'type': 'string',
-            'description': 'Type of cardio activity. ONLY these 4 activities are supported in the app.',
-            'enum': ['running', 'bike', 'walking', 'hiit'],
+            'description': 'Type of cardio activity. NOT HIIT (use create_hiit for that).',
+            'enum': ['running', 'bike', 'walking'],
           },
           'duration_minutes': {
             'type': 'integer',
-            'description': 'Duration in minutes. Only provide if user specified a duration.',
+            'description': 'Duration in minutes.',
           },
           'target_km': {
             'type': 'number',
-            'description': 'Target distance in kilometers. Only provide if user specified a distance.',
+            'description': 'Target distance in kilometers.',
           },
         },
         'required': ['day', 'activity'],
+      },
+    },
+    {
+      'name': 'create_hiit',
+      'description': '''Create a HIIT/Tabata session for a specific day.
+Ask user what type they want OR propose presets:
+- "tabata": Classic Tabata (4 min - 20s effort / 10s rest - 8 rounds)
+- "hiit_beginner": Beginner HIIT (15 min - 30s effort / 30s rest - 15 rounds)
+- "hiit_intense": Intense HIIT (20 min - 45s effort / 15s rest - 20 rounds)
+- "custom": Custom config (ask for work_seconds, rest_seconds, rounds)
+
+If user doesn't specify, propose the presets and let them choose OR offer to customize.
+Example: "Tu veux quel type de HIIT? 🔥 Tabata (4min intense), 💪 HIIT débutant (15min), 🏋️ HIIT intense (20min), ou tu veux personnaliser?"''',
+      'parameters': {
+        'type': 'object',
+        'properties': {
+          'day': {
+            'type': 'string',
+            'description': 'Day for the HIIT session',
+            'enum': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+          },
+          'hiit_type': {
+            'type': 'string',
+            'description': 'Type of HIIT workout. Use preset ID or "custom" for custom config.',
+            'enum': ['tabata', 'hiit_beginner', 'hiit_intense', 'custom'],
+          },
+          'work_seconds': {
+            'type': 'integer',
+            'description': 'Work duration in seconds (only for custom). E.g., 30, 40, 45.',
+          },
+          'rest_seconds': {
+            'type': 'integer',
+            'description': 'Rest duration in seconds (only for custom). E.g., 10, 15, 20, 30.',
+          },
+          'rounds': {
+            'type': 'integer',
+            'description': 'Number of rounds (only for custom). E.g., 8, 10, 12, 15, 20.',
+          },
+        },
+        'required': ['day'],
       },
     },
     {
@@ -2549,19 +2659,30 @@ MOVE EXAMPLES:
 MODIFY keywords: "change en", "modifie", "rallonge", "raccourcis", "remplace par", "transformer"
   → Use modify_workout or modify_cardio
 
+⚠️ CRITICAL: When modifying a session, call ONLY modify_workout or modify_cardio!
+   NEVER call delete_workout/delete_cardio before modify_workout/modify_cardio!
+   The modify functions handle replacement internally.
+
 IMPORTANT: MODIFY ≠ MOVE!
   MOVE = only change the day
   MODIFY = change type, duration, or other parameters (not the day)
 
 MODIFY EXAMPLES:
-• "change ma séance de mardi en dos"
+• "change ma séance de mardi en dos" / "remplace la séance de mardi par dos"
   → modify_workout(current_day="tuesday", new_workout_type="Dos", regenerate_exercises=true)
+  ❌ WRONG: delete_workout + modify_workout
+  ✅ CORRECT: only modify_workout
 • "rallonge ma séance de lundi à 60min"
   → modify_workout(current_day="monday", new_duration_minutes=60)
 • "change mon cardio de mercredi en vélo"
   → modify_cardio(current_day="wednesday", new_activity="bike")
 • "modifie la durée du cardio de jeudi à 45min"
   → modify_cardio(current_day="thursday", new_duration_minutes=45)
+• "change mon HIIT en course de 5km" / "remplace le tabata par une course 5km"
+  → modify_cardio(current_day=X, new_activity="running", new_target_km=5)
+  ⚠️ IMPORTANT: Always pass new_target_km when user specifies a distance!
+• "remplace ma séance jambe par une séance épaule"
+  → modify_workout(current_day=[day of jambe session], new_workout_type="Épaules", regenerate_exercises=true)
 
 ═══════════════════════════════════════════════════════════════
                     CONFIRMATION RULES
@@ -2653,6 +2774,17 @@ USER REQUEST: "$userMessage"
           addToHistory('assistant', question);
           return PlannerActionResult(success: true, message: question);
         }
+
+        // Détecter si un tool retourne une question (nécessite plus d'info de l'utilisateur)
+        // Par exemple create_hiit demandant quel type, ou create_cardio demandant la durée
+        if (toolResult['needs_clarification'] == true ||
+            (toolResult['success'] == true &&
+             toolResult['message'] != null &&
+             _isQuestionMessage(toolResult['message'] as String))) {
+          final questionMsg = toolResult['message'] as String;
+          addToHistory('assistant', questionMsg);
+          return PlannerActionResult(success: true, message: questionMsg);
+        }
       }
 
       // Si on a des workouts à créer, retourner en mode preview
@@ -2683,13 +2815,14 @@ USER REQUEST: "$userMessage"
   }
 
   /// Appeler Gemini API avec function calling
+  /// Utilise gemini-2.5-flash pour un meilleur raisonnement et function calling
   static Future<Map<String, dynamic>?> _callGeminiWithTools(
     String systemPrompt,
     String userMessage,
   ) async {
     try {
       final url = Uri.parse(
-        '${GeminiConfig.geminiApiUrl}?key=${GeminiConfig.geminiApiKey}',
+        '${GeminiConfig.plannerApiUrl}?key=${GeminiConfig.geminiApiKey}',
       );
 
       final body = {
@@ -2849,6 +2982,29 @@ USER REQUEST: "$userMessage"
                   : '✅ Workout "$deletedName" deleted';
           return {'success': true, 'message': msg};
         }
+
+        // Vérifier si une séance existe mais est passée (completed/missed)
+        final existingWorkout = await WeeklyPlannerService.findPlannedWorkoutByNameForDate(
+          day,
+          workoutName: workoutName,
+          includeAllStatus: true,
+        );
+        if (existingWorkout != null) {
+          final status = existingWorkout.status;
+          final msg = langCode == 'fr'
+              ? status == PlannedStatus.completed
+                  ? '⚠️ Cette séance est déjà terminée et ne peut pas être supprimée. Consulte l\'historique pour voir tes séances passées.'
+                  : '⚠️ Cette séance est passée et ne peut pas être modifiée. Consulte l\'historique pour voir tes séances passées.'
+              : langCode == 'de'
+                  ? status == PlannedStatus.completed
+                      ? '⚠️ Dieses Training ist bereits abgeschlossen und kann nicht gelöscht werden.'
+                      : '⚠️ Dieses Training ist vergangen und kann nicht geändert werden.'
+                  : status == PlannedStatus.completed
+                      ? '⚠️ This workout is already completed and cannot be deleted. Check your history for past workouts.'
+                      : '⚠️ This workout is in the past and cannot be modified. Check your history for past workouts.';
+          return {'success': false, 'message': msg};
+        }
+
         return {'success': false, 'message': _getToolMessage(langCode, 'no_workout')};
 
       case 'delete_cardio':
@@ -2876,6 +3032,29 @@ USER REQUEST: "$userMessage"
                   : '✅ Cardio "$deletedName" deleted';
           return {'success': true, 'message': msg};
         }
+
+        // Vérifier si un cardio existe mais est passé (completed/missed)
+        final existingCardio = await WeeklyPlannerService.findPlannedCardioByNameForDate(
+          day,
+          activityName: activityName,
+          includeAllStatus: true,
+        );
+        if (existingCardio != null) {
+          final status = existingCardio.status;
+          final msg = langCode == 'fr'
+              ? status == PlannedStatus.completed
+                  ? '⚠️ Cette séance cardio est déjà terminée et ne peut pas être supprimée. Consulte l\'historique pour voir tes séances passées.'
+                  : '⚠️ Cette séance cardio est passée et ne peut pas être modifiée. Consulte l\'historique pour voir tes séances passées.'
+              : langCode == 'de'
+                  ? status == PlannedStatus.completed
+                      ? '⚠️ Dieses Cardio ist bereits abgeschlossen und kann nicht gelöscht werden.'
+                      : '⚠️ Dieses Cardio ist vergangen und kann nicht geändert werden.'
+                  : status == PlannedStatus.completed
+                      ? '⚠️ This cardio session is already completed and cannot be deleted. Check your history for past sessions.'
+                      : '⚠️ This cardio session is in the past and cannot be modified. Check your history for past sessions.';
+          return {'success': false, 'message': msg};
+        }
+
         return {'success': false, 'message': _getToolMessage(langCode, 'no_cardio')};
 
       case 'create_workout':
@@ -2887,14 +3066,24 @@ USER REQUEST: "$userMessage"
         final day = _parseSingleDay(dayStr);
         if (day == null) return {'success': false, 'message': 'Invalid day'};
 
-        // Vérifier que le type et la durée sont fournis
-        if (workoutType == null || workoutType.isEmpty || duration == null) {
+        // Vérifier que le type est fourni
+        if (workoutType == null || workoutType.isEmpty) {
           final askMsg = langCode == 'fr'
-              ? 'Quel type de séance veux-tu (ex: Pecs, Dos, Jambes, Full Body, Push, Pull...) et combien de temps?'
+              ? 'Quel type de séance veux-tu? (ex: Pecs, Dos, Jambes, Full Body, Push, Pull, Bras, Épaules...)'
               : langCode == 'de'
-                  ? 'Welche Art von Training möchtest du (z.B. Brust, Rücken, Beine, Ganzkörper, Push, Pull...) und wie lange?'
-                  : 'What type of workout do you want (e.g. Chest, Back, Legs, Full Body, Push, Pull...) and how long?';
-          return {'success': true, 'message': askMsg};
+                  ? 'Welche Art von Training möchtest du? (z.B. Brust, Rücken, Beine, Ganzkörper, Push, Pull...)'
+                  : 'What type of workout do you want? (e.g. Chest, Back, Legs, Full Body, Push, Pull...)';
+          return {'success': true, 'message': askMsg, 'needs_clarification': true};
+        }
+
+        // Vérifier que la durée est fournie
+        if (duration == null) {
+          final askMsg = langCode == 'fr'
+              ? 'Combien de temps pour ta séance $workoutType? (ex: 30, 45, 60 min)'
+              : langCode == 'de'
+                  ? 'Wie lange soll dein $workoutType Training dauern? (z.B. 30, 45, 60 Min)'
+                  : 'How long for your $workoutType workout? (e.g. 30, 45, 60 min)';
+          return {'success': true, 'message': askMsg, 'needs_clarification': true};
         }
 
         // Générer le workout avec l'IA
@@ -2938,6 +3127,28 @@ USER REQUEST: "$userMessage"
           await WeeklyPlannerService.movePlannedWorkout(workout.id, toDay);
           return {'success': true, 'message': _getToolMessage(langCode, 'moved')};
         }
+
+        // Vérifier si une séance existe mais est passée
+        final existingWorkoutMove = await WeeklyPlannerService.findPlannedWorkoutForDate(
+          fromDay,
+          includeAllStatus: true,
+        );
+        if (existingWorkoutMove != null) {
+          final status = existingWorkoutMove.status;
+          final msg = langCode == 'fr'
+              ? status == PlannedStatus.completed
+                  ? '⚠️ Cette séance est déjà terminée et ne peut pas être déplacée.'
+                  : '⚠️ Cette séance est passée et ne peut pas être déplacée.'
+              : langCode == 'de'
+                  ? status == PlannedStatus.completed
+                      ? '⚠️ Dieses Training ist bereits abgeschlossen und kann nicht verschoben werden.'
+                      : '⚠️ Dieses Training ist vergangen und kann nicht verschoben werden.'
+                  : status == PlannedStatus.completed
+                      ? '⚠️ This workout is already completed and cannot be moved.'
+                      : '⚠️ This workout is in the past and cannot be moved.';
+          return {'success': false, 'message': msg};
+        }
+
         return {'success': false, 'message': _getToolMessage(langCode, 'no_workout')};
 
       case 'move_cardio':
@@ -2961,18 +3172,189 @@ USER REQUEST: "$userMessage"
               : '✅ Cardio moved';
           return {'success': true, 'message': movedMsg};
         }
+
+        // Vérifier si un cardio existe mais est passé
+        final existingCardioMove = await WeeklyPlannerService.findPlannedCardioForDate(
+          fromDayCardio,
+          includeAllStatus: true,
+        );
+        if (existingCardioMove != null) {
+          final status = existingCardioMove.status;
+          final msg = langCode == 'fr'
+              ? status == PlannedStatus.completed
+                  ? '⚠️ Cette séance cardio est déjà terminée et ne peut pas être déplacée.'
+                  : '⚠️ Cette séance cardio est passée et ne peut pas être déplacée.'
+              : langCode == 'de'
+                  ? status == PlannedStatus.completed
+                      ? '⚠️ Dieses Cardio ist bereits abgeschlossen und kann nicht verschoben werden.'
+                      : '⚠️ Dieses Cardio ist vergangen und kann nicht verschoben werden.'
+                  : status == PlannedStatus.completed
+                      ? '⚠️ This cardio session is already completed and cannot be moved.'
+                      : '⚠️ This cardio session is in the past and cannot be moved.';
+          return {'success': false, 'message': msg};
+        }
+
         return {'success': false, 'message': _getToolMessage(langCode, 'no_cardio')};
 
       case 'modify_workout':
-        final currentDay = _parseSingleDay(args['current_day'] as String? ?? '');
-        if (currentDay == null) {
-          return {'success': false, 'message': 'Invalid day'};
+        final currentDayStr = args['current_day'] as String?;
+        final currentWorkoutName = args['current_workout_name'] as String?;
+        final newType = args['new_workout_type'] as String?;
+        final newDuration = args['new_duration_minutes'] as int?;
+        final regenerate = args['regenerate_exercises'] as bool? ?? (newType != null);
+
+        PlannedWorkout? existingWorkout;
+        DateTime? currentDay;
+
+        // Trouver le workout existant - par jour ou par nom
+        if (currentDayStr != null && currentDayStr.isNotEmpty) {
+          currentDay = _parseSingleDay(currentDayStr);
+          if (currentDay != null) {
+            existingWorkout = await WeeklyPlannerService.findPlannedWorkoutForDate(currentDay);
+          }
         }
 
-        // Trouver le workout existant
-        final existingWorkout = await WeeklyPlannerService.findPlannedWorkoutForDate(currentDay);
+        // Si pas trouvé par jour, chercher par nom
+        if (existingWorkout == null && currentWorkoutName != null && currentWorkoutName.isNotEmpty) {
+          debugPrint('🔍 modify_workout: Searching by name "$currentWorkoutName"');
+          // Chercher dans toute la semaine
+          final weekStart = getCurrentWeekStart();
+          for (int i = 0; i < 7; i++) {
+            final day = weekStart.add(Duration(days: i));
+            final workout = await WeeklyPlannerService.findPlannedWorkoutByNameForDate(
+              day,
+              workoutName: currentWorkoutName,
+            );
+            if (workout != null) {
+              existingWorkout = workout;
+              currentDay = day;
+              debugPrint('✅ Found workout "${workout.workoutName}" on day $i');
+              break;
+            }
+          }
+        }
+
         if (existingWorkout == null) {
+          // Vérifier si une séance existe mais est passée (par jour)
+          if (currentDay != null) {
+            final pastWorkout = await WeeklyPlannerService.findPlannedWorkoutForDate(
+              currentDay,
+              includeAllStatus: true,
+            );
+            if (pastWorkout != null) {
+              final status = pastWorkout.status;
+              final msg = langCode == 'fr'
+                  ? status == PlannedStatus.completed
+                      ? '⚠️ Cette séance est déjà terminée et ne peut pas être modifiée.'
+                      : '⚠️ Cette séance est passée et ne peut pas être modifiée.'
+                  : langCode == 'de'
+                      ? status == PlannedStatus.completed
+                          ? '⚠️ Dieses Training ist bereits abgeschlossen und kann nicht geändert werden.'
+                          : '⚠️ Dieses Training ist vergangen und kann nicht geändert werden.'
+                      : status == PlannedStatus.completed
+                          ? '⚠️ This workout is already completed and cannot be modified.'
+                          : '⚠️ This workout is in the past and cannot be modified.';
+              return {'success': false, 'message': msg};
+            }
+          }
+
+          // Chercher séance passée par nom si spécifié
+          if (currentWorkoutName != null && currentWorkoutName.isNotEmpty) {
+            final weekStart = getCurrentWeekStart();
+            for (int i = 0; i < 7; i++) {
+              final day = weekStart.add(Duration(days: i));
+              final pastWorkout = await WeeklyPlannerService.findPlannedWorkoutByNameForDate(
+                day,
+                workoutName: currentWorkoutName,
+                includeAllStatus: true,
+              );
+              if (pastWorkout != null && pastWorkout.status != PlannedStatus.planned) {
+                final status = pastWorkout.status;
+                final msg = langCode == 'fr'
+                    ? status == PlannedStatus.completed
+                        ? '⚠️ La séance "$currentWorkoutName" est déjà terminée et ne peut pas être modifiée.'
+                        : '⚠️ La séance "$currentWorkoutName" est passée et ne peut pas être modifiée.'
+                    : langCode == 'de'
+                        ? status == PlannedStatus.completed
+                            ? '⚠️ Das Training "$currentWorkoutName" ist bereits abgeschlossen.'
+                            : '⚠️ Das Training "$currentWorkoutName" ist vergangen.'
+                        : status == PlannedStatus.completed
+                            ? '⚠️ Workout "$currentWorkoutName" is already completed and cannot be modified.'
+                            : '⚠️ Workout "$currentWorkoutName" is in the past and cannot be modified.';
+                return {'success': false, 'message': msg};
+              }
+            }
+          }
+
+          // Si pas de workout existant mais on a un type à créer et un jour valide, créer une nouvelle séance
+          if (newType != null && currentDay != null && isDateEditable(currentDay)) {
+            debugPrint('🔄 modify_workout: No existing workout, creating new one');
+            final duration = newDuration ?? 45;
+            final result = await AIWorkoutGenerationService.generateWorkout(
+              userRequest: '$newType workout',
+              durationMinutes: duration,
+            );
+
+            if (result.success && result.exercises != null && result.exercises!.isNotEmpty) {
+              // Sauvegarder directement
+              await WeeklyPlannerService.addPlannedWorkout(
+                plannedDate: currentDay,
+                workoutName: '$newType - ${duration}min',
+                exercises: result.exercises!,
+                durationMinutes: duration,
+                userPrompt: newType,
+                isAiGenerated: true,
+              );
+              return {'success': true, 'message': _getToolMessage(langCode, 'workout_modified')};
+            }
+          }
+
           return {'success': false, 'message': _getToolMessage(langCode, 'no_workout_found')};
+        }
+
+        // On a trouvé une séance, on utilise son jour si pas déjà défini
+        currentDay ??= existingWorkout.plannedDate;
+
+        // CAS SPÉCIAL: Si on veut transformer en HIIT ou cardio, c'est une conversion de type
+        if (newType != null) {
+          final lowerType = newType.toLowerCase().trim();
+
+          // Conversion vers HIIT (utiliser le service partagé pour la détection)
+          if (PlannedCardioService.isHiitType(lowerType)) {
+            debugPrint('🔄 modify_workout: Converting workout to HIIT (detected: $lowerType)');
+            // Supprimer le workout existant
+            await WeeklyPlannerService.deletePlannedWorkout(existingWorkout.id);
+            // Rediriger vers create_hiit qui demandera les paramètres
+            final dayStr = _getDayString(currentDay);
+            return await _executeToolCall('create_hiit', {'day': dayStr}, langCode);
+          }
+
+          // Conversion vers cardio (détection large)
+          final isCardio = lowerType.contains('cardio') ||
+              lowerType.contains('running') || lowerType.contains('course') || lowerType.contains('courir') ||
+              lowerType.contains('bike') || lowerType.contains('vélo') || lowerType.contains('velo') || lowerType.contains('cycling') ||
+              lowerType.contains('walk') || lowerType.contains('marche') ||
+              lowerType.contains('swim') || lowerType.contains('natation') || lowerType.contains('nager');
+
+          if (isCardio) {
+            debugPrint('🔄 modify_workout: Converting workout to cardio (detected: $lowerType)');
+            // Supprimer le workout existant
+            await WeeklyPlannerService.deletePlannedWorkout(existingWorkout.id);
+            // Déterminer le type de cardio
+            final dayStr = _getDayString(currentDay);
+            String activityKey = 'running'; // Par défaut
+            if (lowerType.contains('bike') || lowerType.contains('vélo') || lowerType.contains('velo') || lowerType.contains('cycling')) {
+              activityKey = 'bike';
+            } else if (lowerType.contains('walk') || lowerType.contains('marche')) {
+              activityKey = 'walking';
+            } else if (lowerType.contains('swim') || lowerType.contains('natation') || lowerType.contains('nager')) {
+              activityKey = 'swimming';
+            }
+            return await _executeToolCall('create_cardio', {
+              'day': dayStr,
+              'activity': activityKey,
+            }, langCode);
+          }
         }
 
         // Stocker pour undo
@@ -2986,16 +3368,13 @@ USER REQUEST: "$userMessage"
 
         // Appliquer les modifications
         final newDay = args['new_day'] != null ? _parseSingleDay(args['new_day'] as String) : null;
-        final newType = args['new_workout_type'] as String?;
-        final newDuration = args['new_duration_minutes'] as int?;
-        final regenerate = args['regenerate_exercises'] as bool? ?? (newType != null);
 
         // Si changement de jour → move
         if (newDay != null && newDay != currentDay) {
           await WeeklyPlannerService.movePlannedWorkout(existingWorkout.id, newDay);
         }
 
-        // Si changement de type → regénérer les exercices
+        // Si changement de type → regénérer les exercices (uniquement pour les types muscu)
         if (newType != null && regenerate) {
           // Utiliser la durée existante si pas de nouvelle durée
           final duration = newDuration ?? existingWorkout.durationMinutes ?? 45;
@@ -3044,6 +3423,27 @@ USER REQUEST: "$userMessage"
           return {'success': false, 'message': _getToolMessage(langCode, 'no_cardio_found')};
         }
 
+        final newActivity = args['new_activity'] as String?;
+
+        // Utiliser le service partagé pour détecter si on change vers HIIT
+        if (newActivity != null && PlannedCardioService.isHiitType(newActivity)) {
+          final hiitType = args['hiit_type'] as String?;
+
+          // Supprimer l'ancien cardio d'abord
+          await WeeklyPlannerService.deletePlannedActivity(existingCardio.id);
+
+          // Si on a le type HIIT, le passer à create_hiit
+          if (hiitType != null && hiitType.isNotEmpty) {
+            return await _executeToolCall('create_hiit', {
+              'day': args['current_day'],
+              'hiit_type': hiitType,
+            }, langCode);
+          }
+
+          // Sinon, rediriger vers create_hiit qui va demander les paramètres
+          return await _executeToolCall('create_hiit', {'day': args['current_day']}, langCode);
+        }
+
         // Stocker pour undo
         _lastAction = {
           'type': 'modify_cardio',
@@ -3054,7 +3454,6 @@ USER REQUEST: "$userMessage"
 
         // Appliquer les modifications
         final newDayCardio = args['new_day'] != null ? _parseSingleDay(args['new_day'] as String) : null;
-        final newActivity = args['new_activity'] as String?;
         final newDurationCardio = args['new_duration_minutes'] as int?;
         final newTargetKm = args['new_target_km'] as num?;
 
@@ -3075,6 +3474,89 @@ USER REQUEST: "$userMessage"
 
         return {'success': true, 'message': _getToolMessage(langCode, 'cardio_modified')};
 
+      case 'create_hiit':
+        final dayStr = args['day'] as String? ?? '';
+        final hiitType = args['hiit_type'] as String?;
+        final workSeconds = args['work_seconds'] as int?;
+        final restSeconds = args['rest_seconds'] as int?;
+        final rounds = args['rounds'] as int?;
+
+        final day = _parseSingleDay(dayStr);
+        if (day == null) return {'success': false, 'message': 'Invalid day'};
+
+        // Si pas de type spécifié, proposer les options via le service
+        if (hiitType == null || hiitType.isEmpty) {
+          final askMsg = langCode == 'fr'
+              ? 'Quel type de HIIT veux-tu?\n\n🔥 Tabata (4 min - 20s effort / 10s repos)\n💪 HIIT débutant (15 min - 30s/30s)\n🏋️ HIIT intense (20 min - 45s/15s)\n⚙️ Personnalisé (tu choisis les temps)\n\nDis-moi ton choix ou dis "propose" et je te conseille!'
+              : langCode == 'de'
+                  ? 'Welche Art von HIIT möchtest du?\n\n🔥 Tabata (4 Min - 20s Arbeit / 10s Pause)\n💪 HIIT Anfänger (15 Min - 30s/30s)\n🏋️ HIIT Intensiv (20 Min - 45s/15s)\n⚙️ Personalisiert (du wählst die Zeiten)'
+                  : 'What type of HIIT do you want?\n\n🔥 Tabata (4 min - 20s work / 10s rest)\n💪 Beginner HIIT (15 min - 30s/30s)\n🏋️ Intense HIIT (20 min - 45s/15s)\n⚙️ Custom (you choose the times)';
+          return {'success': true, 'message': askMsg, 'needs_clarification': true};
+        }
+
+        PlannedActivity? createdHiit;
+        int finalWorkSeconds;
+        int finalRestSeconds;
+        int finalRounds;
+        String hiitTitle;
+
+        if (hiitType == 'custom') {
+          // Config personnalisée - vérifier qu'on a tous les paramètres
+          if (workSeconds == null || restSeconds == null || rounds == null) {
+            final askMsg = langCode == 'fr'
+                ? 'Pour ta séance personnalisée, dis-moi:\n• Temps d\'effort (en secondes, ex: 30, 40, 45)\n• Temps de repos (en secondes, ex: 10, 15, 20)\n• Nombre de rounds (ex: 8, 10, 12)'
+                : langCode == 'de'
+                    ? 'Für dein personalisiertes Training, sag mir:\n• Arbeitszeit (in Sekunden, z.B. 30, 40, 45)\n• Ruhezeit (in Sekunden, z.B. 10, 15, 20)\n• Anzahl Runden (z.B. 8, 10, 12)'
+                    : 'For your custom session, tell me:\n• Work time (in seconds, e.g., 30, 40, 45)\n• Rest time (in seconds, e.g., 10, 15, 20)\n• Number of rounds (e.g., 8, 10, 12)';
+            return {'success': true, 'message': askMsg, 'needs_clarification': true};
+          }
+
+          // Utiliser le service partagé pour créer le HIIT custom
+          createdHiit = await PlannedCardioService.createCustomHiit(
+            date: day,
+            workSeconds: workSeconds,
+            restSeconds: restSeconds,
+            rounds: rounds,
+          );
+          finalWorkSeconds = workSeconds;
+          finalRestSeconds = restSeconds;
+          finalRounds = rounds;
+          hiitTitle = langCode == 'fr' ? 'HIIT personnalisé' : langCode == 'de' ? 'Personalisiertes HIIT' : 'Custom HIIT';
+        } else {
+          // Utiliser le service partagé pour valider et créer le preset
+          final preset = PlannedCardioService.validateHiitType(hiitType);
+          if (preset == null) {
+            return {'success': false, 'message': 'Unknown HIIT type: $hiitType'};
+          }
+
+          createdHiit = await PlannedCardioService.createPlannedHiit(
+            date: day,
+            preset: preset,
+          );
+          finalWorkSeconds = preset.workSeconds;
+          finalRestSeconds = preset.restSeconds;
+          finalRounds = preset.rounds;
+          hiitTitle = preset.getLocalizedName(langCode);
+        }
+
+        if (createdHiit != null) {
+          _lastAction = {
+            'type': 'create_cardio',
+            'created_cardio_id': createdHiit.id,
+          };
+        }
+
+        // Message de succès
+        final totalMinutes = ((finalWorkSeconds + finalRestSeconds) * finalRounds / 60).ceil();
+        final dayName = _getDayName(day, langCode);
+        final successMsg = langCode == 'fr'
+            ? '✅ $hiitTitle programmé $dayName!\n⏱️ ${finalWorkSeconds}s effort / ${finalRestSeconds}s repos × $finalRounds rounds (~$totalMinutes min)'
+            : langCode == 'de'
+                ? '✅ $hiitTitle am $dayName geplant!\n⏱️ ${finalWorkSeconds}s Arbeit / ${finalRestSeconds}s Pause × $finalRounds Runden (~$totalMinutes Min)'
+                : '✅ $hiitTitle scheduled for $dayName!\n⏱️ ${finalWorkSeconds}s work / ${finalRestSeconds}s rest × $finalRounds rounds (~$totalMinutes min)';
+
+        return {'success': true, 'message': successMsg};
+
       case 'create_cardio':
         final dayStr = args['day'] as String? ?? '';
         final activityKey = args['activity'] as String? ?? 'running';
@@ -3084,33 +3566,36 @@ USER REQUEST: "$userMessage"
         final day = _parseSingleDay(dayStr);
         if (day == null) return {'success': false, 'message': 'Invalid day'};
 
-        // Vérifier qu'au moins une valeur (durée ou distance) est fournie
+        // Utiliser le service partagé pour détecter et rediriger HIIT
+        if (PlannedCardioService.isHiitType(activityKey)) {
+          return await _executeToolCall('create_hiit', {'day': dayStr}, langCode);
+        }
+
+        // Valider le type de cardio via le service partagé
+        final validatedType = PlannedCardioService.validateCardioType(activityKey);
+        if (validatedType == null) {
+          final errorMsg = langCode == 'fr'
+              ? '❌ Type d\'activité non reconnu: $activityKey\nEssaie: course, vélo, marche'
+              : '❌ Unknown activity type: $activityKey\nTry: running, bike, walking';
+          return {'success': false, 'message': errorMsg};
+        }
+
+        // Vérifier qu'au moins une valeur est fournie
         if (duration == null && targetKm == null) {
-          // L'IA aurait dû demander avant, mais au cas où
           final askMsg = langCode == 'fr'
               ? 'Combien de temps ou quelle distance veux-tu faire?'
               : langCode == 'de'
                   ? 'Wie lange oder welche Distanz möchtest du machen?'
                   : 'How long or what distance do you want to do?';
-          return {'success': true, 'message': askMsg};
+          return {'success': true, 'message': askMsg, 'needs_clarification': true};
         }
 
-        // Traduire le nom de l'activité
-        final activityName = _getCardioActivityName(activityKey, langCode);
-
-        // Construire les données cardio avec uniquement les valeurs fournies
-        final Map<String, dynamic> cardioActivityData = {
-          'activity_key': activityKey,
-          'activity_name': activityName,
-        };
-        if (duration != null) cardioActivityData['target_minutes'] = duration;
-        if (targetKm != null) cardioActivityData['target_km'] = targetKm.toDouble();
-
-        final createdCardio = await WeeklyPlannerService.addPlannedActivity(
-          plannedDate: day,
-          activityType: PlannedActivityType.cardio,
-          activityData: cardioActivityData,
-          isAiGenerated: true,
+        // Utiliser le service partagé pour créer le cardio
+        final createdCardio = await PlannedCardioService.createPlannedCardio(
+          date: day,
+          activityType: validatedType,
+          durationMinutes: duration,
+          targetKm: targetKm?.toDouble(),
         );
 
         // Stocker pour undo
@@ -3122,6 +3607,7 @@ USER REQUEST: "$userMessage"
         }
 
         // Message de succès spécifique
+        final activityName = _getCardioActivityName(validatedType, langCode);
         final dayName = _getDayName(day, langCode);
         final successMessage = _getCardioSuccessMessage(langCode, activityName, duration, targetKm?.toDouble(), dayName);
         return {'success': true, 'message': successMessage};
@@ -3254,10 +3740,29 @@ USER REQUEST: "$userMessage"
 
   /// Message de confirmation pour les actions destructrices
   static String _getActionConfirmMessage(String langCode, String description) {
+    // S'assurer que le mot "supprimer"/"delete" est dans la description
+    final descLower = description.toLowerCase();
+    final hasDeleteWord = descLower.contains('supprimer') ||
+                          descLower.contains('delete') ||
+                          descLower.contains('löschen') ||
+                          descLower.contains('effacer') ||
+                          descLower.contains('enlever') ||
+                          descLower.contains('retirer');
+
+    // Si pas de mot de suppression, on le rajoute
+    String finalDesc = description;
+    if (!hasDeleteWord) {
+      finalDesc = langCode == 'fr'
+          ? 'supprimer $description'
+          : langCode == 'de'
+              ? '$description löschen'
+              : 'delete $description';
+    }
+
     final templates = {
-      'fr': '⚠️ Je vais: $description',
-      'en': '⚠️ I will: $description',
-      'de': '⚠️ Ich werde: $description',
+      'fr': '⚠️ Je vais $finalDesc\n\nConfirmes-tu ? (oui/non)',
+      'en': '⚠️ I will $finalDesc\n\nDo you confirm? (yes/no)',
+      'de': '⚠️ Ich werde $finalDesc\n\nBestätigst du? (ja/nein)',
     };
     return templates[langCode] ?? templates['en']!;
   }
@@ -3277,6 +3782,37 @@ USER REQUEST: "$userMessage"
            lower == 'annule' || lower == 'cancel' || lower == 'stop';
   }
 
+  /// Détecter si un message est une question qui attend une réponse
+  static bool _isQuestionMessage(String message) {
+    final lower = message.toLowerCase();
+    // Détecter les questions par les mots-clés typiques
+    return lower.contains('quel type') ||
+           lower.contains('what type') ||
+           lower.contains('welche art') ||
+           lower.contains('combien de temps') ||
+           lower.contains('how long') ||
+           lower.contains('wie lange') ||
+           lower.contains('quelle distance') ||
+           lower.contains('what distance') ||
+           lower.contains('dis-moi') ||
+           lower.contains('tell me') ||
+           lower.contains('veux-tu') ||
+           lower.contains('do you want') ||
+           lower.contains('möchtest du') ||
+           lower.contains('pour ta séance') ||
+           lower.contains('for your session') ||
+           lower.contains('für dein') ||
+           // Patterns de questions
+           message.contains('?') && (
+             lower.contains('hiit') ||
+             lower.contains('tabata') ||
+             lower.contains('cardio') ||
+             lower.contains('temps') ||
+             lower.contains('durée') ||
+             lower.contains('duration')
+           );
+  }
+
   /// Exécuter l'action en attente après confirmation
   static Future<PlannerActionResult> executePendingAction() async {
     if (_pendingAction == null) {
@@ -3294,10 +3830,14 @@ USER REQUEST: "$userMessage"
     _pendingAction = null; // Clear pending action
 
     final result = await _executeToolCall(actionType, actionArgs, langCode);
-    final actionMessage = result['message'] as String;
+    final List<String> allMessages = [result['message'] as String];
+
+    // Si l'action confirmée est une suppression, exécuter aussi les follow-ups de suppression
+    // sans redemander confirmation (l'utilisateur a déjà confirmé)
+    final isDeleteAction = actionType.startsWith('delete_');
 
     // Vérifier s'il y a des actions de suivi
-    if (_pendingFollowUpActions != null && _pendingFollowUpActions!.isNotEmpty) {
+    while (_pendingFollowUpActions != null && _pendingFollowUpActions!.isNotEmpty) {
       debugPrint('📋 ${_pendingFollowUpActions!.length} follow-up actions remaining');
 
       // Prendre la prochaine action
@@ -3320,7 +3860,16 @@ USER REQUEST: "$userMessage"
         final description = nextArgs['action_description'] as String? ?? '';
 
         if (realActionType != null) {
-          // Préparer l'action réelle comme pending
+          // Si c'est aussi une suppression et qu'on vient d'exécuter une suppression,
+          // exécuter directement sans redemander
+          if (isDeleteAction && realActionType.startsWith('delete_')) {
+            debugPrint('✅ Auto-executing follow-up delete action: $realActionType');
+            final followResult = await _executeToolCall(realActionType, realActionArgs, langCode);
+            allMessages.add(followResult['message'] as String);
+            continue; // Continuer avec les suivantes
+          }
+
+          // Sinon, préparer l'action réelle comme pending
           _pendingAction = {
             'action_type': realActionType,
             'action_args': realActionArgs,
@@ -3336,13 +3885,21 @@ USER REQUEST: "$userMessage"
 
           return PlannerActionResult(
             success: true,
-            message: actionMessage,
+            message: allMessages.join('\n'),
             canUndo: _lastAction != null,
             hasMoreActions: true,
             requiresConfirmation: true,
             nextActionDescription: confirmMessage,
           );
         }
+      }
+
+      // Si c'est une suppression et qu'on vient d'exécuter une suppression, exécuter directement
+      if (isDeleteAction && nextName.startsWith('delete_')) {
+        debugPrint('✅ Auto-executing follow-up delete action: $nextName');
+        final nextResult = await _executeToolCall(nextName, nextArgs, langCode);
+        allMessages.add(nextResult['message'] as String);
+        continue; // Continuer avec les suivantes
       }
 
       // Vérifier si l'action suivante nécessite une confirmation
@@ -3361,7 +3918,7 @@ USER REQUEST: "$userMessage"
 
         return PlannerActionResult(
           success: true,
-          message: actionMessage,
+          message: allMessages.join('\n'),
           canUndo: _lastAction != null,
           hasMoreActions: true,
           requiresConfirmation: true,
@@ -3370,40 +3927,23 @@ USER REQUEST: "$userMessage"
       } else {
         // Exécuter directement et continuer avec les suivantes
         final nextResult = await _executeToolCall(nextName, nextArgs, langCode);
-        final combinedMessage = '$actionMessage\n${nextResult['message']}';
-
-        // S'il reste encore des actions, continuer récursivement
-        if (_pendingFollowUpActions!.isNotEmpty) {
-          return PlannerActionResult(
-            success: true,
-            message: combinedMessage,
-            canUndo: _lastAction != null,
-            hasMoreActions: true,
-            nextActionDescription: _getNextActionDescription(langCode),
-          );
-        }
-
-        // Plus d'actions
-        _pendingFollowUpActions = null;
-        return PlannerActionResult(
-          success: result['success'] == true,
-          message: combinedMessage,
-          canUndo: _lastAction != null,
-          hasMoreActions: false,
-        );
+        allMessages.add(nextResult['message'] as String);
+        // Continuer la boucle while pour traiter les suivantes
       }
     }
 
-    // Pas d'actions de suivi
+    // Plus d'actions de suivi
     _pendingFollowUpActions = null;
+    final combinedMessage = allMessages.join('\n');
+
     if (result['success'] == true) {
       return PlannerActionResult(
         success: true,
-        message: actionMessage,
+        message: combinedMessage,
         canUndo: _lastAction != null,
       );
     }
-    return PlannerActionResult.error(actionMessage);
+    return PlannerActionResult.error(combinedMessage);
   }
 
   /// Vérifie si une action nécessite une confirmation
@@ -3613,6 +4153,12 @@ USER REQUEST: "$userMessage"
     };
     final days = dayNames[langCode] ?? dayNames['en']!;
     return days[date.weekday - 1];
+  }
+
+  /// Convertir une date en string de jour pour les tools (monday, tuesday, etc.)
+  static String _getDayString(DateTime date) {
+    const dayStrings = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    return dayStrings[date.weekday - 1];
   }
 
   /// Générer un message de succès spécifique pour le cardio

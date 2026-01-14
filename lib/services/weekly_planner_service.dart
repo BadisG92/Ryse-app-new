@@ -297,6 +297,23 @@ class WeeklyPlannerService {
     List<WorkoutExercise>? exercises,
   }) async {
     try {
+      // Vérifier que la séance est encore modifiable (status = planned)
+      final existing = await _client
+          .from('planned_workouts')
+          .select('status')
+          .eq('id', workoutId)
+          .maybeSingle();
+
+      if (existing == null) {
+        debugPrint('❌ updatePlannedWorkout: Workout not found');
+        return false;
+      }
+
+      if (existing['status'] != 'planned') {
+        debugPrint('❌ updatePlannedWorkout: Cannot modify completed/missed workout');
+        return false;
+      }
+
       final updateData = <String, dynamic>{};
 
       if (workoutName != null) {
@@ -349,18 +366,38 @@ class WeeklyPlannerService {
 
       final currentData = existing.activityData ?? {};
       final newData = Map<String, dynamic>.from(currentData);
+      final oldType = (currentData['activity_key'] as String? ?? '').toLowerCase();
+      final wasHiit = oldType == 'hiit';
 
+      // Si on change le type d'activité
       if (activityType != null) {
+        final isNowHiit = activityType.toLowerCase() == 'hiit';
+
         newData['cardio_type'] = activityType;
         newData['activity_key'] = activityType;
-        // Mettre à jour le nom selon le type
         newData['activity_name'] = _getCardioActivityName(activityType);
+
+        // Si on quitte le HIIT, nettoyer les données HIIT
+        if (wasHiit && !isNowHiit) {
+          newData.remove('hiit_config');
+          newData.remove('is_hiit');
+          // Nettoyer aussi la durée HIIT car elle n'est plus pertinente
+          newData.remove('duration_minutes');
+          debugPrint('🔄 updatePlannedCardio: Cleared HIIT config (was HIIT, now $activityType)');
+        }
       }
+
+      // Gérer durée vs distance
       if (durationMinutes != null) {
         newData['duration_minutes'] = durationMinutes;
       }
       if (targetKm != null) {
         newData['target_km'] = targetKm;
+        // Si on définit une distance et qu'on vient de HIIT, effacer la durée HIIT
+        if (wasHiit) {
+          newData.remove('duration_minutes');
+          debugPrint('🔄 updatePlannedCardio: Cleared HIIT duration, using target_km=$targetKm');
+        }
       }
 
       await _client
@@ -368,7 +405,7 @@ class WeeklyPlannerService {
           .update({'activity_data': newData})
           .eq('id', activityId);
 
-      debugPrint('✅ updatePlannedCardio: $activityId updated');
+      debugPrint('✅ updatePlannedCardio: $activityId updated with ${newData.keys.join(', ')}');
 
       _invalidateCache();
       _notifyPlannerUpdate();
@@ -410,6 +447,23 @@ class WeeklyPlannerService {
     }
 
     try {
+      // Vérifier que la séance est encore modifiable (status = planned)
+      final existing = await _client
+          .from('planned_workouts')
+          .select('status')
+          .eq('id', workoutId)
+          .maybeSingle();
+
+      if (existing == null) {
+        debugPrint('❌ movePlannedWorkout: Workout not found');
+        return false;
+      }
+
+      if (existing['status'] != 'planned') {
+        debugPrint('❌ movePlannedWorkout: Cannot move completed/missed workout');
+        return false;
+      }
+
       await _client
           .from('planned_workouts')
           .update({'planned_date': newDate.toIso8601String().split('T')[0]})
@@ -440,6 +494,23 @@ class WeeklyPlannerService {
     }
 
     try {
+      // Vérifier que la séance est encore modifiable (status = planned)
+      final existing = await _client
+          .from('planned_activities')
+          .select('status')
+          .eq('id', activityId)
+          .maybeSingle();
+
+      if (existing == null) {
+        debugPrint('❌ movePlannedCardio: Cardio not found');
+        return false;
+      }
+
+      if (existing['status'] != 'planned') {
+        debugPrint('❌ movePlannedCardio: Cannot move completed/missed cardio');
+        return false;
+      }
+
       await _client
           .from('planned_activities')
           .update({'planned_date': newDate.toIso8601String().split('T')[0]})
@@ -461,9 +532,27 @@ class WeeklyPlannerService {
   // DELETE
   // =====================================================
 
-  /// Supprimer une activité planifiée
+  /// Supprimer une activité planifiée (uniquement si status = planned)
+  /// Les séances completed doivent être supprimées via l'historique
   static Future<bool> deletePlannedActivity(String activityId) async {
     try {
+      // Vérifier que la séance est encore supprimable (status = planned)
+      final existing = await _client
+          .from('planned_activities')
+          .select('status')
+          .eq('id', activityId)
+          .maybeSingle();
+
+      if (existing == null) {
+        debugPrint('❌ deletePlannedActivity: Activity not found');
+        return false;
+      }
+
+      if (existing['status'] != 'planned') {
+        debugPrint('❌ deletePlannedActivity: Cannot delete completed/missed activity - use history to delete');
+        return false;
+      }
+
       await _client
           .from('planned_activities')
           .delete()
@@ -481,9 +570,27 @@ class WeeklyPlannerService {
     }
   }
 
-  /// Supprimer un workout planifié
+  /// Supprimer un workout planifié (uniquement si status = planned)
+  /// Les séances completed doivent être supprimées via l'historique
   static Future<bool> deletePlannedWorkout(String workoutId) async {
     try {
+      // Vérifier que la séance est encore supprimable (status = planned)
+      final existing = await _client
+          .from('planned_workouts')
+          .select('status')
+          .eq('id', workoutId)
+          .maybeSingle();
+
+      if (existing == null) {
+        debugPrint('❌ deletePlannedWorkout: Workout not found');
+        return false;
+      }
+
+      if (existing['status'] != 'planned') {
+        debugPrint('❌ deletePlannedWorkout: Cannot delete completed/missed workout - use history to delete');
+        return false;
+      }
+
       await _client
           .from('planned_workouts')
           .delete()
@@ -501,6 +608,48 @@ class WeeklyPlannerService {
     }
   }
 
+  /// Suppression forcée d'un workout planifié (utilisé par sync bidirectionnel depuis historique)
+  /// Ne vérifie pas le status - NE PAS UTILISER DIRECTEMENT DEPUIS L'UI
+  static Future<bool> forceDeletePlannedWorkoutFromSync(String workoutId) async {
+    try {
+      await _client
+          .from('planned_workouts')
+          .delete()
+          .eq('id', workoutId);
+
+      debugPrint('✅ forceDeletePlannedWorkoutFromSync: $workoutId');
+
+      _invalidateCache();
+      _notifyPlannerUpdate();
+
+      return true;
+    } catch (e) {
+      debugPrint('❌ forceDeletePlannedWorkoutFromSync error: $e');
+      return false;
+    }
+  }
+
+  /// Suppression forcée d'une activité planifiée (utilisé par sync bidirectionnel depuis historique)
+  /// Ne vérifie pas le status - NE PAS UTILISER DIRECTEMENT DEPUIS L'UI
+  static Future<bool> forceDeletePlannedActivityFromSync(String activityId) async {
+    try {
+      await _client
+          .from('planned_activities')
+          .delete()
+          .eq('id', activityId);
+
+      debugPrint('✅ forceDeletePlannedActivityFromSync: $activityId');
+
+      _invalidateCache();
+      _notifyPlannerUpdate();
+
+      return true;
+    } catch (e) {
+      debugPrint('❌ forceDeletePlannedActivityFromSync error: $e');
+      return false;
+    }
+  }
+
   /// Supprimer TOUS les workouts planifiés de la semaine en cours
   static Future<bool> deleteAllWorkoutsThisWeek() async {
     try {
@@ -513,14 +662,16 @@ class WeeklyPlannerService {
       final weekStartStr = weekStart.toIso8601String().split('T')[0];
       final weekEndStr = weekEnd.toIso8601String().split('T')[0];
 
+      // Ne supprimer que les séances planifiées (pas les completed/missed)
       await _client
           .from('planned_workouts')
           .delete()
           .eq('user_id', userId)
+          .eq('status', 'planned')
           .gte('planned_date', weekStartStr)
           .lt('planned_date', weekEndStr);
 
-      debugPrint('✅ deleteAllWorkoutsThisWeek: All workouts deleted for week starting $weekStartStr');
+      debugPrint('✅ deleteAllWorkoutsThisWeek: Planned workouts deleted for week starting $weekStartStr');
 
       _invalidateCache();
       _notifyPlannerUpdate();
@@ -544,15 +695,17 @@ class WeeklyPlannerService {
       final weekStartStr = weekStart.toIso8601String().split('T')[0];
       final weekEndStr = weekEnd.toIso8601String().split('T')[0];
 
+      // Ne supprimer que les séances planifiées (pas les completed/missed)
       await _client
           .from('planned_activities')
           .delete()
           .eq('user_id', userId)
           .eq('activity_type', 'cardio')
+          .eq('status', 'planned')
           .gte('planned_date', weekStartStr)
           .lt('planned_date', weekEndStr);
 
-      debugPrint('✅ deleteAllCardioThisWeek: All cardio deleted for week starting $weekStartStr');
+      debugPrint('✅ deleteAllCardioThisWeek: Planned cardio deleted for week starting $weekStartStr');
 
       _invalidateCache();
       _notifyPlannerUpdate();
@@ -829,6 +982,7 @@ class WeeklyPlannerService {
   static Future<PlannedActivity?> findPlannedCardioForDate(
     DateTime date, {
     String? activityType,
+    bool includeAllStatus = false,
   }) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) return null;
@@ -841,8 +995,11 @@ class WeeklyPlannerService {
           .select()
           .eq('user_id', userId)
           .eq('activity_type', 'cardio')
-          .eq('planned_date', dateStr)
-          .eq('status', 'planned');
+          .eq('planned_date', dateStr);
+
+      if (!includeAllStatus) {
+        query = query.eq('status', 'planned');
+      }
 
       final response = await query.maybeSingle();
 
@@ -864,20 +1021,27 @@ class WeeklyPlannerService {
   }
 
   /// Trouver un workout planifié pour une date
-  static Future<PlannedWorkout?> findPlannedWorkoutForDate(DateTime date) async {
+  static Future<PlannedWorkout?> findPlannedWorkoutForDate(
+    DateTime date, {
+    bool includeAllStatus = false,
+  }) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) return null;
 
     try {
       final dateStr = date.toIso8601String().split('T')[0];
 
-      final response = await _client
+      var query = _client
           .from('planned_workouts')
           .select()
           .eq('user_id', userId)
-          .eq('planned_date', dateStr)
-          .eq('status', 'planned')
-          .maybeSingle();
+          .eq('planned_date', dateStr);
+
+      if (!includeAllStatus) {
+        query = query.eq('status', 'planned');
+      }
+
+      final response = await query.maybeSingle();
 
       if (response != null) {
         return PlannedWorkout.fromJson(response);
@@ -892,10 +1056,13 @@ class WeeklyPlannerService {
   /// Trouver un workout planifié par nom ou type pour une date
   /// Si workoutName est fourni, cherche par correspondance partielle (case-insensitive)
   /// Si plusieurs matchent, retourne le premier
+  /// Par défaut ne retourne que les workouts avec status 'planned'
+  /// Set includeAllStatus=true pour inclure completed et missed
   static Future<PlannedWorkout?> findPlannedWorkoutByNameForDate(
     DateTime date, {
     String? workoutName,
     String? workoutType,
+    bool includeAllStatus = false,
   }) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) return null;
@@ -903,12 +1070,17 @@ class WeeklyPlannerService {
     try {
       final dateStr = date.toIso8601String().split('T')[0];
 
-      final response = await _client
+      var query = _client
           .from('planned_workouts')
           .select()
           .eq('user_id', userId)
-          .eq('planned_date', dateStr)
-          .eq('status', 'planned');
+          .eq('planned_date', dateStr);
+
+      if (!includeAllStatus) {
+        query = query.eq('status', 'planned');
+      }
+
+      final response = await query;
 
       final workouts = (response as List)
           .map((json) => PlannedWorkout.fromJson(json))
@@ -939,6 +1111,30 @@ class WeeklyPlannerService {
     }
   }
 
+  /// Vérifier si des workouts existent pour une date (peu importe le statut)
+  /// Retourne le statut du premier workout trouvé ou null si aucun
+  static Future<String?> getWorkoutStatusForDate(DateTime date) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) return null;
+
+    try {
+      final dateStr = date.toIso8601String().split('T')[0];
+
+      final response = await _client
+          .from('planned_workouts')
+          .select('status')
+          .eq('user_id', userId)
+          .eq('planned_date', dateStr)
+          .limit(1);
+
+      if ((response as List).isEmpty) return null;
+      return response[0]['status'] as String?;
+    } catch (e) {
+      debugPrint('❌ getWorkoutStatusForDate error: $e');
+      return null;
+    }
+  }
+
   /// Lister tous les workouts planifiés pour une date
   static Future<List<PlannedWorkout>> listPlannedWorkoutsForDate(DateTime date) async {
     final userId = _client.auth.currentUser?.id;
@@ -965,9 +1161,12 @@ class WeeklyPlannerService {
 
   /// Trouver un cardio planifié par nom d'activité pour une date
   /// Si activityName est fourni, cherche par correspondance partielle (case-insensitive)
+  /// Par défaut ne retourne que les cardios avec status 'planned'
+  /// Set includeAllStatus=true pour inclure completed et missed
   static Future<PlannedActivity?> findPlannedCardioByNameForDate(
     DateTime date, {
     String? activityName,
+    bool includeAllStatus = false,
   }) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) return null;
@@ -975,13 +1174,18 @@ class WeeklyPlannerService {
     try {
       final dateStr = date.toIso8601String().split('T')[0];
 
-      final response = await _client
+      var query = _client
           .from('planned_activities')
           .select()
           .eq('user_id', userId)
           .eq('activity_type', 'cardio')
-          .eq('planned_date', dateStr)
-          .eq('status', 'planned');
+          .eq('planned_date', dateStr);
+
+      if (!includeAllStatus) {
+        query = query.eq('status', 'planned');
+      }
+
+      final response = await query;
 
       final cardios = (response as List)
           .map((json) => PlannedActivity.fromJson(json))
@@ -1008,6 +1212,31 @@ class WeeklyPlannerService {
       return cardios.first;
     } catch (e) {
       debugPrint('❌ findPlannedCardioByNameForDate error: $e');
+      return null;
+    }
+  }
+
+  /// Vérifier si des cardios existent pour une date (peu importe le statut)
+  /// Retourne le statut du premier cardio trouvé ou null si aucun
+  static Future<String?> getCardioStatusForDate(DateTime date) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) return null;
+
+    try {
+      final dateStr = date.toIso8601String().split('T')[0];
+
+      final response = await _client
+          .from('planned_activities')
+          .select('status')
+          .eq('user_id', userId)
+          .eq('activity_type', 'cardio')
+          .eq('planned_date', dateStr)
+          .limit(1);
+
+      if ((response as List).isEmpty) return null;
+      return response[0]['status'] as String?;
+    } catch (e) {
+      debugPrint('❌ getCardioStatusForDate error: $e');
       return null;
     }
   }
@@ -1112,6 +1341,7 @@ class WeeklyPlannerService {
     required String workoutName,
     required DateTime sessionDate,
     int? durationMinutes,
+    String? historySessionId,
   }) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) {
@@ -1126,17 +1356,33 @@ class WeeklyPlannerService {
         return null;
       }
 
+      // Récupérer les exercices depuis workout_set_history si historySessionId fourni
+      List<Map<String, dynamic>> exercisesJson = [];
+      if (historySessionId != null) {
+        exercisesJson = await _getExercisesJsonFromHistory(historySessionId);
+        debugPrint('📊 syncWorkoutSessionToPlanner: ${exercisesJson.length} exercices récupérés');
+      }
+
       // Chercher si un workout planifié existe déjà pour ce jour
       final existingWorkout = await findPlannedWorkoutForDate(sessionDate);
 
       if (existingWorkout != null) {
-        // Mettre à jour le statut existant
-        await updateWorkoutStatus(
-          existingWorkout.id,
-          PlannedStatus.completed,
-          linkedSessionId: sessionId,
-        );
+        // Mettre à jour le statut existant et les exercices
+        await _client
+            .from('planned_workouts')
+            .update({
+              'status': PlannedStatus.completed.value,
+              'linked_session_id': sessionId,
+              'exercises_json': exercisesJson,
+              'workout_name': workoutName,
+              'duration_minutes': durationMinutes ?? existingWorkout.durationMinutes ?? 45,
+            })
+            .eq('id', existingWorkout.id);
         debugPrint('✅ syncWorkoutSessionToPlanner: Workout existant mis à jour (${existingWorkout.id})');
+        _invalidateCache();
+        if (!_isMigrating) {
+          _notifyPlannerUpdate();
+        }
         return existingWorkout.id;
       } else {
         // Créer une nouvelle entrée planifiée avec statut complété
@@ -1146,7 +1392,7 @@ class WeeklyPlannerService {
           'planned_date': dateStr,
           'workout_name': workoutName,
           'duration_minutes': durationMinutes ?? 45,
-          'exercises_json': <Map<String, dynamic>>[],
+          'exercises_json': exercisesJson,
           'status': PlannedStatus.completed.value,
           'linked_session_id': sessionId,
           'is_ai_generated': false,
@@ -1172,6 +1418,67 @@ class WeeklyPlannerService {
     } catch (e) {
       debugPrint('❌ syncWorkoutSessionToPlanner error: $e');
       return null;
+    }
+  }
+
+  /// Récupère les exercices depuis workout_set_history et les formate en exercises_json
+  static Future<List<Map<String, dynamic>>> _getExercisesJsonFromHistory(String historySessionId) async {
+    try {
+      // Récupérer tous les sets de la session
+      final sets = await _client
+          .from('workout_set_history')
+          .select('exercise_name, exercise_id, custom_exercise_id, reps, weight, set_order')
+          .eq('history_session_id', historySessionId)
+          .order('set_order');
+
+      if (sets.isEmpty) return [];
+
+      // Grouper les sets par exercice
+      final Map<String, List<Map<String, dynamic>>> exerciseGroups = {};
+      final Map<String, Map<String, dynamic>> exerciseInfo = {};
+
+      for (final set in sets) {
+        final exerciseName = set['exercise_name']?.toString() ?? 'Unknown';
+
+        if (!exerciseGroups.containsKey(exerciseName)) {
+          exerciseGroups[exerciseName] = [];
+          exerciseInfo[exerciseName] = {
+            'exercise_id': set['exercise_id'],
+            'custom_exercise_id': set['custom_exercise_id'],
+          };
+        }
+
+        exerciseGroups[exerciseName]!.add({
+          'reps': set['reps'] ?? 0,
+          'weight': (set['weight'] as num?)?.toDouble() ?? 0.0,
+          'isCompleted': true,
+        });
+      }
+
+      // Construire exercises_json
+      final List<Map<String, dynamic>> exercisesJson = [];
+
+      for (final entry in exerciseGroups.entries) {
+        final info = exerciseInfo[entry.key]!;
+        exercisesJson.add({
+          'exercise': {
+            'id': info['exercise_id'] ?? info['custom_exercise_id'] ?? '',
+            'name': entry.key,
+            'muscleGroup': '',
+            'equipment': '',
+            'description': '',
+            'isCustom': info['custom_exercise_id'] != null,
+          },
+          'sets': entry.value,
+          'suggestedRepsMin': null,
+          'suggestedRepsMax': null,
+        });
+      }
+
+      return exercisesJson;
+    } catch (e) {
+      debugPrint('❌ _getExercisesJsonFromHistory error: $e');
+      return [];
     }
   }
 
@@ -1505,7 +1812,7 @@ class WeeklyPlannerService {
       // 1. Migrer les workouts
       final workouts = await _client
           .from('workout_session_summaries')
-          .select('id, session_name, duration_minutes, session_date')
+          .select('id, session_name, duration_minutes, session_date, history_session_id')
           .eq('user_id', userId)
           .gte('session_date', startDate.toIso8601String())
           .lte('session_date', endDate.toIso8601String());
@@ -1513,16 +1820,18 @@ class WeeklyPlannerService {
       int workoutsMigrated = 0;
       for (final workout in workouts) {
         final sessionId = workout['id'] as String;
+        final historySessionId = workout['history_session_id'] as String?;
 
         // Vérifier si déjà dans le planificateur
         final existing = await findPlannedWorkoutBySessionId(sessionId);
         if (existing == null) {
-          // Créer l'entrée planifiée
+          // Créer l'entrée planifiée avec les exercices
           await syncWorkoutSessionToPlanner(
             sessionId: sessionId,
             workoutName: workout['session_name'] ?? 'Musculation',
             sessionDate: DateTime.parse(workout['session_date']),
             durationMinutes: workout['duration_minutes'],
+            historySessionId: historySessionId,
           );
           workoutsMigrated++;
           debugPrint('  ✅ Migration workout: ${workout['session_name']}');
@@ -1532,10 +1841,11 @@ class WeeklyPlannerService {
       // 2. Migrer les cardios
       final cardios = await _client
           .from('cardio_sessions')
-          .select('id, activity_type, activity_title, duration_seconds, distance_km, session_date')
+          .select('id, activity_type, activity_title, duration_seconds, distance_km, start_time')
           .eq('user_id', userId)
-          .gte('session_date', startDate.toIso8601String())
-          .lte('session_date', endDate.toIso8601String());
+          .eq('is_completed', true)
+          .gte('start_time', startDate.toIso8601String())
+          .lte('start_time', endDate.toIso8601String());
 
       int cardiosMigrated = 0;
       for (final cardio in cardios) {
@@ -1550,7 +1860,7 @@ class WeeklyPlannerService {
             sessionId: sessionId,
             activityType: cardio['activity_type'] ?? 'cardio',
             activityTitle: cardio['activity_title'] ?? 'Cardio',
-            sessionDate: DateTime.parse(cardio['session_date']),
+            sessionDate: DateTime.parse(cardio['start_time']),
             durationMinutes: durationSeconds != null ? durationSeconds ~/ 60 : null,
             distanceKm: (cardio['distance_km'] as num?)?.toDouble(),
           );
@@ -1571,5 +1881,126 @@ class WeeklyPlannerService {
     } finally {
       _isMigrating = false;
     }
+  }
+
+  /// Nettoie les séances "completed" du planner qui n'existent pas dans l'historique
+  /// L'HISTORIQUE est la source de vérité
+  static Future<void> cleanupOrphanedCompletedSessions() async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) return;
+
+    try {
+      debugPrint('🧹 Nettoyage des séances orphelines du planner (historique = source of truth)...');
+
+      // Calculer les dates de la semaine courante
+      final now = DateTime.now();
+      final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
+      final endOfWeek = startOfWeek.add(const Duration(days: 6));
+      final startDate = DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day);
+      final endDate = DateTime(endOfWeek.year, endOfWeek.month, endOfWeek.day, 23, 59, 59);
+
+      int workoutsRemoved = 0;
+      int cardiosRemoved = 0;
+
+      // 1. Nettoyer les workouts "completed" orphelins
+      final completedWorkouts = await _client
+          .from('planned_workouts')
+          .select('id, linked_session_id, workout_name')
+          .eq('user_id', userId)
+          .eq('status', 'completed')
+          .gte('planned_date', startDate.toIso8601String().split('T')[0])
+          .lte('planned_date', endDate.toIso8601String().split('T')[0]);
+
+      for (final workout in completedWorkouts) {
+        final linkedSessionId = workout['linked_session_id'] as String?;
+
+        if (linkedSessionId == null) {
+          // Pas de lien vers l'historique → orphelin, supprimer
+          await _client.from('planned_workouts').delete().eq('id', workout['id']);
+          workoutsRemoved++;
+          debugPrint('  🗑️ Workout orphelin supprimé: ${workout['workout_name']} (pas de linked_session_id)');
+        } else {
+          // Vérifier que la session existe dans l'historique
+          final historySession = await _client
+              .from('workout_session_summaries')
+              .select('id')
+              .eq('id', linkedSessionId)
+              .maybeSingle();
+
+          if (historySession == null) {
+            // La session n'existe plus dans l'historique → orphelin, supprimer
+            await _client.from('planned_workouts').delete().eq('id', workout['id']);
+            workoutsRemoved++;
+            debugPrint('  🗑️ Workout orphelin supprimé: ${workout['workout_name']} (session historique supprimée)');
+          }
+        }
+      }
+
+      // 2. Nettoyer les cardios "completed" orphelins
+      // Note: linked_session_id peut ne pas exister, on vérifie par date
+      final completedCardios = await _client
+          .from('planned_activities')
+          .select('id, planned_date, activity_data')
+          .eq('user_id', userId)
+          .eq('activity_type', 'cardio')
+          .eq('status', 'completed')
+          .gte('planned_date', startDate.toIso8601String().split('T')[0])
+          .lte('planned_date', endDate.toIso8601String().split('T')[0]);
+
+      for (final cardio in completedCardios) {
+        final plannedDate = cardio['planned_date'] as String?;
+        final activityData = cardio['activity_data'] as Map<String, dynamic>?;
+        final cardioName = activityData?['activity_name'] ?? activityData?['cardio_type'] ?? 'Cardio';
+
+        if (plannedDate == null) {
+          // Pas de date → orphelin, supprimer
+          await _client.from('planned_activities').delete().eq('id', cardio['id']);
+          cardiosRemoved++;
+          debugPrint('  🗑️ Cardio orphelin supprimé: $cardioName (pas de date)');
+          continue;
+        }
+
+        // Vérifier si une session cardio existe pour cette date dans l'historique
+        final historySession = await _client
+            .from('cardio_sessions')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('is_completed', true)
+            .gte('start_time', '${plannedDate}T00:00:00')
+            .lt('start_time', '${plannedDate}T23:59:59')
+            .maybeSingle();
+
+        if (historySession == null) {
+          // Pas de session cardio pour cette date → orphelin, supprimer
+          await _client.from('planned_activities').delete().eq('id', cardio['id']);
+          cardiosRemoved++;
+          debugPrint('  🗑️ Cardio orphelin supprimé: $cardioName (pas de session historique pour $plannedDate)');
+        }
+      }
+
+      debugPrint('✅ Nettoyage terminé: $workoutsRemoved workouts orphelins, $cardiosRemoved cardios orphelins supprimés');
+
+      if (workoutsRemoved > 0 || cardiosRemoved > 0) {
+        _invalidateCache();
+        _notifyPlannerUpdate();
+      }
+    } catch (e) {
+      debugPrint('❌ Erreur nettoyage orphelins: $e');
+    }
+  }
+
+  /// Synchronisation complète: historique → planner
+  /// 1. Nettoie les orphelins du planner
+  /// 2. Migre les sessions manquantes de l'historique vers le planner
+  static Future<void> fullSyncFromHistory() async {
+    debugPrint('🔄 SYNC COMPLÈTE: Historique → Planner');
+
+    // D'abord nettoyer les orphelins
+    await cleanupOrphanedCompletedSessions();
+
+    // Puis migrer les sessions manquantes
+    await migrateHistoryToPlanner();
+
+    debugPrint('✅ SYNC COMPLÈTE terminée');
   }
 }

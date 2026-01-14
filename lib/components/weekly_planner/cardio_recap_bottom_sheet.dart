@@ -3,10 +3,12 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../../models/weekly_planner_models.dart';
 import '../../models/cardio_session_models.dart';
+import '../../models/hiit_models.dart';
 import '../../services/weekly_planner_service.dart';
 import '../../services/localization_service.dart';
 import '../../services/translations.dart';
 import '../../screens/cardio_tracking_screen.dart';
+import '../../screens/hiit_session_screen.dart';
 
 /// Bottom sheet pour afficher le récapitulatif d'une activité cardio planifiée
 class CardioRecapBottomSheet extends StatelessWidget {
@@ -88,7 +90,7 @@ class CardioRecapBottomSheet extends StatelessWidget {
             decoration: BoxDecoration(
               color: isCompleted
                   ? const Color(0xFF10B981).withOpacity(0.1)
-                  : const Color(0xFF3B82F6).withOpacity(0.1),
+                  : const Color(0xFF0B132B).withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
@@ -96,7 +98,7 @@ class CardioRecapBottomSheet extends StatelessWidget {
               size: 24,
               color: isCompleted
                   ? const Color(0xFF10B981)
-                  : const Color(0xFF3B82F6),
+                  : const Color(0xFF0B132B),
             ),
           ),
           const SizedBox(width: 12),
@@ -155,6 +157,11 @@ class CardioRecapBottomSheet extends StatelessWidget {
   }
 
   Widget _buildObjectives(String langCode, PlannedCardioData cardioData) {
+    // Si c'est un HIIT, afficher les objectifs HIIT
+    if (cardioData.isHiit && cardioData.hiitConfig != null) {
+      return _buildHiitObjectives(langCode, cardioData.hiitConfig!);
+    }
+
     final hasDistance = cardioData.targetKm != null && cardioData.targetKm! > 0;
     final hasTime = cardioData.targetMinutes != null && cardioData.targetMinutes! > 0;
 
@@ -170,48 +177,65 @@ class CardioRecapBottomSheet extends StatelessWidget {
           color: const Color(0xFFF8FAFC),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            Text(
-              'planner_objectives'.tr(langCode),
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF64748B),
+            if (hasTime)
+              Expanded(child: _buildStatItem(LucideIcons.clock, '${cardioData.targetMinutes}', 'min')),
+            if (hasTime && hasDistance)
+              Container(width: 1, height: 40, color: const Color(0xFFE2E8F0)),
+            if (hasDistance)
+              Expanded(child: _buildStatItem(LucideIcons.mapPin, cardioData.targetKm!.toStringAsFixed(1), 'km')),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHiitObjectives(String langCode, HiitConfig hiitConfig) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            // Effort
+            Expanded(
+              child: _buildStatItem(
+                LucideIcons.zap,
+                '${hiitConfig.workSeconds}s',
+                langCode == 'fr' ? 'effort' : 'work',
               ),
             ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                if (hasTime) ...[
-                  Expanded(
-                    child: _buildObjectiveItem(
-                      icon: LucideIcons.clock,
-                      value: '${cardioData.targetMinutes}',
-                      label: 'min',
-                      color: const Color(0xFF3B82F6),
-                    ),
-                  ),
-                ],
-                if (hasTime && hasDistance)
-                  Container(
-                    width: 1,
-                    height: 50,
-                    margin: const EdgeInsets.symmetric(horizontal: 16),
-                    color: const Color(0xFFE2E8F0),
-                  ),
-                if (hasDistance) ...[
-                  Expanded(
-                    child: _buildObjectiveItem(
-                      icon: LucideIcons.mapPin,
-                      value: cardioData.targetKm!.toStringAsFixed(1),
-                      label: 'km',
-                      color: const Color(0xFFEF4444),
-                    ),
-                  ),
-                ],
-              ],
+            Container(width: 1, height: 40, color: const Color(0xFFE2E8F0)),
+            // Repos
+            Expanded(
+              child: _buildStatItem(
+                LucideIcons.pause,
+                '${hiitConfig.restSeconds}s',
+                langCode == 'fr' ? 'repos' : 'rest',
+              ),
+            ),
+            Container(width: 1, height: 40, color: const Color(0xFFE2E8F0)),
+            // Rounds
+            Expanded(
+              child: _buildStatItem(
+                LucideIcons.repeat,
+                '${hiitConfig.rounds}',
+                'rounds',
+              ),
+            ),
+            Container(width: 1, height: 40, color: const Color(0xFFE2E8F0)),
+            // Durée totale
+            Expanded(
+              child: _buildStatItem(
+                LucideIcons.clock,
+                '~${hiitConfig.totalMinutes}',
+                'min',
+              ),
             ),
           ],
         ),
@@ -219,42 +243,25 @@ class CardioRecapBottomSheet extends StatelessWidget {
     );
   }
 
-  Widget _buildObjectiveItem({
-    required IconData icon,
-    required String value,
-    required String label,
-    required Color color,
-  }) {
-    return Row(
+  Widget _buildStatItem(IconData icon, String value, String label) {
+    return Column(
       children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
+        Icon(icon, size: 18, color: const Color(0xFF64748B)),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF0B132B),
           ),
-          child: Icon(icon, size: 18, color: color),
         ),
-        const SizedBox(width: 12),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF0B132B),
-              ),
-            ),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 14,
-                color: Color(0xFF64748B),
-              ),
-            ),
-          ],
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            color: Color(0xFF64748B),
+          ),
         ),
       ],
     );
@@ -312,7 +319,7 @@ class CardioRecapBottomSheet extends StatelessWidget {
                 icon: const Icon(LucideIcons.play, size: 18),
                 label: Text('planner_start_cardio'.tr(langCode)),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF3B82F6),
+                  backgroundColor: const Color(0xFF0B132B),
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
@@ -329,6 +336,12 @@ class CardioRecapBottomSheet extends StatelessWidget {
   void _startCardio(BuildContext context, PlannedCardioData? cardioData) {
     final activityKey = cardioData?.activityKey ?? 'running';
     final activityName = cardioData?.activityName ?? 'Running';
+
+    // Si c'est un HIIT, lancer l'écran HIIT
+    if (cardioData != null && cardioData.isHiit && cardioData.hiitConfig != null) {
+      _startHiit(context, cardioData);
+      return;
+    }
 
     // Créer l'objectif cardio si défini
     CardioObjective? objective;
@@ -358,6 +371,33 @@ class CardioRecapBottomSheet extends StatelessWidget {
           activityTitle: activityName,
           formatTitle: activityName,
           objective: objective,
+        ),
+      ),
+    ).then((_) {
+      onCardioStarted();
+    });
+  }
+
+  void _startHiit(BuildContext context, PlannedCardioData cardioData) {
+    final hiitConfig = cardioData.hiitConfig!;
+
+    // Créer le workout HIIT avec la config stockée
+    final hiitWorkout = HiitWorkout(
+      id: hiitConfig.type,
+      title: cardioData.activityName,
+      description: '${hiitConfig.totalMinutes} min - ${hiitConfig.workSeconds}s effort / ${hiitConfig.restSeconds}s repos',
+      workDuration: hiitConfig.workSeconds,
+      restDuration: hiitConfig.restSeconds,
+      totalDuration: hiitConfig.totalMinutes,
+      totalRounds: hiitConfig.rounds,
+    );
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => HiitSessionScreen(
+          workout: hiitWorkout,
+          isFromCustomConfig: hiitConfig.type == 'custom',
         ),
       ),
     ).then((_) {

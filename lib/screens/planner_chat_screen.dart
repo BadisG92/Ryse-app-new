@@ -420,20 +420,6 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
     return messages[langCode] ?? messages['en']!;
   }
 
-  void _showAddActivitySheet(DateTime date) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => AddActivityBottomSheet(
-        selectedDate: date,
-        onActivityAdded: () {
-          _refreshWeekData();
-        },
-      ),
-    );
-  }
-
   void _showWorkoutRecap(PlannedWorkout workout) {
     showModalBottomSheet(
       context: context,
@@ -604,9 +590,9 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
     final dayNames = _getDayNames(langCode);
 
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: SizedBox(
-        height: 110,
+        height: 140,
         child: ListView.builder(
           controller: _calendarScrollController,
           scrollDirection: Axis.horizontal,
@@ -616,17 +602,31 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
             final date = _weekData.weekStart.add(Duration(days: index));
             final dayPlan = _weekData.getDayPlan(date);
 
-            return DayColumnWidget(
-              date: date,
-              dayName: dayNames[index],
-              dayPlan: dayPlan,
-              onTap: () => _showAddActivitySheet(date),
-              onActivityTap: (activity) {
-                if (activity.activityType == PlannedActivityType.cardio) {
-                  _showCardioRecap(activity);
-                }
-              },
-              onWorkoutTap: (workout) => _showWorkoutRecap(workout),
+            // Calculer la largeur pour que 7 jours remplissent l'écran
+            final screenWidth = MediaQuery.of(context).size.width;
+            final dayWidth = (screenWidth - 24) / 7; // 24 = padding horizontal total
+
+            // Filtre selon le mode
+            final filter = widget.initialMode == 'meals'
+                ? ActivityFilter.meals
+                : ActivityFilter.workouts;
+
+            return SizedBox(
+              width: dayWidth,
+              child: DayColumnWidget(
+                date: date,
+                dayName: dayNames[index],
+                dayPlan: dayPlan,
+                onDataRefresh: _refreshWeekData,
+                onActivityTap: (activity) {
+                  if (activity.activityType == PlannedActivityType.cardio) {
+                    _showCardioRecap(activity);
+                  }
+                },
+                onWorkoutTap: (workout) => _showWorkoutRecap(workout),
+                isCompact: true,
+                filter: filter,
+              ),
             );
           },
         ),
