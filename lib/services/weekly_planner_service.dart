@@ -42,22 +42,25 @@ class WeeklyPlannerService {
 
       debugPrint('📅 WeeklyPlannerService: Fetching week ${weekStart.toIso8601String()} to ${weekEnd.toIso8601String()}');
 
-      // Fetch activities et workouts en parallèle
+      // Fetch activities, workouts et food_entries en parallèle
       final results = await Future.wait([
         _fetchActivities(userId, weekStart, weekEnd),
         _fetchWorkouts(userId, weekStart, weekEnd),
+        _fetchJournalEntries(userId, weekStart, weekEnd),
       ]);
 
       final activities = results[0] as List<PlannedActivity>;
       final workouts = results[1] as List<PlannedWorkout>;
+      final journalEntriesByDate = results[2] as Map<DateTime, List<JournalFoodEntry>>;
 
-      debugPrint('✅ WeeklyPlannerService: Fetched ${activities.length} activities, ${workouts.length} workouts');
+      debugPrint('✅ WeeklyPlannerService: Fetched ${activities.length} activities, ${workouts.length} workouts, ${journalEntriesByDate.values.fold(0, (sum, list) => sum + list.length)} journal entries');
 
       // Créer les données du planner
       final weekData = WeeklyPlannerData.fromLists(
         weekStart: weekStart,
         activities: activities,
         workouts: workouts,
+        journalEntriesByDate: journalEntriesByDate,
       );
 
       // Mettre en cache
@@ -119,6 +122,129 @@ class WeeklyPlannerService {
     }
   }
 
+  /// Fetch les food_entries du journal (non liées à des planned_activities)
+  /// Groupées par date pour affichage dans le planner
+  static Future<Map<DateTime, List<JournalFoodEntry>>> _fetchJournalEntries(
+    String userId,
+    DateTime weekStart,
+    DateTime weekEnd,
+  ) async {
+    try {
+      // 1. Récupérer toutes les food_entries de la semaine avec les noms depuis les jointures
+      final startStr = weekStart.toIso8601String().split('T')[0];
+      final endStr = weekEnd.toIso8601String().split('T')[0];
+
+      final response = await _client
+          .from('food_entries')
+          .select('''
+            id, meal_type, calories, proteins, carbs, fats, quantity, unit, consumed_at,
+            scanned_food_name,
+            food_database:food_id (name_fr, name_en),
+            custom_foods:custom_food_id (name),
+            recipes_database:recipe_id (name_fr, name_en)
+          ''')
+          .eq('user_id', userId)
+          .gte('consumed_at', '${startStr}T00:00:00')
+          .lte('consumed_at', '${endStr}T23:59:59')
+          .order('consumed_at', ascending: true);
+
+      debugPrint('📊 _fetchJournalEntries: Query returned ${response.length} entries');
+
+      if (response.isEmpty) {
+        debugPrint('📊 _fetchJournalEntries: No food_entries found for week');
+        return {};
+      }
+
+      // 2. Récupérer les IDs des food_entries déjà liées à des planned_activities
+      final linkedIds = await _getLinkedFoodEntryIds(userId, weekStart, weekEnd);
+      debugPrint('🔗 Linked food_entry IDs: ${linkedIds.length} - $linkedIds');
+
+      // 3. Filtrer et grouper par date
+      final Map<DateTime, List<JournalFoodEntry>> result = {};
+      int skippedCount = 0;
+
+      for (final entry in response) {
+        final entryId = entry['id'] as String;
+
+        // Exclure les entries déjà liées à des planned_activities (pour éviter doublons)
+        if (linkedIds.contains(entryId)) {
+          debugPrint('⏭️ Skipping linked entry: $entryId');
+          skippedCount++;
+          continue;
+        }
+
+        final consumedAt = entry['consumed_at'] != null
+            ? DateTime.parse(entry['consumed_at'] as String)
+            : DateTime.now();
+
+        // Normaliser la date (sans heure)
+        final dateKey = DateTime(consumedAt.year, consumedAt.month, consumedAt.day);
+
+        // Créer le JournalFoodEntry
+        final journalEntry = JournalFoodEntry.fromMap(entry);
+
+        // Ajouter à la liste du jour
+        if (!result.containsKey(dateKey)) {
+          result[dateKey] = [];
+        }
+        result[dateKey]!.add(journalEntry);
+      }
+
+      final totalKept = result.values.fold(0, (sum, list) => sum + list.length);
+      debugPrint('📋 Journal entries: ${response.length} total, $skippedCount skipped (linked), $totalKept kept');
+      debugPrint('📋 By date: ${result.entries.map((e) => '${e.key.day}/${e.key.month}: ${e.value.length}').join(', ')}');
+      return result;
+    } catch (e, stack) {
+      debugPrint('❌ _fetchJournalEntries error: $e');
+      debugPrint('❌ Stack: $stack');
+      return {};
+    }
+  }
+
+  /// Récupérer les IDs des food_entries liées aux planned_activities
+  static Future<Set<String>> _getLinkedFoodEntryIds(
+    String userId,
+    DateTime weekStart,
+    DateTime weekEnd,
+  ) async {
+    try {
+      final startStr = weekStart.toIso8601String().split('T')[0];
+      final endStr = weekEnd.toIso8601String().split('T')[0];
+
+      // Récupérer les planned_activities avec un linkedFoodEntryId
+      final response = await _client
+          .from('planned_activities')
+          .select('activity_data')
+          .eq('user_id', userId)
+          .gte('planned_date', startStr)
+          .lte('planned_date', endStr);
+
+      final Set<String> linkedIds = {};
+
+      for (final activity in response) {
+        final activityData = activity['activity_data'] as Map<String, dynamic>?;
+        if (activityData != null) {
+          // Vérifier linked_food_entry_id (nouvelle nomenclature - snake_case)
+          final linkedId = activityData['linked_food_entry_id'] as String?;
+          if (linkedId != null) {
+            linkedIds.add(linkedId);
+          }
+
+          // Vérifier aussi linked_entry_id (ancienne nomenclature)
+          final linkedEntryId = activityData['linked_entry_id'] as String?;
+          if (linkedEntryId != null) {
+            linkedIds.add(linkedEntryId);
+          }
+        }
+      }
+
+      return linkedIds;
+    } catch (e) {
+      debugPrint('❌ _getLinkedFoodEntryIds error: $e');
+      return {};
+    }
+  }
+
   // =====================================================
   // CREATE
   // =====================================================
@@ -163,7 +289,7 @@ class WeeklyPlannerService {
       debugPrint('✅ addPlannedActivity: Created ${activityType.value} for ${plannedDate.toIso8601String().split('T')[0]}');
 
       // Invalider le cache et notifier
-      _invalidateCache();
+      invalidateCache();
       _notifyPlannerUpdate();
 
       return activity;
@@ -222,7 +348,7 @@ class WeeklyPlannerService {
       debugPrint('✅ addPlannedWorkout: Created "$workoutName" for ${plannedDate.toIso8601String().split('T')[0]}');
 
       // Invalider le cache et notifier
-      _invalidateCache();
+      invalidateCache();
       _notifyPlannerUpdate();
 
       return workout;
@@ -246,7 +372,7 @@ class WeeklyPlannerService {
 
       debugPrint('✅ updateActivityStatus: $activityId -> ${status.value}');
 
-      _invalidateCache();
+      invalidateCache();
       _notifyPlannerUpdate();
 
       return true;
@@ -278,7 +404,7 @@ class WeeklyPlannerService {
 
       debugPrint('✅ updateWorkoutStatus: $workoutId -> ${status.value}');
 
-      _invalidateCache();
+      invalidateCache();
       _notifyPlannerUpdate();
 
       return true;
@@ -338,7 +464,7 @@ class WeeklyPlannerService {
 
       debugPrint('✅ updatePlannedWorkout: $workoutId updated with ${updateData.keys.join(', ')}');
 
-      _invalidateCache();
+      invalidateCache();
       _notifyPlannerUpdate();
 
       return true;
@@ -407,7 +533,7 @@ class WeeklyPlannerService {
 
       debugPrint('✅ updatePlannedCardio: $activityId updated with ${newData.keys.join(', ')}');
 
-      _invalidateCache();
+      invalidateCache();
       _notifyPlannerUpdate();
 
       return true;
@@ -471,7 +597,7 @@ class WeeklyPlannerService {
 
       debugPrint('✅ movePlannedWorkout: $workoutId -> ${newDate.toIso8601String().split('T')[0]}');
 
-      _invalidateCache();
+      invalidateCache();
       _notifyPlannerUpdate();
 
       return true;
@@ -518,7 +644,7 @@ class WeeklyPlannerService {
 
       debugPrint('✅ movePlannedCardio: $activityId -> ${newDate.toIso8601String().split('T')[0]}');
 
-      _invalidateCache();
+      invalidateCache();
       _notifyPlannerUpdate();
 
       return true;
@@ -560,7 +686,7 @@ class WeeklyPlannerService {
 
       debugPrint('✅ deletePlannedActivity: $activityId');
 
-      _invalidateCache();
+      invalidateCache();
       _notifyPlannerUpdate();
 
       return true;
@@ -598,7 +724,7 @@ class WeeklyPlannerService {
 
       debugPrint('✅ deletePlannedWorkout: $workoutId');
 
-      _invalidateCache();
+      invalidateCache();
       _notifyPlannerUpdate();
 
       return true;
@@ -619,7 +745,7 @@ class WeeklyPlannerService {
 
       debugPrint('✅ forceDeletePlannedWorkoutFromSync: $workoutId');
 
-      _invalidateCache();
+      invalidateCache();
       _notifyPlannerUpdate();
 
       return true;
@@ -640,7 +766,7 @@ class WeeklyPlannerService {
 
       debugPrint('✅ forceDeletePlannedActivityFromSync: $activityId');
 
-      _invalidateCache();
+      invalidateCache();
       _notifyPlannerUpdate();
 
       return true;
@@ -673,7 +799,7 @@ class WeeklyPlannerService {
 
       debugPrint('✅ deleteAllWorkoutsThisWeek: Planned workouts deleted for week starting $weekStartStr');
 
-      _invalidateCache();
+      invalidateCache();
       _notifyPlannerUpdate();
 
       return true;
@@ -707,7 +833,7 @@ class WeeklyPlannerService {
 
       debugPrint('✅ deleteAllCardioThisWeek: Planned cardio deleted for week starting $weekStartStr');
 
-      _invalidateCache();
+      invalidateCache();
       _notifyPlannerUpdate();
 
       return true;
@@ -804,7 +930,7 @@ class WeeklyPlannerService {
 
       debugPrint('✅ restorePlannedWorkout: Workout restored');
 
-      _invalidateCache();
+      invalidateCache();
       _notifyPlannerUpdate();
 
       return true;
@@ -834,7 +960,7 @@ class WeeklyPlannerService {
 
       debugPrint('✅ restorePlannedActivity: Activity restored');
 
-      _invalidateCache();
+      invalidateCache();
       _notifyPlannerUpdate();
 
       return true;
@@ -877,7 +1003,7 @@ class WeeklyPlannerService {
 
       debugPrint('✅ cleanupMissedActivities: Marked past items as missed');
 
-      _invalidateCache();
+      invalidateCache();
     } catch (e) {
       debugPrint('❌ cleanupMissedActivities error: $e');
     }
@@ -910,7 +1036,7 @@ class WeeklyPlannerService {
 
       debugPrint('✅ weeklyReset: Deleted previous week items');
 
-      _invalidateCache();
+      invalidateCache();
     } catch (e) {
       debugPrint('❌ weeklyReset error: $e');
     }
@@ -938,7 +1064,7 @@ class WeeklyPlannerService {
 
       debugPrint('✅ linkActivityToFoodEntry: $activityId -> $foodEntryId');
 
-      _invalidateCache();
+      invalidateCache();
       _notifyPlannerUpdate();
 
       return true;
@@ -1245,8 +1371,8 @@ class WeeklyPlannerService {
   // HELPERS
   // =====================================================
 
-  /// Invalider le cache
-  static void _invalidateCache() {
+  /// Invalider le cache (public pour sync services)
+  static void invalidateCache() {
     _cachedWeekData = null;
     _cacheTimestamp = null;
     debugPrint('🗑️ WeeklyPlannerService: Cache invalidated');
@@ -1379,7 +1505,7 @@ class WeeklyPlannerService {
             })
             .eq('id', existingWorkout.id);
         debugPrint('✅ syncWorkoutSessionToPlanner: Workout existant mis à jour (${existingWorkout.id})');
-        _invalidateCache();
+        invalidateCache();
         if (!_isMigrating) {
           _notifyPlannerUpdate();
         }
@@ -1407,7 +1533,7 @@ class WeeklyPlannerService {
         final newId = response['id'] as String;
         debugPrint('✅ syncWorkoutSessionToPlanner: Nouvelle entrée créée ($newId)');
 
-        _invalidateCache();
+        invalidateCache();
         // Ne pas notifier pendant la migration pour éviter les boucles
         if (!_isMigrating) {
           _notifyPlannerUpdate();
@@ -1491,6 +1617,8 @@ class WeeklyPlannerService {
     int? durationMinutes,
     double? distanceKm,
   }) async {
+    debugPrint('🔄 syncCardioSessionToPlanner called: $activityTitle, date=$sessionDate');
+
     final userId = _client.auth.currentUser?.id;
     if (userId == null) {
       debugPrint('❌ syncCardioSessionToPlanner: No user');
@@ -1499,7 +1627,9 @@ class WeeklyPlannerService {
 
     try {
       // Vérifier si la date est dans la semaine courante
-      if (!isInCurrentWeek(sessionDate)) {
+      final inWeek = isInCurrentWeek(sessionDate);
+      debugPrint('  📅 isInCurrentWeek($sessionDate) = $inWeek');
+      if (!inWeek) {
         debugPrint('⚠️ syncCardioSessionToPlanner: Date hors semaine courante, skip');
         return null;
       }
@@ -1544,7 +1674,7 @@ class WeeklyPlannerService {
         final newId = response['id'] as String;
         debugPrint('✅ syncCardioSessionToPlanner: Nouvelle entrée créée ($newId)');
 
-        _invalidateCache();
+        invalidateCache();
         // Ne pas notifier pendant la migration pour éviter les boucles
         if (!_isMigrating) {
           _notifyPlannerUpdate();
@@ -1580,7 +1710,7 @@ class WeeklyPlannerService {
 
       debugPrint('✅ updateCardioStatus: $cardioId -> ${status.value}');
 
-      _invalidateCache();
+      invalidateCache();
       _notifyPlannerUpdate();
 
       return true;
@@ -1776,7 +1906,7 @@ class WeeklyPlannerService {
 
       // Invalider le cache après nettoyage
       if (workoutIdsToDelete.isNotEmpty) {
-        _invalidateCache();
+        invalidateCache();
       }
 
       debugPrint('✅ Nettoyage doublons terminé');
@@ -1839,13 +1969,37 @@ class WeeklyPlannerService {
       }
 
       // 2. Migrer les cardios
-      final cardios = await _client
+      final startDateStr = startDate.toIso8601String().split('T')[0];
+      final endDateStr = endDate.toIso8601String().split('T')[0];
+
+      debugPrint('🔍 Cardio migration: searching from $startDateStr to $endDateStr');
+
+      // Récupérer TOUTES les sessions cardio completed de l'utilisateur cette semaine
+      // D'abord essayer avec session_date, puis fallback sur start_time
+      var cardios = await _client
           .from('cardio_sessions')
-          .select('id, activity_type, activity_title, duration_seconds, distance_km, start_time')
+          .select('id, activity_type, activity_title, duration_seconds, distance_km, start_time, session_date')
           .eq('user_id', userId)
           .eq('is_completed', true)
-          .gte('start_time', startDate.toIso8601String())
-          .lte('start_time', endDate.toIso8601String());
+          .gte('session_date', startDateStr)
+          .lte('session_date', endDateStr);
+
+      // Si aucun résultat, essayer avec start_time (pour les anciennes sessions sans session_date)
+      if (cardios.isEmpty) {
+        debugPrint('🔍 Aucun cardio trouvé avec session_date, fallback sur start_time...');
+        cardios = await _client
+            .from('cardio_sessions')
+            .select('id, activity_type, activity_title, duration_seconds, distance_km, start_time, session_date')
+            .eq('user_id', userId)
+            .eq('is_completed', true)
+            .gte('start_time', startDate.toIso8601String())
+            .lte('start_time', endDate.toIso8601String());
+      }
+
+      debugPrint('📊 Found ${cardios.length} cardio sessions to migrate');
+      for (final c in cardios) {
+        debugPrint('  - ${c['activity_title']} (session_date: ${c['session_date']}, is_completed: true)');
+      }
 
       int cardiosMigrated = 0;
       for (final cardio in cardios) {
@@ -1853,14 +2007,20 @@ class WeeklyPlannerService {
 
         // Vérifier si déjà dans le planificateur
         final existing = await findPlannedCardioBySessionId(sessionId);
+        debugPrint('  🔎 Checking cardio ${cardio['activity_title']}: existing=${existing != null}');
         if (existing == null) {
-          // Créer l'entrée planifiée
+          // Créer l'entrée planifiée (utiliser session_date si disponible, sinon start_time)
           final durationSeconds = cardio['duration_seconds'] as int?;
+          final sessionDateStr = cardio['session_date'] as String?;
+          final sessionDate = sessionDateStr != null
+              ? DateTime.parse(sessionDateStr)
+              : DateTime.parse(cardio['start_time']);
+
           await syncCardioSessionToPlanner(
             sessionId: sessionId,
             activityType: cardio['activity_type'] ?? 'cardio',
             activityTitle: cardio['activity_title'] ?? 'Cardio',
-            sessionDate: DateTime.parse(cardio['start_time']),
+            sessionDate: sessionDate,
             durationMinutes: durationSeconds != null ? durationSeconds ~/ 60 : null,
             distanceKm: (cardio['distance_km'] as num?)?.toDouble(),
           );
@@ -1874,7 +2034,7 @@ class WeeklyPlannerService {
       // Invalider le cache si des migrations ont été effectuées
       // Note: On ne notifie PAS les listeners ici car _loadData() va charger les données juste après
       if (workoutsMigrated > 0 || cardiosMigrated > 0) {
-        _invalidateCache();
+        invalidateCache();
       }
     } catch (e) {
       debugPrint('❌ Erreur migration historique: $e');
@@ -1981,7 +2141,7 @@ class WeeklyPlannerService {
       debugPrint('✅ Nettoyage terminé: $workoutsRemoved workouts orphelins, $cardiosRemoved cardios orphelins supprimés');
 
       if (workoutsRemoved > 0 || cardiosRemoved > 0) {
-        _invalidateCache();
+        invalidateCache();
         _notifyPlannerUpdate();
       }
     } catch (e) {

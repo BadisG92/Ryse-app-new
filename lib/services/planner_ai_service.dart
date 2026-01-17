@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:google_generative_ai/google_generative_ai.dart';
 import '../config/gemini_config.dart';
 import '../models/weekly_planner_models.dart';
 import '../models/sport_models.dart';
@@ -16,6 +17,9 @@ import 'food_entries_service.dart';
 import 'localization_service.dart';
 import 'auth_service.dart';
 import 'unified_subscription_service.dart';
+import 'coach_preference_extractor.dart';
+import 'global_state_manager.dart';
+import 'translations.dart';
 
 /// Types d'intentions détectées par l'IA
 enum PlannerIntent {
@@ -127,8 +131,20 @@ class IntentAnalysis {
   });
 }
 
+/// Type de résultat d'une action de planification
+enum PlannerResultType {
+  success,        // Action réussie
+  error,          // Erreur
+  paywall,        // Paywall requis
+  preview,        // Preview workout (ancien mode)
+  mealPreview,    // Preview meals
+  question,       // Question à poser à l'utilisateur
+  sessionPreview, // Preview sessions paginé (nouveau)
+}
+
 /// Résultat d'une action de planification
 class PlannerActionResult {
+  final PlannerResultType resultType;
   final bool success;
   final String message;
   final List<String>? createdItems;
@@ -137,11 +153,18 @@ class PlannerActionResult {
   final int? remainingFreeUses;
   final bool requiresConfirmation; // Pour le mode preview
   final List<PendingWorkout>? pendingWorkouts; // Workouts à valider
+  final List<PendingMeal>? pendingMeals; // Repas à valider
   final bool hasMoreActions; // Il reste des actions à exécuter
   final bool canUndo; // Dernière action peut être annulée
   final String? nextActionDescription; // Description de la prochaine action
 
+  // NOUVEAUX CHAMPS pour flow questions séquentielles
+  final PendingQuestion? pendingQuestion; // Question en cours
+  final SessionPlanningState? planningState; // État du planning en cours
+  final List<PendingSession>? pendingSessions; // Sessions à valider (paginé)
+
   PlannerActionResult({
+    this.resultType = PlannerResultType.success,
     required this.success,
     required this.message,
     this.createdItems,
@@ -150,13 +173,18 @@ class PlannerActionResult {
     this.remainingFreeUses,
     this.requiresConfirmation = false,
     this.pendingWorkouts,
+    this.pendingMeals,
     this.hasMoreActions = false,
     this.canUndo = false,
     this.nextActionDescription,
+    this.pendingQuestion,
+    this.planningState,
+    this.pendingSessions,
   });
 
   factory PlannerActionResult.success(String message, {List<String>? items}) {
     return PlannerActionResult(
+      resultType: PlannerResultType.success,
       success: true,
       message: message,
       createdItems: items,
@@ -165,6 +193,7 @@ class PlannerActionResult {
 
   factory PlannerActionResult.error(String error) {
     return PlannerActionResult(
+      resultType: PlannerResultType.error,
       success: false,
       message: error,
       error: error,
@@ -173,6 +202,7 @@ class PlannerActionResult {
 
   factory PlannerActionResult.paywall(String message) {
     return PlannerActionResult(
+      resultType: PlannerResultType.paywall,
       success: false,
       message: message,
       isPaywallRequired: true,
@@ -184,31 +214,61 @@ class PlannerActionResult {
     required List<PendingWorkout> workouts,
   }) {
     return PlannerActionResult(
+      resultType: PlannerResultType.preview,
       success: true,
       message: message,
       requiresConfirmation: true,
       pendingWorkouts: workouts,
     );
   }
-}
 
-/// Workout en attente de confirmation
-class PendingWorkout {
-  final DateTime plannedDate;
-  final String workoutName;
-  final String workoutType;
-  final int durationMinutes;
-  final String workoutPrompt;
-  final List<WorkoutExercise>? exercises; // Générés par l'IA
+  factory PlannerActionResult.mealPreview({
+    required String message,
+    required List<PendingMeal> meals,
+  }) {
+    return PlannerActionResult(
+      resultType: PlannerResultType.mealPreview,
+      success: true,
+      message: message,
+      requiresConfirmation: true,
+      pendingMeals: meals,
+    );
+  }
 
-  PendingWorkout({
-    required this.plannedDate,
-    required this.workoutName,
-    required this.workoutType,
-    required this.durationMinutes,
-    required this.workoutPrompt,
-    this.exercises,
-  });
+  /// NOUVEAU: Retourner une question à poser
+  factory PlannerActionResult.question({
+    required String questionText,
+    required PendingQuestion question,
+    required SessionPlanningState planningState,
+  }) {
+    return PlannerActionResult(
+      resultType: PlannerResultType.question,
+      success: true,
+      message: questionText,
+      pendingQuestion: question,
+      planningState: planningState,
+    );
+  }
+
+  /// NOUVEAU: Preview de sessions paginé (workouts + cardios)
+  factory PlannerActionResult.sessionPreview({
+    required String message,
+    required List<PendingSession> sessions,
+  }) {
+    return PlannerActionResult(
+      resultType: PlannerResultType.sessionPreview,
+      success: true,
+      message: message,
+      requiresConfirmation: true,
+      pendingSessions: sessions,
+    );
+  }
+
+  /// Helper pour vérifier le type de résultat
+  bool get isQuestion => resultType == PlannerResultType.question;
+  bool get isSessionPreview => resultType == PlannerResultType.sessionPreview;
+  bool get isMealPreview => resultType == PlannerResultType.mealPreview;
+  bool get isPreview => resultType == PlannerResultType.preview;
 }
 
 /// Service d'IA pour le planificateur hebdomadaire
@@ -666,6 +726,42 @@ class PlannerAIService {
     return '${header[langCode] ?? header['en']}$workoutsList${footer[langCode] ?? footer['en']}';
   }
 
+  /// Message de preview pour les sessions unifiées (workouts + cardios)
+  static String _getSessionsPreviewMessage(String langCode, List<PendingSession> sessions) {
+    final header = {
+      'fr': 'Voici tes séances ! Valide une par une 👇\n\n',
+      'en': 'Here are your sessions! Validate one by one 👇\n\n',
+      'de': 'Hier sind deine Einheiten! Bestätige einzeln 👇\n\n',
+    };
+
+    final sessionsList = sessions.map((s) {
+      final dayName = _formatDayName(s.plannedDate, langCode);
+      if (s.isWorkout && s.workout != null) {
+        final exerciseCount = s.workout!.exercises?.length ?? 0;
+        final exercisesLabel = langCode == 'fr' ? 'exercices' : langCode == 'de' ? 'Übungen' : 'exercises';
+        return '• $dayName: ${s.workout!.workoutType} (${s.workout!.durationMinutes}min, $exerciseCount $exercisesLabel)';
+      } else if (s.isCardio && s.cardio != null) {
+        final cardio = s.cardio!;
+        String details = '';
+        if (cardio.distanceKm != null) {
+          details = '${cardio.distanceKm!.toStringAsFixed(1)} km';
+        } else if (cardio.durationMinutes != null) {
+          details = '${cardio.durationMinutes} min';
+        }
+        return '• $dayName: ${cardio.activityName} ($details)';
+      }
+      return '• $dayName: ${s.displayTitle}';
+    }).join('\n');
+
+    final footer = {
+      'fr': '\n\n💡 Valide chaque séance pour l\'ajouter à ton planning.',
+      'en': '\n\n💡 Validate each session to add it to your schedule.',
+      'de': '\n\n💡 Bestätige jede Einheit, um sie zu deinem Plan hinzuzufügen.',
+    };
+
+    return '${header[langCode] ?? header['en']}$sessionsList${footer[langCode] ?? footer['en']}';
+  }
+
   /// Message de confirmation après sauvegarde
   static String _getConfirmationMessage(String langCode, List<String> createdWorkouts) {
     final header = {
@@ -752,6 +848,33 @@ class PlannerAIService {
     final offset = dayMap[dayStr.toLowerCase()];
     if (offset == null) return null;
     return weekStart.add(Duration(days: offset));
+  }
+
+  /// Parser un type de repas
+  static PlannedActivityType _parseMealType(String mealTypeStr) {
+    switch (mealTypeStr.toLowerCase()) {
+      case 'breakfast':
+      case 'petit-déjeuner':
+      case 'petit déjeuner':
+      case 'frühstück':
+        return PlannedActivityType.breakfast;
+      case 'lunch':
+      case 'déjeuner':
+      case 'mittagessen':
+        return PlannedActivityType.lunch;
+      case 'dinner':
+      case 'dîner':
+      case 'diner':
+      case 'abendessen':
+        return PlannedActivityType.dinner;
+      case 'snack':
+      case 'collation':
+      case 'goûter':
+      case 'gouter':
+        return PlannedActivityType.snack;
+      default:
+        return PlannedActivityType.lunch; // Default to lunch
+    }
   }
 
   /// Construire le prompt pour générer un workout selon le type
@@ -854,12 +977,74 @@ class PlannerAIService {
     }
   }
 
-  /// Gérer une demande de repas
+  /// Gérer une demande de repas - Nouveau flow avec preview
   static Future<PlannerActionResult> _handleMealRequest(
     Map<String, dynamic> info,
     String langCode,
   ) async {
     try {
+      final meals = info['meals'] as List?;
+      final responseMessage = info['response_message'] as String?;
+
+      // Nouveau format: tableau de repas générés par l'IA
+      if (meals != null && meals.isNotEmpty) {
+        final pendingMeals = <PendingMeal>[];
+        final weekStart = getCurrentWeekStart();
+
+        for (final mealData in meals) {
+          final dayStr = mealData['day'] as String? ?? 'monday';
+          final mealTypeStr = mealData['meal_type'] as String? ?? 'breakfast';
+          final dishName = mealData['dish_name'] as String? ?? 'Repas';
+          final dishDescription = mealData['dish_description'] as String? ?? '';
+          final proteins = (mealData['proteins'] as num?)?.toDouble() ?? 0.0;
+          final carbs = (mealData['carbs'] as num?)?.toDouble() ?? 0.0;
+          final fats = (mealData['fats'] as num?)?.toDouble() ?? 0.0;
+          final quantityG = (mealData['quantity_g'] as num?)?.toDouble() ?? 200.0;
+          final reasoning = mealData['reasoning'] as String?;
+          // IMPORTANT: Calculer les calories avec la formule au lieu de prendre la valeur IA
+          // Formule standard: protéines × 4 + glucides × 4 + lipides × 9
+          final calories = ((proteins * 4) + (carbs * 4) + (fats * 9)).round();
+
+          // Convertir le jour en DateTime
+          final dayIndex = _dayStringToIndex(dayStr);
+          final plannedDate = weekStart.add(Duration(days: dayIndex));
+
+          // Vérifier que la date n'est pas passée
+          final now = DateTime.now();
+          final today = DateTime(now.year, now.month, now.day);
+          if (plannedDate.isBefore(today)) continue;
+
+          // Convertir le type de repas
+          final mealType = _getMealActivityType(mealTypeStr);
+
+          pendingMeals.add(PendingMeal(
+            plannedDate: plannedDate,
+            mealType: mealType,
+            dishName: dishName,
+            dishDescription: dishDescription,
+            calories: calories,
+            proteins: proteins,
+            carbs: carbs,
+            fats: fats,
+            estimatedQuantityG: quantityG,
+            aiReasoning: reasoning,
+          ));
+        }
+
+        if (pendingMeals.isEmpty) {
+          return PlannerActionResult.error(
+            _getMessage(langCode, 'no_valid_meals'),
+          );
+        }
+
+        // Retourner le preview pour confirmation
+        return PlannerActionResult.mealPreview(
+          message: responseMessage ?? _buildMealPreviewMessage(pendingMeals, langCode),
+          meals: pendingMeals,
+        );
+      }
+
+      // Ancien format: description simple (backward compatibility)
       final foodDescription = info['food_description'] as String?;
       final mealType = info['meal_type'] as String? ?? 'breakfast';
       final days = info['days'] as List<DateTime>?;
@@ -871,54 +1056,142 @@ class PlannerAIService {
       }
 
       final targetDays = days ?? [DateTime.now()];
-      final createdItems = <String>[];
+      final pendingMeals = <PendingMeal>[];
+      final activityType = _getMealActivityType(mealType);
 
-      // Analyser le repas avec Gemini
+      // Analyser le repas avec Gemini pour estimer les macros
       final analysisResult = await GeminiAnalysisServiceV2.analyzeTextDescription(
         foodDescription,
       );
 
-      if (!analysisResult.success || analysisResult.detectedFoods.isEmpty) {
-        return PlannerActionResult.error(
-          _getMessage(langCode, 'meal_analysis_failed'),
-        );
+      int totalCalories = 300; // Default
+      double totalProteins = 20.0;
+      double totalCarbs = 30.0;
+      double totalFats = 15.0;
+
+      if (analysisResult.success && analysisResult.detectedFoods.isNotEmpty) {
+        totalCalories = 0;
+        totalProteins = 0;
+        totalCarbs = 0;
+        totalFats = 0;
+
+        for (final food in analysisResult.detectedFoods) {
+          totalCalories += food.calories;
+          totalProteins += food.nutrition.proteins;
+          totalCarbs += food.nutrition.carbs;
+          totalFats += food.nutrition.fats;
+        }
       }
 
-      // Calculer les macros totaux
-      int totalCalories = 0;
-      double totalProteins = 0;
-      double totalCarbs = 0;
-      double totalFats = 0;
-
-      for (final food in analysisResult.detectedFoods) {
-        totalCalories += food.calories;
-        totalProteins += food.nutrition.proteins;
-        totalCarbs += food.nutrition.carbs;
-        totalFats += food.nutrition.fats;
-      }
-
-      final activityType = _getMealActivityType(mealType);
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
 
       for (final day in targetDays) {
         if (!isInCurrentWeek(day)) continue;
+        final normalizedDay = DateTime(day.year, day.month, day.day);
+        if (normalizedDay.isBefore(today)) continue;
 
-        final mealData = PlannedMealData(
-          foodDescription: foodDescription,
+        pendingMeals.add(PendingMeal(
+          plannedDate: normalizedDay,
+          mealType: activityType,
+          dishName: foodDescription,
+          dishDescription: '',
           calories: totalCalories,
           proteins: totalProteins,
           carbs: totalCarbs,
           fats: totalFats,
+          estimatedQuantityG: 200.0,
+        ));
+      }
+
+      if (pendingMeals.isEmpty) {
+        return PlannerActionResult.error(
+          _getMessage(langCode, 'no_valid_meals'),
+        );
+      }
+
+      return PlannerActionResult.mealPreview(
+        message: responseMessage ?? _buildMealPreviewMessage(pendingMeals, langCode),
+        meals: pendingMeals,
+      );
+    } catch (e) {
+      debugPrint('❌ _handleMealRequest error: $e');
+      return PlannerActionResult.error(
+        _getErrorMessage(langCode, 'meal_error'),
+      );
+    }
+  }
+
+  /// Convertir un jour string en index (0 = lundi)
+  static int _dayStringToIndex(String day) {
+    switch (day.toLowerCase()) {
+      case 'monday': return 0;
+      case 'tuesday': return 1;
+      case 'wednesday': return 2;
+      case 'thursday': return 3;
+      case 'friday': return 4;
+      case 'saturday': return 5;
+      case 'sunday': return 6;
+      default: return 0;
+    }
+  }
+
+  /// Construire un message de preview pour les repas
+  static String _buildMealPreviewMessage(List<PendingMeal> meals, String langCode) {
+    final buffer = StringBuffer();
+
+    if (langCode == 'fr') {
+      buffer.writeln('Voici les repas que je te propose :');
+    } else {
+      buffer.writeln('Here are the meals I suggest:');
+    }
+
+    // Grouper par jour
+    final mealsByDay = <String, List<PendingMeal>>{};
+    for (final meal in meals) {
+      final dayName = meal.dayName;
+      mealsByDay.putIfAbsent(dayName, () => []).add(meal);
+    }
+
+    for (final entry in mealsByDay.entries) {
+      buffer.writeln('\n📅 ${entry.key}:');
+      for (final meal in entry.value) {
+        buffer.writeln('  • ${meal.mealTypeName}: ${meal.dishName}');
+        buffer.writeln('    ${meal.calories} kcal - ${meal.proteins.toStringAsFixed(0)}g P / ${meal.carbs.toStringAsFixed(0)}g C / ${meal.fats.toStringAsFixed(0)}g L');
+      }
+    }
+
+    return buffer.toString();
+  }
+
+  /// Confirmer et sauvegarder les repas dans le planner
+  static Future<PlannerActionResult> confirmMeals(List<PendingMeal> meals) async {
+    final langCode = LocalizationService.instance.currentLanguageCode;
+
+    try {
+      final createdItems = <String>[];
+
+      for (final meal in meals) {
+        final mealData = PlannedMealData(
+          dishName: meal.dishName,
+          dishDescription: meal.dishDescription,
+          calories: meal.calories,
+          proteins: meal.proteins,
+          carbs: meal.carbs,
+          fats: meal.fats,
+          estimatedQuantityG: meal.estimatedQuantityG,
+          aiReasoning: meal.aiReasoning,
         );
 
         final activity = await WeeklyPlannerService.addPlannedActivity(
-          plannedDate: day,
-          activityType: activityType,
+          plannedDate: meal.plannedDate,
+          activityType: meal.mealType,
           activityData: mealData.toJson(),
           isAiGenerated: true,
         );
 
         if (activity != null) {
-          createdItems.add(_formatDayName(day, langCode));
+          createdItems.add('${meal.dayName} - ${meal.mealTypeName}');
         }
       }
 
@@ -928,14 +1201,16 @@ class PlannerAIService {
         );
       }
 
-      return PlannerActionResult.success(
-        _getMessage(langCode, 'meal_created')
-            .replaceAll('{meal}', foodDescription)
-            .replaceAll('{days}', createdItems.join(', ')),
-        items: createdItems,
-      );
+      // Incrémenter le compteur d'utilisation après confirmation
+      await incrementUsageCount();
+
+      final message = langCode == 'fr'
+          ? '✅ ${createdItems.length} repas ajoutés au planificateur !'
+          : '✅ ${createdItems.length} meals added to planner!';
+
+      return PlannerActionResult.success(message, items: createdItems);
     } catch (e) {
-      debugPrint('❌ _handleMealRequest error: $e');
+      debugPrint('❌ confirmMeals error: $e');
       return PlannerActionResult.error(
         _getErrorMessage(langCode, 'meal_error'),
       );
@@ -1432,6 +1707,23 @@ class PlannerAIService {
       // Formater les cardios planifiés cette semaine
       final plannedCardioThisWeek = _formatPlannedCardio(existingData.activities, langCode);
 
+      // Formater les repas planifiés cette semaine
+      final plannedMealsThisWeek = _formatPlannedMeals(existingData.activities, langCode);
+
+      // Récupérer les objectifs nutritionnels depuis GlobalStateManager
+      final globalState = GlobalStateManager.instance;
+      final calorieTarget = globalState.calorieGoal.toInt();
+      final proteinTarget = globalState.proteinGoal;
+      final carbsTarget = globalState.carbsGoal;
+      final fatTarget = globalState.fatGoal;
+
+      // Récupérer les calories/macros consommés aujourd'hui
+      final todayCalories = globalState.currentCalories.toInt();
+      final todayProteins = globalState.currentProteins.toInt();
+      final todayCarbs = globalState.currentCarbs.toInt();
+      final todayFats = globalState.currentFats.toInt();
+      final remainingCalories = calorieTarget - todayCalories;
+
       return {
         'fitness_goal': user.fitnessGoal ?? 'general_fitness',
         'activity_level': user.activityLevel ?? 'moderate',
@@ -1445,6 +1737,17 @@ class PlannerAIService {
         'user_templates': userTemplates,
         'planned_workouts_this_week': plannedWorkoutsThisWeek,
         'planned_cardio_this_week': plannedCardioThisWeek,
+        // Données nutritionnelles
+        'calorie_target': calorieTarget,
+        'protein_target': proteinTarget,
+        'carbs_target': carbsTarget,
+        'fat_target': fatTarget,
+        'today_calories': todayCalories,
+        'today_proteins': todayProteins,
+        'today_carbs': todayCarbs,
+        'today_fats': todayFats,
+        'remaining_calories': remainingCalories,
+        'planned_meals_this_week': plannedMealsThisWeek,
       };
     } catch (e) {
       debugPrint('❌ _getUserContext error: $e');
@@ -1480,6 +1783,62 @@ class PlannerAIService {
       if (duration != null) buffer.write(' (${duration}min)');
       if (distance != null) buffer.write(' - ${distance}km');
       buffer.writeln();
+    }
+
+    return buffer.toString().trim();
+  }
+
+  /// Formater les repas planifiés cette semaine pour le contexte AI
+  static String _formatPlannedMeals(List<PlannedActivity> activities, String langCode) {
+    final meals = activities.where((a) => a.activityType.isMeal).toList();
+    if (meals.isEmpty) {
+      return 'No meals planned yet';
+    }
+
+    final dayNames = {
+      1: {'fr': 'Lundi', 'en': 'Monday', 'de': 'Montag'},
+      2: {'fr': 'Mardi', 'en': 'Tuesday', 'de': 'Dienstag'},
+      3: {'fr': 'Mercredi', 'en': 'Wednesday', 'de': 'Mittwoch'},
+      4: {'fr': 'Jeudi', 'en': 'Thursday', 'de': 'Donnerstag'},
+      5: {'fr': 'Vendredi', 'en': 'Friday', 'de': 'Freitag'},
+      6: {'fr': 'Samedi', 'en': 'Saturday', 'de': 'Samstag'},
+      7: {'fr': 'Dimanche', 'en': 'Sunday', 'de': 'Sonntag'},
+    };
+
+    final mealTypeNames = {
+      PlannedActivityType.breakfast: {'fr': 'Petit-déj', 'en': 'Breakfast', 'de': 'Frühstück'},
+      PlannedActivityType.lunch: {'fr': 'Déjeuner', 'en': 'Lunch', 'de': 'Mittagessen'},
+      PlannedActivityType.dinner: {'fr': 'Dîner', 'en': 'Dinner', 'de': 'Abendessen'},
+      PlannedActivityType.snack: {'fr': 'Collation', 'en': 'Snack', 'de': 'Snack'},
+    };
+
+    // Grouper par jour
+    final mealsByDay = <int, List<PlannedActivity>>{};
+    for (final meal in meals) {
+      final weekday = meal.plannedDate.weekday;
+      mealsByDay[weekday] = mealsByDay[weekday] ?? [];
+      mealsByDay[weekday]!.add(meal);
+    }
+
+    final buffer = StringBuffer();
+
+    // Trier par jour de la semaine
+    final sortedDays = mealsByDay.keys.toList()..sort();
+    for (final weekday in sortedDays) {
+      final dayName = dayNames[weekday]?[langCode] ?? 'Day $weekday';
+      buffer.writeln('$dayName:');
+
+      for (final meal in mealsByDay[weekday]!) {
+        final mealData = meal.mealData;
+        final mealTypeName = mealTypeNames[meal.activityType]?[langCode] ?? meal.activityType.value;
+        final dishName = mealData?.displayName ?? 'Repas';
+        final calories = mealData?.calories ?? 0;
+        final status = meal.status == PlannedStatus.completed ? '✓' : '•';
+
+        buffer.write('  $status $mealTypeName: $dishName');
+        if (calories > 0) buffer.write(' (~${calories}kcal)');
+        buffer.writeln();
+      }
     }
 
     return buffer.toString().trim();
@@ -1592,32 +1951,36 @@ class PlannerAIService {
   static Future<String> _buildMealsIntentPrompt(String userMessage, String langCode) async {
     final languageName = langCode == 'fr' ? 'French' : langCode == 'de' ? 'German' : 'English';
     final context = await _getNutritionContext();
+    final plannedWorkouts = await _getPlannedWorkoutsForWeek();
+    final dietaryRestrictions = context['dietary_restrictions'] ?? 'None';
 
     return '''
-You are Ryze, an expert NUTRITION coach AI. You ONLY help with meal planning.
+You are Ryze, an expert NUTRITION coach AI. You help plan SPECIFIC meals with estimated macros.
 
 ## Your Specialty
-You are a nutrition specialist. You can ONLY plan:
-- Breakfast (petit-déjeuner / Frühstück)
-- Lunch (déjeuner / Mittagessen)
-- Dinner (dîner / Abendessen)
-- Snacks (collation / Snack)
+You create detailed meal plans with:
+- SPECIFIC dish names and descriptions
+- Accurate macro estimates (calories, proteins, carbs, fats)
+- Meal types: breakfast, lunch, dinner, snack
 
-You CANNOT help with workouts, cardio, or any fitness activities. If the user asks about those, politely redirect them.
+You CANNOT help with workouts or cardio. If asked, redirect politely.
 
-## User Nutritional Context
+## User Nutritional Profile
 - Daily Calorie Target: ${context['calorie_target'] ?? 2000} kcal
-- Protein Target: ${context['protein_target'] ?? 100}g
-- Carbs Target: ${context['carbs_target'] ?? 250}g
-- Fats Target: ${context['fats_target'] ?? 70}g
+- Daily Macros: ${context['protein_target'] ?? 100}g protein, ${context['carbs_target'] ?? 250}g carbs, ${context['fats_target'] ?? 70}g fats
 - Fitness Goal: ${context['fitness_goal'] ?? 'general fitness'}
-- Calories consumed today: ${context['calories_today'] ?? 0} kcal
-- Remaining calories: ${context['remaining_calories'] ?? context['calorie_target'] ?? 2000} kcal
+- Dietary Restrictions: $dietaryRestrictions
+
+## Today's Status
+- Calories consumed: ${context['calories_today'] ?? 0} kcal
+- Remaining: ${context['remaining_calories'] ?? context['calorie_target'] ?? 2000} kcal
+
+## This Week's Planned Workouts (adjust carbs on training days)
+$plannedWorkouts
 
 ## Available Days This Week
 ${context['available_days'] ?? ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']}
 
-${_getFormattedHistory()}
 ## User Request
 "$userMessage"
 
@@ -1625,32 +1988,57 @@ ${_getFormattedHistory()}
 {
   "intent": "meal",
   "is_complete": true | false,
-  "extracted_info": {
-    "food_description": "detailed description of the meal",
-    "meal_type": "breakfast" | "lunch" | "dinner" | "snack",
-    "days": ["monday", "tuesday", ...]
-  },
-  "response_message": "friendly message in $languageName confirming what you're planning",
-  "follow_up_question": "only if you need more info (in $languageName)"
+  "meals": [
+    {
+      "day": "monday",
+      "meal_type": "breakfast",
+      "dish_name": "Short name (max 25 chars)",
+      "dish_description": "Main ingredients list",
+      "calories": 450,
+      "proteins": 32.0,
+      "carbs": 15.0,
+      "fats": 28.0,
+      "quantity_g": 300,
+      "reasoning": "Brief explanation why this fits their goals"
+    }
+  ],
+  "response_message": "Friendly message in $languageName summarizing what you're proposing",
+  "follow_up_question": "Only if is_complete=false (in $languageName)"
 }
 
-## Rules
-1. If user asks about workouts/cardio, return intent: "unknown" with a polite redirection message
-2. Always suggest meals that fit their calorie/macro targets
-3. Ask for meal type if not specified (breakfast, lunch, dinner, snack)
-4. Ask for which day(s) if not specified
-5. Be creative with meal suggestions based on their goals
+## CRITICAL Rules
+1. EACH dish is a SEPARATE entry in the meals array
+2. Provide REALISTIC macro estimates based on typical portions
+3. On workout days: increase carbs (+20%), reduce fats slightly
+4. RESPECT dietary restrictions STRICTLY (vegetarian, vegan, allergies, etc.)
+5. Provide VARIED meals - no repetition within the same week
+6. Meal order in response: breakfast → lunch → snack → dinner
+7. MAXIMUM calories per meal:
+   - Breakfast: ~25% of daily target
+   - Lunch: ~35% of daily target
+   - Dinner: ~30% of daily target
+   - Snack: ~10% of daily target
+8. If user asks for "une semaine de repas", generate ALL 4 meal types for remaining days
+9. ASK for clarification if meal type or days not specified
+10. 🔴 RESPECT USER'S SPECIFIC FOOD - If user mentions a specific food (whey, chicken, salmon, etc.), you MUST use THAT food in the dish! Example: "30g de whey" = create a dish WITH whey protein, NOT something else!
 
 ## Examples
 
 User: "Un petit-déj protéiné pour demain"
-→ intent: "meal", meal_type: "breakfast", create high-protein breakfast suggestion
+→ Single breakfast entry with high protein (~30g+)
 
-User: "Je veux des repas équilibrés pour la semaine"
-→ Ask follow-up: which meals specifically (all? just lunches?)
+User: "Planifie mes repas de la semaine"
+→ All 4 meal types for all remaining days (up to 28 entries)
+
+User: "Déjeuner et dîner pour lundi et mardi"
+→ 4 entries (lunch + dinner for both days)
+
+User: "30g de whey pour ma collation"
+→ Single snack entry WITH whey protein (e.g., "Whey Protein Shake" with 30g whey, ~120kcal, ~24g protein)
+→ NEVER substitute whey with eggs or other food!
 
 User: "3 séances de musculation"
-→ intent: "unknown", message: "Je suis ton coach nutrition ! Pour les séances de sport, utilise le bouton 'Planifier mes séances'. Ici, dis-moi quel repas tu veux planifier 🍽️"
+→ intent: "unknown", redirect to workout button
 ''';
   }
 
@@ -1827,6 +2215,26 @@ User: "Un petit-déjeuner protéiné"
       final carbsTarget = ((calorieTarget * 0.45) / 4).round(); // 45% des calories
       final fatsTarget = ((calorieTarget * 0.30) / 9).round(); // 30% des calories
 
+      // Récupérer les préférences alimentaires (allergies, restrictions)
+      String dietaryRestrictions = 'None';
+      try {
+        final prefs = await CoachPreferenceExtractor.instance.getUserPreferences();
+        if (prefs != null) {
+          final restrictions = <String>[];
+          if (prefs.allergies.isNotEmpty) {
+            restrictions.addAll(prefs.allergies.map((a) => 'allergic to $a'));
+          }
+          if (prefs.dietaryRestrictions.isNotEmpty) {
+            restrictions.addAll(prefs.dietaryRestrictions);
+          }
+          if (restrictions.isNotEmpty) {
+            dietaryRestrictions = restrictions.join(', ');
+          }
+        }
+      } catch (_) {
+        // Ignorer si erreur - utiliser la valeur par défaut
+      }
+
       // Récupérer les calories consommées aujourd'hui
       int caloriesToday = 0;
       try {
@@ -1867,10 +2275,46 @@ User: "Un petit-déjeuner protéiné"
         'calories_today': caloriesToday,
         'remaining_calories': calorieTarget - caloriesToday,
         'available_days': availableDays,
+        'dietary_restrictions': dietaryRestrictions,
       };
     } catch (e) {
       debugPrint('❌ _getNutritionContext error: $e');
       return {};
+    }
+  }
+
+  /// Récupérer les workouts planifiés cette semaine (pour adapter les glucides)
+  static Future<String> _getPlannedWorkoutsForWeek() async {
+    try {
+      final data = await WeeklyPlannerService.getWeekData();
+      if (data.workouts.isEmpty) {
+        return 'No workouts planned this week';
+      }
+
+      final buffer = StringBuffer();
+      final dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+
+      for (final workout in data.workouts) {
+        final dayIndex = workout.plannedDate.weekday - 1;
+        final dayName = dayNames[dayIndex];
+        buffer.writeln('• $dayName: ${workout.workoutName} (${workout.durationMinutes ?? 45}min)');
+      }
+
+      // Ajouter les cardios aussi
+      final cardios = data.activities.where((a) => a.activityType == PlannedActivityType.cardio).toList();
+      for (final cardio in cardios) {
+        final dayIndex = cardio.plannedDate.weekday - 1;
+        final dayName = dayNames[dayIndex];
+        final cardioData = cardio.cardioData;
+        if (cardioData != null) {
+          buffer.writeln('• $dayName: ${cardioData.activityName} (${cardioData.targetMinutes ?? 30}min cardio)');
+        }
+      }
+
+      return buffer.toString().trim();
+    } catch (e) {
+      debugPrint('❌ _getPlannedWorkoutsForWeek error: $e');
+      return 'Unable to fetch planned workouts';
     }
   }
 
@@ -2065,6 +2509,11 @@ IMPORTANT:
         extractedInfo['days'] = _parseDays(dayStrings.cast<String>());
       }
 
+      // Parser le tableau meals au niveau racine (nouveau format pour meal intent)
+      if (response['meals'] != null) {
+        extractedInfo['meals'] = response['meals'];
+      }
+
       // Ajouter le response_message dans extractedInfo pour le handler
       if (responseMessage != null) {
         extractedInfo['response_message'] = responseMessage;
@@ -2088,53 +2537,81 @@ IMPORTANT:
   }
 
   static Future<Map<String, dynamic>?> _callGeminiAPI(String prompt) async {
-    try {
-      // Utiliser le modèle plus performant pour le planner (gemini-2.5-flash)
-      final url = Uri.parse(
-        '${GeminiConfig.plannerApiUrl}?key=${GeminiConfig.geminiApiKey}',
-      );
+    const maxRetries = 3;
 
-      final body = {
-        'contents': [
-          {
-            'parts': [
-              {'text': prompt}
-            ]
+    for (int attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        // Utiliser le modèle plus performant pour le planner (gemini-2.5-flash)
+        final url = Uri.parse(
+          '${GeminiConfig.plannerApiUrl}?key=${GeminiConfig.geminiApiKey}',
+        );
+
+        final body = {
+          'contents': [
+            {
+              'parts': [
+                {'text': prompt}
+              ]
+            }
+          ],
+          'generationConfig': {
+            'temperature': 0.3,
+            'topK': 40,
+            'topP': 0.95,
+            'maxOutputTokens': 1024,
+          },
+        };
+
+        final response = await http.post(
+          url,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode(body),
+        );
+
+        if (response.statusCode != 200) {
+          debugPrint('❌ Gemini API error (attempt $attempt/$maxRetries): ${response.statusCode}');
+          if (attempt < maxRetries) {
+            await Future.delayed(Duration(milliseconds: 500 * attempt));
+            continue;
           }
-        ],
-        'generationConfig': {
-          'temperature': 0.3,
-          'topK': 40,
-          'topP': 0.95,
-          'maxOutputTokens': 1024,
-        },
-      };
+          return null;
+        }
 
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(body),
-      );
+        final responseData = jsonDecode(response.body);
+        final text = responseData['candidates']?[0]?['content']?['parts']?[0]?['text'];
 
-      if (response.statusCode != 200) {
-        debugPrint('❌ Gemini API error: ${response.statusCode}');
+        if (text == null) {
+          debugPrint('⚠️ No text in Gemini response (attempt $attempt/$maxRetries)');
+          if (attempt < maxRetries) {
+            await Future.delayed(Duration(milliseconds: 500 * attempt));
+            continue;
+          }
+          return null;
+        }
+
+        // Extraire le JSON de la réponse
+        final jsonMatch = RegExp(r'\{[\s\S]*\}').firstMatch(text);
+        if (jsonMatch == null) {
+          debugPrint('⚠️ No JSON in Gemini response (attempt $attempt/$maxRetries)');
+          if (attempt < maxRetries) {
+            await Future.delayed(Duration(milliseconds: 500 * attempt));
+            continue;
+          }
+          return null;
+        }
+
+        return jsonDecode(jsonMatch.group(0)!);
+      } catch (e) {
+        debugPrint('❌ _callGeminiAPI error (attempt $attempt/$maxRetries): $e');
+        if (attempt < maxRetries) {
+          await Future.delayed(Duration(milliseconds: 500 * attempt));
+          continue;
+        }
         return null;
       }
-
-      final responseData = jsonDecode(response.body);
-      final text = responseData['candidates']?[0]?['content']?['parts']?[0]?['text'];
-
-      if (text == null) return null;
-
-      // Extraire le JSON de la réponse
-      final jsonMatch = RegExp(r'\{[\s\S]*\}').firstMatch(text);
-      if (jsonMatch == null) return null;
-
-      return jsonDecode(jsonMatch.group(0)!);
-    } catch (e) {
-      debugPrint('❌ _callGeminiAPI error: $e');
-      return null;
     }
+
+    return null;
   }
 
   // =====================================================
@@ -2162,7 +2639,7 @@ IMPORTANT:
           'action_type': {
             'type': 'string',
             'description': 'Type of action to confirm',
-            'enum': ['delete_all', 'delete_all_workouts', 'delete_all_cardio', 'delete_workout', 'delete_cardio'],
+            'enum': ['delete_all', 'delete_all_workouts', 'delete_all_cardio', 'delete_workout', 'delete_cardio', 'delete_day_sessions', 'delete_sessions'],
           },
           'action_description': {
             'type': 'string',
@@ -2176,12 +2653,34 @@ Examples:
           },
           'action_args': {
             'type': 'object',
-            'description': 'REQUIRED for delete_cardio/delete_workout: must include {"day": "monday|tuesday|wednesday|thursday|friday|saturday|sunday"}',
+            'description': '''Arguments for the deletion action:
+- For delete_cardio/delete_workout/delete_day_sessions: {"day": "monday|tuesday|..."}
+- For delete_sessions: {"days": [...], "exclude_days": [...], "session_types": [...], "activity_names": [...]}''',
             'properties': {
               'day': {
                 'type': 'string',
-                'description': 'Day for single delete (required for delete_cardio and delete_workout)',
+                'description': 'Day for single delete or day sessions delete',
                 'enum': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+              },
+              'days': {
+                'type': 'array',
+                'items': {'type': 'string'},
+                'description': 'List of days for delete_sessions',
+              },
+              'exclude_days': {
+                'type': 'array',
+                'items': {'type': 'string'},
+                'description': 'Days to exclude for delete_sessions',
+              },
+              'session_types': {
+                'type': 'array',
+                'items': {'type': 'string'},
+                'description': 'Session types (workout, cardio) for delete_sessions',
+              },
+              'activity_names': {
+                'type': 'array',
+                'items': {'type': 'string'},
+                'description': 'Activity names to target for delete_sessions',
               },
             },
           },
@@ -2252,6 +2751,71 @@ Examples:
           },
         },
         'required': ['day'],
+      },
+    },
+    {
+      'name': 'delete_day_sessions',
+      'description': 'Delete ALL sessions (both workouts AND cardio) on a specific day. Use when user says "supprime toutes les séances de [jour]" / "delete all sessions on [day]". Use request_confirmation first!',
+      'parameters': {
+        'type': 'object',
+        'properties': {
+          'day': {
+            'type': 'string',
+            'description': 'Day to delete all sessions from (monday, tuesday, wednesday, thursday, friday, saturday, sunday)',
+            'enum': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+          },
+        },
+        'required': ['day'],
+      },
+    },
+    {
+      'name': 'delete_sessions',
+      'description': '''FLEXIBLE DELETE TOOL - Use this for any complex deletion request.
+Can delete by:
+- Specific days (one or multiple)
+- Session types (workout, cardio, or both)
+- Activity names
+Use request_confirmation FIRST with action_type="delete_sessions"!
+
+Examples:
+- "supprime mes séances de lundi et mardi" → days=["monday","tuesday"]
+- "supprime toutes les séances de muscu" → session_types=["workout"]
+- "supprime tout le cardio de la semaine sauf vendredi" → session_types=["cardio"], exclude_days=["friday"]
+- "supprime mes séances de Dos" → activity_names=["Back", "Dos"]''',
+      'parameters': {
+        'type': 'object',
+        'properties': {
+          'days': {
+            'type': 'array',
+            'items': {
+              'type': 'string',
+              'enum': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+            },
+            'description': 'List of days to delete from. If empty/null, applies to all days of the week.',
+          },
+          'exclude_days': {
+            'type': 'array',
+            'items': {
+              'type': 'string',
+              'enum': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+            },
+            'description': 'Days to exclude from deletion (useful with "delete all except...")',
+          },
+          'session_types': {
+            'type': 'array',
+            'items': {
+              'type': 'string',
+              'enum': ['workout', 'cardio'],
+            },
+            'description': 'Types of sessions to delete. If empty/null, deletes both workout AND cardio.',
+          },
+          'activity_names': {
+            'type': 'array',
+            'items': {'type': 'string'},
+            'description': 'Optional: Specific activity/workout names to target (e.g. ["Dos", "Back"] or ["Running", "HIIT"])',
+          },
+        },
+        'required': [],
       },
     },
     {
@@ -2504,6 +3068,399 @@ Example: "Tu veux quel type de HIIT? 🔥 Tabata (4min intense), 💪 HIIT débu
     },
   ];
 
+  /// Outils pour le mode repas (nutrition)
+  static List<Map<String, dynamic>> get _mealTools => [
+    {
+      'name': 'create_meal',
+      'description': 'Create a NEW planned meal entry. Use this to ADD meals - multiple entries of the same meal type are allowed (e.g., 2 snacks). ALWAYS use this for adding new items, even if a meal of the same type already exists.',
+      'parameters': {
+        'type': 'object',
+        'properties': {
+          'day': {
+            'type': 'string',
+            'description': 'Day for the meal (monday, tuesday, wednesday, thursday, friday, saturday, sunday)',
+            'enum': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+          },
+          'meal_type': {
+            'type': 'string',
+            'description': 'Type of meal: breakfast (petit-déjeuner), lunch (déjeuner), dinner (dîner), snack (collation)',
+            'enum': ['breakfast', 'lunch', 'dinner', 'snack'],
+          },
+          'dish_name': {
+            'type': 'string',
+            'description': 'Name of the dish (e.g., "Omelette aux champignons", "Lasagnes bolognaise", "Salade César")',
+          },
+          'dish_description': {
+            'type': 'string',
+            'description': 'DETAILED description with 4 sections separated by "---": 1) Brief description, 2) INGRÉDIENTS: list with quantities, 3) RECETTE: numbered steps, 4) ASTUCE: cooking tip. Example: "Omelette moelleuse aux champignons de Paris.---INGRÉDIENTS:\\n- 3 œufs\\n- 100g champignons\\n- 30g fromage râpé\\n- Sel, poivre---RECETTE:\\n1. Battre les œufs\\n2. Faire revenir les champignons\\n3. Verser les œufs et cuire 3min\\n4. Ajouter le fromage et plier---ASTUCE: Ne pas trop cuire pour garder le moelleux"',
+          },
+          'calories': {
+            'type': 'integer',
+            'description': 'Estimated calories (kcal)',
+          },
+          'proteins': {
+            'type': 'number',
+            'description': 'Estimated proteins in grams',
+          },
+          'carbs': {
+            'type': 'number',
+            'description': 'Estimated carbohydrates in grams',
+          },
+          'fats': {
+            'type': 'number',
+            'description': 'Estimated fats in grams',
+          },
+          'quantity_g': {
+            'type': 'number',
+            'description': 'Estimated portion size in grams (default 200-400g depending on meal)',
+          },
+        },
+        'required': ['day', 'meal_type', 'dish_name', 'calories', 'proteins', 'carbs', 'fats', 'quantity_g'],
+      },
+    },
+    {
+      'name': 'delete_meal',
+      'description': 'Delete a specific planned meal. Use request_confirmation first.',
+      'parameters': {
+        'type': 'object',
+        'properties': {
+          'day': {
+            'type': 'string',
+            'description': 'Day of the meal to delete',
+            'enum': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+          },
+          'meal_type': {
+            'type': 'string',
+            'description': 'Type of meal to delete',
+            'enum': ['breakfast', 'lunch', 'dinner', 'snack'],
+          },
+        },
+        'required': ['day', 'meal_type'],
+      },
+    },
+    {
+      'name': 'delete_all_meals',
+      'description': 'Delete ALL planned meals for this week. Use request_confirmation first.',
+      'parameters': {
+        'type': 'object',
+        'properties': {},
+        'required': [],
+      },
+    },
+    {
+      'name': 'modify_meal',
+      'description': 'REPLACE an existing meal with a new one. ONLY use when user explicitly says "change", "replace", "modify" (e.g., "change my snack to..."). Do NOT use for adding new items - use create_meal instead!',
+      'parameters': {
+        'type': 'object',
+        'properties': {
+          'day': {
+            'type': 'string',
+            'description': 'Day of the meal to modify',
+            'enum': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+          },
+          'meal_type': {
+            'type': 'string',
+            'description': 'Type of meal to modify',
+            'enum': ['breakfast', 'lunch', 'dinner', 'snack'],
+          },
+          'dish_name': {
+            'type': 'string',
+            'description': 'NEW dish name (short)',
+          },
+          'dish_description': {
+            'type': 'string',
+            'description': 'NEW dish description with ingredients and recipe',
+          },
+          'calories': {
+            'type': 'integer',
+            'description': 'NEW estimated calories (kcal)',
+          },
+          'proteins': {
+            'type': 'number',
+            'description': 'NEW estimated proteins (g)',
+          },
+          'carbs': {
+            'type': 'number',
+            'description': 'NEW estimated carbs (g)',
+          },
+          'fats': {
+            'type': 'number',
+            'description': 'NEW estimated fats (g)',
+          },
+          'quantity_g': {
+            'type': 'number',
+            'description': 'Estimated portion size in grams (default 200-400g depending on meal)',
+          },
+        },
+        'required': ['day', 'meal_type', 'dish_name', 'calories', 'proteins', 'carbs', 'fats', 'quantity_g'],
+      },
+    },
+    {
+      'name': 'request_confirmation',
+      'description': 'ALWAYS use this tool BEFORE any destructive action (delete). Ask user to confirm. CRITICAL: You MUST include day and meal_type in action_args!',
+      'parameters': {
+        'type': 'object',
+        'properties': {
+          'action_type': {
+            'type': 'string',
+            'description': 'Type of action to confirm',
+            'enum': ['delete_meal', 'delete_all_meals'],
+          },
+          'action_description': {
+            'type': 'string',
+            'description': 'Human-readable description of what will be deleted (in user language)',
+          },
+          'action_args': {
+            'type': 'object',
+            'description': 'REQUIRED: Arguments for the action. For delete_meal: {"day": "monday", "meal_type": "breakfast"}',
+            'properties': {
+              'day': {
+                'type': 'string',
+                'description': 'Day of the meal (required for delete_meal)',
+                'enum': ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+              },
+              'meal_type': {
+                'type': 'string',
+                'description': 'Type of meal (required for delete_meal)',
+                'enum': ['breakfast', 'lunch', 'dinner', 'snack'],
+              },
+            },
+            'required': ['day', 'meal_type'],
+          },
+        },
+        'required': ['action_type', 'action_description', 'action_args'],
+      },
+    },
+    {
+      'name': 'ask_clarification',
+      'description': 'Ask user for more information when the request is unclear (which day, which meal type, dietary preferences)',
+      'parameters': {
+        'type': 'object',
+        'properties': {
+          'question': {
+            'type': 'string',
+            'description': 'The clarification question to ask the user',
+          },
+        },
+        'required': ['question'],
+      },
+    },
+  ];
+
+  /// Construire le prompt système pour le mode repas
+  static Future<String> _buildMealsSystemPrompt(String context) async {
+    final langCode = LocalizationService.instance.currentLanguageCode;
+    final languageName = langCode == 'fr' ? 'French' : langCode == 'de' ? 'German' : 'English';
+
+    // Récupérer les préférences alimentaires de l'utilisateur
+    String dietaryInfo = '';
+    try {
+      final prefs = await CoachPreferenceExtractor.instance.getUserPreferences();
+      if (prefs != null && prefs.dietaryRestrictions.isNotEmpty) {
+        final restrictions = prefs.dietaryRestrictions.join(', ');
+        dietaryInfo = '\nDIETARY RESTRICTIONS: $restrictions';
+      }
+      if (prefs != null && prefs.allergies.isNotEmpty) {
+        final allergies = prefs.allergies.join(', ');
+        dietaryInfo += '\nALLERGIES: $allergies';
+      }
+    } catch (e) {
+      debugPrint('Could not get dietary preferences: $e');
+    }
+
+    return '''
+You are Ryze, a friendly nutrition coach AI assistant. You help users plan their weekly meals.
+ALWAYS respond in $languageName.
+
+═══════════════════════════════════════════════════════════════
+                    ⚠️ RESPONSE STYLE - CRITICAL!
+═══════════════════════════════════════════════════════════════
+1. BE CONCISE: Short, structured responses. NO WALLS OF TEXT!
+2. USE BULLET POINTS: Structure with • or numbers, not long paragraphs
+3. MAX 2 BUBBLES: If you need more space, split with "|||" (max 2 parts)
+   Example: "First message|||Second message"
+4. SYNTHESIZE: Get to the point quickly. Users don't want to read essays.
+5. NO REPETITION: Don't repeat what user already knows
+
+GOOD RESPONSE:
+"✅ Repas planifiés pour lundi!
+
+• Petit-déj: Porridge protéiné
+• Déjeuner: Poulet grillé + riz
+• Dîner: Saumon + légumes"
+
+BAD RESPONSE (too long):
+"Parfait ! Je vais planifier tes repas pour lundi. J'ai préparé un petit-déjeuner équilibré avec un porridge protéiné qui va bien te caler pour la matinée. Pour le déjeuner, j'ai choisi un poulet grillé accompagné de riz complet..."
+
+═══════════════════════════════════════════════════════════════
+              🔴 CRITICAL: USE THE MACRO TABLE!
+═══════════════════════════════════════════════════════════════
+The context contains a table "RECOMMENDED MACROS PER MEAL" with EXACT values to use!
+
+⚠️ For EACH create_meal call, use the values from the table:
+- breakfast → use breakfast row values (calories, proteins, carbs, fats)
+- lunch → use lunch row values
+- dinner → use dinner row values
+- snack → use snack row values
+
+DO NOT invent your own values! The table is calculated from the user's personal targets.
+
+═══════════════════════════════════════════════════════════════
+              🔴 CRITICAL: COMPLETE ALL DAYS
+═══════════════════════════════════════════════════════════════
+WHEN USER ASKS FOR MULTIPLE MEALS (e.g., "planifie mes repas", "la semaine"):
+→ You MUST generate meals for EVERY available day!
+→ EACH DAY must have: breakfast + lunch + dinner (3 meals MINIMUM)
+→ DO NOT STOP before completing all days!
+
+CHECKLIST before finishing:
+□ Did I create breakfast for EVERY available day?
+□ Did I create lunch for EVERY available day?
+□ Did I create dinner for EVERY available day?
+→ If any checkbox is NO, continue creating meals!
+
+Example: 4 available days = 12 create_meal calls minimum
+- Day 1: breakfast ✓ lunch ✓ dinner ✓
+- Day 2: breakfast ✓ lunch ✓ dinner ✓
+- Day 3: breakfast ✓ lunch ✓ dinner ✓
+- Day 4: breakfast ✓ lunch ✓ dinner ✓
+
+═══════════════════════════════════════════════════════════════
+                    MEAL TYPES
+═══════════════════════════════════════════════════════════════
+- breakfast: Morning meal - target ~20-25% daily calories
+- lunch: Midday meal - target ~30-35% daily calories
+- dinner: Evening meal - target ~30-35% daily calories
+- snack: Light snack - target ~10-15% daily calories (optional)
+
+═══════════════════════════════════════════════════════════════
+                    PLANNING RULES
+═══════════════════════════════════════════════════════════════
+1. ONLY use days from AVAILABLE DAYS in context
+2. For TODAY: If user is vague, use SUGGESTED MEALS based on time. If user specifies a meal type, ALWAYS do it!
+3. For FUTURE days: All meal types are available (breakfast, lunch, dinner)
+4. ALWAYS vary the dishes - don't repeat the same meal twice
+5. AIM for daily calorie target within ±10% range (realistic, not exact!)
+6. Use REALISTIC ingredient quantities (100g, 150g, 2 eggs) NOT decimals (127.3g)
+7. Each day's total SHOULD be slightly different - that's natural and realistic!
+
+🔴 CRITICAL RULE - RESPECT USER'S SPECIFIC FOOD REQUESTS:
+When the user mentions a SPECIFIC food or ingredient (whey, chicken, salmon, eggs, etc.):
+→ You MUST use THAT EXACT food in the dish!
+→ NEVER substitute with something else!
+→ Examples:
+  - "30g de whey" → Create a dish WITH whey protein (shake, smoothie, etc.)
+  - "je veux du poulet" → Create a dish WITH chicken
+  - "plan me a salmon dinner" → Create a dish WITH salmon
+→ Adapt the dish around the requested ingredient, don't ignore it!
+→ Use the exact quantity if specified (e.g., "30g whey" = use 30g whey)
+
+WHEN USER ASKS FOR "rest of the day" / "aujourd'hui" / "heute" (vague request):
+→ Use SUGGESTED MEALS based on current time
+→ Skip meals that are typically past (e.g., no breakfast at 22h unless explicitly asked)
+
+WHEN USER EXPLICITLY ASKS FOR A SPECIFIC MEAL:
+  Examples: "plan my dinner" / "planifie mon dîner" / "I want breakfast" / "je veux un petit-déj"
+→ ALWAYS plan it, regardless of current time!
+→ NEVER refuse or suggest something else - just do what they ask!
+
+═══════════════════════════════════════════════════════════════
+              🔴 DISH DESCRIPTION FORMAT (REQUIRED!)
+═══════════════════════════════════════════════════════════════
+For dish_description, ALWAYS use this format with "---" separators.
+Use the SECTION NAMES in the USER'S LANGUAGE (from $languageName):
+- French: INGRÉDIENTS, RECETTE, ASTUCE
+- English: INGREDIENTS, RECIPE, TIP
+- German: ZUTATEN, REZEPT, TIPP
+
+Format:
+[Brief description of the dish]---INGREDIENTS:
+- [quantity] [ingredient 1]
+- [quantity] [ingredient 2]
+...---RECIPE:
+1. [Step 1]
+2. [Step 2]
+...---TIP: [Cooking tip or variation]
+
+⚠️ IMPORTANT RULE FOR INGREDIENTS:
+- ONE ingredient per line (NEVER combine multiple ingredients)
+- NEVER combine like: "egg + yolk", "salt + pepper", "Salz + Pfeffer"
+- BAD: "- 1 whole egg + 1 egg yolk" or "- Salt, pepper"
+- GOOD: Separate lines:
+  "- 1 whole egg"
+  "- 1 egg yolk"
+  "- Salt"
+  "- Pepper"
+
+Example (in French, adapt to user's language):
+"Fluffy mushroom omelette, ideal for a protein-rich breakfast.---INGREDIENTS:
+- 3 eggs
+- 100g button mushrooms
+- 30g grated cheese
+- 10g butter
+- Salt
+- Pepper---RECIPE:
+1. Beat the eggs with salt and pepper
+2. Sauté the sliced mushrooms in butter for 3-4 min
+3. Pour the beaten eggs and cook over medium heat for 2-3 min
+4. Add the grated cheese and fold the omelette---TIP: Keep the center slightly runny for more fluffiness"
+
+═══════════════════════════════════════════════════════════════
+              DELETE & MODIFY MEALS
+═══════════════════════════════════════════════════════════════
+DELETE MEAL - Keywords (detect in any language):
+  French: "supprime", "enlève", "retire", "efface"
+  English: "delete", "remove", "cancel"
+  German: "lösche", "entferne"
+  → When user wants to DELETE (WITHOUT a replacement)
+  → ALWAYS use request_confirmation FIRST with action_type="delete_meal"
+  → MUST include day AND meal_type in action_args!
+
+  Example: "delete my Thursday snack" / "supprime ma collation de jeudi"
+  → request_confirmation(
+      action_type="delete_meal",
+      action_description="delete the Thursday snack",
+      action_args={"day": "thursday", "meal_type": "snack"}
+    )
+
+ADD NEW MEAL - Keywords (detect in any language):
+  French: "planifie", "ajoute", "je veux", "prévois"
+  English: "plan", "add", "I want", "schedule"
+  German: "plane", "füge hinzu", "ich möchte"
+  → ALWAYS use create_meal to ADD a new entry!
+  → Even if a meal of the same type already exists, CREATE A NEW ENTRY!
+  → User can have MULTIPLE items for the same meal type (e.g., 2 snacks)
+
+  Example: User already has "Whey Shake" as snack, then asks "planifie des fraises en collation"
+  → create_meal(day="friday", meal_type="snack", dish_name="Fraises", ...)
+  → This creates a SECOND snack entry, NOT replacing the whey shake!
+
+MODIFY MEAL - Keywords (detect in any language):
+  French: "change en", "remplace par", "modifie", "transforme"
+  English: "change to", "replace with", "modify", "switch to"
+  German: "ändere zu", "ersetze durch", "wechsle zu"
+  → Use modify_meal ONLY when user explicitly wants to REPLACE an existing meal!
+  → Provide NEW dish details with realistic macros
+
+  Example: "change my whey shake to a smoothie" / "change mon shaker whey en smoothie"
+  → modify_meal (replaces the existing meal)
+
+⚠️ CRITICAL DISTINCTION - ADD vs MODIFY:
+  - "planifie des fraises" / "add strawberries" → ADD (create_meal - new entry!)
+  - "ajoute une collation" / "add a snack" → ADD (create_meal - new entry!)
+  - "change ma collation en fraises" / "change my snack to strawberries" → MODIFY (modify_meal - replaces!)
+  - "remplace le shaker par des fraises" / "replace the shake with strawberries" → MODIFY (modify_meal)
+
+  When in doubt, CREATE A NEW ENTRY (add) rather than replacing!
+
+$dietaryInfo
+
+$context
+
+${_getFormattedHistory()}
+''';
+  }
+
   /// Appeler Gemini avec function calling
   static Future<PlannerActionResult> processRequestWithTools(
     String userMessage, {
@@ -2548,9 +3505,158 @@ Example: "Tu veux quel type de HIIT? 🔥 Tabata (4min intense), 💪 HIIT débu
       final context = await _getUserContext();
       final languageName = langCode == 'fr' ? 'French' : langCode == 'de' ? 'German' : 'English';
 
-      final systemPrompt = '''
+      // Sélectionner le prompt et les outils selon le mode
+      final String systemPrompt;
+      final List<Map<String, dynamic>> tools;
+
+      if (mode == 'meals') {
+        // Mode repas : utiliser le prompt et les outils nutrition
+        // Calculer les jours disponibles (aujourd'hui + futurs)
+        final now = DateTime.now();
+        final todayWeekday = now.weekday; // 1=Monday, 7=Sunday
+        final currentHour = now.hour;
+        final dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+        final availableDays = dayNames.sublist(todayWeekday - 1); // Du jour actuel jusqu'à dimanche
+
+        // Calculer les repas SUGGÉRÉS pour aujourd'hui selon l'heure
+        // (utilisé uniquement pour les suggestions automatiques, pas pour bloquer l'utilisateur)
+        final List<String> suggestedMealsToday = [];
+        if (currentHour < 10) suggestedMealsToday.add('breakfast');
+        if (currentHour < 14) suggestedMealsToday.add('lunch');
+        if (currentHour < 21) suggestedMealsToday.add('dinner');
+        suggestedMealsToday.add('snack');
+
+        final suggestedMealsInfo = suggestedMealsToday.isEmpty
+            ? 'snack only (late night)'
+            : suggestedMealsToday.join(', ');
+
+        // Calculer la distribution calorique et macros recommandée
+        final dailyCalorieTarget = context['calorie_target'] ?? 2000;
+        final dailyProteinTarget = (context['protein_target'] as num?)?.toDouble() ?? 100.0;
+        final dailyCarbsTarget = (context['carbs_target'] as num?)?.toDouble() ?? 250.0;
+        final dailyFatTarget = (context['fat_target'] as num?)?.toDouble() ?? 65.0;
+
+        // Distribution par repas (25% breakfast, 35% lunch, 35% dinner, 5% snack)
+        final breakfastCal = (dailyCalorieTarget * 0.25).round();
+        final breakfastProt = (dailyProteinTarget * 0.25).round();
+        final breakfastCarbs = (dailyCarbsTarget * 0.25).round();
+        final breakfastFat = (dailyFatTarget * 0.25).round();
+
+        final lunchCal = (dailyCalorieTarget * 0.35).round();
+        final lunchProt = (dailyProteinTarget * 0.35).round();
+        final lunchCarbs = (dailyCarbsTarget * 0.35).round();
+        final lunchFat = (dailyFatTarget * 0.35).round();
+
+        final dinnerCal = (dailyCalorieTarget * 0.35).round();
+        final dinnerProt = (dailyProteinTarget * 0.35).round();
+        final dinnerCarbs = (dailyCarbsTarget * 0.35).round();
+        final dinnerFat = (dailyFatTarget * 0.35).round();
+
+        final snackCal = (dailyCalorieTarget * 0.05).round();
+        final snackProt = (dailyProteinTarget * 0.05).round();
+        final snackCarbs = (dailyCarbsTarget * 0.05).round();
+        final snackFat = (dailyFatTarget * 0.05).round();
+
+        final contextInfo = '''
+═══════════════════════════════════════════════════════════════
+            🎯 USER'S DAILY TARGETS
+═══════════════════════════════════════════════════════════════
+TODAY: ${DateTime.now().toIso8601String().split('T')[0]} (${dayNames[todayWeekday - 1]})
+CURRENT TIME: ${currentHour}h${now.minute.toString().padLeft(2, '0')}
+FITNESS GOAL: ${context['fitness_goal'] ?? 'maintain'}
+
+⚠️ GOAL COHERENCE:
+- "muscle_gain" / "prise_masse" → High protein, caloric surplus. NO deficit meals!
+- "weight_loss" / "perte_poids" → Caloric deficit, high protein. NO surplus meals!
+- "maintenance" → Balanced calories, hit targets.
+
+CONFLICT HANDLING (2 steps):
+1. First time user contradicts goal: Politely explain and ASK if they want to proceed anyway
+2. If user INSISTS (says "oui", "yes", "quand même", "anyway", etc.): EXECUTE their request, then suggest updating goals
+
+Example conflict responses:
+- FR: "Tu es en prise de masse, mais tu demandes un repas en déficit 🤔 Tu veux quand même ?"
+- EN: "Your goal is muscle gain, but you're asking for deficit meals 🤔 Proceed anyway?"
+
+Example if user insists:
+- FR: "OK je fais ! Si ton objectif a changé, pense à le modifier dans ⚙️ Paramètres > Objectifs"
+- EN: "OK, done! If your goals changed, update them in ⚙️ Settings > Objectives"
+
+DAILY TARGETS:
+- Calories: $dailyCalorieTarget kcal
+- Proteins: ${dailyProteinTarget.round()}g
+- Carbs: ${dailyCarbsTarget.round()}g
+- Fats: ${dailyFatTarget.round()}g
+
+🔴 TARGET MACROS PER MEAL (aim for these ranges, NOT exact values!):
+┌─────────────┬──────────────────┬──────────────────┬──────────────────┬──────────────────┐
+│ Meal        │ Calories         │ Proteins         │ Carbs            │ Fats             │
+├─────────────┼──────────────────┼──────────────────┼──────────────────┼──────────────────┤
+│ breakfast   │ ${(breakfastCal * 0.9).round()}-${(breakfastCal * 1.1).round()} kcal │ ${(breakfastProt * 0.85).round()}-${(breakfastProt * 1.15).round()}g │ ${(breakfastCarbs * 0.85).round()}-${(breakfastCarbs * 1.15).round()}g │ ${(breakfastFat * 0.85).round()}-${(breakfastFat * 1.15).round()}g │
+│ lunch       │ ${(lunchCal * 0.9).round()}-${(lunchCal * 1.1).round()} kcal │ ${(lunchProt * 0.85).round()}-${(lunchProt * 1.15).round()}g │ ${(lunchCarbs * 0.85).round()}-${(lunchCarbs * 1.15).round()}g │ ${(lunchFat * 0.85).round()}-${(lunchFat * 1.15).round()}g │
+│ dinner      │ ${(dinnerCal * 0.9).round()}-${(dinnerCal * 1.1).round()} kcal │ ${(dinnerProt * 0.85).round()}-${(dinnerProt * 1.15).round()}g │ ${(dinnerCarbs * 0.85).round()}-${(dinnerCarbs * 1.15).round()}g │ ${(dinnerFat * 0.85).round()}-${(dinnerFat * 1.15).round()}g │
+│ snack       │ ${(snackCal * 0.8).round()}-${(snackCal * 1.2).round()} kcal │ ${(snackProt * 0.8).round()}-${(snackProt * 1.2).round()}g │ ${(snackCarbs * 0.8).round()}-${(snackCarbs * 1.2).round()}g │ ${(snackFat * 0.8).round()}-${(snackFat * 1.2).round()}g │
+└─────────────┴──────────────────┴──────────────────┴──────────────────┴──────────────────┘
+
+⚠️ IMPORTANT - REALISTIC MACROS:
+- Use REALISTIC quantities (100g, 150g, 2 eggs, 1 chicken breast) NOT decimal values (127.3g)
+- Each meal's macros should vary naturally based on the actual recipe
+- Daily totals should be within 90-110% of target (${(dailyCalorieTarget * 0.9).round()}-${(dailyCalorieTarget * 1.1).round()} kcal)
+- It's OK if each day has slightly different totals - that's realistic!
+- Prioritize recipe authenticity over hitting exact numbers
+
+TODAY'S INTAKE (already consumed):
+- Calories: ${context['today_calories'] ?? 0}/$dailyCalorieTarget kcal
+- Remaining today: ${context['remaining_calories'] ?? dailyCalorieTarget} kcal
+
+═══════════════════════════════════════════════════════════════
+                    AVAILABLE DAYS (cannot plan past days!)
+═══════════════════════════════════════════════════════════════
+AVAILABLE DAYS: ${availableDays.join(', ')}
+TOTAL DAYS TO PLAN: ${availableDays.length} days
+TOTAL MEALS TO CREATE: ${availableDays.length * 3} meals (3 per day: breakfast + lunch + dinner)
+SUGGESTED MEALS FOR TODAY (based on time ${currentHour}h): $suggestedMealsInfo
+⚠️ BUT: If user explicitly asks for a specific meal type (e.g., "plan my dinner"), ALWAYS do it regardless of time!
+⚠️ IMPORTANT:
+- You can ONLY plan meals for the available days above. Past days are NOT allowed!
+- For TODAY: suggested meals are $suggestedMealsInfo (it's ${currentHour}h), BUT if user explicitly asks for any meal, DO IT!
+- For FUTURE days, all meal types are available (breakfast, lunch, dinner, snack)
+
+═══════════════════════════════════════════════════════════════
+                    THIS WEEK'S PLANNED MEALS
+═══════════════════════════════════════════════════════════════
+${context['planned_meals_this_week'] ?? 'No meals planned yet'}
+
+USER REQUEST: "$userMessage"
+''';
+        systemPrompt = await _buildMealsSystemPrompt(contextInfo);
+        tools = _mealTools;
+      } else {
+        // Mode sport (défaut) : utiliser le prompt fitness
+        tools = _plannerTools;
+        systemPrompt = '''
 You are Ryze, a friendly fitness coach AI assistant. You help users plan their weekly workouts and cardio.
 ALWAYS respond in $languageName.
+
+═══════════════════════════════════════════════════════════════
+                    ⚠️ RESPONSE STYLE - CRITICAL!
+═══════════════════════════════════════════════════════════════
+1. BE CONCISE: Short, structured responses. NO WALLS OF TEXT!
+2. USE BULLET POINTS: Structure with • or numbers, not long paragraphs
+3. MAX 2 BUBBLES: If you need more space, split with "|||" (max 2 parts)
+   Example: "First message|||Second message"
+4. SYNTHESIZE: Get to the point quickly. Users don't want to read essays.
+5. NO REPETITION: Don't repeat what user already knows
+
+GOOD RESPONSE:
+"✅ J'ai créé ta séance Dos pour mardi!
+
+• 6 exercices ciblés
+• 45 min
+• Focus épaisseur + largeur"
+
+BAD RESPONSE (too long):
+"Super ! Je suis ravi de t'aider avec ta séance de dos. J'ai donc créé une séance complète qui va cibler tous les muscles de ton dos, avec des exercices variés pour travailler à la fois l'épaisseur et la largeur. Cette séance de 45 minutes comprend 6 exercices soigneusement sélectionnés..."
 
 ═══════════════════════════════════════════════════════════════
                         4 MAIN ACTIONS
@@ -2567,27 +3673,27 @@ WORKOUT (musculation, strength training, gym, poids):
   → Tools: create_workout, delete_workout, delete_all_workouts, move_workout, modify_workout
 
 CARDIO - ONLY 4 activities supported: running, bike, walking, hiit
-  (course, vélo, marche, HIIT - NO swimming/natation, NO elliptique, NO rameur!)
+  (course/running, vélo/bike, marche/walking, HIIT - NO swimming, NO elliptical, NO rowing!)
   → Tools: create_cardio, delete_cardio, delete_all_cardio, move_cardio, modify_cardio
 
-BOTH (when user says "tout", "mes séances" without specifying):
+BOTH (when user says "all" / "tout" / "alles", "my sessions" / "mes séances" without specifying):
   → Tool: delete_all (for deletion only)
 
 ═══════════════════════════════════════════════════════════════
                     REQUIRED INFORMATION
 ═══════════════════════════════════════════════════════════════
 FOR WORKOUT:
-  ✓ workout_type (Pecs, Dos, Jambes, Full Body, Bras, Épaules, PPL...) → MUST ASK if missing
+  ✓ workout_type (Chest/Pecs, Back/Dos, Legs/Jambes, Full Body, Arms/Bras, Shoulders/Épaules, PPL...) → MUST ASK if missing
   ✓ duration_minutes (45, 60, 90...) → MUST ASK if missing
   ✓ day(s) → CAN CHOOSE AUTOMATICALLY if missing (pick optimal days based on context)
 
 FOR CARDIO (ONLY: running, bike, walking, hiit):
-  ✓ activity_type (course/running, vélo/bike, marche/walking, HIIT) → MUST ASK if missing
+  ✓ activity_type (running/course, bike/vélo, walking/marche, HIIT) → MUST ASK if missing
   ✓ duration_minutes OR target_km (at least one) → MUST ASK if both missing
   ✓ day(s) → CAN CHOOSE AUTOMATICALLY if missing
 
-DAY DELEGATION - User can say:
-  "choisis pour moi" / "à toi de voir" / "décide" / "place les comme tu veux"
+DAY DELEGATION - User can say (in any language):
+  "you choose" / "choisis pour moi" / "up to you" / "à toi de voir" / "decide" / "décide"
   → AI should choose optimal days based on user's schedule and create directly
 
 ═══════════════════════════════════════════════════════════════
@@ -2595,68 +3701,82 @@ DAY DELEGATION - User can say:
 ═══════════════════════════════════════════════════════════════
 CRITICAL: Adapt your question to what's actually missing. DO NOT ask for info already provided!
 
-WORKOUT EXAMPLES:
-• "3 séances Full Body"
+WORKOUT EXAMPLES (user can speak any language, detect intent):
+• "3 Full Body sessions" / "3 séances Full Body"
   → type=✓ duration=✗ days=auto
-  → ASK: "Combien de temps pour chaque séance ? (ex: 45min, 60min)"
+  → ASK: "How long for each session? (e.g., 45min, 60min)"
 
-• "une séance pecs mardi"
+• "a chest session on Tuesday" / "une séance pecs mardi"
   → type=✓ duration=✗ days=✓
-  → ASK: "Combien de temps pour ta séance Pecs ? (ex: 45min, 60min)"
+  → ASK: "How long for your Chest session? (e.g., 45min, 60min)"
 
-• "une séance de muscu mardi"
+• "a gym session on Tuesday" / "une séance de muscu mardi"
   → type=✗ duration=✗ days=✓
-  → ASK: "Quel type de séance (Pecs, Dos, Jambes, Full Body...) et combien de temps ? (ex: 45min, 60min)"
+  → ASK: "What type of session (Chest, Back, Legs, Full Body...) and how long? (e.g., 45min, 60min)"
 
-• "une séance pecs 45min"
+• "a chest session 45min" / "une séance pecs 45min"
   → type=✓ duration=✓ days=auto
   → CREATE directly, choose optimal day
 
-• "Full Body lundi 60min"
+• "Full Body Monday 60min" / "Full Body lundi 60min"
   → type=✓ duration=✓ days=✓
   → CREATE directly
 
 CARDIO EXAMPLES:
-• "du vélo vendredi"
+• "cycling on Friday" / "du vélo vendredi"
   → type=✓ duration/distance=✗ days=✓
-  → ASK: "Combien de temps ou quelle distance ?"
+  → ASK: "How long or what distance?"
 
-• "30min de cardio"
+• "30min of cardio" / "30min de cardio"
   → type=✗ duration=✓ days=auto
-  → ASK: "Quel type de cardio ? (course, vélo, natation...)"
+  → ASK: "What type of cardio? (running, cycling, walking...)"
 
-• "30min de vélo"
+• "30min of cycling" / "30min de vélo"
   → type=✓ duration=✓ days=auto
   → CREATE directly, choose optimal day
 
-• "10km de course lundi"
+• "10km run on Monday" / "10km de course lundi"
   → type=✓ distance=✓ days=✓
   → CREATE directly
 
 ═══════════════════════════════════════════════════════════════
                     MOVE vs DELETE DISTINCTION
 ═══════════════════════════════════════════════════════════════
-MOVE keywords: "change X à Y", "de X à Y", "décale", "déplace", "mets X à Y"
+MOVE keywords (detect in any language):
+  FR: "change X à Y", "de X à Y", "décale", "déplace", "mets X à Y"
+  EN: "move X to Y", "from X to Y", "reschedule", "shift"
+  DE: "verschiebe", "von X nach Y"
   → Use move_workout or move_cardio
 
-DELETE keywords: "supprime", "enlève", "retire", "efface", "annule" (without target day)
+DELETE keywords (detect in any language):
+  FR: "supprime", "enlève", "retire", "efface", "annule"
+  EN: "delete", "remove", "cancel", "clear"
+  DE: "lösche", "entferne"
   → Use delete_* tools with request_confirmation FIRST
 
 DELETE EXAMPLES:
-• "supprime tout" / "efface tout" → delete_all
-• "supprime mes séances" → delete_all (assume everything)
-• "supprime mes séances de muscu" → delete_all_workouts
-• "supprime mes séances de cardio" → delete_all_cardio
-• "supprime la séance de lundi" → delete_workout or delete_cardio (check context)
+• "delete all" / "supprime tout" → delete_sessions() (no params = delete all)
+• "delete my sessions" / "supprime mes séances" → delete_sessions()
+• "delete my workout sessions" / "supprime mes séances de muscu" → delete_sessions(session_types=["workout"])
+• "delete my cardio sessions" / "supprime mes séances de cardio" → delete_sessions(session_types=["cardio"])
+• "delete all sport sessions on Monday" / "supprime toutes les séances de lundi" → delete_sessions(days=["monday"])
+• "delete Monday and Tuesday sessions" / "supprime lundi et mardi" → delete_sessions(days=["monday", "tuesday"])
+• "delete all except Friday" / "supprime tout sauf vendredi" → delete_sessions(exclude_days=["friday"])
+• "delete all cardio except weekend" / "supprime le cardio sauf le weekend" → delete_sessions(session_types=["cardio"], exclude_days=["saturday", "sunday"])
+• "delete my Back workouts" / "supprime mes séances de Dos" → delete_sessions(session_types=["workout"], activity_names=["Back", "Dos"])
+• "delete Monday's workout" / "supprime la séance de muscu de lundi" → delete_workout(day="monday") or delete_sessions(days=["monday"], session_types=["workout"])
 
 MOVE EXAMPLES:
-• "change la séance de mardi à vendredi" → move_workout(tuesday→friday)
-• "décale mon cardio de jeudi à samedi" → move_cardio(thursday→saturday)
+• "move Tuesday's session to Friday" / "change la séance de mardi à vendredi" → move_workout(tuesday→friday)
+• "reschedule my Thursday cardio to Saturday" / "décale mon cardio de jeudi à samedi" → move_cardio(thursday→saturday)
 
 ═══════════════════════════════════════════════════════════════
                     MODIFY - Change existing session
 ═══════════════════════════════════════════════════════════════
-MODIFY keywords: "change en", "modifie", "rallonge", "raccourcis", "remplace par", "transformer"
+MODIFY keywords (detect in any language):
+  FR: "change en", "modifie", "rallonge", "raccourcis", "remplace par", "transformer"
+  EN: "change to", "modify", "extend", "shorten", "replace with", "transform"
+  DE: "ändere zu", "verlängere", "verkürze", "ersetze durch"
   → Use modify_workout or modify_cardio
 
 ⚠️ CRITICAL: When modifying a session, call ONLY modify_workout or modify_cardio!
@@ -2668,21 +3788,21 @@ IMPORTANT: MODIFY ≠ MOVE!
   MODIFY = change type, duration, or other parameters (not the day)
 
 MODIFY EXAMPLES:
-• "change ma séance de mardi en dos" / "remplace la séance de mardi par dos"
-  → modify_workout(current_day="tuesday", new_workout_type="Dos", regenerate_exercises=true)
+• "change my Tuesday session to back" / "change ma séance de mardi en dos"
+  → modify_workout(current_day="tuesday", new_workout_type="Back", regenerate_exercises=true)
   ❌ WRONG: delete_workout + modify_workout
   ✅ CORRECT: only modify_workout
-• "rallonge ma séance de lundi à 60min"
+• "extend my Monday session to 60min" / "rallonge ma séance de lundi à 60min"
   → modify_workout(current_day="monday", new_duration_minutes=60)
-• "change mon cardio de mercredi en vélo"
+• "change my Wednesday cardio to cycling" / "change mon cardio de mercredi en vélo"
   → modify_cardio(current_day="wednesday", new_activity="bike")
-• "modifie la durée du cardio de jeudi à 45min"
+• "modify Thursday's cardio duration to 45min" / "modifie la durée du cardio de jeudi à 45min"
   → modify_cardio(current_day="thursday", new_duration_minutes=45)
-• "change mon HIIT en course de 5km" / "remplace le tabata par une course 5km"
+• "change my HIIT to a 5km run" / "change mon HIIT en course de 5km"
   → modify_cardio(current_day=X, new_activity="running", new_target_km=5)
   ⚠️ IMPORTANT: Always pass new_target_km when user specifies a distance!
-• "remplace ma séance jambe par une séance épaule"
-  → modify_workout(current_day=[day of jambe session], new_workout_type="Épaules", regenerate_exercises=true)
+• "replace my leg session with shoulders" / "remplace ma séance jambe par une séance épaule"
+  → modify_workout(current_day=[day of leg session], new_workout_type="Shoulders", regenerate_exercises=true)
 
 ═══════════════════════════════════════════════════════════════
                     CONFIRMATION RULES
@@ -2695,10 +3815,34 @@ Include day in action_args for single deletes:
                     MULTIPLE ACTIONS
 ═══════════════════════════════════════════════════════════════
 When user asks for multiple things, call ALL tools in the SAME response:
-• "supprime tout et ajoute 3 séances" → [request_confirmation(delete_all), create_workout x3]
+• "delete all and add 3 sessions" / "supprime tout et ajoute 3 séances" → [request_confirmation(delete_all), create_workout x3]
+
+═══════════════════════════════════════════════════════════════
+                    🎯 GOAL COHERENCE - CRITICAL!
+═══════════════════════════════════════════════════════════════
+User's fitness goal: ${context['fitness_goal'] ?? 'general_fitness'}
+
+IMPORTANT: The user's request MUST align with their configured goal:
+- "muscle_gain" / "prise_masse" → Focus on hypertrophy, strength, progressive overload. NO weight loss programs!
+- "weight_loss" / "perte_poids" → Focus on calorie burn, cardio, HIIT. High volume, shorter rest.
+- "maintenance" → Balanced approach, maintain current physique.
+- "general_fitness" → Overall health, flexibility in programming.
+
+⚠️ CONFLICT HANDLING (2 steps):
+1. First time user contradicts goal: Politely explain and ASK if they want to proceed anyway
+2. If user INSISTS (says "oui", "yes", "quand même", "anyway", "fais-le", etc.): EXECUTE their request, then suggest updating goals
+
+Example conflict responses:
+- FR: "Tu es en prise de masse, mais tu demandes de perdre du poids 🤔 Tu veux quand même ?"
+- EN: "Your goal is muscle gain, but you're asking for weight loss 🤔 Proceed anyway?"
+
+Example if user insists:
+- FR: "OK c'est parti ! Si ton objectif a changé, pense à le modifier dans ⚙️ Paramètres > Objectifs"
+- EN: "OK let's go! If your goals changed, update them in ⚙️ Settings > Objectives"
 
 CONTEXT:
 - Today: ${DateTime.now().toIso8601String().split('T')[0]}
+- User's Goal: ${context['fitness_goal'] ?? 'general_fitness'}
 - Days with WORKOUTS (musculation): ${context['days_with_workout'] ?? 'none'}
 - Days with CARDIO: ${context['days_with_cardio'] ?? 'none'}
 - Available days: ${context['available_days'] ?? 'all'}
@@ -2711,9 +3855,10 @@ ${_getFormattedHistory()}
 
 USER REQUEST: "$userMessage"
 ''';
+      } // Fin du else (mode sport)
 
       // Appeler l'API avec les tools
-      final result = await _callGeminiWithTools(systemPrompt, userMessage);
+      final result = await _callGeminiWithTools(systemPrompt, userMessage, tools);
 
       if (result == null) {
         return PlannerActionResult.error(_getErrorMessage(langCode, 'api_error'));
@@ -2732,7 +3877,11 @@ USER REQUEST: "$userMessage"
       // Exécuter les tools
       final executionResults = <String>[];
       bool hasWorkoutCreations = false;
+      bool hasCardioCreations = false;
+      bool hasMealCreations = false;
       final pendingWorkouts = <PendingWorkout>[];
+      final pendingCardios = <PendingCardio>[];
+      final pendingMeals = <PendingMeal>[];
 
       for (int i = 0; i < toolCalls.length; i++) {
         final toolCall = toolCalls[i];
@@ -2742,7 +3891,11 @@ USER REQUEST: "$userMessage"
         debugPrint('🔧 Executing tool: $functionName with args: $args');
 
         final toolResult = await _executeToolCall(functionName, args, langCode);
-        executionResults.add(toolResult['message'] as String);
+
+        // Ajouter le message seulement s'il existe (les pending_meal/pending_workout/pending_cardio n'en ont pas)
+        if (toolResult['message'] != null) {
+          executionResults.add(toolResult['message'] as String);
+        }
 
         // Si on demande une confirmation, stocker les actions restantes et retourner
         if (toolResult['requires_confirmation'] == true) {
@@ -2768,6 +3921,16 @@ USER REQUEST: "$userMessage"
           pendingWorkouts.add(toolResult['pending_workout'] as PendingWorkout);
         }
 
+        if (functionName == 'create_cardio' && toolResult['pending_cardio'] != null) {
+          hasCardioCreations = true;
+          pendingCardios.add(toolResult['pending_cardio'] as PendingCardio);
+        }
+
+        if (functionName == 'create_meal' && toolResult['pending_meal'] != null) {
+          hasMealCreations = true;
+          pendingMeals.add(toolResult['pending_meal'] as PendingMeal);
+        }
+
         if (functionName == 'ask_clarification') {
           // Retourner la question de clarification
           final question = args['question'] as String? ?? 'Could you provide more details?';
@@ -2787,13 +3950,44 @@ USER REQUEST: "$userMessage"
         }
       }
 
-      // Si on a des workouts à créer, retourner en mode preview
-      if (hasWorkoutCreations && pendingWorkouts.isNotEmpty) {
-        final previewMessage = responseText ?? _getPreviewMessage(langCode, pendingWorkouts);
+      // Si on a des sessions à créer (workouts ET/OU cardios), retourner en mode preview paginé
+      if ((hasWorkoutCreations && pendingWorkouts.isNotEmpty) ||
+          (hasCardioCreations && pendingCardios.isNotEmpty)) {
+        // Convertir en PendingSession unifiés
+        final pendingSessions = <PendingSession>[];
+
+        for (final workout in pendingWorkouts) {
+          pendingSessions.add(PendingSession.fromWorkout(workout));
+        }
+        for (final cardio in pendingCardios) {
+          pendingSessions.add(PendingSession.fromCardio(cardio));
+        }
+
+        // Trier par date puis par type (workouts avant cardios pour le même jour)
+        pendingSessions.sort((a, b) {
+          final dateCompare = a.plannedDate.compareTo(b.plannedDate);
+          if (dateCompare != 0) return dateCompare;
+          // Même jour: workouts avant cardios
+          if (a.type == PendingSessionType.workout && b.type == PendingSessionType.cardio) return -1;
+          if (a.type == PendingSessionType.cardio && b.type == PendingSessionType.workout) return 1;
+          return 0;
+        });
+
+        final previewMessage = responseText ?? _getSessionsPreviewMessage(langCode, pendingSessions);
         addToHistory('assistant', previewMessage);
-        return PlannerActionResult.preview(
+        return PlannerActionResult.sessionPreview(
           message: previewMessage,
-          workouts: pendingWorkouts,
+          sessions: pendingSessions,
+        );
+      }
+
+      // Si on a des repas à créer, retourner en mode preview
+      if (hasMealCreations && pendingMeals.isNotEmpty) {
+        final previewMessage = responseText ?? _getMealsPreviewMessage(langCode, pendingMeals);
+        addToHistory('assistant', previewMessage);
+        return PlannerActionResult.mealPreview(
+          message: previewMessage,
+          meals: pendingMeals,
         );
       }
 
@@ -2819,88 +4013,133 @@ USER REQUEST: "$userMessage"
   static Future<Map<String, dynamic>?> _callGeminiWithTools(
     String systemPrompt,
     String userMessage,
+    List<Map<String, dynamic>> tools,
   ) async {
-    try {
-      final url = Uri.parse(
-        '${GeminiConfig.plannerApiUrl}?key=${GeminiConfig.geminiApiKey}',
-      );
+    const maxRetries = 3;
 
-      final body = {
-        'contents': [
-          {
-            'role': 'user',
-            'parts': [
-              {'text': '$systemPrompt\n\nUser: $userMessage'}
-            ]
-          }
-        ],
-        'tools': [
-          {
-            'function_declarations': _plannerTools,
-          }
-        ],
-        'tool_config': {
-          'function_calling_config': {
-            'mode': 'ANY',  // Force the model to call at least one function
-          }
-        },
-        'generationConfig': {
-          'temperature': 0.4,
-          'topK': 40,
-          'topP': 0.95,
-          'maxOutputTokens': 2048,
-        },
-      };
+    for (int attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        final url = Uri.parse(
+          '${GeminiConfig.plannerApiUrl}?key=${GeminiConfig.geminiApiKey}',
+        );
 
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(body),
-      );
+        final body = {
+          'contents': [
+            {
+              'role': 'user',
+              'parts': [
+                {'text': '$systemPrompt\n\nUser: $userMessage'}
+              ]
+            }
+          ],
+          'tools': [
+            {
+              'function_declarations': tools,
+            }
+          ],
+          'tool_config': {
+            'function_calling_config': {
+              'mode': 'ANY',  // Force the model to call at least one function
+            }
+          },
+          'generationConfig': {
+            'temperature': 0.4,
+            'topK': 40,
+            'topP': 0.95,
+            'maxOutputTokens': 8192, // Increased to allow full week meal planning (21+ function calls)
+          },
+        };
 
-      if (response.statusCode != 200) {
-        debugPrint('❌ Gemini API error: ${response.statusCode} - ${response.body}');
+        final response = await http.post(
+          url,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode(body),
+        );
+
+        if (response.statusCode != 200) {
+          debugPrint('❌ Gemini API error (attempt $attempt/$maxRetries): ${response.statusCode} - ${response.body}');
+          if (attempt < maxRetries) {
+            await Future.delayed(Duration(milliseconds: 500 * attempt));
+            continue;
+          }
+          return null;
+        }
+
+        final responseData = jsonDecode(response.body);
+        final candidates = responseData['candidates'] as List?;
+        if (candidates == null || candidates.isEmpty) {
+          debugPrint('⚠️ No candidates in response (attempt $attempt/$maxRetries)');
+          if (attempt < maxRetries) {
+            await Future.delayed(Duration(milliseconds: 500 * attempt));
+            continue;
+          }
+          return null;
+        }
+
+        // Log finish reason for debugging
+        final finishReason = candidates[0]['finishReason'] as String?;
+        debugPrint('📊 Gemini finishReason: $finishReason');
+        if (finishReason == 'MAX_TOKENS') {
+          debugPrint('⚠️ Response was truncated due to MAX_TOKENS - consider increasing maxOutputTokens');
+        }
+
+        final content = candidates[0]['content'];
+        if (content == null) {
+          debugPrint('⚠️ Gemini returned null content (attempt $attempt/$maxRetries) - response may have been blocked');
+          if (attempt < maxRetries) {
+            await Future.delayed(Duration(milliseconds: 500 * attempt));
+            continue;
+          }
+          return null;
+        }
+
+        final parts = content['parts'] as List?;
+        if (parts == null || parts.isEmpty) {
+          debugPrint('⚠️ No parts in response (attempt $attempt/$maxRetries)');
+          if (attempt < maxRetries) {
+            await Future.delayed(Duration(milliseconds: 500 * attempt));
+            continue;
+          }
+          return null;
+        }
+
+        // Extraire les function calls et le texte
+        final toolCalls = <Map<String, dynamic>>[];
+        String? responseText;
+
+        for (final part in parts) {
+          if (part['functionCall'] != null) {
+            final functionCall = part['functionCall'];
+            toolCalls.add({
+              'name': functionCall['name'],
+              'args': functionCall['args'] ?? {},
+            });
+          }
+          if (part['text'] != null) {
+            responseText = part['text'];
+          }
+        }
+
+        debugPrint('🔧 Gemini tool_calls: ${toolCalls.length}, responseText: ${responseText != null}');
+        for (final tc in toolCalls) {
+          debugPrint('  - Function: ${tc['name']}, args: ${tc['args']}');
+        }
+
+        return {
+          'tool_calls': toolCalls,
+          'response_text': responseText,
+        };
+      } catch (e) {
+        debugPrint('❌ _callGeminiWithTools error (attempt $attempt/$maxRetries): $e');
+        if (attempt < maxRetries) {
+          await Future.delayed(Duration(milliseconds: 500 * attempt));
+          continue;
+        }
         return null;
       }
-
-      final responseData = jsonDecode(response.body);
-      final candidates = responseData['candidates'] as List?;
-      if (candidates == null || candidates.isEmpty) return null;
-
-      final content = candidates[0]['content'];
-      final parts = content['parts'] as List?;
-      if (parts == null || parts.isEmpty) return null;
-
-      // Extraire les function calls et le texte
-      final toolCalls = <Map<String, dynamic>>[];
-      String? responseText;
-
-      for (final part in parts) {
-        if (part['functionCall'] != null) {
-          final functionCall = part['functionCall'];
-          toolCalls.add({
-            'name': functionCall['name'],
-            'args': functionCall['args'] ?? {},
-          });
-        }
-        if (part['text'] != null) {
-          responseText = part['text'];
-        }
-      }
-
-      debugPrint('🔧 Gemini tool_calls: ${toolCalls.length}, responseText: ${responseText != null}');
-      for (final tc in toolCalls) {
-        debugPrint('  - Function: ${tc['name']}, args: ${tc['args']}');
-      }
-
-      return {
-        'tool_calls': toolCalls,
-        'response_text': responseText,
-      };
-    } catch (e) {
-      debugPrint('❌ _callGeminiWithTools error: $e');
-      return null;
     }
+
+    return null;
   }
 
   /// Exécuter un appel de fonction
@@ -3056,6 +4295,163 @@ USER REQUEST: "$userMessage"
         }
 
         return {'success': false, 'message': _getToolMessage(langCode, 'no_cardio')};
+
+      case 'delete_day_sessions':
+        // Supprimer toutes les séances (workout + cardio) d'un jour spécifique
+        final day = _parseSingleDay(args['day'] as String? ?? '');
+        if (day == null) return {'success': false, 'message': 'Invalid day'};
+
+        // Trouver tous les workouts et cardios de ce jour
+        final allWorkoutsWeek = await WeeklyPlannerService.getAllWorkoutsThisWeek();
+        final allCardiosWeek = await WeeklyPlannerService.getAllCardioThisWeek();
+
+        // Filtrer par jour et statut "planned"
+        final plannedWorkouts = allWorkoutsWeek.where((w) =>
+          _isSameDay(w.plannedDate, day) && w.status == PlannedStatus.planned
+        ).toList();
+        final plannedCardios = allCardiosWeek.where((c) =>
+          _isSameDay(c.plannedDate, day) && c.status == PlannedStatus.planned
+        ).toList();
+
+        if (plannedWorkouts.isEmpty && plannedCardios.isEmpty) {
+          final dayName = _translateDayName(args['day'] as String? ?? '', langCode);
+          final msg = langCode == 'fr'
+              ? '⚠️ Aucune séance planifiée trouvée pour $dayName'
+              : langCode == 'de'
+                  ? '⚠️ Keine geplanten Einheiten für $dayName gefunden'
+                  : '⚠️ No planned sessions found for $dayName';
+          return {'success': false, 'message': msg};
+        }
+
+        // Stocker pour undo
+        _lastAction = {
+          'type': 'delete_day_sessions',
+          'day': day.toIso8601String(),
+          'deleted_workouts': plannedWorkouts.map((w) => w.toJson()).toList(),
+          'deleted_cardios': plannedCardios.map((c) => c.toJson()).toList(),
+        };
+
+        // Supprimer toutes les séances
+        for (final workout in plannedWorkouts) {
+          await WeeklyPlannerService.deletePlannedWorkout(workout.id);
+        }
+        for (final cardio in plannedCardios) {
+          await WeeklyPlannerService.deletePlannedActivity(cardio.id);
+        }
+
+        final dayName = _translateDayName(args['day'] as String? ?? '', langCode);
+        final totalDeleted = plannedWorkouts.length + plannedCardios.length;
+        final msg = langCode == 'fr'
+            ? '✅ $totalDeleted séance${totalDeleted > 1 ? 's' : ''} supprimée${totalDeleted > 1 ? 's' : ''} pour $dayName (${plannedWorkouts.length} muscu, ${plannedCardios.length} cardio)'
+            : langCode == 'de'
+                ? '✅ $totalDeleted Einheit${totalDeleted > 1 ? 'en' : ''} für $dayName gelöscht (${plannedWorkouts.length} Kraft, ${plannedCardios.length} Cardio)'
+                : '✅ $totalDeleted session${totalDeleted > 1 ? 's' : ''} deleted for $dayName (${plannedWorkouts.length} workout${plannedWorkouts.length > 1 ? 's' : ''}, ${plannedCardios.length} cardio)';
+        return {'success': true, 'message': msg};
+
+      case 'delete_sessions':
+        // Tool flexible pour suppression multiple
+        final daysArg = args['days'] as List<dynamic>?;
+        final excludeDaysArg = args['exclude_days'] as List<dynamic>?;
+        final sessionTypesArg = args['session_types'] as List<dynamic>?;
+        final activityNamesArg = args['activity_names'] as List<dynamic>?;
+
+        // Convertir les listes
+        final days = daysArg?.map((d) => d.toString().toLowerCase()).toList() ?? [];
+        final excludeDays = excludeDaysArg?.map((d) => d.toString().toLowerCase()).toList() ?? [];
+        final sessionTypes = sessionTypesArg?.map((t) => t.toString().toLowerCase()).toList() ?? [];
+        final activityNames = activityNamesArg?.map((n) => n.toString().toLowerCase()).toList() ?? [];
+
+        // Déterminer les jours cibles
+        final allDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+        List<String> targetDays;
+        if (days.isEmpty) {
+          // Tous les jours sauf les exclus
+          targetDays = allDays.where((d) => !excludeDays.contains(d)).toList();
+        } else {
+          // Jours spécifiés sauf les exclus
+          targetDays = days.where((d) => !excludeDays.contains(d)).toList();
+        }
+
+        // Déterminer les types à supprimer
+        final deleteWorkouts = sessionTypes.isEmpty || sessionTypes.contains('workout');
+        final deleteCardios = sessionTypes.isEmpty || sessionTypes.contains('cardio');
+
+        // Récupérer toutes les séances de la semaine
+        final allWeekWorkouts = await WeeklyPlannerService.getAllWorkoutsThisWeek();
+        final allWeekCardios = await WeeklyPlannerService.getAllCardioThisWeek();
+
+        // Collecter toutes les séances à supprimer
+        List<PlannedWorkout> workoutsToDelete = [];
+        List<PlannedActivity> cardiosToDelete = [];
+
+        for (final dayStr in targetDays) {
+          final dayDate = _parseSingleDay(dayStr);
+          if (dayDate == null) continue;
+
+          if (deleteWorkouts) {
+            for (final w in allWeekWorkouts) {
+              if (!_isSameDay(w.plannedDate, dayDate)) continue;
+              if (w.status != PlannedStatus.planned) continue;
+              // Filtrer par nom si spécifié
+              if (activityNames.isNotEmpty) {
+                final workoutName = w.workoutName.toLowerCase();
+                if (!activityNames.any((name) => workoutName.contains(name))) continue;
+              }
+              // Éviter les doublons
+              if (!workoutsToDelete.any((x) => x.id == w.id)) {
+                workoutsToDelete.add(w);
+              }
+            }
+          }
+
+          if (deleteCardios) {
+            for (final c in allWeekCardios) {
+              if (!_isSameDay(c.plannedDate, dayDate)) continue;
+              if (c.status != PlannedStatus.planned) continue;
+              // Filtrer par nom si spécifié
+              if (activityNames.isNotEmpty) {
+                final cardioName = (c.cardioData?.activityName ?? '').toLowerCase();
+                if (!activityNames.any((name) => cardioName.contains(name))) continue;
+              }
+              // Éviter les doublons
+              if (!cardiosToDelete.any((x) => x.id == c.id)) {
+                cardiosToDelete.add(c);
+              }
+            }
+          }
+        }
+
+        if (workoutsToDelete.isEmpty && cardiosToDelete.isEmpty) {
+          final msg = langCode == 'fr'
+              ? '⚠️ Aucune séance trouvée correspondant aux critères'
+              : langCode == 'de'
+                  ? '⚠️ Keine passenden Einheiten gefunden'
+                  : '⚠️ No sessions found matching the criteria';
+          return {'success': false, 'message': msg};
+        }
+
+        // Stocker pour undo
+        _lastAction = {
+          'type': 'delete_sessions',
+          'deleted_workouts': workoutsToDelete.map((w) => w.toJson()).toList(),
+          'deleted_cardios': cardiosToDelete.map((c) => c.toJson()).toList(),
+        };
+
+        // Supprimer
+        for (final w in workoutsToDelete) {
+          await WeeklyPlannerService.deletePlannedWorkout(w.id);
+        }
+        for (final c in cardiosToDelete) {
+          await WeeklyPlannerService.deletePlannedActivity(c.id);
+        }
+
+        final totalDeletedSessions = workoutsToDelete.length + cardiosToDelete.length;
+        final msgFlex = langCode == 'fr'
+            ? '✅ $totalDeletedSessions séance${totalDeletedSessions > 1 ? 's' : ''} supprimée${totalDeletedSessions > 1 ? 's' : ''} (${workoutsToDelete.length} muscu, ${cardiosToDelete.length} cardio)'
+            : langCode == 'de'
+                ? '✅ $totalDeletedSessions Einheit${totalDeletedSessions > 1 ? 'en' : ''} gelöscht (${workoutsToDelete.length} Kraft, ${cardiosToDelete.length} Cardio)'
+                : '✅ $totalDeletedSessions session${totalDeletedSessions > 1 ? 's' : ''} deleted (${workoutsToDelete.length} workout${workoutsToDelete.length != 1 ? 's' : ''}, ${cardiosToDelete.length} cardio)';
+        return {'success': true, 'message': msgFlex};
 
       case 'create_workout':
         final dayStr = args['day'] as String? ?? '';
@@ -3590,27 +4986,19 @@ USER REQUEST: "$userMessage"
           return {'success': true, 'message': askMsg, 'needs_clarification': true};
         }
 
-        // Utiliser le service partagé pour créer le cardio
-        final createdCardio = await PlannedCardioService.createPlannedCardio(
-          date: day,
-          activityType: validatedType,
+        // Retourner un pending_cardio pour le preview (comme pour les workouts)
+        final activityDisplayName = _getCardioActivityName(validatedType, langCode);
+        final pendingCardio = PendingCardio(
+          plannedDate: day,
+          activityName: activityDisplayName,
+          activityKey: validatedType,
+          distanceKm: targetKm?.toDouble(),
           durationMinutes: duration,
-          targetKm: targetKm?.toDouble(),
         );
-
-        // Stocker pour undo
-        if (createdCardio != null) {
-          _lastAction = {
-            'type': 'create_cardio',
-            'created_cardio_id': createdCardio.id,
-          };
-        }
-
-        // Message de succès spécifique
-        final activityName = _getCardioActivityName(validatedType, langCode);
-        final dayName = _getDayName(day, langCode);
-        final successMessage = _getCardioSuccessMessage(langCode, activityName, duration, targetKm?.toDouble(), dayName);
-        return {'success': true, 'message': successMessage};
+        return {
+          'success': true,
+          'pending_cardio': pendingCardio,
+        };
 
       case 'ask_clarification':
         return {'success': true, 'message': args['question'] as String? ?? ''};
@@ -3687,6 +5075,40 @@ USER REQUEST: "$userMessage"
                   : '✅ Cardio restored';
               return {'success': true, 'message': msg4};
 
+            case 'delete_day_sessions':
+              // Restaurer toutes les séances supprimées pour ce jour
+              final deletedWorkoutsDay = _lastAction!['deleted_workouts'] as List<dynamic>? ?? [];
+              final deletedCardiosDay = _lastAction!['deleted_cardios'] as List<dynamic>? ?? [];
+              for (final workoutJson in deletedWorkoutsDay) {
+                await WeeklyPlannerService.restorePlannedWorkout(workoutJson as Map<String, dynamic>);
+              }
+              for (final cardioJson in deletedCardiosDay) {
+                await WeeklyPlannerService.restorePlannedActivity(cardioJson as Map<String, dynamic>);
+              }
+              _lastAction = null;
+              final totalRestoredDay = deletedWorkoutsDay.length + deletedCardiosDay.length;
+              final msgDay = langCode == 'fr' ? '✅ $totalRestoredDay séance(s) restaurée(s)'
+                  : langCode == 'de' ? '✅ $totalRestoredDay Einheit(en) wiederhergestellt'
+                  : '✅ $totalRestoredDay session(s) restored';
+              return {'success': true, 'message': msgDay};
+
+            case 'delete_sessions':
+              // Restaurer toutes les séances supprimées (flexible)
+              final deletedWorkoutsFlex = _lastAction!['deleted_workouts'] as List<dynamic>? ?? [];
+              final deletedCardiosFlex = _lastAction!['deleted_cardios'] as List<dynamic>? ?? [];
+              for (final workoutJson in deletedWorkoutsFlex) {
+                await WeeklyPlannerService.restorePlannedWorkout(workoutJson as Map<String, dynamic>);
+              }
+              for (final cardioJson in deletedCardiosFlex) {
+                await WeeklyPlannerService.restorePlannedActivity(cardioJson as Map<String, dynamic>);
+              }
+              _lastAction = null;
+              final totalRestoredFlex = deletedWorkoutsFlex.length + deletedCardiosFlex.length;
+              final msgFlex = langCode == 'fr' ? '✅ $totalRestoredFlex séance(s) restaurée(s)'
+                  : langCode == 'de' ? '✅ $totalRestoredFlex Einheit(en) wiederhergestellt'
+                  : '✅ $totalRestoredFlex session(s) restored';
+              return {'success': true, 'message': msgFlex};
+
             case 'create_cardio':
               // Supprimer le cardio créé
               final cardioId = _lastAction!['created_cardio_id'] as String;
@@ -3719,6 +5141,40 @@ USER REQUEST: "$userMessage"
                   : '✅ Move cancelled';
               return {'success': true, 'message': msg7};
 
+            case 'modify_meal':
+              // Restaurer l'ancien repas (supprimer le nouveau + recréer l'ancien)
+              final oldMeal = _lastAction!['old_meal'] as Map<String, dynamic>?;
+              final dayStr = _lastAction!['day'] as String;
+              final mealTypeStr = _lastAction!['meal_type'] as String;
+
+              // Supprimer le nouveau repas créé
+              final date = _parseSingleDay(dayStr);
+              final mealType = _parseMealType(mealTypeStr);
+              if (date != null) {
+                final startOfDay = DateTime(date.year, date.month, date.day);
+                final endOfDay = startOfDay.add(const Duration(days: 1));
+                await Supabase.instance.client
+                    .from('planned_activities')
+                    .delete()
+                    .eq('user_id', AuthService().currentUser!.id)
+                    .eq('activity_type', mealType.value)
+                    .gte('planned_date', startOfDay.toIso8601String().split('T')[0])
+                    .lt('planned_date', endOfDay.toIso8601String().split('T')[0]);
+              }
+
+              // Restaurer l'ancien repas si existant
+              if (oldMeal != null) {
+                await Supabase.instance.client
+                    .from('planned_activities')
+                    .insert(oldMeal);
+              }
+
+              _lastAction = null;
+              final msg8 = langCode == 'fr' ? '✅ Modification annulée'
+                  : langCode == 'de' ? '✅ Änderung rückgängig gemacht'
+                  : '✅ Modification cancelled';
+              return {'success': true, 'message': msg8};
+
             default:
               final unknownMsg = langCode == 'fr' ? '❌ Action non annulable'
                   : langCode == 'de' ? '❌ Aktion nicht rückgängig zu machen'
@@ -3733,8 +5189,368 @@ USER REQUEST: "$userMessage"
           return {'success': false, 'message': errorMsg};
         }
 
+      // ==================== MEAL TOOLS ====================
+      case 'create_meal':
+        return await _executeCreateMeal(args, langCode);
+
+      case 'delete_meal':
+        return await _executeDeleteMeal(args, langCode);
+
+      case 'modify_meal':
+        return await _executeModifyMeal(args, langCode);
+
+      case 'delete_all_meals':
+        return await _executeDeleteAllMeals(langCode);
+
       default:
         return {'success': false, 'message': 'Unknown function: $functionName'};
+    }
+  }
+
+  /// Créer un repas planifié
+  static Future<Map<String, dynamic>> _executeCreateMeal(
+    Map<String, dynamic> args,
+    String langCode,
+  ) async {
+    try {
+      final user = AuthService().currentUser;
+      if (user == null) {
+        return {'success': false, 'message': 'User not logged in'};
+      }
+
+      final dayStr = args['day'] as String? ?? '';
+      final mealTypeStr = args['meal_type'] as String? ?? 'lunch';
+      final dishName = args['dish_name'] as String? ?? 'Plat';
+      final dishDescription = args['dish_description'] as String? ?? '';
+      final proteins = (args['proteins'] as num?)?.toDouble() ?? 25.0;
+      final carbs = (args['carbs'] as num?)?.toDouble() ?? 40.0;
+      final fats = (args['fats'] as num?)?.toDouble() ?? 15.0;
+      final quantityG = (args['quantity_g'] as num?)?.toDouble() ?? 300.0;
+      // IMPORTANT: Calculer les calories avec la formule au lieu de prendre la valeur IA
+      // Formule standard: protéines × 4 + glucides × 4 + lipides × 9
+      final calories = ((proteins * 4) + (carbs * 4) + (fats * 9)).round();
+
+      // Parser le jour
+      final date = _parseSingleDay(dayStr);
+      if (date == null) {
+        return {'success': false, 'message': 'Invalid day: $dayStr'};
+      }
+
+      // Vérifier que le jour n'est pas dans le passé
+      final today = DateTime.now();
+      final todayDate = DateTime(today.year, today.month, today.day);
+      final targetDate = DateTime(date.year, date.month, date.day);
+      if (targetDate.isBefore(todayDate)) {
+        final langCode = LocalizationService.instance.currentLanguageCode;
+        final msg = langCode == 'fr'
+            ? '⚠️ Impossible de planifier pour $dayStr (jour passé). Je ne peux planifier que pour aujourd\'hui et les jours futurs.'
+            : langCode == 'de'
+                ? '⚠️ Kann nicht für $dayStr planen (vergangener Tag). Ich kann nur für heute und zukünftige Tage planen.'
+                : '⚠️ Cannot plan for $dayStr (past day). I can only plan for today and future days.';
+        return {'success': false, 'message': msg, 'is_past_day': true};
+      }
+
+      // L'utilisateur peut planifier n'importe quel type de repas à n'importe quelle heure
+      // (on ne bloque plus selon l'heure - c'est trop restrictif)
+
+      // Convertir le type de repas
+      final mealType = _parseMealType(mealTypeStr);
+
+      // Créer un PendingMeal pour le mode preview (ne pas insérer directement)
+      final pendingMeal = PendingMeal(
+        plannedDate: date,
+        mealType: mealType,
+        dishName: dishName,
+        dishDescription: dishDescription,
+        calories: calories,
+        proteins: proteins,
+        carbs: carbs,
+        fats: fats,
+        estimatedQuantityG: quantityG,
+      );
+
+      return {
+        'success': true,
+        'pending_meal': pendingMeal,
+      };
+    } catch (e) {
+      debugPrint('❌ Create meal error: $e');
+      return {'success': false, 'message': 'Error creating meal: $e'};
+    }
+  }
+
+  /// Générer le message de preview pour les repas
+  static String _getMealsPreviewMessage(String langCode, List<PendingMeal> meals) {
+    final buffer = StringBuffer();
+
+    if (langCode == 'fr') {
+      buffer.writeln('📋 **Voici les repas que je vais ajouter :**\n');
+    } else if (langCode == 'de') {
+      buffer.writeln('📋 **Hier sind die Mahlzeiten, die ich hinzufügen werde:**\n');
+    } else {
+      buffer.writeln('📋 **Here are the meals I will add:**\n');
+    }
+
+    // Grouper par jour
+    final mealsByDay = <DateTime, List<PendingMeal>>{};
+    for (final meal in meals) {
+      final date = DateTime(meal.plannedDate.year, meal.plannedDate.month, meal.plannedDate.day);
+      mealsByDay[date] = mealsByDay[date] ?? [];
+      mealsByDay[date]!.add(meal);
+    }
+
+    // Trier les jours
+    final sortedDays = mealsByDay.keys.toList()..sort();
+
+    for (final day in sortedDays) {
+      final dayName = _formatDayName(day, langCode);
+      buffer.writeln('**$dayName:**');
+
+      // Calculer le total du jour
+      final dayMeals = mealsByDay[day]!;
+      final dayProteins = dayMeals.fold<double>(0, (sum, m) => sum + m.proteins);
+      final dayCarbs = dayMeals.fold<double>(0, (sum, m) => sum + m.carbs);
+      final dayFats = dayMeals.fold<double>(0, (sum, m) => sum + m.fats);
+
+      for (final meal in dayMeals) {
+        final mealTypeName = _getMealTypeName(meal.mealType, langCode);
+        final mealCalc = ((meal.proteins * 4) + (meal.carbs * 4) + (meal.fats * 9)).round();
+        buffer.writeln('  • $mealTypeName: ${meal.dishName}');
+        buffer.writeln('    ~$mealCalc kcal | ${'proteins'.tr(langCode)[0]}: ${meal.proteins.toInt()}g | ${'carbs'.tr(langCode)[0]}: ${meal.carbs.toInt()}g | ${'fats'.tr(langCode)[0]}: ${meal.fats.toInt()}g');
+      }
+
+      // Total du jour - recalculer les calories
+      final dayCaloriesCalc = dayMeals.fold<int>(0, (sum, m) => sum + ((m.proteins * 4) + (m.carbs * 4) + (m.fats * 9)).round());
+      buffer.writeln('  📊 **Total jour:** ~$dayCaloriesCalc kcal | ${'proteins'.tr(langCode)[0]}: ${dayProteins.toInt()}g | ${'carbs'.tr(langCode)[0]}: ${dayCarbs.toInt()}g | ${'fats'.tr(langCode)[0]}: ${dayFats.toInt()}g');
+      buffer.writeln();
+    }
+
+    if (langCode == 'fr') {
+      buffer.writeln('✅ Confirmes-tu ces repas ?');
+    } else if (langCode == 'de') {
+      buffer.writeln('✅ Bestätigst du diese Mahlzeiten?');
+    } else {
+      buffer.writeln('✅ Do you confirm these meals?');
+    }
+
+    return buffer.toString();
+  }
+
+  /// Supprimer un repas planifié
+  static Future<Map<String, dynamic>> _executeDeleteMeal(
+    Map<String, dynamic> args,
+    String langCode,
+  ) async {
+    try {
+      final user = AuthService().currentUser;
+      if (user == null) {
+        return {'success': false, 'message': 'User not logged in'};
+      }
+
+      final dayStr = args['day'] as String? ?? '';
+      final mealTypeStr = args['meal_type'] as String? ?? '';
+
+      final date = _parseSingleDay(dayStr);
+      if (date == null) {
+        return {'success': false, 'message': 'Invalid day'};
+      }
+
+      final mealType = _parseMealType(mealTypeStr);
+
+      // Trouver et supprimer le repas
+      final startOfDay = DateTime(date.year, date.month, date.day);
+      final endOfDay = startOfDay.add(const Duration(days: 1));
+
+      final result = await Supabase.instance.client
+          .from('planned_activities')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('activity_type', mealType.value)
+          .gte('planned_date', startOfDay.toIso8601String().split('T')[0])
+          .lt('planned_date', endOfDay.toIso8601String().split('T')[0])
+          .select();
+
+      if (result.isEmpty) {
+        final msg = langCode == 'fr'
+            ? '⚠️ Aucun repas trouvé pour ce jour'
+            : langCode == 'de'
+                ? '⚠️ Keine Mahlzeit für diesen Tag gefunden'
+                : '⚠️ No meal found for this day';
+        return {'success': false, 'message': msg};
+      }
+
+      final dayName = _formatDayName(date, langCode);
+      final mealName = _getMealTypeName(mealType, langCode);
+
+      final msg = langCode == 'fr'
+          ? '✅ $mealName de $dayName supprimé'
+          : langCode == 'de'
+              ? '✅ $mealName am $dayName gelöscht'
+              : '✅ $mealName on $dayName deleted';
+
+      return {'success': true, 'message': msg};
+    } catch (e) {
+      debugPrint('❌ Delete meal error: $e');
+      return {'success': false, 'message': 'Error deleting meal: $e'};
+    }
+  }
+
+  /// Modifier un repas planifié existant (supprimer l'ancien + créer le nouveau)
+  static Future<Map<String, dynamic>> _executeModifyMeal(
+    Map<String, dynamic> args,
+    String langCode,
+  ) async {
+    try {
+      final user = AuthService().currentUser;
+      if (user == null) {
+        return {'success': false, 'message': 'User not logged in'};
+      }
+
+      final dayStr = args['day'] as String? ?? '';
+      final mealTypeStr = args['meal_type'] as String? ?? '';
+      final newDishName = args['dish_name'] as String? ?? 'Plat';
+      final newDishDescription = args['dish_description'] as String? ?? '';
+      final newProteins = (args['proteins'] as num?)?.toDouble() ?? 25.0;
+      final newCarbs = (args['carbs'] as num?)?.toDouble() ?? 40.0;
+      final newFats = (args['fats'] as num?)?.toDouble() ?? 15.0;
+      final quantityG = (args['quantity_g'] as num?)?.toDouble() ?? 300.0;
+      // IMPORTANT: Calculer les calories avec la formule au lieu de prendre la valeur IA
+      // Formule standard: protéines × 4 + glucides × 4 + lipides × 9
+      final newCalories = ((newProteins * 4) + (newCarbs * 4) + (newFats * 9)).round();
+
+      final date = _parseSingleDay(dayStr);
+      if (date == null) {
+        final msg = langCode == 'fr'
+            ? '⚠️ Jour invalide: $dayStr'
+            : langCode == 'de'
+                ? '⚠️ Ungültiger Tag: $dayStr'
+                : '⚠️ Invalid day: $dayStr';
+        return {'success': false, 'message': msg};
+      }
+
+      final mealType = _parseMealType(mealTypeStr);
+
+      // D'abord, trouver et supprimer l'ancien repas
+      final startOfDay = DateTime(date.year, date.month, date.day);
+      final endOfDay = startOfDay.add(const Duration(days: 1));
+
+      // Récupérer l'ancien repas pour le stocker dans _lastAction (pour undo)
+      final oldMealResult = await Supabase.instance.client
+          .from('planned_activities')
+          .select()
+          .eq('user_id', user.id)
+          .eq('activity_type', mealType.value)
+          .gte('planned_date', startOfDay.toIso8601String().split('T')[0])
+          .lt('planned_date', endOfDay.toIso8601String().split('T')[0])
+          .maybeSingle();
+
+      // Stocker l'ancien repas pour undo (si trouvé)
+      if (oldMealResult != null) {
+        _lastAction = {
+          'type': 'modify_meal',
+          'old_meal': oldMealResult,
+          'day': dayStr,
+          'meal_type': mealTypeStr,
+        };
+
+        // Supprimer l'ancien repas
+        await Supabase.instance.client
+            .from('planned_activities')
+            .delete()
+            .eq('id', oldMealResult['id']);
+      }
+
+      // Créer le nouveau repas
+      final activityData = {
+        'dish_name': newDishName,
+        'dish_description': newDishDescription,
+        'calories': newCalories,
+        'proteins': newProteins,
+        'carbs': newCarbs,
+        'fats': newFats,
+        'estimated_quantity_g': quantityG,
+      };
+
+      await Supabase.instance.client.from('planned_activities').insert({
+        'user_id': user.id,
+        'planned_date': startOfDay.toIso8601String().split('T')[0],
+        'activity_type': mealType.value,
+        'activity_data': activityData,
+        'status': 'planned',
+        'is_ai_generated': true,
+      });
+
+      final dayName = _formatDayName(date, langCode);
+      final mealName = _getMealTypeName(mealType, langCode);
+
+      // Calculer calories avec formule + utiliser traductions
+      final calcCalories = ((newProteins * 4) + (newCarbs * 4) + (newFats * 9)).round();
+      final macroLine = '~$calcCalories kcal | ${'proteins'.tr(langCode)[0]}: ${newProteins.toInt()}g | ${'carbs'.tr(langCode)[0]}: ${newCarbs.toInt()}g | ${'fats'.tr(langCode)[0]}: ${newFats.toInt()}g';
+      final msg = langCode == 'fr'
+          ? '✅ $mealName de $dayName modifié: **$newDishName**\n$macroLine'
+          : langCode == 'de'
+              ? '✅ $mealName am $dayName geändert: **$newDishName**\n$macroLine'
+              : '✅ $mealName on $dayName modified: **$newDishName**\n$macroLine';
+
+      return {'success': true, 'message': msg};
+    } catch (e) {
+      debugPrint('❌ Modify meal error: $e');
+      return {'success': false, 'message': 'Error modifying meal: $e'};
+    }
+  }
+
+  /// Supprimer tous les repas planifiés de la semaine
+  static Future<Map<String, dynamic>> _executeDeleteAllMeals(String langCode) async {
+    try {
+      final user = AuthService().currentUser;
+      if (user == null) {
+        return {'success': false, 'message': 'User not logged in'};
+      }
+
+      final now = DateTime.now();
+      final weekStart = now.subtract(Duration(days: now.weekday - 1));
+      final normalizedStart = DateTime(weekStart.year, weekStart.month, weekStart.day);
+      final weekEnd = normalizedStart.add(const Duration(days: 7));
+
+      // Supprimer tous les repas de la semaine (breakfast, lunch, dinner, snack)
+      final mealTypes = ['breakfast', 'lunch', 'dinner', 'snack'];
+
+      for (final mealType in mealTypes) {
+        await Supabase.instance.client
+            .from('planned_activities')
+            .delete()
+            .eq('user_id', user.id)
+            .eq('activity_type', mealType)
+            .gte('planned_date', normalizedStart.toIso8601String().split('T')[0])
+            .lt('planned_date', weekEnd.toIso8601String().split('T')[0]);
+      }
+
+      final msg = langCode == 'fr'
+          ? '✅ Tous les repas de la semaine ont été supprimés'
+          : langCode == 'de'
+              ? '✅ Alle Mahlzeiten dieser Woche wurden gelöscht'
+              : '✅ All meals for this week have been deleted';
+
+      return {'success': true, 'message': msg};
+    } catch (e) {
+      debugPrint('❌ Delete all meals error: $e');
+      return {'success': false, 'message': 'Error deleting meals: $e'};
+    }
+  }
+
+  /// Obtenir le nom du type de repas dans la langue de l'utilisateur
+  static String _getMealTypeName(PlannedActivityType type, String langCode) {
+    switch (type) {
+      case PlannedActivityType.breakfast:
+        return langCode == 'fr' ? 'Petit-déjeuner' : langCode == 'de' ? 'Frühstück' : 'Breakfast';
+      case PlannedActivityType.lunch:
+        return langCode == 'fr' ? 'Déjeuner' : langCode == 'de' ? 'Mittagessen' : 'Lunch';
+      case PlannedActivityType.dinner:
+        return langCode == 'fr' ? 'Dîner' : langCode == 'de' ? 'Abendessen' : 'Dinner';
+      case PlannedActivityType.snack:
+        return langCode == 'fr' ? 'Collation' : langCode == 'de' ? 'Snack' : 'Snack';
+      default:
+        return langCode == 'fr' ? 'Repas' : langCode == 'de' ? 'Mahlzeit' : 'Meal';
     }
   }
 
@@ -3949,7 +5765,7 @@ USER REQUEST: "$userMessage"
   /// Vérifie si une action nécessite une confirmation
   static bool _actionRequiresConfirmation(String actionName, Map<String, dynamic> args) {
     // Actions qui nécessitent toujours une confirmation
-    if (actionName == 'delete_all' || actionName == 'delete_all_workouts' || actionName == 'delete_all_cardio') {
+    if (actionName == 'delete_all' || actionName == 'delete_all_workouts' || actionName == 'delete_all_cardio' || actionName == 'delete_day_sessions' || actionName == 'delete_sessions') {
       return true;
     }
     // Suppression individuelle avec un jour spécifique
@@ -4003,6 +5819,61 @@ USER REQUEST: "$userMessage"
           'de': '⚠️ Ich werde die Cardio-Einheit am $dayName löschen. Bestätigen?',
         };
         return msgs[langCode] ?? msgs['en']!;
+      case 'delete_day_sessions':
+        final msgs = {
+          'fr': '⚠️ Je vais supprimer TOUTES les séances (musculation + cardio) du $dayName. Confirmer ?',
+          'en': '⚠️ I will delete ALL sessions (workouts + cardio) on $dayName. Confirm?',
+          'de': '⚠️ Ich werde ALLE Einheiten (Krafttraining + Cardio) am $dayName löschen. Bestätigen?',
+        };
+        return msgs[langCode] ?? msgs['en']!;
+      case 'delete_sessions':
+        // Construire un message descriptif basé sur les args
+        final daysArg = args['days'] as List<dynamic>?;
+        final excludeDaysArg = args['exclude_days'] as List<dynamic>?;
+        final sessionTypesArg = args['session_types'] as List<dynamic>?;
+        final activityNamesArg = args['activity_names'] as List<dynamic>?;
+
+        String daysDesc = '';
+        if (daysArg != null && daysArg.isNotEmpty) {
+          final translatedDays = daysArg.map((d) => _translateDayName(d.toString(), langCode)).toList();
+          daysDesc = translatedDays.join(', ');
+        } else if (excludeDaysArg != null && excludeDaysArg.isNotEmpty) {
+          final excludedDays = excludeDaysArg.map((d) => _translateDayName(d.toString(), langCode)).toList();
+          daysDesc = langCode == 'fr'
+              ? 'tous les jours sauf ${excludedDays.join(", ")}'
+              : langCode == 'de'
+                  ? 'alle Tage außer ${excludedDays.join(", ")}'
+                  : 'all days except ${excludedDays.join(", ")}';
+        } else {
+          daysDesc = langCode == 'fr' ? 'toute la semaine' : langCode == 'de' ? 'die ganze Woche' : 'the whole week';
+        }
+
+        String typesDesc = '';
+        if (sessionTypesArg != null && sessionTypesArg.isNotEmpty) {
+          final types = sessionTypesArg.map((t) {
+            final type = t.toString().toLowerCase();
+            if (type == 'workout') return langCode == 'fr' ? 'musculation' : langCode == 'de' ? 'Krafttraining' : 'workouts';
+            if (type == 'cardio') return 'cardio';
+            return type;
+          }).toList();
+          typesDesc = types.join(' + ');
+        } else {
+          typesDesc = langCode == 'fr' ? 'musculation + cardio' : langCode == 'de' ? 'Krafttraining + Cardio' : 'workouts + cardio';
+        }
+
+        String activityDesc = '';
+        if (activityNamesArg != null && activityNamesArg.isNotEmpty) {
+          activityDesc = langCode == 'fr'
+              ? ' (${activityNamesArg.join(", ")})'
+              : ' (${activityNamesArg.join(", ")})';
+        }
+
+        final msgsDelete = {
+          'fr': '⚠️ Je vais supprimer $typesDesc$activityDesc pour $daysDesc. Confirmer ?',
+          'en': '⚠️ I will delete $typesDesc$activityDesc for $daysDesc. Confirm?',
+          'de': '⚠️ Ich werde $typesDesc$activityDesc für $daysDesc löschen. Bestätigen?',
+        };
+        return msgsDelete[langCode] ?? msgsDelete['en']!;
       default:
         return '⚠️ Confirmer cette action ?';
     }
@@ -4020,6 +5891,11 @@ USER REQUEST: "$userMessage"
         ? Map<String, dynamic>.from(nextRawArgs)
         : {};
     return _buildConfirmationMessage(nextName, nextArgs, langCode);
+  }
+
+  /// Vérifie si deux dates sont le même jour
+  static bool _isSameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
   /// Traduit le nom du jour en fonction de la langue
@@ -4315,6 +6191,11 @@ USER REQUEST: "$userMessage"
         'en': 'I didn\'t understand that meal. Try with more details.',
         'de': 'Ich habe diese Mahlzeit nicht verstanden. Versuche es mit mehr Details.',
       },
+      'no_valid_meals': {
+        'fr': 'Aucun repas valide à planifier. Vérifie les jours demandés.',
+        'en': 'No valid meals to plan. Check the requested days.',
+        'de': 'Keine gültigen Mahlzeiten zu planen. Überprüfe die angeforderten Tage.',
+      },
     };
 
     return messages[key]?[langCode] ?? messages[key]?['en'] ?? key;
@@ -4365,5 +6246,434 @@ USER REQUEST: "$userMessage"
     };
 
     return questions[langCode] ?? questions['en']!;
+  }
+
+  // =====================================================
+  // RECALCUL DES MACROS POUR INGREDIENTS MODIFIES
+  // =====================================================
+
+  /// Recalcule les macros d'un repas basé sur les ingrédients modifiés
+  /// Retourne les données complètes du plat (nom, description, macros) comme le planificateur
+  static Future<Map<String, dynamic>?> recalculateMealMacros({
+    required String dishName,
+    required String ingredients,
+    required String langCode,
+    String? originalDescription,
+  }) async {
+    try {
+      final model = GenerativeModel(
+        model: 'gemini-2.0-flash',
+        apiKey: GeminiConfig.geminiApiKey,
+        generationConfig: GenerationConfig(
+          temperature: 0.3,
+          maxOutputTokens: 2048,
+        ),
+      );
+
+      final languageName = langCode == 'fr' ? 'French' : langCode == 'de' ? 'German' : 'English';
+
+      debugPrint('🧮 Recalcul - Dish: $dishName');
+      debugPrint('🧮 Recalcul - Ingredients provided: $ingredients');
+
+      final prompt = '''
+You are a macronutrient calculator. The user has provided an EXACT list of ingredients.
+
+RESPOND IN $languageName.
+
+═══════════════════════════════════════════════════════════════
+                    🚨 STRICT RULES 🚨
+═══════════════════════════════════════════════════════════════
+
+1. USE EXACTLY the ingredients provided - DO NOT MODIFY, DO NOT REMOVE ANY
+2. ALL ingredients MUST appear in dish_description
+3. Calculate macros for EACH ingredient separately, then ADD them up
+4. ONE ingredient per line
+   - NEVER: "- 1 egg + 1 yolk" or "- Salt, pepper"
+   - ALWAYS: Separate lines for each ingredient
+
+═══════════════════════════════════════════════════════════════
+                    DATA TO PROCESS
+═══════════════════════════════════════════════════════════════
+
+Base dish: $dishName
+EXACT LIST OF INGREDIENTS (must be respected exactly):
+$ingredients
+
+═══════════════════════════════════════════════════════════════
+                    NUTRITIONAL VALUES REFERENCE
+═══════════════════════════════════════════════════════════════
+
+Cheeses:
+- Camembert: 300 kcal/100g, 20g protein, 0.5g carbs, 25g fat
+- Emmental: 380 kcal/100g, 28g protein, 0g carbs, 30g fat
+- Parmesan: 430 kcal/100g, 38g protein, 0g carbs, 30g fat
+
+Starches (cooked):
+- Pasta: 130 kcal/100g, 5g protein, 25g carbs, 1g fat
+- Rice: 130 kcal/100g, 3g protein, 28g carbs, 0.5g fat
+
+Meats:
+- Bacon/Lardons: 250 kcal/100g, 15g protein, 1g carbs, 20g fat
+- Chicken: 165 kcal/100g, 31g protein, 0g carbs, 3.5g fat
+
+Others:
+- Egg: 155 kcal/100g (1 egg ~75 kcal)
+- Heavy cream: 300 kcal/100g, 2g protein, 3g carbs, 30g fat
+
+═══════════════════════════════════════════════════════════════
+                    CALCULATION EXAMPLE
+═══════════════════════════════════════════════════════════════
+
+If ingredients = "200g pasta, 100g bacon, 150g camembert":
+- Pasta 200g: 260 kcal, 10g protein, 50g carbs, 2g fat
+- Bacon 100g: 250 kcal, 15g protein, 1g carbs, 20g fat
+- Camembert 150g: 450 kcal, 30g protein, 0.75g carbs, 37.5g fat
+TOTAL: 960 kcal, 55g protein, 51.75g carbs, 59.5g fat
+
+═══════════════════════════════════════════════════════════════
+                    RESPONSE FORMAT
+═══════════════════════════════════════════════════════════════
+
+Use section names in user's language ($languageName):
+- French: INGRÉDIENTS, RECETTE, ASTUCE
+- English: INGREDIENTS, RECIPE, TIP
+- German: ZUTATEN, REZEPT, TIPP
+
+Respond ONLY with valid JSON (no markdown, no \`\`\`):
+
+{
+  "dish_name": "Short name (max 25 chars)",
+  "dish_description": "Description---INGREDIENTS:\\n- 200g pasta\\n- 100g bacon\\n- 150g camembert\\n...---RECIPE:\\n1. Step 1\\n2. Step 2---TIP: cooking tip",
+  "calories": 960,
+  "proteins": 55.0,
+  "carbs": 51.75,
+  "fats": 59.5
+}
+
+CALCULATE NOW with the EXACT ingredients provided:
+''';
+
+      final response = await model.generateContent([Content.text(prompt)]);
+      final text = response.text?.trim() ?? '';
+
+      debugPrint('🧮 Recalcul complet response: $text');
+
+      // Nettoyer la réponse (enlever ```json si présent)
+      String cleanedJson = text;
+      if (cleanedJson.startsWith('```')) {
+        cleanedJson = cleanedJson.replaceFirst(RegExp(r'^```json?\s*'), '');
+        cleanedJson = cleanedJson.replaceFirst(RegExp(r'\s*```$'), '');
+      }
+
+      final json = jsonDecode(cleanedJson) as Map<String, dynamic>;
+
+      // Extraire les macros de l'IA
+      final proteins = (json['proteins'] as num).toDouble();
+      final carbs = (json['carbs'] as num).toDouble();
+      final fats = (json['fats'] as num).toDouble();
+
+      // IMPORTANT: Calculer les calories avec la formule au lieu de prendre la valeur IA
+      // Formule standard: protéines × 4 + glucides × 4 + lipides × 9
+      final calculatedCalories = ((proteins * 4) + (carbs * 4) + (fats * 9)).round();
+
+      debugPrint('🧮 Calories IA: ${json['calories']} vs Calculées: $calculatedCalories');
+
+      return {
+        'success': true,
+        'dish_name': json['dish_name'] as String? ?? dishName,
+        'dish_description': json['dish_description'] as String? ?? '',
+        'calories': calculatedCalories,
+        'proteins': proteins,
+        'carbs': carbs,
+        'fats': fats,
+      };
+    } catch (e) {
+      debugPrint('❌ Error recalculating macros: $e');
+      return {
+        'success': false,
+        'error': e.toString(),
+      };
+    }
+  }
+
+  // =====================================================
+  // NOUVEAU: FLOW MULTI-SESSIONS AVEC QUESTIONS SÉQUENTIELLES
+  // =====================================================
+
+  /// Continuer le planning après une réponse de l'utilisateur
+  static Future<PlannerActionResult> continueSessionPlanning(
+    SessionPlanningState state,
+    String userAnswer,
+    String langCode,
+  ) async {
+    try {
+      // 1. Appliquer la réponse à la session concernée
+      final questionIdx = state.nextQuestionIndex;
+      if (questionIdx >= 0) {
+        state.applyAnswerToSession(questionIdx, userAnswer);
+        state.answerCurrentQuestion(userAnswer);
+      }
+
+      // 2. Vérifier s'il reste des questions
+      final nextQuestion = state.nextQuestion;
+      if (nextQuestion != null) {
+        return PlannerActionResult.question(
+          questionText: nextQuestion.questionText,
+          question: nextQuestion,
+          planningState: state,
+        );
+      }
+
+      // 3. Toutes les questions sont répondues → générer les sessions
+      return await _generateSessionsFromState(state, langCode);
+    } catch (e) {
+      debugPrint('❌ continueSessionPlanning error: $e');
+      return PlannerActionResult.error('Erreur lors de la planification: $e');
+    }
+  }
+
+  /// Générer les sessions finales depuis l'état complété
+  static Future<PlannerActionResult> _generateSessionsFromState(
+    SessionPlanningState state,
+    String langCode,
+  ) async {
+    try {
+      final pendingSessions = <PendingSession>[];
+
+      for (final partial in state.sessions) {
+        if (partial.isWorkout) {
+          // Générer le workout avec l'IA
+          final pendingWorkout = partial.toPendingWorkout();
+          final result = await AIWorkoutGenerationService.generateWorkout(
+            userRequest: pendingWorkout.workoutPrompt,
+            durationMinutes: pendingWorkout.durationMinutes,
+          );
+
+          if (result.success && result.exercises != null && result.exercises!.isNotEmpty) {
+            final workoutWithExercises = pendingWorkout.copyWithExercises(result.exercises!);
+            pendingSessions.add(PendingSession.fromWorkout(workoutWithExercises));
+          }
+        } else {
+          // Cardio: pas de génération, juste créer le PendingCardio
+          final pendingCardio = partial.toPendingCardio();
+          pendingSessions.add(PendingSession.fromCardio(pendingCardio));
+        }
+      }
+
+      if (pendingSessions.isEmpty) {
+        return PlannerActionResult.error(
+          _getMessage(langCode, 'workout_generation_failed'),
+        );
+      }
+
+      // Trier: par date puis workout avant cardio
+      pendingSessions.sort((a, b) {
+        final dateCompare = a.plannedDate.compareTo(b.plannedDate);
+        if (dateCompare != 0) return dateCompare;
+        // Workouts avant cardios pour le même jour
+        if (a.isWorkout && b.isCardio) return -1;
+        if (a.isCardio && b.isWorkout) return 1;
+        return 0;
+      });
+
+      return PlannerActionResult.sessionPreview(
+        message: _getSessionPreviewMessage(langCode, pendingSessions),
+        sessions: pendingSessions,
+      );
+    } catch (e) {
+      debugPrint('❌ _generateSessionsFromState error: $e');
+      return PlannerActionResult.error('Erreur lors de la génération: $e');
+    }
+  }
+
+  /// Message de preview pour les sessions
+  static String _getSessionPreviewMessage(String langCode, List<PendingSession> sessions) {
+    final workoutCount = sessions.where((s) => s.isWorkout).length;
+    final cardioCount = sessions.where((s) => s.isCardio).length;
+
+    if (langCode == 'fr') {
+      final parts = <String>[];
+      if (workoutCount > 0) {
+        parts.add('$workoutCount séance${workoutCount > 1 ? 's' : ''} de musculation');
+      }
+      if (cardioCount > 0) {
+        parts.add('$cardioCount séance${cardioCount > 1 ? 's' : ''} de cardio');
+      }
+      return 'Voici ton programme ! ${parts.join(' et ')} 👇\nValide chaque séance une par une.';
+    }
+
+    final parts = <String>[];
+    if (workoutCount > 0) {
+      parts.add('$workoutCount workout session${workoutCount > 1 ? 's' : ''}');
+    }
+    if (cardioCount > 0) {
+      parts.add('$cardioCount cardio session${cardioCount > 1 ? 's' : ''}');
+    }
+    return 'Here\'s your program! ${parts.join(' and ')} 👇\nValidate each session one by one.';
+  }
+
+  /// Confirmer une seule session (workout ou cardio)
+  static Future<PlannerActionResult> confirmSingleSession(PendingSession session) async {
+    final langCode = LocalizationService.instance.currentLanguageCode;
+
+    try {
+      if (session.isWorkout && session.workout != null) {
+        final workout = session.workout!;
+        if (workout.exercises == null || workout.exercises!.isEmpty) {
+          return PlannerActionResult.error('No exercises to save');
+        }
+
+        final savedWorkout = await WeeklyPlannerService.addPlannedWorkout(
+          plannedDate: workout.plannedDate,
+          workoutName: workout.workoutName,
+          exercises: workout.exercises!,
+          durationMinutes: workout.durationMinutes,
+          userPrompt: workout.workoutPrompt,
+          isAiGenerated: true,
+        );
+
+        if (savedWorkout != null) {
+          final dayName = _formatDayName(workout.plannedDate, langCode);
+          return PlannerActionResult.success('✓ $dayName: ${workout.workoutType}');
+        }
+      } else if (session.isCardio && session.cardio != null) {
+        final cardio = session.cardio!;
+
+        final cardioData = cardio.toPlannedCardioData();
+        final activity = await WeeklyPlannerService.addPlannedActivity(
+          plannedDate: cardio.plannedDate,
+          activityType: PlannedActivityType.cardio,
+          activityData: cardioData.toJson(),
+          isAiGenerated: true,
+        );
+
+        if (activity != null) {
+          final dayName = _formatDayName(cardio.plannedDate, langCode);
+          return PlannerActionResult.success('✓ $dayName: ${cardio.displayTitle}');
+        }
+      }
+
+      return PlannerActionResult.error('Failed to save session');
+    } catch (e) {
+      debugPrint('❌ confirmSingleSession error: $e');
+      return PlannerActionResult.error('Error saving session: $e');
+    }
+  }
+
+  /// Créer un état de planning depuis une analyse d'intent avec questions
+  static SessionPlanningState? createPlanningStateFromIntent(
+    Map<String, dynamic> info,
+    String langCode,
+  ) {
+    final sessions = <PartialSession>[];
+    final questions = <PendingQuestion>[];
+
+    // 1. Parser les workouts
+    final workouts = info['workouts'] as List?;
+    if (workouts != null) {
+      for (int i = 0; i < workouts.length; i++) {
+        final w = workouts[i] as Map<String, dynamic>;
+        final dayStr = w['day'] as String?;
+        final day = _parseSingleDay(dayStr ?? '');
+        if (day == null) continue;
+
+        final workoutType = w['workout_type'] as String? ?? 'Full Body';
+        final durationMinutes = w['duration_minutes'] as int?;
+
+        sessions.add(PartialSession(
+          type: PendingSessionType.workout,
+          plannedDate: day,
+          workoutType: workoutType,
+          durationMinutes: durationMinutes,
+          workoutPrompt: w['workout_prompt'] as String? ?? 'Séance de $workoutType',
+        ));
+
+        // Si durée manquante, ajouter une question
+        if (durationMinutes == null) {
+          final questionText = langCode == 'fr'
+              ? 'Quelle durée pour ta séance de $workoutType ?'
+              : 'How long for your $workoutType session?';
+          questions.add(PendingQuestion(
+            sessionIndex: sessions.length - 1,
+            questionType: 'duration',
+            questionText: questionText,
+          ));
+        }
+      }
+    }
+
+    // 2. Parser les cardios
+    final cardios = info['cardios'] as List?;
+    if (cardios != null) {
+      for (int i = 0; i < cardios.length; i++) {
+        final c = cardios[i] as Map<String, dynamic>;
+        final dayStr = c['day'] as String?;
+        final day = _parseSingleDay(dayStr ?? '');
+        if (day == null) continue;
+
+        final activityName = c['activity_name'] as String? ?? 'Cardio';
+        final activityKey = _getActivityKey(activityName);
+        final distanceKm = (c['target_km'] as num?)?.toDouble();
+        final durationMinutes = c['target_minutes'] as int?;
+
+        sessions.add(PartialSession(
+          type: PendingSessionType.cardio,
+          plannedDate: day,
+          activityName: activityName,
+          activityKey: activityKey,
+          distanceKm: distanceKm,
+          durationMinutes: durationMinutes,
+        ));
+
+        // Si ni distance ni durée, ajouter une question
+        if (distanceKm == null && durationMinutes == null) {
+          final questionText = langCode == 'fr'
+              ? 'Tu veux un objectif de distance ou de durée pour ton $activityName ?'
+              : 'Do you want a distance or duration target for your $activityName?';
+          questions.add(PendingQuestion(
+            sessionIndex: sessions.length - 1,
+            questionType: 'distance',
+            questionText: questionText,
+          ));
+        }
+      }
+    }
+
+    // 3. Gérer l'ancien format (single cardio)
+    final singleActivityName = info['activity_name'] as String?;
+    if (singleActivityName != null && cardios == null) {
+      final daysList = info['days'] as List<DateTime>?;
+      final targetKm = info['target_km'] as double?;
+      final targetMinutes = info['target_minutes'] as int?;
+
+      for (final day in daysList ?? [DateTime.now()]) {
+        sessions.add(PartialSession(
+          type: PendingSessionType.cardio,
+          plannedDate: day,
+          activityName: singleActivityName,
+          activityKey: _getActivityKey(singleActivityName),
+          distanceKm: targetKm,
+          durationMinutes: targetMinutes,
+        ));
+
+        if (targetKm == null && targetMinutes == null) {
+          final questionText = langCode == 'fr'
+              ? 'Tu veux un objectif de distance ou de durée pour ton $singleActivityName ?'
+              : 'Do you want a distance or duration target for your $singleActivityName?';
+          questions.add(PendingQuestion(
+            sessionIndex: sessions.length - 1,
+            questionType: 'distance',
+            questionText: questionText,
+          ));
+        }
+      }
+    }
+
+    if (sessions.isEmpty) return null;
+
+    return SessionPlanningState(
+      sessions: sessions,
+      questions: questions,
+    );
   }
 }

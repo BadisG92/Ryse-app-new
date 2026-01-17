@@ -10,6 +10,7 @@ import 'global_state_manager.dart';
 import 'meal_widget_data_provider.dart';
 import 'notification_service.dart';
 import 'weekly_planner_service.dart';
+import 'meal_planner_sync_service.dart';
 import '../models/weekly_planner_models.dart';
 
 class FoodEntriesService {
@@ -273,6 +274,50 @@ class FoodEntriesService {
     }
   }
 
+  /// Trouver le premier meal_id existant pour un type de repas à une date donnée
+  /// Retourne null si aucun bloc de ce type n'existe pour cette journée
+  static Future<String?> findExistingMealId({
+    required String userId,
+    required String mealName,
+    required DateTime forDate,
+  }) async {
+    try {
+      final mealType = _mealTypeMapping[mealName];
+      if (mealType == null) {
+        debugPrint('Type de repas non reconnu: $mealName');
+        return null;
+      }
+
+      final startOfDay = DateTime(forDate.year, forDate.month, forDate.day);
+      final endOfDay = DateTime(forDate.year, forDate.month, forDate.day, 23, 59, 59);
+
+      // Chercher le premier meal_id existant de ce type pour cette journée
+      final existingEntry = await _supabase
+          .from('food_entries')
+          .select('meal_id')
+          .eq('user_id', userId)
+          .eq('meal_type', mealType)
+          .gte('consumed_at', startOfDay.toIso8601String())
+          .lte('consumed_at', endOfDay.toIso8601String())
+          .order('consumed_at', ascending: true)
+          .limit(1)
+          .maybeSingle();
+
+      if (existingEntry != null) {
+        final mealId = existingEntry['meal_id'] as String?;
+        if (mealId != null && mealId.isNotEmpty) {
+          debugPrint('✅ Bloc existant trouvé: $mealId pour $mealName');
+          return mealId;
+        }
+      }
+
+      return null;
+    } catch (e) {
+      debugPrint('Erreur lors de la recherche du meal_id existant: $e');
+      return null;
+    }
+  }
+
   // Ajouter une entrée alimentaire
   static Future<bool> addFoodEntry({
     required String userId,
@@ -280,6 +325,7 @@ class FoodEntriesService {
     required FoodItem foodItem,
     DateTime? consumedAt,
     String? mealId, // Optionnel : pour ajouter à un bloc existant
+    bool skipPlannerSync = false, // Skip la sync vers le planner (utilisé par MealPlannerSyncService)
   }) async {
     // Déclarer les variables en dehors du try pour qu'elles soient accessibles dans le catch
     Map<String, dynamic>? macronutrients;
@@ -346,8 +392,9 @@ class FoodEntriesService {
       } else if (foodItem.id != null && foodItem.id!.isNotEmpty && !foodItem.isScanned) {
         // Si c'est un aliment de base (pas scanné), utiliser food_id (UUID)
         entry['food_id'] = foodItem.id!;
-      } else if (foodItem.isScanned && !foodItem.isCustom) {
-        // Si c'est un aliment scanné non sauvegardé, utiliser scanned_food_name
+      } else {
+        // Fallback: utiliser scanned_food_name pour les aliments scannés ou planifiés
+        // Cela inclut les repas validés depuis le planificateur
         entry['scanned_food_name'] = foodItem.name;
       }
 
@@ -359,7 +406,14 @@ class FoodEntriesService {
         fats: macronutrients['fats'].toDouble(),
       );
 
-      await _supabase.from('food_entries').insert(entry);
+      // Insérer et récupérer l'ID créé
+      final insertResult = await _supabase
+          .from('food_entries')
+          .insert(entry)
+          .select('id')
+          .single();
+
+      final foodEntryId = insertResult['id'] as String;
 
       // Recompter les repas uniques depuis la base pour avoir le bon nombre
       await GlobalStateManager.instance.refreshMealsCount();
@@ -373,18 +427,36 @@ class FoodEntriesService {
       // Mettre à jour l'activité pour les notifications de réengagement
       unawaited(NotificationService().updateLastActivity());
 
-      // WEEKLY PLANNER SYNC: Marquer le repas planifié comme complété
-      try {
-        final plannedMeal = await WeeklyPlannerService.findPlannedMealForDate(mealType!, now);
-        if (plannedMeal != null) {
-          await WeeklyPlannerService.updateActivityStatus(
-            plannedMeal.id,
-            PlannedStatus.completed,
-          );
-          debugPrint('✅ Weekly Planner: Meal $mealType marqué comme complété');
+      // WEEKLY PLANNER SYNC: Sync bidirectionnelle planner ↔ journal
+      // Skip si appelé depuis MealPlannerSyncService.validateMeal pour éviter boucle infinie
+      if (!skipPlannerSync) {
+        try {
+          // Chercher s'il existe un repas planifié pour ce créneau
+          final plannedMeal = await WeeklyPlannerService.findPlannedMealForDate(mealType!, now);
+          if (plannedMeal != null) {
+            // Marquer comme complété et lier au food_entry
+            await WeeklyPlannerService.updateActivityStatus(
+              plannedMeal.id,
+              PlannedStatus.completed,
+            );
+            debugPrint('✅ Weekly Planner: Meal $mealType marqué comme complété');
+          } else {
+            // Pas de repas planifié → créer une activité liée (sync journal → planner)
+            await MealPlannerSyncService.syncFoodEntryToPlanner(
+              foodEntryId: foodEntryId,
+              mealType: mealType!,
+              consumedAt: now,
+              foodName: foodItem.name,
+              calories: macronutrients['calories'],
+              proteins: macronutrients['proteins'],
+              carbs: macronutrients['carbs'],
+              fats: macronutrients['fats'],
+              quantity: quantity,
+            );
+          }
+        } catch (plannerError) {
+          debugPrint('⚠️ Erreur sync Weekly Planner: $plannerError');
         }
-      } catch (plannerError) {
-        debugPrint('⚠️ Erreur sync Weekly Planner: $plannerError');
       }
 
       return true;
@@ -522,42 +594,76 @@ class FoodEntriesService {
   }
 
   // Supprimer une entrée alimentaire
-  static Future<bool> removeFoodEntry(String entryId) async {
+  static Future<bool> removeFoodEntry(String entryId, {bool skipPlannerSync = false}) async {
     try {
       debugPrint('🗑️ Tentative de suppression de l\'entrée: $entryId');
-      
-      // Récupérer l'info de l'entrée avant suppression pour notification
+
+      // Récupérer l'info de l'entrée avant suppression (incluant les macros pour GlobalState)
       final entryInfo = await _supabase
           .from('food_entries')
-          .select('user_id, consumed_at, meal_id')
+          .select('user_id, consumed_at, meal_id, calories, proteins, carbs, fats')
           .eq('id', entryId)
           .maybeSingle();
-      
+
       if (entryInfo == null) {
         debugPrint('❌ Entrée introuvable avec l\'ID: $entryId');
         return false;
       }
-      
+
       debugPrint('📋 Entrée trouvée: ${entryInfo['meal_id']} pour utilisateur ${entryInfo['user_id']}');
-      
+
+      // Récupérer les macros avant suppression pour mettre à jour GlobalState
+      final calories = (entryInfo['calories'] as num?)?.toDouble() ?? 0;
+      final proteins = (entryInfo['proteins'] as num?)?.toDouble() ?? 0;
+      final carbs = (entryInfo['carbs'] as num?)?.toDouble() ?? 0;
+      final fats = (entryInfo['fats'] as num?)?.toDouble() ?? 0;
+
       // Supprimer l'entrée
-      final deleteResult = await _supabase
+      await _supabase
           .from('food_entries')
           .delete()
           .eq('id', entryId);
-      
+
       debugPrint('✅ Entrée supprimée avec succès de la base de données');
+
+      // MISE À JOUR GLOBALSTATE: Soustraire les calories/macros de l'entrée supprimée
+      // Vérifier si c'est aujourd'hui pour mettre à jour le GlobalState
+      final consumedAt = DateTime.parse(entryInfo['consumed_at'] as String);
+      final now = DateTime.now();
+      final isToday = consumedAt.year == now.year && consumedAt.month == now.month && consumedAt.day == now.day;
+
+      if (isToday && calories > 0) {
+        debugPrint('🔄 GlobalState: Soustraction de $calories kcal après suppression');
+        GlobalStateManager.instance.updateCalories(-calories);
+        GlobalStateManager.instance.updateMacros(
+          proteins: -proteins,
+          carbs: -carbs,
+          fats: -fats,
+        );
+        // Décrémenter le compteur de repas
+        await GlobalStateManager.instance.refreshMealsCount();
+      }
 
       // Déclencher la mise à jour des calculs nutritionnels
       await _notifyNutritionUpdate(
         entryInfo['user_id'] as String,
-        DateTime.parse(entryInfo['consumed_at'] as String),
+        consumedAt,
       );
 
       debugPrint('🔔 Notification de mise à jour envoyée');
 
       // NOUVEAU: Mettre à jour les données du widget iOS
       await MealWidgetDataProvider.updateWidgetData();
+
+      // WEEKLY PLANNER SYNC: Supprimer l'activité planifiée liée
+      // Skip si appelé depuis unvalidateMeal (on veut garder l'activité planifiée)
+      if (!skipPlannerSync) {
+        try {
+          await MealPlannerSyncService.onFoodEntryDeleted(entryId);
+        } catch (plannerError) {
+          debugPrint('⚠️ Erreur sync Weekly Planner (delete): $plannerError');
+        }
+      }
 
       return true;
     } catch (e) {

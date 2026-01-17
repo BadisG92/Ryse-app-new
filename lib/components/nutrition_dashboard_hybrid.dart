@@ -963,7 +963,7 @@ class NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
                               ),
                               Consumer<LocalizationService>(
                                 builder: (context, locService, _) => Text(
-                                  '${meal.time} • ${meal.items.length} ${'food_items'.tr(locService.currentLanguageCode)}',
+                                  '${meal.items.length} ${'food_items'.tr(locService.currentLanguageCode)}',
                                   style: const TextStyle(
                                     fontSize: 12,
                                     color: Color(0xFF64748B),
@@ -1421,7 +1421,7 @@ class NutritionDashboardHybridState extends State<NutritionDashboardHybrid>
                               ),
                               Consumer<LocalizationService>(
                                 builder: (context, locService, _) => Text(
-                                  '${meal.time} • ${meal.items.length} ${'food_items'.tr(locService.currentLanguageCode)}',
+                                  '${meal.items.length} ${'food_items'.tr(locService.currentLanguageCode)}',
                                   style: const TextStyle(
                                     fontSize: 12,
                                     color: Color(0xFF64748B),

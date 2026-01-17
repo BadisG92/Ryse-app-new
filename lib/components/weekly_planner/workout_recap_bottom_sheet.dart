@@ -9,16 +9,19 @@ import '../../services/translations.dart';
 import '../../screens/workout_session_screen.dart';
 
 /// Bottom sheet pour afficher le récapitulatif d'un workout planifié
+/// Peut aussi être utilisé en mode preview (sans actions ni handle bar)
 class WorkoutRecapBottomSheet extends StatelessWidget {
   final PlannedWorkout workout;
-  final VoidCallback onWorkoutStarted;
+  final VoidCallback? onWorkoutStarted;
   final VoidCallback? onWorkoutDeleted;
+  final bool isPreview; // Mode preview: sans actions, handle bar, ni bouton close
 
   const WorkoutRecapBottomSheet({
     super.key,
     required this.workout,
-    required this.onWorkoutStarted,
+    this.onWorkoutStarted,
     this.onWorkoutDeleted,
+    this.isPreview = false,
   });
 
   @override
@@ -29,6 +32,22 @@ class WorkoutRecapBottomSheet extends StatelessWidget {
     final isTodayWorkout = isToday(workout.plannedDate);
     final isCompleted = workout.status == PlannedStatus.completed;
 
+    // En mode preview, tout le contenu est scrollable (pas de fond blanc, le parent gère)
+    if (isPreview) {
+      return SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildHeaderPreview(context, langCode, isCompleted),
+            _buildStatsPreview(langCode),
+            _buildExercisesListPreview(langCode),
+          ],
+        ),
+      );
+    }
+
+    // Mode normal (bottom sheet modal)
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -61,7 +80,7 @@ class WorkoutRecapBottomSheet extends StatelessWidget {
             // Liste des exercices
             _buildExercisesList(langCode),
 
-            // Boutons d'action (supprimer pour futur, commencer uniquement aujourd'hui)
+            // Boutons d'action
             if (isEditable && !isCompleted) _buildActions(context, langCode, isTodayWorkout),
 
             const SizedBox(height: 16),
@@ -138,9 +157,45 @@ class WorkoutRecapBottomSheet extends StatelessWidget {
                 ],
               ),
             ),
-          IconButton(
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(LucideIcons.x, color: Color(0xFF64748B)),
+          // Bouton close (masqué en mode preview)
+          if (!isPreview)
+            IconButton(
+              onPressed: () => Navigator.pop(context),
+              icon: const Icon(LucideIcons.x, color: Color(0xFF64748B)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Header pour le mode preview (sans date, sans bouton close)
+  Widget _buildHeaderPreview(BuildContext context, String langCode, bool isCompleted) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0B132B).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(
+              LucideIcons.dumbbell,
+              size: 20,
+              color: Color(0xFF0B132B),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              workout.workoutName,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF0B132B),
+              ),
+            ),
           ),
         ],
       ),
@@ -192,6 +247,82 @@ class WorkoutRecapBottomSheet extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  /// Stats pour le mode preview (padding réduit)
+  Widget _buildStatsPreview(String langCode) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: _buildStatItemCompact(
+                icon: LucideIcons.clock,
+                value: '${workout.durationMinutes ?? 45}',
+                label: 'min',
+              ),
+            ),
+            Container(width: 1, height: 32, color: const Color(0xFFE2E8F0)),
+            Expanded(
+              child: _buildStatItemCompact(
+                icon: LucideIcons.dumbbell,
+                value: '${workout.totalExercises}',
+                label: 'exos',
+              ),
+            ),
+            Container(width: 1, height: 32, color: const Color(0xFFE2E8F0)),
+            Expanded(
+              child: _buildStatItemCompact(
+                icon: LucideIcons.repeat,
+                value: '${workout.totalSets}',
+                label: 'séries',
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatItemCompact({
+    required IconData icon,
+    required String value,
+    required String label,
+  }) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 14, color: const Color(0xFF64748B)),
+            const SizedBox(width: 4),
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF0B132B),
+              ),
+            ),
+          ],
+        ),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 10,
+            color: Color(0xFF64748B),
+          ),
+        ),
+      ],
     );
   }
 
@@ -253,6 +384,35 @@ class WorkoutRecapBottomSheet extends StatelessWidget {
               },
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  /// Version preview: pas de contrainte de hauteur (parent scrollable)
+  Widget _buildExercisesListPreview(String langCode) {
+    if (workout.exercises.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'planner_exercises_list'.tr(langCode),
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF64748B),
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Pas de ListView, juste une Column car le parent est scrollable
+          ...workout.exercises.asMap().entries.map((entry) {
+            return _buildExerciseItem(entry.value, entry.key + 1, langCode);
+          }),
         ],
       ),
     );
@@ -394,7 +554,7 @@ class WorkoutRecapBottomSheet extends StatelessWidget {
         ),
       ),
     ).then((_) {
-      onWorkoutStarted();
+      onWorkoutStarted?.call();
     });
   }
 
@@ -420,13 +580,7 @@ class WorkoutRecapBottomSheet extends StatelessWidget {
   }
 
   String _formatDate(DateTime date, String langCode) {
-    final dayNames = {
-      'fr': ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'],
-      'en': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-      'de': ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'],
-    };
-
-    final days = dayNames[langCode] ?? dayNames['en']!;
-    return '${days[date.weekday - 1]} ${date.day}/${date.month}';
+    final dayName = 'day_${date.weekday}'.tr(langCode);
+    return '$dayName ${date.day}/${date.month}';
   }
 }

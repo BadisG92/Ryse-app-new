@@ -1,5 +1,9 @@
 # Ryse App - AI-Powered Fitness & Nutrition Coach
 
+## 🚫 Process Management Rules
+
+**NEVER** run `flutter run`, `flutter build`, `pkill`, `killall`, or any process management commands without **EXPLICIT** user request. The user manages their own Flutter processes.
+
 ## 🔒 Security First
 
 **IMPORTANT** : Never commit API keys! See [SECURITY_API_KEYS.md](SECURITY_API_KEYS.md)

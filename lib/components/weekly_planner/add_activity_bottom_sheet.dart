@@ -402,21 +402,8 @@ class _AddActivityBottomSheetState extends State<AddActivityBottomSheet> {
   }
 
   String _formatDate(DateTime date, String langCode) {
-    final dayNames = {
-      'fr': ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'],
-      'en': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-      'de': ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'],
-    };
-
-    final monthNames = {
-      'fr': ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'],
-      'en': ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
-      'de': ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'],
-    };
-
-    final days = dayNames[langCode] ?? dayNames['en']!;
-    final months = monthNames[langCode] ?? monthNames['en']!;
-
-    return '${days[date.weekday - 1]} ${date.day} ${months[date.month - 1]}';
+    final dayName = 'day_${date.weekday}'.tr(langCode);
+    final monthName = 'month_${date.month}'.tr(langCode);
+    return '$dayName ${date.day} $monthName';
   }
 }

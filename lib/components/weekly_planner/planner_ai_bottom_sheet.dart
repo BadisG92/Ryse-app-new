@@ -112,31 +112,15 @@ class _PlannerAIBottomSheetState extends State<PlannerAIBottomSheet> {
 
     // Messages spécifiques selon le mode
     if (widget.initialMode == 'meals') {
-      final messages = {
-        'fr': "Salut ! Je suis Ryze, ton coach nutrition. Dis-moi quels repas tu veux planifier cette semaine.\n\nPar exemple :\n• \"Un petit-déjeuner protéiné pour lundi\"\n• \"Des repas équilibrés pour la semaine\"\n• \"Un déjeuner healthy mardi\"",
-        'en': "Hi! I'm Ryze, your nutrition coach. Tell me which meals you want to plan this week.\n\nFor example:\n• \"A protein breakfast for Monday\"\n• \"Balanced meals for the week\"\n• \"A healthy lunch on Tuesday\"",
-        'de': "Hallo! Ich bin Ryze, dein Ernährungscoach. Sag mir, welche Mahlzeiten du diese Woche planen möchtest.\n\nZum Beispiel:\n• \"Ein proteinreiches Frühstück für Montag\"\n• \"Ausgewogene Mahlzeiten für die Woche\"\n• \"Ein gesundes Mittagessen am Dienstag\"",
-      };
-      return messages[langCode] ?? messages['en']!;
+      return 'planner_welcome_meals'.tr(langCode);
     }
 
     if (widget.initialMode == 'workouts') {
-      final messages = {
-        'fr': "Salut ! Je suis Ryze, ton coach fitness. Dis-moi quelles séances tu veux planifier cette semaine.\n\nPar exemple :\n• \"3 séances de musculation\"\n• \"Un programme full body\"\n• \"Du cardio et de la muscu\"",
-        'en': "Hi! I'm Ryze, your fitness coach. Tell me which workouts you want to plan this week.\n\nFor example:\n• \"3 strength training sessions\"\n• \"A full body program\"\n• \"Cardio and weight training\"",
-        'de': "Hallo! Ich bin Ryze, dein Fitnesscoach. Sag mir, welche Trainings du diese Woche planen möchtest.\n\nZum Beispiel:\n• \"3 Krafttrainingseinheiten\"\n• \"Ein Ganzkörperprogramm\"\n• \"Cardio und Krafttraining\"",
-      };
-      return messages[langCode] ?? messages['en']!;
+      return 'planner_welcome_sport'.tr(langCode);
     }
 
     // Message générique (fallback)
-    final messages = {
-      'fr': "Salut ! Je suis Ryze, ton coach. Dis-moi ce que tu veux planifier cette semaine :\n\n• Des séances de sport\n• Tes repas\n• Du cardio\n\nPar exemple : \"Je veux 3 séances de musculation cette semaine\"",
-      'en': "Hi! I'm Ryze, your coach. Tell me what you want to plan this week:\n\n• Workout sessions\n• Your meals\n• Cardio\n\nFor example: \"I want 3 strength training sessions this week\"",
-      'de': "Hallo! Ich bin Ryze, dein Coach. Sag mir, was du diese Woche planen möchtest:\n\n• Trainingseinheiten\n• Deine Mahlzeiten\n• Cardio\n\nZum Beispiel: \"Ich möchte 3 Krafttrainingseinheiten diese Woche\"",
-    };
-
-    return messages[langCode] ?? messages['en']!;
+    return 'planner_welcome_both'.tr(langCode);
   }
 
   void _addBotMessage(String text) {
@@ -170,16 +154,6 @@ class _PlannerAIBottomSheetState extends State<PlannerAIBottomSheet> {
   /// Ajoute un message de confirmation avec boutons inline (style ChatGPT/Claude)
   void _addConfirmationMessage(String description) {
     final langCode = LocalizationService.instance.currentLanguageCode;
-    final confirmText = {
-      'fr': 'Confirmer',
-      'en': 'Confirm',
-      'de': 'Bestätigen',
-    };
-    final cancelText = {
-      'fr': 'Annuler',
-      'en': 'Cancel',
-      'de': 'Abbrechen',
-    };
 
     setState(() {
       _pendingConfirmation = {'description': description}; // Garder pour tracking
@@ -188,12 +162,12 @@ class _PlannerAIBottomSheetState extends State<PlannerAIBottomSheet> {
         isUser: false,
         actions: [
           _ChatAction(
-            label: cancelText[langCode] ?? cancelText['en']!,
+            label: 'planner_cancel'.tr(langCode),
             onTap: _cancelConfirmation,
             isDestructive: false,
           ),
           _ChatAction(
-            label: confirmText[langCode] ?? confirmText['en']!,
+            label: 'planner_confirm'.tr(langCode),
             onTap: _executeConfirmation,
             isDestructive: true,
           ),
@@ -304,28 +278,18 @@ class _PlannerAIBottomSheetState extends State<PlannerAIBottomSheet> {
 
   void _cancelPreview() {
     final langCode = LocalizationService.instance.currentLanguageCode;
-    final messages = {
-      'fr': "Pas de souci ! Dis-moi ce que tu voudrais modifier.",
-      'en': "No problem! Tell me what you'd like to change.",
-      'de': "Kein Problem! Sag mir, was du ändern möchtest.",
-    };
 
     setState(() {
       _pendingWorkouts = null;
     });
 
-    _addBotMessage(messages[langCode] ?? messages['en']!);
+    _addBotMessage('planner_cancel_preview_msg'.tr(langCode));
   }
 
   /// Annuler la confirmation d'action destructrice
   void _cancelConfirmation() {
     PlannerAIService.cancelPendingAction();
     final langCode = LocalizationService.instance.currentLanguageCode;
-    final cancelledText = {
-      'fr': '❌ Action annulée',
-      'en': '❌ Action cancelled',
-      'de': '❌ Aktion abgebrochen',
-    };
 
     setState(() {
       // Remplacer le dernier message (avec actions) par un message sans actions
@@ -334,7 +298,7 @@ class _PlannerAIBottomSheetState extends State<PlannerAIBottomSheet> {
       }
       _pendingConfirmation = null;
     });
-    _addBotMessage(cancelledText[langCode] ?? cancelledText['en']!);
+    _addBotMessage('planner_action_cancelled'.tr(langCode));
   }
 
   /// Exécuter l'action destructrice après confirmation
@@ -474,14 +438,7 @@ class _PlannerAIBottomSheetState extends State<PlannerAIBottomSheet> {
   String _getErrorMessage() {
     final locService = LocalizationService.instance;
     final langCode = locService.currentLanguageCode;
-
-    final messages = {
-      'fr': "Oups, une erreur s'est produite. Réessaie !",
-      'en': "Oops, an error occurred. Try again!",
-      'de': "Hoppla, ein Fehler ist aufgetreten. Versuche es erneut!",
-    };
-
-    return messages[langCode] ?? messages['en']!;
+    return 'planner_error_generic'.tr(langCode);
   }
 
   @override
@@ -849,18 +806,6 @@ class _PlannerAIBottomSheetState extends State<PlannerAIBottomSheet> {
   }
 
   Widget _buildPreviewButtons(String langCode) {
-    final confirmText = {
-      'fr': 'Valider ce programme',
-      'en': 'Confirm this program',
-      'de': 'Dieses Programm bestätigen',
-    };
-
-    final modifyText = {
-      'fr': 'Modifier',
-      'en': 'Modify',
-      'de': 'Ändern',
-    };
-
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: const BoxDecoration(
@@ -884,7 +829,7 @@ class _PlannerAIBottomSheetState extends State<PlannerAIBottomSheet> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: Text(modifyText[langCode] ?? modifyText['en']!),
+                child: Text('planner_modify'.tr(langCode)),
               ),
             ),
             const SizedBox(width: 12),
@@ -903,7 +848,7 @@ class _PlannerAIBottomSheetState extends State<PlannerAIBottomSheet> {
                         ),
                       )
                     : const Icon(LucideIcons.check, size: 18),
-                label: Text(confirmText[langCode] ?? confirmText['en']!),
+                label: Text('planner_confirm_program'.tr(langCode)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF10B981),
                   foregroundColor: Colors.white,
@@ -921,51 +866,18 @@ class _PlannerAIBottomSheetState extends State<PlannerAIBottomSheet> {
   }
 
   String _getPreviewTitle(String langCode) {
-    switch (langCode) {
-      case 'fr':
-        return 'Aperçu du programme';
-      case 'de':
-        return 'Programmvorschau';
-      default:
-        return 'Program preview';
-    }
+    return 'planner_preview_title'.tr(langCode);
   }
 
   String _formatDayName(DateTime date, String langCode) {
-    final dayNames = {
-      'fr': ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'],
-      'en': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-      'de': ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'],
-    };
-
-    final days = dayNames[langCode] ?? dayNames['en']!;
-    return days[date.weekday - 1];
+    return 'day_${date.weekday}'.tr(langCode);
   }
 
   String _getPersonalizedWeightsText(String langCode) {
-    switch (langCode) {
-      case 'fr':
-        return 'Poids adaptés à ton historique - ajuste si besoin';
-      case 'de':
-        return 'Gewichte an deinen Verlauf angepasst - bei Bedarf anpassen';
-      default:
-        return 'Weights adapted to your history - adjust if needed';
-    }
+    return 'planner_personalized_weights'.tr(langCode);
   }
 
   Widget _buildPaywallButton(String langCode) {
-    final buttonText = {
-      'fr': 'Passer à Premium',
-      'en': 'Upgrade to Premium',
-      'de': 'Auf Premium upgraden',
-    };
-
-    final subtitleText = {
-      'fr': 'Planifications illimitées avec Ryze',
-      'en': 'Unlimited planning with Ryze',
-      'de': 'Unbegrenzte Planungen mit Ryze',
-    };
-
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: const BoxDecoration(
@@ -977,7 +889,7 @@ class _PlannerAIBottomSheetState extends State<PlannerAIBottomSheet> {
         child: Column(
           children: [
             Text(
-              subtitleText[langCode] ?? subtitleText['en']!,
+              'planner_unlimited_planning'.tr(langCode),
               style: const TextStyle(
                 fontSize: 13,
                 color: Color(0xFF64748B),
@@ -989,7 +901,7 @@ class _PlannerAIBottomSheetState extends State<PlannerAIBottomSheet> {
               child: ElevatedButton.icon(
                 onPressed: _showPaywall,
                 icon: const Icon(LucideIcons.crown, size: 18),
-                label: Text(buttonText[langCode] ?? buttonText['en']!),
+                label: Text('planner_upgrade_premium'.tr(langCode)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFD4AF37),
                   foregroundColor: Colors.white,
@@ -1044,7 +956,7 @@ class _PlannerAIBottomSheetState extends State<PlannerAIBottomSheet> {
                   _isPremium
                       ? 'planner_ai_subtitle'.tr(langCode)
                       : _isTestMode
-                          ? 'Mode test - illimité'
+                          ? 'planner_test_mode'.tr(langCode)
                           : _getRemainingUsesText(langCode),
                   style: TextStyle(
                     fontSize: 13,
@@ -1087,24 +999,14 @@ class _PlannerAIBottomSheetState extends State<PlannerAIBottomSheet> {
 
   String _getRemainingUsesText(String langCode) {
     if (_remainingFreeUses <= 0) {
-      switch (langCode) {
-        case 'fr':
-          return 'Limite atteinte cette semaine';
-        case 'de':
-          return 'Limit diese Woche erreicht';
-        default:
-          return 'Limit reached this week';
-      }
+      return 'planner_limit_reached'.tr(langCode);
     }
 
-    switch (langCode) {
-      case 'fr':
-        return '$_remainingFreeUses planification${_remainingFreeUses > 1 ? 's' : ''} gratuite${_remainingFreeUses > 1 ? 's' : ''} restante${_remainingFreeUses > 1 ? 's' : ''}';
-      case 'de':
-        return '$_remainingFreeUses kostenlose Planung${_remainingFreeUses > 1 ? 'en' : ''} übrig';
-      default:
-        return '$_remainingFreeUses free planning${_remainingFreeUses > 1 ? 's' : ''} left';
+    if (_remainingFreeUses == 1) {
+      return 'planner_remaining_one'.tr(langCode);
     }
+
+    return '$_remainingFreeUses ${'planner_remaining_multiple'.tr(langCode)}';
   }
 
   Widget _buildMessagesList() {
@@ -1352,30 +1254,15 @@ class _PlannerAIBottomSheetState extends State<PlannerAIBottomSheet> {
   String _getLoadingMessage(String langCode) {
     // Messages différents selon le mode
     if (widget.initialMode == 'meals') {
-      final messages = {
-        'fr': 'Ryze prépare ton programme nutritionnel...',
-        'en': 'Ryze is preparing your nutrition plan...',
-        'de': 'Ryze bereitet deinen Ernährungsplan vor...',
-      };
-      return messages[langCode] ?? messages['en']!;
+      return 'planner_ai_preparing_meal'.tr(langCode);
     }
 
     if (widget.initialMode == 'workouts') {
-      final messages = {
-        'fr': 'Ryze génère tes séances personnalisées...',
-        'en': 'Ryze is generating your personalized workouts...',
-        'de': 'Ryze erstellt deine personalisierten Trainings...',
-      };
-      return messages[langCode] ?? messages['en']!;
+      return 'planner_ai_generating_workouts'.tr(langCode);
     }
 
     // Message générique
-    final messages = {
-      'fr': 'Ryze réfléchit...',
-      'en': 'Ryze is thinking...',
-      'de': 'Ryze denkt nach...',
-    };
-    return messages[langCode] ?? messages['en']!;
+    return 'planner_ai_thinking'.tr(langCode);
   }
 
   Widget _buildDot(int index) {
@@ -1412,7 +1299,11 @@ class _PlannerAIBottomSheetState extends State<PlannerAIBottomSheet> {
               padding: const EdgeInsets.only(right: 8),
               child: GestureDetector(
                 onTap: () {
-                  _textController.text = suggestion;
+                  // Transformer le bouton en prompt optimisé pour l'IA (mode meals uniquement)
+                  final prompt = widget.initialMode == 'meals'
+                      ? _transformQuickSuggestionToPrompt(suggestion, langCode)
+                      : suggestion;
+                  _textController.text = prompt;
                   _handleSend();
                 },
                 child: Container(
@@ -1441,31 +1332,66 @@ class _PlannerAIBottomSheetState extends State<PlannerAIBottomSheet> {
   List<String> _getQuickSuggestions(String langCode) {
     // Suggestions spécifiques selon le mode
     if (widget.initialMode == 'meals') {
-      final suggestions = {
-        'fr': ['Petit-déj protéiné', 'Repas équilibrés', 'Déjeuner léger'],
-        'en': ['Protein breakfast', 'Balanced meals', 'Light lunch'],
-        'de': ['Protein-Frühstück', 'Ausgewogene Mahlzeiten', 'Leichtes Mittagessen'],
-      };
-      return suggestions[langCode] ?? suggestions['en']!;
+      return [
+        'suggestion_next_meal'.tr(langCode),
+        'suggestion_today'.tr(langCode),
+        'suggestion_week'.tr(langCode),
+      ];
     }
 
     if (widget.initialMode == 'workouts') {
-      final suggestions = {
-        'fr': ['3 séances muscu', 'Programme full body', 'Cardio + muscu'],
-        'en': ['3 gym sessions', 'Full body program', 'Cardio + weights'],
-        'de': ['3 Gym-Sessions', 'Ganzkörper-Programm', 'Cardio + Gewichte'],
-      };
-      return suggestions[langCode] ?? suggestions['en']!;
+      return [
+        'suggestion_3_workouts'.tr(langCode),
+        'suggestion_fullbody'.tr(langCode),
+        'suggestion_cardio_strength'.tr(langCode),
+      ];
     }
 
     // Suggestions génériques (fallback)
-    final suggestions = {
-      'fr': ['3 séances de sport', 'Repas de la semaine', 'Cardio mardi'],
-      'en': ['3 workout sessions', 'Weekly meals', 'Cardio on Tuesday'],
-      'de': ['3 Trainingseinheiten', 'Wöchentliche Mahlzeiten', 'Cardio am Dienstag'],
+    return [
+      'suggestion_3_sports'.tr(langCode),
+      'suggestion_week_meals'.tr(langCode),
+      'suggestion_cardio_tuesday'.tr(langCode),
+    ];
+  }
+
+  /// Transforme les boutons rapides en prompts optimisés pour l'IA
+  String _transformQuickSuggestionToPrompt(String suggestion, String langCode) {
+    // Mapping des boutons rapides vers des prompts détaillés
+    // Ces prompts sont plus explicites pour que l'IA comprenne exactement ce qu'on veut
+
+    final now = DateTime.now();
+    final hour = now.hour;
+
+    // Déterminer le prochain repas selon l'heure
+    String nextMealType;
+    if (hour < 10) {
+      nextMealType = langCode == 'fr' ? 'petit-déjeuner' : langCode == 'de' ? 'Frühstück' : 'breakfast';
+    } else if (hour < 14) {
+      nextMealType = langCode == 'fr' ? 'déjeuner' : langCode == 'de' ? 'Mittagessen' : 'lunch';
+    } else if (hour < 21) {
+      nextMealType = langCode == 'fr' ? 'dîner' : langCode == 'de' ? 'Abendessen' : 'dinner';
+    } else {
+      nextMealType = langCode == 'fr' ? 'collation' : langCode == 'de' ? 'Snack' : 'snack';
+    }
+
+    // Prompts optimisés par langue
+    final prompts = {
+      // Français
+      '🍽️ Prochain repas': 'Propose-moi un $nextMealType équilibré pour aujourd\'hui',
+      '📅 Aujourd\'hui': 'Planifie tous mes repas pour aujourd\'hui (petit-déjeuner, déjeuner, dîner)',
+      '📆 La semaine': 'Planifie tous mes repas pour toute la semaine (petit-déjeuner, déjeuner et dîner pour chaque jour)',
+      // English
+      '🍽️ Next meal': 'Suggest a balanced $nextMealType for today',
+      '📅 Today': 'Plan all my meals for today (breakfast, lunch, dinner)',
+      '📆 The week': 'Plan all my meals for the entire week (breakfast, lunch and dinner for each day)',
+      // Deutsch
+      '🍽️ Nächste Mahlzeit': 'Schlage mir ein ausgewogenes $nextMealType für heute vor',
+      '📅 Heute': 'Plane alle meine Mahlzeiten für heute (Frühstück, Mittagessen, Abendessen)',
+      '📆 Die Woche': 'Plane alle meine Mahlzeiten für die ganze Woche (Frühstück, Mittagessen und Abendessen für jeden Tag)',
     };
 
-    return suggestions[langCode] ?? suggestions['en']!;
+    return prompts[suggestion] ?? suggestion;
   }
 
   Widget _buildInputZone(String langCode) {

@@ -639,7 +639,7 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
                               sessionId: sessionId,
                               activityType: widget.activityType,
                               activityTitle: widget.activityTitle,
-                              sessionDate: DateTime.now(),
+                              sessionDate: _session.startTime, // Utiliser la date de début réelle de la session
                               durationMinutes: _session.duration.inMinutes,
                               distanceKm: _session.distance > 0 ? _session.distance : null,
                             );

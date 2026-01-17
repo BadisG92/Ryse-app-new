@@ -11,16 +11,19 @@ import '../../screens/cardio_tracking_screen.dart';
 import '../../screens/hiit_session_screen.dart';
 
 /// Bottom sheet pour afficher le récapitulatif d'une activité cardio planifiée
+/// Peut aussi être utilisé en mode preview (sans actions ni handle bar)
 class CardioRecapBottomSheet extends StatelessWidget {
   final PlannedActivity activity;
-  final VoidCallback onCardioStarted;
+  final VoidCallback? onCardioStarted;
   final VoidCallback? onCardioDeleted;
+  final bool isPreview; // Mode preview: sans actions, handle bar, ni bouton close
 
   const CardioRecapBottomSheet({
     super.key,
     required this.activity,
-    required this.onCardioStarted,
+    this.onCardioStarted,
     this.onCardioDeleted,
+    this.isPreview = false,
   });
 
   @override
@@ -32,6 +35,22 @@ class CardioRecapBottomSheet extends StatelessWidget {
     final isCompleted = activity.status == PlannedStatus.completed;
     final cardioData = activity.cardioData;
 
+    // En mode preview, contenu simple sans actions (pas de fond blanc, le parent gère)
+    if (isPreview) {
+      return SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildHeaderPreview(context, langCode, cardioData),
+            if (cardioData != null) _buildObjectivesPreview(langCode, cardioData),
+            const SizedBox(height: 12),
+          ],
+        ),
+      );
+    }
+
+    // Mode normal (bottom sheet modal)
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -61,7 +80,7 @@ class CardioRecapBottomSheet extends StatelessWidget {
             // Objectifs
             if (cardioData != null) _buildObjectives(langCode, cardioData),
 
-            // Boutons d'action (supprimer pour futur, commencer uniquement aujourd'hui)
+            // Boutons d'action
             if (isEditable && !isCompleted)
               _buildActions(context, langCode, cardioData, isTodayCardio),
 
@@ -147,9 +166,48 @@ class CardioRecapBottomSheet extends StatelessWidget {
                 ],
               ),
             ),
-          IconButton(
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(LucideIcons.x, color: Color(0xFF64748B)),
+          // Bouton close (masqué en mode preview)
+          if (!isPreview)
+            IconButton(
+              onPressed: () => Navigator.pop(context),
+              icon: const Icon(LucideIcons.x, color: Color(0xFF64748B)),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// Header pour le mode preview (sans date, sans bouton close)
+  Widget _buildHeaderPreview(BuildContext context, String langCode, PlannedCardioData? cardioData) {
+    final activityName = cardioData?.activityName ?? 'Cardio';
+    final activityIcon = _getActivityIcon(cardioData?.activityKey ?? '');
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0B132B).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              activityIcon,
+              size: 20,
+              color: const Color(0xFF0B132B),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              activityName,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF0B132B),
+              ),
+            ),
           ),
         ],
       ),
@@ -191,6 +249,84 @@ class CardioRecapBottomSheet extends StatelessWidget {
     );
   }
 
+  /// Objectifs pour le mode preview (dans une boîte compacte)
+  Widget _buildObjectivesPreview(String langCode, PlannedCardioData cardioData) {
+    // Si c'est un HIIT, afficher les objectifs HIIT
+    if (cardioData.isHiit && cardioData.hiitConfig != null) {
+      return _buildHiitObjectivesPreview(langCode, cardioData.hiitConfig!);
+    }
+
+    final hasDistance = cardioData.targetKm != null && cardioData.targetKm! > 0;
+    final hasTime = cardioData.targetMinutes != null && cardioData.targetMinutes! > 0;
+
+    if (!hasDistance && !hasTime) {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (hasTime)
+              _buildStatItemCompact(LucideIcons.clock, '${cardioData.targetMinutes}', 'min'),
+            if (hasTime && hasDistance)
+              const SizedBox(width: 24),
+            if (hasDistance)
+              _buildStatItemCompact(LucideIcons.mapPin, cardioData.targetKm!.toStringAsFixed(1), 'km'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatItemCompact(IconData icon, String value, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 16, color: const Color(0xFF64748B)),
+        const SizedBox(width: 6),
+        Text(
+          '$value $label',
+          style: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF0B132B),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHiitObjectivesPreview(String langCode, HiitConfig hiitConfig) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            _buildStatItemCompact(LucideIcons.zap, '${hiitConfig.workSeconds}s', 'effort'),
+            _buildStatItemCompact(LucideIcons.pause, '${hiitConfig.restSeconds}s', 'repos'),
+            _buildStatItemCompact(LucideIcons.repeat, '${hiitConfig.rounds}', 'rounds'),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildHiitObjectives(String langCode, HiitConfig hiitConfig) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -207,7 +343,7 @@ class CardioRecapBottomSheet extends StatelessWidget {
               child: _buildStatItem(
                 LucideIcons.zap,
                 '${hiitConfig.workSeconds}s',
-                langCode == 'fr' ? 'effort' : 'work',
+                'planner_hiit_work'.tr(langCode),
               ),
             ),
             Container(width: 1, height: 40, color: const Color(0xFFE2E8F0)),
@@ -216,7 +352,7 @@ class CardioRecapBottomSheet extends StatelessWidget {
               child: _buildStatItem(
                 LucideIcons.pause,
                 '${hiitConfig.restSeconds}s',
-                langCode == 'fr' ? 'repos' : 'rest',
+                'planner_hiit_rest'.tr(langCode),
               ),
             ),
             Container(width: 1, height: 40, color: const Color(0xFFE2E8F0)),
@@ -374,7 +510,7 @@ class CardioRecapBottomSheet extends StatelessWidget {
         ),
       ),
     ).then((_) {
-      onCardioStarted();
+      onCardioStarted?.call();
     });
   }
 
@@ -401,7 +537,7 @@ class CardioRecapBottomSheet extends StatelessWidget {
         ),
       ),
     ).then((_) {
-      onCardioStarted();
+      onCardioStarted?.call();
     });
   }
 
@@ -449,13 +585,7 @@ class CardioRecapBottomSheet extends StatelessWidget {
   }
 
   String _formatDate(DateTime date, String langCode) {
-    final dayNames = {
-      'fr': ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'],
-      'en': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-      'de': ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'],
-    };
-
-    final days = dayNames[langCode] ?? dayNames['en']!;
-    return '${days[date.weekday - 1]} ${date.day}/${date.month}';
+    final dayName = 'day_${date.weekday}'.tr(langCode);
+    return '$dayName ${date.day}/${date.month}';
   }
 }

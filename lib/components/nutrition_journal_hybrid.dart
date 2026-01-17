@@ -138,6 +138,13 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
           selectedDate = date;
           isLoading = false;
         });
+
+        // SYNC: Si c'est aujourd'hui, synchroniser GlobalStateManager avec les vraies données
+        final now = DateTime.now();
+        final isToday = date.year == now.year && date.month == now.month && date.day == now.day;
+        if (isToday) {
+          _syncGlobalStateWithMeals(loadedMeals);
+        }
       } else {
         setState(() {
           meals = []; // Ne pas charger les repas par défaut si l'utilisateur n'est pas connecté
@@ -152,6 +159,41 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
         selectedDate = date;
         isLoading = false;
       });
+    }
+  }
+
+  /// Synchroniser GlobalStateManager avec les données réelles des repas
+  void _syncGlobalStateWithMeals(List<Meal> loadedMeals) {
+    double totalCalories = 0;
+    double totalProteins = 0;
+    double totalCarbs = 0;
+    double totalFats = 0;
+
+    for (final meal in loadedMeals) {
+      for (final item in meal.items) {
+        totalCalories += item.calories;
+        totalProteins += item.proteins;
+        totalCarbs += item.carbs;
+        totalFats += item.fats;
+      }
+    }
+
+    // Mettre à jour GlobalStateManager avec les valeurs absolues (pas incrémentales)
+    final globalState = GlobalStateManager.instance;
+
+    // Vérifier s'il y a une différence significative (> 1 kcal) pour éviter les updates inutiles
+    if ((globalState.currentCalories - totalCalories).abs() > 1 ||
+        (globalState.currentProteins - totalProteins).abs() > 0.5 ||
+        (globalState.currentCarbs - totalCarbs).abs() > 0.5 ||
+        (globalState.currentFats - totalFats).abs() > 0.5) {
+      debugPrint('🔄 SYNC: Correction GlobalState - Journal: ${totalCalories.toInt()} kcal, GlobalState: ${globalState.currentCalories.toInt()} kcal');
+      globalState.updateCalories(totalCalories, isAbsolute: true);
+      globalState.updateMacros(
+        proteins: totalProteins,
+        carbs: totalCarbs,
+        fats: totalFats,
+        isAbsolute: true,
+      );
     }
   }
 
@@ -389,8 +431,8 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
               const SizedBox(height: 16),
               
               Text(
-                'Choisissez le repas auquel ajouter cet aliment',
-                style: TextStyle(
+                'add_food_to_which_meal'.tr(LocalizationService.instance.currentLanguageCode),
+                style: const TextStyle(
                   fontSize: 14,
                   color: Color(0xFF64748B),
                 ),
@@ -406,7 +448,9 @@ class _NutritionJournalHybridState extends State<NutritionJournalHybrid> {
                   child: MealOptionWidget(
                     icon: _getMealIcon(meal.name),
                     title: meal.name,
-                    subtitle: '${meal.time} • ${meal.items.length} aliment${meal.items.length > 1 ? 's' : ''}',
+                    subtitle: 'items_count'.tr(LocalizationService.instance.currentLanguageCode)
+                        .replaceAll('{count}', meal.items.length.toString())
+                        .replaceAll('{plural}', meal.items.length > 1 ? 's' : ''),
                     onTap: () async {
                       Navigator.pop(context);
                       

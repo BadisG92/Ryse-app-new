@@ -19,13 +19,37 @@ class MiniActivitySquare extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final baseColor = activityType.color;
+    // Couleurs selon le statut
+    const plannedBlue = Color(0xFF0B132B); // Bleu des boutons pour planifié
+    const completedGreen = Color(0xFF10B981);
+    const missedRed = Color(0xFFEF4444);
+
     final isCompleted = status == PlannedStatus.completed;
     final isMissed = status == PlannedStatus.missed;
 
     final size = isCompact ? 18.0 : 28.0;
     final iconSize = isCompact ? 10.0 : 14.0;
     final borderRadius = isCompact ? 4.0 : 7.0;
+
+    // Style selon le statut
+    final Color bgColor;
+    final Color iconColor;
+    final Border? border;
+
+    if (isMissed) {
+      bgColor = missedRed.withOpacity(0.12);
+      iconColor = missedRed;
+      border = Border.all(color: missedRed.withOpacity(0.3), width: 1);
+    } else if (isCompleted) {
+      bgColor = completedGreen.withOpacity(0.15);
+      iconColor = completedGreen;
+      border = Border.all(color: completedGreen.withOpacity(0.3), width: 1);
+    } else {
+      // Planifié: outline bleu discret
+      bgColor = Colors.transparent;
+      iconColor = plannedBlue;
+      border = Border.all(color: plannedBlue.withOpacity(0.3), width: 1);
+    }
 
     return GestureDetector(
       onTap: onTap,
@@ -34,25 +58,15 @@ class MiniActivitySquare extends StatelessWidget {
         width: size,
         height: size,
         decoration: BoxDecoration(
-          color: isMissed
-              ? const Color(0xFFFEE2E2)
-              : isCompleted
-                  ? baseColor.withOpacity(0.3)
-                  : baseColor.withOpacity(0.12),
+          color: bgColor,
           borderRadius: BorderRadius.circular(borderRadius),
-          border: isMissed
-              ? Border.all(color: const Color(0xFFEF4444).withOpacity(0.5), width: 1)
-              : isCompleted
-                  ? null
-                  : Border.all(color: baseColor.withOpacity(0.3), width: 1),
+          border: border,
         ),
         child: Center(
           child: Icon(
             activityType.icon,
             size: iconSize,
-            color: isMissed
-                ? const Color(0xFFEF4444)
-                : baseColor,
+            color: iconColor,
           ),
         ),
       ),
@@ -75,15 +89,37 @@ class MiniWorkoutSquare extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final baseColor = workout.color;
+    // Couleurs selon le statut
+    const plannedBlue = Color(0xFF0B132B); // Bleu des boutons pour planifié
+    const completedGreen = Color(0xFF10B981);
+    const missedRed = Color(0xFFEF4444);
+
     final isCompleted = workout.status == PlannedStatus.completed;
     final isMissed = workout.status == PlannedStatus.missed;
-    const completedColor = Color(0xFF10B981);
-    final displayColor = isCompleted ? completedColor : baseColor;
 
     final size = isCompact ? 18.0 : 28.0;
     final iconSize = isCompact ? 10.0 : 14.0;
     final borderRadius = isCompact ? 4.0 : 7.0;
+
+    // Style selon le statut
+    final Color bgColor;
+    final Color iconColor;
+    final Border? border;
+
+    if (isMissed) {
+      bgColor = missedRed.withOpacity(0.12);
+      iconColor = missedRed;
+      border = Border.all(color: missedRed.withOpacity(0.3), width: 1);
+    } else if (isCompleted) {
+      bgColor = completedGreen.withOpacity(0.15);
+      iconColor = completedGreen;
+      border = Border.all(color: completedGreen.withOpacity(0.3), width: 1);
+    } else {
+      // Planifié: outline bleu discret
+      bgColor = Colors.transparent;
+      iconColor = plannedBlue;
+      border = Border.all(color: plannedBlue.withOpacity(0.3), width: 1);
+    }
 
     return GestureDetector(
       onTap: onTap,
@@ -92,25 +128,15 @@ class MiniWorkoutSquare extends StatelessWidget {
         width: size,
         height: size,
         decoration: BoxDecoration(
-          color: isMissed
-              ? const Color(0xFFFEE2E2)
-              : isCompleted
-                  ? completedColor.withOpacity(0.3)
-                  : baseColor.withOpacity(0.12),
+          color: bgColor,
           borderRadius: BorderRadius.circular(borderRadius),
-          border: isMissed
-              ? Border.all(color: const Color(0xFFEF4444).withOpacity(0.5), width: 1)
-              : isCompleted
-                  ? Border.all(color: completedColor.withOpacity(0.5), width: 1)
-                  : Border.all(color: baseColor.withOpacity(0.3), width: 1),
+          border: border,
         ),
         child: Center(
           child: Icon(
             LucideIcons.dumbbell,
             size: iconSize,
-            color: isMissed
-                ? const Color(0xFFEF4444)
-                : displayColor,
+            color: iconColor,
           ),
         ),
       ),

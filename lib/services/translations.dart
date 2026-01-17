@@ -8600,6 +8600,698 @@ class AppTranslations {
       'en': '{sets} sets • {reps} reps',
       'de': '{sets} Sätze • {reps} Wdh',
     },
+    // Meal planner specific translations
+    'planner_edit_meal': {
+      'fr': 'Modifier le repas',
+      'en': 'Edit meal',
+      'de': 'Mahlzeit bearbeiten',
+    },
+    'planner_dish_name': {
+      'fr': 'Nom du plat',
+      'en': 'Dish name',
+      'de': 'Gerichtname',
+    },
+    'planner_dish_description': {
+      'fr': 'Description (ingrédients)',
+      'en': 'Description (ingredients)',
+      'de': 'Beschreibung (Zutaten)',
+    },
+    'planner_nutritional_values': {
+      'fr': 'Valeurs nutritionnelles',
+      'en': 'Nutritional values',
+      'de': 'Nährwerte',
+    },
+    'planner_proteins_short': {
+      'fr': 'Prot (g)',
+      'en': 'Prot (g)',
+      'de': 'Prot (g)',
+    },
+    'planner_carbs_short': {
+      'fr': 'Gluc (g)',
+      'en': 'Carbs (g)',
+      'de': 'Kohlenh (g)',
+    },
+    'planner_fats_short': {
+      'fr': 'Lip (g)',
+      'en': 'Fats (g)',
+      'de': 'Fette (g)',
+    },
+    'planner_save': {
+      'fr': 'Enregistrer',
+      'en': 'Save',
+      'de': 'Speichern',
+    },
+    'planner_delete_meal': {
+      'fr': 'Supprimer ce repas',
+      'en': 'Delete this meal',
+      'de': 'Diese Mahlzeit löschen',
+    },
+    'planner_validated': {
+      'fr': 'Validé',
+      'en': 'Validated',
+      'de': 'Bestätigt',
+    },
+    'planner_from_journal': {
+      'fr': 'ajouté depuis le journal',
+      'en': 'added from journal',
+      'de': 'aus dem Tagebuch hinzugefügt',
+    },
+    'planner_journal_entry_info': {
+      'fr': 'Cet aliment a été ajouté depuis le journal alimentaire',
+      'en': 'This food was added from the food journal',
+      'de': 'Dieses Essen wurde aus dem Ernährungstagebuch hinzugefügt',
+    },
+    'planner_journal_tag': {
+      'fr': 'Journal',
+      'en': 'Journal',
+      'de': 'Tagebuch',
+    },
+    'planner_items': {
+      'fr': 'aliment(s)',
+      'en': 'item(s)',
+      'de': 'Artikel',
+    },
+    'planner_delete_meal_title': {
+      'fr': 'Supprimer ce repas ?',
+      'en': 'Delete this meal?',
+      'de': 'Diese Mahlzeit löschen?',
+    },
+    'planner_delete_meal_message': {
+      'fr': 'Ce repas sera supprimé du planificateur.',
+      'en': 'This meal will be removed from the planner.',
+      'de': 'Diese Mahlzeit wird aus dem Planer entfernt.',
+    },
+    'planner_error_saving': {
+      'fr': 'Erreur lors de la sauvegarde',
+      'en': 'Error while saving',
+      'de': 'Fehler beim Speichern',
+    },
+    'planner_hiit_work': {
+      'fr': 'effort',
+      'en': 'work',
+      'de': 'Arbeit',
+    },
+    'planner_hiit_rest': {
+      'fr': 'repos',
+      'en': 'rest',
+      'de': 'Pause',
+    },
+    'planner_meal_planned': {
+      'fr': 'Repas planifié',
+      'en': 'Meal planned',
+      'de': 'Mahlzeit geplant',
+    },
+
+    // ==================== PLANNER MULTILINGUAL AUDIT ====================
+
+    // Boutons principaux du planner
+    'planner_plan_your_week': {
+      'fr': 'Planifie ta semaine',
+      'en': 'Plan your week',
+      'de': 'Plane deine Woche',
+    },
+    'planner_meals_button': {
+      'fr': 'Repas',
+      'en': 'Meals',
+      'de': 'Mahlzeiten',
+    },
+    'planner_sessions_button': {
+      'fr': 'Séances',
+      'en': 'Sessions',
+      'de': 'Einheiten',
+    },
+
+    // Messages de succès/erreur
+    'planner_meal_validated': {
+      'fr': '✅ Repas validé',
+      'en': '✅ Meal validated',
+      'de': '✅ Mahlzeit bestätigt',
+    },
+    'planner_meal_validated_recalculated': {
+      'fr': '✅ Repas validé avec macros recalculés',
+      'en': '✅ Meal validated with recalculated macros',
+      'de': '✅ Mahlzeit mit neu berechneten Makros bestätigt',
+    },
+    'planner_macros_updated': {
+      'fr': '✅ Macros mises à jour',
+      'en': '✅ Macros updated',
+      'de': '✅ Makros aktualisiert',
+    },
+    'planner_validation_error': {
+      'fr': '❌ Erreur lors de la validation',
+      'en': '❌ Error validating',
+      'de': '❌ Fehler beim Validieren',
+    },
+    'planner_recalculation_error': {
+      'fr': '❌ Erreur lors du recalcul',
+      'en': '❌ Error recalculating',
+      'de': '❌ Fehler bei der Neuberechnung',
+    },
+    'planner_update_error': {
+      'fr': '❌ Erreur lors de la mise à jour',
+      'en': '❌ Error updating',
+      'de': '❌ Fehler beim Aktualisieren',
+    },
+    'planner_cancel_preview_msg': {
+      'fr': 'Pas de souci ! Dis-moi ce que tu voudrais modifier.',
+      'en': "No problem! Tell me what you'd like to change.",
+      'de': 'Kein Problem! Sag mir, was du ändern möchtest.',
+    },
+    'planner_edit': {
+      'fr': 'Modifier',
+      'en': 'Edit',
+      'de': 'Bearbeiten',
+    },
+    'planner_preview_title': {
+      'fr': 'Aperçu du programme',
+      'en': 'Program preview',
+      'de': 'Programmvorschau',
+    },
+    'planner_personalized_weights': {
+      'fr': 'Poids adaptés à ton historique - ajuste si besoin',
+      'en': 'Weights adapted to your history - adjust if needed',
+      'de': 'Gewichte an deinen Verlauf angepasst - bei Bedarf anpassen',
+    },
+    'planner_limit_reached': {
+      'fr': 'Limite atteinte cette semaine',
+      'en': 'Limit reached this week',
+      'de': 'Limit diese Woche erreicht',
+    },
+    'planner_series_reps_format': {
+      'fr': 'séries',
+      'en': 'sets',
+      'de': 'Sätze',
+    },
+    'planner_exercises_label': {
+      'fr': 'exercices',
+      'en': 'exercises',
+      'de': 'Übungen',
+    },
+    'planner_confirm_checkmark': {
+      'fr': 'Valider ✓',
+      'en': 'Confirm ✓',
+      'de': 'Bestätigen ✓',
+    },
+    'planner_proteins': {
+      'fr': 'Protéines',
+      'en': 'Proteins',
+      'de': 'Proteine',
+    },
+    'planner_carbs': {
+      'fr': 'Glucides',
+      'en': 'Carbs',
+      'de': 'Kohlenhydrate',
+    },
+    'planner_fats': {
+      'fr': 'Lipides',
+      'en': 'Fats',
+      'de': 'Fette',
+    },
+    'planner_recipe': {
+      'fr': 'Recette',
+      'en': 'Recipe',
+      'de': 'Rezept',
+    },
+    'planner_tip': {
+      'fr': 'Astuce',
+      'en': 'Tip',
+      'de': 'Tipp',
+    },
+    'planner_ingredients': {
+      'fr': 'Ingrédients',
+      'en': 'Ingredients',
+      'de': 'Zutaten',
+    },
+
+    // Boutons d'action
+    'planner_confirm_button': {
+      'fr': 'Confirmer',
+      'en': 'Confirm',
+      'de': 'Bestätigen',
+    },
+    'planner_validate_program': {
+      'fr': 'Valider ce programme',
+      'en': 'Validate this program',
+      'de': 'Programm bestätigen',
+    },
+    'planner_modify': {
+      'fr': 'Modifier',
+      'en': 'Modify',
+      'de': 'Ändern',
+    },
+    'planner_update_macros': {
+      'fr': 'Mettre à jour les macros',
+      'en': 'Update macros',
+      'de': 'Makros aktualisieren',
+    },
+    'planner_validate_meal': {
+      'fr': 'Valider ce repas',
+      'en': 'Validate this meal',
+      'de': 'Mahlzeit bestätigen',
+    },
+    'planner_recalculate_validate': {
+      'fr': 'Recalculer et valider',
+      'en': 'Recalculate and validate',
+      'de': 'Neu berechnen und bestätigen',
+    },
+    'planner_add_ingredient': {
+      'fr': 'Ajouter un ingrédient',
+      'en': 'Add an ingredient',
+      'de': 'Zutat hinzufügen',
+    },
+    'planner_upgrade_premium': {
+      'fr': 'Passer à Premium',
+      'en': 'Upgrade to Premium',
+      'de': 'Auf Premium upgraden',
+    },
+    'planner_unlimited_planning': {
+      'fr': 'Planifications illimitées avec Ryze',
+      'en': 'Unlimited planning with Ryze',
+      'de': 'Unbegrenzte Planung mit Ryze',
+    },
+    'planner_add': {
+      'fr': 'Ajouter',
+      'en': 'Add',
+      'de': 'Hinzufügen',
+    },
+    'planner_validate': {
+      'fr': 'Valider',
+      'en': 'Validate',
+      'de': 'Bestätigen',
+    },
+
+    // Placeholders / Labels
+    'planner_ingredient_name_hint': {
+      'fr': "Nom de l'ingrédient",
+      'en': 'Ingredient name',
+      'de': 'Zutatenname',
+    },
+    'planner_quantity_hint': {
+      'fr': 'Quantité',
+      'en': 'Quantity',
+      'de': 'Menge',
+    },
+    'planner_test_mode': {
+      'fr': 'Mode test - illimité',
+      'en': 'Test mode - unlimited',
+      'de': 'Testmodus - unbegrenzt',
+    },
+
+    // Sections / Headers
+    'section_recipe': {
+      'fr': 'Recette',
+      'en': 'Recipe',
+      'de': 'Rezept',
+    },
+    'section_tip': {
+      'fr': 'Astuce',
+      'en': 'Tip',
+      'de': 'Tipp',
+    },
+    'section_why_dish': {
+      'fr': 'Pourquoi ce plat ?',
+      'en': 'Why this dish?',
+      'de': 'Warum dieses Gericht?',
+    },
+    'section_ingredients': {
+      'fr': 'Ingrédients',
+      'en': 'Ingredients',
+      'de': 'Zutaten',
+    },
+
+    // Status
+    'meal_status_validated': {
+      'fr': '✓ Validé',
+      'en': '✓ Validated',
+      'de': '✓ Bestätigt',
+    },
+
+    // HIIT Labels
+    'planner_hiit_effort': {
+      'fr': 'effort',
+      'en': 'work',
+      'de': 'Arbeit',
+    },
+    'planner_hiit_rounds': {
+      'fr': 'rounds',
+      'en': 'rounds',
+      'de': 'Runden',
+    },
+
+    // Workout Labels
+    'planner_series': {
+      'fr': 'séries',
+      'en': 'sets',
+      'de': 'Sätze',
+    },
+
+    // Messages IA
+    'planner_ai_preparing_meal': {
+      'fr': 'Ryze prépare ton programme nutritionnel...',
+      'en': 'Ryze is preparing your nutrition plan...',
+      'de': 'Ryze bereitet deinen Ernährungsplan vor...',
+    },
+    'planner_ai_generating_workouts': {
+      'fr': 'Ryze génère tes séances personnalisées...',
+      'en': 'Ryze is generating your personalized workouts...',
+      'de': 'Ryze erstellt deine personalisierten Workouts...',
+    },
+    'planner_ai_thinking': {
+      'fr': 'Ryze réfléchit...',
+      'en': 'Ryze is thinking...',
+      'de': 'Ryze denkt nach...',
+    },
+
+    // Messages erreur/succès
+    'action_cancelled': {
+      'fr': 'Action annulée',
+      'en': 'Action cancelled',
+      'de': 'Aktion abgebrochen',
+    },
+    'error_occurred_retry': {
+      'fr': "Oups, une erreur s'est produite. Réessaie !",
+      'en': 'Oops, an error occurred. Try again!',
+      'de': 'Hoppla, ein Fehler ist aufgetreten. Versuche es erneut!',
+    },
+
+    // Messages de bienvenue IA (par mode)
+    'planner_welcome_meals': {
+      'fr': "Salut ! Je suis Ryze, ton coach nutrition. Dis-moi ce que tu veux manger et je te propose un repas adapté à tes objectifs !",
+      'en': "Hi! I'm Ryze, your nutrition coach. Tell me what you want to eat and I'll suggest a meal tailored to your goals!",
+      'de': "Hallo! Ich bin Ryze, dein Ernährungscoach. Sag mir, was du essen möchtest, und ich schlage dir eine Mahlzeit vor!",
+    },
+    'planner_welcome_sport': {
+      'fr': "Salut ! Je suis Ryze, ton coach fitness. Dis-moi tes objectifs et je te génère des séances personnalisées !",
+      'en': "Hi! I'm Ryze, your fitness coach. Tell me your goals and I'll generate personalized workouts!",
+      'de': "Hallo! Ich bin Ryze, dein Fitnesscoach. Sag mir deine Ziele und ich erstelle dir personalisierte Workouts!",
+    },
+    'planner_welcome_both': {
+      'fr': "Salut ! Je suis Ryze, ton coach. Je peux t'aider avec la nutrition et le sport. Que veux-tu planifier ?",
+      'en': "Hi! I'm Ryze, your coach. I can help with nutrition and fitness. What do you want to plan?",
+      'de': "Hallo! Ich bin Ryze, dein Coach. Ich kann dir bei Ernährung und Fitness helfen. Was möchtest du planen?",
+    },
+
+    // Suggestions rapides (par mode)
+    'suggestion_next_meal': {
+      'fr': '🍽️ Prochain repas',
+      'en': '🍽️ Next meal',
+      'de': '🍽️ Nächste Mahlzeit',
+    },
+    'suggestion_today': {
+      'fr': "📅 Aujourd'hui",
+      'en': '📅 Today',
+      'de': '📅 Heute',
+    },
+    'suggestion_week': {
+      'fr': '📆 La semaine',
+      'en': '📆 The week',
+      'de': '📆 Die Woche',
+    },
+    'suggestion_3_workouts': {
+      'fr': '3 séances muscu',
+      'en': '3 strength sessions',
+      'de': '3 Krafttraining',
+    },
+    'suggestion_fullbody': {
+      'fr': 'Programme full body',
+      'en': 'Full body program',
+      'de': 'Ganzkörperprogramm',
+    },
+    'suggestion_cardio_strength': {
+      'fr': 'Cardio + muscu',
+      'en': 'Cardio + strength',
+      'de': 'Cardio + Kraft',
+    },
+    'suggestion_3_sports': {
+      'fr': '3 séances de sport',
+      'en': '3 sport sessions',
+      'de': '3 Sporteinheiten',
+    },
+    'suggestion_week_meals': {
+      'fr': 'Repas de la semaine',
+      'en': 'Weekly meals',
+      'de': 'Wochenmahlzeiten',
+    },
+    'suggestion_cardio_tuesday': {
+      'fr': 'Cardio mardi',
+      'en': 'Cardio Tuesday',
+      'de': 'Cardio Dienstag',
+    },
+
+    // Unités culinaires
+    'unit_tablespoon': {
+      'fr': 'c. à s.',
+      'en': 'tbsp',
+      'de': 'EL',
+    },
+    'unit_teaspoon': {
+      'fr': 'c. à c.',
+      'en': 'tsp',
+      'de': 'TL',
+    },
+    'unit_piece': {
+      'fr': 'pièce',
+      'en': 'piece',
+      'de': 'Stück',
+    },
+    'unit_slice': {
+      'fr': 'tranche',
+      'en': 'slice',
+      'de': 'Scheibe',
+    },
+    'unit_portion': {
+      'fr': 'portion',
+      'en': 'portion',
+      'de': 'Portion',
+    },
+    'unit_clove': {
+      'fr': 'gousse',
+      'en': 'clove',
+      'de': 'Zehe',
+    },
+
+    // Types de repas (uniformisés)
+    'meal_type_breakfast': {
+      'fr': 'Petit-déjeuner',
+      'en': 'Breakfast',
+      'de': 'Frühstück',
+    },
+    'meal_type_lunch': {
+      'fr': 'Déjeuner',
+      'en': 'Lunch',
+      'de': 'Mittagessen',
+    },
+    'meal_type_dinner': {
+      'fr': 'Dîner',
+      'en': 'Dinner',
+      'de': 'Abendessen',
+    },
+    'meal_type_snack': {
+      'fr': 'Collation',
+      'en': 'Snack',
+      'de': 'Snack',
+    },
+
+    // Jours de la semaine
+    'day_1': {
+      'fr': 'Lundi',
+      'en': 'Monday',
+      'de': 'Montag',
+    },
+    'day_2': {
+      'fr': 'Mardi',
+      'en': 'Tuesday',
+      'de': 'Dienstag',
+    },
+    'day_3': {
+      'fr': 'Mercredi',
+      'en': 'Wednesday',
+      'de': 'Mittwoch',
+    },
+    'day_4': {
+      'fr': 'Jeudi',
+      'en': 'Thursday',
+      'de': 'Donnerstag',
+    },
+    'day_5': {
+      'fr': 'Vendredi',
+      'en': 'Friday',
+      'de': 'Freitag',
+    },
+    'day_6': {
+      'fr': 'Samedi',
+      'en': 'Saturday',
+      'de': 'Samstag',
+    },
+    'day_7': {
+      'fr': 'Dimanche',
+      'en': 'Sunday',
+      'de': 'Sonntag',
+    },
+
+    // Mois
+    'month_1': {
+      'fr': 'janvier',
+      'en': 'January',
+      'de': 'Januar',
+    },
+    'month_2': {
+      'fr': 'février',
+      'en': 'February',
+      'de': 'Februar',
+    },
+    'month_3': {
+      'fr': 'mars',
+      'en': 'March',
+      'de': 'März',
+    },
+    'month_4': {
+      'fr': 'avril',
+      'en': 'April',
+      'de': 'April',
+    },
+    'month_5': {
+      'fr': 'mai',
+      'en': 'May',
+      'de': 'Mai',
+    },
+    'month_6': {
+      'fr': 'juin',
+      'en': 'June',
+      'de': 'Juni',
+    },
+    'month_7': {
+      'fr': 'juillet',
+      'en': 'July',
+      'de': 'Juli',
+    },
+    'month_8': {
+      'fr': 'août',
+      'en': 'August',
+      'de': 'August',
+    },
+    'month_9': {
+      'fr': 'septembre',
+      'en': 'September',
+      'de': 'September',
+    },
+    'month_10': {
+      'fr': 'octobre',
+      'en': 'October',
+      'de': 'Oktober',
+    },
+    'month_11': {
+      'fr': 'novembre',
+      'en': 'November',
+      'de': 'November',
+    },
+    'month_12': {
+      'fr': 'décembre',
+      'en': 'December',
+      'de': 'Dezember',
+    },
+
+    // Messages planner supplémentaires
+    'planner_action_cancelled': {
+      'fr': '❌ Action annulée',
+      'en': '❌ Action cancelled',
+      'de': '❌ Aktion abgebrochen',
+    },
+    'planner_no_ingredients': {
+      'fr': 'Aucun ingrédient trouvé',
+      'en': 'No ingredients found',
+      'de': 'Keine Zutaten gefunden',
+    },
+    'planner_remaining_one': {
+      'fr': '1 planification gratuite restante',
+      'en': '1 free planning left',
+      'de': '1 kostenlose Planung übrig',
+    },
+    'planner_remaining_multiple': {
+      'fr': 'planifications gratuites restantes',
+      'en': 'free plannings left',
+      'de': 'kostenlose Planungen übrig',
+    },
+    'planner_confirm_program': {
+      'fr': 'Valider ce programme',
+      'en': 'Confirm this program',
+      'de': 'Programm bestätigen',
+    },
+    'planner_exercises_count': {
+      'fr': 'exercices',
+      'en': 'exercises',
+      'de': 'Übungen',
+    },
+    'planner_sets_label': {
+      'fr': 'séries',
+      'en': 'sets',
+      'de': 'Sätze',
+    },
+    'planner_validation_success': {
+      'fr': '✅ Validé !',
+      'en': '✅ Validated!',
+      'de': '✅ Bestätigt!',
+    },
+    'planner_error_generic': {
+      'fr': "Oups, une erreur s'est produite. Réessaie !",
+      'en': 'Oops, an error occurred. Try again!',
+      'de': 'Hoppla, ein Fehler ist aufgetreten. Versuch es nochmal!',
+    },
+    'planner_confirm_all_days': {
+      'fr': 'Tout valider',
+      'en': 'Confirm all',
+      'de': 'Alle bestätigen',
+    },
+    'planner_days_count': {
+      'fr': 'jours',
+      'en': 'days',
+      'de': 'Tage',
+    },
+    'planner_day_short_1': {
+      'fr': 'Lun',
+      'en': 'Mon',
+      'de': 'Mo',
+    },
+    'planner_day_short_2': {
+      'fr': 'Mar',
+      'en': 'Tue',
+      'de': 'Di',
+    },
+    'planner_day_short_3': {
+      'fr': 'Mer',
+      'en': 'Wed',
+      'de': 'Mi',
+    },
+    'planner_day_short_4': {
+      'fr': 'Jeu',
+      'en': 'Thu',
+      'de': 'Do',
+    },
+    'planner_day_short_5': {
+      'fr': 'Ven',
+      'en': 'Fri',
+      'de': 'Fr',
+    },
+    'planner_day_short_6': {
+      'fr': 'Sam',
+      'en': 'Sat',
+      'de': 'Sa',
+    },
+    'planner_day_short_7': {
+      'fr': 'Dim',
+      'en': 'Sun',
+      'de': 'So',
+    },
+    'planner_cancelled_what_now': {
+      'fr': 'Planification annulée. Que veux-tu faire ?',
+      'en': 'Planning cancelled. What would you like to do?',
+      'de': 'Planung abgebrochen. Was möchtest du tun?',
+    },
+    'planner_all_sessions_planned': {
+      'fr': 'Toutes tes séances sont planifiées ! 💪',
+      'en': 'All your sessions are planned! 💪',
+      'de': 'Alle deine Einheiten sind geplant! 💪',
+    },
   };
 
   /// Getter public pour accéder aux traductions (utilisé par TranslationChecker)

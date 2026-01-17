@@ -1,4 +1,6 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:confetti/confetti.dart';
 import '../../models/weekly_planner_models.dart';
 import 'activity_chip_widget.dart';
 import 'day_activities_pager_sheet.dart';
@@ -11,7 +13,7 @@ enum ActivityFilter {
 }
 
 /// Widget représentant une colonne de jour dans le planner
-class DayColumnWidget extends StatelessWidget {
+class DayColumnWidget extends StatefulWidget {
   final DateTime date;
   final String dayName;
   final DayPlanData? dayPlan;
@@ -20,6 +22,8 @@ class DayColumnWidget extends StatelessWidget {
   final Function(PlannedWorkout)? onWorkoutTap;
   final bool isCompact; // Mode compact pour le chat (2 colonnes, petites icônes)
   final ActivityFilter filter; // Filtre pour les types d'activités
+  final int dailyCalorieTarget; // Objectif calorique journalier
+  final bool animateProgress; // Animer le remplissage (pour le jour actuel après génération)
 
   const DayColumnWidget({
     super.key,
@@ -31,84 +35,273 @@ class DayColumnWidget extends StatelessWidget {
     this.onWorkoutTap,
     this.isCompact = false,
     this.filter = ActivityFilter.all,
+    this.dailyCalorieTarget = 2000,
+    this.animateProgress = false,
   });
 
   @override
-  Widget build(BuildContext context) {
+  State<DayColumnWidget> createState() => _DayColumnWidgetState();
+}
+
+class _DayColumnWidgetState extends State<DayColumnWidget>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animationController;
+  late Animation<double> _progressAnimation;
+  late ConfettiController _confettiController;
+  bool _hasTriggeredConfetti = false;
+  double _previousProgress = 0.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 1200),
+      vsync: this,
+    );
+    _confettiController = ConfettiController(duration: const Duration(seconds: 2));
+    _setupAnimation();
+  }
+
+  @override
+  void didUpdateWidget(DayColumnWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Recalculer l'animation si les données changent
+    if (oldWidget.dayPlan != widget.dayPlan ||
+        oldWidget.dailyCalorieTarget != widget.dailyCalorieTarget) {
+      _setupAnimation();
+    }
+  }
+
+  void _setupAnimation() {
+    final targetProgress = _calculateProgress();
+
+    if (widget.animateProgress && _isToday) {
+      // Animation du remplissage pour le jour actuel
+      _progressAnimation = Tween<double>(
+        begin: _previousProgress,
+        end: targetProgress,
+      ).animate(CurvedAnimation(
+        parent: _animationController,
+        curve: Curves.easeOutCubic,
+      ));
+
+      _animationController.forward(from: 0.0).then((_) {
+        // Vérifier si on a atteint 100% pour déclencher les confettis
+        if (targetProgress >= 1.0 && !_hasTriggeredConfetti) {
+          _hasTriggeredConfetti = true;
+          _confettiController.play();
+        }
+      });
+    } else {
+      // Pas d'animation, afficher directement
+      _progressAnimation = AlwaysStoppedAnimation(targetProgress);
+    }
+
+    _previousProgress = targetProgress;
+  }
+
+  bool get _isToday {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final normalizedDate = DateTime(date.year, date.month, date.day);
-    final isToday = normalizedDate == today;
-    final isPast = normalizedDate.isBefore(today);
+    final normalizedDate = DateTime(widget.date.year, widget.date.month, widget.date.day);
+    return normalizedDate == today;
+  }
 
+  bool get _isPast {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final normalizedDate = DateTime(widget.date.year, widget.date.month, widget.date.day);
+    return normalizedDate.isBefore(today);
+  }
+
+  /// Calculer le pourcentage de progression basé sur les calories validées
+  double _calculateProgress() {
+    if (widget.dayPlan == null || widget.dailyCalorieTarget <= 0) return 0.0;
+
+    int validatedCalories = 0;
+
+    // Calories des repas planifiés validés (status = completed)
+    for (final meal in widget.dayPlan!.meals) {
+      if (meal.status == PlannedStatus.completed) {
+        validatedCalories += meal.mealData?.calories ?? 0;
+      }
+    }
+
+    // Calories des journal entries (repas non planifiés mais consommés)
+    for (final entry in widget.dayPlan!.journalEntries) {
+      validatedCalories += entry.calories;
+    }
+
+    // Calculer le ratio (plafonné à 1.0 - ne jamais dépasser 100%)
+    final progress = validatedCalories / widget.dailyCalorieTarget;
+    return progress.clamp(0.0, 1.0);
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    _confettiController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Opacity(
-      opacity: isPast ? 0.4 : 1.0,
+      opacity: _isPast ? 0.5 : 1.0,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 1),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Header du jour
-            _buildDayHeader(isToday, isPast),
+            // Header du jour avec indicateur de progression
+            _buildDayHeader(),
             const SizedBox(height: 6),
             // Activités du jour - liste verticale
-            _buildActivitiesGrid(context, isToday, isPast),
+            _buildActivitiesGrid(context),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildDayHeader(bool isToday, bool isPast) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-      decoration: BoxDecoration(
-        color: isToday
-            ? const Color(0xFF0B132B)
-            : isPast
-                ? const Color(0xFFF1F5F9)
-                : Colors.transparent,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        children: [
-          Text(
-            dayName,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: isToday
-                  ? Colors.white
-                  : isPast
-                      ? const Color(0xFF94A3B8)
-                      : const Color(0xFF64748B),
+  Widget _buildDayHeader() {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        // Container principal avec gradient pour le fill - MÊME STRUCTURE QUE L'ORIGINAL
+        AnimatedBuilder(
+          animation: _animationController,
+          builder: (context, child) {
+            final animatedProgress = widget.animateProgress && _isToday
+                ? _progressAnimation.value
+                : _calculateProgress();
+
+            // Plafonner à 1.0 (100%)
+            final clampedProgress = animatedProgress.clamp(0.0, 1.0);
+
+            // Couleurs
+            const fillColor = Color(0xFF0B132B); // Bleu foncé - toujours la même
+            const backgroundColor = Color(0xFFF1F5F9); // Gris clair
+
+            // Décoration avec gradient pour le fill progressif
+            // IMPORTANT: Tous les jours ont une bordure de 2px (visible ou transparente)
+            // pour maintenir un alignement parfait des éléments en-dessous
+            BoxDecoration decoration;
+            if (_isToday || _isPast) {
+              if (clampedProgress > 0) {
+                // Avec fill : gradient du bas (fill) vers le haut (fond)
+                decoration = BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: _isToday ? const Color(0xFF0B132B) : Colors.transparent,
+                    width: 2,
+                  ),
+                  gradient: LinearGradient(
+                    begin: Alignment.bottomCenter,
+                    end: Alignment.topCenter,
+                    stops: [clampedProgress, clampedProgress],
+                    colors: const [fillColor, backgroundColor],
+                  ),
+                );
+              } else {
+                // Sans fill : fond gris simple
+                decoration = BoxDecoration(
+                  color: backgroundColor,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: _isToday ? const Color(0xFF0B132B) : Colors.transparent,
+                    width: 2,
+                  ),
+                );
+              }
+            } else {
+              // Jour futur : transparent avec bordure transparente pour l'alignement
+              decoration = BoxDecoration(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: Colors.transparent,
+                  width: 2,
+                ),
+              );
+            }
+
+            return Container(
+              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+              decoration: decoration,
+              child: Column(
+                children: [
+                  Text(
+                    widget.dayName,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: clampedProgress >= 0.5
+                          ? Colors.white
+                          : _isToday
+                              ? const Color(0xFF0B132B)
+                              : _isPast
+                                  ? const Color(0xFF94A3B8)
+                                  : const Color(0xFF64748B),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    widget.date.day.toString(),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: clampedProgress >= 0.3
+                          ? Colors.white
+                          : _isToday
+                              ? const Color(0xFF0B132B)
+                              : _isPast
+                                  ? const Color(0xFF94A3B8)
+                                  : const Color(0xFF0B132B),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+        // Confettis pour 100%
+        if (_isToday)
+          Positioned(
+            top: -20,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: ConfettiWidget(
+                confettiController: _confettiController,
+                blastDirection: math.pi / 2,
+                maxBlastForce: 8,
+                minBlastForce: 4,
+                emissionFrequency: 0.08,
+                numberOfParticles: 8,
+                gravity: 0.2,
+                particleDrag: 0.05,
+                colors: const [
+                  Color(0xFF22C55E),
+                  Color(0xFF3B82F6),
+                  Color(0xFFF59E0B),
+                  Color(0xFFEC4899),
+                  Color(0xFF8B5CF6),
+                ],
+              ),
             ),
           ),
-          const SizedBox(height: 2),
-          Text(
-            date.day.toString(),
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: isToday
-                  ? Colors.white
-                  : isPast
-                      ? const Color(0xFF94A3B8)
-                      : const Color(0xFF0B132B),
-            ),
-          ),
-        ],
-      ),
+      ],
     );
   }
 
   /// Construit une liste d'icônes (1 par ligne en normal, 2 colonnes en compact)
-  Widget _buildActivitiesGrid(BuildContext context, bool isToday, bool isPast) {
+  Widget _buildActivitiesGrid(BuildContext context) {
     // Tailles selon le mode
-    final emptyWidth = isCompact ? 28.0 : 36.0;
-    final emptyHeight = isCompact ? 28.0 : 40.0;
+    final emptyWidth = widget.isCompact ? 28.0 : 36.0;
+    final emptyHeight = widget.isCompact ? 28.0 : 40.0;
 
-    if (dayPlan == null || !dayPlan!.hasActivities) {
+    if (widget.dayPlan == null || !widget.dayPlan!.hasActivities) {
       // Jour vide - pas de tap
       return Container(
         width: emptyWidth,
@@ -119,7 +312,7 @@ class DayColumnWidget extends StatelessWidget {
             color: const Color(0xFFE2E8F0),
             style: BorderStyle.solid,
           ),
-          borderRadius: BorderRadius.circular(isCompact ? 6 : 8),
+          borderRadius: BorderRadius.circular(widget.isCompact ? 6 : 8),
         ),
       );
     }
@@ -128,28 +321,67 @@ class DayColumnWidget extends StatelessWidget {
     final List<_ActivityData> activities = [];
 
     // Ajouter les repas (triés par type) - seulement si filter = all ou meals
-    if (filter == ActivityFilter.all || filter == ActivityFilter.meals) {
-      final meals = List<PlannedActivity>.from(dayPlan!.meals);
-      meals.sort((a, b) {
-        final order = ['breakfast', 'lunch', 'dinner', 'snack'];
-        return order.indexOf(a.activityType.value).compareTo(order.indexOf(b.activityType.value));
-      });
+    if (widget.filter == ActivityFilter.all || widget.filter == ActivityFilter.meals) {
+      final meals = List<PlannedActivity>.from(widget.dayPlan!.meals);
 
+      // Créer un map des planned meals par type normalisé
+      final plannedByType = <String, List<PlannedActivity>>{};
       for (final meal in meals) {
-        activities.add(_ActivityData(activity: meal));
+        final normalizedType = _normalizeMealType(meal.activityType.value);
+        plannedByType.putIfAbsent(normalizedType, () => []).add(meal);
+      }
+
+      // Collecter les IDs des food_entries liées aux repas planifiés validés
+      final linkedFoodEntryIds = <String>{};
+      for (final meal in meals) {
+        final linkedId = meal.mealData?.linkedFoodEntryId;
+        if (linkedId != null) {
+          linkedFoodEntryIds.add(linkedId);
+        }
+      }
+
+      // Filtrer les journal entries non liées à des repas planifiés
+      final unlinkedJournalEntries = widget.dayPlan!.journalEntries
+          .where((e) => !linkedFoodEntryIds.contains(e.id))
+          .toList();
+
+      // Créer un set des types de repas qui ont des journal entries NON LIÉES
+      final journalMealTypes = unlinkedJournalEntries.map((e) => _normalizeMealType(e.mealType)).toSet();
+
+      // Itérer dans l'ordre standard et ajouter UNE SEULE icône par type de repas
+      final mealOrder = ['breakfast', 'lunch', 'dinner', 'snack'];
+      for (final mealType in mealOrder) {
+        // Si on a des planned activities pour ce type, ajouter UNE SEULE icône
+        if (plannedByType.containsKey(mealType)) {
+          final mealsOfType = plannedByType[mealType]!;
+          // Calculer le status du groupe : completed si TOUS les repas sont validés
+          final allCompleted = mealsOfType.every((m) => m.status == PlannedStatus.completed);
+          final groupStatus = allCompleted ? PlannedStatus.completed : PlannedStatus.planned;
+
+          // Ajouter une seule entrée avec le premier meal et le groupe complet
+          activities.add(_ActivityData(
+            activity: mealsOfType.first,
+            mealGroup: mealsOfType,
+            groupStatus: groupStatus,
+          ));
+        }
+        // Sinon, si on a des journal entries NON LIÉES pour ce type, ajouter une icône journal
+        else if (journalMealTypes.contains(mealType)) {
+          activities.add(_ActivityData(journalMealType: mealType));
+        }
       }
     }
 
     // Ajouter les cardios - seulement si filter = all ou workouts
-    if (filter == ActivityFilter.all || filter == ActivityFilter.workouts) {
-      for (final cardio in dayPlan!.cardios) {
+    if (widget.filter == ActivityFilter.all || widget.filter == ActivityFilter.workouts) {
+      for (final cardio in widget.dayPlan!.cardios) {
         activities.add(_ActivityData(activity: cardio));
       }
     }
 
     // Ajouter les workouts - seulement si filter = all ou workouts
-    if (filter == ActivityFilter.all || filter == ActivityFilter.workouts) {
-      for (final workout in dayPlan!.workouts) {
+    if (widget.filter == ActivityFilter.all || widget.filter == ActivityFilter.workouts) {
+      for (final workout in widget.dayPlan!.workouts) {
         activities.add(_ActivityData(workout: workout));
       }
     }
@@ -165,14 +397,14 @@ class DayColumnWidget extends StatelessWidget {
             color: const Color(0xFFE2E8F0),
             style: BorderStyle.solid,
           ),
-          borderRadius: BorderRadius.circular(isCompact ? 6 : 8),
+          borderRadius: BorderRadius.circular(widget.isCompact ? 6 : 8),
         ),
       );
     }
 
     final totalCount = activities.length;
 
-    if (isCompact) {
+    if (widget.isCompact) {
       // Mode compact : grille 2 colonnes, max 6 visible (3 lignes x 2)
       final hasMore = totalCount > 6;
       final displayCount = hasMore ? 5 : totalCount;
@@ -203,13 +435,13 @@ class DayColumnWidget extends StatelessWidget {
       return Container(
         padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
         decoration: BoxDecoration(
-          color: isToday
+          color: _isToday
               ? const Color(0xFF0B132B).withOpacity(0.05)
-              : isPast
+              : _isPast
                   ? const Color(0xFFF8FAFC)
                   : Colors.white,
           border: Border.all(
-            color: isToday
+            color: _isToday
                 ? const Color(0xFF0B132B).withOpacity(0.2)
                 : const Color(0xFFE2E8F0),
           ),
@@ -225,21 +457,22 @@ class DayColumnWidget extends StatelessWidget {
       );
     }
 
-    // Mode normal : 1 icône par ligne
-    final hasMore = totalCount > 5;
-    final displayCount = hasMore ? 4 : totalCount;
+    // Mode normal : 1 icône par ligne (max 6 carrés visibles)
+    // À 7+ items: 5 icônes + badge "+X" = 6 positions
+    final hasMore = totalCount > 6;
+    final displayCount = hasMore ? 5 : totalCount;
     final remainingCount = totalCount - displayCount;
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
       decoration: BoxDecoration(
-        color: isToday
+        color: _isToday
             ? const Color(0xFF0B132B).withOpacity(0.05)
-            : isPast
+            : _isPast
                 ? const Color(0xFFF8FAFC)
                 : Colors.white,
         border: Border.all(
-          color: isToday
+          color: _isToday
               ? const Color(0xFF0B132B).withOpacity(0.2)
               : const Color(0xFFE2E8F0),
         ),
@@ -270,14 +503,24 @@ class DayColumnWidget extends StatelessWidget {
       return MiniWorkoutSquare(
         workout: data.workout!,
         onTap: () => _showActivityPager(context, index),
-        isCompact: isCompact,
+        isCompact: widget.isCompact,
       );
     } else if (data.activity != null) {
+      // Utiliser le groupStatus si disponible (pour les repas groupés), sinon le status individuel
+      final status = data.groupStatus ?? data.activity!.status;
       return MiniActivitySquare(
         activityType: data.activity!.activityType,
-        status: data.activity!.status,
+        status: status,
         onTap: () => _showActivityPager(context, index),
-        isCompact: isCompact,
+        isCompact: widget.isCompact,
+      );
+    } else if (data.journalMealType != null) {
+      // Afficher les journal entries avec status completed (déjà consommé)
+      return MiniActivitySquare(
+        activityType: PlannedActivityTypeExtension.fromString(data.journalMealType!),
+        status: PlannedStatus.completed, // Journal = déjà consommé
+        onTap: () => _showActivityPager(context, index),
+        isCompact: widget.isCompact,
       );
     }
     return const SizedBox.shrink();
@@ -308,17 +551,17 @@ class DayColumnWidget extends StatelessWidget {
   }
 
   void _showActivityPager(BuildContext context, int index) {
-    if (dayPlan == null) return;
+    if (widget.dayPlan == null) return;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => DayActivitiesPagerSheet(
-        date: date,
-        dayPlan: dayPlan!,
+        date: widget.date,
+        dayPlan: widget.dayPlan!,
         initialIndex: index,
-        onActivityChanged: onDataRefresh ?? () {}, // Utiliser onDataRefresh pour recharger les données
+        onActivityChanged: widget.onDataRefresh ?? () {},
       ),
     );
   }
@@ -333,6 +576,37 @@ class DayColumnWidget extends StatelessWidget {
 class _ActivityData {
   final PlannedActivity? activity;
   final PlannedWorkout? workout;
+  final String? journalMealType; // Pour les types de repas qui n'ont que des journal entries
+  final List<PlannedActivity>? mealGroup; // Groupe de repas du même type (pour afficher une seule icône)
+  final PlannedStatus? groupStatus; // Status calculé du groupe (completed si tous validés)
 
-  _ActivityData({this.activity, this.workout});
+  _ActivityData({this.activity, this.workout, this.journalMealType, this.mealGroup, this.groupStatus});
+}
+
+/// Normalise le type de repas pour regrouper les variations
+String _normalizeMealType(String mealType) {
+  final lower = mealType.toLowerCase().trim();
+
+  // Breakfast variations
+  if (lower.contains('breakfast') || lower.contains('petit') || lower.contains('déjeuner') && !lower.contains('diner') && !lower.contains('dîner')) {
+    if (lower == 'déjeuner' || lower == 'lunch') return 'lunch';
+    return 'breakfast';
+  }
+
+  // Lunch variations
+  if (lower.contains('lunch') || lower == 'déjeuner') {
+    return 'lunch';
+  }
+
+  // Dinner variations
+  if (lower.contains('dinner') || lower.contains('diner') || lower.contains('dîner') || lower.contains('souper')) {
+    return 'dinner';
+  }
+
+  // Snack variations (collation, snack_1, snack_2, etc.)
+  if (lower.contains('snack') || lower.contains('collation') || lower.contains('goûter') || lower.contains('gouter')) {
+    return 'snack';
+  }
+
+  return mealType;
 }

@@ -1996,10 +1996,11 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                           // Navigation d'abord - retourner à la page précédente
                           Navigator.pop(context);
 
-                          // ⚡ FIX: Pop supplémentaire pour Coach Ryze (isFromAI)
-                          if (widget.isFromAI) {
+                          // ⚡ FIX: Pop supplémentaire UNIQUEMENT pour Coach Ryze direct (pas depuis le planner)
+                          // Si on vient du planner (plannedWorkoutId != null), pas de pop supplémentaire
+                          if (widget.isFromAI && widget.plannedWorkoutId == null) {
                             Navigator.pop(context); // Fermer AI Generator → retour musculation
-                            debugPrint('✅ Navigation pop x3 effectuée (bouton Non - Coach Ryze)');
+                            debugPrint('✅ Navigation pop x3 effectuée (bouton Non - Coach Ryze direct)');
                           }
 
                           _triggerWorkoutCelebration();
@@ -2045,10 +2046,11 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
                           // Navigation d'abord - retourner à la page précédente
                           Navigator.pop(context);
 
-                          // ⚡ FIX: Pop supplémentaire pour Coach Ryze (isFromAI)
-                          if (widget.isFromAI) {
+                          // ⚡ FIX: Pop supplémentaire UNIQUEMENT pour Coach Ryze direct (pas depuis le planner)
+                          // Si on vient du planner (plannedWorkoutId != null), pas de pop supplémentaire
+                          if (widget.isFromAI && widget.plannedWorkoutId == null) {
                             Navigator.pop(context); // Fermer AI Generator → retour musculation
-                            debugPrint('✅ Navigation pop x3 effectuée (bouton Oui - Coach Ryze)');
+                            debugPrint('✅ Navigation pop x3 effectuée (bouton Oui - Coach Ryze direct)');
                           }
 
                           _triggerWorkoutCelebration();

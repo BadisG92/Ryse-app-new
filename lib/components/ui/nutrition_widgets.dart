@@ -1006,7 +1006,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
                                   builder: (context, localizationService, child) {
                                     final plural = meal.items.length > 1 ? 's' : '';
                                     return Text(
-                                      '${meal.time} • ${'items_count'.tr(localizationService.currentLanguageCode).replaceAll('{count}', '${meal.items.length}').replaceAll('{plural}', plural)}',
+                                      '${'items_count'.tr(localizationService.currentLanguageCode).replaceAll('{count}', '${meal.items.length}').replaceAll('{plural}', plural)}',
                                       style: TextStyle(
                                         fontSize: 12,
                                         color: Color(0xFF64748B),
@@ -1177,7 +1177,7 @@ class NutritionQuickActionsSection extends StatelessWidget {
                                   builder: (context, localizationService, child) {
                                     final plural = meal.items.length > 1 ? 's' : '';
                                     return Text(
-                                      '${meal.time} • ${'items_count'.tr(localizationService.currentLanguageCode).replaceAll('{count}', '${meal.items.length}').replaceAll('{plural}', plural)}',
+                                      '${'items_count'.tr(localizationService.currentLanguageCode).replaceAll('{count}', '${meal.items.length}').replaceAll('{plural}', plural)}',
                                       style: TextStyle(
                                         fontSize: 12,
                                         color: Color(0xFF64748B),

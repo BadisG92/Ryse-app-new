@@ -2,9 +2,11 @@ import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import '../config/supabase_config.dart';
 import '../models/coach_chat_models.dart';
+import '../models/weekly_planner_models.dart';
 import 'global_state_manager.dart';
 import 'localization_service.dart';
 import 'coach_personality_service.dart';
+import 'weekly_planner_service.dart';
 
 /// Builds rich user context for Coach Ryze AI
 /// Aggregates data from multiple sources to create a comprehensive context
@@ -95,6 +97,15 @@ ${context['recentWorkouts']}
 **7 dernières activités cardio:**
 ${context['recentCardio']}
 
+## 📅 PLANNING DE LA SEMAINE
+${context['weeklyPlanning']}
+
+**IMPORTANT - PLANNING**: Utilise ces informations pour personnaliser tes conseils:
+- Si l'utilisateur a un workout prévu aujourd'hui, encourage-le
+- Si l'utilisateur a des repas planifiés, suggère des idées cohérentes
+- Si l'utilisateur demande quand s'entraîner, réfère-toi à son planning
+- Si l'utilisateur a manqué une séance prévue, sois encourageant sans culpabiliser
+
 ## FORMAT DE RÉPONSE - REPAS
 Quand l'utilisateur demande une idée repas:
 
@@ -148,13 +159,17 @@ ${isEnglish ? 'Respond in English.' : isGerman ? 'Antworte auf Deutsch.' : 'Rép
   }
 
   /// Build user context data from all sources
+  /// IMPORTANT: Fetches nutrition data FRESH from Supabase to ensure accuracy
   Future<Map<String, dynamic>> buildUserContext() async {
     final globalState = GlobalStateManager.instance;
     final now = DateTime.now();
     final lang = LocalizationService.instance.currentLanguageCode;
 
-    // Get user profile from Supabase
+    // Get user profile from Supabase (includes goals)
     final userProfile = await _getUserProfile();
+
+    // Get TODAY'S nutrition data FRESH from Supabase (not from cache!)
+    final todayNutrition = await _getTodayNutritionFresh();
 
     // Get today's meals
     final mealsToday = await _getMealsToday();
@@ -168,8 +183,30 @@ ${isEnglish ? 'Respond in English.' : isGerman ? 'Antworte auf Deutsch.' : 'Rép
     // Get recent cardio (7 last, 2 months)
     final recentCardio = await _getRecentCardio();
 
+    // Get weekly planner context
+    final weeklyPlanning = await _getWeeklyPlanningContext();
+
     // Format day of week
     final dayOfWeek = _getDayOfWeek(now.weekday, lang);
+
+    // Use fresh data from DB, fallback to GlobalState only if DB query fails
+    final calorieGoal = todayNutrition['calorieGoal'] ?? globalState.calorieGoal.toInt();
+    final caloriesEaten = todayNutrition['caloriesEaten'] ?? globalState.currentCalories.toInt();
+    final proteinsEaten = todayNutrition['proteinsEaten'] ?? globalState.currentProteins.toInt();
+    final carbsEaten = todayNutrition['carbsEaten'] ?? globalState.currentCarbs.toInt();
+    final fatsEaten = todayNutrition['fatsEaten'] ?? globalState.currentFats.toInt();
+    final waterDrunk = todayNutrition['waterDrunk'] ?? globalState.currentWaterL;
+    final proteinGoal = todayNutrition['proteinGoal'] ?? globalState.proteinGoal;
+    final carbsGoal = todayNutrition['carbsGoal'] ?? globalState.carbsGoal;
+    final fatGoal = todayNutrition['fatGoal'] ?? globalState.fatGoal;
+    final waterGoal = todayNutrition['waterGoal'] ?? globalState.waterGoalL;
+
+    if (kDebugMode) {
+      debugPrint('📊 CoachContextBuilder: Fresh nutrition data:');
+      debugPrint('   - Calories: $caloriesEaten / $calorieGoal kcal');
+      debugPrint('   - Remaining: ${calorieGoal - caloriesEaten} kcal');
+      debugPrint('   - Proteins: ${proteinsEaten}g / ${proteinGoal}g');
+    }
 
     return {
       // Time context
@@ -178,20 +215,20 @@ ${isEnglish ? 'Respond in English.' : isGerman ? 'Antworte auf Deutsch.' : 'Rép
       'dayOfWeek': dayOfWeek,
 
       // User info
-      'userName': globalState.userName,
+      'userName': todayNutrition['userName'] ?? globalState.userName,
 
-      // Today's nutrition
-      'calorieGoal': globalState.calorieGoal.toInt(),
-      'caloriesEaten': globalState.currentCalories.toInt(),
-      'caloriesRemaining': (globalState.calorieGoal - globalState.currentCalories).toInt(),
-      'proteinsEaten': globalState.currentProteins.toInt(),
-      'proteinsGoal': globalState.proteinGoal,
-      'carbsEaten': globalState.currentCarbs.toInt(),
-      'carbsGoal': globalState.carbsGoal,
-      'fatsEaten': globalState.currentFats.toInt(),
-      'fatsGoal': globalState.fatGoal,
-      'waterDrunk': globalState.currentWaterL.toStringAsFixed(1),
-      'waterGoal': globalState.waterGoalL.toStringAsFixed(1),
+      // Today's nutrition (FRESH from DB)
+      'calorieGoal': calorieGoal,
+      'caloriesEaten': caloriesEaten,
+      'caloriesRemaining': (calorieGoal - caloriesEaten).toInt(),
+      'proteinsEaten': proteinsEaten,
+      'proteinsGoal': proteinGoal,
+      'carbsEaten': carbsEaten,
+      'carbsGoal': carbsGoal,
+      'fatsEaten': fatsEaten,
+      'fatsGoal': fatGoal,
+      'waterDrunk': (waterDrunk is double ? waterDrunk : (waterDrunk as num).toDouble()).toStringAsFixed(1),
+      'waterGoal': (waterGoal is double ? waterGoal : (waterGoal as num).toDouble()).toStringAsFixed(1),
 
       // Today's meals
       'mealsToday': mealsToday,
@@ -201,7 +238,7 @@ ${isEnglish ? 'Respond in English.' : isGerman ? 'Antworte auf Deutsch.' : 'Rép
       'currentWeight': userProfile['weight'] ?? 0,
       'targetWeight': userProfile['target_weight'] ?? userProfile['weight'] ?? 0,
       'activityLevel': userProfile['activity_level'] ?? 'moderate',
-      'streak': globalState.currentStreak,
+      'streak': todayNutrition['streak'] ?? globalState.currentStreak,
       'userAge': userProfile['age'],
       'userGender': userProfile['gender'],
 
@@ -209,7 +246,104 @@ ${isEnglish ? 'Respond in English.' : isGerman ? 'Antworte auf Deutsch.' : 'Rép
       'mealHistory14Days': mealHistory,
       'recentWorkouts': recentWorkouts,
       'recentCardio': recentCardio,
+
+      // Weekly planning
+      'weeklyPlanning': weeklyPlanning,
     };
+  }
+
+  /// Get TODAY's nutrition data FRESH from Supabase
+  /// This ensures the AI always has accurate, up-to-date calorie information
+  Future<Map<String, dynamic>> _getTodayNutritionFresh() async {
+    try {
+      final client = SupabaseConfig.client;
+      final user = client.auth.currentUser;
+      if (user == null) return {};
+
+      final today = DateTime.now();
+      final startOfDay = DateTime(today.year, today.month, today.day);
+      final endOfDay = startOfDay.add(const Duration(days: 1));
+
+      // Parallel queries for performance
+      final futures = await Future.wait<dynamic>([
+        // Get food entries for today
+        client
+            .from('food_entries')
+            .select('calories, proteins, carbs, fats')
+            .eq('user_id', user.id)
+            .gte('consumed_at', startOfDay.toIso8601String())
+            .lt('consumed_at', endOfDay.toIso8601String()),
+
+        // Get water entries for today
+        client
+            .from('water_entries')
+            .select('amount')
+            .eq('user_id', user.id)
+            .gte('consumed_at', startOfDay.toIso8601String())
+            .lt('consumed_at', endOfDay.toIso8601String()),
+
+        // Get user goals and info
+        client
+            .from('users')
+            .select('daily_calories, daily_water_goal, daily_protein, daily_carbs, daily_fat, streak_count, first_name')
+            .eq('id', user.id)
+            .single(),
+      ]);
+
+      // Calculate totals from food entries
+      final foodEntries = futures[0] as List;
+      double totalCalories = 0;
+      double totalProteins = 0;
+      double totalCarbs = 0;
+      double totalFats = 0;
+
+      for (var entry in foodEntries) {
+        totalCalories += (entry['calories'] as num?)?.toDouble() ?? 0;
+        totalProteins += (entry['proteins'] as num?)?.toDouble() ?? 0;
+        totalCarbs += (entry['carbs'] as num?)?.toDouble() ?? 0;
+        totalFats += (entry['fats'] as num?)?.toDouble() ?? 0;
+      }
+
+      // Calculate water total
+      final waterEntries = futures[1] as List;
+      double totalWaterMl = 0;
+      for (var entry in waterEntries) {
+        totalWaterMl += (entry['amount'] as num?)?.toDouble() ?? 0;
+      }
+
+      // Get user goals
+      final userProfile = futures[2] as Map<String, dynamic>;
+      final dailyCaloriesGoal = (userProfile['daily_calories'] as num?)?.toInt() ?? 2000;
+      final dailyWaterGoalMl = (userProfile['daily_water_goal'] as num?)?.toDouble() ?? 2000;
+      final dailyProteinGoal = (userProfile['daily_protein'] as num?)?.toInt() ?? ((dailyCaloriesGoal * 0.30) / 4).toInt();
+      final dailyCarbsGoal = (userProfile['daily_carbs'] as num?)?.toInt() ?? ((dailyCaloriesGoal * 0.40) / 4).toInt();
+      final dailyFatGoal = (userProfile['daily_fat'] as num?)?.toInt() ?? ((dailyCaloriesGoal * 0.30) / 9).toInt();
+      final streakCount = (userProfile['streak_count'] as num?)?.toInt() ?? 0;
+
+      // Format name
+      final rawName = userProfile['first_name'] as String? ?? 'User';
+      final userName = rawName.isNotEmpty
+          ? rawName[0].toUpperCase() + (rawName.length > 1 ? rawName.substring(1).toLowerCase() : '')
+          : 'User';
+
+      return {
+        'caloriesEaten': totalCalories.toInt(),
+        'calorieGoal': dailyCaloriesGoal,
+        'proteinsEaten': totalProteins.toInt(),
+        'proteinGoal': dailyProteinGoal,
+        'carbsEaten': totalCarbs.toInt(),
+        'carbsGoal': dailyCarbsGoal,
+        'fatsEaten': totalFats.toInt(),
+        'fatGoal': dailyFatGoal,
+        'waterDrunk': totalWaterMl / 1000.0,
+        'waterGoal': dailyWaterGoalMl / 1000.0,
+        'streak': streakCount,
+        'userName': userName,
+      };
+    } catch (e) {
+      if (kDebugMode) debugPrint('❌ CoachContextBuilder: Error getting fresh nutrition: $e');
+      return {}; // Return empty map, buildUserContext will fallback to GlobalState
+    }
   }
 
   /// Get day of week in user's language
@@ -472,6 +606,93 @@ ${isEnglish ? 'Respond in English.' : isGerman ? 'Antworte auf Deutsch.' : 'Rép
     } catch (e) {
       if (kDebugMode) debugPrint('❌ CoachContextBuilder: Error getting recent cardio: $e');
       return 'Aucune activité cardio récente';
+    }
+  }
+
+  /// Get weekly planning context (workouts, cardio, meals planned)
+  Future<String> _getWeeklyPlanningContext() async {
+    try {
+      final weekData = await WeeklyPlannerService.getWeekData();
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final lang = LocalizationService.instance.currentLanguageCode;
+
+      final buffer = StringBuffer();
+      final dayNames = lang == 'fr'
+          ? ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
+          : ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+      // Use weekStart from weekData
+      final weekStart = weekData.weekStart;
+
+      for (int i = 0; i < 7; i++) {
+        final day = weekStart.add(Duration(days: i));
+        final dayDate = DateTime(day.year, day.month, day.day);
+        final isToday = dayDate.isAtSameMomentAs(today);
+        final isPast = dayDate.isBefore(today);
+
+        // Get activities for this day using getDayPlan
+        final dayPlan = weekData.getDayPlan(day);
+        if (dayPlan == null) continue;
+
+        final workouts = dayPlan.workouts;
+        final cardioActivities = dayPlan.cardios;
+
+        // Skip days without any planned activities
+        if (workouts.isEmpty && cardioActivities.isEmpty) continue;
+
+        // Day header
+        final dayLabel = isToday
+            ? (lang == 'fr' ? '📍 AUJOURD\'HUI (${dayNames[day.weekday - 1]})' : '📍 TODAY (${dayNames[day.weekday - 1]})')
+            : isPast
+                ? '${dayNames[day.weekday - 1]} ${day.day}/${day.month} (passé)'
+                : '${dayNames[day.weekday - 1]} ${day.day}/${day.month}';
+
+        buffer.writeln(dayLabel);
+
+        // Workouts
+        for (final workout in workouts) {
+          final statusEmoji = workout.status == PlannedStatus.completed ? '✅' : workout.status == PlannedStatus.missed ? '❌' : '🏋️';
+          final statusLabel = workout.status == PlannedStatus.completed
+              ? (lang == 'fr' ? 'fait' : 'done')
+              : workout.status == PlannedStatus.missed
+                  ? (lang == 'fr' ? 'manqué' : 'missed')
+                  : (lang == 'fr' ? 'prévu' : 'planned');
+          buffer.writeln('  $statusEmoji ${workout.workoutName} (${workout.durationMinutes ?? 45} min) - $statusLabel');
+        }
+
+        // Cardio
+        for (final cardio in cardioActivities) {
+          final cardioData = cardio.cardioData;
+          final statusEmoji = cardio.status == PlannedStatus.completed ? '✅' : cardio.status == PlannedStatus.missed ? '❌' : '🏃';
+          final statusLabel = cardio.status == PlannedStatus.completed
+              ? (lang == 'fr' ? 'fait' : 'done')
+              : cardio.status == PlannedStatus.missed
+                  ? (lang == 'fr' ? 'manqué' : 'missed')
+                  : (lang == 'fr' ? 'prévu' : 'planned');
+
+          final activityName = cardioData?.activityName ?? 'Cardio';
+          final durationInfo = cardioData?.targetMinutes != null
+              ? '${cardioData!.targetMinutes} min'
+              : cardioData?.targetKm != null
+                  ? '${cardioData!.targetKm} km'
+                  : '';
+
+          buffer.writeln('  $statusEmoji $activityName${durationInfo.isNotEmpty ? ' ($durationInfo)' : ''} - $statusLabel');
+        }
+
+        buffer.writeln();
+      }
+
+      final result = buffer.toString().trim();
+      if (result.isEmpty) {
+        return lang == 'fr' ? 'Aucune séance planifiée cette semaine' : 'No sessions planned this week';
+      }
+
+      return result;
+    } catch (e) {
+      if (kDebugMode) debugPrint('❌ CoachContextBuilder: Error getting weekly planning: $e');
+      return 'Planning non disponible';
     }
   }
 

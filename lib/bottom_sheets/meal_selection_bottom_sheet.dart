@@ -395,7 +395,7 @@ class MealSelectionBottomSheet {
                                         .replaceAll('{count}', count.toString())
                                         .replaceAll('{plural}', plural);
                                     return Text(
-                                      '${meal.time} • $foodText',
+                                      foodText,
                                       style: const TextStyle(
                                         fontSize: 13,
                                         color: Color(0xFF64748B),

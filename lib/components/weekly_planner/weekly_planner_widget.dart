@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../models/weekly_planner_models.dart';
 import '../../services/weekly_planner_service.dart';
 import '../../services/localization_service.dart';
@@ -31,14 +32,39 @@ class _WeeklyPlannerWidgetState extends State<WeeklyPlannerWidget> {
   WeeklyPlannerData _weekData = WeeklyPlannerData.empty();
   bool _isLoading = true;
   bool _isMigrating = false; // Flag pour éviter les boucles de rechargement
+  bool _shouldAnimateProgress = false; // Flag pour animer après génération
+  int _dailyCalorieTarget = 2000; // Objectif calorique journalier
   final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
+    _loadUserCalorieTarget();
     _loadData();
     // S'abonner aux changements globaux
     GlobalStateManager.instance.events.listen(_onGlobalStateChange);
+  }
+
+  /// Charger l'objectif calorique de l'utilisateur depuis Supabase
+  Future<void> _loadUserCalorieTarget() async {
+    try {
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId == null) return;
+
+      final response = await Supabase.instance.client
+          .from('users')
+          .select('daily_calories')
+          .eq('id', userId)
+          .maybeSingle();
+
+      if (response != null && mounted) {
+        setState(() {
+          _dailyCalorieTarget = response['daily_calories'] ?? 2000;
+        });
+      }
+    } catch (e) {
+      // Utiliser la valeur par défaut en cas d'erreur
+    }
   }
 
   @override
@@ -77,10 +103,20 @@ class _WeeklyPlannerWidgetState extends State<WeeklyPlannerWidget> {
         setState(() {
           _weekData = data;
           _isLoading = false;
+          _shouldAnimateProgress = true; // Activer l'animation au chargement
         });
 
         // Scroller vers aujourd'hui
         _scrollToToday();
+
+        // Désactiver l'animation après un délai
+        Future.delayed(const Duration(milliseconds: 2000), () {
+          if (mounted) {
+            setState(() {
+              _shouldAnimateProgress = false;
+            });
+          }
+        });
       }
     } catch (e) {
       _isMigrating = false; // S'assurer de réinitialiser le flag en cas d'erreur
@@ -131,8 +167,20 @@ class _WeeklyPlannerWidgetState extends State<WeeklyPlannerWidget> {
         reverseTransitionDuration: const Duration(milliseconds: 500),
       ),
     ).then((_) {
+      // Activer l'animation de progression au retour du chat (après génération)
+      setState(() {
+        _shouldAnimateProgress = true;
+      });
       // Rafraîchir les données au retour
       _loadData();
+      // Désactiver l'animation après un délai
+      Future.delayed(const Duration(milliseconds: 2000), () {
+        if (mounted) {
+          setState(() {
+            _shouldAnimateProgress = false;
+          });
+        }
+      });
     });
   }
 
@@ -262,6 +310,8 @@ class _WeeklyPlannerWidgetState extends State<WeeklyPlannerWidget> {
     }
 
     final dayNames = _getDayNames(langCode);
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -274,6 +324,8 @@ class _WeeklyPlannerWidgetState extends State<WeeklyPlannerWidget> {
             children: List.generate(7, (index) {
               final date = _weekData.weekStart.add(Duration(days: index));
               final dayPlan = _weekData.getDayPlan(date);
+              final normalizedDate = DateTime(date.year, date.month, date.day);
+              final isToday = normalizedDate == today;
 
               return SizedBox(
                 width: dayWidth,
@@ -281,6 +333,8 @@ class _WeeklyPlannerWidgetState extends State<WeeklyPlannerWidget> {
                   date: date,
                   dayName: dayNames[index],
                   dayPlan: dayPlan,
+                  dailyCalorieTarget: _dailyCalorieTarget,
+                  animateProgress: _shouldAnimateProgress && isToday,
                   onDataRefresh: _loadData,
                   onActivityTap: (activity) {
                     if (activity.activityType == PlannedActivityType.cardio) {
@@ -303,11 +357,11 @@ class _WeeklyPlannerWidgetState extends State<WeeklyPlannerWidget> {
       child: Column(
         children: [
           // Phrase d'accroche
-          const Padding(
-            padding: EdgeInsets.only(bottom: 10),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
             child: Text(
-              'Planifie ta semaine',
-              style: TextStyle(
+              'planner_plan_your_week'.tr(langCode),
+              style: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: Color(0xFF0B132B),
@@ -322,7 +376,7 @@ class _WeeklyPlannerWidgetState extends State<WeeklyPlannerWidget> {
                 child: _buildCompactAIButton(
                   context,
                   icon: LucideIcons.utensils,
-                  label: 'Repas',
+                  label: 'planner_meals_button'.tr(langCode),
                   mode: 'meals',
                 ),
               ),
@@ -332,7 +386,7 @@ class _WeeklyPlannerWidgetState extends State<WeeklyPlannerWidget> {
                 child: _buildCompactAIButton(
                   context,
                   icon: LucideIcons.dumbbell,
-                  label: 'Séances',
+                  label: 'planner_sessions_button'.tr(langCode),
                   mode: 'workouts',
                 ),
               ),

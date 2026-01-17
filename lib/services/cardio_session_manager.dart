@@ -6,6 +6,7 @@ import 'sport_dashboard_service.dart';
 import 'workout_cache_service.dart';
 import 'location_service.dart';
 import 'cardio_calculator.dart';
+import 'weekly_planner_service.dart';
 
 /// Manager pour gérer le cycle de vie des séances cardio
 /// S'assure que toutes les séances terminées sont bien historisées
@@ -145,6 +146,16 @@ class CardioSessionManager {
       // Invalider les caches (mais pas de mise à jour GlobalState ici pour éviter doublons)
       _invalidateAllCaches();
 
+      // 🔄 Sync vers le planner
+      await WeeklyPlannerService.syncCardioSessionToPlanner(
+        sessionId: sessionId,
+        activityType: sessionData.activityType,
+        activityTitle: sessionData.activityTitle,
+        sessionDate: sessionData.startTime,
+        durationMinutes: sessionData.duration.inMinutes,
+        distanceKm: gpsDistance > 0 ? gpsDistance : sessionData.distance,
+      );
+
       return sessionId;
     } catch (e) {
       debugPrint('❌ Error completing cardio session with GPS: $e');
@@ -182,6 +193,26 @@ class CardioSessionManager {
 
       // 2. Invalider le cache pour forcer le rechargement des données
       _invalidateAllCaches();
+
+      // 3. 🔄 Sync vers le planner - récupérer les données de la session
+      final sessionData = await _client
+          .from('cardio_sessions')
+          .select('activity_type, activity_title, session_date, duration_seconds, distance_km, calories')
+          .eq('id', sessionId)
+          .maybeSingle();
+
+      if (sessionData != null) {
+        await WeeklyPlannerService.syncCardioSessionToPlanner(
+          sessionId: sessionId,
+          activityType: sessionData['activity_type'] as String? ?? 'running',
+          activityTitle: sessionData['activity_title'] as String? ?? 'Cardio',
+          sessionDate: DateTime.parse(sessionData['session_date'] as String),
+          durationMinutes: sessionData['duration_seconds'] != null
+              ? ((sessionData['duration_seconds'] as int) / 60).round()
+              : null,
+          distanceKm: (sessionData['distance_km'] as num?)?.toDouble(),
+        );
+      }
 
     } catch (e) {
       debugPrint('❌ Error completing cardio session: $e');

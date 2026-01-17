@@ -107,7 +107,7 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen>
         temperature: 0.85,
         topK: 40,
         topP: 0.9,
-        maxOutputTokens: 200,
+        maxOutputTokens: 120, // Reduced to force shorter responses
       ),
     );
 
@@ -210,15 +210,17 @@ ECHANGE 5 - CONTRAT
 - On lui rappelle de manger/s'entrainer
 - On est dispo H24 pour ses questions
 
-## FORMAT
-- MAX 5 phrases courtes. Pas de longs paragraphes.
+## FORMAT - TRES IMPORTANT
+- MAX 3 phrases COURTES. PAS DE PAVES.
+- Chaque phrase = 1 ligne. Phrases percutantes.
 - PAS de markdown (pas de **gras**, pas de listes a puces)
-- Texte simple et direct
-- TOUJOURS terminer par une question (meme simple: "ca te parle ?", "on est d'accord ?", "t'en penses quoi ?")
+- Texte simple, direct, conversationnel
+- TOUJOURS terminer par une question courte ("ca te parle ?", "on est d'accord ?", "t'en penses quoi ?")
+- Si tu ecris plus de 3 phrases, c'est TROP LONG. Sois concis!
 
 ## CE QUE TU NE FAIS JAMAIS
 - Finir sans question (INTERDIT sauf echange 5)
-- Messages trop longs (5 phrases MAX)
+- Messages trop longs (3 phrases MAX, jamais de paves!)
 - Markdown ou formatage special
 - Rester bloque sur le meme sujet
 - Oublier l'aspect emotionnel
@@ -494,23 +496,16 @@ IMPORTANT:
             ),
           ),
 
-          // Counter badge - fixed at very top of screen
-          Positioned(
-            top: MediaQuery.of(context).padding.top + 8,
-            right: 16,
-            child: _buildCounterBadge(lang),
-          ),
-
           // Chat zone - full screen like iMessage/WhatsApp
           Positioned(
-            top: MediaQuery.of(context).padding.top + 40, // Below status bar + counter badge
+            top: MediaQuery.of(context).padding.top,
             left: 0,
             right: 0,
             bottom: keyboardHeight > 0 ? keyboardHeight : 0,
             child: Column(
               children: [
-                // Header "Faisons connaissance"
-                _buildChatHeader(lang),
+                // Top banner with title and counter
+                _buildTopBanner(lang),
 
                 // Messages list (takes all available space)
                 Expanded(child: _buildMessagesList()),
@@ -530,107 +525,83 @@ IMPORTANT:
     );
   }
 
-  Widget _buildCounterBadge(String lang) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Exchange counter
-        ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white.withOpacity(0.2)),
-              ),
-              child: Text(
-                '$_userExchangeCount/$_maxExchanges',
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.9),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  shadows: [
-                    Shadow(
-                      color: Colors.black.withOpacity(0.3),
-                      blurRadius: 4,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-        // Skip button
-        if (_userExchangeCount >= _minExchangesToSkip) ...[
-          const SizedBox(width: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-              child: GestureDetector(
-                onTap: _handleSkip,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.white.withOpacity(0.2)),
-                  ),
-                  child: Text(
-                    lang == 'fr' ? 'Passer' : lang == 'de' ? 'Überspringen' : 'Skip',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.8),
-                      fontSize: 13,
-                      shadows: [
-                        Shadow(
-                          color: Colors.black.withOpacity(0.3),
-                          blurRadius: 4,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildChatHeader(String lang) {
+  Widget _buildTopBanner(String lang) {
     final headerText = lang == 'fr'
         ? 'Faisons connaissance'
         : lang == 'de'
             ? 'Lass uns kennenlernen'
             : "Let's get to know each other";
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.25),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.white.withOpacity(0.3)),
+    return ClipRRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.25),
+            border: Border(
+              bottom: BorderSide(color: Colors.white.withOpacity(0.2)),
             ),
-            child: Text(
-              headerText,
-              style: const TextStyle(
-                color: _ryseDarkBlue,
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.3,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Title
+              Text(
+                headerText,
+                style: const TextStyle(
+                  color: _ryseDarkBlue,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.3,
+                ),
               ),
-              textAlign: TextAlign.center,
-            ),
+              // Counter and skip button
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Exchange counter
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: _ryseDarkBlue.withOpacity(0.85),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      '$_userExchangeCount/$_maxExchanges',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  // Skip button
+                  if (_userExchangeCount >= _minExchangesToSkip) ...[
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: _handleSkip,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: _ryseDarkBlue.withOpacity(0.7),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          lang == 'fr' ? 'Passer' : lang == 'de' ? 'Überspringen' : 'Skip',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ],
           ),
         ),
       ),

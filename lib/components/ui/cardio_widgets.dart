@@ -799,12 +799,15 @@ class _WeekSessionsSectionState extends State<WeekSessionsSection> {
   }
 
   String _getDayText(DateTime date, LocalizationService locService) {
+    // Comparer les dates (sans les heures) pour éviter les problèmes autour de minuit
     final now = DateTime.now();
-    final difference = now.difference(date).inDays;
-    
+    final today = DateTime(now.year, now.month, now.day);
+    final sessionDay = DateTime(date.year, date.month, date.day);
+    final difference = today.difference(sessionDay).inDays;
+
     if (difference == 0) return 'cardio_today'.tr(locService.currentLanguageCode);
     if (difference == 1) return 'cardio_yesterday'.tr(locService.currentLanguageCode);
-    
+
     final weekDays = ['day_mon', 'day_tue', 'day_wed', 'day_thu', 'day_fri', 'day_sat', 'day_sun'];
     return weekDays[date.weekday - 1].tr(locService.currentLanguageCode);
   }

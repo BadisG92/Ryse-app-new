@@ -63,13 +63,22 @@ class _MealCardState extends State<MealCard> {
                         color: Color(0xFF1A1A1A),
                       ),
                     ),
-                    Text(
-                        widget.meal.time,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w400,
-                        color: Color(0xFF64748B),
-                      ),
+                    Consumer<LocalizationService>(
+                      builder: (context, localizationService, child) {
+                        final count = widget.meal.items.length;
+                        final plural = count > 1 ? 's' : '';
+                        final itemsText = 'items_count'.tr(localizationService.currentLanguageCode)
+                            .replaceAll('{count}', count.toString())
+                            .replaceAll('{plural}', plural);
+                        return Text(
+                          itemsText,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w400,
+                            color: Color(0xFF64748B),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),

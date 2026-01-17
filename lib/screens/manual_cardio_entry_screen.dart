@@ -487,12 +487,14 @@ class _ManualCardioEntryScreenState extends State<ManualCardioEntryScreen> {
   Future<String> _saveManualSessionToSupabase(ManualCardioEntry entry) async {
     try {
       // Convertir l'entrée manuelle en CardioSessionData
+      // La date sélectionnée représente le JOUR de la séance (startTime)
+      // L'heure de fin est calculée en ajoutant la durée
       final sessionData = CardioSessionData(
         activityType: widget.activityType,
         activityTitle: widget.activityTitle,
         formatTitle: widget.formatTitle,
-        startTime: _selectedDate.subtract(entry.duration),
-        endTime: _selectedDate,
+        startTime: _selectedDate, // La date sélectionnée = jour de la séance
+        endTime: _selectedDate.add(entry.duration),
         duration: entry.duration,
         distance: entry.distance,
         steps: entry.steps,

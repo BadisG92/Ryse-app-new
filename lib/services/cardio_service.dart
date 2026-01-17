@@ -585,17 +585,20 @@ class CompletedCardioSession {
   }
 
   String getTimeAgo(String languageCode) {
+    // Comparer les dates (sans les heures) pour éviter les problèmes autour de minuit
     final now = DateTime.now();
-    final difference = now.difference(startTime);
+    final today = DateTime(now.year, now.month, now.day);
+    final sessionDay = DateTime(startTime.year, startTime.month, startTime.day);
+    final daysDifference = today.difference(sessionDay).inDays;
 
-    if (difference.inDays == 0) {
+    if (daysDifference == 0) {
       return 'cardio_today'.tr(languageCode);
-    } else if (difference.inDays == 1) {
+    } else if (daysDifference == 1) {
       return 'cardio_yesterday'.tr(languageCode);
-    } else if (difference.inDays < 7) {
-      return 'cardio_days_ago'.tr(languageCode).replaceAll('{count}', '${difference.inDays}');
+    } else if (daysDifference < 7) {
+      return 'cardio_days_ago'.tr(languageCode).replaceAll('{count}', '$daysDifference');
     } else {
-      final weeks = (difference.inDays / 7).floor();
+      final weeks = (daysDifference / 7).floor();
       final plural = weeks > 1 ? 's' : '';
       return 'cardio_weeks_ago'.tr(languageCode)
           .replaceAll('{count}', '$weeks')
