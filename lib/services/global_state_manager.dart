@@ -723,15 +723,16 @@ class GlobalStateManager {
         'targetValue': _waterGoalL,
         'unit': 'L',
       },
-      {
-        'id': 'meals',
-        'label': 'goal_meals'.tr(languageCode),
-        'progress': (_mealsCount >= 3) ? 100 : (_mealsCount * 33),
-        'completed': _mealsCount >= 3,
-        'currentValue': _mealsCount.toDouble(),
-        'targetValue': 3.0,
-        'unit': 'meals'.tr(languageCode),
-      },
+      // MASQUÉ - Objectif repas (conservé pour réactivation future)
+      // {
+      //   'id': 'meals',
+      //   'label': 'goal_meals'.tr(languageCode),
+      //   'progress': (_mealsCount >= 3) ? 100 : (_mealsCount * 33),
+      //   'completed': _mealsCount >= 3,
+      //   'currentValue': _mealsCount.toDouble(),
+      //   'targetValue': 3.0,
+      //   'unit': 'meals'.tr(languageCode),
+      // },
       {
         'id': 'workout',
         'label': 'goal_sport'.tr(languageCode),
@@ -781,7 +782,7 @@ class GlobalStateManager {
 
       if (kDebugMode) {
         debugPrint('🎯 GlobalState: Vérification review...');
-        debugPrint('   - Objectifs complétés: $completedCount/4');
+        debugPrint('   - Objectifs complétés: $completedCount/3');
         debugPrint('   - Calories: ${caloriesCompleted ? "✅" : "❌"}');
         debugPrint('   - Sport: ${workoutCompleted ? "✅" : "❌"}');
         debugPrint('   - Combo premium: ${hasCaloriesAndWorkout ? "✅" : "❌"}');

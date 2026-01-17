@@ -17,6 +17,7 @@ import 'food_entries_service.dart';
 import 'localization_service.dart';
 import 'auth_service.dart';
 import 'unified_subscription_service.dart';
+import 'feature_trial_service.dart';
 import 'coach_preference_extractor.dart';
 import 'global_state_manager.dart';
 import 'translations.dart';
@@ -274,13 +275,10 @@ class PlannerActionResult {
 /// Service d'IA pour le planificateur hebdomadaire
 class PlannerAIService {
   // =====================================================
-  // FREE TIER LIMITS - 3 planifications IA par semaine
+  // FREE TIER LIMITS - 5 planifications IA à vie (sport + repas combinés)
   // =====================================================
-  static const int _freeWeeklyLimit = 3;
-  static const String _prefKeyWeekStart = 'ai_planner_week_start';
-  static const String _prefKeyUsageCount = 'ai_planner_usage_count';
 
-  /// Vérifier si l'utilisateur peut utiliser l'IA (premium ou quota restant)
+  /// Vérifier si l'utilisateur peut utiliser l'IA (premium ou essais restants)
   static Future<bool> canUseAI() async {
     // Premium = accès illimité
     if (UnifiedSubscriptionService().isPremium) {
@@ -290,31 +288,19 @@ class PlannerAIService {
     if (UnifiedSubscriptionService().testMode) {
       return true;
     }
-    // Free = vérifier le quota
+    // Free = vérifier les essais restants (5 à vie)
     final remaining = await getRemainingFreeUses();
     return remaining > 0;
   }
 
   /// Obtenir le nombre d'utilisations restantes pour les utilisateurs free
+  /// Utilise maintenant FeatureTrialService (5 essais à vie, pas de reset hebdomadaire)
   static Future<int> getRemainingFreeUses() async {
-    final prefs = await SharedPreferences.getInstance();
-
-    // Vérifier si on est dans une nouvelle semaine
-    final currentWeekStart = getCurrentWeekStart();
-    final savedWeekStart = prefs.getString(_prefKeyWeekStart);
-
-    if (savedWeekStart == null || savedWeekStart != currentWeekStart.toIso8601String().split('T')[0]) {
-      // Nouvelle semaine, reset le compteur
-      await prefs.setString(_prefKeyWeekStart, currentWeekStart.toIso8601String().split('T')[0]);
-      await prefs.setInt(_prefKeyUsageCount, 0);
-      return _freeWeeklyLimit;
-    }
-
-    final usageCount = prefs.getInt(_prefKeyUsageCount) ?? 0;
-    return (_freeWeeklyLimit - usageCount).clamp(0, _freeWeeklyLimit);
+    return await FeatureTrialService.instance.getPlannerRemainingUsages();
   }
 
   /// Incrémenter le compteur d'utilisation (appelé après une planification réussie)
+  /// Utilise maintenant FeatureTrialService (compteur persistant en base de données)
   static Future<void> incrementUsageCount() async {
     // Ne pas incrémenter pour les premium
     if (UnifiedSubscriptionService().isPremium) {
@@ -327,14 +313,43 @@ class PlannerAIService {
       return;
     }
 
-    final prefs = await SharedPreferences.getInstance();
-    final currentCount = prefs.getInt(_prefKeyUsageCount) ?? 0;
-    await prefs.setInt(_prefKeyUsageCount, currentCount + 1);
-    debugPrint('📊 AI Planner usage: ${currentCount + 1}/$_freeWeeklyLimit');
+    // Incrémenter via FeatureTrialService (stocké en base de données)
+    await FeatureTrialService.instance.incrementPlannerUsage();
+
+    final remaining = await FeatureTrialService.instance.getPlannerRemainingUsages();
+    debugPrint('📊 AI Planner usage: ${FeatureTrialService.maxPlannerUsages - remaining}/${FeatureTrialService.maxPlannerUsages} (restants: $remaining)');
   }
 
   /// Vérifier si l'utilisateur est premium
   static bool get isPremium => UnifiedSubscriptionService().isPremium;
+
+  // =====================================================
+  // SESSION TRACKING - Pour éviter de compter plusieurs fois par session
+  // =====================================================
+
+  /// Flag pour tracker si on a déjà incrémenté le compteur dans cette session de chat
+  /// Reset quand on ouvre un nouveau chat ou qu'on clear l'historique
+  static bool _sessionAlreadyCounted = false;
+
+  /// Incrémenter le compteur une seule fois par session de génération
+  /// Appelé quand l'utilisateur confirme des repas ou workouts
+  static Future<void> _incrementUsageOncePerSession() async {
+    // Si déjà compté dans cette session, ne pas re-compter
+    if (_sessionAlreadyCounted) {
+      debugPrint('📊 AI Planner: Session déjà comptée, pas de nouveau décompte');
+      return;
+    }
+
+    // Incrémenter et marquer la session comme comptée
+    await incrementUsageCount();
+    _sessionAlreadyCounted = true;
+  }
+
+  /// Reset le flag de session (appelé quand on ouvre un nouveau chat)
+  static void resetSessionCounter() {
+    _sessionAlreadyCounted = false;
+    debugPrint('📊 AI Planner: Session counter reset');
+  }
 
   // =====================================================
   // CONVERSATION CONTEXT
@@ -362,6 +377,7 @@ class PlannerAIService {
     _conversationHistory.clear();
     _pendingAction = null;
     _pendingFollowUpActions = null;
+    _sessionAlreadyCounted = false; // Reset le compteur de session
     debugPrint('🗑️ Conversation history cleared');
   }
 
@@ -517,10 +533,10 @@ class PlannerAIService {
           );
       }
 
-      // Pour les workouts: ne pas incrémenter maintenant (fait dans confirmWorkouts)
-      // Pour les autres: incrémenter si succès et pas de preview
+      // Pour les workouts/repas: ne pas incrémenter maintenant (fait dans confirm*)
+      // Pour les autres actions directes: incrémenter UNE FOIS par session
       if (result.success && !result.requiresConfirmation) {
-        await incrementUsageCount();
+        await _incrementUsageOncePerSession();
       }
 
       return result;
@@ -682,8 +698,8 @@ class PlannerAIService {
         );
       }
 
-      // Incrémenter le compteur d'utilisation seulement après confirmation
-      await incrementUsageCount();
+      // Incrémenter le compteur UNE SEULE FOIS par session (même si plusieurs workouts confirmés)
+      await _incrementUsageOncePerSession();
 
       return PlannerActionResult.success(
         _getConfirmationMessage(langCode, createdWorkouts),
@@ -1201,8 +1217,8 @@ class PlannerAIService {
         );
       }
 
-      // Incrémenter le compteur d'utilisation après confirmation
-      await incrementUsageCount();
+      // Incrémenter le compteur UNE SEULE FOIS par session (même si plusieurs repas confirmés)
+      await _incrementUsageOncePerSession();
 
       final message = langCode == 'fr'
           ? '✅ ${createdItems.length} repas ajoutés au planificateur !'
@@ -3995,9 +4011,9 @@ USER REQUEST: "$userMessage"
       final finalMessage = responseText ?? executionResults.join('\n');
       addToHistory('assistant', finalMessage);
 
-      // Incrémenter le compteur si des actions ont été effectuées
+      // Incrémenter le compteur UNE FOIS par session si des actions ont été effectuées
       if (toolCalls.isNotEmpty) {
-        await incrementUsageCount();
+        await _incrementUsageOncePerSession();
       }
 
       return PlannerActionResult.success(finalMessage);

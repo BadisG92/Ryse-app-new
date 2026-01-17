@@ -209,15 +209,16 @@ class DashboardService {
       final workoutGoal = await _getWorkoutGoal(user.id);
       
       final result = [
-        DailyGoal(
-          id: 'meals',
-          label: 'track_meals_today'.tr(languageCode),
-          progress: ((mealsCount / 3) * 100).round(),
-          completed: mealsCount >= 3,
-          currentValue: mealsCount.toDouble(),
-          targetValue: 3,
-          unit: 'meals'.tr(languageCode),
-        ),
+        // MASQUÉ - Objectif repas (conservé pour réactivation future)
+        // DailyGoal(
+        //   id: 'meals',
+        //   label: 'track_meals_today'.tr(languageCode),
+        //   progress: ((mealsCount / 3) * 100).round(),
+        //   completed: mealsCount >= 3,
+        //   currentValue: mealsCount.toDouble(),
+        //   targetValue: 3,
+        //   unit: 'meals'.tr(languageCode),
+        // ),
         DailyGoal(
           id: 'water',
           label: languageCode == 'fr'
@@ -585,16 +586,16 @@ class DashboardService {
           targetValue: targetWaterL,
           unit: 'L',
         ),
-        // Objectif repas
-        DailyGoal(
-          id: 'meals',
-          label: 'track_meals_today'.tr(languageCode),
-          progress: ((uniqueMeals / 3) * 100).round().clamp(0, 100),
-          completed: uniqueMeals >= 3,
-          currentValue: uniqueMeals.toDouble(),
-          targetValue: 3,
-          unit: 'meals'.tr(languageCode),
-        ),
+        // MASQUÉ - Objectif repas (conservé pour réactivation future)
+        // DailyGoal(
+        //   id: 'meals',
+        //   label: 'track_meals_today'.tr(languageCode),
+        //   progress: ((uniqueMeals / 3) * 100).round().clamp(0, 100),
+        //   completed: uniqueMeals >= 3,
+        //   currentValue: uniqueMeals.toDouble(),
+        //   targetValue: 3,
+        //   unit: 'meals'.tr(languageCode),
+        // ),
         // Objectif workout
         DailyGoal(
           id: 'workout',

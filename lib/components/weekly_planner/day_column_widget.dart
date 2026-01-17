@@ -354,9 +354,20 @@ class _DayColumnWidgetState extends State<DayColumnWidget>
         // Si on a des planned activities pour ce type, ajouter UNE SEULE icône
         if (plannedByType.containsKey(mealType)) {
           final mealsOfType = plannedByType[mealType]!;
-          // Calculer le status du groupe : completed si TOUS les repas sont validés
-          final allCompleted = mealsOfType.every((m) => m.status == PlannedStatus.completed);
-          final groupStatus = allCompleted ? PlannedStatus.completed : PlannedStatus.planned;
+          // Calculer le status du groupe :
+          // - completed (vert) si AU MOINS UN aliment a été validé
+          // - missed (rouge) si TOUS les aliments sont ratés (aucun validé)
+          // - planned (bleu) sinon (tous encore planifiés)
+          final anyCompleted = mealsOfType.any((m) => m.status == PlannedStatus.completed);
+          final allMissed = mealsOfType.every((m) => m.status == PlannedStatus.missed);
+          final PlannedStatus groupStatus;
+          if (anyCompleted) {
+            groupStatus = PlannedStatus.completed;
+          } else if (allMissed) {
+            groupStatus = PlannedStatus.missed;
+          } else {
+            groupStatus = PlannedStatus.planned;
+          }
 
           // Ajouter une seule entrée avec le premier meal et le groupe complet
           activities.add(_ActivityData(

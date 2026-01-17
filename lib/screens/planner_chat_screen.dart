@@ -2146,8 +2146,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
           PlannerAIService.addToHistory('assistant', successMessage);
           PlannerAIService.clearHistory();
 
-          // Incrémenter le compteur d'utilisation une seule fois
-          await PlannerAIService.incrementUsageCount();
+          // Note: le compteur est géré automatiquement par _incrementUsageOncePerSession dans confirmWorkouts/confirmMeals
           await _refreshWeekData();
           await _loadFreeUsageStatus();
 

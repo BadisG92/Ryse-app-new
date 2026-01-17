@@ -456,13 +456,14 @@ class GlobalProgressData {
         target: 7,
         unit: 'days'.tr(LocalizationService.instance.currentLanguageCode),
       ),
-      BalanceItem(
-        icon: LucideIcons.utensils,
-        label: 'meals_recorded'.tr(LocalizationService.instance.currentLanguageCode),
-        achieved: 17,
-        target: 21,
-        unit: 'meals'.tr(LocalizationService.instance.currentLanguageCode),
-      ),
+      // MASQUÉ - Repas enregistrés (conservé pour réactivation future)
+      // BalanceItem(
+      //   icon: LucideIcons.utensils,
+      //   label: 'meals_recorded'.tr(LocalizationService.instance.currentLanguageCode),
+      //   achieved: 17,
+      //   target: 21,
+      //   unit: 'meals'.tr(LocalizationService.instance.currentLanguageCode),
+      // ),
       BalanceItem(
         icon: LucideIcons.dumbbell,
         label: 'sport_sessions'.tr(LocalizationService.instance.currentLanguageCode),
@@ -531,7 +532,7 @@ class GlobalProgressData {
   // Statistiques d'en-tête
   static HeaderStats get headerStats => HeaderStats(
     dailyStreak: '7 ${'days'.tr(LocalizationService.instance.currentLanguageCode)}',
-    weeklyObjectives: '3/4 ${'objectives'.tr(LocalizationService.instance.currentLanguageCode)}',
+    weeklyObjectives: '2/3 ${'objectives'.tr(LocalizationService.instance.currentLanguageCode)}',
     currentStatus: 'progression'.tr(LocalizationService.instance.currentLanguageCode),
   );
 

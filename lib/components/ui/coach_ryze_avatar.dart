@@ -6,6 +6,7 @@ enum CoachRyzeAvatarType {
   nutrition,         // Panda docteur nutrition (avec pomme) - pour analyse nutritionnelle
   nutritionChat,     // Panda docteur nutrition (sans pomme) - pour chat AI
   chef,              // Panda chef cuisinier
+  welcome,           // Panda qui fait coucou - pour salutations générales
 }
 
 /// Tailles prédéfinies pour l'avatar Coach Ryze
@@ -69,6 +70,8 @@ class CoachRyzeAvatar extends StatelessWidget {
         return 'assets/images/coach_ryze_ai_chat_nutrition.png'; // Sans pomme
       case CoachRyzeAvatarType.chef:
         return 'assets/images/coach_ryze_chef_avatar.png';
+      case CoachRyzeAvatarType.welcome:
+        return 'assets/images/coach_ryze_welcome.png'; // Panda qui fait coucou
     }
   }
 

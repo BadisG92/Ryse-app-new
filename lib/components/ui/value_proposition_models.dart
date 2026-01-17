@@ -118,9 +118,9 @@ class Slide2Data {
   static const String coachResponsePostWorkoutEn = "Perfect for recovery: 30g protein within 2h.";
   static const String coachResponsePostWorkoutDe = "Perfekt für die Erholung: 30g Protein innerhalb von 2 Stunden.";
 
-  static const String coachResponseEveningFr = "Bilan : 4/4 objectifs ! Bien joué, demain on ajuste.";
-  static const String coachResponseEveningEn = "Summary: 4/4 goals! Well done, let's adjust tomorrow.";
-  static const String coachResponseEveningDe = "Bilanz: 4/4 Ziele! Gut gemacht, morgen passen wir an.";
+  static const String coachResponseEveningFr = "Bilan : 3/3 objectifs ! Bien joué, demain on ajuste.";
+  static const String coachResponseEveningEn = "Summary: 3/3 goals! Well done, let's adjust tomorrow.";
+  static const String coachResponseEveningDe = "Bilanz: 3/3 Ziele! Gut gemacht, morgen passen wir an.";
 
   static const List<String> featuresFr = [
     "Appuie pour analyser",

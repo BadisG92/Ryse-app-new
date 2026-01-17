@@ -9,7 +9,7 @@ import 'ui/dashboard_models.dart';
 import 'ui/dashboard_cards.dart';
 import 'ui/dashboard_widgets.dart';
 import 'ui/custom_card.dart';
-import 'ui/global_state_header.dart';
+import 'ui/coach_bubble_header.dart'; // Pour CoachMessageContext et detectContext()
 import 'weekly_planner/weekly_planner_widget.dart';
 import '../services/dashboard_service.dart';
 import '../services/localization_service.dart';
@@ -349,36 +349,52 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      body: Column(
-        children: [
-          // Header avec bandeau global (identique aux autres pages)
-          _buildHeader(),
+      body: Container(
+        // Fond gradient fixe sur toute la page
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF0B132B), Color(0xFF1C2951), Color(0xFFF8FAFC)],
+            stops: [0.0, 0.3, 0.45],
+          ),
+        ),
+        child: RefreshIndicator(
+          onRefresh: _refreshDashboardData,
+          color: Colors.white,
+          edgeOffset: MediaQuery.of(context).padding.top,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.only(bottom: 120),
+            child: Column(
+              children: [
+                // Panda + Bulle (sans header box)
+                _buildCoachSection(),
 
-          // Contenu scrollable
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: _refreshDashboardData,
-              color: const Color(0xFF0B132B),
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.only(bottom: 120),
-                child: Padding(
+                // Contenu avec padding horizontal
+                Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Column(
                     children: [
                       const SizedBox(height: 16),
 
-                          // Weekly Planner pour tous les utilisateurs
-                          Container(
+                          // 1. Bloc Mes Objectifs
+                          EnhancedDailyGoalsSection(
                             key: _caloriesCardKey,
-                            child: WeeklyPlannerWidget(
-                              isPremium: userProfile!.isPremium,
-                            ),
+                            goals: dailyGoals,
+                            profile: userProfile!,
+                            isPremium: userProfile!.isPremium,
                           ),
 
                           const SizedBox(height: 16),
 
-                          // Actions rapides - Toujours affiché
+                          // 2. Weekly Planner
+                          WeeklyPlannerWidget(
+                            isPremium: userProfile!.isPremium,
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          // 3. Actions rapides - "Que faisons-nous aujourd'hui"
                           Consumer<LocalizationService>(
                             builder: (context, locService, child) => QuickActionsSection(
                               actions: DashboardData.getOriginalActionsWithWeight(userProfile!, locService.currentLanguageCode),
@@ -388,120 +404,99 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
                             ),
                           ),
 
-                          const SizedBox(height: 16),
+                          // 4. Suivi Nutrition & Sport - MASQUÉ (conservé pour réactivation future)
+                          // Consumer<LocalizationService>(
+                          //   builder: (context, locService, child) => NutritionSportTrackingSection(
+                          //     modules: modulePreviews.isNotEmpty
+                          //       ? modulePreviews
+                          //       : DashboardData.getModulePreviews(locService.currentLanguageCode),
+                          //     onModuleTap: _onModuleTap,
+                          //   ),
+                          // ),
 
-                          // Suivi Nutrition & Sport - Toujours avec vraies données
-                          Consumer<LocalizationService>(
-                            builder: (context, locService, child) => NutritionSportTrackingSection(
-                              modules: modulePreviews.isNotEmpty
-                                ? modulePreviews
-                                : DashboardData.getModulePreviews(locService.currentLanguageCode),
-                              onModuleTap: _onModuleTap,
-                            ),
-                          ),
-
-                          const SizedBox(height: 16),
-                    ],
-                  ),
+                    const SizedBox(height: 16),
+                  ],
                 ),
               ),
-            ),
+            ],
           ),
-        ],
+        ),
+        ),
       ),
     );
   }
 
-  /// Construit le header avec le bandeau global et le message de bienvenue
-  Widget _buildHeader() {
+  /// Section Coach Ryze avec panda + bulle (sans container header)
+  Widget _buildCoachSection() {
     if (userProfile == null) {
       return const SizedBox.shrink();
     }
 
-    return Container(
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
-        ),
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(24),
-          bottomRight: Radius.circular(24),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF0B132B).withOpacity(0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // Bandeau global avec GlobalStateManager (synchronisé instantanément)
-          // useGradient: false pour hériter du gradient du container parent
-          const GlobalStateHeaderWidget(useGradient: false),
+    return Consumer<LocalizationService>(
+      builder: (context, locService, child) {
+        final greeting = userProfile!.greetingMessage(locService.currentLanguageCode);
+        final contextual = userProfile!.contextualMessage(locService.currentLanguageCode);
+        final fullMessage = '$greeting $contextual';
+        final messageContext = fullMessage.detectContext();
 
-          // Séparation visuelle
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Container(
-              height: 1,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                  colors: [
-                    Colors.white.withOpacity(0.0),
-                    Colors.white.withOpacity(0.3),
-                    Colors.white.withOpacity(0.0),
-                  ],
+        String avatarPath;
+        switch (messageContext) {
+          case CoachMessageContext.nutrition:
+            avatarPath = 'assets/images/coach_ryze_nutrition_avatar.png';
+            break;
+          case CoachMessageContext.sport:
+            avatarPath = 'assets/images/coach_ryze_workout_avatar.png';
+            break;
+          case CoachMessageContext.general:
+            avatarPath = 'assets/images/coach_ryze_welcome.png';
+            break;
+        }
+
+        return SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(8, 8, 16, 0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Panda
+                Image.asset(
+                  avatarPath,
+                  width: 110,
+                  height: 110,
+                  fit: BoxFit.contain,
+                  cacheWidth: 220,
+                  filterQuality: FilterQuality.medium,
                 ),
-              ),
-            ),
-          ),
-
-          // Message de bienvenue personnalisé (intégré dans le header)
-          Consumer<LocalizationService>(
-            builder: (context, locService, child) {
-              return Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Message d'accueil engageant (plus gros)
-                      Text(
-                        userProfile!.greetingMessage(locService.currentLanguageCode),
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                        textAlign: TextAlign.left,
+                // Bulle
+                Expanded(
+                  child: Container(
+                    margin: const EdgeInsets.only(top: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.3),
+                        width: 1,
                       ),
-                      const SizedBox(height: 8),
-                      // CTA actionnable (plus petit)
-                      Text(
-                        userProfile!.contextualMessage(locService.currentLanguageCode),
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w400,
-                          color: Colors.white.withOpacity(0.9),
-                          height: 1.4,
-                        ),
-                        textAlign: TextAlign.left,
+                    ),
+                    child: Text(
+                      fullMessage,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        height: 1.35,
                       ),
-                    ],
+                    ),
                   ),
                 ),
-              );
-            },
+              ],
+            ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 

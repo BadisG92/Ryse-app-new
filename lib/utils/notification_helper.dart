@@ -82,7 +82,7 @@ class NotificationHelper {
     );
   }
 
-  /// Célébrer une journée parfaite (4/4 objectifs)
+  /// Célébrer une journée parfaite (3/3 objectifs)
   static Future<void> celebratePerfectDay({String? firstName}) async {
     final languageCode = LocalizationService.instance.currentLanguageCode;
     final isFrench = languageCode == 'fr';
@@ -95,10 +95,10 @@ class NotificationHelper {
             ? '${name}PERFEKTER TAG! 💯'
             : '${name}PERFECT DAY! 💯';
     final body = isFrench
-        ? '4/4 objectifs validés. Tu es une machine !'
+        ? '3/3 objectifs validés. Tu es une machine !'
         : isGerman
-            ? '4/4 Ziele erreicht. Du bist unaufhaltsam!'
-            : '4/4 goals completed. You\'re unstoppable!';
+            ? '3/3 Ziele erreicht. Du bist unaufhaltsam!'
+            : '3/3 goals completed. You\'re unstoppable!';
 
     await NotificationService().sendImmediateNotification(
       title: title,

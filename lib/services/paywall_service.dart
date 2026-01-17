@@ -15,6 +15,7 @@ enum PaywallContext {
   workoutGenerator,     // Coach Ryze - Générateur de workouts
   nutritionAnalysis,    // Bilan du Coach Ryze (quotidien)
   exerciseAnalysis,     // Analyse de progression par exercice
+  planner,              // Planificateur hebdomadaire (repas + sport)
 
   // Contexte générique
   genericUpgrade,       // Upgrade générique (avatar sans tenue)
@@ -108,6 +109,9 @@ class PaywallService {
       case PaywallContext.exerciseAnalysis:
         return CoachRyzeAvatarType.workout;
 
+      case PaywallContext.planner:
+        return CoachRyzeAvatarType.workout; // Avatar sport pour le planificateur
+
       case PaywallContext.genericUpgrade:
         return CoachRyzeAvatarType.workout; // Avatar sans tenue spéciale
     }
@@ -128,6 +132,8 @@ class PaywallService {
         return 'paywall_title_nutrition_analysis';
       case PaywallContext.exerciseAnalysis:
         return 'paywall_title_exercise_analysis';
+      case PaywallContext.planner:
+        return 'paywall_title_planner';
       case PaywallContext.genericUpgrade:
         return 'paywall_title_generic';
     }
@@ -460,6 +466,58 @@ class PaywallService {
           },
         ];
 
+      case PaywallContext.planner:
+        return [
+          {
+            'icon': '📅',
+            'text': isGerman
+                ? 'Plane deine ganze Woche in 30 Sekunden mit KI'
+                : isFrench
+                    ? 'Planifie ta semaine entière en 30 secondes avec l\'IA'
+                    : 'Plan your entire week in 30 seconds with AI',
+          },
+          {
+            'icon': '🍽️',
+            'text': isGerman
+                ? 'Mahlzeiten + Workouts automatisch auf deine Ziele abgestimmt'
+                : isFrench
+                    ? 'Repas + entraînements automatiquement adaptés à tes objectifs'
+                    : 'Meals + workouts automatically tailored to your goals',
+          },
+          {
+            'icon': '🧠',
+            'text': isGerman
+                ? 'Sag einfach "Plane mein Training" und Ryze erledigt den Rest'
+                : isFrench
+                    ? 'Dis juste "planifie mon entraînement" et Ryze fait le reste'
+                    : 'Just say "plan my training" and Ryze does the rest',
+          },
+          {
+            'icon': '⚡',
+            'text': isGerman
+                ? 'Nie wieder Zeit verschwenden mit der Frage "Was esse ich heute?"'
+                : isFrench
+                    ? 'Plus jamais de temps perdu à réfléchir "qu\'est-ce que je mange ?"'
+                    : 'Never waste time wondering "what should I eat?" again',
+          },
+          {
+            'icon': '🎯',
+            'text': isGerman
+                ? 'Bleib auf Kurs mit einem klaren Wochenplan'
+                : isFrench
+                    ? 'Reste sur la bonne voie avec un plan de semaine clair'
+                    : 'Stay on track with a clear weekly plan',
+          },
+          {
+            'icon': '💪',
+            'text': isGerman
+                ? 'Die Athleten, die planen, erreichen ihre Ziele 2x schneller'
+                : isFrench
+                    ? 'Les athlètes qui planifient atteignent leurs objectifs 2x plus vite'
+                    : 'Athletes who plan reach their goals 2x faster',
+          },
+        ];
+
       default:
         // Benefices generiques (5 points)
         return [
@@ -522,6 +580,8 @@ class PaywallService {
         return 'paywall_bubble_nutrition_analysis';
       case PaywallContext.exerciseAnalysis:
         return 'paywall_bubble_exercise_analysis';
+      case PaywallContext.planner:
+        return 'paywall_bubble_planner';
       case PaywallContext.genericUpgrade:
         return 'paywall_bubble_generic';
     }
@@ -628,6 +688,20 @@ class PaywallService {
                   : 'Progress analysis is reserved for Premium members.\n\n✨ Coach Ryze analyzes your performance\n💡 Recommendations to improve\n📈 Personalized feedback',
         };
 
+      case PaywallContext.planner:
+        return {
+          'title': isGerman
+              ? '📅 Wochenplaner - Premium'
+              : isFrench
+                  ? '📅 Planificateur - Premium'
+                  : '📅 Weekly Planner - Premium',
+          'message': isGerman
+              ? 'Der KI-Planer ist Premium-Mitgliedern vorbehalten.\n\n✨ Plane Mahlzeiten + Workouts mit KI\n📅 Deine ganze Woche in 30 Sekunden\n🎯 Automatisch auf deine Ziele abgestimmt'
+              : isFrench
+                  ? 'Le planificateur IA est réservé aux membres Premium.\n\n✨ Planifie repas + entraînements avec l\'IA\n📅 Ta semaine entière en 30 secondes\n🎯 Automatiquement adapté à tes objectifs'
+                  : 'The AI planner is reserved for Premium members.\n\n✨ Plan meals + workouts with AI\n📅 Your entire week in 30 seconds\n🎯 Automatically tailored to your goals',
+        };
+
       case PaywallContext.genericUpgrade:
         return {
           'title': isGerman
@@ -663,6 +737,8 @@ class PaywallService {
         return FeatureTrialService.keyNutritionAnalysis;
       case PaywallContext.exerciseAnalysis:
         return FeatureTrialService.keyExerciseAnalysis;
+      case PaywallContext.planner:
+        return FeatureTrialService.keyPlanner;
       case PaywallContext.genericUpgrade:
         return ''; // Pas de trial pour générique
     }

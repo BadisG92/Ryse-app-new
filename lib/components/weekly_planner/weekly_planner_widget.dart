@@ -7,11 +7,134 @@ import '../../services/weekly_planner_service.dart';
 import '../../services/localization_service.dart';
 import '../../services/translations.dart';
 import '../../services/global_state_manager.dart';
+import '../../services/feature_trial_service.dart';
+import '../../services/subscription_service.dart';
+import '../../services/paywall_service.dart';
 import '../../screens/planner_chat_screen.dart';
 import '../../components/ui/custom_card.dart';
 import 'day_column_widget.dart';
 import 'workout_recap_bottom_sheet.dart';
 import 'cardio_recap_bottom_sheet.dart';
+
+/// Badge Trial pour le planificateur - affiche le nombre d'essais restants
+/// Même style que les autres features mais avec le compteur
+class _PlannerTrialBadge extends StatefulWidget {
+  final String langCode;
+  final int remainingUsages;
+  final bool isLocked;
+
+  const _PlannerTrialBadge({
+    required this.langCode,
+    required this.remainingUsages,
+    required this.isLocked,
+  });
+
+  @override
+  State<_PlannerTrialBadge> createState() => _PlannerTrialBadgeState();
+}
+
+class _PlannerTrialBadgeState extends State<_PlannerTrialBadge> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _pulseAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    );
+
+    _pulseAnimation = Tween<double>(
+      begin: 1.0,
+      end: 1.08,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOut,
+    ));
+
+    _controller.repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isLocked = widget.isLocked;
+    final count = widget.remainingUsages;
+
+    // Texte du badge avec le nombre
+    String badgeText;
+    if (isLocked) {
+      badgeText = 'UPGRADE';
+    } else {
+      // Afficher "X restants" selon la langue
+      if (widget.langCode == 'fr') {
+        badgeText = '$count restant${count > 1 ? 's' : ''}';
+      } else if (widget.langCode == 'de') {
+        badgeText = '$count übrig';
+      } else {
+        badgeText = '$count left';
+      }
+    }
+
+    // Badge avec exactement les mêmes couleurs que trial_status_badge.dart
+    final badge = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        // Locked = gris, Trial dispo = gold (comme trial_status_badge.dart)
+        gradient: isLocked
+          ? null
+          : const LinearGradient(
+              colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+        color: isLocked ? Colors.grey.shade300 : null,
+        borderRadius: BorderRadius.circular(12),
+        border: isLocked ? Border.all(color: Colors.grey.shade400, width: 1) : null,
+        boxShadow: isLocked
+          ? null
+          : [
+              BoxShadow(
+                color: const Color(0xFFFFD700).withOpacity(0.3),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isLocked ? Icons.lock : Icons.card_giftcard,
+            size: 12,
+            color: isLocked ? Colors.grey.shade600 : Colors.white,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            badgeText,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: isLocked ? Colors.grey.shade600 : Colors.white,
+              letterSpacing: isLocked ? 0 : 0.5,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    return ScaleTransition(
+      scale: _pulseAnimation,
+      child: badge,
+    );
+  }
+}
 
 /// Widget principal du planificateur hebdomadaire
 class WeeklyPlannerWidget extends StatefulWidget {
@@ -36,13 +159,49 @@ class _WeeklyPlannerWidgetState extends State<WeeklyPlannerWidget> {
   int _dailyCalorieTarget = 2000; // Objectif calorique journalier
   final ScrollController _scrollController = ScrollController();
 
+  // Gestion des essais gratuits du planificateur
+  int _remainingUsages = FeatureTrialService.maxPlannerUsages;
+  bool _isPlannerLocked = false;
+  bool _isCheckingTrials = true;
+
   @override
   void initState() {
     super.initState();
     _loadUserCalorieTarget();
     _loadData();
+    _loadTrialStatus();
     // S'abonner aux changements globaux
     GlobalStateManager.instance.events.listen(_onGlobalStateChange);
+  }
+
+  /// Charger le statut des essais gratuits
+  Future<void> _loadTrialStatus() async {
+    // Si premium, pas besoin de vérifier les trials
+    if (SubscriptionService.instance.isPremium) {
+      if (mounted) {
+        setState(() {
+          _isCheckingTrials = false;
+        });
+      }
+      return;
+    }
+
+    try {
+      final remaining = await FeatureTrialService.instance.getPlannerRemainingUsages();
+      if (mounted) {
+        setState(() {
+          _remainingUsages = remaining;
+          _isPlannerLocked = remaining <= 0;
+          _isCheckingTrials = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isCheckingTrials = false;
+        });
+      }
+    }
   }
 
   /// Charger l'objectif calorique de l'utilisateur depuis Supabase
@@ -147,7 +306,19 @@ class _WeeklyPlannerWidgetState extends State<WeeklyPlannerWidget> {
     });
   }
 
-  void _openPlannerChat(BuildContext context, {required String mode}) {
+  void _openPlannerChat(BuildContext context, {required String mode}) async {
+    // Si l'utilisateur n'est pas premium et que le planner est locked, afficher le paywall
+    final isPremium = SubscriptionService.instance.isPremium;
+    if (!isPremium && _isPlannerLocked) {
+      await PaywallService.instance.showPaywall(
+        context: context,
+        paywallContext: PaywallContext.planner,
+      );
+      // Recharger le statut des trials (l'utilisateur a peut-être upgrade)
+      await _loadTrialStatus();
+      return;
+    }
+
     Navigator.push(
       context,
       PageRouteBuilder(
@@ -173,6 +344,8 @@ class _WeeklyPlannerWidgetState extends State<WeeklyPlannerWidget> {
       });
       // Rafraîchir les données au retour
       _loadData();
+      // Recharger le statut des trials (peut avoir changé après génération)
+      _loadTrialStatus();
       // Désactiver l'animation après un délai
       Future.delayed(const Duration(milliseconds: 2000), () {
         if (mounted) {
@@ -252,39 +425,18 @@ class _WeeklyPlannerWidgetState extends State<WeeklyPlannerWidget> {
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Row(
         children: [
-          Expanded(
-            child: Text(
-              'weekly_planner_title'.tr(langCode),
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF0B132B),
-              ),
-            ),
+          const Icon(
+            LucideIcons.calendar,
+            size: 20,
+            color: Color(0xFF0B132B),
           ),
-          // Badge Premium
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFFD4AF37), Color(0xFFF4E4BC)],
-              ),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(LucideIcons.crown, size: 12, color: Color(0xFF0B132B)),
-                SizedBox(width: 4),
-                Text(
-                  'PRO',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF0B132B),
-                  ),
-                ),
-              ],
+          const SizedBox(width: 12),
+          Text(
+            'weekly_planner_title'.tr(langCode),
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF1A1A1A),
             ),
           ),
         ],
@@ -352,21 +504,46 @@ class _WeeklyPlannerWidgetState extends State<WeeklyPlannerWidget> {
   }
 
   Widget _buildAIZone(BuildContext context, String langCode) {
+    final isPremium = SubscriptionService.instance.isPremium;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       child: Column(
+        crossAxisAlignment: isPremium ? CrossAxisAlignment.center : CrossAxisAlignment.start,
         children: [
-          // Phrase d'accroche
+          // Phrase d'accroche + Badge (sur la même ligne pour non-premium, centré pour premium)
           Padding(
             padding: const EdgeInsets.only(bottom: 10),
-            child: Text(
-              'planner_plan_your_week'.tr(langCode),
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF0B132B),
-              ),
-            ),
+            child: isPremium
+              ? Text(
+                  'planner_plan_your_week'.tr(langCode),
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF0B132B),
+                  ),
+                )
+              : Row(
+                  children: [
+                    // Texte aligné à gauche
+                    Text(
+                      'planner_plan_your_week'.tr(langCode),
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF0B132B),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Badge avec nombre d'essais (uniquement pour non-premium)
+                    if (!_isCheckingTrials)
+                      _PlannerTrialBadge(
+                        langCode: langCode,
+                        remainingUsages: _remainingUsages,
+                        isLocked: _isPlannerLocked,
+                      ),
+                  ],
+                ),
           ),
           // Boutons
           Row(

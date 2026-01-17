@@ -410,15 +410,16 @@ class DashboardData {
 
   // Objectifs journaliers exemple
   static const List<DailyGoal> dailyGoals = [
-    DailyGoal(
-      id: 'meals',
-      label: 'Suivre mes repas aujourd\'hui',
-      progress: 0, // No meals
-      completed: false,
-      currentValue: 0,
-      targetValue: 0,
-      unit: '',
-    ),
+    // MASQUÉ - Objectif repas (conservé pour réactivation future)
+    // DailyGoal(
+    //   id: 'meals',
+    //   label: 'Suivre mes repas aujourd\'hui',
+    //   progress: 0, // No meals
+    //   completed: false,
+    //   currentValue: 0,
+    //   targetValue: 0,
+    //   unit: '',
+    // ),
     DailyGoal(
       id: 'water',
       label: 'Boire 2L d\'eau',

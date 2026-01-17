@@ -74,8 +74,13 @@ class _QuickActionsSectionState extends State<QuickActionsSection> {
           Padding(
             padding: const EdgeInsets.only(left: 12, right: 12, top: 12),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                const Icon(
+                  LucideIcons.zap,
+                  size: 20,
+                  color: Color(0xFF0B132B),
+                ),
+                const SizedBox(width: 12),
                 Consumer<LocalizationService>(
                   builder: (context, locService, child) => Text(
                     'what_today'.tr(locService.currentLanguageCode),

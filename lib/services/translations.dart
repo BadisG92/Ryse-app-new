@@ -5789,9 +5789,9 @@ class AppTranslations {
     },
     'tutorial_dashboard_calories_desc': {
       'fr':
-          'Tes 4 objectifs quotidiens : calories, nutrition, sport et hydratation.',
-      'en': 'Your 4 daily goals: calories, nutrition, sport and hydration.',
-      'de': 'Deine 4 Tagesziele: Kalorien, Ernährung, Sport und Hydration.',
+          'Tes 3 objectifs quotidiens : calories, sport et hydratation.',
+      'en': 'Your 3 daily goals: calories, sport and hydration.',
+      'de': 'Deine 3 Tagesziele: Kalorien, Sport und Hydration.',
     },
     'tutorial_dashboard_nutrition_tab_title': {
       'fr': 'Onglet Nutrition',
@@ -7198,6 +7198,11 @@ class AppTranslations {
       'en': '📈 Progress on Every Exercise',
       'de': '📈 Fortschritt bei jeder Übung',
     },
+    'paywall_title_planner': {
+      'fr': '📅 Planifie ta Semaine en 30 Secondes',
+      'en': '📅 Plan Your Week in 30 Seconds',
+      'de': '📅 Plane deine Woche in 30 Sekunden',
+    },
     'paywall_title_generic': {
       'fr': '🐼 Transforme ton Corps',
       'en': '🐼 Transform Your Body',
@@ -7234,6 +7239,11 @@ class AppTranslations {
       'fr': 'Je vais booster tes performances !',
       'en': 'I\'ll boost your performance!',
       'de': 'Ich werde deine Leistung steigern!',
+    },
+    'paywall_bubble_planner': {
+      'fr': 'Je planifie ta semaine en un clin d\'œil !',
+      'en': 'I\'ll plan your week in a flash!',
+      'de': 'Ich plane deine Woche im Handumdrehen!',
     },
     'paywall_bubble_limit': {
       'fr': 'Tu as atteint ta limite gratuite !',
@@ -8960,6 +8970,21 @@ class AppTranslations {
       'fr': 'Ryze réfléchit...',
       'en': 'Ryze is thinking...',
       'de': 'Ryze denkt nach...',
+    },
+    'planner_ai_deleting': {
+      'fr': 'Ryze supprime...',
+      'en': 'Ryze is deleting...',
+      'de': 'Ryze löscht...',
+    },
+    'planner_ai_modifying': {
+      'fr': 'Ryze modifie ton planning...',
+      'en': 'Ryze is modifying your plan...',
+      'de': 'Ryze ändert deinen Plan...',
+    },
+    'planner_ai_confirming': {
+      'fr': 'Ryze valide ton choix...',
+      'en': 'Ryze is confirming your choice...',
+      'de': 'Ryze bestätigt deine Auswahl...',
     },
 
     // Messages erreur/succès

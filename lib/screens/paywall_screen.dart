@@ -1117,6 +1117,9 @@ class _PaywallScreenState extends State<PaywallScreen>
 
       case PaywallContext.genericUpgrade:
         return [const Color(0xFFFFD700), const Color(0xFFDAA520)]; // Gold to Goldenrod (default)
+
+      case PaywallContext.planner:
+        return [const Color(0xFFFFD700), const Color(0xFFFFA500)]; // Gold to Orange (same as trial badge)
     }
   }
 

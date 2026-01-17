@@ -25,12 +25,22 @@ class PlannerAIBottomSheet extends StatefulWidget {
   State<PlannerAIBottomSheet> createState() => _PlannerAIBottomSheetState();
 }
 
+/// Type d'action en cours (pour le message de chargement)
+enum _LoadingAction {
+  thinking,    // Réflexion générique
+  planning,    // Planification de repas/séances
+  deleting,    // Suppression
+  modifying,   // Modification
+  confirming,  // Confirmation d'action
+}
+
 class _PlannerAIBottomSheetState extends State<PlannerAIBottomSheet> {
   final TextEditingController _textController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
   final ScrollController _scrollController = ScrollController();
   final List<_ChatMessage> _messages = [];
   bool _isProcessing = false;
+  _LoadingAction _currentAction = _LoadingAction.thinking;
 
   // Free tier tracking
   int _remainingFreeUses = 3;
@@ -196,8 +206,27 @@ class _PlannerAIBottomSheetState extends State<PlannerAIBottomSheet> {
       _pendingConfirmation = null;
     }
 
+    // Détecter l'action en cours à partir du texte
+    final lowerText = text.toLowerCase();
+    _LoadingAction detectedAction = _LoadingAction.thinking;
+
+    if (lowerText.contains('suppr') || lowerText.contains('delete') ||
+        lowerText.contains('enlev') || lowerText.contains('retir') ||
+        lowerText.contains('annul') || lowerText.contains('cancel') ||
+        lowerText.contains('remove') || lowerText.contains('efface') ||
+        lowerText.contains('vider') || lowerText.contains('clear')) {
+      detectedAction = _LoadingAction.deleting;
+    } else if (lowerText.contains('modif') || lowerText.contains('change') ||
+               lowerText.contains('edit') || lowerText.contains('déplac') ||
+               lowerText.contains('move') || lowerText.contains('remplace')) {
+      detectedAction = _LoadingAction.modifying;
+    } else if (widget.initialMode == 'meals' || widget.initialMode == 'workouts') {
+      detectedAction = _LoadingAction.planning;
+    }
+
     setState(() {
       _isProcessing = true;
+      _currentAction = detectedAction;
       _pendingWorkouts = null; // Reset preview
     });
     _scrollToBottom(); // Scroll pour voir le typing indicator
@@ -249,7 +278,11 @@ class _PlannerAIBottomSheetState extends State<PlannerAIBottomSheet> {
   Future<void> _confirmWorkouts() async {
     if (_pendingWorkouts == null || _isConfirming) return;
 
-    setState(() => _isConfirming = true);
+    setState(() {
+      _isConfirming = true;
+      _isProcessing = true;
+      _currentAction = _LoadingAction.confirming;
+    });
 
     try {
       final result = await PlannerAIService.confirmWorkouts(_pendingWorkouts!);
@@ -271,7 +304,10 @@ class _PlannerAIBottomSheetState extends State<PlannerAIBottomSheet> {
       _addBotMessage(_getErrorMessage());
     } finally {
       if (mounted) {
-        setState(() => _isConfirming = false);
+        setState(() {
+          _isConfirming = false;
+          _isProcessing = false;
+        });
       }
     }
   }
@@ -304,11 +340,13 @@ class _PlannerAIBottomSheetState extends State<PlannerAIBottomSheet> {
   /// Exécuter l'action destructrice après confirmation
   Future<void> _executeConfirmation() async {
     if (_isConfirming || _pendingConfirmation == null) return;
-    setState(() => _isConfirming = true);
 
     try {
       // Remplacer le message avec actions par un indicateur de chargement
       setState(() {
+        _isConfirming = true;
+        _isProcessing = true;
+        _currentAction = _LoadingAction.deleting;
         if (_messages.isNotEmpty && _messages.last.actions != null) {
           _messages.removeLast();
         }
@@ -349,7 +387,10 @@ class _PlannerAIBottomSheetState extends State<PlannerAIBottomSheet> {
       });
     } finally {
       if (mounted) {
-        setState(() => _isConfirming = false);
+        setState(() {
+          _isConfirming = false;
+          _isProcessing = false;
+        });
       }
     }
   }
@@ -1252,17 +1293,26 @@ class _PlannerAIBottomSheetState extends State<PlannerAIBottomSheet> {
   }
 
   String _getLoadingMessage(String langCode) {
-    // Messages différents selon le mode
-    if (widget.initialMode == 'meals') {
-      return 'planner_ai_preparing_meal'.tr(langCode);
+    // Messages différents selon l'action en cours
+    switch (_currentAction) {
+      case _LoadingAction.deleting:
+        return 'planner_ai_deleting'.tr(langCode);
+      case _LoadingAction.modifying:
+        return 'planner_ai_modifying'.tr(langCode);
+      case _LoadingAction.confirming:
+        return 'planner_ai_confirming'.tr(langCode);
+      case _LoadingAction.planning:
+        // Selon le mode initial
+        if (widget.initialMode == 'meals') {
+          return 'planner_ai_preparing_meal'.tr(langCode);
+        }
+        if (widget.initialMode == 'workouts') {
+          return 'planner_ai_generating_workouts'.tr(langCode);
+        }
+        return 'planner_ai_thinking'.tr(langCode);
+      case _LoadingAction.thinking:
+        return 'planner_ai_thinking'.tr(langCode);
     }
-
-    if (widget.initialMode == 'workouts') {
-      return 'planner_ai_generating_workouts'.tr(langCode);
-    }
-
-    // Message générique
-    return 'planner_ai_thinking'.tr(langCode);
   }
 
   Widget _buildDot(int index) {
