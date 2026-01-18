@@ -34,11 +34,11 @@ class AnalyticsService {
       // };
 
       if (kDebugMode) {
-        print('✅ Firebase Analytics initialized');
+        debugPrint('✅ Firebase Analytics initialized');
       }
     } catch (e) {
       if (kDebugMode) {
-        print('⚠️ Firebase Analytics initialization failed: $e');
+        debugPrint('⚠️ Firebase Analytics initialization failed: $e');
       }
     }
   }
@@ -50,7 +50,7 @@ class AnalyticsService {
       // await _crashlytics.setUserIdentifier(userId ?? '');  // Temporairement désactivé
     } catch (e) {
       if (kDebugMode) {
-        print('⚠️ Failed to set user ID: $e');
+        debugPrint('⚠️ Failed to set user ID: $e');
       }
     }
   }
@@ -73,7 +73,7 @@ class AnalyticsService {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('⚠️ Failed to set user properties: $e');
+        debugPrint('⚠️ Failed to set user properties: $e');
       }
     }
   }
@@ -93,11 +93,11 @@ class AnalyticsService {
         parameters: parameters,
       );
       if (kDebugMode) {
-        print('📊 Analytics Event: $eventName ${parameters ?? ''}');
+        debugPrint('📊 Analytics Event: $eventName ${parameters ?? ''}');
       }
     } catch (e) {
       if (kDebugMode) {
-        print('⚠️ Failed to log event: $e');
+        debugPrint('⚠️ Failed to log event: $e');
       }
     }
   }
@@ -107,11 +107,11 @@ class AnalyticsService {
     try {
       await _analytics.logScreenView(screenName: screenName);
       if (kDebugMode) {
-        print('📱 Screen View: $screenName');
+        debugPrint('📱 Screen View: $screenName');
       }
     } catch (e) {
       if (kDebugMode) {
-        print('⚠️ Failed to log screen view: $e');
+        debugPrint('⚠️ Failed to log screen view: $e');
       }
     }
   }
@@ -304,7 +304,7 @@ class AnalyticsService {
   }) async {
     // Temporairement désactivé - Crashlytics a des conflits CocoaPods
     if (kDebugMode) {
-      print('🔥 Error (Crashlytics disabled): $exception');
+      debugPrint('🔥 Error (Crashlytics disabled): $exception');
     }
     // try {
     //   await _crashlytics.recordError(
@@ -314,11 +314,11 @@ class AnalyticsService {
     //     fatal: fatal,
     //   );
     //   if (kDebugMode) {
-    //     print('🔥 Crashlytics Error: $exception');
+    //     debugPrint('🔥 Crashlytics Error: $exception');
     //   }
     // } catch (e) {
     //   if (kDebugMode) {
-    //     print('⚠️ Failed to record error: $e');
+    //     debugPrint('⚠️ Failed to record error: $e');
     //   }
     // }
   }
@@ -326,13 +326,13 @@ class AnalyticsService {
   /// Log un message custom dans Crashlytics - Temporairement désactivé
   static Future<void> log(String message) async {
     if (kDebugMode) {
-      print('📝 Log (Crashlytics disabled): $message');
+      debugPrint('📝 Log (Crashlytics disabled): $message');
     }
     // try {
     //   await _crashlytics.log(message);
     // } catch (e) {
     //   if (kDebugMode) {
-    //     print('⚠️ Failed to log message: $e');
+    //     debugPrint('⚠️ Failed to log message: $e');
     //   }
     // }
   }

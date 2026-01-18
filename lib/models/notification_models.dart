@@ -13,6 +13,7 @@ enum NotificationType {
   reengagement,      // Réengagement utilisateurs inactifs
   closeToGoal,       // Proche de l'objectif
   nothingLogged,     // Rien logué aujourd'hui
+  plannedActivityReminder, // Rappel des séances planifiées du jour
 }
 
 /// Type de repas pour les rappels
@@ -36,11 +37,11 @@ class NotificationPreferences {
   bool waterRemindersEnabled;
   bool streakProtectionEnabled;
   bool dailyGoalsSummaryEnabled;
-  bool workoutRemindersEnabled;
   bool weeklyRecapEnabled;
   bool milestonesEnabled;
-  bool reengagementEnabled;
+  bool reengagementEnabled; // Réengagement automatique si inactif
   bool nothingLoggedEnabled; // Rappel "rien logué aujourd'hui" à 17h
+  bool plannedActivityReminderEnabled; // Rappel des séances planifiées du jour
 
   // Meal reminder times (hours in 24h format)
   int breakfastTime;  // Default: 8
@@ -50,8 +51,8 @@ class NotificationPreferences {
   // Water reminder frequency (times per day: 1-4)
   int waterReminderFrequency; // Default: 2
 
-  // Workout reminder time
-  int workoutReminderTime; // Default: 18
+  // Planned activity reminder time
+  int plannedActivityReminderTime; // Default: 8
 
   NotificationPreferences({
     this.notificationsEnabled = true,
@@ -62,16 +63,16 @@ class NotificationPreferences {
     this.waterRemindersEnabled = false,    // Désactivé par défaut (évite spam)
     this.streakProtectionEnabled = true,   // Important pour rétention
     this.dailyGoalsSummaryEnabled = false, // Désactivé par défaut
-    this.workoutRemindersEnabled = false,  // Désactivé par défaut
     this.weeklyRecapEnabled = true,        // 1x/semaine seulement
     this.milestonesEnabled = true,         // Occasionnel (achievements)
-    this.reengagementEnabled = false,      // Désactivé par défaut
+    this.reengagementEnabled = true,       // Activé par défaut - automatique si inactif
     this.nothingLoggedEnabled = false,     // Désactivé par défaut (17h)
+    this.plannedActivityReminderEnabled = true, // Activé par défaut - rappel séances planifiées
     this.breakfastTime = 8,
     this.lunchTime = 12,
     this.dinnerTime = 19,
     this.waterReminderFrequency = 1,       // 1x/jour si activé
-    this.workoutReminderTime = 18,
+    this.plannedActivityReminderTime = 7,  // 7h par défaut (avant petit-déj à 8h)
   });
 
   /// Convertir en Map pour stockage
@@ -84,16 +85,16 @@ class NotificationPreferences {
       'waterRemindersEnabled': waterRemindersEnabled,
       'streakProtectionEnabled': streakProtectionEnabled,
       'dailyGoalsSummaryEnabled': dailyGoalsSummaryEnabled,
-      'workoutRemindersEnabled': workoutRemindersEnabled,
       'weeklyRecapEnabled': weeklyRecapEnabled,
       'milestonesEnabled': milestonesEnabled,
       'reengagementEnabled': reengagementEnabled,
       'nothingLoggedEnabled': nothingLoggedEnabled,
+      'plannedActivityReminderEnabled': plannedActivityReminderEnabled,
       'breakfastTime': breakfastTime,
       'lunchTime': lunchTime,
       'dinnerTime': dinnerTime,
       'waterReminderFrequency': waterReminderFrequency,
-      'workoutReminderTime': workoutReminderTime,
+      'plannedActivityReminderTime': plannedActivityReminderTime,
     };
   }
 
@@ -108,16 +109,16 @@ class NotificationPreferences {
       waterRemindersEnabled: json['waterRemindersEnabled'] ?? false,
       streakProtectionEnabled: json['streakProtectionEnabled'] ?? true,
       dailyGoalsSummaryEnabled: json['dailyGoalsSummaryEnabled'] ?? false,
-      workoutRemindersEnabled: json['workoutRemindersEnabled'] ?? false,
       weeklyRecapEnabled: json['weeklyRecapEnabled'] ?? true,
       milestonesEnabled: json['milestonesEnabled'] ?? true,
-      reengagementEnabled: json['reengagementEnabled'] ?? false,
+      reengagementEnabled: json['reengagementEnabled'] ?? true,
       nothingLoggedEnabled: json['nothingLoggedEnabled'] ?? false,
+      plannedActivityReminderEnabled: json['plannedActivityReminderEnabled'] ?? true,
       breakfastTime: json['breakfastTime'] ?? 8,
       lunchTime: json['lunchTime'] ?? 12,
       dinnerTime: json['dinnerTime'] ?? 19,
       waterReminderFrequency: json['waterReminderFrequency'] ?? 1,
-      workoutReminderTime: json['workoutReminderTime'] ?? 18,
+      plannedActivityReminderTime: json['plannedActivityReminderTime'] ?? 7,
     );
   }
 
@@ -130,16 +131,16 @@ class NotificationPreferences {
     bool? waterRemindersEnabled,
     bool? streakProtectionEnabled,
     bool? dailyGoalsSummaryEnabled,
-    bool? workoutRemindersEnabled,
     bool? weeklyRecapEnabled,
     bool? milestonesEnabled,
     bool? reengagementEnabled,
     bool? nothingLoggedEnabled,
+    bool? plannedActivityReminderEnabled,
     int? breakfastTime,
     int? lunchTime,
     int? dinnerTime,
     int? waterReminderFrequency,
-    int? workoutReminderTime,
+    int? plannedActivityReminderTime,
   }) {
     return NotificationPreferences(
       notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
@@ -149,16 +150,16 @@ class NotificationPreferences {
       waterRemindersEnabled: waterRemindersEnabled ?? this.waterRemindersEnabled,
       streakProtectionEnabled: streakProtectionEnabled ?? this.streakProtectionEnabled,
       dailyGoalsSummaryEnabled: dailyGoalsSummaryEnabled ?? this.dailyGoalsSummaryEnabled,
-      workoutRemindersEnabled: workoutRemindersEnabled ?? this.workoutRemindersEnabled,
       weeklyRecapEnabled: weeklyRecapEnabled ?? this.weeklyRecapEnabled,
       milestonesEnabled: milestonesEnabled ?? this.milestonesEnabled,
       reengagementEnabled: reengagementEnabled ?? this.reengagementEnabled,
       nothingLoggedEnabled: nothingLoggedEnabled ?? this.nothingLoggedEnabled,
+      plannedActivityReminderEnabled: plannedActivityReminderEnabled ?? this.plannedActivityReminderEnabled,
       breakfastTime: breakfastTime ?? this.breakfastTime,
       lunchTime: lunchTime ?? this.lunchTime,
       dinnerTime: dinnerTime ?? this.dinnerTime,
       waterReminderFrequency: waterReminderFrequency ?? this.waterReminderFrequency,
-      workoutReminderTime: workoutReminderTime ?? this.workoutReminderTime,
+      plannedActivityReminderTime: plannedActivityReminderTime ?? this.plannedActivityReminderTime,
     );
   }
 

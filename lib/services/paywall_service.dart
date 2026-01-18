@@ -776,14 +776,14 @@ class PaywallService {
   }) async {
     // Si Premium, accès illimité
     if (_subscriptionService.isPremium) {
-      print('✅ PaywallService: User is Premium, granting access to ${paywallContext.name}');
+      debugPrint('✅ PaywallService: User is Premium, granting access to ${paywallContext.name}');
       return true;
     }
 
     // Vérifier le trial gratuit
     final trialKey = getFeatureTrialKey(paywallContext);
     if (trialKey.isEmpty) {
-      print('⚠️ PaywallService: No trial key for ${paywallContext.name}, showing paywall');
+      debugPrint('⚠️ PaywallService: No trial key for ${paywallContext.name}, showing paywall');
       await showPaywall(
         context: context,
         paywallContext: paywallContext,
@@ -795,18 +795,18 @@ class PaywallService {
 
     if (!hasUsed) {
       // 1er essai gratuit
-      print('🎁 PaywallService: First free trial for ${paywallContext.name}');
+      debugPrint('🎁 PaywallService: First free trial for ${paywallContext.name}');
 
       if (markAsUsed) {
         await _trialService.markFeatureAsUsed(trialKey);
-        print('✅ PaywallService: Marked ${paywallContext.name} trial as used');
+        debugPrint('✅ PaywallService: Marked ${paywallContext.name} trial as used');
       }
 
       return true;
     }
 
     // A déjà utilisé son essai, montrer le paywall
-    print('🚫 PaywallService: Trial already used for ${paywallContext.name}, showing paywall');
+    debugPrint('🚫 PaywallService: Trial already used for ${paywallContext.name}, showing paywall');
     await showPaywall(
       context: context,
       paywallContext: paywallContext,

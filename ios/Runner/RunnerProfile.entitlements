@@ -14,7 +14,7 @@
 
 	<!-- Push notifications capability -->
 	<key>com.apple.developer.aps-environment</key>
-	<string>development</string>
+	<string>production</string>
 
 	<!-- Apple Sign-In capability -->
 	<key>com.apple.developer.applesignin</key>

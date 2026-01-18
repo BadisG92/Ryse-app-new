@@ -52,7 +52,7 @@ class FeatureTrialService {
   Future<bool> hasUsedFreeTrial(String featureKey) async {
     final userId = _supabase.auth.currentUser?.id;
     if (userId == null) {
-      print('⚠️ FeatureTrialService: User not logged in');
+      debugPrint('⚠️ FeatureTrialService: User not logged in');
       return false;
     }
 
@@ -65,10 +65,10 @@ class FeatureTrialService {
           .maybeSingle();
 
       final hasUsed = response?['used'] == true;
-      print('✅ FeatureTrialService: hasUsedFreeTrial($featureKey) = $hasUsed');
+      debugPrint('✅ FeatureTrialService: hasUsedFreeTrial($featureKey) = $hasUsed');
       return hasUsed;
     } catch (e) {
-      print('❌ FeatureTrialService: Error checking trial for $featureKey: $e');
+      debugPrint('❌ FeatureTrialService: Error checking trial for $featureKey: $e');
       return false; // En cas d'erreur, autoriser l'accès
     }
   }
@@ -80,7 +80,7 @@ class FeatureTrialService {
   Future<void> markFeatureAsUsed(String featureKey) async {
     final userId = _supabase.auth.currentUser?.id;
     if (userId == null) {
-      print('⚠️ FeatureTrialService: User not logged in, cannot mark feature as used');
+      debugPrint('⚠️ FeatureTrialService: User not logged in, cannot mark feature as used');
       return;
     }
 
@@ -92,9 +92,9 @@ class FeatureTrialService {
         'used_at': DateTime.now().toIso8601String(),
       }, onConflict: 'user_id,feature_key');
 
-      print('✅ FeatureTrialService: Marked $featureKey as used for user $userId');
+      debugPrint('✅ FeatureTrialService: Marked $featureKey as used for user $userId');
     } catch (e) {
-      print('❌ FeatureTrialService: Error marking $featureKey as used: $e');
+      debugPrint('❌ FeatureTrialService: Error marking $featureKey as used: $e');
     }
   }
 
@@ -105,7 +105,7 @@ class FeatureTrialService {
   Future<void> resetTrial(String featureKey) async {
     final userId = _supabase.auth.currentUser?.id;
     if (userId == null) {
-      print('⚠️ FeatureTrialService: User not logged in, cannot reset trial');
+      debugPrint('⚠️ FeatureTrialService: User not logged in, cannot reset trial');
       return;
     }
 
@@ -116,9 +116,9 @@ class FeatureTrialService {
           .eq('user_id', userId)
           .eq('feature_key', featureKey);
 
-      print('✅ FeatureTrialService: Reset trial for $featureKey for user $userId');
+      debugPrint('✅ FeatureTrialService: Reset trial for $featureKey for user $userId');
     } catch (e) {
-      print('❌ FeatureTrialService: Error resetting trial for $featureKey: $e');
+      debugPrint('❌ FeatureTrialService: Error resetting trial for $featureKey: $e');
     }
   }
 
@@ -128,7 +128,7 @@ class FeatureTrialService {
   Future<void> resetAllTrials() async {
     final userId = _supabase.auth.currentUser?.id;
     if (userId == null) {
-      print('⚠️ FeatureTrialService: User not logged in, cannot reset all trials');
+      debugPrint('⚠️ FeatureTrialService: User not logged in, cannot reset all trials');
       return;
     }
 
@@ -138,9 +138,9 @@ class FeatureTrialService {
           .delete()
           .eq('user_id', userId);
 
-      print('✅ FeatureTrialService: Reset all trials for user $userId');
+      debugPrint('✅ FeatureTrialService: Reset all trials for user $userId');
     } catch (e) {
-      print('❌ FeatureTrialService: Error resetting all trials: $e');
+      debugPrint('❌ FeatureTrialService: Error resetting all trials: $e');
     }
   }
 
@@ -150,7 +150,7 @@ class FeatureTrialService {
   Future<List<String>> getUsedFeatures() async {
     final userId = _supabase.auth.currentUser?.id;
     if (userId == null) {
-      print('⚠️ FeatureTrialService: User not logged in');
+      debugPrint('⚠️ FeatureTrialService: User not logged in');
       return [];
     }
 
@@ -165,10 +165,10 @@ class FeatureTrialService {
           .map((item) => item['feature_key'] as String)
           .toList();
 
-      print('✅ FeatureTrialService: User has used ${features.length} features: $features');
+      debugPrint('✅ FeatureTrialService: User has used ${features.length} features: $features');
       return features;
     } catch (e) {
-      print('❌ FeatureTrialService: Error getting used features: $e');
+      debugPrint('❌ FeatureTrialService: Error getting used features: $e');
       return [];
     }
   }
@@ -184,7 +184,7 @@ class FeatureTrialService {
   Future<int> getPlannerRemainingUsages() async {
     final userId = _supabase.auth.currentUser?.id;
     if (userId == null) {
-      print('⚠️ FeatureTrialService: User not logged in');
+      debugPrint('⚠️ FeatureTrialService: User not logged in');
       return maxPlannerUsages;
     }
 
@@ -198,10 +198,10 @@ class FeatureTrialService {
 
       final usageCount = response?['usage_count'] as int? ?? 0;
       final remaining = (maxPlannerUsages - usageCount).clamp(0, maxPlannerUsages);
-      print('✅ FeatureTrialService: Planner remaining usages = $remaining ($usageCount used)');
+      debugPrint('✅ FeatureTrialService: Planner remaining usages = $remaining ($usageCount used)');
       return remaining;
     } catch (e) {
-      print('❌ FeatureTrialService: Error getting planner usages: $e');
+      debugPrint('❌ FeatureTrialService: Error getting planner usages: $e');
       return maxPlannerUsages; // En cas d'erreur, autoriser l'accès
     }
   }
@@ -220,7 +220,7 @@ class FeatureTrialService {
   Future<void> incrementPlannerUsage() async {
     final userId = _supabase.auth.currentUser?.id;
     if (userId == null) {
-      print('⚠️ FeatureTrialService: User not logged in, cannot increment planner usage');
+      debugPrint('⚠️ FeatureTrialService: User not logged in, cannot increment planner usage');
       return;
     }
 
@@ -245,9 +245,9 @@ class FeatureTrialService {
         'used_at': DateTime.now().toIso8601String(),
       }, onConflict: 'user_id,feature_key');
 
-      print('✅ FeatureTrialService: Planner usage incremented to $newCount/$maxPlannerUsages');
+      debugPrint('✅ FeatureTrialService: Planner usage incremented to $newCount/$maxPlannerUsages');
     } catch (e) {
-      print('❌ FeatureTrialService: Error incrementing planner usage: $e');
+      debugPrint('❌ FeatureTrialService: Error incrementing planner usage: $e');
     }
   }
 
@@ -255,7 +255,7 @@ class FeatureTrialService {
   Future<void> resetPlannerUsage() async {
     final userId = _supabase.auth.currentUser?.id;
     if (userId == null) {
-      print('⚠️ FeatureTrialService: User not logged in, cannot reset planner usage');
+      debugPrint('⚠️ FeatureTrialService: User not logged in, cannot reset planner usage');
       return;
     }
 
@@ -266,9 +266,9 @@ class FeatureTrialService {
           .eq('user_id', userId)
           .eq('feature_key', keyPlanner);
 
-      print('✅ FeatureTrialService: Reset planner usage for user $userId');
+      debugPrint('✅ FeatureTrialService: Reset planner usage for user $userId');
     } catch (e) {
-      print('❌ FeatureTrialService: Error resetting planner usage: $e');
+      debugPrint('❌ FeatureTrialService: Error resetting planner usage: $e');
     }
   }
 }

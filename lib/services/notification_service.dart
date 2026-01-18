@@ -15,6 +15,8 @@ import '../services/streak_service.dart';
 import '../services/global_state_manager.dart';
 import '../services/notification_messages.dart';
 import '../services/ai_notification_service.dart';
+import '../services/weekly_planner_service.dart';
+import '../models/weekly_planner_models.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -179,11 +181,6 @@ class NotificationService {
         await _scheduleDailyGoalsSummary(prefs);
       }
 
-      // Planifier les rappels d'entraînement
-      if (prefs.workoutRemindersEnabled) {
-        await _scheduleWorkoutReminders(prefs);
-      }
-
       // Planifier le résumé hebdomadaire
       if (prefs.weeklyRecapEnabled) {
         await _scheduleWeeklyRecap(prefs);
@@ -192,6 +189,11 @@ class NotificationService {
       // Planifier la vérification "rien logué aujourd'hui" à 17h
       if (prefs.nothingLoggedEnabled) {
         await _scheduleNothingLoggedCheck(prefs);
+      }
+
+      // Planifier le rappel des séances planifiées du jour
+      if (prefs.plannedActivityReminderEnabled) {
+        await _schedulePlannedActivityReminder(prefs);
       }
 
       // Note: Les notifications de réengagement sont gérées séparément
@@ -392,7 +394,7 @@ class NotificationService {
 
     await _scheduleDailyNotification(
       id: 20,
-      hour: 19,
+      hour: 20,
       minute: 0,
       title: content.title,
       body: content.body,
@@ -401,7 +403,7 @@ class NotificationService {
       ).toJson(),
     );
 
-    if (kDebugMode) debugPrint('✅ Streak protection scheduled (19h)');
+    if (kDebugMode) debugPrint('✅ Streak protection scheduled (20h)');
   }
 
   /// Planifier le résumé des objectifs quotidiens avec message engageant
@@ -435,39 +437,6 @@ class NotificationService {
     );
 
     if (kDebugMode) debugPrint('✅ Daily goals summary scheduled (20h)');
-  }
-
-  /// Planifier les rappels d'entraînement
-  /// Avec 30% de chance d'utiliser un message IA personnalisé
-  Future<void> _scheduleWorkoutReminders(NotificationPreferences prefs) async {
-    final firstName = await _getUserFirstName();
-    final isFrench = LocalizationService.instance.currentLanguageCode == 'fr';
-
-    final defaultTitle = NotificationMessages.getWorkoutReminderTitle(
-      isFrench: isFrench,
-      firstName: firstName,
-    );
-    final defaultBody = NotificationMessages.getWorkoutReminderBody(isFrench: isFrench);
-
-    // Essayer un message IA (30% de chance)
-    final content = await AiNotificationService.instance.getNotificationContent(
-      type: AiNotificationType.workout,
-      defaultTitle: defaultTitle,
-      defaultBody: defaultBody,
-    );
-
-    await _scheduleDailyNotification(
-      id: 40,
-      hour: prefs.workoutReminderTime,
-      minute: 0,
-      title: content.title,
-      body: content.body,
-      payload: NotificationPayload(
-        type: NotificationType.workoutReminder,
-      ).toJson(),
-    );
-
-    if (kDebugMode) debugPrint('✅ Workout reminders scheduled');
   }
 
   /// Planifier le résumé hebdomadaire
@@ -890,5 +859,92 @@ class NotificationService {
     );
 
     if (kDebugMode) debugPrint('✅ Nothing logged check scheduled (17h)');
+  }
+
+  /// Planifier le rappel des séances planifiées du jour
+  /// Cette notification est dynamique - elle vérifie les séances planifiées chaque jour
+  Future<void> _schedulePlannedActivityReminder(NotificationPreferences prefs) async {
+    final firstName = await _getUserFirstName();
+    final languageCode = LocalizationService.instance.currentLanguageCode;
+    final isFrench = languageCode == 'fr';
+    final isGerman = languageCode == 'de';
+
+    try {
+      // Récupérer les données du planner pour aujourd'hui
+      final weekData = await WeeklyPlannerService.getWeekData();
+      final today = DateTime.now();
+      final todayNormalized = DateTime(today.year, today.month, today.day);
+      final dayPlan = weekData.getDayPlan(todayNormalized);
+
+      // Collecter toutes les séances de sport planifiées (pas les repas)
+      final List<String> sessionNames = [];
+
+      if (dayPlan != null) {
+        // Workouts (musculation)
+        for (final workout in dayPlan.workouts) {
+          if (workout.status == PlannedStatus.planned) {
+            sessionNames.add(workout.workoutName);
+          }
+        }
+
+        // Cardio
+        for (final activity in dayPlan.cardios) {
+          if (activity.status == PlannedStatus.planned) {
+            final cardioData = activity.cardioData;
+            if (cardioData != null) {
+              sessionNames.add(cardioData.activityName);
+            }
+          }
+        }
+      }
+
+      // Si pas de séances planifiées, ne pas envoyer de notification
+      if (sessionNames.isEmpty) {
+        if (kDebugMode) debugPrint('⏸️ No planned sessions for today, skipping reminder');
+        // Annuler la notification si elle était programmée
+        await _notifications.cancel(80);
+        return;
+      }
+
+      // Construire le message
+      final title = NotificationMessages.getPlannedActivityReminderTitle(
+        isFrench: isFrench,
+        isGerman: isGerman,
+        firstName: firstName,
+        sessionCount: sessionNames.length,
+      );
+
+      final body = NotificationMessages.getPlannedActivityReminderBody(
+        isFrench: isFrench,
+        isGerman: isGerman,
+        sessionNames: sessionNames,
+      );
+
+      await _scheduleDailyNotification(
+        id: 80,
+        hour: prefs.plannedActivityReminderTime,
+        minute: 0,
+        title: title,
+        body: body,
+        payload: NotificationPayload(
+          type: NotificationType.plannedActivityReminder,
+        ).toJson(),
+      );
+
+      if (kDebugMode) {
+        debugPrint('✅ Planned activity reminder scheduled (${prefs.plannedActivityReminderTime}h): ${sessionNames.join(", ")}');
+      }
+    } catch (e) {
+      if (kDebugMode) debugPrint('❌ Error scheduling planned activity reminder: $e');
+    }
+  }
+
+  /// Rafraîchir la notification des séances planifiées
+  /// À appeler quand le planning change (ajout/suppression de séances)
+  Future<void> refreshPlannedActivityNotification() async {
+    final prefs = getPreferences();
+    if (prefs.notificationsEnabled && prefs.plannedActivityReminderEnabled) {
+      await _schedulePlannedActivityReminder(prefs);
+    }
   }
 }

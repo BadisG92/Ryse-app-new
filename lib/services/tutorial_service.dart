@@ -684,7 +684,7 @@ class TutorialService {
 
     // Vérifier que le context est monté
     if (!context.mounted) {
-      print('⚠️ Context not mounted, cannot show welcome screen');
+      debugPrint('⚠️ Context not mounted, cannot show welcome screen');
       return false;
     }
 

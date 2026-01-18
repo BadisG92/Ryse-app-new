@@ -926,6 +926,82 @@ class NotificationMessages {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
+  // RAPPEL DES SÉANCES PLANIFIÉES DU JOUR
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  static String getPlannedActivityReminderTitle({
+    required bool isFrench,
+    bool isGerman = false,
+    String? firstName,
+    required int sessionCount,
+  }) {
+    final name = firstName?.isNotEmpty == true ? '$firstName, ' : '';
+
+    if (sessionCount == 1) {
+      if (isGerman) {
+        return '${name}1 Einheit für heute geplant! 💪';
+      } else if (isFrench) {
+        return '${name}1 séance prévue aujourd\'hui ! 💪';
+      } else {
+        return '${name}1 session planned for today! 💪';
+      }
+    } else {
+      if (isGerman) {
+        return '$name$sessionCount Einheiten für heute geplant! 💪';
+      } else if (isFrench) {
+        return '$name$sessionCount séances prévues aujourd\'hui ! 💪';
+      } else {
+        return '$name$sessionCount sessions planned for today! 💪';
+      }
+    }
+  }
+
+  static String getPlannedActivityReminderBody({
+    required bool isFrench,
+    bool isGerman = false,
+    required List<String> sessionNames,
+  }) {
+    final sessionList = sessionNames.join(', ');
+    final List<String> encouragements;
+
+    if (isGerman) {
+      encouragements = [
+        'Du schaffst das! 🔥',
+        'Zeig was du kannst! 🔥',
+        'Gib alles! 🔥',
+        'Los geht\'s! 🔥',
+        'Heute rockst du! 🔥',
+      ];
+    } else if (isFrench) {
+      encouragements = [
+        'Tu vas tout déchirer ! 🔥',
+        'C\'est ton moment ! 🔥',
+        'Donne tout ! 🔥',
+        'Tu peux le faire ! 🔥',
+        'Aujourd\'hui c\'est ton jour ! 🔥',
+      ];
+    } else {
+      encouragements = [
+        'You got this! 🔥',
+        'Time to crush it! 🔥',
+        'Give it your all! 🔥',
+        'Let\'s go! 🔥',
+        'Today is your day! 🔥',
+      ];
+    }
+
+    final encouragement = _pickRandom(encouragements);
+
+    if (isGerman) {
+      return '$sessionList. $encouragement';
+    } else if (isFrench) {
+      return '$sessionList. $encouragement';
+    } else {
+      return '$sessionList. $encouragement';
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
   // MESSAGES MOTIVATIONNELS (pour utilisation occasionnelle)
   // ═══════════════════════════════════════════════════════════════════════════
 

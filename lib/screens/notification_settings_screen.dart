@@ -188,29 +188,6 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
             const SizedBox(height: 16),
 
             _buildCategorySection(
-              title: _isGerman ? 'Training' : _isFrench ? 'Entraînement' : 'Workout',
-              icon: LucideIcons.dumbbell,
-              enabled: _prefs.workoutRemindersEnabled,
-              onToggle: (value) {
-                setState(() => _prefs = _prefs.copyWith(workoutRemindersEnabled: value));
-                _savePreferences();
-              },
-              children: _prefs.workoutRemindersEnabled
-                  ? [
-                      _buildTimePicker(
-                        label: _isGerman ? 'Bevorzugte Zeit' : _isFrench ? 'Heure préférée' : 'Preferred time',
-                        hour: _prefs.workoutReminderTime,
-                        onChanged: (value) {
-                          setState(() => _prefs = _prefs.copyWith(workoutReminderTime: value));
-                          _savePreferences();
-                        },
-                      ),
-                    ]
-                  : null,
-            ),
-            const SizedBox(height: 16),
-
-            _buildCategorySection(
               title: _isGerman ? 'Wöchentliche Zusammenfassung' : _isFrench ? 'Résumé hebdomadaire' : 'Weekly recap',
               icon: LucideIcons.calendar,
               enabled: _prefs.weeklyRecapEnabled,
@@ -239,6 +216,34 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                   : _isFrench
                       ? 'Célèbre tes succès (séries, objectifs parfaits)'
                       : 'Celebrate your achievements (streaks, perfect goals)',
+            ),
+            const SizedBox(height: 16),
+
+            _buildCategorySection(
+              title: _isGerman ? 'Geplante Einheiten' : _isFrench ? 'Séances planifiées' : 'Planned sessions',
+              icon: LucideIcons.calendarCheck,
+              enabled: _prefs.plannedActivityReminderEnabled,
+              onToggle: (value) {
+                setState(() => _prefs = _prefs.copyWith(plannedActivityReminderEnabled: value));
+                _savePreferences();
+              },
+              subtitle: _isGerman
+                  ? 'Erinnert dich morgens an geplante Sport-Einheiten'
+                  : _isFrench
+                      ? 'Te rappelle le matin tes séances de sport prévues'
+                      : 'Reminds you of your planned workout sessions each morning',
+              children: _prefs.plannedActivityReminderEnabled
+                  ? [
+                      _buildTimePicker(
+                        label: _isGerman ? 'Erinnerungszeit' : _isFrench ? 'Heure du rappel' : 'Reminder time',
+                        hour: _prefs.plannedActivityReminderTime,
+                        onChanged: (value) {
+                          setState(() => _prefs = _prefs.copyWith(plannedActivityReminderTime: value));
+                          _savePreferences();
+                        },
+                      ),
+                    ]
+                  : null,
             ),
           ],
         ),
