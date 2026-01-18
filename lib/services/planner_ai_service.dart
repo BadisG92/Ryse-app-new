@@ -307,12 +307,6 @@ class PlannerAIService {
       return;
     }
 
-    // Ne pas incrémenter en mode test
-    if (UnifiedSubscriptionService().testMode) {
-      debugPrint('📊 AI Planner: Mode test - pas de décompte');
-      return;
-    }
-
     // Incrémenter via FeatureTrialService (stocké en base de données)
     await FeatureTrialService.instance.incrementPlannerUsage();
 
@@ -533,11 +527,9 @@ class PlannerAIService {
           );
       }
 
-      // Pour les workouts/repas: ne pas incrémenter maintenant (fait dans confirm*)
-      // Pour les autres actions directes: incrémenter UNE FOIS par session
-      if (result.success && !result.requiresConfirmation) {
-        await _incrementUsageOncePerSession();
-      }
+      // NOTE: Ne PAS incrémenter ici (move, delete ne comptent pas comme utilisation)
+      // L'incrément se fait UNIQUEMENT dans confirmWorkouts/confirmSessions/confirmMeals
+      // quand l'utilisateur VALIDE une CRÉATION
 
       return result;
     } catch (e) {
@@ -2116,7 +2108,7 @@ ${_getFormattedHistory()}
         "day": "monday" | "tuesday" | etc,
         "workout_type": "SHORT name IN $languageName (e.g. 'Haut du corps', 'Jambes', 'Full Body', 'Push')",
         "workout_prompt": "detailed prompt for generating this specific workout IN ENGLISH (for the AI generator)",
-        "duration_minutes": 30 | 45 | 60 | 90
+        "duration_minutes": integer (any value between 15-120, use user's exact request)
       }
     ],
     // For USING an existing template:
@@ -2851,7 +2843,7 @@ Examples:
           },
           'duration_minutes': {
             'type': 'integer',
-            'description': 'Duration in minutes - REQUIRED. User must specify: 30, 45, 60, or 90. Do NOT use default values.',
+            'description': 'Duration in minutes - REQUIRED. Accept any reasonable value between 15-120 minutes. Use the EXACT duration the user specifies (e.g., if user says 55min, use 55).',
           },
           'focus': {
             'type': 'string',
@@ -3628,6 +3620,7 @@ TODAY'S INTAKE (already consumed):
 ═══════════════════════════════════════════════════════════════
                     AVAILABLE DAYS (cannot plan past days!)
 ═══════════════════════════════════════════════════════════════
+⚠️ TODAY IS: ${_getTodayWithDayName()} (when user says "today"/"aujourd'hui"/"heute", use THIS day!)
 AVAILABLE DAYS: ${availableDays.join(', ')}
 TOTAL DAYS TO PLAN: ${availableDays.length} days
 TOTAL MEALS TO CREATE: ${availableDays.length * 3} meals (3 per day: breakfast + lunch + dinner)
@@ -3700,7 +3693,7 @@ BOTH (when user says "all" / "tout" / "alles", "my sessions" / "mes séances" wi
 ═══════════════════════════════════════════════════════════════
 FOR WORKOUT:
   ✓ workout_type (Chest/Pecs, Back/Dos, Legs/Jambes, Full Body, Arms/Bras, Shoulders/Épaules, PPL...) → MUST ASK if missing
-  ✓ duration_minutes (45, 60, 90...) → MUST ASK if missing
+  ✓ duration_minutes (any value 15-120, use user's exact request) → MUST ASK if missing
   ✓ day(s) → CAN CHOOSE AUTOMATICALLY if missing (pick optimal days based on context)
 
 FOR CARDIO (ONLY: running, bike, walking, hiit):
@@ -3857,11 +3850,11 @@ Example if user insists:
 - EN: "OK let's go! If your goals changed, update them in ⚙️ Settings > Objectives"
 
 CONTEXT:
-- Today: ${DateTime.now().toIso8601String().split('T')[0]}
+⚠️ TODAY IS: ${_getTodayWithDayName()} (when user says "today"/"aujourd'hui"/"heute", use THIS day!)
 - User's Goal: ${context['fitness_goal'] ?? 'general_fitness'}
 - Days with WORKOUTS (musculation): ${context['days_with_workout'] ?? 'none'}
 - Days with CARDIO: ${context['days_with_cardio'] ?? 'none'}
-- Available days: ${context['available_days'] ?? 'all'}
+- Available days (ONLY these!): ${context['available_days'] ?? 'all'}
 
 THIS WEEK'S PLANNING:
 WORKOUTS: ${context['planned_workouts_this_week'] ?? 'No workouts planned'}
@@ -4011,10 +4004,9 @@ USER REQUEST: "$userMessage"
       final finalMessage = responseText ?? executionResults.join('\n');
       addToHistory('assistant', finalMessage);
 
-      // Incrémenter le compteur UNE FOIS par session si des actions ont été effectuées
-      if (toolCalls.isNotEmpty) {
-        await _incrementUsageOncePerSession();
-      }
+      // NOTE: Ne PAS incrémenter ici pour les tool calls (delete, move, ask_clarification)
+      // L'incrément se fait UNIQUEMENT dans confirmWorkouts/confirmSessions/confirmMeals
+      // quand l'utilisateur VALIDE une création
 
       return PlannerActionResult.success(finalMessage);
 
@@ -4491,35 +4483,46 @@ USER REQUEST: "$userMessage"
         // Vérifier que la durée est fournie
         if (duration == null) {
           final askMsg = langCode == 'fr'
-              ? 'Combien de temps pour ta séance $workoutType? (ex: 30, 45, 60 min)'
+              ? 'Combien de temps pour ta séance $workoutType?'
               : langCode == 'de'
-                  ? 'Wie lange soll dein $workoutType Training dauern? (z.B. 30, 45, 60 Min)'
-                  : 'How long for your $workoutType workout? (e.g. 30, 45, 60 min)';
+                  ? 'Wie lange soll dein $workoutType Training dauern?'
+                  : 'How long for your $workoutType workout?';
           return {'success': true, 'message': askMsg, 'needs_clarification': true};
         }
 
-        // Générer le workout avec l'IA
-        final result = await AIWorkoutGenerationService.generateWorkout(
-          userRequest: '$workoutType workout, $focus',
-          durationMinutes: duration,
-        );
-
-        if (result.success && result.exercises != null) {
-          final pendingWorkout = PendingWorkout(
-            plannedDate: day,
-            workoutName: '$workoutType - ${duration}min',
-            workoutType: workoutType,
+        // Générer le workout avec l'IA (avec retry automatique en cas d'échec)
+        const maxRetries = 2;
+        for (int attempt = 1; attempt <= maxRetries; attempt++) {
+          final result = await AIWorkoutGenerationService.generateWorkout(
+            userRequest: '$workoutType workout, $focus',
             durationMinutes: duration,
-            workoutPrompt: focus,
-            exercises: result.exercises,
           );
-          return {
-            'success': true,
-            'message': 'Workout created for ${args['day']}',
-            'pending_workout': pendingWorkout,
-          };
+
+          if (result.success && result.exercises != null && result.exercises!.isNotEmpty) {
+            final pendingWorkout = PendingWorkout(
+              plannedDate: day,
+              workoutName: '$workoutType - ${duration}min',
+              workoutType: workoutType,
+              durationMinutes: duration,
+              workoutPrompt: focus,
+              exercises: result.exercises,
+            );
+            return {
+              'success': true,
+              'message': 'Workout created for ${args['day']}',
+              'pending_workout': pendingWorkout,
+            };
+          }
+
+          // Si ce n'est pas la dernière tentative, attendre un peu avant de réessayer
+          if (attempt < maxRetries) {
+            debugPrint('⚠️ Workout generation attempt $attempt failed, retrying...');
+            await Future.delayed(const Duration(milliseconds: 500));
+          }
         }
-        return {'success': false, 'message': 'Failed to generate workout'};
+
+        // Toutes les tentatives ont échoué
+        return {'success': false, 'message': _getMessage(langCode, 'workout_generation_failed')};
 
       case 'move_workout':
         final fromDay = _parseSingleDay(args['from_day'] as String? ?? '');
@@ -6149,6 +6152,15 @@ USER REQUEST: "$userMessage"
     }
   }
 
+  /// Retourne "Sunday (2026-01-18)" ou selon la langue "Dimanche (2026-01-18)"
+  static String _getTodayWithDayName() {
+    final now = DateTime.now();
+    final dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    final dayName = dayNames[now.weekday - 1];
+    final dateStr = now.toIso8601String().split('T')[0];
+    return '$dayName ($dateStr)';
+  }
+
   static String _formatDayName(DateTime date, String langCode) {
     final dayNames = {
       'fr': ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'],
@@ -6186,6 +6198,11 @@ USER REQUEST: "$userMessage"
         'fr': 'Je n\'ai pas pu générer les séances. Réessaie !',
         'en': 'I couldn\'t generate the sessions. Try again!',
         'de': 'Ich konnte die Einheiten nicht erstellen. Versuche es erneut!',
+      },
+      'session_save_failed': {
+        'fr': 'Impossible de sauvegarder la séance. Vérifie que le jour n\'est pas passé.',
+        'en': 'Failed to save session. Check that the day is not in the past.',
+        'de': 'Sitzung konnte nicht gespeichert werden. Prüfe, ob der Tag nicht in der Vergangenheit liegt.',
       },
       'cardio_creation_failed': {
         'fr': 'Je n\'ai pas pu planifier le cardio.',
@@ -6549,6 +6566,8 @@ CALCULATE NOW with the EXACT ingredients provided:
         );
 
         if (savedWorkout != null) {
+          // Incrémenter le compteur une fois par session de chat
+          await _incrementUsageOncePerSession();
           final dayName = _formatDayName(workout.plannedDate, langCode);
           return PlannerActionResult.success('✓ $dayName: ${workout.workoutType}');
         }
@@ -6564,12 +6583,14 @@ CALCULATE NOW with the EXACT ingredients provided:
         );
 
         if (activity != null) {
+          // Incrémenter le compteur une fois par session de chat
+          await _incrementUsageOncePerSession();
           final dayName = _formatDayName(cardio.plannedDate, langCode);
           return PlannerActionResult.success('✓ $dayName: ${cardio.displayTitle}');
         }
       }
 
-      return PlannerActionResult.error('Failed to save session');
+      return PlannerActionResult.error(_getMessage(langCode, 'session_save_failed'));
     } catch (e) {
       debugPrint('❌ confirmSingleSession error: $e');
       return PlannerActionResult.error('Error saving session: $e');

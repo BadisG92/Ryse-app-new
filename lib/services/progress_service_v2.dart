@@ -192,13 +192,14 @@ class ProgressServiceV2 {
           target: 7,
           unit: 'days'.tr(LocalizationService.instance.currentLanguageCode),
         ),
-        BalanceItem(
-          icon: LucideIcons.utensils,
-          label: 'meals_recorded'.tr(LocalizationService.instance.currentLanguageCode),
-          achieved: nutritionData['totalMeals'] ?? 0,
-          target: 21, // 3 repas par jour * 7 jours
-          unit: 'meals'.tr(LocalizationService.instance.currentLanguageCode),
-        ),
+        // MASQUÉ - Repas enregistrés (conservé pour réactivation future)
+        // BalanceItem(
+        //   icon: LucideIcons.utensils,
+        //   label: 'meals_recorded'.tr(LocalizationService.instance.currentLanguageCode),
+        //   achieved: nutritionData['totalMeals'] ?? 0,
+        //   target: 21, // 3 repas par jour * 7 jours
+        //   unit: 'meals'.tr(LocalizationService.instance.currentLanguageCode),
+        // ),
         BalanceItem(
           icon: LucideIcons.dumbbell,
           label: 'sport_sessions'.tr(LocalizationService.instance.currentLanguageCode),
@@ -715,13 +716,14 @@ class ProgressServiceV2 {
         target: 7,
         unit: 'days'.tr(LocalizationService.instance.currentLanguageCode),
       ),
-      BalanceItem(
-        icon: LucideIcons.utensils,
-        label: 'meals_recorded'.tr(LocalizationService.instance.currentLanguageCode),
-        achieved: 0,
-        target: 21,
-        unit: 'meals'.tr(LocalizationService.instance.currentLanguageCode),
-      ),
+      // MASQUÉ - Repas enregistrés (conservé pour réactivation future)
+      // BalanceItem(
+      //   icon: LucideIcons.utensils,
+      //   label: 'meals_recorded'.tr(LocalizationService.instance.currentLanguageCode),
+      //   achieved: 0,
+      //   target: 21,
+      //   unit: 'meals'.tr(LocalizationService.instance.currentLanguageCode),
+      // ),
       BalanceItem(
         icon: LucideIcons.dumbbell,
         label: 'sport_sessions'.tr(LocalizationService.instance.currentLanguageCode),

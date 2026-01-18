@@ -76,32 +76,40 @@ class _GlobalProgressState extends State<GlobalProgress> {
     _checkAndLaunchTutorial();
   }
 
+  // Mode debug - Force l'affichage du tutoriel à chaque fois
+  static const bool _debugForceTutorial = false;
+
   /// Vérifie si c'est la première visite et lance le tutorial
   Future<void> _checkAndLaunchTutorial() async {
     debugPrint('🔍 Vérification du tutorial Progression Globale...');
 
-    // ✅ VÉRIFIER DANS SUPABASE si le tutorial est déjà complété
-    final supabase = Supabase.instance.client;
-    final user = supabase.auth.currentUser;
+    // Mode debug: forcer le tutoriel
+    if (_debugForceTutorial) {
+      debugPrint('🔧 Mode DEBUG actif - Tutorial Progression forcé');
+    } else {
+      // ✅ VÉRIFIER DANS SUPABASE si le tutorial est déjà complété
+      final supabase = Supabase.instance.client;
+      final user = supabase.auth.currentUser;
 
-    if (user != null) {
-      try {
-        final response = await supabase
-            .from('users')
-            .select('tutorial_progression_completed')
-            .eq('id', user.id)
-            .single()
-            .timeout(const Duration(seconds: 3));
+      if (user != null) {
+        try {
+          final response = await supabase
+              .from('users')
+              .select('tutorial_progression_completed')
+              .eq('id', user.id)
+              .single()
+              .timeout(const Duration(seconds: 3));
 
-        final isCompleted = response['tutorial_progression_completed'] as bool? ?? false;
-        debugPrint('📊 Tutorial Progression dans Supabase: $isCompleted');
+          final isCompleted = response['tutorial_progression_completed'] as bool? ?? false;
+          debugPrint('📊 Tutorial Progression dans Supabase: $isCompleted');
 
-        if (isCompleted) {
-          debugPrint('✅ Tutorial Progression déjà complété - Arrêt');
-          return;
+          if (isCompleted) {
+            debugPrint('✅ Tutorial Progression déjà complété - Arrêt');
+            return;
+          }
+        } catch (e) {
+          debugPrint('⚠️ Erreur vérification Supabase: $e - On continue quand même');
         }
-      } catch (e) {
-        debugPrint('⚠️ Erreur vérification Supabase: $e - On continue quand même');
       }
     }
 

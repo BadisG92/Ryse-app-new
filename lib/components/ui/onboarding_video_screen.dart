@@ -33,6 +33,7 @@ class _OnboardingVideoScreenState extends State<OnboardingVideoScreen>
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
 
+
   @override
   void initState() {
     super.initState();
@@ -64,6 +65,18 @@ class _OnboardingVideoScreenState extends State<OnboardingVideoScreen>
         curve: Curves.easeOutBack,
       ),
     );
+
+  }
+
+  String _getWelcomeText(String langCode) {
+    switch (langCode) {
+      case 'fr':
+        return 'Bienvenue';
+      case 'de':
+        return 'Willkommen';
+      default:
+        return 'Welcome';
+    }
   }
 
   Future<void> _initializeVideo() async {
@@ -130,10 +143,12 @@ class _OnboardingVideoScreenState extends State<OnboardingVideoScreen>
   @override
   Widget build(BuildContext context) {
     // Determine button text based on device locale
-    final deviceLocale = Platform.localeName;
-    final rawLang = deviceLocale.split('_').first;
+    final deviceLocale = Platform.localeName; // e.g., "fr_FR"
+    final rawLang = deviceLocale.split('_').first; // Extract "fr"
     final langCode = (rawLang == 'fr' || rawLang == 'de') ? rawLang : 'en';
     final buttonLabel = 'onboarding_lets_meet'.tr(langCode);
+    final welcomeText = _getWelcomeText(langCode);
+    debugPrint('🌍 OnboardingVideo - deviceLocale: $deviceLocale, langCode: $langCode, welcomeText: $welcomeText');
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -157,26 +172,62 @@ class _OnboardingVideoScreenState extends State<OnboardingVideoScreen>
             ),
 
           // Button overlay (appears when video ends)
-          if (_showButton) _buildButtonOverlay(buttonLabel),
+          if (_showButton) _buildButtonOverlay(buttonLabel, welcomeText),
         ],
       ),
     );
   }
 
-  Widget _buildButtonOverlay(String buttonLabel) {
+  Widget _buildButtonOverlay(String buttonLabel, String welcomeText) {
     return Positioned(
       bottom: 0,
       left: 0,
       right: 0,
       child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 0, 24, 48),
-          child: FadeTransition(
-            opacity: _fadeAnimation,
-            child: ScaleTransition(
-              scale: _scaleAnimation,
-              child: _buildGlassButton(buttonLabel),
-            ),
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 60),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // "Bienvenue" text with slide-in reveal animation from left
+              FadeTransition(
+                opacity: _fadeAnimation,
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(-0.3, 0),
+                    end: Offset.zero,
+                  ).animate(CurvedAnimation(
+                    parent: _animationController,
+                    curve: Curves.easeOutCubic,
+                  )),
+                  child: Text(
+                    welcomeText,
+                    style: TextStyle(
+                      fontSize: 42,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                      letterSpacing: 1.5,
+                      shadows: [
+                        Shadow(
+                          color: Colors.black.withOpacity(0.5),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              // Button with existing animation
+              FadeTransition(
+                opacity: _fadeAnimation,
+                child: ScaleTransition(
+                  scale: _scaleAnimation,
+                  child: _buildGlassButton(buttonLabel),
+                ),
+              ),
+            ],
           ),
         ),
       ),

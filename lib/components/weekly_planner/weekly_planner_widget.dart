@@ -82,47 +82,44 @@ class _PlannerTrialBadgeState extends State<_PlannerTrialBadge> with SingleTicke
       }
     }
 
-    // Badge avec exactement les mêmes couleurs que trial_status_badge.dart
+    // Badge avec style uniforme (gold pour UPGRADE, bleu DA pour trial)
     final badge = Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        // Locked = gris, Trial dispo = gold (comme trial_status_badge.dart)
-        gradient: isLocked
-          ? null
-          : const LinearGradient(
-              colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-        color: isLocked ? Colors.grey.shade300 : null,
+        gradient: LinearGradient(
+          colors: isLocked
+            ? [const Color(0xFFFFD700), const Color(0xFFFFA500)] // Gold for UPGRADE
+            : [const Color(0xFF0B132B), const Color(0xFF1C2951)], // Blue DA for trial
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         borderRadius: BorderRadius.circular(12),
-        border: isLocked ? Border.all(color: Colors.grey.shade400, width: 1) : null,
-        boxShadow: isLocked
-          ? null
-          : [
-              BoxShadow(
-                color: const Color(0xFFFFD700).withOpacity(0.3),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
+        boxShadow: [
+          BoxShadow(
+            color: isLocked
+              ? const Color(0xFFFFD700).withOpacity(0.4)
+              : const Color(0xFF0B132B).withOpacity(0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            isLocked ? Icons.lock : Icons.card_giftcard,
+            isLocked ? Icons.lock_open : Icons.card_giftcard,
             size: 12,
-            color: isLocked ? Colors.grey.shade600 : Colors.white,
+            color: Colors.white,
           ),
           const SizedBox(width: 4),
           Text(
             badgeText,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.bold,
-              color: isLocked ? Colors.grey.shade600 : Colors.white,
-              letterSpacing: isLocked ? 0 : 0.5,
+              color: Colors.white,
+              letterSpacing: 0.5,
             ),
           ),
         ],

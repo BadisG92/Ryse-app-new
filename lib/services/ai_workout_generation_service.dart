@@ -381,7 +381,13 @@ CRITICAL REQUIREMENTS:
 1. **USE ONLY EXERCISES FROM THE PROVIDED LIST ABOVE** - NEVER invent exercise names
 2. Return exercise names EXACTLY as they appear between quotes in the list (matching $userLanguage language)
 3. If you cannot find an exact match, choose the CLOSEST equivalent from the list
-4. Match the requested duration (typically 4-6 exercises for 45-60 min, 3-4 for 30 min, 6-8 for 90 min)
+4. Match the requested duration - adjust number of exercises proportionally:
+   - ~15-30 min: 2-3 exercises
+   - ~30-45 min: 3-5 exercises
+   - ~45-60 min: 4-6 exercises
+   - ~60-90 min: 6-8 exercises
+   - ~90-120 min: 8-10 exercises
+   Scale smoothly between these ranges based on exact duration requested
 5. Order exercises logically: compound movements first, isolation exercises later
 6. Consider muscle group balance and recovery
 7. **CRITICAL - WEIGHT SUGGESTIONS**:
@@ -402,7 +408,7 @@ OUTPUT FORMAT (JSON):
 {
   "session_name": "Creative name for this workout in $userLanguage",
   "description": "Brief workout description",
-  "estimated_duration_minutes": 45,
+  "estimated_duration_minutes": $durationText (use the EXACT requested duration),
   "exercises": [
     {
       "exercise_name": "EXACT name from list (in quotes)",
@@ -588,9 +594,15 @@ Generate the workout now as valid JSON:
         }
 
         // Créer les séries avec le poids suggéré par Gemini (arrondi aux incréments de salle)
-        final sets = (exerciseData['sets'] as int?) ?? 3;
-        final targetReps = (exerciseData['target_reps'] as int?) ?? 10;
-        final rawWeight = (exerciseData['suggested_weight_kg'] as num?)?.toDouble() ?? 0;
+        // Note: Gemini peut retourner des strings ou des ints, gérer les deux cas
+        final setsRaw = exerciseData['sets'];
+        final sets = setsRaw is int ? setsRaw : (int.tryParse(setsRaw?.toString() ?? '') ?? 3);
+
+        final repsRaw = exerciseData['target_reps'];
+        final targetReps = repsRaw is int ? repsRaw : (int.tryParse(repsRaw?.toString() ?? '') ?? 10);
+
+        final weightRaw = exerciseData['suggested_weight_kg'];
+        final rawWeight = weightRaw is num ? weightRaw.toDouble() : (double.tryParse(weightRaw?.toString() ?? '') ?? 0);
         final suggestedWeight = _roundToGymWeight(rawWeight);
 
         final workoutSets = List.generate(sets, (index) => ExerciseSet(

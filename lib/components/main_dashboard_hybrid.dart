@@ -54,7 +54,8 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
   final GlobalKey _addFoodKey = GlobalKey();
   final GlobalKey _addExerciseKey = GlobalKey();
   final GlobalKey _addWaterKey = GlobalKey();
-  final GlobalKey _caloriesCardKey = GlobalKey();
+  final GlobalKey _objectivesKey = GlobalKey();
+  final GlobalKey _plannerKey = GlobalKey();
 
   @override
   void initState() {
@@ -93,10 +94,11 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
 
     await TutorialService().showDashboardTutorial(
       context: context,
+      objectivesKey: _objectivesKey,
+      plannerKey: _plannerKey,
       addFoodKey: _addFoodKey,
       addExerciseKey: _addExerciseKey,
       addWaterKey: _addWaterKey,
-      caloriesCardKey: _caloriesCardKey,
       nutritionTabKey: widget.nutritionTabKey ?? GlobalKey(),
       sportTabKey: widget.sportTabKey ?? GlobalKey(),
       progressTabKey: widget.progressTabKey ?? GlobalKey(),
@@ -379,7 +381,7 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
 
                           // 1. Bloc Mes Objectifs
                           EnhancedDailyGoalsSection(
-                            key: _caloriesCardKey,
+                            key: _objectivesKey,
                             goals: dailyGoals,
                             profile: userProfile!,
                             isPremium: userProfile!.isPremium,
@@ -389,6 +391,7 @@ class _MainDashboardHybridState extends State<MainDashboardHybrid>
 
                           // 2. Weekly Planner
                           WeeklyPlannerWidget(
+                            key: _plannerKey,
                             isPremium: userProfile!.isPremium,
                           ),
 

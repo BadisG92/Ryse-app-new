@@ -5758,6 +5758,26 @@ class AppTranslations {
     },
 
     // Tutorial Dashboard (tutoiement + pédagogique)
+    'tutorial_dashboard_objectives_title': {
+      'fr': 'Tes objectifs du jour',
+      'en': 'Your Daily Goals',
+      'de': 'Deine Tagesziele',
+    },
+    'tutorial_dashboard_objectives_desc': {
+      'fr': 'Suis ta progression quotidienne : calories, sport et hydratation. Chaque objectif atteint te rapproche de ton but !',
+      'en': 'Track your daily progress: calories, sport and hydration. Each goal reached brings you closer to your target!',
+      'de': 'Verfolge deinen täglichen Fortschritt: Kalorien, Sport und Hydration. Jedes erreichte Ziel bringt dich näher an dein Ziel!',
+    },
+    'tutorial_dashboard_planner_title': {
+      'fr': 'Ton planning de la semaine',
+      'en': 'Your Weekly Planner',
+      'de': 'Dein Wochenplaner',
+    },
+    'tutorial_dashboard_planner_desc': {
+      'fr': 'Visualise ta semaine et laisse Ryze te proposer des repas et séances adaptés à tes objectifs.',
+      'en': 'View your week and let Ryze suggest meals and workouts tailored to your goals.',
+      'de': 'Sieh deine Woche an und lass Ryze dir Mahlzeiten und Trainings vorschlagen, die auf deine Ziele abgestimmt sind.',
+    },
     'tutorial_dashboard_add_food_title': {
       'fr': 'Ajouter un repas',
       'en': 'Add a Meal',

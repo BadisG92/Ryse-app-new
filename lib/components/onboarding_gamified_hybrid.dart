@@ -489,6 +489,227 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
     return userData['height'] == null;
   }
 
+  // ====== BMI CALCULATION HELPERS ======
+
+  /// Calculate BMI from height (cm) and weight (kg)
+  double? _calculateBMI(double? heightCm, double? weightKg) {
+    if (heightCm == null || weightKg == null || heightCm <= 0 || weightKg <= 0) {
+      return null;
+    }
+    final heightM = heightCm / 100;
+    return weightKg / (heightM * heightM);
+  }
+
+  /// Get BMI values in metric (kg, cm) from current userData
+  Map<String, double?> _getBMIValues() {
+    double? heightCm;
+    double? weightKg;
+    double? targetWeightKg;
+
+    if (userData['isMetric'] == true) {
+      // Already in metric
+      heightCm = double.tryParse(userData['height']?.toString() ?? '');
+      weightKg = double.tryParse(userData['weight']?.toString() ?? '');
+      targetWeightKg = double.tryParse(userData['targetWeight']?.toString() ?? '');
+    } else {
+      // Convert from imperial
+      final heightInches = double.tryParse(userData['height']?.toString() ?? '');
+      final weightLbs = double.tryParse(userData['weight']?.toString() ?? '');
+      final targetLbs = double.tryParse(userData['targetWeight']?.toString() ?? '');
+
+      if (heightInches != null) heightCm = heightInches * 2.54;
+      if (weightLbs != null) weightKg = weightLbs / 2.20462;
+      if (targetLbs != null) targetWeightKg = targetLbs / 2.20462;
+    }
+
+    return {
+      'heightCm': heightCm,
+      'weightKg': weightKg,
+      'targetWeightKg': targetWeightKg,
+    };
+  }
+
+  /// Get BMI category info (name, color, position 0-1)
+  /// Colors aligned with app's DA (navy/slate tones)
+  Map<String, dynamic> _getBMICategory(double bmi, String langCode) {
+    // BMI Categories: <18.5 (underweight), 18.5-24.9 (normal), 25-29.9 (overweight), 30+ (obese)
+    String name;
+    Color color;
+
+    if (bmi < 18.5) {
+      name = langCode == 'fr' ? 'Insuffisant' : (langCode == 'de' ? 'Untergewicht' : 'Underweight');
+      color = const Color(0xFF64748B); // Slate (neutral)
+    } else if (bmi < 25) {
+      name = langCode == 'fr' ? 'Normal' : (langCode == 'de' ? 'Normal' : 'Normal');
+      color = const Color(0xFF22C55E); // Green
+    } else if (bmi < 30) {
+      name = langCode == 'fr' ? 'Surpoids' : (langCode == 'de' ? 'Übergewicht' : 'Overweight');
+      color = const Color(0xFFF97316); // Orange
+    } else {
+      name = langCode == 'fr' ? 'Obésité' : (langCode == 'de' ? 'Fettleibigkeit' : 'Obese');
+      color = const Color(0xFFEF4444); // Red
+    }
+
+    // Calculate position on bar (BMI 15-40 range mapped to 0-1)
+    final clampedBMI = bmi.clamp(15.0, 40.0);
+    final position = (clampedBMI - 15) / 25; // 15-40 = 25 range
+
+    return {
+      'name': name,
+      'color': color,
+      'position': position,
+    };
+  }
+
+  /// Build BMI indicator bar widget
+  Widget _buildBMIIndicator({
+    required String label,
+    required double? bmi,
+    required String langCode,
+  }) {
+    if (bmi == null) {
+      return const SizedBox.shrink();
+    }
+
+    final category = _getBMICategory(bmi, langCode);
+    final position = category['position'] as double;
+    final categoryName = category['name'] as String;
+    final categoryColor = category['color'] as Color;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Label and BMI value
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF64748B),
+              ),
+            ),
+            Row(
+              children: [
+                Text(
+                  bmi.toStringAsFixed(1),
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: categoryColor,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: categoryColor.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    categoryName,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: categoryColor,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        // BMI bar with gradient (DA-aligned colors)
+        Stack(
+          children: [
+            // Gradient background bar
+            Container(
+              height: 12,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(6),
+                gradient: const LinearGradient(
+                  colors: [
+                    Color(0xFF64748B), // Slate - Underweight
+                    Color(0xFF22C55E), // Green - Normal
+                    Color(0xFFF97316), // Orange - Overweight
+                    Color(0xFFEF4444), // Red - Obese
+                  ],
+                  stops: [0.0, 0.35, 0.6, 1.0],
+                ),
+              ),
+            ),
+            // Position indicator
+            Positioned(
+              left: position.clamp(0.02, 0.98) * (MediaQuery.of(context).size.width - 80) - 8,
+              top: -2,
+              child: Container(
+                width: 16,
+                height: 16,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: categoryColor, width: 3),
+                  boxShadow: [
+                    BoxShadow(
+                      color: categoryColor.withOpacity(0.3),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        // Category labels under bar
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              '15',
+              style: TextStyle(
+                fontSize: 10,
+                color: Colors.grey.shade400,
+              ),
+            ),
+            Text(
+              '18.5',
+              style: TextStyle(
+                fontSize: 10,
+                color: Colors.grey.shade400,
+              ),
+            ),
+            Text(
+              '25',
+              style: TextStyle(
+                fontSize: 10,
+                color: Colors.grey.shade400,
+              ),
+            ),
+            Text(
+              '30',
+              style: TextStyle(
+                fontSize: 10,
+                color: Colors.grey.shade400,
+              ),
+            ),
+            Text(
+              '40',
+              style: TextStyle(
+                fontSize: 10,
+                color: Colors.grey.shade400,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
   void _showHeightPicker(BuildContext context) {
     final languageCode = Provider.of<LocalizationService>(context, listen: false).currentLanguageCode;
     final isFrench = languageCode == 'fr';
@@ -1039,6 +1260,31 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
               ),
             ],
 
+            // ====== CURRENT BMI INDICATOR (after height/weight) ======
+            Builder(
+              builder: (context) {
+                final bmiValues = _getBMIValues();
+                final heightCm = bmiValues['heightCm'];
+                final weightKg = bmiValues['weightKg'];
+                final currentBMI = _calculateBMI(heightCm, weightKg);
+
+                if (currentBMI == null) {
+                  return const SizedBox.shrink();
+                }
+
+                return Column(
+                  children: [
+                    const SizedBox(height: 24),
+                    _buildBMIIndicator(
+                      label: isGerman ? 'Aktueller BMI' : (isFrench ? 'IMC actuel' : 'Current BMI'),
+                      bmi: currentBMI,
+                      langCode: languageCode,
+                    ),
+                  ],
+                );
+              },
+            ),
+
             // Champ poids objectif conditionnel
             if (showTargetWeight) ...[
               const SizedBox(height: 24),
@@ -1098,6 +1344,30 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                     }),
                   ),
                 ],
+              ),
+              // ====== TARGET BMI INDICATOR (after target weight) ======
+              Builder(
+                builder: (context) {
+                  final bmiValues = _getBMIValues();
+                  final heightCm = bmiValues['heightCm'];
+                  final targetWeightKg = bmiValues['targetWeightKg'];
+                  final targetBMI = _calculateBMI(heightCm, targetWeightKg);
+
+                  if (targetBMI == null) {
+                    return const SizedBox.shrink();
+                  }
+
+                  return Column(
+                    children: [
+                      const SizedBox(height: 24),
+                      _buildBMIIndicator(
+                        label: isGerman ? 'Ziel-BMI' : (isFrench ? 'IMC objectif' : 'Target BMI'),
+                        bmi: targetBMI,
+                        langCode: languageCode,
+                      ),
+                    ],
+                  );
+                },
               ),
             ],
 

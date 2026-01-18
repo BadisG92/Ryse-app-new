@@ -15,7 +15,7 @@ class TutorialService {
   TutorialService._internal();
 
   // Mode debug - Force l'affichage du tutorial à chaque fois
-  static const bool _debugMode = false; // Mode production : tutoriels une seule fois
+  static const bool _debugMode = false; // true = force tutorial à chaque fois
 
   // Clés SharedPreferences pour sauvegarder l'état
   static const String _dashboardTutorialKey = 'tutorial_dashboard_completed';
@@ -308,10 +308,11 @@ class TutorialService {
   /// Affiche le tutorial du Dashboard principal
   Future<void> showDashboardTutorial({
     required BuildContext context,
+    required GlobalKey objectivesKey,
+    required GlobalKey plannerKey,
     required GlobalKey addFoodKey,
     required GlobalKey addExerciseKey,
     required GlobalKey addWaterKey,
-    required GlobalKey caloriesCardKey,
     required GlobalKey nutritionTabKey,
     required GlobalKey sportTabKey,
     required GlobalKey progressTabKey,
@@ -362,7 +363,33 @@ class TutorialService {
     await Future.delayed(const Duration(milliseconds: 500));
 
     final targets = <TargetFocus>[
-      // 1. Bouton Ajouter aliment
+      // 1. Bloc Objectifs → scroll vers planner
+      _createTarget(
+        identify: 'objectives',
+        keyTarget: objectivesKey,
+        title: 'tutorial_dashboard_objectives_title'.tr(languageCode),
+        description: 'tutorial_dashboard_objectives_desc'.tr(languageCode),
+        align: ContentAlign.bottom,
+        shape: ShapeLightFocus.RRect,
+        radius: 20,
+        nextTargetKey: plannerKey,
+        scrollAlignment: 0.2,
+      ),
+
+      // 2. Planning hebdomadaire → scroll vers add_food
+      _createTarget(
+        identify: 'planner',
+        keyTarget: plannerKey,
+        title: 'tutorial_dashboard_planner_title'.tr(languageCode),
+        description: 'tutorial_dashboard_planner_desc'.tr(languageCode),
+        align: ContentAlign.top,
+        shape: ShapeLightFocus.RRect,
+        radius: 20,
+        nextTargetKey: addFoodKey,
+        scrollAlignment: 0.5,
+      ),
+
+      // 3. Bouton Ajouter aliment → scroll vers add_exercise
       _createTarget(
         identify: 'add_food',
         keyTarget: addFoodKey,
@@ -371,9 +398,11 @@ class TutorialService {
         align: ContentAlign.top,
         shape: ShapeLightFocus.RRect,
         radius: 16,
+        nextTargetKey: addExerciseKey,
+        scrollAlignment: 0.6,
       ),
 
-      // 2. Bouton Ajouter exercice
+      // 4. Bouton Ajouter exercice → scroll vers add_water
       _createTarget(
         identify: 'add_exercise',
         keyTarget: addExerciseKey,
@@ -382,9 +411,11 @@ class TutorialService {
         align: ContentAlign.top,
         shape: ShapeLightFocus.RRect,
         radius: 16,
+        nextTargetKey: addWaterKey,
+        scrollAlignment: 0.6,
       ),
 
-      // 3. Bouton Ajouter eau
+      // 5. Bouton Ajouter eau → scroll vers nutrition_tab
       _createTarget(
         identify: 'add_water',
         keyTarget: addWaterKey,
@@ -393,20 +424,11 @@ class TutorialService {
         align: ContentAlign.top,
         shape: ShapeLightFocus.RRect,
         radius: 16,
+        nextTargetKey: nutritionTabKey,
+        scrollAlignment: 0.6,
       ),
 
-      // 4. Carte des calories
-      _createTarget(
-        identify: 'calories_card',
-        keyTarget: caloriesCardKey,
-        title: 'tutorial_dashboard_calories_title'.tr(languageCode),
-        description: 'tutorial_dashboard_calories_desc'.tr(languageCode),
-        align: ContentAlign.bottom,
-        shape: ShapeLightFocus.RRect,
-        radius: 20,
-      ),
-
-      // 4. Onglet Nutrition
+      // 6. Onglet Nutrition
       _createTarget(
         identify: 'nutrition_tab',
         keyTarget: nutritionTabKey,
@@ -416,7 +438,7 @@ class TutorialService {
         shape: ShapeLightFocus.Circle,
       ),
 
-      // 5. Onglet Sport
+      // 7. Onglet Sport
       _createTarget(
         identify: 'sport_tab',
         keyTarget: sportTabKey,
@@ -426,7 +448,7 @@ class TutorialService {
         shape: ShapeLightFocus.Circle,
       ),
 
-      // 6. Onglet Progression
+      // 8. Onglet Progression
       _createTarget(
         identify: 'progress_tab',
         keyTarget: progressTabKey,
@@ -436,7 +458,7 @@ class TutorialService {
         shape: ShapeLightFocus.Circle,
       ),
 
-      // 7. FAB Coach Ryze (dernier step)
+      // 9. FAB Coach Ryze (dernier step)
       _createTarget(
         identify: 'coach_fab',
         keyTarget: coachFabKey,

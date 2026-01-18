@@ -26,7 +26,7 @@ class VideoWelcomeScreen extends StatefulWidget {
 }
 
 class _VideoWelcomeScreenState extends State<VideoWelcomeScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late VideoPlayerController _controller;
   bool _isInitialized = false;
   bool _hasError = false;
@@ -35,6 +35,11 @@ class _VideoWelcomeScreenState extends State<VideoWelcomeScreen>
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
+
+  // Animation for "Bienvenue" typing effect
+  late AnimationController _typingController;
+  Animation<int>? _typingAnimation;
+  bool _typingAnimationInitialized = false;
 
   @override
   void initState() {
@@ -64,6 +69,34 @@ class _VideoWelcomeScreenState extends State<VideoWelcomeScreen>
         curve: const Interval(0.0, 1.0, curve: Curves.easeOutBack),
       ),
     );
+
+    // Typing animation for "Bienvenue" / "Welcome" / "Willkommen"
+    _typingController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
+  }
+
+  String _getWelcomeText(String langCode) {
+    switch (langCode) {
+      case 'fr':
+        return 'Bienvenue';
+      case 'de':
+        return 'Willkommen';
+      default:
+        return 'Welcome';
+    }
+  }
+
+  void _setupTypingAnimation(String welcomeText) {
+    if (_typingAnimationInitialized) return;
+    _typingAnimationInitialized = true;
+    _typingAnimation = IntTween(begin: 0, end: welcomeText.length).animate(
+      CurvedAnimation(
+        parent: _typingController,
+        curve: Curves.easeOut,
+      ),
+    );
   }
 
   Future<void> _initializeVideo() async {
@@ -83,10 +116,11 @@ class _VideoWelcomeScreenState extends State<VideoWelcomeScreen>
           _isInitialized = true;
         });
 
-        // Start button animation after video is ready
+        // Start button and typing animation after video is ready
         Future.delayed(const Duration(milliseconds: 800), () {
           if (mounted) {
             _animationController.forward();
+            _typingController.forward();
           }
         });
       }
@@ -96,8 +130,9 @@ class _VideoWelcomeScreenState extends State<VideoWelcomeScreen>
         setState(() {
           _hasError = true;
         });
-        // Still show the button even if video fails
+        // Still show the button and text even if video fails
         _animationController.forward();
+        _typingController.forward();
       }
     }
   }
@@ -108,6 +143,7 @@ class _VideoWelcomeScreenState extends State<VideoWelcomeScreen>
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     _controller.dispose();
     _animationController.dispose();
+    _typingController.dispose();
     super.dispose();
   }
 
@@ -120,6 +156,10 @@ class _VideoWelcomeScreenState extends State<VideoWelcomeScreen>
     // Only support fr, de, otherwise fallback to en
     final langCode = (rawLang == 'fr' || rawLang == 'de') ? rawLang : 'en';
     final buttonLabel = widget.buttonText ?? 'welcome_join_us'.tr(langCode);
+    final welcomeText = _getWelcomeText(langCode);
+
+    // Setup typing animation with the correct text length
+    _setupTypingAnimation(welcomeText);
 
     return Scaffold(
       backgroundColor:
@@ -141,8 +181,8 @@ class _VideoWelcomeScreenState extends State<VideoWelcomeScreen>
           // 3. Subtle gradient at bottom for button visibility
           _buildBottomGradient(),
 
-          // 4. Just the button at the bottom
-          _buildButtonOverlay(buttonLabel),
+          // 4. Welcome text + button at the bottom
+          _buildButtonOverlay(buttonLabel, welcomeText),
         ],
       ),
     );
@@ -269,20 +309,53 @@ class _VideoWelcomeScreenState extends State<VideoWelcomeScreen>
     );
   }
 
-  Widget _buildButtonOverlay(String buttonLabel) {
+  Widget _buildButtonOverlay(String buttonLabel, String welcomeText) {
     return Positioned(
       bottom: 0,
       left: 0,
       right: 0,
       child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 0, 24, 48),
-          child: FadeTransition(
-            opacity: _fadeAnimation,
-            child: ScaleTransition(
-              scale: _scaleAnimation,
-              child: _buildGlassButton(buttonLabel),
-            ),
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 70),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // "Bienvenue" text with typing animation
+              AnimatedBuilder(
+                animation: _typingController,
+                builder: (context, child) {
+                  final visibleChars = _typingAnimation?.value ?? 0;
+                  return FadeTransition(
+                    opacity: _fadeAnimation,
+                    child: Text(
+                      welcomeText.substring(0, visibleChars.clamp(0, welcomeText.length)),
+                      style: TextStyle(
+                        fontSize: 42,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                        letterSpacing: 1.5,
+                        shadows: [
+                          Shadow(
+                            color: Colors.black.withOpacity(0.5),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 24),
+              // Button with existing animation
+              FadeTransition(
+                opacity: _fadeAnimation,
+                child: ScaleTransition(
+                  scale: _scaleAnimation,
+                  child: _buildGlassButton(buttonLabel),
+                ),
+              ),
+            ],
           ),
         ),
       ),
