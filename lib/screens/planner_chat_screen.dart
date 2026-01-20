@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../models/weekly_planner_models.dart';
@@ -859,74 +860,77 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
             const SizedBox(width: 8),
           ],
           Flexible(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: message.isUser
-                    ? const Color(0xFF0B132B)
-                    : const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(16).copyWith(
-                  bottomRight: message.isUser
-                      ? const Radius.circular(4)
-                      : const Radius.circular(16),
-                  bottomLeft: message.isUser
-                      ? const Radius.circular(16)
-                      : const Radius.circular(4),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    message.text,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: message.isUser ? Colors.white : const Color(0xFF0B132B),
-                      height: 1.4,
-                    ),
+            child: GestureDetector(
+              onLongPress: () => _copyMessage(message.text),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: message.isUser
+                      ? const Color(0xFF0B132B)
+                      : const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(16).copyWith(
+                    bottomRight: message.isUser
+                        ? const Radius.circular(4)
+                        : const Radius.circular(16),
+                    bottomLeft: message.isUser
+                        ? const Radius.circular(16)
+                        : const Radius.circular(4),
                   ),
-                  if (message.actions != null && message.actions!.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: message.actions!.map((action) {
-                        return Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: action.onTap,
-                            borderRadius: BorderRadius.circular(8),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                              decoration: BoxDecoration(
-                                color: action.isDestructive
-                                    ? const Color(0xFFEF4444)
-                                    : Colors.white,
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      message.text,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: message.isUser ? Colors.white : const Color(0xFF0B132B),
+                        height: 1.4,
+                      ),
+                    ),
+                    if (message.actions != null && message.actions!.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: message.actions!.map((action) {
+                          return Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: action.onTap,
+                              borderRadius: BorderRadius.circular(8),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                decoration: BoxDecoration(
                                   color: action.isDestructive
                                       ? const Color(0xFFEF4444)
-                                      : const Color(0xFFE2E8F0),
+                                      : Colors.white,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: action.isDestructive
+                                        ? const Color(0xFFEF4444)
+                                        : const Color(0xFFE2E8F0),
+                                  ),
                                 ),
-                              ),
-                              child: Text(
-                                action.label,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: action.isDestructive
-                                      ? Colors.white
-                                      : const Color(0xFF0B132B),
+                                child: Text(
+                                  action.label,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: action.isDestructive
+                                        ? Colors.white
+                                        : const Color(0xFF0B132B),
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
+                          );
+                        }).toList(),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
           ),
@@ -951,6 +955,27 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
           ],
           if (message.isUser) const SizedBox(width: 8),
         ],
+      ),
+    );
+  }
+
+  /// Copy message on long press (like iMessage/WhatsApp)
+  void _copyMessage(String text) {
+    HapticFeedback.mediumImpact();
+    Clipboard.setData(ClipboardData(text: text));
+
+    final locService = context.read<LocalizationService>();
+    final lang = locService.currentLanguageCode;
+    final copiedText = lang == 'fr' ? 'Copié' : lang == 'de' ? 'Kopiert' : 'Copied';
+
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(copiedText),
+        backgroundColor: const Color(0xFF0B132B),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(milliseconds: 1500),
+        margin: const EdgeInsets.only(bottom: 50, left: 50, right: 50),
       ),
     );
   }

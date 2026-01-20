@@ -65,6 +65,13 @@ Heure actuelle: ${context['currentTime']}
 Date: ${context['currentDate']}
 Jour de la semaine: ${context['dayOfWeek']}
 
+## ⚠️ GESTION TEMPORELLE IMPORTANTE
+L'historique de conversation peut contenir des messages de jours précédents (marqués par [CONTEXTE TEMPOREL]).
+- Les messages des jours passés sont de l'HISTORIQUE - les données nutritionnelles qu'ils mentionnent ne sont plus d'actualité
+- Seules les données du "BILAN DU JOUR" ci-dessous sont les données ACTUELLES d'aujourd'hui
+- Quand l'utilisateur demande "combien de calories il me reste" → utilise UNIQUEMENT le bilan du jour actuel
+- Ne confonds jamais les données des jours précédents avec celles d'aujourd'hui
+
 ## BILAN DU JOUR DE ${context['userName']}
 - Objectif calories: ${context['calorieGoal']} kcal
 - Calories consommées: ${context['caloriesEaten']} kcal

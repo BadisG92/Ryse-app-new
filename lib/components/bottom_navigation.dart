@@ -175,32 +175,18 @@ class BottomNavigation extends StatelessWidget {
                 ),
               ),
             ),
-            // Badge de notification pour le bilan hebdomadaire
+            // Badge de notification rouge style iOS
             if (showBilanBadge)
               Positioned(
                 top: -2,
                 right: -2,
                 child: Container(
-                  width: 18,
-                  height: 18,
+                  width: 16,
+                  height: 16,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF10B981), // Vert émeraude
+                    color: const Color(0xFFFF3B30), // Rouge iOS
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF10B981).withOpacity(0.4),
-                        blurRadius: 6,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: const Center(
-                    child: Icon(
-                      LucideIcons.sparkles,
-                      size: 10,
-                      color: Colors.white,
-                    ),
+                    border: Border.all(color: Colors.white, width: 2.5),
                   ),
                 ),
               ),

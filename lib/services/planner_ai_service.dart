@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -420,15 +421,28 @@ class PlannerAIService {
               : await _buildIntentPrompt(userMessage, langCode);
 
       // Appeler Gemini
+      debugPrint('🤖 PlannerAI: Sending request to Gemini (mode: $mode)');
+      debugPrint('📝 User message: $userMessage');
+
       final response = await _callGeminiAPI(prompt);
 
       if (response == null) {
+        debugPrint('❌ PlannerAI: Gemini API returned null after all retries');
+        // Retourner un message d'erreur clair pour l'utilisateur
+        final errorMsg = langCode == 'fr'
+            ? "Désolé, je n'ai pas pu traiter ta demande. Le service IA est temporairement indisponible. Réessaie dans quelques secondes ! 🔄"
+            : langCode == 'de'
+                ? "Entschuldigung, ich konnte deine Anfrage nicht verarbeiten. Der KI-Service ist vorübergehend nicht verfügbar. Versuche es in ein paar Sekunden erneut! 🔄"
+                : "Sorry, I couldn't process your request. The AI service is temporarily unavailable. Try again in a few seconds! 🔄";
         return IntentAnalysis(
           intent: PlannerIntent.unknown,
           extractedInfo: {},
-          followUpQuestion: _getErrorMessage(langCode, 'api_error'),
+          followUpQuestion: errorMsg,
         );
       }
+
+      debugPrint('✅ PlannerAI: Got response from Gemini');
+      debugPrint('📊 Response keys: ${response.keys.toList()}');
 
       // Parser la réponse (inclut maintenant response_message)
       return _parseIntentResponse(response, langCode);
@@ -2545,10 +2559,13 @@ IMPORTANT:
   }
 
   static Future<Map<String, dynamic>?> _callGeminiAPI(String prompt) async {
-    const maxRetries = 3;
+    const maxRetries = 4; // Augmenté de 3 à 4 pour plus de fiabilité
+    const baseTimeoutSeconds = 25; // Timeout de base augmenté
 
     for (int attempt = 1; attempt <= maxRetries; attempt++) {
       try {
+        debugPrint('🤖 Planner Gemini API call attempt $attempt/$maxRetries');
+
         // Utiliser le modèle plus performant pour le planner (gemini-2.5-flash)
         final url = Uri.parse(
           '${GeminiConfig.plannerApiUrl}?key=${GeminiConfig.geminiApiKey}',
@@ -2570,55 +2587,121 @@ IMPORTANT:
           },
         };
 
+        // Timeout progressif: 25s, 30s, 35s, 40s
+        final timeout = Duration(seconds: baseTimeoutSeconds + (attempt - 1) * 5);
+
         final response = await http.post(
           url,
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode(body),
-        );
+        ).timeout(timeout);
+
+        // Rate limit (429) ou erreur serveur (500+) - retry avec backoff exponentiel
+        if (response.statusCode == 429 || response.statusCode >= 500) {
+          debugPrint('⏳ Rate limited or server error (${response.statusCode}), waiting before retry...');
+          if (attempt < maxRetries) {
+            // Backoff exponentiel: 2s, 4s, 8s
+            final delay = Duration(seconds: (1 << attempt));
+            await Future.delayed(delay);
+            continue;
+          }
+          return null;
+        }
 
         if (response.statusCode != 200) {
           debugPrint('❌ Gemini API error (attempt $attempt/$maxRetries): ${response.statusCode}');
+          debugPrint('📄 Error body: ${response.body.length > 500 ? response.body.substring(0, 500) : response.body}');
           if (attempt < maxRetries) {
-            await Future.delayed(Duration(milliseconds: 500 * attempt));
+            await Future.delayed(Duration(seconds: attempt));
             continue;
           }
           return null;
         }
 
         final responseData = jsonDecode(response.body);
-        final text = responseData['candidates']?[0]?['content']?['parts']?[0]?['text'];
 
-        if (text == null) {
-          debugPrint('⚠️ No text in Gemini response (attempt $attempt/$maxRetries)');
+        // Vérifier si la réponse a été bloquée par safety filters
+        final candidates = responseData['candidates'] as List?;
+        if (candidates == null || candidates.isEmpty) {
+          final promptFeedback = responseData['promptFeedback'];
+          debugPrint('⚠️ No candidates in response. PromptFeedback: $promptFeedback');
           if (attempt < maxRetries) {
-            await Future.delayed(Duration(milliseconds: 500 * attempt));
+            await Future.delayed(Duration(seconds: attempt));
             continue;
           }
           return null;
         }
+
+        // Vérifier le finishReason
+        final finishReason = candidates[0]['finishReason'];
+        if (finishReason != null && finishReason != 'STOP') {
+          debugPrint('⚠️ Gemini finishReason: $finishReason');
+          if (finishReason == 'SAFETY') {
+            debugPrint('🛡️ Content blocked by safety filters');
+          } else if (finishReason == 'MAX_TOKENS') {
+            debugPrint('📏 Response truncated - max tokens reached');
+          }
+        }
+
+        final text = candidates[0]['content']?['parts']?[0]?['text'];
+
+        if (text == null) {
+          debugPrint('⚠️ No text in Gemini response (attempt $attempt/$maxRetries)');
+          debugPrint('📄 Candidate: ${candidates[0]}');
+          if (attempt < maxRetries) {
+            await Future.delayed(Duration(seconds: attempt));
+            continue;
+          }
+          return null;
+        }
+
+        debugPrint('📝 Gemini response length: ${text.length} chars');
 
         // Extraire le JSON de la réponse
         final jsonMatch = RegExp(r'\{[\s\S]*\}').firstMatch(text);
         if (jsonMatch == null) {
           debugPrint('⚠️ No JSON in Gemini response (attempt $attempt/$maxRetries)');
+          debugPrint('📄 Raw response: ${text.length > 300 ? text.substring(0, 300) : text}...');
           if (attempt < maxRetries) {
-            await Future.delayed(Duration(milliseconds: 500 * attempt));
+            await Future.delayed(Duration(seconds: attempt));
             continue;
           }
           return null;
         }
 
-        return jsonDecode(jsonMatch.group(0)!);
+        // Parser le JSON extrait
+        final jsonStr = jsonMatch.group(0)!;
+        try {
+          final parsed = jsonDecode(jsonStr);
+          debugPrint('✅ Gemini API succeeded on attempt $attempt');
+          return parsed;
+        } catch (jsonError) {
+          debugPrint('⚠️ JSON parse error: $jsonError');
+          debugPrint('📄 JSON string: ${jsonStr.length > 300 ? jsonStr.substring(0, 300) : jsonStr}...');
+          if (attempt < maxRetries) {
+            await Future.delayed(Duration(seconds: attempt));
+            continue;
+          }
+          return null;
+        }
+      } on TimeoutException {
+        debugPrint('⏱️ Gemini API timeout (attempt $attempt/$maxRetries)');
+        if (attempt < maxRetries) {
+          await Future.delayed(Duration(seconds: attempt));
+          continue;
+        }
+        return null;
       } catch (e) {
         debugPrint('❌ _callGeminiAPI error (attempt $attempt/$maxRetries): $e');
         if (attempt < maxRetries) {
-          await Future.delayed(Duration(milliseconds: 500 * attempt));
+          await Future.delayed(Duration(seconds: attempt));
           continue;
         }
         return null;
       }
     }
 
+    debugPrint('❌ All $maxRetries attempts failed for Gemini API');
     return null;
   }
 
@@ -6170,6 +6253,387 @@ USER REQUEST: "$userMessage"
 
     final days = dayNames[langCode] ?? dayNames['en']!;
     return days[date.weekday - 1];
+  }
+
+  // =====================================================
+  // FALLBACK GENERATION - Backup quand l'IA ne répond pas
+  // =====================================================
+
+  /// Génère un intent de repas fallback basé sur l'analyse du message utilisateur
+  static Future<IntentAnalysis?> _generateFallbackMealIntent(String userMessage, String langCode) async {
+    try {
+      debugPrint('🍽️ Generating fallback meal intent for: $userMessage');
+
+      final messageLower = userMessage.toLowerCase();
+
+      // Détecter le type de repas
+      String mealType = 'lunch'; // Default
+      if (_containsAny(messageLower, ['petit', 'breakfast', 'matin', 'frühstück', 'morning'])) {
+        mealType = 'breakfast';
+      } else if (_containsAny(messageLower, ['déjeuner', 'lunch', 'midi', 'mittagessen'])) {
+        mealType = 'lunch';
+      } else if (_containsAny(messageLower, ['dîner', 'dinner', 'soir', 'abendessen', 'souper'])) {
+        mealType = 'dinner';
+      } else if (_containsAny(messageLower, ['collation', 'snack', 'goûter', 'zwischenmahlzeit'])) {
+        mealType = 'snack';
+      }
+
+      // Détecter le jour cible (défaut: aujourd'hui ou demain)
+      String targetDay = _getNextAvailableDay();
+      if (_containsAny(messageLower, ['lundi', 'monday', 'montag'])) targetDay = 'monday';
+      if (_containsAny(messageLower, ['mardi', 'tuesday', 'dienstag'])) targetDay = 'tuesday';
+      if (_containsAny(messageLower, ['mercredi', 'wednesday', 'mittwoch'])) targetDay = 'wednesday';
+      if (_containsAny(messageLower, ['jeudi', 'thursday', 'donnerstag'])) targetDay = 'thursday';
+      if (_containsAny(messageLower, ['vendredi', 'friday', 'freitag'])) targetDay = 'friday';
+      if (_containsAny(messageLower, ['samedi', 'saturday', 'samstag'])) targetDay = 'saturday';
+      if (_containsAny(messageLower, ['dimanche', 'sunday', 'sonntag'])) targetDay = 'sunday';
+      if (_containsAny(messageLower, ['demain', 'tomorrow', 'morgen'])) targetDay = _getTomorrowDay();
+
+      // Obtenir les repas template selon le type
+      final fallbackMeals = _getFallbackMeals(mealType, langCode);
+
+      if (fallbackMeals.isEmpty) return null;
+
+      // Sélectionner un repas adapté
+      final selectedMeal = fallbackMeals.first;
+      selectedMeal['day'] = targetDay;
+
+      final responseMessage = langCode == 'fr'
+          ? "J'ai préparé une suggestion de ${_getMealTypeNameFromString(mealType, langCode)} pour toi 🍽️"
+          : langCode == 'de'
+              ? "Ich habe einen ${_getMealTypeNameFromString(mealType, langCode)}-Vorschlag für dich vorbereitet 🍽️"
+              : "I've prepared a ${_getMealTypeNameFromString(mealType, langCode)} suggestion for you 🍽️";
+
+      return IntentAnalysis(
+        intent: PlannerIntent.meal,
+        extractedInfo: {
+          'meals': [selectedMeal],
+          'response_message': responseMessage,
+        },
+        isComplete: true,
+      );
+    } catch (e) {
+      debugPrint('❌ Fallback meal generation failed: $e');
+      return null;
+    }
+  }
+
+  /// Génère un intent de workout fallback basé sur l'analyse du message utilisateur
+  static Future<IntentAnalysis?> _generateFallbackWorkoutIntent(String userMessage, String langCode) async {
+    try {
+      debugPrint('💪 Generating fallback workout intent for: $userMessage');
+
+      final messageLower = userMessage.toLowerCase();
+
+      // Détecter si c'est du cardio
+      if (_containsAny(messageLower, ['course', 'running', 'courir', 'run', 'jogging', 'cardio', 'vélo', 'bike', 'cycling', 'natation', 'swim', 'marche', 'walk'])) {
+        return _generateFallbackCardioIntent(userMessage, langCode);
+      }
+
+      // Détecter le type de séance musculation
+      String workoutType = 'full_body';
+      String workoutName = langCode == 'fr' ? 'Full Body' : 'Full Body';
+
+      if (_containsAny(messageLower, ['push', 'pec', 'chest', 'poitrine', 'épaule', 'shoulder', 'tricep'])) {
+        workoutType = 'push';
+        workoutName = langCode == 'fr' ? 'Push (Pectoraux/Épaules)' : 'Push (Chest/Shoulders)';
+      } else if (_containsAny(messageLower, ['pull', 'dos', 'back', 'bicep', 'tirage'])) {
+        workoutType = 'pull';
+        workoutName = langCode == 'fr' ? 'Pull (Dos/Biceps)' : 'Pull (Back/Biceps)';
+      } else if (_containsAny(messageLower, ['leg', 'jambe', 'squat', 'cuisse', 'quad', 'fessier', 'glute'])) {
+        workoutType = 'legs';
+        workoutName = langCode == 'fr' ? 'Legs (Jambes)' : 'Legs';
+      } else if (_containsAny(messageLower, ['upper', 'haut', 'bras', 'arm'])) {
+        workoutType = 'upper';
+        workoutName = langCode == 'fr' ? 'Upper Body' : 'Upper Body';
+      }
+
+      // Détecter le jour cible
+      String targetDay = _getNextAvailableDay();
+      if (_containsAny(messageLower, ['lundi', 'monday', 'montag'])) targetDay = 'monday';
+      if (_containsAny(messageLower, ['mardi', 'tuesday', 'dienstag'])) targetDay = 'tuesday';
+      if (_containsAny(messageLower, ['mercredi', 'wednesday', 'mittwoch'])) targetDay = 'wednesday';
+      if (_containsAny(messageLower, ['jeudi', 'thursday', 'donnerstag'])) targetDay = 'thursday';
+      if (_containsAny(messageLower, ['vendredi', 'friday', 'freitag'])) targetDay = 'friday';
+      if (_containsAny(messageLower, ['samedi', 'saturday', 'samstag'])) targetDay = 'saturday';
+      if (_containsAny(messageLower, ['dimanche', 'sunday', 'sonntag'])) targetDay = 'sunday';
+      if (_containsAny(messageLower, ['demain', 'tomorrow', 'morgen'])) targetDay = _getTomorrowDay();
+
+      // Générer les exercices selon le type
+      final exercises = _getFallbackExercises(workoutType, langCode);
+
+      final responseMessage = langCode == 'fr'
+          ? "Je t'ai préparé une séance $workoutName 💪"
+          : langCode == 'de'
+              ? "Ich habe ein $workoutName Training für dich vorbereitet 💪"
+              : "I've prepared a $workoutName workout for you 💪";
+
+      return IntentAnalysis(
+        intent: PlannerIntent.workout,
+        extractedInfo: {
+          'workouts': [{
+            'day': targetDay,
+            'workout_name': workoutName,
+            'duration_minutes': 45,
+            'exercises': exercises,
+          }],
+          'response_message': responseMessage,
+        },
+        isComplete: true,
+      );
+    } catch (e) {
+      debugPrint('❌ Fallback workout generation failed: $e');
+      return null;
+    }
+  }
+
+  /// Génère un intent de cardio fallback
+  static IntentAnalysis? _generateFallbackCardioIntent(String userMessage, String langCode) {
+    try {
+      final messageLower = userMessage.toLowerCase();
+
+      // Détecter le type de cardio
+      String cardioType = 'running';
+      String cardioName = langCode == 'fr' ? 'Course' : 'Running';
+
+      if (_containsAny(messageLower, ['vélo', 'bike', 'cycling', 'cyclisme'])) {
+        cardioType = 'cycling';
+        cardioName = langCode == 'fr' ? 'Vélo' : 'Cycling';
+      } else if (_containsAny(messageLower, ['natation', 'swim', 'nager'])) {
+        cardioType = 'swimming';
+        cardioName = langCode == 'fr' ? 'Natation' : 'Swimming';
+      } else if (_containsAny(messageLower, ['marche', 'walk'])) {
+        cardioType = 'walking';
+        cardioName = langCode == 'fr' ? 'Marche' : 'Walking';
+      } else if (_containsAny(messageLower, ['hiit'])) {
+        cardioType = 'hiit';
+        cardioName = 'HIIT';
+      }
+
+      // Détecter la durée (défaut 30 min)
+      int duration = 30;
+      final durationMatch = RegExp(r'(\d+)\s*(?:min|minutes?)').firstMatch(messageLower);
+      if (durationMatch != null) {
+        duration = int.tryParse(durationMatch.group(1)!) ?? 30;
+      }
+
+      // Détecter le jour
+      String targetDay = _getNextAvailableDay();
+      if (_containsAny(messageLower, ['lundi', 'monday'])) targetDay = 'monday';
+      if (_containsAny(messageLower, ['mardi', 'tuesday'])) targetDay = 'tuesday';
+      if (_containsAny(messageLower, ['mercredi', 'wednesday'])) targetDay = 'wednesday';
+      if (_containsAny(messageLower, ['jeudi', 'thursday'])) targetDay = 'thursday';
+      if (_containsAny(messageLower, ['vendredi', 'friday'])) targetDay = 'friday';
+      if (_containsAny(messageLower, ['samedi', 'saturday'])) targetDay = 'saturday';
+      if (_containsAny(messageLower, ['dimanche', 'sunday'])) targetDay = 'sunday';
+      if (_containsAny(messageLower, ['demain', 'tomorrow'])) targetDay = _getTomorrowDay();
+
+      final responseMessage = langCode == 'fr'
+          ? "Je t'ai planifié une session de $cardioName de $duration minutes 🏃"
+          : langCode == 'de'
+              ? "Ich habe eine $cardioName-Session von $duration Minuten für dich geplant 🏃"
+              : "I've planned a $duration minute $cardioName session for you 🏃";
+
+      return IntentAnalysis(
+        intent: PlannerIntent.cardio,
+        extractedInfo: {
+          'activity_type': cardioType,
+          'activity_name': cardioName,
+          'target_days': [targetDay],
+          'target_minutes': duration,
+          'response_message': responseMessage,
+        },
+        isComplete: true,
+      );
+    } catch (e) {
+      debugPrint('❌ Fallback cardio generation failed: $e');
+      return null;
+    }
+  }
+
+  /// Helper pour vérifier si une string contient un des mots-clés
+  static bool _containsAny(String text, List<String> keywords) {
+    return keywords.any((keyword) => text.contains(keyword));
+  }
+
+  /// Retourne le jour suivant disponible (aujourd'hui si pas passé, sinon demain)
+  static String _getNextAvailableDay() {
+    final now = DateTime.now();
+    final hour = now.hour;
+
+    // Si on est après 20h, proposer demain
+    if (hour >= 20) {
+      return _getTomorrowDay();
+    }
+
+    // Sinon aujourd'hui
+    final dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    return dayNames[now.weekday - 1];
+  }
+
+  /// Retourne le jour de demain en string
+  static String _getTomorrowDay() {
+    final tomorrow = DateTime.now().add(const Duration(days: 1));
+    final dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    return dayNames[tomorrow.weekday - 1];
+  }
+
+  /// Retourne le nom du type de repas selon la langue (version String pour fallback)
+  static String _getMealTypeNameFromString(String mealType, String langCode) {
+    final names = {
+      'breakfast': {'fr': 'petit-déjeuner', 'en': 'breakfast', 'de': 'Frühstück'},
+      'lunch': {'fr': 'déjeuner', 'en': 'lunch', 'de': 'Mittagessen'},
+      'dinner': {'fr': 'dîner', 'en': 'dinner', 'de': 'Abendessen'},
+      'snack': {'fr': 'collation', 'en': 'snack', 'de': 'Snack'},
+    };
+    return names[mealType]?[langCode] ?? names[mealType]?['en'] ?? mealType;
+  }
+
+  /// Templates de repas fallback par type
+  static List<Map<String, dynamic>> _getFallbackMeals(String mealType, String langCode) {
+    final templates = {
+      'breakfast': [
+        {
+          'meal_type': 'breakfast',
+          'dish_name': langCode == 'fr' ? 'Oeufs brouillés & toast' : 'Scrambled eggs & toast',
+          'dish_description': langCode == 'fr' ? 'Oeufs, pain complet, beurre' : 'Eggs, whole wheat bread, butter',
+          'calories': 400,
+          'proteins': 22.0,
+          'carbs': 30.0,
+          'fats': 20.0,
+          'quantity_g': 250,
+          'reasoning': langCode == 'fr' ? 'Équilibré en protéines et glucides pour bien démarrer' : 'Balanced proteins and carbs for a good start',
+        },
+        {
+          'meal_type': 'breakfast',
+          'dish_name': langCode == 'fr' ? 'Porridge protéiné' : 'Protein oatmeal',
+          'dish_description': langCode == 'fr' ? 'Flocons d\'avoine, lait, whey, banane' : 'Oats, milk, whey, banana',
+          'calories': 450,
+          'proteins': 30.0,
+          'carbs': 55.0,
+          'fats': 10.0,
+          'quantity_g': 350,
+          'reasoning': langCode == 'fr' ? 'Idéal avant un entraînement' : 'Perfect before training',
+        },
+      ],
+      'lunch': [
+        {
+          'meal_type': 'lunch',
+          'dish_name': langCode == 'fr' ? 'Poulet grillé & riz' : 'Grilled chicken & rice',
+          'dish_description': langCode == 'fr' ? 'Blanc de poulet, riz basmati, légumes' : 'Chicken breast, basmati rice, vegetables',
+          'calories': 550,
+          'proteins': 40.0,
+          'carbs': 60.0,
+          'fats': 12.0,
+          'quantity_g': 400,
+          'reasoning': langCode == 'fr' ? 'Repas complet riche en protéines' : 'Complete meal rich in protein',
+        },
+        {
+          'meal_type': 'lunch',
+          'dish_name': langCode == 'fr' ? 'Salade César au poulet' : 'Chicken Caesar salad',
+          'dish_description': langCode == 'fr' ? 'Salade, poulet, parmesan, croûtons' : 'Salad, chicken, parmesan, croutons',
+          'calories': 480,
+          'proteins': 35.0,
+          'carbs': 25.0,
+          'fats': 28.0,
+          'quantity_g': 350,
+          'reasoning': langCode == 'fr' ? 'Léger mais nutritif' : 'Light but nutritious',
+        },
+      ],
+      'dinner': [
+        {
+          'meal_type': 'dinner',
+          'dish_name': langCode == 'fr' ? 'Saumon & légumes' : 'Salmon & vegetables',
+          'dish_description': langCode == 'fr' ? 'Pavé de saumon, brocoli, patate douce' : 'Salmon fillet, broccoli, sweet potato',
+          'calories': 520,
+          'proteins': 38.0,
+          'carbs': 35.0,
+          'fats': 24.0,
+          'quantity_g': 380,
+          'reasoning': langCode == 'fr' ? 'Riche en oméga-3 pour la récupération' : 'Rich in omega-3 for recovery',
+        },
+        {
+          'meal_type': 'dinner',
+          'dish_name': langCode == 'fr' ? 'Steak haché & purée' : 'Ground beef & mash',
+          'dish_description': langCode == 'fr' ? 'Boeuf haché 5%, purée de pommes de terre' : 'Lean ground beef, mashed potatoes',
+          'calories': 600,
+          'proteins': 42.0,
+          'carbs': 45.0,
+          'fats': 25.0,
+          'quantity_g': 400,
+          'reasoning': langCode == 'fr' ? 'Apport protéique important' : 'High protein intake',
+        },
+      ],
+      'snack': [
+        {
+          'meal_type': 'snack',
+          'dish_name': langCode == 'fr' ? 'Shake protéiné' : 'Protein shake',
+          'dish_description': langCode == 'fr' ? 'Whey, lait d\'amande, banane' : 'Whey, almond milk, banana',
+          'calories': 250,
+          'proteins': 28.0,
+          'carbs': 20.0,
+          'fats': 5.0,
+          'quantity_g': 300,
+          'reasoning': langCode == 'fr' ? 'Collation post-entraînement idéale' : 'Ideal post-workout snack',
+        },
+        {
+          'meal_type': 'snack',
+          'dish_name': langCode == 'fr' ? 'Yaourt grec & fruits' : 'Greek yogurt & fruits',
+          'dish_description': langCode == 'fr' ? 'Yaourt grec 0%, fruits rouges, miel' : 'Fat-free Greek yogurt, berries, honey',
+          'calories': 200,
+          'proteins': 18.0,
+          'carbs': 25.0,
+          'fats': 2.0,
+          'quantity_g': 250,
+          'reasoning': langCode == 'fr' ? 'Riche en protéines, faible en graisses' : 'High protein, low fat',
+        },
+      ],
+    };
+
+    return List<Map<String, dynamic>>.from(templates[mealType] ?? templates['lunch']!);
+  }
+
+  /// Templates d'exercices fallback par type de séance
+  static List<Map<String, dynamic>> _getFallbackExercises(String workoutType, String langCode) {
+    final templates = {
+      'push': [
+        {'exercise_name': langCode == 'fr' ? 'Développé couché' : 'Bench Press', 'sets': 4, 'reps_max': 10, 'weight_kg': 60.0, 'rest_seconds': 90},
+        {'exercise_name': langCode == 'fr' ? 'Développé incliné haltères' : 'Incline Dumbbell Press', 'sets': 3, 'reps_max': 12, 'weight_kg': 22.0, 'rest_seconds': 75},
+        {'exercise_name': langCode == 'fr' ? 'Élévations latérales' : 'Lateral Raises', 'sets': 3, 'reps_max': 15, 'weight_kg': 10.0, 'rest_seconds': 60},
+        {'exercise_name': langCode == 'fr' ? 'Dips' : 'Dips', 'sets': 3, 'reps_max': 12, 'weight_kg': 0.0, 'rest_seconds': 75},
+        {'exercise_name': langCode == 'fr' ? 'Extensions triceps' : 'Tricep Extensions', 'sets': 3, 'reps_max': 12, 'weight_kg': 15.0, 'rest_seconds': 60},
+      ],
+      'pull': [
+        {'exercise_name': langCode == 'fr' ? 'Tractions' : 'Pull-ups', 'sets': 4, 'reps_max': 10, 'weight_kg': 0.0, 'rest_seconds': 90},
+        {'exercise_name': langCode == 'fr' ? 'Rowing barre' : 'Barbell Row', 'sets': 4, 'reps_max': 10, 'weight_kg': 60.0, 'rest_seconds': 90},
+        {'exercise_name': langCode == 'fr' ? 'Tirage vertical' : 'Lat Pulldown', 'sets': 3, 'reps_max': 12, 'weight_kg': 50.0, 'rest_seconds': 75},
+        {'exercise_name': langCode == 'fr' ? 'Curl biceps' : 'Bicep Curls', 'sets': 3, 'reps_max': 12, 'weight_kg': 12.0, 'rest_seconds': 60},
+        {'exercise_name': langCode == 'fr' ? 'Face pulls' : 'Face Pulls', 'sets': 3, 'reps_max': 15, 'weight_kg': 15.0, 'rest_seconds': 60},
+      ],
+      'legs': [
+        {'exercise_name': langCode == 'fr' ? 'Squat' : 'Squats', 'sets': 4, 'reps_max': 10, 'weight_kg': 80.0, 'rest_seconds': 120},
+        {'exercise_name': langCode == 'fr' ? 'Presse à cuisses' : 'Leg Press', 'sets': 4, 'reps_max': 12, 'weight_kg': 120.0, 'rest_seconds': 90},
+        {'exercise_name': langCode == 'fr' ? 'Fentes' : 'Lunges', 'sets': 3, 'reps_max': 12, 'weight_kg': 20.0, 'rest_seconds': 75},
+        {'exercise_name': langCode == 'fr' ? 'Leg curl' : 'Leg Curl', 'sets': 3, 'reps_max': 12, 'weight_kg': 40.0, 'rest_seconds': 60},
+        {'exercise_name': langCode == 'fr' ? 'Mollets debout' : 'Standing Calf Raises', 'sets': 4, 'reps_max': 15, 'weight_kg': 60.0, 'rest_seconds': 60},
+      ],
+      'upper': [
+        {'exercise_name': langCode == 'fr' ? 'Développé couché' : 'Bench Press', 'sets': 3, 'reps_max': 10, 'weight_kg': 60.0, 'rest_seconds': 90},
+        {'exercise_name': langCode == 'fr' ? 'Rowing haltère' : 'Dumbbell Row', 'sets': 3, 'reps_max': 10, 'weight_kg': 25.0, 'rest_seconds': 75},
+        {'exercise_name': langCode == 'fr' ? 'Développé épaules' : 'Shoulder Press', 'sets': 3, 'reps_max': 10, 'weight_kg': 20.0, 'rest_seconds': 75},
+        {'exercise_name': langCode == 'fr' ? 'Curl biceps' : 'Bicep Curls', 'sets': 3, 'reps_max': 12, 'weight_kg': 12.0, 'rest_seconds': 60},
+        {'exercise_name': langCode == 'fr' ? 'Extensions triceps' : 'Tricep Extensions', 'sets': 3, 'reps_max': 12, 'weight_kg': 15.0, 'rest_seconds': 60},
+      ],
+      'full_body': [
+        {'exercise_name': langCode == 'fr' ? 'Squat' : 'Squats', 'sets': 3, 'reps_max': 10, 'weight_kg': 70.0, 'rest_seconds': 90},
+        {'exercise_name': langCode == 'fr' ? 'Développé couché' : 'Bench Press', 'sets': 3, 'reps_max': 10, 'weight_kg': 55.0, 'rest_seconds': 90},
+        {'exercise_name': langCode == 'fr' ? 'Rowing barre' : 'Barbell Row', 'sets': 3, 'reps_max': 10, 'weight_kg': 50.0, 'rest_seconds': 75},
+        {'exercise_name': langCode == 'fr' ? 'Développé épaules' : 'Shoulder Press', 'sets': 3, 'reps_max': 10, 'weight_kg': 18.0, 'rest_seconds': 75},
+        {'exercise_name': langCode == 'fr' ? 'Fentes' : 'Lunges', 'sets': 3, 'reps_max': 12, 'weight_kg': 16.0, 'rest_seconds': 60},
+      ],
+    };
+
+    return List<Map<String, dynamic>>.from(templates[workoutType] ?? templates['full_body']!);
   }
 
   static String _getMessage(String langCode, String key) {

@@ -573,6 +573,7 @@ class _DayColumnWidgetState extends State<DayColumnWidget>
         dayPlan: widget.dayPlan!,
         initialIndex: index,
         onActivityChanged: widget.onDataRefresh ?? () {},
+        filter: widget.filter,
       ),
     );
   }

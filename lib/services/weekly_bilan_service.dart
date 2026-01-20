@@ -18,7 +18,7 @@ class WeeklyBilanService {
   // ===========================================
   // 🧪 TEST MODE - Set to true to force show banner
   // ===========================================
-  static const bool kTestMode = false; // Production mode
+  static const bool kTestMode = true; // TEST MODE ACTIF
   // ===========================================
 
   // Cache for bilan status

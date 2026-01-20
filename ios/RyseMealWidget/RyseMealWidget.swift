@@ -211,6 +211,32 @@ struct MealData {
         )
     }
 
+    // Vérifie si les données sont d'aujourd'hui en comparant lastUpdate
+    private static func checkIfDataIsFromToday(json: [String: Any]) -> Bool {
+        guard let lastUpdateStr = json["lastUpdate"] as? String else {
+            print("⚠️ Pas de lastUpdate dans les données, considéré comme périmé")
+            return false
+        }
+
+        let isoFormatter = ISO8601DateFormatter()
+        isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+        // Essayer aussi sans les fractions de secondes
+        guard let lastUpdate = isoFormatter.date(from: lastUpdateStr) ?? ISO8601DateFormatter().date(from: lastUpdateStr) else {
+            print("⚠️ Format de date invalide: \(lastUpdateStr)")
+            return false
+        }
+
+        let calendar = Calendar.current
+        let isToday = calendar.isDateInToday(lastUpdate)
+
+        if !isToday {
+            print("📅 Les données datent d'un jour précédent (\(lastUpdateStr)), affichage remis à 0")
+        }
+
+        return isToday
+    }
+
     // Nouvelle méthode pour charger les dernières données connues
     private static func loadLastKnownData() -> MealData? {
         guard let userDefaults = UserDefaults(suiteName: "group.com.ryze.app") else {
@@ -233,15 +259,18 @@ struct MealData {
     }
 
     static func from(json: [String: Any]) -> MealData {
+        // Vérifier si les données sont d'aujourd'hui
+        let isDataFromToday = checkIfDataIsFromToday(json: json)
+
         // Parse contextualMeal
         let contextualMealJson = json["contextualMeal"] as? [String: Any] ?? [:]
         let contextualMeal = ContextualMeal(
             type: contextualMealJson["type"] as? String ?? "dejeuner",
             name: contextualMealJson["name"] as? String ?? "Déjeuner",
             emoji: contextualMealJson["emoji"] as? String ?? "🌤️",
-            calories: contextualMealJson["calories"] as? Int ?? 0,
-            hasItems: contextualMealJson["hasItems"] as? Bool ?? false,
-            itemCount: contextualMealJson["itemCount"] as? Int ?? 0
+            calories: isDataFromToday ? (contextualMealJson["calories"] as? Int ?? 0) : 0,
+            hasItems: isDataFromToday ? (contextualMealJson["hasItems"] as? Bool ?? false) : false,
+            itemCount: isDataFromToday ? (contextualMealJson["itemCount"] as? Int ?? 0) : 0
         )
 
         // Parse allMeals
@@ -251,18 +280,20 @@ struct MealData {
                 type: mealJson["type"] as? String ?? "",
                 name: mealJson["name"] as? String ?? "",
                 emoji: mealJson["emoji"] as? String ?? "🍽️",
-                calories: mealJson["calories"] as? Int ?? 0,
-                hasItems: mealJson["hasItems"] as? Bool ?? false,
-                itemCount: mealJson["itemCount"] as? Int ?? 0
+                calories: isDataFromToday ? (mealJson["calories"] as? Int ?? 0) : 0,
+                hasItems: isDataFromToday ? (mealJson["hasItems"] as? Bool ?? false) : false,
+                itemCount: isDataFromToday ? (mealJson["itemCount"] as? Int ?? 0) : 0
             )
         }
 
         // Parse totals (utiliser les valeurs du JSON, pas de valeur par défaut)
         let totalsJson = json["totals"] as? [String: Any] ?? [:]
+        let currentCalories = (totalsJson["current"] as? Int) ?? (totalsJson["current"] as? Double).map { Int($0) } ?? 0
+        let goalCalories = (totalsJson["goal"] as? Int) ?? (totalsJson["goal"] as? Double).map { Int($0) } ?? 0
         let totals = Totals(
-            current: (totalsJson["current"] as? Int) ?? (totalsJson["current"] as? Double).map { Int($0) } ?? 0,
-            goal: (totalsJson["goal"] as? Int) ?? (totalsJson["goal"] as? Double).map { Int($0) } ?? 0, // Utiliser la vraie valeur du JSON
-            percentage: (totalsJson["percentage"] as? Int) ?? (totalsJson["percentage"] as? Double).map { Int($0) } ?? 0
+            current: isDataFromToday ? currentCalories : 0,
+            goal: goalCalories, // L'objectif reste le même
+            percentage: isDataFromToday ? ((totalsJson["percentage"] as? Int) ?? (totalsJson["percentage"] as? Double).map { Int($0) } ?? 0) : 0
         )
 
         print("📊 Données calories: \(totals.current) / \(totals.goal) kcal (\(totals.percentage)%)")
@@ -273,19 +304,23 @@ struct MealData {
         // Parse macros
         let macrosJson = json["macros"] as? [String: Any] ?? [:]
         let macros = Macros(
-            protein: macrosJson["protein"] as? Int ?? 0,
-            carbs: macrosJson["carbs"] as? Int ?? 0,
-            fats: macrosJson["fats"] as? Int ?? 0
+            protein: isDataFromToday ? (macrosJson["protein"] as? Int ?? 0) : 0,
+            carbs: isDataFromToday ? (macrosJson["carbs"] as? Int ?? 0) : 0,
+            fats: isDataFromToday ? (macrosJson["fats"] as? Int ?? 0) : 0
         )
-        
+
         // Parse water (utiliser les valeurs du JSON, pas de valeurs par défaut)
         let waterJson = json["water"] as? [String: Any] ?? [:]
+        let currentWater = (waterJson["current"] as? Int) ?? (waterJson["current"] as? Double).map { Int($0) } ?? 0
+        let goalWater = (waterJson["goal"] as? Int) ?? (waterJson["goal"] as? Double).map { Int($0) } ?? 0
+        let currentWaterL = (waterJson["currentL"] as? Double) ?? 0.0
+        let goalWaterL = (waterJson["goalL"] as? Double) ?? 0.0
         let water = Water(
-            current: (waterJson["current"] as? Int) ?? (waterJson["current"] as? Double).map { Int($0) } ?? 0,
-            goal: (waterJson["goal"] as? Int) ?? (waterJson["goal"] as? Double).map { Int($0) } ?? 0, // Utiliser la vraie valeur du JSON
-            percentage: (waterJson["percentage"] as? Int) ?? (waterJson["percentage"] as? Double).map { Int($0) } ?? 0,
-            currentL: (waterJson["currentL"] as? Double) ?? 0.0,
-            goalL: (waterJson["goalL"] as? Double) ?? 0.0 // Utiliser la vraie valeur du JSON
+            current: isDataFromToday ? currentWater : 0,
+            goal: goalWater, // L'objectif reste le même
+            percentage: isDataFromToday ? ((waterJson["percentage"] as? Int) ?? (waterJson["percentage"] as? Double).map { Int($0) } ?? 0) : 0,
+            currentL: isDataFromToday ? currentWaterL : 0.0,
+            goalL: goalWaterL // L'objectif reste le même
         )
 
         print("💧 Données eau: \(water.current)ml / \(water.goal)ml (\(water.percentage)%)")

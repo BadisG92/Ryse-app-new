@@ -4,6 +4,7 @@ import '../models/weekly_planner_models.dart';
 import '../models/nutrition_models.dart';
 import 'food_entries_service.dart';
 import 'auth_service.dart';
+import 'global_state_manager.dart';
 
 /// Service de synchronisation bidirectionnelle Planner ↔ Journal
 ///
@@ -80,6 +81,9 @@ class MealPlannerSyncService {
 
       // Mettre à jour l'activité planifiée avec le lien et status completed
       await _updateActivityWithLink(activity.id, foodEntryId);
+
+      // Notifier le GlobalStateManager pour mettre à jour le planner
+      GlobalStateManager.instance.invalidateWeeklyData();
 
       debugPrint('✅ Repas validé: ${mealData.displayName} → food_entry $foodEntryId');
       return foodEntryId;
@@ -175,6 +179,9 @@ class MealPlannerSyncService {
         dishName: dishName,
         dishDescription: dishDescription,
       );
+
+      // Notifier le GlobalStateManager pour mettre à jour le planner
+      GlobalStateManager.instance.invalidateWeeklyData();
 
       debugPrint('✅ Repas validé avec macros modifiées: ${dishName ?? mealData.displayName} → food_entry $foodEntryId');
       return foodEntryId;
@@ -276,6 +283,9 @@ class MealPlannerSyncService {
 
       // Retirer le lien et remettre status = planned
       await _removeActivityLink(activity.id);
+
+      // Notifier le GlobalStateManager pour mettre à jour le planner
+      GlobalStateManager.instance.invalidateWeeklyData();
 
       debugPrint('✅ Repas dé-validé: ${mealData.displayName}');
       return true;
@@ -510,6 +520,9 @@ class MealPlannerSyncService {
         'is_ai_generated': false,
       });
 
+      // Notifier le GlobalStateManager pour mettre à jour le planner
+      GlobalStateManager.instance.invalidateWeeklyData();
+
       debugPrint('✅ Synced food_entry $foodEntryId to planner');
     } catch (e) {
       debugPrint('❌ syncFoodEntryToPlanner error: $e');
@@ -539,6 +552,10 @@ class MealPlannerSyncService {
                 .from('planned_activities')
                 .delete()
                 .eq('id', activity['id']);
+
+            // Notifier le GlobalStateManager pour mettre à jour le planner
+            GlobalStateManager.instance.invalidateWeeklyData();
+
             debugPrint('✅ Deleted planner activity linked to food_entry $foodEntryId');
             return;
           }

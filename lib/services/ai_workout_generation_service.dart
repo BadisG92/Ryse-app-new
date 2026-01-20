@@ -78,11 +78,33 @@ class AIWorkoutGenerationService {
       // Faire l'appel API à Gemini
       final response = await _callGeminiAPI(prompt);
 
-      stopwatch.stop();
-
+      // Si l'API échoue, utiliser le fallback
       if (response == null) {
+        debugPrint('⚠️ Gemini API failed, using fallback template');
+        final fallbackResult = await _generateFallbackWorkout(
+          userRequest: userRequest,
+          allExercises: allExercises,
+          locService: locService,
+          durationMinutes: durationMinutes,
+        );
+
+        stopwatch.stop();
+
+        if (fallbackResult != null && fallbackResult.isNotEmpty) {
+          debugPrint('✅ Fallback workout generated with ${fallbackResult.length} exercises');
+          return AIWorkoutResult.success(
+            exercises: fallbackResult,
+            processingTime: stopwatch.elapsedMilliseconds / 1000.0,
+            aiSuggestions: locService.isFrench
+                ? 'Séance générée à partir de nos modèles (Coach Ryze était occupé)'
+                : 'Workout generated from templates (Coach Ryze was busy)',
+          );
+        }
+
         return AIWorkoutResult.error(
-          error: 'Coach Ryze est occupé, réessayez dans quelques instants',
+          error: locService.isFrench
+              ? 'Coach Ryze est temporairement indisponible, réessayez dans quelques instants'
+              : 'Coach Ryze is temporarily unavailable, please try again shortly',
           processingTime: stopwatch.elapsedMilliseconds / 1000.0,
         );
       }
@@ -94,7 +116,29 @@ class AIWorkoutGenerationService {
         locService,
       );
 
+      stopwatch.stop();
+
+      // Si le parsing échoue, utiliser le fallback
       if (workoutExercises.isEmpty) {
+        debugPrint('⚠️ Failed to parse AI response, using fallback template');
+        final fallbackResult = await _generateFallbackWorkout(
+          userRequest: userRequest,
+          allExercises: allExercises,
+          locService: locService,
+          durationMinutes: durationMinutes,
+        );
+
+        if (fallbackResult != null && fallbackResult.isNotEmpty) {
+          debugPrint('✅ Fallback workout generated with ${fallbackResult.length} exercises');
+          return AIWorkoutResult.success(
+            exercises: fallbackResult,
+            processingTime: stopwatch.elapsedMilliseconds / 1000.0,
+            aiSuggestions: locService.isFrench
+                ? 'Séance générée à partir de nos modèles'
+                : 'Workout generated from templates',
+          );
+        }
+
         return AIWorkoutResult.error(
           error: 'No valid exercises generated',
           processingTime: stopwatch.elapsedMilliseconds / 1000.0,
@@ -475,56 +519,108 @@ Generate the workout now as valid JSON:
 ''';
   }
 
-  /// Appeler l'API Gemini
+  /// Appeler l'API Gemini avec retry et backoff exponentiel
+  /// Essaie jusqu'à 3 fois avec délais croissants (1s, 2s, 4s)
   static Future<Map<String, dynamic>?> _callGeminiAPI(String prompt) async {
-    try {
-      final Map<String, dynamic> requestBody = {
-        'contents': [
-          {
-            'parts': [
-              {'text': prompt}
-            ]
+    const int maxRetries = 3;
+    const Duration initialTimeout = Duration(seconds: 20);
+
+    for (int attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        debugPrint('🤖 Gemini API call attempt $attempt/$maxRetries');
+
+        final Map<String, dynamic> requestBody = {
+          'contents': [
+            {
+              'parts': [
+                {'text': prompt}
+              ]
+            }
+          ],
+          'generationConfig': {
+            ...GeminiConfig.generationConfig,
+            'temperature': 0.5, // Réduit pour plus de précision sur les noms
+            'maxOutputTokens': 3072, // Augmenté pour accueillir plus d'exercices et poids
+          },
+          'safetySettings': GeminiConfig.safetySettingsList,
+        };
+
+        // Timeout augmente avec chaque retry
+        final timeout = Duration(seconds: initialTimeout.inSeconds + (attempt - 1) * 5);
+
+        final response = await http.post(
+          Uri.parse(GeminiConfig.fullApiUrl),
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: json.encode(requestBody),
+        ).timeout(
+          timeout,
+          onTimeout: () {
+            throw TimeoutException('Gemini API request timeout after ${timeout.inSeconds} seconds');
+          },
+        );
+
+        if (response.statusCode == 200) {
+          final jsonResponse = json.decode(response.body);
+          final candidates = jsonResponse['candidates'] as List?;
+
+          if (candidates == null || candidates.isEmpty) {
+            debugPrint('⚠️ No candidates in response (attempt $attempt/$maxRetries)');
+            if (attempt < maxRetries) {
+              await Future.delayed(Duration(seconds: attempt)); // Backoff: 1s, 2s
+              continue;
+            }
+            return null;
           }
-        ],
-        'generationConfig': {
-          ...GeminiConfig.generationConfig,
-          'temperature': 0.5, // Réduit pour plus de précision sur les noms
-          'maxOutputTokens': 3072, // Augmenté pour accueillir plus d'exercices et poids
-        },
-        'safetySettings': GeminiConfig.safetySettingsList,
-      };
 
-      final response = await http.post(
-        Uri.parse(GeminiConfig.fullApiUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: json.encode(requestBody),
-      ).timeout(
-        const Duration(seconds: 15),
-        onTimeout: () {
-          throw TimeoutException('Gemini API request timeout after 15 seconds');
-        },
-      );
+          final textResponse = candidates[0]['content']['parts'][0]['text'] as String;
+          final parsed = _parseGeminiResponse(textResponse);
 
-      if (response.statusCode == 200) {
-        final jsonResponse = json.decode(response.body);
-        final candidates = jsonResponse['candidates'] as List?;
+          if (parsed == null && attempt < maxRetries) {
+            debugPrint('⚠️ Failed to parse response (attempt $attempt/$maxRetries)');
+            await Future.delayed(Duration(seconds: attempt));
+            continue;
+          }
 
-        if (candidates == null || candidates.isEmpty) {
-          return null;
+          debugPrint('✅ Gemini API success on attempt $attempt');
+          return parsed;
         }
 
-        final textResponse = candidates[0]['content']['parts'][0]['text'] as String;
-        return _parseGeminiResponse(textResponse);
-      }
+        // Gestion des codes d'erreur HTTP
+        debugPrint('❌ Gemini API error ${response.statusCode} (attempt $attempt/$maxRetries)');
 
-      return null;
-    } catch (e) {
-      debugPrint('Error calling Gemini API: $e');
-      return null;
+        // Rate limit ou server error - retry with backoff
+        if ((response.statusCode == 429 || response.statusCode >= 500) && attempt < maxRetries) {
+          final delay = Duration(seconds: attempt * 2); // 2s, 4s pour rate limit
+          debugPrint('⏳ Rate limited or server error, waiting ${delay.inSeconds}s before retry...');
+          await Future.delayed(delay);
+          continue;
+        }
+
+        // Autres erreurs - retry avec backoff standard
+        if (attempt < maxRetries) {
+          await Future.delayed(Duration(seconds: attempt));
+          continue;
+        }
+
+        return null;
+      } catch (e) {
+        debugPrint('❌ Gemini API error (attempt $attempt/$maxRetries): $e');
+
+        if (attempt < maxRetries) {
+          final delay = Duration(seconds: attempt);
+          debugPrint('⏳ Retrying in ${delay.inSeconds}s...');
+          await Future.delayed(delay);
+          continue;
+        }
+
+        return null;
+      }
     }
+
+    return null;
   }
 
   /// Parser la réponse JSON de Gemini
@@ -626,6 +722,187 @@ Generate the workout now as valid JSON:
       debugPrint('Error parsing workout exercises: $e');
       return [];
     }
+  }
+
+  // =====================================================
+  // FALLBACK TEMPLATES
+  // Utilisés quand l'IA n'est pas disponible
+  // =====================================================
+
+  /// Générer un workout de fallback basé sur des templates
+  /// Analyse la demande utilisateur pour sélectionner le bon template
+  static Future<List<WorkoutExercise>?> _generateFallbackWorkout({
+    required String userRequest,
+    required List<Exercise> allExercises,
+    required LocalizationService locService,
+    int? durationMinutes,
+  }) async {
+    try {
+      debugPrint('🔄 Generating fallback workout for: $userRequest');
+
+      // Analyser la demande pour déterminer le type de séance
+      final requestLower = userRequest.toLowerCase();
+
+      // Mapper les groupes musculaires par mots-clés
+      String workoutType = 'full_body'; // Défaut
+
+      // Push / Pecs / Épaules / Triceps
+      if (_matchesKeywords(requestLower, ['push', 'pec', 'chest', 'poitrine', 'épaule', 'shoulder', 'tricep'])) {
+        workoutType = 'push';
+      }
+      // Pull / Dos / Biceps
+      else if (_matchesKeywords(requestLower, ['pull', 'dos', 'back', 'bicep', 'tirage'])) {
+        workoutType = 'pull';
+      }
+      // Legs / Jambes
+      else if (_matchesKeywords(requestLower, ['leg', 'jambe', 'squat', 'cuisse', 'fessier', 'glute', 'quad'])) {
+        workoutType = 'legs';
+      }
+      // Upper body
+      else if (_matchesKeywords(requestLower, ['upper', 'haut du corps', 'bras', 'arm'])) {
+        workoutType = 'upper';
+      }
+      // Lower body
+      else if (_matchesKeywords(requestLower, ['lower', 'bas du corps'])) {
+        workoutType = 'legs';
+      }
+      // Full body
+      else if (_matchesKeywords(requestLower, ['full', 'complet', 'total', 'entier'])) {
+        workoutType = 'full_body';
+      }
+
+      debugPrint('📋 Detected workout type: $workoutType');
+
+      // Sélectionner les exercices du template
+      final templateExercises = _getTemplateExercises(workoutType, allExercises, locService);
+
+      if (templateExercises.isEmpty) {
+        debugPrint('❌ No exercises found for template: $workoutType');
+        return null;
+      }
+
+      // Construire les WorkoutExercise avec des poids par défaut
+      final workoutExercises = <WorkoutExercise>[];
+
+      for (final exercise in templateExercises) {
+        // Poids par défaut basé sur le groupe musculaire
+        final defaultWeight = _getDefaultWeight(exercise);
+
+        final sets = List.generate(3, (_) => ExerciseSet(
+          reps: 10,
+          weight: defaultWeight,
+          isCompleted: false,
+        ));
+
+        workoutExercises.add(WorkoutExercise(
+          exercise: exercise,
+          sets: sets,
+          suggestedRepsMin: 8,
+          suggestedRepsMax: 12,
+        ));
+      }
+
+      debugPrint('✅ Fallback generated ${workoutExercises.length} exercises');
+      return workoutExercises;
+
+    } catch (e) {
+      debugPrint('❌ Error generating fallback workout: $e');
+      return null;
+    }
+  }
+
+  /// Vérifie si le texte contient un des mots-clés
+  static bool _matchesKeywords(String text, List<String> keywords) {
+    for (final keyword in keywords) {
+      if (text.contains(keyword)) return true;
+    }
+    return false;
+  }
+
+  /// Retourne les exercices pour un type de workout
+  static List<Exercise> _getTemplateExercises(
+    String workoutType,
+    List<Exercise> allExercises,
+    LocalizationService locService,
+  ) {
+    // Mapper des groupes musculaires à rechercher
+    final Map<String, List<String>> muscleGroups = {
+      'push': ['chest', 'pectoraux', 'shoulders', 'épaules', 'triceps'],
+      'pull': ['back', 'dos', 'biceps', 'lats'],
+      'legs': ['quadriceps', 'hamstrings', 'glutes', 'fessiers', 'calves', 'mollets', 'jambes'],
+      'upper': ['chest', 'pectoraux', 'back', 'dos', 'shoulders', 'épaules', 'biceps', 'triceps'],
+      'full_body': ['chest', 'pectoraux', 'back', 'dos', 'quadriceps', 'jambes', 'shoulders', 'épaules'],
+    };
+
+    final targetGroups = muscleGroups[workoutType] ?? muscleGroups['full_body']!;
+    final selectedExercises = <Exercise>[];
+    final usedMuscleGroups = <String>{};
+
+    // Sélectionner 4-6 exercices variés
+    for (final exercise in allExercises) {
+      if (selectedExercises.length >= 6) break;
+
+      final muscleGroup = exercise.muscleGroup.toLowerCase();
+
+      // Vérifier si l'exercice correspond aux groupes cibles
+      for (final target in targetGroups) {
+        if (muscleGroup.contains(target.toLowerCase())) {
+          // Éviter trop d'exercices du même groupe
+          if (!usedMuscleGroups.contains(muscleGroup) || usedMuscleGroups.length >= 3) {
+            selectedExercises.add(exercise);
+            usedMuscleGroups.add(muscleGroup);
+            break;
+          }
+        }
+      }
+    }
+
+    // Si pas assez d'exercices, compléter avec des exercices de base
+    if (selectedExercises.length < 4) {
+      for (final exercise in allExercises) {
+        if (selectedExercises.length >= 4) break;
+        if (!selectedExercises.contains(exercise)) {
+          selectedExercises.add(exercise);
+        }
+      }
+    }
+
+    return selectedExercises;
+  }
+
+  /// Retourne un poids par défaut basé sur le groupe musculaire
+  static double _getDefaultWeight(Exercise exercise) {
+    final muscleGroup = exercise.muscleGroup.toLowerCase();
+
+    // Jambes = plus lourd
+    if (muscleGroup.contains('quad') ||
+        muscleGroup.contains('hamstring') ||
+        muscleGroup.contains('glute') ||
+        muscleGroup.contains('jambe') ||
+        muscleGroup.contains('fessier')) {
+      return 30.0;
+    }
+
+    // Dos / Pecs = moyen
+    if (muscleGroup.contains('back') ||
+        muscleGroup.contains('dos') ||
+        muscleGroup.contains('chest') ||
+        muscleGroup.contains('pec')) {
+      return 20.0;
+    }
+
+    // Épaules
+    if (muscleGroup.contains('shoulder') || muscleGroup.contains('épaule')) {
+      return 12.5;
+    }
+
+    // Bras = plus léger
+    if (muscleGroup.contains('bicep') || muscleGroup.contains('tricep')) {
+      return 10.0;
+    }
+
+    // Défaut
+    return 15.0;
   }
 }
 

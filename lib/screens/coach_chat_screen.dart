@@ -455,87 +455,83 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
     final lang = locService.currentLanguageCode;
 
     final title = lang == 'fr'
-        ? 'Ton bilan hebdo est disponible!'
+        ? 'Prêt pour ton bilan hebdo ?'
         : lang == 'de'
-            ? 'Dein Wochenbericht ist verfügbar!'
-            : 'Your weekly summary is available!';
+            ? 'Bereit für deinen Wochenbericht?'
+            : 'Ready for your weekly summary?';
 
     final buttonText = lang == 'fr'
-        ? 'Faire le bilan'
+        ? 'Commencer'
         : lang == 'de'
-            ? 'Zusammenfassung starten'
-            : 'Start summary';
+            ? 'Starten'
+            : 'Start';
 
-    return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+    return GestureDetector(
+      onTap: _startWeeklyBilan,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+          ),
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF0B132B).withValues(alpha: 0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF0B132B).withValues(alpha: 0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          // Panda image
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(24),
-              child: Image.asset(
-                'assets/images/coach_ryze_ai_chat_nutrition.png',
-                width: 40,
-                height: 40,
-                fit: BoxFit.cover,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          // Text
-          Expanded(
-            child: Text(
-              title,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          // Button
-          TextButton(
-            onPressed: _startWeeklyBilan,
-            style: TextButton.styleFrom(
-              backgroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              shape: RoundedRectangleBorder(
+        child: Row(
+          children: [
+            // Icône calendrier
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(8),
               ),
-            ),
-            child: Text(
-              buttonText,
-              style: const TextStyle(
-                color: Color(0xFF0B132B),
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
+              child: const Icon(
+                LucideIcons.calendarCheck,
+                size: 20,
+                color: Colors.white,
               ),
             ),
-          ),
-        ],
+            const SizedBox(width: 12),
+            // Text
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            // Bouton
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                buttonText,
+                style: const TextStyle(
+                  color: Color(0xFF0B132B),
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -553,7 +549,7 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
     });
 
     try {
-      // Stream bilan response directly (no user message displayed)
+      // Stream bilan response (pas de message utilisateur visible)
       final stream = CoachChatService.instance.streamBilanResponse(lang);
 
       // Add streaming placeholder for Ryze's response

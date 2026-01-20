@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../models/coach_chat_models.dart';
+import '../../services/localization_service.dart';
 import 'coach_ryze_avatar.dart';
 
 /// Chat message bubble widget
@@ -33,25 +35,28 @@ class ChatMessageBubble extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Flexible(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+            child: GestureDetector(
+              onLongPress: () => _copyMessage(context),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+                  ),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(20),
+                    topRight: Radius.circular(20),
+                    bottomLeft: Radius.circular(20),
+                    bottomRight: Radius.circular(4),
+                  ),
                 ),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(20),
-                  topRight: Radius.circular(20),
-                  bottomLeft: Radius.circular(20),
-                  bottomRight: Radius.circular(4),
-                ),
-              ),
-              child: Text(
-                message.content,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 15,
-                  height: 1.4,
+                child: Text(
+                  message.content,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    height: 1.4,
+                  ),
                 ),
               ),
             ),
@@ -74,33 +79,36 @@ class ChatMessageBubble extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           Flexible(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(4),
-                  topRight: Radius.circular(20),
-                  bottomLeft: Radius.circular(20),
-                  bottomRight: Radius.circular(20),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
+            child: GestureDetector(
+              onLongPress: () => _copyMessage(context),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(4),
+                    topRight: Radius.circular(20),
+                    bottomLeft: Radius.circular(20),
+                    bottomRight: Radius.circular(20),
                   ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildMessageContent(context),
-                  if (isStreaming) ...[
-                    const SizedBox(height: 8),
-                    _buildTypingIndicator(),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
                   ],
-                ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildMessageContent(context),
+                    if (isStreaming) ...[
+                      const SizedBox(height: 8),
+                      _buildTypingIndicator(),
+                    ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -285,6 +293,26 @@ class ChatMessageBubble extends StatelessWidget {
 
     // For now, just show a snackbar or handle specific routes
     // The actual implementation will depend on the app's routing system
+  }
+
+  /// Copy message on long press (like iMessage/WhatsApp)
+  void _copyMessage(BuildContext context) {
+    HapticFeedback.mediumImpact();
+    Clipboard.setData(ClipboardData(text: message.content));
+
+    final lang = LocalizationService.instance.currentLanguageCode;
+    final copiedText = lang == 'fr' ? 'Copié' : lang == 'de' ? 'Kopiert' : 'Copied';
+
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(copiedText),
+        backgroundColor: const Color(0xFF0B132B),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(milliseconds: 1500),
+        margin: const EdgeInsets.only(bottom: 50, left: 50, right: 50),
+      ),
+    );
   }
 }
 

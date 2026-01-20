@@ -354,9 +354,9 @@ class _ManualCardioEntryScreenState extends State<ManualCardioEntryScreen> {
                           debugPrint('✅ Session manuelle cardio sauvegardée (id: $sessionId)');
                           savedSuccessfully = true;
 
-                          // UNE SEULE mise à jour du GlobalState pour éviter les doublons
-                          GlobalStateManager.instance.updateWorkout(true);
-                          debugPrint('✅ GlobalStateManager: Cardio manuel marqué comme complété');
+                          // Rafraîchir les données sport depuis la DB (sessions count + calories)
+                          await GlobalStateManager.instance.refreshSportData();
+                          debugPrint('✅ GlobalStateManager: Sport data rafraîchi après cardio manuel');
 
                           // WEEKLY PLANNER SYNC: Synchroniser avec le planificateur
                           try {

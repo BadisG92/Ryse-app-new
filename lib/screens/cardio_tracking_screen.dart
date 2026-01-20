@@ -628,9 +628,9 @@ class _CardioTrackingScreenState extends State<CardioTrackingScreen> {
                         }
                         debugPrint('✅ Session cardio sauvegardée (id: $sessionId)');
 
-                        // UNE SEULE mise à jour du GlobalState pour éviter les doublons
-                        GlobalStateManager.instance.updateWorkout(true);
-                        debugPrint('✅ GlobalStateManager: Cardio marqué comme complété');
+                        // Rafraîchir les données sport depuis la DB (sessions count + calories)
+                        await GlobalStateManager.instance.refreshSportData();
+                        debugPrint('✅ GlobalStateManager: Sport data rafraîchi après cardio');
 
                         // WEEKLY PLANNER SYNC: Synchroniser avec le planificateur
                         if (sessionId != null) {

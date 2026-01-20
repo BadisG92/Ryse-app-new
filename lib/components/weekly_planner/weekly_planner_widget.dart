@@ -82,24 +82,20 @@ class _PlannerTrialBadgeState extends State<_PlannerTrialBadge> with SingleTicke
       }
     }
 
-    // Badge avec style uniforme (gold pour UPGRADE, bleu DA pour trial)
+    // Badge avec style uniforme doré (même design que TrialStatusBadge)
     final badge = Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: isLocked
-            ? [const Color(0xFFFFD700), const Color(0xFFFFA500)] // Gold for UPGRADE
-            : [const Color(0xFF0B132B), const Color(0xFF1C2951)], // Blue DA for trial
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFFD700), Color(0xFFFFA500)], // Gold gradient
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: isLocked
-              ? const Color(0xFFFFD700).withOpacity(0.4)
-              : const Color(0xFF0B132B).withOpacity(0.3),
-            blurRadius: 8,
+            color: const Color(0xFFFFD700).withOpacity(0.3),
+            blurRadius: 4,
             offset: const Offset(0, 2),
           ),
         ],
@@ -149,10 +145,11 @@ class WeeklyPlannerWidget extends StatefulWidget {
 }
 
 class _WeeklyPlannerWidgetState extends State<WeeklyPlannerWidget> {
-  WeeklyPlannerData _weekData = WeeklyPlannerData.empty();
+  WeeklyPlannerData? _weekData;
   bool _isLoading = true;
   bool _isMigrating = false; // Flag pour éviter les boucles de rechargement
   bool _shouldAnimateProgress = false; // Flag pour animer après génération
+  bool _hasCompletedInitialSync = false; // Flag pour éviter fullSync à chaque refresh
   int _dailyCalorieTarget = 2000; // Objectif calorique journalier
   final ScrollController _scrollController = ScrollController();
 
@@ -165,7 +162,7 @@ class _WeeklyPlannerWidgetState extends State<WeeklyPlannerWidget> {
   void initState() {
     super.initState();
     _loadUserCalorieTarget();
-    _loadData();
+    _loadData(fullSync: true); // Premier chargement: sync complète
     _loadTrialStatus();
     // S'abonner aux changements globaux
     GlobalStateManager.instance.events.listen(_onGlobalStateChange);
@@ -233,49 +230,64 @@ class _WeeklyPlannerWidgetState extends State<WeeklyPlannerWidget> {
     // Recharger si nécessaire, mais pas pendant une migration
     if (_isMigrating) return;
 
-    if (event.type == ChangeType.dayReset || event.type == ChangeType.planner) {
+    // Recharger sur tous les types de changements qui affectent le planner:
+    // - dayReset: nouveau jour
+    // - planner: mise à jour explicite du planner
+    // - calories/meals: ajout/modification de nourriture (affecte le fill rate)
+    // - sport/workout: ajout/modification d'activité sportive
+    if (event.type == ChangeType.dayReset ||
+        event.type == ChangeType.planner ||
+        event.type == ChangeType.calories ||
+        event.type == ChangeType.meals ||
+        event.type == ChangeType.sport ||
+        event.type == ChangeType.workout) {
       _loadData();
     }
   }
 
-  Future<void> _loadData() async {
+  Future<void> _loadData({bool fullSync = false}) async {
     if (!mounted) return;
 
-    setState(() => _isLoading = true);
+    // Ne pas afficher le loader pour les refreshes rapides (quand on a déjà des données)
+    final isFirstLoad = _weekData == null;
+    if (isFirstLoad) {
+      setState(() => _isLoading = true);
+    }
 
     try {
-      // Nettoyer les activités manquées au chargement
-      await WeeklyPlannerService.cleanupMissedActivities();
+      // Sync complète UNIQUEMENT au premier chargement de la session
+      // Les refreshes suivants ne font que récupérer les données à jour
+      if (fullSync && !_hasCompletedInitialSync) {
+        debugPrint('🔄 WeeklyPlanner: Initial full sync...');
+        // Nettoyer les activités manquées
+        await WeeklyPlannerService.cleanupMissedActivities();
 
-      // Sync complète: nettoie les orphelins + migre les sessions manquantes
-      // L'historique est la source de vérité
-      _isMigrating = true;
-      await WeeklyPlannerService.fullSyncFromHistory();
-      _isMigrating = false;
+        // Sync complète: nettoie les orphelins + migre les sessions manquantes
+        _isMigrating = true;
+        await WeeklyPlannerService.fullSyncFromHistory();
+        _isMigrating = false;
+        _hasCompletedInitialSync = true;
+        debugPrint('✅ WeeklyPlanner: Initial sync complete');
+      }
 
-      final data = await WeeklyPlannerService.getWeekData();
+      // Récupérer les données à jour (forceRefresh pour ignorer le cache)
+      debugPrint('📦 WeeklyPlanner: Fetching week data...');
+      final data = await WeeklyPlannerService.getWeekData(forceRefresh: true);
 
       if (mounted) {
         setState(() {
           _weekData = data;
           _isLoading = false;
-          _shouldAnimateProgress = true; // Activer l'animation au chargement
         });
 
-        // Scroller vers aujourd'hui
-        _scrollToToday();
-
-        // Désactiver l'animation après un délai
-        Future.delayed(const Duration(milliseconds: 2000), () {
-          if (mounted) {
-            setState(() {
-              _shouldAnimateProgress = false;
-            });
-          }
-        });
+        // Scroller vers aujourd'hui uniquement au premier chargement
+        if (isFirstLoad) {
+          _scrollToToday();
+        }
       }
     } catch (e) {
-      _isMigrating = false; // S'assurer de réinitialiser le flag en cas d'erreur
+      debugPrint('❌ WeeklyPlanner._loadData error: $e');
+      _isMigrating = false;
       if (mounted) {
         setState(() => _isLoading = false);
       }
@@ -304,6 +316,9 @@ class _WeeklyPlannerWidgetState extends State<WeeklyPlannerWidget> {
   }
 
   void _openPlannerChat(BuildContext context, {required String mode}) async {
+    // Ne pas naviguer si les données ne sont pas encore chargées
+    if (_weekData == null) return;
+
     // Si l'utilisateur n'est pas premium et que le planner est locked, afficher le paywall
     final isPremium = SubscriptionService.instance.isPremium;
     if (!isPremium && _isPlannerLocked) {
@@ -321,7 +336,7 @@ class _WeeklyPlannerWidgetState extends State<WeeklyPlannerWidget> {
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) => PlannerChatScreen(
           initialMode: mode,
-          weekData: _weekData,
+          weekData: _weekData!,
         ),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           // Laisser le Hero gérer l'animation principale
@@ -442,7 +457,8 @@ class _WeeklyPlannerWidgetState extends State<WeeklyPlannerWidget> {
   }
 
   Widget _buildWeekDays(BuildContext context, String langCode) {
-    if (_isLoading) {
+    // Afficher le loader uniquement au premier chargement (pas de données encore)
+    if (_isLoading || _weekData == null) {
       return const SizedBox(
         height: 120,
         child: Center(
@@ -458,6 +474,7 @@ class _WeeklyPlannerWidgetState extends State<WeeklyPlannerWidget> {
       );
     }
 
+    final weekData = _weekData!;
     final dayNames = _getDayNames(langCode);
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -471,8 +488,8 @@ class _WeeklyPlannerWidgetState extends State<WeeklyPlannerWidget> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: List.generate(7, (index) {
-              final date = _weekData.weekStart.add(Duration(days: index));
-              final dayPlan = _weekData.getDayPlan(date);
+              final date = weekData.weekStart.add(Duration(days: index));
+              final dayPlan = weekData.getDayPlan(date);
               final normalizedDate = DateTime(date.year, date.month, date.day);
               final isToday = normalizedDate == today;
 

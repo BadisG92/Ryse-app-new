@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:provider/provider.dart';
 import '../../models/sport_models.dart';
+import '../../services/localization_service.dart';
+import '../../services/translations.dart';
 import 'numeric_text_field.dart';
 
 class ExerciseSetsWidget extends StatefulWidget {
@@ -32,6 +35,20 @@ class _ExerciseSetsWidgetState extends State<ExerciseSetsWidget> {
   void initState() {
     super.initState();
     _isExpanded = widget.initiallyExpanded;
+  }
+
+  /// Traduit le groupe musculaire "Custom" selon la langue courante
+  /// Les autres groupes viennent de la DB et sont déjà traduits
+  String _translateCustomMuscleGroup(String muscleGroup, String langCode) {
+    final lowerGroup = muscleGroup.toLowerCase();
+
+    // Seul cas spécial: groupe "Personnalisé/Custom/Benutzerdefiniert" (défini en local)
+    if (lowerGroup == 'personnalisé' || lowerGroup == 'custom' || lowerGroup == 'benutzerdefiniert') {
+      return 'workout_custom_type'.tr(langCode);
+    }
+
+    // Tous les autres groupes viennent de la DB et sont déjà traduits
+    return muscleGroup;
   }
 
   @override
@@ -86,25 +103,30 @@ class _ExerciseSetsWidgetState extends State<ExerciseSetsWidget> {
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.workoutExercise.exercise.name,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF1A1A1A),
+                    child: Consumer<LocalizationService>(
+                      builder: (context, locService, _) => Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.workoutExercise.exercise.name,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF1A1A1A),
+                            ),
                           ),
-                        ),
-                        Text(
-                          widget.workoutExercise.exercise.muscleGroup,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF64748B),
+                          Text(
+                            _translateCustomMuscleGroup(
+                              widget.workoutExercise.exercise.muscleGroup,
+                              locService.currentLanguageCode,
+                            ),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF64748B),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                   Text(

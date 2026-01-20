@@ -317,45 +317,12 @@ class _VideoWelcomeScreenState extends State<VideoWelcomeScreen>
       child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(24, 0, 24, 70),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // "Bienvenue" text with typing animation
-              AnimatedBuilder(
-                animation: _typingController,
-                builder: (context, child) {
-                  final visibleChars = _typingAnimation?.value ?? 0;
-                  return FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: Text(
-                      welcomeText.substring(0, visibleChars.clamp(0, welcomeText.length)),
-                      style: TextStyle(
-                        fontSize: 42,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                        letterSpacing: 1.5,
-                        shadows: [
-                          Shadow(
-                            color: Colors.black.withOpacity(0.5),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 24),
-              // Button with existing animation
-              FadeTransition(
-                opacity: _fadeAnimation,
-                child: ScaleTransition(
-                  scale: _scaleAnimation,
-                  child: _buildGlassButton(buttonLabel),
-                ),
-              ),
-            ],
+          child: FadeTransition(
+            opacity: _fadeAnimation,
+            child: ScaleTransition(
+              scale: _scaleAnimation,
+              child: _buildGlassButton(buttonLabel),
+            ),
           ),
         ),
       ),

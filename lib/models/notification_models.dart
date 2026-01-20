@@ -42,6 +42,7 @@ class NotificationPreferences {
   bool reengagementEnabled; // Réengagement automatique si inactif
   bool nothingLoggedEnabled; // Rappel "rien logué aujourd'hui" à 17h
   bool plannedActivityReminderEnabled; // Rappel des séances planifiées du jour
+  bool workoutRemindersEnabled; // Rappels d'entraînement
 
   // Meal reminder times (hours in 24h format)
   int breakfastTime;  // Default: 8
@@ -53,6 +54,9 @@ class NotificationPreferences {
 
   // Planned activity reminder time
   int plannedActivityReminderTime; // Default: 8
+
+  // Workout reminder time
+  int workoutReminderTime; // Default: 18
 
   NotificationPreferences({
     this.notificationsEnabled = true,
@@ -68,11 +72,13 @@ class NotificationPreferences {
     this.reengagementEnabled = true,       // Activé par défaut - automatique si inactif
     this.nothingLoggedEnabled = false,     // Désactivé par défaut (17h)
     this.plannedActivityReminderEnabled = true, // Activé par défaut - rappel séances planifiées
+    this.workoutRemindersEnabled = false, // Désactivé par défaut
     this.breakfastTime = 8,
     this.lunchTime = 12,
     this.dinnerTime = 19,
     this.waterReminderFrequency = 1,       // 1x/jour si activé
     this.plannedActivityReminderTime = 7,  // 7h par défaut (avant petit-déj à 8h)
+    this.workoutReminderTime = 18,         // 18h par défaut
   });
 
   /// Convertir en Map pour stockage
@@ -95,6 +101,8 @@ class NotificationPreferences {
       'dinnerTime': dinnerTime,
       'waterReminderFrequency': waterReminderFrequency,
       'plannedActivityReminderTime': plannedActivityReminderTime,
+      'workoutRemindersEnabled': workoutRemindersEnabled,
+      'workoutReminderTime': workoutReminderTime,
     };
   }
 
@@ -119,6 +127,8 @@ class NotificationPreferences {
       dinnerTime: json['dinnerTime'] ?? 19,
       waterReminderFrequency: json['waterReminderFrequency'] ?? 1,
       plannedActivityReminderTime: json['plannedActivityReminderTime'] ?? 7,
+      workoutRemindersEnabled: json['workoutRemindersEnabled'] ?? false,
+      workoutReminderTime: json['workoutReminderTime'] ?? 18,
     );
   }
 
@@ -136,11 +146,13 @@ class NotificationPreferences {
     bool? reengagementEnabled,
     bool? nothingLoggedEnabled,
     bool? plannedActivityReminderEnabled,
+    bool? workoutRemindersEnabled,
     int? breakfastTime,
     int? lunchTime,
     int? dinnerTime,
     int? waterReminderFrequency,
     int? plannedActivityReminderTime,
+    int? workoutReminderTime,
   }) {
     return NotificationPreferences(
       notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
@@ -160,6 +172,8 @@ class NotificationPreferences {
       dinnerTime: dinnerTime ?? this.dinnerTime,
       waterReminderFrequency: waterReminderFrequency ?? this.waterReminderFrequency,
       plannedActivityReminderTime: plannedActivityReminderTime ?? this.plannedActivityReminderTime,
+      workoutRemindersEnabled: workoutRemindersEnabled ?? this.workoutRemindersEnabled,
+      workoutReminderTime: workoutReminderTime ?? this.workoutReminderTime,
     );
   }
 

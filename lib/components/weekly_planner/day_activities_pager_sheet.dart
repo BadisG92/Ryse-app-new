@@ -14,6 +14,7 @@ import '../../screens/hiit_session_screen.dart';
 import '../../models/hiit_models.dart';
 import 'planned_meal_detail_page.dart';
 import 'meal_validation_bottom_sheet.dart';
+import 'day_column_widget.dart' show ActivityFilter;
 
 /// Bottom sheet avec PageView pour naviguer entre les activités d'un jour
 class DayActivitiesPagerSheet extends StatefulWidget {
@@ -21,6 +22,7 @@ class DayActivitiesPagerSheet extends StatefulWidget {
   final DayPlanData dayPlan;
   final int initialIndex;
   final VoidCallback onActivityChanged;
+  final ActivityFilter filter; // Filtre pour les types d'activités à afficher
 
   const DayActivitiesPagerSheet({
     super.key,
@@ -28,6 +30,7 @@ class DayActivitiesPagerSheet extends StatefulWidget {
     required this.dayPlan,
     required this.initialIndex,
     required this.onActivityChanged,
+    this.filter = ActivityFilter.all,
   });
 
   @override
@@ -83,63 +86,69 @@ class _DayActivitiesPagerSheetState extends State<DayActivitiesPagerSheet> {
 
   List<_ActivityItem> _buildActivityList() {
     final List<_ActivityItem> items = [];
+    final filter = widget.filter;
 
-    // Grouper les repas planifiés par type
-    final mealsByType = <String, List<PlannedActivity>>{};
-    for (final meal in _dayPlan.meals) {
-      final type = meal.activityType.value;
-      mealsByType.putIfAbsent(type, () => []);
-      mealsByType[type]!.add(meal);
-    }
+    // Ajouter les repas si le filtre le permet
+    if (filter == ActivityFilter.all || filter == ActivityFilter.meals) {
+      // Grouper les repas planifiés par type
+      final mealsByType = <String, List<PlannedActivity>>{};
+      for (final meal in _dayPlan.meals) {
+        final type = meal.activityType.value;
+        mealsByType.putIfAbsent(type, () => []);
+        mealsByType[type]!.add(meal);
+      }
 
-    // Collecter les IDs des food_entries liées aux repas planifiés validés
-    final linkedFoodEntryIds = <String>{};
-    for (final meal in _dayPlan.meals) {
-      final linkedId = meal.mealData?.linkedFoodEntryId;
-      if (linkedId != null) {
-        linkedFoodEntryIds.add(linkedId);
+      // Collecter les IDs des food_entries liées aux repas planifiés validés
+      final linkedFoodEntryIds = <String>{};
+      for (final meal in _dayPlan.meals) {
+        final linkedId = meal.mealData?.linkedFoodEntryId;
+        if (linkedId != null) {
+          linkedFoodEntryIds.add(linkedId);
+        }
+      }
+
+      // Grouper les journal entries par type NORMALISÉ
+      // (snack_1, snack_2, collation 1, etc. → tous groupés sous "snack")
+      // EXCLURE les entries qui sont liées à des repas planifiés (éviter doublons)
+      final journalByType = <String, List<JournalFoodEntry>>{};
+      for (final entry in _dayPlan.journalEntries) {
+        // Skip si cette entry est liée à un repas planifié
+        if (linkedFoodEntryIds.contains(entry.id)) {
+          continue;
+        }
+        final normalizedType = _normalizeMealType(entry.mealType);
+        journalByType.putIfAbsent(normalizedType, () => []);
+        journalByType[normalizedType]!.add(entry);
+      }
+
+      // Créer une page par type de repas (si au moins 1 item)
+      for (final mealType in _mealTypesOrder) {
+        final plannedMeals = mealsByType[mealType] ?? [];
+        final journalEntries = journalByType[mealType] ?? [];
+
+        // N'ajouter la page que s'il y a au moins un item
+        if (plannedMeals.isNotEmpty || journalEntries.isNotEmpty) {
+          items.add(_ActivityItem(
+            mealTypePage: _MealTypePage(
+              mealType: mealType,
+              plannedMeals: plannedMeals,
+              journalEntries: journalEntries,
+            ),
+          ));
+        }
       }
     }
 
-    // Grouper les journal entries par type NORMALISÉ
-    // (snack_1, snack_2, collation 1, etc. → tous groupés sous "snack")
-    // EXCLURE les entries qui sont liées à des repas planifiés (éviter doublons)
-    final journalByType = <String, List<JournalFoodEntry>>{};
-    for (final entry in _dayPlan.journalEntries) {
-      // Skip si cette entry est liée à un repas planifié
-      if (linkedFoodEntryIds.contains(entry.id)) {
-        continue;
+    // Ajouter les cardios si le filtre le permet (pages séparées)
+    if (filter == ActivityFilter.all || filter == ActivityFilter.workouts) {
+      for (final cardio in _dayPlan.cardios) {
+        items.add(_ActivityItem(activity: cardio));
       }
-      final normalizedType = _normalizeMealType(entry.mealType);
-      journalByType.putIfAbsent(normalizedType, () => []);
-      journalByType[normalizedType]!.add(entry);
-    }
 
-    // Créer une page par type de repas (si au moins 1 item)
-    for (final mealType in _mealTypesOrder) {
-      final plannedMeals = mealsByType[mealType] ?? [];
-      final journalEntries = journalByType[mealType] ?? [];
-
-      // N'ajouter la page que s'il y a au moins un item
-      if (plannedMeals.isNotEmpty || journalEntries.isNotEmpty) {
-        items.add(_ActivityItem(
-          mealTypePage: _MealTypePage(
-            mealType: mealType,
-            plannedMeals: plannedMeals,
-            journalEntries: journalEntries,
-          ),
-        ));
+      // Ajouter les workouts (pages séparées)
+      for (final workout in _dayPlan.workouts) {
+        items.add(_ActivityItem(workout: workout));
       }
-    }
-
-    // Ajouter les cardios (pages séparées)
-    for (final cardio in _dayPlan.cardios) {
-      items.add(_ActivityItem(activity: cardio));
-    }
-
-    // Ajouter les workouts (pages séparées)
-    for (final workout in _dayPlan.workouts) {
-      items.add(_ActivityItem(workout: workout));
     }
 
     return items;

@@ -275,7 +275,10 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
                            roundsCompleted: roundsCompleted,
                          );
                          debugPrint('✅ Session HIIT sauvegardée (id: $sessionId)');
-                         GlobalStateManager.instance.updateWorkout(true);
+
+                         // Rafraîchir les données sport depuis la DB (sessions count + calories)
+                         await GlobalStateManager.instance.refreshSportData();
+                         debugPrint('✅ GlobalStateManager: Sport data rafraîchi après HIIT');
 
                          // WEEKLY PLANNER SYNC: Synchroniser avec le planificateur
                          try {
@@ -660,9 +663,9 @@ class _HiitSessionScreenState extends State<HiitSessionScreen> {
                           );
                           debugPrint('✅ Session HIIT complète sauvegardée (id: $sessionId)');
 
-                          // UNE SEULE mise à jour du GlobalState pour éviter les doublons
-                          GlobalStateManager.instance.updateWorkout(true);
-                          debugPrint('✅ GlobalStateManager: HIIT complet marqué comme complété');
+                          // Rafraîchir les données sport depuis la DB (sessions count + calories)
+                          await GlobalStateManager.instance.refreshSportData();
+                          debugPrint('✅ GlobalStateManager: Sport data rafraîchi après HIIT complet');
 
                           // WEEKLY PLANNER SYNC: Synchroniser avec le planificateur
                           try {

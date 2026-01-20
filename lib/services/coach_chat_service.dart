@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/gemini_config.dart';
@@ -9,6 +10,7 @@ import 'coach_context_builder.dart';
 import 'coach_preference_extractor.dart';
 import 'coach_personality_service.dart';
 import 'global_state_manager.dart';
+import 'localization_service.dart';
 import 'subscription_service.dart';
 import 'weekly_bilan_service.dart';
 
@@ -238,7 +240,43 @@ class CoachChatService {
         ? _currentMessages.sublist(_currentMessages.length - maxMessagesContext)
         : _currentMessages;
 
-    for (var msg in messagesToSend) {
+    // Build history with day markers to give AI temporal context
+    final historyWithDays = _buildHistoryWithDayMarkers(messagesToSend);
+    history.addAll(historyWithDays);
+
+    _currentChatSession = _model!.startChat(history: history);
+  }
+
+  /// Build chat history with day markers inserted between messages from different days
+  /// This helps the AI understand temporal context (e.g., "yesterday's conversation was about X, today is a new day")
+  List<Content> _buildHistoryWithDayMarkers(List<CoachMessage> messages) {
+    final history = <Content>[];
+    if (messages.isEmpty) return history;
+
+    final lang = LocalizationService.instance.currentLanguageCode;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    DateTime? lastMessageDay;
+    bool isFirstDayMarker = true;
+
+    for (var msg in messages) {
+      final msgDay = DateTime(msg.createdAt.year, msg.createdAt.month, msg.createdAt.day);
+
+      // Check if we need to insert a day marker
+      if (lastMessageDay == null || msgDay != lastMessageDay) {
+        // Insert day marker as a system note
+        final dayMarker = _buildDayMarker(msgDay, today, lang, isFirstDayMarker);
+
+        // Add day marker as user message (context note) and AI acknowledgment
+        history.add(Content.text('[CONTEXTE TEMPOREL] $dayMarker'));
+        history.add(Content.model([TextPart('Noté.')]));
+
+        lastMessageDay = msgDay;
+        isFirstDayMarker = false;
+      }
+
+      // Add the actual message
       if (msg.role == MessageRole.user) {
         history.add(Content.text(msg.content));
       } else {
@@ -246,7 +284,55 @@ class CoachChatService {
       }
     }
 
-    _currentChatSession = _model!.startChat(history: history);
+    return history;
+  }
+
+  /// Build a day marker string for the AI context
+  String _buildDayMarker(DateTime msgDay, DateTime today, String lang, bool isFirstMarker) {
+    final difference = today.difference(msgDay).inDays;
+    final dateFormatter = DateFormat('EEEE d MMMM yyyy', lang == 'fr' ? 'fr_FR' : lang == 'de' ? 'de_DE' : 'en_US');
+    final formattedDate = dateFormatter.format(msgDay);
+
+    if (difference == 0) {
+      // Today
+      if (lang == 'fr') {
+        return "Nous sommes AUJOURD'HUI ($formattedDate). Les données nutritionnelles et sportives dans le contexte sont celles d'aujourd'hui. Réponds en fonction des données du jour actuel.";
+      } else if (lang == 'de') {
+        return "Wir sind HEUTE ($formattedDate). Die Ernährungs- und Sportdaten im Kontext sind die von heute.";
+      } else {
+        return "We are TODAY ($formattedDate). The nutrition and sport data in context are today's data. Answer based on today's data.";
+      }
+    } else if (difference == 1) {
+      // Yesterday
+      if (lang == 'fr') {
+        return isFirstMarker
+            ? "Les messages suivants datent d'HIER ($formattedDate). C'est de l'historique passé."
+            : "--- HIER ($formattedDate) ---";
+      } else if (lang == 'de') {
+        return isFirstMarker
+            ? "Die folgenden Nachrichten sind von GESTERN ($formattedDate). Das ist vergangene Geschichte."
+            : "--- GESTERN ($formattedDate) ---";
+      } else {
+        return isFirstMarker
+            ? "The following messages are from YESTERDAY ($formattedDate). This is past history."
+            : "--- YESTERDAY ($formattedDate) ---";
+      }
+    } else {
+      // Older
+      if (lang == 'fr') {
+        return isFirstMarker
+            ? "Les messages suivants datent du $formattedDate (il y a $difference jours). C'est de l'historique passé."
+            : "--- $formattedDate (il y a $difference jours) ---";
+      } else if (lang == 'de') {
+        return isFirstMarker
+            ? "Die folgenden Nachrichten sind vom $formattedDate (vor $difference Tagen). Das ist vergangene Geschichte."
+            : "--- $formattedDate (vor $difference Tagen) ---";
+      } else {
+        return isFirstMarker
+            ? "The following messages are from $formattedDate ($difference days ago). This is past history."
+            : "--- $formattedDate ($difference days ago) ---";
+      }
+    }
   }
 
   /// Send a message and get a response
@@ -479,6 +565,24 @@ class CoachChatService {
     }
 
     try {
+      // Ajouter un message utilisateur pour la cohérence de l'historique
+      final isFr = lang == 'fr';
+      final isDe = lang == 'de';
+      final userMessageText = isFr
+          ? 'Faire mon bilan hebdo'
+          : isDe
+              ? 'Meine Wochenbilanz machen'
+              : 'Do my weekly summary';
+
+      // Sauvegarder le message utilisateur en DB
+      await _supabase.from('coach_messages').insert({
+        'conversation_id': _currentConversation!.id,
+        'user_id': user.id,
+        'role': 'user',
+        'content': userMessageText,
+        'tokens_used': 0,
+      });
+
       // Get weekly stats
       final stats = await WeeklyBilanService.instance.getWeeklyStats();
       final personality = await CoachPersonalityService.instance.getPersonality();
@@ -491,8 +595,6 @@ class CoachChatService {
       );
 
       // Build bilan prompt (sent to AI but not displayed)
-      final isFr = lang == 'fr';
-      final isDe = lang == 'de';
 
       final bilanPrompt = '''
 [INSTRUCTION SYSTÈME - BILAN HEBDOMADAIRE]

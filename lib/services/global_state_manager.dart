@@ -9,6 +9,7 @@ import 'sport_dashboard_service.dart';
 import 'header_cache_service.dart';
 import 'app_review_service.dart';
 import 'unified_subscription_service.dart';
+import 'meal_widget_data_provider.dart';
 
 /// Gestionnaire d'état global pour synchronisation instantanée entre pages
 /// Résout le problème de latence et de mise à jour non reflétée
@@ -365,6 +366,10 @@ class GlobalStateManager {
     SportDashboardService.invalidateCache();
     HeaderCacheService.clearCache();
     if (kDebugMode) debugPrint('🗑️ GlobalState: Caches invalidés pour nouveau jour');
+
+    // Mettre à jour le widget iOS avec les données du nouveau jour (vides)
+    MealWidgetDataProvider.updateWidgetData();
+    if (kDebugMode) debugPrint('📱 GlobalState: Widget iOS mis à jour pour nouveau jour');
 
     // Notifier tous les listeners
     _notifyChange(StateChangeEvent(
