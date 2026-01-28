@@ -209,18 +209,22 @@ class NotificationService {
   /// Avec 30% de chance d'utiliser un message IA personnalisé
   Future<void> _scheduleMealReminders(NotificationPreferences prefs) async {
     final firstName = await _getUserFirstName();
-    final isFrench = LocalizationService.instance.currentLanguageCode == 'fr';
+    final languageCode = LocalizationService.instance.currentLanguageCode;
+    final isFrench = languageCode == 'fr';
+    final isGerman = languageCode == 'de';
 
     // Petit-déjeuner (si activé)
     if (prefs.breakfastTime > 0) {
       final defaultTitle = NotificationMessages.getMealReminderTitle(
         mealType: 'breakfast',
         isFrench: isFrench,
+        isGerman: isGerman,
         firstName: firstName,
       );
       final defaultBody = NotificationMessages.getMealReminderBody(
         mealType: 'breakfast',
         isFrench: isFrench,
+        isGerman: isGerman,
       );
 
       // Essayer un message IA (30% de chance)
@@ -248,11 +252,13 @@ class NotificationService {
       final defaultTitle = NotificationMessages.getMealReminderTitle(
         mealType: 'lunch',
         isFrench: isFrench,
+        isGerman: isGerman,
         firstName: firstName,
       );
       final defaultBody = NotificationMessages.getMealReminderBody(
         mealType: 'lunch',
         isFrench: isFrench,
+        isGerman: isGerman,
       );
 
       final content = await AiNotificationService.instance.getNotificationContent(
@@ -279,11 +285,13 @@ class NotificationService {
       final defaultTitle = NotificationMessages.getMealReminderTitle(
         mealType: 'dinner',
         isFrench: isFrench,
+        isGerman: isGerman,
         firstName: firstName,
       );
       final defaultBody = NotificationMessages.getMealReminderBody(
         mealType: 'dinner',
         isFrench: isFrench,
+        isGerman: isGerman,
       );
 
       final content = await AiNotificationService.instance.getNotificationContent(
@@ -312,7 +320,9 @@ class NotificationService {
   /// Avec 30% de chance d'utiliser un message IA personnalisé
   Future<void> _scheduleWaterReminders(NotificationPreferences prefs) async {
     final firstName = await _getUserFirstName();
-    final isFrench = LocalizationService.instance.currentLanguageCode == 'fr';
+    final languageCode = LocalizationService.instance.currentLanguageCode;
+    final isFrench = languageCode == 'fr';
+    final isGerman = languageCode == 'de';
 
     // Heures selon la fréquence choisie (1-4 par jour)
     // Fréquence 1: 14h (milieu de journée)
@@ -339,9 +349,13 @@ class NotificationService {
     for (int i = 0; i < waterHours.length; i++) {
       final defaultTitle = NotificationMessages.getWaterReminderTitle(
         isFrench: isFrench,
+        isGerman: isGerman,
         firstName: firstName,
       );
-      final defaultBody = NotificationMessages.getWaterReminderBody(isFrench: isFrench);
+      final defaultBody = NotificationMessages.getWaterReminderBody(
+        isFrench: isFrench,
+        isGerman: isGerman,
+      );
 
       // Essayer un message IA (30% de chance)
       final content = await AiNotificationService.instance.getNotificationContent(
@@ -442,7 +456,9 @@ class NotificationService {
   /// Planifier le résumé hebdomadaire
   Future<void> _scheduleWeeklyRecap(NotificationPreferences prefs) async {
     final firstName = await _getUserFirstName();
-    final isFrench = LocalizationService.instance.currentLanguageCode == 'fr';
+    final languageCode = LocalizationService.instance.currentLanguageCode;
+    final isFrench = languageCode == 'fr';
+    final isGerman = languageCode == 'de';
 
     // Dimanche à 18h
     await _scheduleWeeklyNotification(
@@ -452,9 +468,13 @@ class NotificationService {
       minute: 0,
       title: NotificationMessages.getWeeklyRecapTitle(
         isFrench: isFrench,
+        isGerman: isGerman,
         firstName: firstName,
       ),
-      body: NotificationMessages.getWeeklyRecapBody(isFrench: isFrench),
+      body: NotificationMessages.getWeeklyRecapBody(
+        isFrench: isFrench,
+        isGerman: isGerman,
+      ),
       payload: NotificationPayload(
         type: NotificationType.weeklyRecap,
       ).toJson(),
@@ -614,6 +634,93 @@ class NotificationService {
     if (kDebugMode) debugPrint('🗑️ All notifications cancelled');
   }
 
+  /// Annuler la notification de rappel de repas pour un type donné
+  /// À appeler quand l'utilisateur log un repas pour éviter de recevoir
+  /// un rappel pour un repas déjà loggé
+  ///
+  /// IDs des notifications de repas:
+  /// - 1 = petit-déjeuner (breakfast)
+  /// - 2 = déjeuner (lunch)
+  /// - 3 = dîner (dinner)
+  Future<void> cancelMealReminderForType(String mealType) async {
+    if (!_initialized) await initialize();
+
+    int? notificationId;
+    switch (mealType) {
+      case 'breakfast':
+        notificationId = 1;
+        break;
+      case 'lunch':
+        notificationId = 2;
+        break;
+      case 'dinner':
+        notificationId = 3;
+        break;
+    }
+
+    if (notificationId != null) {
+      await _notifications.cancel(notificationId);
+      if (kDebugMode) debugPrint('🗑️ Meal reminder cancelled for $mealType (ID: $notificationId)');
+    }
+  }
+
+  /// Annuler toutes les notifications de rappels d'eau du jour
+  /// À appeler quand l'utilisateur log de l'eau
+  ///
+  /// IDs des notifications d'eau: 10, 11, 12, 13 (selon fréquence 1-4x/jour)
+  Future<void> cancelWaterReminders() async {
+    if (!_initialized) await initialize();
+
+    // Annuler toutes les notifications d'eau possibles (IDs 10-13)
+    for (int i = 10; i <= 13; i++) {
+      await _notifications.cancel(i);
+    }
+    if (kDebugMode) debugPrint('🗑️ Water reminders cancelled (IDs: 10-13)');
+  }
+
+  /// Annuler la notification de protection de série
+  /// À appeler quand l'utilisateur log quelque chose (la série est protégée)
+  ///
+  /// ID: 20
+  Future<void> cancelStreakProtection() async {
+    if (!_initialized) await initialize();
+
+    await _notifications.cancel(20);
+    if (kDebugMode) debugPrint('🗑️ Streak protection cancelled (ID: 20)');
+  }
+
+  /// Annuler la notification "rien logué aujourd'hui"
+  /// À appeler quand l'utilisateur log quelque chose
+  ///
+  /// ID: 70
+  Future<void> cancelNothingLoggedReminder() async {
+    if (!_initialized) await initialize();
+
+    await _notifications.cancel(70);
+    if (kDebugMode) debugPrint('🗑️ Nothing logged reminder cancelled (ID: 70)');
+  }
+
+  /// Annuler le rappel des séances planifiées
+  /// À appeler quand l'utilisateur commence une séance de sport
+  ///
+  /// ID: 80
+  Future<void> cancelPlannedActivityReminder() async {
+    if (!_initialized) await initialize();
+
+    await _notifications.cancel(80);
+    if (kDebugMode) debugPrint('🗑️ Planned activity reminder cancelled (ID: 80)');
+  }
+
+  /// Annuler toutes les notifications "générales" quand l'utilisateur est actif
+  /// Cela inclut: streak protection, nothing logged
+  /// À appeler quand l'utilisateur log n'importe quelle activité
+  Future<void> cancelActivityBasedReminders() async {
+    if (!_initialized) await initialize();
+
+    await cancelStreakProtection();
+    await cancelNothingLoggedReminder();
+  }
+
   // === HELPERS ===
 
   /// Récupérer le prénom de l'utilisateur pour personnalisation
@@ -689,7 +796,9 @@ class NotificationService {
     if (!prefs.notificationsEnabled) return;
 
     final firstName = await _getUserFirstName();
-    final isFrench = LocalizationService.instance.currentLanguageCode == 'fr';
+    final languageCode = LocalizationService.instance.currentLanguageCode;
+    final isFrench = languageCode == 'fr';
+    final isGerman = languageCode == 'de';
     final previousStreak = await _getPreviousStreak();
 
     // Planifier J+1, J+2, J+3
@@ -708,11 +817,13 @@ class NotificationService {
         60 + day, // IDs 61, 62, 63
         NotificationMessages.getReengagementTitle(
           isFrench: isFrench,
+          isGerman: isGerman,
           daysInactive: day,
           firstName: firstName,
         ),
         NotificationMessages.getReengagementBody(
           isFrench: isFrench,
+          isGerman: isGerman,
           daysInactive: day,
           previousStreak: previousStreak,
         ),
@@ -750,16 +861,20 @@ class NotificationService {
     if (!prefs.notificationsEnabled || !prefs.milestonesEnabled) return;
 
     final firstName = await _getUserFirstName();
-    final isFrench = LocalizationService.instance.currentLanguageCode == 'fr';
+    final languageCode = LocalizationService.instance.currentLanguageCode;
+    final isFrench = languageCode == 'fr';
+    final isGerman = languageCode == 'de';
 
     await sendImmediateNotification(
       title: NotificationMessages.getMilestoneTitle(
         isFrench: isFrench,
+        isGerman: isGerman,
         milestoneType: milestoneType,
         firstName: firstName,
       ),
       body: NotificationMessages.getMilestoneBody(
         isFrench: isFrench,
+        isGerman: isGerman,
         milestoneType: milestoneType,
         value: value,
       ),
@@ -779,16 +894,20 @@ class NotificationService {
     if (!prefs.notificationsEnabled) return;
 
     final firstName = await _getUserFirstName();
-    final isFrench = LocalizationService.instance.currentLanguageCode == 'fr';
+    final languageCode = LocalizationService.instance.currentLanguageCode;
+    final isFrench = languageCode == 'fr';
+    final isGerman = languageCode == 'de';
 
     await sendImmediateNotification(
       title: NotificationMessages.getCloseToGoalTitle(
         isFrench: isFrench,
+        isGerman: isGerman,
         goalType: goalType,
         firstName: firstName,
       ),
       body: NotificationMessages.getCloseToGoalBody(
         isFrench: isFrench,
+        isGerman: isGerman,
         goalType: goalType,
         remaining: remaining,
         unit: unit,
@@ -811,14 +930,20 @@ class NotificationService {
 
       if (!anyCompleted) {
         final firstName = await _getUserFirstName();
-        final isFrench = LocalizationService.instance.currentLanguageCode == 'fr';
+        final languageCode = LocalizationService.instance.currentLanguageCode;
+        final isFrench = languageCode == 'fr';
+        final isGerman = languageCode == 'de';
 
         await sendImmediateNotification(
           title: NotificationMessages.getNothingLoggedTitle(
             isFrench: isFrench,
+            isGerman: isGerman,
             firstName: firstName,
           ),
-          body: NotificationMessages.getNothingLoggedBody(isFrench: isFrench),
+          body: NotificationMessages.getNothingLoggedBody(
+            isFrench: isFrench,
+            isGerman: isGerman,
+          ),
           type: NotificationType.nothingLogged,
         );
       }

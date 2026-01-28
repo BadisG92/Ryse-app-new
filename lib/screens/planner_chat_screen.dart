@@ -98,8 +98,8 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
 
   Future<void> _refreshWeekData() async {
     try {
-      // forceRefresh pour s'assurer qu'on récupère les données fraîches après une action (suppression, etc.)
-      final data = await WeeklyPlannerService.getWeekData(forceRefresh: true);
+      // Le cache est automatiquement invalidé après chaque action (suppression, etc.)
+      final data = await WeeklyPlannerService.getWeekData();
       if (mounted) {
         setState(() {
           _weekData = data;

@@ -8750,6 +8750,16 @@ class AppTranslations {
       'en': 'Sessions',
       'de': 'Einheiten',
     },
+    'planner_plan_meals': {
+      'fr': 'Planifier mes repas',
+      'en': 'Plan my meals',
+      'de': 'Mahlzeiten planen',
+    },
+    'planner_plan_sessions': {
+      'fr': 'Planifier mes séances',
+      'en': 'Plan my sessions',
+      'de': 'Einheiten planen',
+    },
 
     // Messages de succès/erreur
     'planner_meal_validated': {

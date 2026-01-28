@@ -14,6 +14,7 @@ import 'sport_dashboard_service.dart';
 import 'widget_sync_service.dart';
 import 'workout_cache_service.dart';
 import 'ai_notification_service.dart';
+import 'notification_service.dart';
 
 class LocalizationService extends ChangeNotifier {
   static const String _languageKey = 'selected_language';
@@ -89,6 +90,9 @@ class LocalizationService extends ChangeNotifier {
 
       // Vider les notifications IA (elles seront régénérées dans la bonne langue)
       await AiNotificationService.instance.clearUnusedMessages();
+
+      // Replanifier toutes les notifications avec la nouvelle langue
+      await NotificationService().scheduleAllNotifications(force: true);
 
       notifyListeners();
 

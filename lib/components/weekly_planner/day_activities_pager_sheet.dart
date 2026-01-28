@@ -59,9 +59,10 @@ class _DayActivitiesPagerSheetState extends State<DayActivitiesPagerSheet> {
   }
 
   /// Rafraîchit les données du jour depuis la base de données
+  /// Le cache est automatiquement invalidé après toute modification
   Future<void> _refreshDayPlan() async {
     try {
-      final weekData = await WeeklyPlannerService.getWeekData(forceRefresh: true);
+      final weekData = await WeeklyPlannerService.getWeekData();
       final normalizedDate = DateTime(widget.date.year, widget.date.month, widget.date.day);
 
       // Récupérer le DayPlanData depuis le map

@@ -42,16 +42,22 @@ class WeeklyPlannerService {
 
       debugPrint('📅 WeeklyPlannerService: Fetching week ${weekStart.toIso8601String()} to ${weekEnd.toIso8601String()}');
 
-      // Fetch activities, workouts et food_entries en parallèle
+      // Fetch activities, workouts, linked IDs et food_entries en parallèle
+      // OPTIMISATION: Récupérer les linked IDs en parallèle (pas en séquence dans _fetchJournalEntries)
       final results = await Future.wait([
         _fetchActivities(userId, weekStart, weekEnd),
         _fetchWorkouts(userId, weekStart, weekEnd),
-        _fetchJournalEntries(userId, weekStart, weekEnd),
+        _fetchRawFoodEntries(userId, weekStart, weekEnd),
+        _getLinkedFoodEntryIds(userId, weekStart, weekEnd),
       ]);
 
       final activities = results[0] as List<PlannedActivity>;
       final workouts = results[1] as List<PlannedWorkout>;
-      final journalEntriesByDate = results[2] as Map<DateTime, List<JournalFoodEntry>>;
+      final rawFoodEntries = results[2] as List<Map<String, dynamic>>;
+      final linkedIds = results[3] as Set<String>;
+
+      // Filtrer et grouper les food_entries (sans requête supplémentaire)
+      final journalEntriesByDate = _processJournalEntries(rawFoodEntries, linkedIds);
 
       debugPrint('✅ WeeklyPlannerService: Fetched ${activities.length} activities, ${workouts.length} workouts, ${journalEntriesByDate.values.fold(0, (sum, list) => sum + list.length)} journal entries');
 
@@ -75,6 +81,7 @@ class WeeklyPlannerService {
   }
 
   /// Fetch les activités planifiées
+  /// OPTIMISATION: Colonnes spécifiques au lieu de select()
   static Future<List<PlannedActivity>> _fetchActivities(
     String userId,
     DateTime weekStart,
@@ -83,7 +90,7 @@ class WeeklyPlannerService {
     try {
       final response = await _client
           .from('planned_activities')
-          .select()
+          .select('id, user_id, planned_date, activity_type, activity_data, status, linked_session_id, is_ai_generated, created_at, updated_at')
           .eq('user_id', userId)
           .gte('planned_date', weekStart.toIso8601String().split('T')[0])
           .lte('planned_date', weekEnd.toIso8601String().split('T')[0])
@@ -99,6 +106,7 @@ class WeeklyPlannerService {
   }
 
   /// Fetch les workouts planifiés
+  /// OPTIMISATION: Colonnes spécifiques au lieu de select()
   static Future<List<PlannedWorkout>> _fetchWorkouts(
     String userId,
     DateTime weekStart,
@@ -107,7 +115,7 @@ class WeeklyPlannerService {
     try {
       final response = await _client
           .from('planned_workouts')
-          .select()
+          .select('id, user_id, planned_date, workout_name, duration_minutes, exercises_json, user_prompt, status, linked_session_id, is_ai_generated, created_at, updated_at')
           .eq('user_id', userId)
           .gte('planned_date', weekStart.toIso8601String().split('T')[0])
           .lte('planned_date', weekEnd.toIso8601String().split('T')[0])
@@ -122,15 +130,14 @@ class WeeklyPlannerService {
     }
   }
 
-  /// Fetch les food_entries du journal (non liées à des planned_activities)
-  /// Groupées par date pour affichage dans le planner
-  static Future<Map<DateTime, List<JournalFoodEntry>>> _fetchJournalEntries(
+  /// Fetch les food_entries brutes (sans filtrage par linked IDs)
+  /// OPTIMISATION: Séparé pour permettre le fetch en parallèle avec les linked IDs
+  static Future<List<Map<String, dynamic>>> _fetchRawFoodEntries(
     String userId,
     DateTime weekStart,
     DateTime weekEnd,
   ) async {
     try {
-      // 1. Récupérer toutes les food_entries de la semaine avec les noms depuis les jointures
       final startStr = weekStart.toIso8601String().split('T')[0];
       final endStr = weekEnd.toIso8601String().split('T')[0];
 
@@ -148,57 +155,57 @@ class WeeklyPlannerService {
           .lte('consumed_at', '${endStr}T23:59:59')
           .order('consumed_at', ascending: true);
 
-      debugPrint('📊 _fetchJournalEntries: Query returned ${response.length} entries');
+      debugPrint('📊 _fetchRawFoodEntries: Query returned ${response.length} entries');
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      debugPrint('❌ _fetchRawFoodEntries error: $e');
+      return [];
+    }
+  }
 
-      if (response.isEmpty) {
-        debugPrint('📊 _fetchJournalEntries: No food_entries found for week');
-        return {};
-      }
-
-      // 2. Récupérer les IDs des food_entries déjà liées à des planned_activities
-      final linkedIds = await _getLinkedFoodEntryIds(userId, weekStart, weekEnd);
-      debugPrint('🔗 Linked food_entry IDs: ${linkedIds.length} - $linkedIds');
-
-      // 3. Filtrer et grouper par date
-      final Map<DateTime, List<JournalFoodEntry>> result = {};
-      int skippedCount = 0;
-
-      for (final entry in response) {
-        final entryId = entry['id'] as String;
-
-        // Exclure les entries déjà liées à des planned_activities (pour éviter doublons)
-        if (linkedIds.contains(entryId)) {
-          debugPrint('⏭️ Skipping linked entry: $entryId');
-          skippedCount++;
-          continue;
-        }
-
-        final consumedAt = entry['consumed_at'] != null
-            ? DateTime.parse(entry['consumed_at'] as String)
-            : DateTime.now();
-
-        // Normaliser la date (sans heure)
-        final dateKey = DateTime(consumedAt.year, consumedAt.month, consumedAt.day);
-
-        // Créer le JournalFoodEntry
-        final journalEntry = JournalFoodEntry.fromMap(entry);
-
-        // Ajouter à la liste du jour
-        if (!result.containsKey(dateKey)) {
-          result[dateKey] = [];
-        }
-        result[dateKey]!.add(journalEntry);
-      }
-
-      final totalKept = result.values.fold(0, (sum, list) => sum + list.length);
-      debugPrint('📋 Journal entries: ${response.length} total, $skippedCount skipped (linked), $totalKept kept');
-      debugPrint('📋 By date: ${result.entries.map((e) => '${e.key.day}/${e.key.month}: ${e.value.length}').join(', ')}');
-      return result;
-    } catch (e, stack) {
-      debugPrint('❌ _fetchJournalEntries error: $e');
-      debugPrint('❌ Stack: $stack');
+  /// Traite les food_entries brutes et les groupe par date
+  /// OPTIMISATION: Pas de requête supplémentaire, juste du traitement en mémoire
+  static Map<DateTime, List<JournalFoodEntry>> _processJournalEntries(
+    List<Map<String, dynamic>> rawEntries,
+    Set<String> linkedIds,
+  ) {
+    if (rawEntries.isEmpty) {
+      debugPrint('📊 _processJournalEntries: No food_entries to process');
       return {};
     }
+
+    final Map<DateTime, List<JournalFoodEntry>> result = {};
+    int skippedCount = 0;
+
+    for (final entry in rawEntries) {
+      final entryId = entry['id'] as String;
+
+      // Exclure les entries déjà liées à des planned_activities (pour éviter doublons)
+      if (linkedIds.contains(entryId)) {
+        skippedCount++;
+        continue;
+      }
+
+      final consumedAt = entry['consumed_at'] != null
+          ? DateTime.parse(entry['consumed_at'] as String)
+          : DateTime.now();
+
+      // Normaliser la date (sans heure)
+      final dateKey = DateTime(consumedAt.year, consumedAt.month, consumedAt.day);
+
+      // Créer le JournalFoodEntry
+      final journalEntry = JournalFoodEntry.fromMap(entry);
+
+      // Ajouter à la liste du jour
+      if (!result.containsKey(dateKey)) {
+        result[dateKey] = [];
+      }
+      result[dateKey]!.add(journalEntry);
+    }
+
+    final totalKept = result.values.fold(0, (sum, list) => sum + list.length);
+    debugPrint('📋 Journal entries: ${rawEntries.length} total, $skippedCount skipped (linked), $totalKept kept');
+    return result;
   }
 
   /// Récupérer les IDs des food_entries liées aux planned_activities

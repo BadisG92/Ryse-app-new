@@ -54,6 +54,9 @@ class WaterService {
         await MealWidgetDataProvider.updateWidgetData();
         // Mettre à jour l'activité pour les notifications de réengagement
         unawaited(NotificationService().updateLastActivity());
+        // Annuler les rappels d'eau et les notifications "rien logué"
+        unawaited(NotificationService().cancelWaterReminders());
+        unawaited(NotificationService().cancelActivityBasedReminders());
       }).catchError((error) {
         debugPrint('❌ Erreur ajout eau: $error');
         // Rollback si erreur

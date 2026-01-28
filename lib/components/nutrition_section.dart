@@ -84,30 +84,12 @@ class _NutritionSectionState extends State<NutritionSection>
   Future<void> _showNutritionTutorial() async {
     debugPrint('🔍 Vérification du tutorial Nutrition...');
 
-    // ✅ VÉRIFIER DANS SUPABASE si le tutorial est déjà complété
-    // On utilise directement la vérification interne du TutorialService
-    final supabase = Supabase.instance.client;
-    final user = supabase.auth.currentUser;
-
-    if (user != null) {
-      try {
-        final response = await supabase
-            .from('users')
-            .select('tutorial_nutrition_completed')
-            .eq('id', user.id)
-            .single()
-            .timeout(const Duration(seconds: 3));
-
-        final isCompleted = response['tutorial_nutrition_completed'] as bool? ?? false;
-        debugPrint('📊 Tutorial Nutrition dans Supabase: $isCompleted');
-
-        if (isCompleted) {
-          debugPrint('✅ Tutorial Nutrition déjà complété - Arrêt');
-          return;
-        }
-      } catch (e) {
-        debugPrint('⚠️ Erreur vérification Supabase: $e - On continue quand même');
-      }
+    // ✅ Utiliser le TutorialService pour vérifier si le tutoriel peut être lancé
+    // Cela vérifie si le tutoriel est déjà en cours OU déjà complété
+    final canStart = await TutorialService().canStartTutorial(TutorialService.nutritionTutorialKey);
+    if (!canStart) {
+      debugPrint('✅ Tutorial Nutrition ne peut pas être lancé (déjà en cours ou complété)');
+      return;
     }
 
     final locService = LocalizationService.instance;

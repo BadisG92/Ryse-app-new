@@ -27,17 +27,76 @@ class TutorialService {
 
   TutorialCoachMark? _tutorialCoachMark;
 
-  // Flag pour éviter les appels multiples au tutorial dashboard
+  // Flags pour éviter les appels multiples aux tutoriels
   bool _isDashboardTutorialRunning = false;
+  bool _isNutritionTutorialRunning = false;
+  bool _isSportTutorialRunning = false;
+  bool _isCardioTutorialRunning = false;
+  bool _isMusculationTutorialRunning = false;
+  bool _isProgressionTutorialRunning = false;
+
+  // Cache de session pour éviter de re-vérifier les tutoriels déjà vérifiés dans cette session
+  final Set<String> _sessionCompletedCache = {};
+
+  /// Vérifie si un tutoriel est actuellement en cours d'exécution
+  bool isTutorialRunning(String key) {
+    switch (key) {
+      case _dashboardTutorialKey:
+        return _isDashboardTutorialRunning;
+      case _nutritionTutorialKey:
+        return _isNutritionTutorialRunning;
+      case _sportTutorialKey:
+        return _isSportTutorialRunning;
+      case _cardioTutorialKey:
+        return _isCardioTutorialRunning;
+      case _musculationTutorialKey:
+        return _isMusculationTutorialRunning;
+      case _progressionTutorialKey:
+        return _isProgressionTutorialRunning;
+      default:
+        return false;
+    }
+  }
+
+  /// Définit le flag de tutoriel en cours
+  void _setTutorialRunning(String key, bool value) {
+    switch (key) {
+      case _dashboardTutorialKey:
+        _isDashboardTutorialRunning = value;
+        break;
+      case _nutritionTutorialKey:
+        _isNutritionTutorialRunning = value;
+        break;
+      case _sportTutorialKey:
+        _isSportTutorialRunning = value;
+        break;
+      case _cardioTutorialKey:
+        _isCardioTutorialRunning = value;
+        break;
+      case _musculationTutorialKey:
+        _isMusculationTutorialRunning = value;
+        break;
+      case _progressionTutorialKey:
+        _isProgressionTutorialRunning = value;
+        break;
+    }
+  }
 
   /// Vérifie si un tutorial a déjà été complété
   /// Vérifie d'abord dans Supabase (source de vérité), puis SharedPreferences en fallback
+  /// Utilise un cache de session pour éviter les vérifications répétées
   Future<bool> _isTutorialCompleted(String key) async {
     debugPrint('🔍 === VÉRIFICATION TUTORIAL: $key ===');
 
     if (_debugMode) {
       debugPrint('🔧 Mode DEBUG actif - Tutorial forcé à afficher');
       return false;
+    }
+
+    // Vérifier le cache de session d'abord (évite les appels répétés)
+    if (_sessionCompletedCache.contains(key)) {
+      debugPrint('✅ Tutorial $key déjà vérifié cette session (cache) - COMPLÉTÉ');
+      return true;
     }
 
     final prefs = await SharedPreferences.getInstance();
@@ -64,6 +123,11 @@ class TutorialService {
         await prefs.setBool(key, isCompleted);
         debugPrint('💾 SharedPreferences synchronisé: $key = $isCompleted');
 
+        // Ajouter au cache de session si complété
+        if (isCompleted) {
+          _sessionCompletedCache.add(key);
+        }
+
         debugPrint('🔍 === RÉSULTAT: Tutorial $key ${isCompleted ? "COMPLÉTÉ ✅" : "NON COMPLÉTÉ ❌"} ===\n');
         return isCompleted;
       } catch (e, stackTrace) {
@@ -72,6 +136,12 @@ class TutorialService {
         // Fallback vers SharedPreferences
         final fallbackValue = prefs.getBool(key) ?? false;
         debugPrint('🔄 Fallback vers SharedPreferences: $key = $fallbackValue');
+
+        // Ajouter au cache de session si complété
+        if (fallbackValue) {
+          _sessionCompletedCache.add(key);
+        }
+
         debugPrint('🔍 === RÉSULTAT (fallback): Tutorial $key ${fallbackValue ? "COMPLÉTÉ ✅" : "NON COMPLÉTÉ ❌"} ===\n');
         return fallbackValue;
       }
@@ -81,6 +151,12 @@ class TutorialService {
     // Pas d'utilisateur connecté, utiliser SharedPreferences
     final localValue = prefs.getBool(key) ?? false;
     debugPrint('💾 Valeur locale (pas d\'utilisateur): $key = $localValue');
+
+    // Ajouter au cache de session si complété
+    if (localValue) {
+      _sessionCompletedCache.add(key);
+    }
+
     debugPrint('🔍 === RÉSULTAT (local): Tutorial $key ${localValue ? "COMPLÉTÉ ✅" : "NON COMPLÉTÉ ❌"} ===\n');
     return localValue;
   }
@@ -111,10 +187,49 @@ class TutorialService {
     await _markTutorialAsCompleted(key);
   }
 
+  /// Vérifie si un tutoriel peut être lancé (pas déjà en cours et pas déjà complété)
+  /// Retourne true si le tutoriel peut être lancé, false sinon
+  /// Si le tutoriel peut être lancé, il est automatiquement marqué comme "en cours"
+  Future<bool> canStartTutorial(String key) async {
+    // Vérifier si déjà en cours
+    if (isTutorialRunning(key)) {
+      debugPrint('⚠️ Tutorial $key déjà en cours');
+      return false;
+    }
+
+    // Marquer comme en cours IMMÉDIATEMENT
+    _setTutorialRunning(key, true);
+
+    // Vérifier si déjà complété
+    if (await _isTutorialCompleted(key)) {
+      debugPrint('ℹ️ Tutorial $key déjà complété');
+      _setTutorialRunning(key, false); // Libérer le verrou
+      return false;
+    }
+
+    return true;
+  }
+
+  /// Libère le verrou d'un tutoriel (à appeler si le tutoriel est annulé sans être complété)
+  void releaseTutorialLock(String key) {
+    _setTutorialRunning(key, false);
+  }
+
+  /// Clés des tutoriels (exposées pour utilisation externe)
+  static String get dashboardTutorialKey => _dashboardTutorialKey;
+  static String get nutritionTutorialKey => _nutritionTutorialKey;
+  static String get sportTutorialKey => _sportTutorialKey;
+  static String get cardioTutorialKey => _cardioTutorialKey;
+  static String get musculationTutorialKey => _musculationTutorialKey;
+  static String get progressionTutorialKey => _progressionTutorialKey;
+
   /// Version privée interne
   Future<void> _markTutorialAsCompleted(String key) async {
     debugPrint('🔵 === DÉBUT _markTutorialAsCompleted ===');
     debugPrint('🔵 Clé du tutoriel: $key');
+
+    // Ajouter au cache de session immédiatement
+    _sessionCompletedCache.add(key);
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(key, true);
@@ -141,24 +256,18 @@ class TutorialService {
         debugPrint('✅ Réponse Supabase reçue: $response');
         debugPrint('✅ Tutorial marqué comme complété dans Supabase: $key');
 
-        // Libérer le verrou si c'est le tutorial dashboard
-        if (key == _dashboardTutorialKey) {
-          _isDashboardTutorialRunning = false;
-        }
+        // Libérer le verrou pour ce tutoriel
+        _setTutorialRunning(key, false);
       } catch (e, stackTrace) {
         debugPrint('❌ Erreur sauvegarde tutorial dans Supabase: $e');
         debugPrint('❌ Stack trace: $stackTrace');
         // Libérer le verrou même en cas d'erreur
-        if (key == _dashboardTutorialKey) {
-          _isDashboardTutorialRunning = false;
-        }
+        _setTutorialRunning(key, false);
       }
     } else {
       debugPrint('⚠️ Aucun utilisateur connecté ! Impossible de sauvegarder dans Supabase');
       // Libérer le verrou même sans utilisateur
-      if (key == _dashboardTutorialKey) {
-        _isDashboardTutorialRunning = false;
-      }
+      _setTutorialRunning(key, false);
     }
 
     debugPrint('✅ Tutorial marqué comme complété localement: $key');
@@ -174,6 +283,8 @@ class TutorialService {
     await prefs.remove(_cardioTutorialKey);
     await prefs.remove(_musculationTutorialKey);
     await prefs.remove(_progressionTutorialKey);
+    // Vider aussi le cache de session
+    _sessionCompletedCache.clear();
     debugPrint('🔄 Tous les tutoriels ont été réinitialisés');
   }
 

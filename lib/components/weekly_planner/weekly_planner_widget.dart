@@ -270,9 +270,10 @@ class _WeeklyPlannerWidgetState extends State<WeeklyPlannerWidget> {
         debugPrint('✅ WeeklyPlanner: Initial sync complete');
       }
 
-      // Récupérer les données à jour (forceRefresh pour ignorer le cache)
+      // Récupérer les données (utilise le cache si disponible, sinon fetch)
+      // Le cache est automatiquement invalidé après toute modification
       debugPrint('📦 WeeklyPlanner: Fetching week data...');
-      final data = await WeeklyPlannerService.getWeekData(forceRefresh: true);
+      final data = await WeeklyPlannerService.getWeekData();
 
       if (mounted) {
         setState(() {

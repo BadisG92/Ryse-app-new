@@ -7,6 +7,8 @@ import '../../services/translations.dart';
 import '../../services/planner_ai_service.dart';
 import '../../services/paywall_service.dart';
 import '../../services/unified_subscription_service.dart';
+import '../../services/food_entries_service.dart';
+import '../../services/auth_service.dart';
 
 /// Bottom sheet pour planifier avec l'IA (Ryze)
 class PlannerAIBottomSheet extends StatefulWidget {
@@ -1348,12 +1350,15 @@ class _PlannerAIBottomSheetState extends State<PlannerAIBottomSheet> {
             return Padding(
               padding: const EdgeInsets.only(right: 8),
               child: GestureDetector(
-                onTap: () {
-                  // Transformer le bouton en prompt optimisé pour l'IA (mode meals uniquement)
-                  final prompt = widget.initialMode == 'meals'
-                      ? _transformQuickSuggestionToPrompt(suggestion, langCode)
-                      : suggestion;
-                  _textController.text = prompt;
+                onTap: () async {
+                  // Pour le mode meals, récupérer les repas logués et transformer le prompt
+                  if (widget.initialMode == 'meals') {
+                    final loggedMeals = await _getLoggedMealTypesToday();
+                    final prompt = _transformQuickSuggestionToPrompt(suggestion, langCode, loggedMeals);
+                    _textController.text = prompt;
+                  } else {
+                    _textController.text = suggestion;
+                  }
                   _handleSend();
                 },
                 child: Container(
@@ -1405,39 +1410,94 @@ class _PlannerAIBottomSheetState extends State<PlannerAIBottomSheet> {
     ];
   }
 
-  /// Transforme les boutons rapides en prompts optimisés pour l'IA
-  String _transformQuickSuggestionToPrompt(String suggestion, String langCode) {
-    // Mapping des boutons rapides vers des prompts détaillés
-    // Ces prompts sont plus explicites pour que l'IA comprenne exactement ce qu'on veut
+  /// Récupérer les types de repas déjà logués aujourd'hui dans le journal
+  Future<List<String>> _getLoggedMealTypesToday() async {
+    try {
+      final user = AuthService().currentUser;
+      if (user == null) return [];
 
+      final now = DateTime.now();
+      final todayMeals = await FoodEntriesService.getFoodEntriesForDate(user.id, now);
+
+      final loggedTypes = <String>{};
+      for (final meal in todayMeals) {
+        if (meal.items.isNotEmpty && meal.mealType != null) {
+          loggedTypes.add(meal.mealType!);
+        }
+      }
+
+      return loggedTypes.toList();
+    } catch (e) {
+      debugPrint('❌ _getLoggedMealTypesToday error: $e');
+      return [];
+    }
+  }
+
+  /// Transforme les boutons rapides en prompts optimisés pour l'IA
+  /// Prend en compte les repas déjà logués pour ne pas les redemander
+  String _transformQuickSuggestionToPrompt(String suggestion, String langCode, List<String> loggedMeals) {
     final now = DateTime.now();
     final hour = now.hour;
 
-    // Déterminer le prochain repas selon l'heure
-    String nextMealType;
-    if (hour < 10) {
+    // Déterminer le prochain repas NON LOGUÉ selon l'heure
+    String? nextMealType;
+    if (hour < 10 && !loggedMeals.contains('breakfast')) {
       nextMealType = langCode == 'fr' ? 'petit-déjeuner' : langCode == 'de' ? 'Frühstück' : 'breakfast';
-    } else if (hour < 14) {
+    } else if (hour < 14 && !loggedMeals.contains('lunch')) {
       nextMealType = langCode == 'fr' ? 'déjeuner' : langCode == 'de' ? 'Mittagessen' : 'lunch';
-    } else if (hour < 21) {
+    } else if (hour < 21 && !loggedMeals.contains('dinner')) {
       nextMealType = langCode == 'fr' ? 'dîner' : langCode == 'de' ? 'Abendessen' : 'dinner';
-    } else {
+    } else if (!loggedMeals.contains('snack')) {
       nextMealType = langCode == 'fr' ? 'collation' : langCode == 'de' ? 'Snack' : 'snack';
+    }
+
+    // Si tous les repas sont logués, suggérer pour demain
+    if (nextMealType == null) {
+      nextMealType = langCode == 'fr' ? 'petit-déjeuner de demain' : langCode == 'de' ? 'Frühstück morgen' : 'tomorrow\'s breakfast';
+    }
+
+    // Pour "Aujourd'hui", lister seulement les repas NON logués
+    final mealTypesForToday = <String>[];
+    if (!loggedMeals.contains('breakfast')) {
+      mealTypesForToday.add(langCode == 'fr' ? 'petit-déjeuner' : langCode == 'de' ? 'Frühstück' : 'breakfast');
+    }
+    if (!loggedMeals.contains('lunch')) {
+      mealTypesForToday.add(langCode == 'fr' ? 'déjeuner' : langCode == 'de' ? 'Mittagessen' : 'lunch');
+    }
+    if (!loggedMeals.contains('dinner')) {
+      mealTypesForToday.add(langCode == 'fr' ? 'dîner' : langCode == 'de' ? 'Abendessen' : 'dinner');
+    }
+
+    // Si aucun repas restant aujourd'hui, proposer demain
+    String todayPrompt;
+    if (mealTypesForToday.isEmpty) {
+      todayPrompt = langCode == 'fr'
+          ? 'Tous mes repas sont déjà logués aujourd\'hui. Planifie mes repas pour demain'
+          : langCode == 'de'
+              ? 'Alle meine Mahlzeiten sind heute schon protokolliert. Plane meine Mahlzeiten für morgen'
+              : 'All my meals are already logged today. Plan my meals for tomorrow';
+    } else {
+      final mealsJoined = mealTypesForToday.join(', ');
+      todayPrompt = langCode == 'fr'
+          ? 'Planifie mes repas restants pour aujourd\'hui ($mealsJoined)'
+          : langCode == 'de'
+              ? 'Plane meine restlichen Mahlzeiten für heute ($mealsJoined)'
+              : 'Plan my remaining meals for today ($mealsJoined)';
     }
 
     // Prompts optimisés par langue
     final prompts = {
       // Français
-      '🍽️ Prochain repas': 'Propose-moi un $nextMealType équilibré pour aujourd\'hui',
-      '📅 Aujourd\'hui': 'Planifie tous mes repas pour aujourd\'hui (petit-déjeuner, déjeuner, dîner)',
+      '🍽️ Prochain repas': 'Propose-moi un $nextMealType équilibré',
+      '📅 Aujourd\'hui': todayPrompt,
       '📆 La semaine': 'Planifie tous mes repas pour toute la semaine (petit-déjeuner, déjeuner et dîner pour chaque jour)',
       // English
-      '🍽️ Next meal': 'Suggest a balanced $nextMealType for today',
-      '📅 Today': 'Plan all my meals for today (breakfast, lunch, dinner)',
+      '🍽️ Next meal': 'Suggest a balanced $nextMealType',
+      '📅 Today': todayPrompt,
       '📆 The week': 'Plan all my meals for the entire week (breakfast, lunch and dinner for each day)',
       // Deutsch
-      '🍽️ Nächste Mahlzeit': 'Schlage mir ein ausgewogenes $nextMealType für heute vor',
-      '📅 Heute': 'Plane alle meine Mahlzeiten für heute (Frühstück, Mittagessen, Abendessen)',
+      '🍽️ Nächste Mahlzeit': 'Schlage mir ein ausgewogenes $nextMealType vor',
+      '📅 Heute': todayPrompt,
       '📆 Die Woche': 'Plane alle meine Mahlzeiten für die ganze Woche (Frühstück, Mittagessen und Abendessen für jeden Tag)',
     };
 

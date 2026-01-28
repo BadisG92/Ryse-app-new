@@ -982,11 +982,11 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  /// Vérifie si l'utilisateur a un nom complet
+  /// Vérifie si l'utilisateur a un nom (prénom suffit)
   bool get hasCompleteName {
     if (_currentUser == null) return false;
+    // Seul le prénom est obligatoire, le nom de famille est optionnel
     return _currentUser!.firstName.isNotEmpty &&
-           _currentUser!.firstName != 'User' &&
-           _currentUser!.lastName.isNotEmpty;
+           _currentUser!.firstName != 'User';
   }
 } 

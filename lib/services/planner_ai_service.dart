@@ -1732,6 +1732,10 @@ class PlannerAIService {
       // Formater les repas planifiés cette semaine
       final plannedMealsThisWeek = _formatPlannedMeals(existingData.activities, langCode);
 
+      // Récupérer les repas DÉJÀ LOGGUÉS dans le journal aujourd'hui
+      // (pour éviter de proposer un déjeuner si l'utilisateur l'a déjà loggué)
+      final loggedMealsToday = await _getLoggedMealTypesToday();
+
       // Récupérer les objectifs nutritionnels depuis GlobalStateManager
       final globalState = GlobalStateManager.instance;
       final calorieTarget = globalState.calorieGoal.toInt();
@@ -1770,10 +1774,37 @@ class PlannerAIService {
         'today_fats': todayFats,
         'remaining_calories': remainingCalories,
         'planned_meals_this_week': plannedMealsThisWeek,
+        'logged_meals_today': loggedMealsToday,
       };
     } catch (e) {
       debugPrint('❌ _getUserContext error: $e');
       return {};
+    }
+  }
+
+  /// Récupérer les types de repas déjà logués aujourd'hui dans le journal
+  /// Retourne une liste comme ['breakfast', 'lunch'] si ces repas ont été logués
+  static Future<List<String>> _getLoggedMealTypesToday() async {
+    try {
+      final user = AuthService().currentUser;
+      if (user == null) return [];
+
+      final now = DateTime.now();
+      final todayMeals = await FoodEntriesService.getFoodEntriesForDate(user.id, now);
+
+      // Extraire les meal_type uniques des repas logués
+      final loggedTypes = <String>{};
+      for (final meal in todayMeals) {
+        if (meal.items.isNotEmpty && meal.mealType != null) {
+          // Le mealType est dans le MealGroup
+          loggedTypes.add(meal.mealType!);
+        }
+      }
+
+      return loggedTypes.toList();
+    } catch (e) {
+      debugPrint('❌ _getLoggedMealTypesToday error: $e');
+      return [];
     }
   }
 
@@ -1974,7 +2005,13 @@ class PlannerAIService {
     final languageName = langCode == 'fr' ? 'French' : langCode == 'de' ? 'German' : 'English';
     final context = await _getNutritionContext();
     final plannedWorkouts = await _getPlannedWorkoutsForWeek();
+    final loggedMealsToday = await _getLoggedMealTypesToday();
     final dietaryRestrictions = context['dietary_restrictions'] ?? 'None';
+
+    // Information sur les repas déjà logués
+    final loggedMealsInfo = loggedMealsToday.isEmpty
+        ? 'No meals logged yet today'
+        : 'ALREADY LOGGED TODAY (skip these!): ${loggedMealsToday.join(', ')}';
 
     return '''
 You are Ryze, an expert NUTRITION coach AI. You help plan SPECIFIC meals with estimated macros.
@@ -1996,6 +2033,12 @@ You CANNOT help with workouts or cardio. If asked, redirect politely.
 ## Today's Status
 - Calories consumed: ${context['calories_today'] ?? 0} kcal
 - Remaining: ${context['remaining_calories'] ?? context['calorie_target'] ?? 2000} kcal
+- $loggedMealsInfo
+
+## 🔴 CRITICAL: Already Logged Meals
+$loggedMealsInfo
+⚠️ Do NOT create meals for types that are already logged!
+If user asks for "today's meals" but some are logged, only plan the REMAINING ones.
 
 ## This Week's Planned Workouts (adjust carbs on training days)
 $plannedWorkouts
@@ -3609,13 +3652,16 @@ ${_getFormattedHistory()}
         final dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
         final availableDays = dayNames.sublist(todayWeekday - 1); // Du jour actuel jusqu'à dimanche
 
+        // Récupérer les repas DÉJÀ LOGUÉS dans le journal aujourd'hui
+        final loggedMealsToday = await _getLoggedMealTypesToday();
+
         // Calculer les repas SUGGÉRÉS pour aujourd'hui selon l'heure
-        // (utilisé uniquement pour les suggestions automatiques, pas pour bloquer l'utilisateur)
+        // EXCLURE les repas déjà logués
         final List<String> suggestedMealsToday = [];
-        if (currentHour < 10) suggestedMealsToday.add('breakfast');
-        if (currentHour < 14) suggestedMealsToday.add('lunch');
-        if (currentHour < 21) suggestedMealsToday.add('dinner');
-        suggestedMealsToday.add('snack');
+        if (currentHour < 10 && !loggedMealsToday.contains('breakfast')) suggestedMealsToday.add('breakfast');
+        if (currentHour < 14 && !loggedMealsToday.contains('lunch')) suggestedMealsToday.add('lunch');
+        if (currentHour < 21 && !loggedMealsToday.contains('dinner')) suggestedMealsToday.add('dinner');
+        if (!loggedMealsToday.contains('snack')) suggestedMealsToday.add('snack');
 
         final suggestedMealsInfo = suggestedMealsToday.isEmpty
             ? 'snack only (late night)'
@@ -3673,11 +3719,17 @@ Example if user insists:
 - FR: "OK je fais ! Si ton objectif a changé, pense à le modifier dans ⚙️ Paramètres > Objectifs"
 - EN: "OK, done! If your goals changed, update them in ⚙️ Settings > Objectives"
 
-DAILY TARGETS:
-- Calories: $dailyCalorieTarget kcal
+DAILY TARGETS (BASE - varies by day!):
+- Base Calories: $dailyCalorieTarget kcal
 - Proteins: ${dailyProteinTarget.round()}g
 - Carbs: ${dailyCarbsTarget.round()}g
 - Fats: ${dailyFatTarget.round()}g
+
+🏋️ TRAINING DAYS (adjust calories!):
+- Days with SPORT: ${context['days_with_workout'] ?? 'none'} + ${context['days_with_cardio'] ?? 'none'}
+- ON TRAINING DAYS: Add +10-15% calories (mainly from carbs)
+- ON REST DAYS: Use base targets or slightly less (-5%)
+→ This creates NATURAL VARIATION between days!
 
 🔴 TARGET MACROS PER MEAL (aim for these ranges, NOT exact values!):
 ┌─────────────┬──────────────────┬──────────────────┬──────────────────┬──────────────────┐
@@ -3689,16 +3741,25 @@ DAILY TARGETS:
 │ snack       │ ${(snackCal * 0.8).round()}-${(snackCal * 1.2).round()} kcal │ ${(snackProt * 0.8).round()}-${(snackProt * 1.2).round()}g │ ${(snackCarbs * 0.8).round()}-${(snackCarbs * 1.2).round()}g │ ${(snackFat * 0.8).round()}-${(snackFat * 1.2).round()}g │
 └─────────────┴──────────────────┴──────────────────┴──────────────────┴──────────────────┘
 
-⚠️ IMPORTANT - REALISTIC MACROS:
+⚠️ IMPORTANT - REALISTIC & VARIED MACROS:
 - Use REALISTIC quantities (100g, 150g, 2 eggs, 1 chicken breast) NOT decimal values (127.3g)
 - Each meal's macros should vary naturally based on the actual recipe
-- Daily totals should be within 90-110% of target (${(dailyCalorieTarget * 0.9).round()}-${(dailyCalorieTarget * 1.1).round()} kcal)
-- It's OK if each day has slightly different totals - that's realistic!
+- 🔴 DAILY TOTALS MUST VARY! Training days: ${(dailyCalorieTarget * 1.10).round()}-${(dailyCalorieTarget * 1.15).round()} kcal | Rest days: ${(dailyCalorieTarget * 0.95).round()}-${(dailyCalorieTarget * 1.0).round()} kcal
+- It's REQUIRED that each day has different totals - monotone calories is WRONG!
 - Prioritize recipe authenticity over hitting exact numbers
 
 TODAY'S INTAKE (already consumed):
 - Calories: ${context['today_calories'] ?? 0}/$dailyCalorieTarget kcal
 - Remaining today: ${context['remaining_calories'] ?? dailyCalorieTarget} kcal
+
+═══════════════════════════════════════════════════════════════
+        🔴 ALREADY LOGGED IN JOURNAL TODAY (DO NOT PLAN THESE!)
+═══════════════════════════════════════════════════════════════
+${loggedMealsToday.isEmpty ? 'No meals logged yet today' : 'MEALS ALREADY LOGGED TODAY: ${loggedMealsToday.join(', ')}'}
+⚠️ CRITICAL: Do NOT create meals for types already logged!
+- If user asks for "today's meals" or "ma journée", SKIP the meal types listed above
+- Only suggest meals that are NOT in the logged list
+- If ALL meals for today are already logged, suggest meals for TOMORROW instead
 
 ═══════════════════════════════════════════════════════════════
                     AVAILABLE DAYS (cannot plan past days!)
@@ -4108,6 +4169,11 @@ USER REQUEST: "$userMessage"
   ) async {
     const maxRetries = 3;
 
+    // Max tokens fixe pour supporter jusqu'à 21 repas (1 semaine × 3 repas/jour)
+    // ~1700 tokens par repas complet avec recette détaillée
+    // 1700 × 21 = 35,700 tokens (bien sous la limite Gemini de 65,536)
+    const maxOutputTokens = 35700;
+
     for (int attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         final url = Uri.parse(
@@ -4137,7 +4203,7 @@ USER REQUEST: "$userMessage"
             'temperature': 0.4,
             'topK': 40,
             'topP': 0.95,
-            'maxOutputTokens': 8192, // Increased to allow full week meal planning (21+ function calls)
+            'maxOutputTokens': maxOutputTokens,
           },
         };
 

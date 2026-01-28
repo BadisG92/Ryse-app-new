@@ -111,29 +111,12 @@ class _SportSectionState extends State<SportSection>
   Future<void> _showSportTutorial() async {
     debugPrint('🔍 Vérification du tutorial Sport...');
 
-    // ✅ VÉRIFIER DANS SUPABASE si le tutorial est déjà complété
-    final supabase = Supabase.instance.client;
-    final user = supabase.auth.currentUser;
-
-    if (user != null) {
-      try {
-        final response = await supabase
-            .from('users')
-            .select('tutorial_sport_completed')
-            .eq('id', user.id)
-            .single()
-            .timeout(const Duration(seconds: 3));
-
-        final isCompleted = response['tutorial_sport_completed'] as bool? ?? false;
-        debugPrint('📊 Tutorial Sport dans Supabase: $isCompleted');
-
-        if (isCompleted) {
-          debugPrint('✅ Tutorial Sport déjà complété - Arrêt');
-          return;
-        }
-      } catch (e) {
-        debugPrint('⚠️ Erreur vérification Supabase: $e - On continue quand même');
-      }
+    // ✅ Utiliser le TutorialService pour vérifier si le tutoriel peut être lancé
+    // Cela vérifie si le tutoriel est déjà en cours OU déjà complété
+    final canStart = await TutorialService().canStartTutorial(TutorialService.sportTutorialKey);
+    if (!canStart) {
+      debugPrint('✅ Tutorial Sport ne peut pas être lancé (déjà en cours ou complété)');
+      return;
     }
 
     final locService = LocalizationService.instance;
@@ -192,29 +175,12 @@ class _SportSectionState extends State<SportSection>
   Future<void> _showCardioTutorial() async {
     debugPrint('🔍 Vérification du tutorial Cardio...');
 
-    // ✅ VÉRIFIER DANS SUPABASE si le tutorial est déjà complété
-    final supabase = Supabase.instance.client;
-    final user = supabase.auth.currentUser;
-
-    if (user != null) {
-      try {
-        final response = await supabase
-            .from('users')
-            .select('tutorial_cardio_completed')
-            .eq('id', user.id)
-            .single()
-            .timeout(const Duration(seconds: 3));
-
-        final isCompleted = response['tutorial_cardio_completed'] as bool? ?? false;
-        debugPrint('📊 Tutorial Cardio dans Supabase: $isCompleted');
-
-        if (isCompleted) {
-          debugPrint('✅ Tutorial Cardio déjà complété - Arrêt');
-          return;
-        }
-      } catch (e) {
-        debugPrint('⚠️ Erreur vérification Supabase: $e - On continue quand même');
-      }
+    // ✅ Utiliser le TutorialService pour vérifier si le tutoriel peut être lancé
+    // Cela vérifie si le tutoriel est déjà en cours OU déjà complété
+    final canStart = await TutorialService().canStartTutorial(TutorialService.cardioTutorialKey);
+    if (!canStart) {
+      debugPrint('✅ Tutorial Cardio ne peut pas être lancé (déjà en cours ou complété)');
+      return;
     }
 
     final locService = LocalizationService.instance;
@@ -277,29 +243,12 @@ class _SportSectionState extends State<SportSection>
   Future<void> _showMusculationTutorial() async {
     debugPrint('🔍 Vérification du tutorial Musculation...');
 
-    // ✅ VÉRIFIER DANS SUPABASE si le tutorial est déjà complété
-    final supabase = Supabase.instance.client;
-    final user = supabase.auth.currentUser;
-
-    if (user != null) {
-      try {
-        final response = await supabase
-            .from('users')
-            .select('tutorial_musculation_completed')
-            .eq('id', user.id)
-            .single()
-            .timeout(const Duration(seconds: 3));
-
-        final isCompleted = response['tutorial_musculation_completed'] as bool? ?? false;
-        debugPrint('📊 Tutorial Musculation dans Supabase: $isCompleted');
-
-        if (isCompleted) {
-          debugPrint('✅ Tutorial Musculation déjà complété - Arrêt');
-          return;
-        }
-      } catch (e) {
-        debugPrint('⚠️ Erreur vérification Supabase: $e - On continue quand même');
-      }
+    // ✅ Utiliser le TutorialService pour vérifier si le tutoriel peut être lancé
+    // Cela vérifie si le tutoriel est déjà en cours OU déjà complété
+    final canStart = await TutorialService().canStartTutorial(TutorialService.musculationTutorialKey);
+    if (!canStart) {
+      debugPrint('✅ Tutorial Musculation ne peut pas être lancé (déjà en cours ou complété)');
+      return;
     }
 
     final locService = LocalizationService.instance;

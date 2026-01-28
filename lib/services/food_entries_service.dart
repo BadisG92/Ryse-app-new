@@ -427,6 +427,12 @@ class FoodEntriesService {
       // Mettre à jour l'activité pour les notifications de réengagement
       unawaited(NotificationService().updateLastActivity());
 
+      // Annuler la notification de rappel pour ce type de repas
+      // (évite de recevoir "N'oublie pas ton déjeuner" après l'avoir loggé)
+      unawaited(NotificationService().cancelMealReminderForType(mealType));
+      // Annuler les notifications "rien logué" et "streak protection"
+      unawaited(NotificationService().cancelActivityBasedReminders());
+
       // WEEKLY PLANNER SYNC: Sync bidirectionnelle planner ↔ journal
       // Skip si appelé depuis MealPlannerSyncService.validateMeal pour éviter boucle infinie
       if (!skipPlannerSync) {
@@ -913,6 +919,15 @@ class FoodEntriesService {
       } catch (plannerError) {
         debugPrint('⚠️ Erreur sync Weekly Planner: $plannerError');
       }
+
+      // Mettre à jour l'activité pour les notifications de réengagement
+      unawaited(NotificationService().updateLastActivity());
+
+      // Annuler la notification de rappel pour ce type de repas
+      // (évite de recevoir "N'oublie pas ton déjeuner" après l'avoir loggé)
+      unawaited(NotificationService().cancelMealReminderForType(mealType!));
+      // Annuler les notifications "rien logué" et "streak protection"
+      unawaited(NotificationService().cancelActivityBasedReminders());
 
       return true;
     } catch (e) {

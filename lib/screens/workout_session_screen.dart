@@ -25,6 +25,7 @@ import '../services/haptic_service.dart';
 import '../services/unit_service.dart';
 import '../services/localized_exercise_service.dart';
 import '../services/weekly_planner_service.dart';
+import '../services/notification_service.dart';
 import '../models/weekly_planner_models.dart';
 import '../bottom_sheets/exercise_info_bottom_sheet.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -2279,6 +2280,11 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> {
         await GlobalStateManager.instance.refreshSportData();
 
         if (kDebugMode) debugPrint('✅ Caches Sport invalidés après séance musculation');
+
+        // Annuler les notifications de sport et les rappels "rien logué"
+        unawaited(NotificationService().updateLastActivity());
+        unawaited(NotificationService().cancelPlannedActivityReminder());
+        unawaited(NotificationService().cancelActivityBasedReminders());
 
         // WEEKLY PLANNER SYNC: Synchroniser la séance avec le planificateur
         // Crée une entrée si elle n'existe pas, ou met à jour le statut si elle existe

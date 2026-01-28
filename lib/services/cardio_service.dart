@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
@@ -8,6 +9,7 @@ import 'sport_dashboard_service.dart';
 import 'global_state_manager.dart';
 import 'unit_service.dart';
 import 'weekly_planner_service.dart';
+import 'notification_service.dart';
 
 /// Service pour gérer les activités cardio depuis Supabase
 class CardioService {
@@ -224,6 +226,11 @@ class CardioService {
 
       // NOTE: Les mises à jour du GlobalStateManager sont gérées par l'appelant
       // pour éviter les doublons de validation
+
+      // Annuler les notifications de sport et les rappels "rien logué"
+      unawaited(NotificationService().updateLastActivity());
+      unawaited(NotificationService().cancelPlannedActivityReminder());
+      unawaited(NotificationService().cancelActivityBasedReminders());
 
       return sessionId;
     } catch (e) {

@@ -83,34 +83,17 @@ class _GlobalProgressState extends State<GlobalProgress> {
   Future<void> _checkAndLaunchTutorial() async {
     debugPrint('🔍 Vérification du tutorial Progression Globale...');
 
-    // Mode debug: forcer le tutoriel
-    if (_debugForceTutorial) {
-      debugPrint('🔧 Mode DEBUG actif - Tutorial Progression forcé');
-    } else {
-      // ✅ VÉRIFIER DANS SUPABASE si le tutorial est déjà complété
-      final supabase = Supabase.instance.client;
-      final user = supabase.auth.currentUser;
-
-      if (user != null) {
-        try {
-          final response = await supabase
-              .from('users')
-              .select('tutorial_progression_completed')
-              .eq('id', user.id)
-              .single()
-              .timeout(const Duration(seconds: 3));
-
-          final isCompleted = response['tutorial_progression_completed'] as bool? ?? false;
-          debugPrint('📊 Tutorial Progression dans Supabase: $isCompleted');
-
-          if (isCompleted) {
-            debugPrint('✅ Tutorial Progression déjà complété - Arrêt');
-            return;
-          }
-        } catch (e) {
-          debugPrint('⚠️ Erreur vérification Supabase: $e - On continue quand même');
-        }
+    // Mode debug: forcer le tutoriel (bypass canStartTutorial)
+    if (!_debugForceTutorial) {
+      // ✅ Utiliser le TutorialService pour vérifier si le tutoriel peut être lancé
+      // Cela vérifie si le tutoriel est déjà en cours OU déjà complété
+      final canStart = await TutorialService().canStartTutorial(TutorialService.progressionTutorialKey);
+      if (!canStart) {
+        debugPrint('✅ Tutorial Progression ne peut pas être lancé (déjà en cours ou complété)');
+        return;
       }
+    } else {
+      debugPrint('🔧 Mode DEBUG actif - Tutorial Progression forcé');
     }
 
     if (mounted) {
