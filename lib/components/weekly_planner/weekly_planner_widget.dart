@@ -16,8 +16,8 @@ import 'day_column_widget.dart';
 import 'workout_recap_bottom_sheet.dart';
 import 'cardio_recap_bottom_sheet.dart';
 
-/// Badge Trial pour le planificateur - affiche le nombre d'essais restants
-/// Même style que les autres features mais avec le compteur
+/// Badge Trial pour le planificateur - affiche le nombre d'essais restants ou UPGRADE
+/// Même style que les autres features (coach_ryze, exercise_ai) avec animation pulse
 class _PlannerTrialBadge extends StatefulWidget {
   final String langCode;
   final int remainingUsages;
@@ -67,18 +67,18 @@ class _PlannerTrialBadgeState extends State<_PlannerTrialBadge> with SingleTicke
     final isLocked = widget.isLocked;
     final count = widget.remainingUsages;
 
-    // Texte du badge avec le nombre
+    // Texte du badge
     String badgeText;
     if (isLocked) {
       badgeText = 'UPGRADE';
     } else {
-      // Afficher "X restants" selon la langue
+      // Afficher "X gratuits" selon la langue
       if (widget.langCode == 'fr') {
-        badgeText = '$count restant${count > 1 ? 's' : ''}';
+        badgeText = '$count gratuit${count > 1 ? 's' : ''}';
       } else if (widget.langCode == 'de') {
-        badgeText = '$count übrig';
+        badgeText = '$count kostenlos';
       } else {
-        badgeText = '$count left';
+        badgeText = '$count free';
       }
     }
 
@@ -87,15 +87,15 @@ class _PlannerTrialBadgeState extends State<_PlannerTrialBadge> with SingleTicke
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFFFFD700), Color(0xFFFFA500)], // Gold gradient
+          colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFFFD700).withOpacity(0.3),
-            blurRadius: 4,
+            color: const Color(0xFFFFD700).withOpacity(0.4),
+            blurRadius: 8,
             offset: const Offset(0, 2),
           ),
         ],
@@ -104,11 +104,11 @@ class _PlannerTrialBadgeState extends State<_PlannerTrialBadge> with SingleTicke
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            isLocked ? Icons.lock_open : Icons.card_giftcard,
-            size: 12,
+            isLocked ? LucideIcons.lockOpen : LucideIcons.gift,
+            size: 11,
             color: Colors.white,
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: 5),
           Text(
             badgeText,
             style: const TextStyle(
@@ -521,46 +521,28 @@ class _WeeklyPlannerWidgetState extends State<WeeklyPlannerWidget> {
   Widget _buildAIZone(BuildContext context, String langCode) {
     final isPremium = SubscriptionService.instance.isPremium;
 
+    // Labels des boutons (sur 2 lignes pour cohérence)
+    final mealsLabel = langCode == 'fr'
+        ? 'Planifier mes\nrepas'
+        : langCode == 'de'
+            ? 'Mahlzeiten\nplanen'
+            : 'Plan my\nmeals';
+    final workoutsLabel = langCode == 'fr'
+        ? 'Planifier mes\nséances'
+        : langCode == 'de'
+            ? 'Training\nplanen'
+            : 'Plan my\nworkouts';
+
+    // Afficher le badge si non premium (essais gratuits ou UPGRADE)
+    final showBadge = !isPremium && !_isCheckingTrials;
+    final isUpgradeBadge = _remainingUsages <= 0;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-      child: Column(
-        crossAxisAlignment: isPremium ? CrossAxisAlignment.center : CrossAxisAlignment.start,
+      child: Stack(
+        clipBehavior: Clip.none,
         children: [
-          // Phrase d'accroche + Badge (sur la même ligne pour non-premium, centré pour premium)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: isPremium
-              ? Text(
-                  'planner_plan_your_week'.tr(langCode),
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF0B132B),
-                  ),
-                )
-              : Row(
-                  children: [
-                    // Texte aligné à gauche
-                    Text(
-                      'planner_plan_your_week'.tr(langCode),
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF0B132B),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    // Badge avec nombre d'essais (uniquement pour non-premium)
-                    if (!_isCheckingTrials)
-                      _PlannerTrialBadge(
-                        langCode: langCode,
-                        remainingUsages: _remainingUsages,
-                        isLocked: _isPlannerLocked,
-                      ),
-                  ],
-                ),
-          ),
-          // Boutons
+          // Row des boutons
           Row(
             children: [
               // Bouton Repas
@@ -568,7 +550,7 @@ class _WeeklyPlannerWidgetState extends State<WeeklyPlannerWidget> {
                 child: _buildCompactAIButton(
                   context,
                   icon: LucideIcons.utensils,
-                  label: 'planner_meals_button'.tr(langCode),
+                  label: mealsLabel,
                   mode: 'meals',
                 ),
               ),
@@ -578,12 +560,26 @@ class _WeeklyPlannerWidgetState extends State<WeeklyPlannerWidget> {
                 child: _buildCompactAIButton(
                   context,
                   icon: LucideIcons.dumbbell,
-                  label: 'planner_sessions_button'.tr(langCode),
+                  label: workoutsLabel,
                   mode: 'workouts',
                 ),
               ),
             ],
           ),
+          // Badge unique centré en bas, à cheval sur les deux boutons (avec animation pulse)
+          if (showBadge)
+            Positioned(
+              bottom: -12,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: _PlannerTrialBadge(
+                  langCode: langCode,
+                  remainingUsages: _remainingUsages,
+                  isLocked: isUpgradeBadge,
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -599,7 +595,7 @@ class _WeeklyPlannerWidgetState extends State<WeeklyPlannerWidget> {
       onTap: () => _openPlannerChat(context, mode: mode),
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
             colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
@@ -615,6 +611,7 @@ class _WeeklyPlannerWidgetState extends State<WeeklyPlannerWidget> {
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Icon(
               icon,
@@ -622,12 +619,17 @@ class _WeeklyPlannerWidgetState extends State<WeeklyPlannerWidget> {
               color: Colors.white,
             ),
             const SizedBox(width: 8),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
+            Flexible(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                  height: 1.3,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
               ),
             ),
           ],
