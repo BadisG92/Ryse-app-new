@@ -1,0 +1,26 @@
+{
+  "name": "promo-video",
+  "version": "1.0.0",
+  "description": "Ryse Planificateur Promo Video",
+  "main": "index.js",
+  "scripts": {
+    "start": "npx remotion studio",
+    "build": "npx remotion render PlannerPromo out/promo.mp4",
+    "build-gif": "npx remotion render PlannerPromo out/promo.gif --codec gif"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@remotion/cli": "^4.0.409",
+    "@remotion/google-fonts": "^4.0.409",
+    "@remotion/transitions": "^4.0.409",
+    "@types/react": "^19.2.9",
+    "@types/react-dom": "^19.2.3",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "remotion": "^4.0.409",
+    "typescript": "^5.9.3"
+  }
+}
