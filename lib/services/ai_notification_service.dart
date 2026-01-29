@@ -5,6 +5,7 @@ library;
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'localization_service.dart';
 
 /// Types de notifications supportés par l'IA
 enum AiNotificationType {
@@ -32,17 +33,22 @@ class AiNotificationService {
 
   /// Récupère un message IA non utilisé pour ce type de notification
   /// Retourne null si aucun message disponible
+  /// IMPORTANT: Filtre par langue pour éviter les messages dans la mauvaise langue
   Future<({String title, String body})?> getAiMessage(AiNotificationType type) async {
     try {
       final user = Supabase.instance.client.auth.currentUser;
       if (user == null) return null;
 
-      // Récupérer un message non utilisé et non expiré
+      // Récupérer la langue actuelle de l'utilisateur
+      final currentLanguage = LocalizationService.instance.currentLanguageCode;
+
+      // Récupérer un message non utilisé, non expiré ET dans la bonne langue
       final response = await Supabase.instance.client
           .from('ai_notifications_pool')
           .select('id, title, body')
           .eq('user_id', user.id)
           .eq('notification_type', type.name)
+          .eq('locale', currentLanguage) // IMPORTANT: Filtre par langue (colonne = locale)
           .eq('used', false)
           .gt('expires_at', DateTime.now().toIso8601String())
           .limit(1)

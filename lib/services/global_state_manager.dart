@@ -610,19 +610,31 @@ class GlobalStateManager {
   }
 
   /// MISE À JOUR INSTANTANÉE - Objectifs (si l'utilisateur change ses paramètres)
-  void updateGoals({double? calorieGoal, double? waterGoalL}) {
+  void updateGoals({
+    double? calorieGoal, 
+    double? waterGoalL,
+    int? proteinGoal,
+    int? carbsGoal,
+    int? fatGoal,
+  }) {
     if (calorieGoal != null) _calorieGoal = calorieGoal;
     if (waterGoalL != null) _waterGoalL = waterGoalL;
+    if (proteinGoal != null) _proteinGoal = proteinGoal;
+    if (carbsGoal != null) _carbsGoal = carbsGoal;
+    if (fatGoal != null) _fatGoal = fatGoal;
 
     _notifyChange(StateChangeEvent(
       type: ChangeType.goals,
       value: {
         'calorieGoal': _calorieGoal,
         'waterGoalL': _waterGoalL,
+        'proteinGoal': _proteinGoal,
+        'carbsGoal': _carbsGoal,
+        'fatGoal': _fatGoal,
       },
     ));
 
-    if (kDebugMode) debugPrint('🎯 GlobalState: Objectifs mis à jour -> ${_calorieGoal.toInt()}kcal, ${_waterGoalL.toStringAsFixed(1)}L');
+    if (kDebugMode) debugPrint('🎯 GlobalState: Objectifs mis à jour -> ${_calorieGoal.toInt()}kcal, ${_waterGoalL.toStringAsFixed(1)}L, P:$_proteinGoal g C:$_carbsGoal g F:$_fatGoal g');
   }
 
   /// RECOMPTE INSTANTANÉ - Repas uniques du jour depuis la base

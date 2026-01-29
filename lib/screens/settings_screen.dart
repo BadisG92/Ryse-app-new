@@ -39,6 +39,7 @@ import '../services/analytics_service.dart';
 import '../services/haptic_service.dart';
 import '../services/unit_service.dart';
 import '../services/coach_personality_service.dart';
+import '../services/coach_chat_service.dart';
 import '../services/subscription_service.dart';
 import '../services/weekly_bilan_service.dart';
 
@@ -355,11 +356,19 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
         }
 
         // NOUVEAU: Mettre à jour GlobalStateManager pour synchronisation instantanée
-        GlobalStateManager.instance.updateGoals(calorieGoal: _caloriesTarget.toDouble());
+        GlobalStateManager.instance.updateGoals(
+          calorieGoal: _caloriesTarget.toDouble(),
+          proteinGoal: _proteinTarget,
+          carbsGoal: _carbsTarget,
+          fatGoal: _fatTarget,
+        );
 
         // IMPORTANT: Notifier les changements de poids (y compris target_weight)
         // Cela invalide le cache et rafraîchit le graphique
         WeightNotifier.instance.notifyWeightChanged();
+
+        // Rafraîchir le contexte du Coach AI avec les nouveaux objectifs
+        CoachChatService.instance.refreshChatSession();
       }
 
       // Sauvegarder aussi localement pour la synchronisation
