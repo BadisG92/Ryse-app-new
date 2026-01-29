@@ -10,6 +10,7 @@ import 'header_cache_service.dart';
 import 'app_review_service.dart';
 import 'unified_subscription_service.dart';
 import 'meal_widget_data_provider.dart';
+import 'weekly_planner_service.dart';
 
 /// Gestionnaire d'état global pour synchronisation instantanée entre pages
 /// Résout le problème de latence et de mise à jour non reflétée
@@ -64,27 +65,27 @@ class GlobalStateManager {
   DateTime? _lastCheckedDate;
   Timer? _midnightCheckTimer;
 
-  // Getters - Valeurs actuelles
-  double get currentCalories => _currentCalories;
-  double get currentWaterL => _currentWaterL;
-  int get mealsCount => _mealsCount;
-  bool get workoutCompleted => _workoutCompleted;
-  double get currentProteins => _currentProteins;
-  double get currentCarbs => _currentCarbs;
-  double get currentFats => _currentFats;
-  int get sportSessions => _sportSessions;
-  int get sportCaloriesBurned => _sportCaloriesBurned;
+  // Getters - Valeurs actuelles (ou démo si mode démo actif)
+  double get currentCalories => WeeklyPlannerService.isDemoMode ? 1420 : _currentCalories;
+  double get currentWaterL => WeeklyPlannerService.isDemoMode ? 1.5 : _currentWaterL;
+  int get mealsCount => WeeklyPlannerService.isDemoMode ? 2 : _mealsCount;
+  bool get workoutCompleted => WeeklyPlannerService.isDemoMode ? false : _workoutCompleted;
+  double get currentProteins => WeeklyPlannerService.isDemoMode ? 95 : _currentProteins;
+  double get currentCarbs => WeeklyPlannerService.isDemoMode ? 145 : _currentCarbs;
+  double get currentFats => WeeklyPlannerService.isDemoMode ? 52 : _currentFats;
+  int get sportSessions => WeeklyPlannerService.isDemoMode ? 0 : _sportSessions;
+  int get sportCaloriesBurned => WeeklyPlannerService.isDemoMode ? 0 : _sportCaloriesBurned;
 
   // Getters - Objectifs
-  double get calorieGoal => _calorieGoal;
-  double get waterGoalL => _waterGoalL;
-  int get proteinGoal => _proteinGoal;
-  int get carbsGoal => _carbsGoal;
-  int get fatGoal => _fatGoal;
-  int get currentStreak => _currentStreak;
+  double get calorieGoal => WeeklyPlannerService.isDemoMode ? 2000 : _calorieGoal;
+  double get waterGoalL => WeeklyPlannerService.isDemoMode ? 2.0 : _waterGoalL;
+  int get proteinGoal => WeeklyPlannerService.isDemoMode ? 150 : _proteinGoal;
+  int get carbsGoal => WeeklyPlannerService.isDemoMode ? 200 : _carbsGoal;
+  int get fatGoal => WeeklyPlannerService.isDemoMode ? 67 : _fatGoal;
+  int get currentStreak => WeeklyPlannerService.isDemoMode ? 12 : _currentStreak;
 
   // Getters - Informations utilisateur
-  String get userName => _userName;
+  String get userName => WeeklyPlannerService.isDemoMode ? '' : _userName;
   bool get isPremium => UnifiedSubscriptionService().isPremium;
 
   // Getters - Progression (%)

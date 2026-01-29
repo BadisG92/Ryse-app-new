@@ -100,6 +100,8 @@ import WidgetKit
            let key = args["key"] as? String,
            let value = args["value"] as? String {
           userDefaults.set(value, forKey: key)
+          userDefaults.synchronize() // Force immediate sync to App Group
+          print("📱 Widget data written to App Group: \(key) = \(value.prefix(100))...")
           result(true)
         } else {
           result(FlutterError(code: "INVALID_ARGS", message: "key and value required", details: nil))

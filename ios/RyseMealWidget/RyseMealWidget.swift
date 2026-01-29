@@ -105,10 +105,18 @@ struct Provider: TimelineProvider {
 
         print("✅ Données widget chargées avec succès depuis App Group")
 
+        // Debug: afficher lastUpdate
+        if let lastUpdate = json["lastUpdate"] as? String {
+            print("   🕐 lastUpdate: \(lastUpdate)")
+        } else {
+            print("   ⚠️ lastUpdate ABSENT du JSON!")
+        }
+
         // Vérifier les valeurs d'objectifs
-        if let totals = json["totals"] as? [String: Any],
-           let goal = totals["goal"] as? Int ?? (totals["goal"] as? Double).map({ Int($0) }) {
-            print("   📊 Objectif calories: \(goal) kcal")
+        if let totals = json["totals"] as? [String: Any] {
+            let current = totals["current"] as? Int ?? (totals["current"] as? Double).map({ Int($0) }) ?? 0
+            let goal = totals["goal"] as? Int ?? (totals["goal"] as? Double).map({ Int($0) }) ?? 0
+            print("   📊 Calories dans JSON: \(current) / \(goal) kcal")
         }
 
         if let water = json["water"] as? [String: Any],
@@ -218,20 +226,57 @@ struct MealData {
             return false
         }
 
+        print("🔍 Parsing date: '\(lastUpdateStr)'")
+
+        var lastUpdate: Date? = nil
+        var parseMethod = ""
+
+        // Essayer ISO8601 avec fractions de secondes et timezone
         let isoFormatter = ISO8601DateFormatter()
         isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        lastUpdate = isoFormatter.date(from: lastUpdateStr)
+        if lastUpdate != nil { parseMethod = "ISO8601 with fractional seconds" }
 
-        // Essayer aussi sans les fractions de secondes
-        guard let lastUpdate = isoFormatter.date(from: lastUpdateStr) ?? ISO8601DateFormatter().date(from: lastUpdateStr) else {
-            print("⚠️ Format de date invalide: \(lastUpdateStr)")
+        // Essayer ISO8601 sans fractions de secondes
+        if lastUpdate == nil {
+            lastUpdate = ISO8601DateFormatter().date(from: lastUpdateStr)
+            if lastUpdate != nil { parseMethod = "ISO8601 standard" }
+        }
+
+        // Essayer le format Dart local (sans timezone): 2026-01-29T15:30:00.000
+        if lastUpdate == nil {
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS"
+            dateFormatter.locale = Locale(identifier: "en_US_POSIX")
+            lastUpdate = dateFormatter.date(from: lastUpdateStr)
+            if lastUpdate != nil { parseMethod = "Dart local with ms" }
+        }
+
+        // Essayer sans millisecondes: 2026-01-29T15:30:00
+        if lastUpdate == nil {
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+            dateFormatter.locale = Locale(identifier: "en_US_POSIX")
+            lastUpdate = dateFormatter.date(from: lastUpdateStr)
+            if lastUpdate != nil { parseMethod = "Dart local without ms" }
+        }
+
+        guard let parsedDate = lastUpdate else {
+            print("❌ Format de date invalide: \(lastUpdateStr)")
             return false
         }
 
+        print("✅ Date parsée avec '\(parseMethod)': \(parsedDate)")
+
         let calendar = Calendar.current
-        let isToday = calendar.isDateInToday(lastUpdate)
+        let isToday = calendar.isDateInToday(parsedDate)
+
+        print("📅 Est-ce aujourd'hui? \(isToday) (Date actuelle: \(Date()))")
 
         if !isToday {
             print("📅 Les données datent d'un jour précédent (\(lastUpdateStr)), affichage remis à 0")
+        } else {
+            print("✅ Les données sont d'aujourd'hui, affichage des valeurs réelles")
         }
 
         return isToday
@@ -259,7 +304,7 @@ struct MealData {
     }
 
     static func from(json: [String: Any]) -> MealData {
-        // Vérifier si les données sont d'aujourd'hui
+        // Vérifier si les données sont d'aujourd'hui (reset à minuit)
         let isDataFromToday = checkIfDataIsFromToday(json: json)
 
         // Parse contextualMeal
@@ -292,7 +337,7 @@ struct MealData {
         let goalCalories = (totalsJson["goal"] as? Int) ?? (totalsJson["goal"] as? Double).map { Int($0) } ?? 0
         let totals = Totals(
             current: isDataFromToday ? currentCalories : 0,
-            goal: goalCalories, // L'objectif reste le même
+            goal: goalCalories, // L'objectif reste visible
             percentage: isDataFromToday ? ((totalsJson["percentage"] as? Int) ?? (totalsJson["percentage"] as? Double).map { Int($0) } ?? 0) : 0
         )
 
@@ -317,10 +362,10 @@ struct MealData {
         let goalWaterL = (waterJson["goalL"] as? Double) ?? 0.0
         let water = Water(
             current: isDataFromToday ? currentWater : 0,
-            goal: goalWater, // L'objectif reste le même
+            goal: goalWater, // L'objectif reste visible
             percentage: isDataFromToday ? ((waterJson["percentage"] as? Int) ?? (waterJson["percentage"] as? Double).map { Int($0) } ?? 0) : 0,
             currentL: isDataFromToday ? currentWaterL : 0.0,
-            goalL: goalWaterL // L'objectif reste le même
+            goalL: goalWaterL // L'objectif reste visible
         )
 
         print("💧 Données eau: \(water.current)ml / \(water.goal)ml (\(water.percentage)%)")

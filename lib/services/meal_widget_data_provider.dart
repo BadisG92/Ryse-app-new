@@ -158,7 +158,7 @@ class MealWidgetDataProvider {
           'message': coachMessage,
           'streak': globalState.currentStreak,
         },
-        'lastUpdate': DateTime.now().toIso8601String(),
+        'lastUpdate': DateTime.now().toUtc().toIso8601String(), // UTC avec 'Z' pour parsing iOS
       };
 
       // Encoder une seule fois pour l'utiliser où nécessaire

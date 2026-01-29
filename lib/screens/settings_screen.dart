@@ -42,6 +42,7 @@ import '../services/coach_personality_service.dart';
 import '../services/coach_chat_service.dart';
 import '../services/subscription_service.dart';
 import '../services/weekly_bilan_service.dart';
+import '../services/weekly_planner_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -102,6 +103,8 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   CoachPersonalityType _coachPersonality = CoachPersonalityType.friendly;
   String? _coachPersonalityCustom;
   bool _loadingCoachSettings = true;
+  int _demoTapCount = 0;
+  DateTime? _lastDemoTap;
   final TextEditingController _customPersonalityController = TextEditingController();
 
   // Coach Ryze - Bilan hebdomadaire
@@ -134,6 +137,46 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
 
     // Charger les paramètres du coach
     _loadCoachSettings();
+  }
+
+  void _handleDemoTap() {
+    final now = DateTime.now();
+    
+    // Reset counter if more than 1 second since last tap
+    if (_lastDemoTap != null && now.difference(_lastDemoTap!).inMilliseconds > 1000) {
+      _demoTapCount = 0;
+    }
+    
+    _lastDemoTap = now;
+    _demoTapCount++;
+    
+    if (_demoTapCount >= 3) {
+      _demoTapCount = 0;
+      final newMode = !WeeklyPlannerService.isDemoMode;
+      WeeklyPlannerService.setDemoMode(newMode);
+      
+      setState(() {});
+      
+      final langCode = LocalizationService.instance.currentLanguageCode;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(newMode 
+              ? (langCode == 'fr' ? '🎬 Mode démo ACTIVÉ - Retourne à l\'accueil pour voir' : '🎬 Demo mode ON - Go back to see')
+              : (langCode == 'fr' ? '✅ Mode démo désactivé' : '✅ Demo mode OFF')),
+          backgroundColor: newMode ? const Color(0xFFFFD700) : Colors.green,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      
+      // Retourner à l'accueil après un court délai pour voir les changements
+      if (newMode) {
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted) {
+            Navigator.of(context).popUntil((route) => route.isFirst);
+          }
+        });
+      }
+    }
   }
 
   Future<void> _loadCoachSettings() async {
@@ -2406,17 +2449,22 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                 ),
               ),
               const SizedBox(width: 16),
-              // Titre
-              Text(
-                locService.currentLanguageCode == 'fr'
-                    ? 'Paramètres'
-                    : locService.currentLanguageCode == 'de'
-                        ? 'Einstellungen'
-                        : 'Settings',
-                style: const TextStyle(
-                  color: Color(0xFF0B132B),
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
+              // Titre (triple-tap pour mode démo)
+              GestureDetector(
+                onTap: _handleDemoTap,
+                child: Text(
+                  locService.currentLanguageCode == 'fr'
+                      ? 'Paramètres'
+                      : locService.currentLanguageCode == 'de'
+                          ? 'Einstellungen'
+                          : 'Settings',
+                  style: TextStyle(
+                    color: WeeklyPlannerService.isDemoMode 
+                        ? const Color(0xFFFFD700) // Gold en mode démo
+                        : const Color(0xFF0B132B),
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ],

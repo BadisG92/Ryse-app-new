@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'dart:math';
 import '../../services/translations.dart';
+import '../../services/weekly_planner_service.dart';
 
 // Modèle d'utilisateur gamifié
 class UserProfile {
@@ -34,6 +35,13 @@ class UserProfile {
 
   // Message de salutation engageant basé sur l'heure et le contexte
   String greetingMessage(String languageCode) {
+    // Mode démo: message générique pour screenshots
+    if (WeeklyPlannerService.isDemoMode) {
+      if (languageCode == 'de') return 'Organisiere deine Woche!';
+      if (languageCode == 'en') return 'Organize your week!';
+      return 'Organise ta semaine !';
+    }
+    
     final hour = DateTime.now().hour;
 
     // Selon l'heure de la journée
@@ -67,6 +75,13 @@ class UserProfile {
 
   // Message contextuel CTA basé sur l'heure et l'état de l'utilisateur
   String contextualMessage(String languageCode) {
+    // Mode démo: message générique pour screenshots
+    if (WeeklyPlannerService.isDemoMode) {
+      if (languageCode == 'de') return 'Plane Mahlzeiten und Workouts mit AI.';
+      if (languageCode == 'en') return 'Plan meals and workouts with AI.';
+      return 'Planifie repas et séances avec l\'IA.';
+    }
+    
     final hour = DateTime.now().hour;
     final caloriesProgress = currentCalories / dailyCalories;
     final hasStartedDay = currentCalories > 0;

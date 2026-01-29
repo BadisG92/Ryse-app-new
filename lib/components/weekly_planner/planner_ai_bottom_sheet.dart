@@ -9,6 +9,7 @@ import '../../services/paywall_service.dart';
 import '../../services/unified_subscription_service.dart';
 import '../../services/food_entries_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/weekly_planner_service.dart';
 
 /// Bottom sheet pour planifier avec l'IA (Ryze)
 class PlannerAIBottomSheet extends StatefulWidget {
@@ -66,8 +67,14 @@ class _PlannerAIBottomSheetState extends State<PlannerAIBottomSheet> {
     _loadFreeUsageStatus();
     // Effacer l'historique pour une nouvelle conversation
     PlannerAIService.clearHistory();
-    // Message d'accueil
-    _addBotMessage(_getWelcomeMessage());
+    
+    // Mode démo pour screenshots
+    if (WeeklyPlannerService.isDemoMode) {
+      _loadDemoConversation();
+    } else {
+      // Message d'accueil
+      _addBotMessage(_getWelcomeMessage());
+    }
 
     // Scroll to bottom when keyboard opens
     _focusNode.addListener(_onFocusChange);
@@ -187,6 +194,76 @@ class _PlannerAIBottomSheetState extends State<PlannerAIBottomSheet> {
       ));
     });
     _scrollToBottom();
+  }
+
+  /// Charger une conversation de démo pour les screenshots
+  void _loadDemoConversation() {
+    final langCode = LocalizationService.instance.currentLanguageCode;
+    
+    setState(() {
+      _messages.clear();
+      
+      // Message d'accueil du bot
+      _messages.add(_ChatMessage(
+        text: langCode == 'fr' 
+            ? "Salut ! 👋 Je suis là pour t'aider à planifier ta semaine. Qu'est-ce que tu veux organiser ?"
+            : "Hey! 👋 I'm here to help you plan your week. What would you like to organize?",
+        isUser: false,
+      ));
+      
+      // Message utilisateur
+      _messages.add(_ChatMessage(
+        text: langCode == 'fr'
+            ? "Planifie ma semaine complète"
+            : "Plan my complete week",
+        isUser: true,
+      ));
+      
+      // Réponse du bot avec le planning complet
+      _messages.add(_ChatMessage(
+        text: langCode == 'fr'
+            ? """Parfait ! 💪 J'ai créé un planning complet pour ta semaine :
+
+**🏋️ MUSCULATION**
+• Lundi : Push Day (60 min) - Pecs, épaules, triceps
+• Mercredi : Pull Day (55 min) - Dos, biceps
+• Vendredi : Leg Day (65 min) - Quadriceps, ischio-jambiers
+
+**🏃 CARDIO**
+• Mardi : Course à pied (30 min, 5 km)
+• Jeudi : HIIT (20 min)
+• Samedi : Vélo (45 min, 15 km)
+
+**🍽️ REPAS (exemples)**
+• Petit-déj : Omelette protéinée, Smoothie bowl, Pancakes...
+• Déjeuner : Buddha bowl, Wrap méditerranéen, Poke bowl...
+• Dîner : Saumon teriyaki, Poulet curry coco, Steak de thon...
+
+Tout est visible dans ton planning ! Tu veux que je modifie quelque chose ?"""
+            : """Perfect! 💪 I've created a complete plan for your week:
+
+**🏋️ STRENGTH TRAINING**
+• Monday: Push Day (60 min) - Chest, shoulders, triceps
+• Wednesday: Pull Day (55 min) - Back, biceps
+• Friday: Leg Day (65 min) - Quads, hamstrings
+
+**🏃 CARDIO**
+• Tuesday: Running (30 min, 5 km)
+• Thursday: HIIT (20 min)
+• Saturday: Cycling (45 min, 15 km)
+
+**🍽️ MEALS (examples)**
+• Breakfast: Protein omelette, Smoothie bowl, Pancakes...
+• Lunch: Buddha bowl, Mediterranean wrap, Poke bowl...
+• Dinner: Teriyaki salmon, Coconut curry chicken, Tuna steak...
+
+Everything is now visible in your planner! Want me to change anything?""",
+        isUser: false,
+      ));
+    });
+    
+    // Scroll to show the conversation
+    Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
   }
 
   Future<void> _handleSend() async {

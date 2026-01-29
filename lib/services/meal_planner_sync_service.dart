@@ -5,6 +5,7 @@ import '../models/nutrition_models.dart';
 import 'food_entries_service.dart';
 import 'auth_service.dart';
 import 'global_state_manager.dart';
+import 'weekly_planner_service.dart';
 
 /// Service de synchronisation bidirectionnelle Planner ↔ Journal
 ///
@@ -81,6 +82,9 @@ class MealPlannerSyncService {
 
       // Mettre à jour l'activité planifiée avec le lien et status completed
       await _updateActivityWithLink(activity.id, foodEntryId);
+
+      // Invalider le cache du planner pour forcer le rechargement
+      WeeklyPlannerService.invalidateCache();
 
       // Notifier le GlobalStateManager pour mettre à jour le planner
       GlobalStateManager.instance.invalidateWeeklyData();
@@ -180,6 +184,9 @@ class MealPlannerSyncService {
         dishDescription: dishDescription,
       );
 
+      // Invalider le cache du planner pour forcer le rechargement
+      WeeklyPlannerService.invalidateCache();
+      
       // Notifier le GlobalStateManager pour mettre à jour le planner
       GlobalStateManager.instance.invalidateWeeklyData();
 
@@ -283,6 +290,9 @@ class MealPlannerSyncService {
 
       // Retirer le lien et remettre status = planned
       await _removeActivityLink(activity.id);
+
+      // Invalider le cache du planner pour forcer le rechargement
+      WeeklyPlannerService.invalidateCache();
 
       // Notifier le GlobalStateManager pour mettre à jour le planner
       GlobalStateManager.instance.invalidateWeeklyData();

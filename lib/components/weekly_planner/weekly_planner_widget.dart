@@ -534,7 +534,7 @@ class _WeeklyPlannerWidgetState extends State<WeeklyPlannerWidget> {
             : 'Plan my\nworkouts';
 
     // Afficher le badge si non premium (essais gratuits ou UPGRADE)
-    final showBadge = !isPremium && !_isCheckingTrials;
+    final showBadge = !isPremium && !_isCheckingTrials && !WeeklyPlannerService.isDemoMode;
     final isUpgradeBadge = _remainingUsages <= 0;
 
     return Padding(

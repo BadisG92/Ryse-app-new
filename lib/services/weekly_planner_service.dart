@@ -27,6 +27,12 @@ class WeeklyPlannerService {
       return WeeklyPlannerData.empty();
     }
 
+    // Mode démo pour screenshots
+    if (_demoMode) {
+      debugPrint('🎬 WeeklyPlannerService: Returning DEMO data');
+      return _generateDemoData();
+    }
+
     // Vérifier le cache
     if (!forceRefresh && _cachedWeekData != null && _cacheTimestamp != null) {
       final cacheAge = DateTime.now().difference(_cacheTimestamp!);
@@ -2169,5 +2175,442 @@ class WeeklyPlannerService {
     await migrateHistoryToPlanner();
 
     debugPrint('✅ SYNC COMPLÈTE terminée');
+  }
+// =====================================================
+  // DEMO MODE (for screenshots)
+  // =====================================================
+
+  static bool _demoMode = false;
+
+  /// Activer/désactiver le mode démo pour les screenshots
+  static void setDemoMode(bool enabled) {
+    _demoMode = enabled;
+    _cachedWeekData = null; // Clear cache to force reload
+    
+    if (enabled) {
+      debugPrint('🎬 WeeklyPlannerService: DEMO MODE ENABLED');
+    } else {
+      debugPrint('🎬 WeeklyPlannerService: Demo mode disabled');
+    }
+    
+    // Notifier GlobalStateManager pour rafraîchir l'UI
+    GlobalStateManager.instance.invalidateWeeklyData();
+  }
+
+  static bool get isDemoMode => _demoMode;
+
+  /// Générer des données de démo pour les screenshots
+  static WeeklyPlannerData _generateDemoData() {
+    final weekStart = getCurrentWeekStart();
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final userId = _client.auth.currentUser?.id ?? 'demo-user';
+
+    // Helper pour déterminer le statut selon la date
+    PlannedStatus getStatusForDate(DateTime date, {bool shouldComplete = true}) {
+      final normalizedDate = DateTime(date.year, date.month, date.day);
+      if (normalizedDate.isBefore(today)) {
+        // Jours passés: complété ou manqué
+        return shouldComplete ? PlannedStatus.completed : PlannedStatus.missed;
+      }
+      return PlannedStatus.planned;
+    }
+
+    final activities = <PlannedActivity>[
+      // Lundi - Petit déj + Déjeuner (passé - complété)
+      PlannedActivity(
+        id: 'demo-1',
+        userId: userId,
+        plannedDate: weekStart,
+        activityType: PlannedActivityType.breakfast,
+        status: getStatusForDate(weekStart),
+        activityData: {
+          'dish_name': 'Omelette protéinée',
+          'dish_description': '3 œufs, épinards, fromage feta, toast complet',
+          'calories': 450,
+          'proteins': 32.0,
+          'carbs': 24.0,
+          'fats': 26.0,
+        },
+        isAiGenerated: true,
+        createdAt: now,
+      ),
+      PlannedActivity(
+        id: 'demo-2',
+        userId: userId,
+        plannedDate: weekStart,
+        activityType: PlannedActivityType.lunch,
+        status: getStatusForDate(weekStart),
+        activityData: {
+          'dish_name': 'Buddha bowl au poulet',
+          'dish_description': 'Quinoa, poulet grillé, avocat, légumes rôtis, sauce tahini',
+          'calories': 620,
+          'proteins': 42.0,
+          'carbs': 48.0,
+          'fats': 28.0,
+        },
+        isAiGenerated: true,
+        createdAt: now,
+      ),
+      PlannedActivity(
+        id: 'demo-3',
+        userId: userId,
+        plannedDate: weekStart,
+        activityType: PlannedActivityType.dinner,
+        status: getStatusForDate(weekStart),
+        activityData: {
+          'dish_name': 'Saumon teriyaki',
+          'dish_description': 'Pavé de saumon, riz basmati, brocolis vapeur',
+          'calories': 580,
+          'proteins': 38.0,
+          'carbs': 52.0,
+          'fats': 22.0,
+        },
+        isAiGenerated: true,
+        createdAt: now,
+      ),
+      // Mardi (passé - complété sauf dîner)
+      PlannedActivity(
+        id: 'demo-4',
+        userId: userId,
+        plannedDate: weekStart.add(const Duration(days: 1)),
+        activityType: PlannedActivityType.breakfast,
+        status: getStatusForDate(weekStart.add(const Duration(days: 1))),
+        activityData: {
+          'dish_name': 'Smoothie bowl énergisant',
+          'dish_description': 'Banane, myrtilles, granola, beurre de cacahuète',
+          'calories': 380,
+          'proteins': 14.0,
+          'carbs': 58.0,
+          'fats': 12.0,
+        },
+        isAiGenerated: true,
+        createdAt: now,
+      ),
+      PlannedActivity(
+        id: 'demo-5',
+        userId: userId,
+        plannedDate: weekStart.add(const Duration(days: 1)),
+        activityType: PlannedActivityType.lunch,
+        status: getStatusForDate(weekStart.add(const Duration(days: 1))),
+        activityData: {
+          'dish_name': 'Wrap méditerranéen',
+          'dish_description': 'Tortilla complète, houmous, falafel, crudités, tzatziki',
+          'calories': 520,
+          'proteins': 22.0,
+          'carbs': 62.0,
+          'fats': 20.0,
+        },
+        isAiGenerated: true,
+        createdAt: now,
+      ),
+      PlannedActivity(
+        id: 'demo-6',
+        userId: userId,
+        plannedDate: weekStart.add(const Duration(days: 1)),
+        activityType: PlannedActivityType.dinner,
+        status: getStatusForDate(weekStart.add(const Duration(days: 1)), shouldComplete: false), // MISSED
+        activityData: {
+          'dish_name': 'Poulet curry coco',
+          'dish_description': 'Blanc de poulet, lait de coco, légumes, riz jasmin',
+          'calories': 650,
+          'proteins': 40.0,
+          'carbs': 55.0,
+          'fats': 28.0,
+        },
+        isAiGenerated: true,
+        createdAt: now,
+      ),
+      // Mercredi (passé - complété)
+      PlannedActivity(
+        id: 'demo-7',
+        userId: userId,
+        plannedDate: weekStart.add(const Duration(days: 2)),
+        activityType: PlannedActivityType.breakfast,
+        status: getStatusForDate(weekStart.add(const Duration(days: 2))),
+        activityData: {
+          'dish_name': 'Pancakes protéinés',
+          'dish_description': 'Flocons d\'avoine, banane, whey, sirop d\'érable',
+          'calories': 420,
+          'proteins': 28.0,
+          'carbs': 52.0,
+          'fats': 10.0,
+        },
+        isAiGenerated: true,
+        createdAt: now,
+      ),
+      PlannedActivity(
+        id: 'demo-8',
+        userId: userId,
+        plannedDate: weekStart.add(const Duration(days: 2)),
+        activityType: PlannedActivityType.lunch,
+        status: getStatusForDate(weekStart.add(const Duration(days: 2))),
+        activityData: {
+          'dish_name': 'Poke bowl thon',
+          'dish_description': 'Thon frais, riz sushi, edamame, avocat, mangue',
+          'calories': 580,
+          'proteins': 35.0,
+          'carbs': 60.0,
+          'fats': 22.0,
+        },
+        isAiGenerated: true,
+        createdAt: now,
+      ),
+      // Jeudi (aujourd'hui - planifié)
+      PlannedActivity(
+        id: 'demo-9',
+        userId: userId,
+        plannedDate: weekStart.add(const Duration(days: 3)),
+        activityType: PlannedActivityType.breakfast,
+        status: getStatusForDate(weekStart.add(const Duration(days: 3))),
+        activityData: {
+          'dish_name': 'Avocado toast',
+          'dish_description': 'Pain complet, avocat écrasé, œuf poché, graines',
+          'calories': 380,
+          'proteins': 16.0,
+          'carbs': 32.0,
+          'fats': 22.0,
+        },
+        isAiGenerated: true,
+        createdAt: now,
+      ),
+      PlannedActivity(
+        id: 'demo-10',
+        userId: userId,
+        plannedDate: weekStart.add(const Duration(days: 3)),
+        activityType: PlannedActivityType.lunch,
+        status: getStatusForDate(weekStart.add(const Duration(days: 3))),
+        activityData: {
+          'dish_name': 'Salade César au poulet',
+          'dish_description': 'Romaine, poulet grillé, parmesan, croûtons, sauce César légère',
+          'calories': 480,
+          'proteins': 38.0,
+          'carbs': 22.0,
+          'fats': 26.0,
+        },
+        isAiGenerated: true,
+        createdAt: now,
+      ),
+      // Vendredi (futur - planifié)
+      PlannedActivity(
+        id: 'demo-11',
+        userId: userId,
+        plannedDate: weekStart.add(const Duration(days: 4)),
+        activityType: PlannedActivityType.breakfast,
+        status: getStatusForDate(weekStart.add(const Duration(days: 4))),
+        activityData: {
+          'dish_name': 'Overnight oats',
+          'dish_description': 'Flocons d\'avoine, lait d\'amande, chia, fruits rouges',
+          'calories': 350,
+          'proteins': 12.0,
+          'carbs': 54.0,
+          'fats': 10.0,
+        },
+        isAiGenerated: true,
+        createdAt: now,
+      ),
+      PlannedActivity(
+        id: 'demo-12',
+        userId: userId,
+        plannedDate: weekStart.add(const Duration(days: 4)),
+        activityType: PlannedActivityType.lunch,
+        status: getStatusForDate(weekStart.add(const Duration(days: 4))),
+        activityData: {
+          'dish_name': 'Pasta primavera',
+          'dish_description': 'Penne complètes, légumes de saison, huile d\'olive, parmesan',
+          'calories': 520,
+          'proteins': 18.0,
+          'carbs': 72.0,
+          'fats': 18.0,
+        },
+        isAiGenerated: true,
+        createdAt: now,
+      ),
+      PlannedActivity(
+        id: 'demo-13',
+        userId: userId,
+        plannedDate: weekStart.add(const Duration(days: 4)),
+        activityType: PlannedActivityType.dinner,
+        status: getStatusForDate(weekStart.add(const Duration(days: 4))),
+        activityData: {
+          'dish_name': 'Steak de thon grillé',
+          'dish_description': 'Thon mi-cuit, purée de patate douce, haricots verts',
+          'calories': 550,
+          'proteins': 45.0,
+          'carbs': 38.0,
+          'fats': 20.0,
+        },
+        isAiGenerated: true,
+        createdAt: now,
+      ),
+      // Cardio - Mardi (passé - complété)
+      PlannedActivity(
+        id: 'demo-cardio-1',
+        userId: userId,
+        plannedDate: weekStart.add(const Duration(days: 1)),
+        activityType: PlannedActivityType.cardio,
+        status: getStatusForDate(weekStart.add(const Duration(days: 1))),
+        activityData: {
+          'activity_name': 'Course à pied',
+          'activity_key': 'running',
+          'target_minutes': 30,
+          'target_km': 5.0,
+        },
+        isAiGenerated: true,
+        createdAt: now,
+      ),
+      // Cardio - Jeudi (aujourd'hui - planifié)
+      PlannedActivity(
+        id: 'demo-cardio-2',
+        userId: userId,
+        plannedDate: weekStart.add(const Duration(days: 3)),
+        activityType: PlannedActivityType.cardio,
+        status: getStatusForDate(weekStart.add(const Duration(days: 3))),
+        activityData: {
+          'activity_name': 'HIIT',
+          'activity_key': 'hiit',
+          'target_minutes': 20,
+        },
+        isAiGenerated: true,
+        createdAt: now,
+      ),
+      // Cardio - Samedi (futur - planifié)
+      PlannedActivity(
+        id: 'demo-cardio-3',
+        userId: userId,
+        plannedDate: weekStart.add(const Duration(days: 5)),
+        activityType: PlannedActivityType.cardio,
+        status: getStatusForDate(weekStart.add(const Duration(days: 5))),
+        activityData: {
+          'activity_name': 'Vélo',
+          'activity_key': 'bike',
+          'target_minutes': 45,
+          'target_km': 15.0,
+        },
+        isAiGenerated: true,
+        createdAt: now,
+      ),
+    ];
+
+    // Workouts (musculation)
+    final workouts = <PlannedWorkout>[
+      // Lundi - Push (passé - complété)
+      PlannedWorkout(
+        id: 'demo-workout-1',
+        userId: userId,
+        plannedDate: weekStart,
+        workoutName: 'Push Day',
+        durationMinutes: 60,
+        status: getStatusForDate(weekStart),
+        exercises: [
+          WorkoutExercise(
+            exercise: Exercise(id: 'bench-press', name: 'Développé couché', muscleGroup: 'Pectoraux'),
+            sets: [
+              ExerciseSet(reps: 12, weight: 60),
+              ExerciseSet(reps: 10, weight: 70),
+              ExerciseSet(reps: 8, weight: 80),
+            ],
+          ),
+          WorkoutExercise(
+            exercise: Exercise(id: 'shoulder-press', name: 'Développé épaules', muscleGroup: 'Épaules'),
+            sets: [
+              ExerciseSet(reps: 12, weight: 40),
+              ExerciseSet(reps: 10, weight: 45),
+              ExerciseSet(reps: 8, weight: 50),
+            ],
+          ),
+          WorkoutExercise(
+            exercise: Exercise(id: 'triceps-pushdown', name: 'Triceps poulie', muscleGroup: 'Triceps'),
+            sets: [
+              ExerciseSet(reps: 15, weight: 25),
+              ExerciseSet(reps: 12, weight: 30),
+              ExerciseSet(reps: 10, weight: 35),
+            ],
+          ),
+        ],
+        isAiGenerated: true,
+        createdAt: now,
+      ),
+      // Mercredi - Pull (passé - complété)
+      PlannedWorkout(
+        id: 'demo-workout-2',
+        userId: userId,
+        plannedDate: weekStart.add(const Duration(days: 2)),
+        workoutName: 'Pull Day',
+        durationMinutes: 55,
+        status: getStatusForDate(weekStart.add(const Duration(days: 2))),
+        exercises: [
+          WorkoutExercise(
+            exercise: Exercise(id: 'lat-pulldown', name: 'Tirage vertical', muscleGroup: 'Dos'),
+            sets: [
+              ExerciseSet(reps: 12, weight: 50),
+              ExerciseSet(reps: 10, weight: 60),
+              ExerciseSet(reps: 8, weight: 70),
+            ],
+          ),
+          WorkoutExercise(
+            exercise: Exercise(id: 'seated-row', name: 'Rowing assis', muscleGroup: 'Dos'),
+            sets: [
+              ExerciseSet(reps: 12, weight: 45),
+              ExerciseSet(reps: 10, weight: 55),
+              ExerciseSet(reps: 8, weight: 65),
+            ],
+          ),
+          WorkoutExercise(
+            exercise: Exercise(id: 'bicep-curl', name: 'Curl biceps', muscleGroup: 'Biceps'),
+            sets: [
+              ExerciseSet(reps: 12, weight: 12),
+              ExerciseSet(reps: 10, weight: 14),
+              ExerciseSet(reps: 8, weight: 16),
+            ],
+          ),
+        ],
+        isAiGenerated: true,
+        createdAt: now,
+      ),
+      // Vendredi - Legs (futur - planifié)
+      PlannedWorkout(
+        id: 'demo-workout-3',
+        userId: userId,
+        plannedDate: weekStart.add(const Duration(days: 4)),
+        workoutName: 'Leg Day',
+        durationMinutes: 65,
+        status: getStatusForDate(weekStart.add(const Duration(days: 4))),
+        exercises: [
+          WorkoutExercise(
+            exercise: Exercise(id: 'squat', name: 'Squat', muscleGroup: 'Quadriceps'),
+            sets: [
+              ExerciseSet(reps: 12, weight: 60),
+              ExerciseSet(reps: 10, weight: 80),
+              ExerciseSet(reps: 8, weight: 100),
+            ],
+          ),
+          WorkoutExercise(
+            exercise: Exercise(id: 'leg-press', name: 'Presse à cuisses', muscleGroup: 'Quadriceps'),
+            sets: [
+              ExerciseSet(reps: 12, weight: 120),
+              ExerciseSet(reps: 10, weight: 140),
+              ExerciseSet(reps: 8, weight: 160),
+            ],
+          ),
+          WorkoutExercise(
+            exercise: Exercise(id: 'leg-curl', name: 'Leg curl', muscleGroup: 'Ischio-jambiers'),
+            sets: [
+              ExerciseSet(reps: 12, weight: 35),
+              ExerciseSet(reps: 10, weight: 40),
+              ExerciseSet(reps: 8, weight: 45),
+            ],
+          ),
+        ],
+        isAiGenerated: true,
+        createdAt: now,
+      ),
+    ];
+
+    return WeeklyPlannerData.fromLists(
+      weekStart: weekStart,
+      activities: activities,
+      workouts: workouts,
+    );
   }
 }

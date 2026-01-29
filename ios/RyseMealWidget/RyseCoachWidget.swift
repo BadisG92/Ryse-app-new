@@ -125,7 +125,27 @@ struct CoachWidgetData {
         )
     }
 
+    // Vérifie si les données sont d'aujourd'hui (reset à minuit)
+    private static func checkIfDataIsFromToday(json: [String: Any]) -> Bool {
+        guard let lastUpdateStr = json["lastUpdate"] as? String else {
+            return false
+        }
+
+        // Parser la date UTC avec 'Z' (format envoyé par Flutter)
+        let isoFormatter = ISO8601DateFormatter()
+        isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+        guard let lastUpdate = isoFormatter.date(from: lastUpdateStr) ?? ISO8601DateFormatter().date(from: lastUpdateStr) else {
+            return false
+        }
+
+        return Calendar.current.isDateInToday(lastUpdate)
+    }
+
     static func from(json: [String: Any]) -> CoachWidgetData {
+        // Vérifier si les données sont d'aujourd'hui (reset à minuit)
+        let isDataFromToday = checkIfDataIsFromToday(json: json)
+
         // Parse language
         let languageCode = (json["languageCode"] as? String) ?? "fr"
 
@@ -147,12 +167,12 @@ struct CoachWidgetData {
         let streak = (coachJson["streak"] as? Int) ?? 0
 
         return CoachWidgetData(
-            currentCalories: current,
-            goalCalories: goal,
-            percentage: percentage,
-            protein: protein,
-            carbs: carbs,
-            fats: fats,
+            currentCalories: isDataFromToday ? current : 0,
+            goalCalories: goal, // L'objectif reste visible
+            percentage: isDataFromToday ? percentage : 0,
+            protein: isDataFromToday ? protein : 0,
+            carbs: isDataFromToday ? carbs : 0,
+            fats: isDataFromToday ? fats : 0,
             coachMessage: coachMessage,
             streak: streak,
             languageCode: languageCode
