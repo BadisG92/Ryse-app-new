@@ -9347,6 +9347,98 @@ class AppTranslations {
       'en': 'All your sessions are planned! 💪',
       'de': 'Alle deine Einheiten sind geplant! 💪',
     },
+
+    // ===== Onboarding Planner Demo =====
+    'onboarding_plan_first_week': {
+      'fr': 'Planifier ma première semaine',
+      'en': 'Plan my first week',
+      'de': 'Meine erste Woche planen',
+    },
+    'onboarding_plan_first_week_subtitle': {
+      'fr': 'Découvre la puissance de Coach Ryze',
+      'en': 'Discover the power of Coach Ryze',
+      'de': 'Entdecke die Kraft von Coach Ryze',
+    },
+    'onboarding_demo_meals_title': {
+      'fr': 'Planifions tes repas',
+      'en': "Let's plan your meals",
+      'de': 'Planen wir deine Mahlzeiten',
+    },
+    'onboarding_demo_meals_subtitle': {
+      'fr': 'Discute avec Coach Ryze pour créer ton plan nutritionnel personnalisé',
+      'en': 'Chat with Coach Ryze to create your personalized nutrition plan',
+      'de': 'Chatte mit Coach Ryze, um deinen personalisierten Ernährungsplan zu erstellen',
+    },
+    'onboarding_demo_sport_title': {
+      'fr': 'Planifions ton sport',
+      'en': "Let's plan your workouts",
+      'de': 'Planen wir dein Training',
+    },
+    'onboarding_demo_sport_subtitle': {
+      'fr': 'Coach Ryze va créer ton programme d\'entraînement sur mesure',
+      'en': 'Coach Ryze will create your custom training program',
+      'de': 'Coach Ryze erstellt dein individuelles Trainingsprogramm',
+    },
+    'onboarding_demo_switch_to_sport': {
+      'fr': 'Passer au sport',
+      'en': 'Switch to sport',
+      'de': 'Zum Sport wechseln',
+    },
+    'onboarding_demo_finish': {
+      'fr': 'Terminer la démo',
+      'en': 'Finish demo',
+      'de': 'Demo beenden',
+    },
+    'onboarding_demo_skip': {
+      'fr': 'Passer cette étape',
+      'en': 'Skip this step',
+      'de': 'Diesen Schritt überspringen',
+    },
+    'onboarding_demo_meals_welcome': {
+      'fr': "Salut ! Je suis Coach Ryze, ton coach nutrition. 🥗\n\nOn va planifier tes repas ensemble. Dis-moi ce que tu aimerais manger cette semaine, tes préférences, ou laisse-moi te proposer quelque chose !",
+      'en': "Hi! I'm Coach Ryze, your nutrition coach. 🥗\n\nLet's plan your meals together. Tell me what you'd like to eat this week, your preferences, or let me suggest something!",
+      'de': "Hallo! Ich bin Coach Ryze, dein Ernährungscoach. 🥗\n\nLass uns deine Mahlzeiten gemeinsam planen. Sag mir, was du diese Woche essen möchtest, deine Vorlieben, oder lass mich dir etwas vorschlagen!",
+    },
+    'onboarding_demo_meals_guide_click': {
+      'fr': "Tes repas sont planifiés ! 🎉 Clique sur un repas dans le calendrier au-dessus pour voir les ingrédients, la recette et les macros détaillés.",
+      'en': "Your meals are planned! 🎉 Click on a meal in the calendar above to see the ingredients, recipe, and detailed macros.",
+      'de': "Deine Mahlzeiten sind geplant! 🎉 Klicke auf eine Mahlzeit im Kalender oben, um die Zutaten, das Rezept und die detaillierten Makros zu sehen.",
+    },
+    'onboarding_demo_meals_guide_modify': {
+      'fr': "Tu peux aussi me demander de modifier un repas si quelque chose ne te plaît pas 😉\n\nQuand tu es prêt, on passe au sport !",
+      'en': "You can also ask me to modify a meal if something doesn't suit you 😉\n\nWhen you're ready, let's move on to sport!",
+      'de': "Du kannst mich auch bitten, eine Mahlzeit zu ändern, wenn dir etwas nicht passt 😉\n\nWenn du bereit bist, gehen wir zum Sport über!",
+    },
+    'onboarding_demo_sport_welcome': {
+      'fr': "Super ! Passons au sport maintenant. 💪\n\nDis-moi quel type d'entraînement tu veux (musculation, cardio, full body...) et combien de fois par semaine.",
+      'en': "Great! Let's move to sport now. 💪\n\nTell me what type of training you want (weight training, cardio, full body...) and how many times per week.",
+      'de': "Super! Lass uns jetzt zum Sport übergehen. 💪\n\nSag mir, welche Art von Training du möchtest (Krafttraining, Cardio, Ganzkörper...) und wie oft pro Woche.",
+    },
+    'onboarding_demo_sport_guide_click': {
+      'fr': "Ton programme sport est prêt ! 💪 Clique sur une séance dans le calendrier pour voir les exercices, les séries et les poids suggérés.",
+      'en': "Your sport program is ready! 💪 Click on a session in the calendar to see the exercises, sets, and suggested weights.",
+      'de': "Dein Sportprogramm ist fertig! 💪 Klicke auf eine Einheit im Kalender, um die Übungen, Sätze und vorgeschlagenen Gewichte zu sehen.",
+    },
+    'onboarding_demo_complete': {
+      'fr': "Voilà ta première semaine complète ! 🚀\n\nAbonne-toi pour sauvegarder ton plan et continuer avec Coach Ryze.",
+      'en': "Here's your complete first week! 🚀\n\nSubscribe to save your plan and continue with Coach Ryze.",
+      'de': "Hier ist deine komplette erste Woche! 🚀\n\nAbonniere, um deinen Plan zu speichern und mit Coach Ryze weiterzumachen.",
+    },
+    'onboarding_demo_messages_left': {
+      'fr': 'messages restants',
+      'en': 'messages left',
+      'de': 'Nachrichten übrig',
+    },
+    'hard_paywall_title': {
+      'fr': 'Débloquez votre Coach Personnel',
+      'en': 'Unlock Your Personal Coach',
+      'de': 'Schalte deinen persönlichen Coach frei',
+    },
+    'hard_paywall_subtitle': {
+      'fr': 'Sauvegardez votre plan et accédez à toutes les fonctionnalités',
+      'en': 'Save your plan and access all features',
+      'de': 'Speichere deinen Plan und greife auf alle Funktionen zu',
+    },
   };
 
   /// Getter public pour accéder aux traductions (utilisé par TranslationChecker)

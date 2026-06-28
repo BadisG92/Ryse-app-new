@@ -9,18 +9,17 @@ class GeminiConfig {
   static String get geminiApiKey => EnvConfig.geminiApiKey;
 
   // Gemini API endpoints par usage
-  // - gemini-2.5-flash-lite : scan food, analyse rapide (économique)
-  // - gemini-2.5-flash : planner avec function calling (meilleur raisonnement)
+  // - gemini-3.5-flash : modèle rapide et performant pour tous les usages
 
   /// URL par défaut (scan food, analyses simples)
-  static const String geminiApiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent';
+  static const String geminiApiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent';
 
   /// URL pour le planner (function calling, raisonnement complexe)
-  static const String plannerApiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+  static const String plannerApiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent';
 
   // Model configuration
-  static const String modelName = 'gemini-2.5-flash-lite';
-  static const String plannerModelName = 'gemini-2.5-flash';
+  static const String modelName = 'gemini-3.5-flash';
+  static const String plannerModelName = 'gemini-3.5-flash';
 
   // Generation parameters
   static const double temperature = 0.3; // Lower for more consistent results

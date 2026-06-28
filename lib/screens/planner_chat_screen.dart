@@ -20,10 +20,18 @@ class PlannerChatScreen extends StatefulWidget {
   final String initialMode; // 'meals' ou 'workouts'
   final WeeklyPlannerData weekData;
 
+  // Demo mode (onboarding)
+  final bool demoMode;
+  final int? maxMessages;
+  final void Function(List<PendingMeal> meals, List<PendingWorkout> workouts, List<PendingSession> sessions)? onDemoDataCollected;
+
   const PlannerChatScreen({
     super.key,
     required this.initialMode,
     required this.weekData,
+    this.demoMode = false,
+    this.maxMessages,
+    this.onDemoDataCollected,
   });
 
   @override
@@ -69,11 +77,24 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
   // Undo tracking
   int _undoableMessageIndex = -1;
 
+  // Demo mode tracking
+  int _userMessageCount = 0;
+  final List<PendingMeal> _demoConfirmedMeals = [];
+  final List<PendingWorkout> _demoConfirmedWorkouts = [];
+  final List<PendingSession> _demoConfirmedSessions = [];
+  bool _demoMealsGuided = false;
+  bool _demoSportGuided = false;
+
   @override
   void initState() {
     super.initState();
     _weekData = widget.weekData;
-    _loadFreeUsageStatus();
+    if (widget.demoMode) {
+      // In demo mode, bypass premium checks
+      _isPremium = true;
+    } else {
+      _loadFreeUsageStatus();
+    }
     PlannerAIService.clearHistory();
     _addBotMessage(_getWelcomeMessage());
 
@@ -151,6 +172,14 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
   String _getWelcomeMessage() {
     final locService = LocalizationService.instance;
     final langCode = locService.currentLanguageCode;
+
+    // Demo mode uses specific welcome messages
+    if (widget.demoMode) {
+      if (widget.initialMode == 'meals') {
+        return 'onboarding_demo_meals_welcome'.tr(langCode);
+      }
+      return 'onboarding_demo_sport_welcome'.tr(langCode);
+    }
 
     if (widget.initialMode == 'meals') {
       final messages = {
@@ -237,6 +266,12 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
   Future<void> _handleSend() async {
     final text = _textController.text.trim();
     if (text.isEmpty || _isProcessing) return;
+
+    // Demo mode: check message limit
+    if (widget.demoMode && widget.maxMessages != null) {
+      if (_userMessageCount >= widget.maxMessages!) return;
+      _userMessageCount++;
+    }
 
     _addUserMessage(text);
     _textController.clear();
@@ -352,6 +387,24 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
     setState(() => _isConfirming = true);
 
     try {
+      if (widget.demoMode) {
+        // Demo mode: store in memory, don't save to DB
+        _demoConfirmedWorkouts.addAll(_pendingWorkouts!);
+        final langCode = LocalizationService.instance.currentLanguageCode;
+        final successMsg = 'planner_all_sessions_planned'.tr(langCode);
+        _addBotMessage(successMsg);
+        PlannerAIService.addToHistory('assistant', successMsg);
+        PlannerAIService.clearHistory();
+
+        setState(() {
+          _pendingWorkouts = null;
+        });
+
+        // Send demo guidance message
+        _sendDemoSportGuidance();
+        return;
+      }
+
       final result = await PlannerAIService.confirmWorkouts(_pendingWorkouts!);
 
       _addBotMessage(result.message);
@@ -388,6 +441,44 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
         final mealDate = DateTime(meal.plannedDate.year, meal.plannedDate.month, meal.plannedDate.day);
         return mealDate.isAtSameMomentAs(currentDay);
       }).toList();
+
+      if (widget.demoMode) {
+        // Demo mode: store in memory, don't save to DB
+        _demoConfirmedMeals.addAll(mealsForCurrentDay);
+
+        final remainingMeals = _pendingMeals!.where((meal) {
+          final mealDate = DateTime(meal.plannedDate.year, meal.plannedDate.month, meal.plannedDate.day);
+          return !mealDate.isAtSameMomentAs(currentDay);
+        }).toList();
+
+        if (remainingMeals.isEmpty) {
+          final langCode = LocalizationService.instance.currentLanguageCode;
+          final successMsg = 'planner_all_sessions_planned'.tr(langCode);
+          _addBotMessage(successMsg);
+          PlannerAIService.addToHistory('assistant', successMsg);
+          PlannerAIService.clearHistory();
+          setState(() {
+            _pendingMeals = null;
+            _mealsDays = [];
+            _currentMealsDayIndex = 0;
+            _mealsPageController?.dispose();
+            _mealsPageController = null;
+          });
+
+          // Send demo guidance message
+          _sendDemoMealsGuidance();
+        } else {
+          final remainingDays = _mealsDays.sublist(_currentMealsDayIndex + 1);
+          setState(() {
+            _pendingMeals = remainingMeals;
+            _mealsDays = remainingDays;
+            _currentMealsDayIndex = 0;
+            _mealsPageController?.dispose();
+            _mealsPageController = PageController(initialPage: 0);
+          });
+        }
+        return;
+      }
 
       final result = await PlannerAIService.confirmMeals(mealsForCurrentDay);
 
@@ -556,6 +647,46 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
     );
   }
 
+  /// Demo mode: send guidance messages after meals are confirmed
+  void _sendDemoMealsGuidance() {
+    if (_demoMealsGuided) return;
+    _demoMealsGuided = true;
+    final langCode = LocalizationService.instance.currentLanguageCode;
+
+    Future.delayed(const Duration(milliseconds: 800), () {
+      if (mounted) {
+        _addBotMessage('onboarding_demo_meals_guide_click'.tr(langCode));
+      }
+    });
+    Future.delayed(const Duration(milliseconds: 3000), () {
+      if (mounted) {
+        _addBotMessage('onboarding_demo_meals_guide_modify'.tr(langCode));
+      }
+    });
+  }
+
+  /// Demo mode: send guidance messages after sport sessions are confirmed
+  void _sendDemoSportGuidance() {
+    if (_demoSportGuided) return;
+    _demoSportGuided = true;
+    final langCode = LocalizationService.instance.currentLanguageCode;
+
+    Future.delayed(const Duration(milliseconds: 800), () {
+      if (mounted) {
+        _addBotMessage('onboarding_demo_sport_guide_click'.tr(langCode));
+      }
+    });
+  }
+
+  /// Demo mode: collect all data and call callback
+  void _collectDemoData() {
+    widget.onDemoDataCollected?.call(
+      _demoConfirmedMeals,
+      _demoConfirmedWorkouts,
+      _demoConfirmedSessions,
+    );
+  }
+
   String _getErrorMessage() {
     final langCode = LocalizationService.instance.currentLanguageCode;
     final messages = {
@@ -606,78 +737,96 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
     final langCode = locService.currentLanguageCode;
     final keyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
 
+    final scaffold = Scaffold(
+      backgroundColor: Colors.white,
+      resizeToAvoidBottomInset: true,
+      appBar: _buildAppBar(langCode),
+      body: Column(
+        children: [
+          // Calendrier fixe en haut
+          _buildCalendarSection(langCode),
+
+          // Divider
+          const Divider(height: 1, color: Color(0xFFE2E8F0)),
+
+          // Chat (prend tout l'espace restant)
+          Expanded(
+            child: _buildChatSection(langCode),
+          ),
+
+          // Quick suggestions (au début, pas de clavier, pas de preview)
+          if (_messages.length <= 1 && !keyboardVisible && _pendingWorkouts == null && _pendingMeals == null && _pendingSessions == null && !_showPaywallButton)
+            _buildQuickSuggestions(langCode),
+
+          // Preview des workouts générés (ancien mode)
+          if (_pendingWorkouts != null && _pendingWorkouts!.isNotEmpty)
+            _buildWorkoutPreview(langCode),
+
+          // Preview des repas générés
+          if (_pendingMeals != null && _pendingMeals!.isNotEmpty)
+            _buildMealsPreview(langCode),
+
+          // NOUVEAU: Preview des sessions paginé (workouts + cardio)
+          if (_pendingSessions != null && _pendingSessions!.isNotEmpty)
+            _buildSessionsPreview(langCode),
+
+          // Zone du bas selon l'état
+          if (_showPaywallButton && !widget.demoMode)
+            _buildPaywallButton(langCode)
+          else if (_pendingSessions != null && _pendingSessions!.isNotEmpty)
+            _buildSessionsPreviewButtons(langCode)
+          else if (_pendingWorkouts != null && _pendingWorkouts!.isNotEmpty)
+            _buildPreviewButtons(langCode)
+          else if (_pendingMeals != null && _pendingMeals!.isNotEmpty)
+            _buildMealsPreviewButtons(langCode)
+          else if (widget.demoMode && widget.maxMessages != null && _userMessageCount >= widget.maxMessages!)
+            _buildDemoLimitReached(langCode)
+          else
+            _buildInputZone(langCode),
+
+          // Demo mode: action buttons (switch to sport / finish)
+          if (widget.demoMode && _pendingWorkouts == null && _pendingMeals == null && _pendingSessions == null)
+            _buildDemoActionBar(langCode),
+        ],
+      ),
+    );
+
+    if (widget.demoMode) {
+      return scaffold;
+    }
+
     return Hero(
       tag: 'weekly_planner_hero',
       flightShuttleBuilder: (flightContext, animation, flightDirection, fromHeroContext, toHeroContext) {
-        // Pendant l'animation, afficher juste un container blanc pour éviter l'overflow
         return Material(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           child: const SizedBox.expand(),
         );
       },
-      child: Scaffold(
-        backgroundColor: Colors.white,
-        resizeToAvoidBottomInset: true,
-        appBar: _buildAppBar(langCode),
-        body: Column(
-          children: [
-            // Calendrier fixe en haut
-            _buildCalendarSection(langCode),
-
-            // Divider
-            const Divider(height: 1, color: Color(0xFFE2E8F0)),
-
-            // Chat (prend tout l'espace restant)
-            Expanded(
-              child: _buildChatSection(langCode),
-            ),
-
-            // Quick suggestions (au début, pas de clavier, pas de preview)
-            if (_messages.length <= 1 && !keyboardVisible && _pendingWorkouts == null && _pendingMeals == null && _pendingSessions == null && !_showPaywallButton)
-              _buildQuickSuggestions(langCode),
-
-            // Preview des workouts générés (ancien mode)
-            if (_pendingWorkouts != null && _pendingWorkouts!.isNotEmpty)
-              _buildWorkoutPreview(langCode),
-
-            // Preview des repas générés
-            if (_pendingMeals != null && _pendingMeals!.isNotEmpty)
-              _buildMealsPreview(langCode),
-
-            // NOUVEAU: Preview des sessions paginé (workouts + cardio)
-            if (_pendingSessions != null && _pendingSessions!.isNotEmpty)
-              _buildSessionsPreview(langCode),
-
-            // Zone du bas selon l'état
-            if (_showPaywallButton)
-              _buildPaywallButton(langCode)
-            else if (_pendingSessions != null && _pendingSessions!.isNotEmpty)
-              _buildSessionsPreviewButtons(langCode)
-            else if (_pendingWorkouts != null && _pendingWorkouts!.isNotEmpty)
-              _buildPreviewButtons(langCode)
-            else if (_pendingMeals != null && _pendingMeals!.isNotEmpty)
-              _buildMealsPreviewButtons(langCode)
-            else
-              _buildInputZone(langCode),
-          ],
-        ),
-      ),
+      child: scaffold,
     );
   }
 
   PreferredSizeWidget _buildAppBar(String langCode) {
-    final title = widget.initialMode == 'meals'
-        ? 'plan_my_meals'.tr(langCode)
-        : 'plan_my_workouts'.tr(langCode);
+    final title = widget.demoMode
+        ? (widget.initialMode == 'meals'
+            ? 'onboarding_demo_meals_title'.tr(langCode)
+            : 'onboarding_demo_sport_title'.tr(langCode))
+        : (widget.initialMode == 'meals'
+            ? 'plan_my_meals'.tr(langCode)
+            : 'plan_my_workouts'.tr(langCode));
 
     return AppBar(
       backgroundColor: Colors.white,
       elevation: 0,
-      leading: IconButton(
-        onPressed: () => Navigator.pop(context),
-        icon: const Icon(LucideIcons.chevronLeft, color: Color(0xFF0B132B)),
-      ),
+      leading: widget.demoMode
+          ? null
+          : IconButton(
+              onPressed: () => Navigator.pop(context),
+              icon: const Icon(LucideIcons.chevronLeft, color: Color(0xFF0B132B)),
+            ),
+      automaticallyImplyLeading: !widget.demoMode,
       title: Row(
         children: [
           ClipRRect(
@@ -703,7 +852,9 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
               ),
               Text(
                 _isPremium
-                    ? 'planner_ai_subtitle'.tr(langCode)
+                    ? (widget.demoMode && widget.maxMessages != null
+                        ? '${widget.maxMessages! - _userMessageCount} ${'onboarding_demo_messages_left'.tr(langCode)}'
+                        : 'planner_ai_subtitle'.tr(langCode))
                     : _isTestMode
                         ? 'Mode test'
                         : _getRemainingUsesText(langCode),
@@ -2156,6 +2307,51 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
     setState(() => _isConfirming = true);
 
     try {
+      if (widget.demoMode) {
+        // Demo mode: store in memory
+        _demoConfirmedSessions.add(session);
+        final remaining = List<PendingSession>.from(_pendingSessions!);
+        remaining.removeAt(_currentSessionIndex);
+
+        if (remaining.isEmpty) {
+          final langCode = LocalizationService.instance.currentLanguageCode;
+          final successMessage = 'planner_all_sessions_planned'.tr(langCode);
+          _addBotMessage(successMessage);
+          PlannerAIService.addToHistory('assistant', successMessage);
+          PlannerAIService.clearHistory();
+
+          setState(() {
+            _pendingSessions = null;
+            _currentSessionIndex = 0;
+            _sessionsPageController?.dispose();
+            _sessionsPageController = null;
+          });
+
+          // Send demo guidance
+          if (widget.initialMode == 'meals') {
+            _sendDemoMealsGuidance();
+          } else {
+            _sendDemoSportGuidance();
+          }
+        } else {
+          setState(() {
+            _pendingSessions = remaining;
+            if (_currentSessionIndex >= remaining.length) {
+              _currentSessionIndex = remaining.length - 1;
+            }
+          });
+
+          final langCode = LocalizationService.instance.currentLanguageCode;
+          final partialMsg = {
+            'fr': 'Session confirmée ! Passons à la suivante.',
+            'en': 'Session confirmed! Let\'s move to the next one.',
+            'de': 'Einheit bestätigt! Weiter zur nächsten.',
+          };
+          _addBotMessage(partialMsg[langCode] ?? partialMsg['en']!);
+        }
+        return;
+      }
+
       final result = await PlannerAIService.confirmSingleSession(session);
 
       if (result.success) {
@@ -2205,6 +2401,101 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
         setState(() => _isConfirming = false);
       }
     }
+  }
+
+  Widget _buildDemoActionBar(String langCode) {
+    // Only show after at least one message exchange
+    if (_userMessageCount == 0) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Row(
+          children: [
+            // Skip button
+            TextButton(
+              onPressed: () {
+                _collectDemoData();
+                Navigator.pop(context);
+              },
+              child: Text(
+                'onboarding_demo_skip'.tr(langCode),
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF94A3B8),
+                ),
+              ),
+            ),
+            const Spacer(),
+            // Main action button
+            ElevatedButton.icon(
+              onPressed: () {
+                _collectDemoData();
+                Navigator.pop(context);
+              },
+              icon: Icon(
+                widget.initialMode == 'meals' ? LucideIcons.dumbbell : LucideIcons.check,
+                size: 18,
+              ),
+              label: Text(
+                widget.initialMode == 'meals'
+                    ? 'onboarding_demo_switch_to_sport'.tr(langCode)
+                    : 'onboarding_demo_finish'.tr(langCode),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: widget.initialMode == 'meals'
+                    ? const Color(0xFF3B82F6)
+                    : const Color(0xFF10B981),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDemoLimitReached(String langCode) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
+      ),
+      child: SafeArea(
+        top: false,
+        child: ElevatedButton.icon(
+          onPressed: () {
+            _collectDemoData();
+            Navigator.pop(context);
+          },
+          icon: Icon(
+            widget.initialMode == 'meals' ? LucideIcons.dumbbell : LucideIcons.check,
+            size: 18,
+          ),
+          label: Text(
+            widget.initialMode == 'meals'
+                ? 'onboarding_demo_switch_to_sport'.tr(langCode)
+                : 'onboarding_demo_finish'.tr(langCode),
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: widget.initialMode == 'meals'
+                ? const Color(0xFF3B82F6)
+                : const Color(0xFF10B981),
+            foregroundColor: Colors.white,
+            minimumSize: const Size(double.infinity, 50),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildPaywallButton(String langCode) {

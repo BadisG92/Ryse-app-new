@@ -17,6 +17,8 @@ class PaywallScreen extends StatefulWidget {
   final String? customTitle;
   final String? customMessage;
   final VoidCallback? onDismiss; // Appelé quand le paywall est fermé (peu importe la raison)
+  final bool isHardPaywall; // If true, no close button / maybe later
+  final Future<void> Function()? onPurchaseSuccess; // Called after successful purchase (before dismiss)
 
   const PaywallScreen({
     Key? key,
@@ -24,6 +26,8 @@ class PaywallScreen extends StatefulWidget {
     this.customTitle,
     this.customMessage,
     this.onDismiss,
+    this.isHardPaywall = false,
+    this.onPurchaseSuccess,
   }) : super(key: key);
 
   @override
@@ -198,10 +202,12 @@ class _PaywallScreenState extends State<PaywallScreen>
     // Staggered animation sequence
     _startAnimationSequence();
 
-    // Close button delay (added 1s for animations)
-    Future.delayed(const Duration(seconds: 6), () {
-      if (mounted) setState(() => _showCloseButton = true);
-    });
+    // Close button delay (added 1s for animations) - hidden for hard paywall
+    if (!widget.isHardPaywall) {
+      Future.delayed(const Duration(seconds: 6), () {
+        if (mounted) setState(() => _showCloseButton = true);
+      });
+    }
 
     // Haptic feedback
     HapticService.instance.mediumImpact();
@@ -321,7 +327,11 @@ class _PaywallScreenState extends State<PaywallScreen>
       if (customerInfo != null && mounted) {
         // Purchase successful
         HapticService.instance.heavyImpact();
-        _dismissPaywall(); // Ferme le paywall (appelle onDismiss si fourni)
+        if (widget.onPurchaseSuccess != null) {
+          await widget.onPurchaseSuccess!();
+        } else {
+          _dismissPaywall();
+        }
       }
     } on PlatformException catch (e) {
       debugPrint('❌ Purchase error: ${e.code} - ${e.message}');
@@ -411,7 +421,7 @@ class _PaywallScreenState extends State<PaywallScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<LocalizationService>(
+    Widget content = Consumer<LocalizationService>(
       builder: (context, locService, _) {
         final languageCode = locService.currentLanguageCode;
         final isFrench = languageCode == 'fr';
@@ -426,6 +436,16 @@ class _PaywallScreenState extends State<PaywallScreen>
         return _buildPaywallContent(context, isFrench, isGerman, languageCode, avatarType, benefits, title, bubbleText);
       },
     );
+
+    // Hard paywall: block back button
+    if (widget.isHardPaywall) {
+      content = PopScope(
+        canPop: false,
+        child: content,
+      );
+    }
+
+    return content;
   }
 
   Widget _buildPaywallContent(
@@ -638,6 +658,11 @@ class _PaywallScreenState extends State<PaywallScreen>
   }
 
   Widget _buildCloseButton() {
+    // Hard paywall: no close button
+    if (widget.isHardPaywall) {
+      return const SizedBox.shrink();
+    }
+
     return IconButton(
       onPressed: () {
         HapticService.instance.lightImpact();
@@ -1224,6 +1249,11 @@ class _PaywallScreenState extends State<PaywallScreen>
   }
 
   Widget _buildSkipButton(bool isFrench, bool isGerman) {
+    // Hard paywall: no skip button at all
+    if (widget.isHardPaywall) {
+      return const SizedBox(height: 16);
+    }
+
     // "Maybe later" button - delayed appearance (6 seconds)
     return AnimatedOpacity(
       opacity: _showCloseButton ? 1.0 : 0.0,
@@ -1318,7 +1348,11 @@ class _PaywallScreenState extends State<PaywallScreen>
               backgroundColor: const Color(0xFF10B981),
             ),
           );
-          _dismissPaywall(); // Ferme le paywall (appelle onDismiss si fourni)
+          if (widget.onPurchaseSuccess != null) {
+            await widget.onPurchaseSuccess!();
+          } else {
+            _dismissPaywall();
+          }
         } else {
           // No purchases found
           ScaffoldMessenger.of(context).showSnackBar(

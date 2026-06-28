@@ -2560,56 +2560,15 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                             }
                           }
 
-                          // Navigation DIRECTE vers Paywall depuis ce widget (context valide)
+                          // Transition vers la démo planner (via onComplete)
                           if (!mounted) return;
-                          debugPrint('🚀 Navigation directe vers PaywallScreen...');
-
-                          Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
-                            MaterialPageRoute(
-                              builder: (ctx) => PaywallScreen(
-                                context: PaywallContext.genericUpgrade,
-                                customTitle: 'Débloquez Coach Ryze Premium',
-                                customMessage: 'Profitez de 3 jours d\'essai gratuit',
-                                onDismiss: () {
-                                  debugPrint('🏠 Paywall fermé → Navigation vers MainApp');
-                                  Navigator.of(ctx, rootNavigator: true).pushAndRemoveUntil(
-                                    MaterialPageRoute(builder: (_) => const MainApp()),
-                                    (route) => false,
-                                  );
-                                },
-                              ),
-                            ),
-                            (route) => false,
-                          );
+                          debugPrint('🚀 Transition vers la démo planner...');
+                          widget.onComplete();
                         } catch (e) {
                           debugPrint('❌ Erreur onboarding: $e');
-                          // En cas d'erreur, permettre de continuer vers MainApp
                           if (mounted) {
-                            showDialog(
-                              context: context,
-                              barrierDismissible: false,
-                              builder: (dialogContext) => AlertDialog(
-                                title: const Text('Erreur de sauvegarde'),
-                                content: Text(
-                                  'Impossible de sauvegarder vos données dans le cloud.\n\n'
-                                  'Vos informations sont sauvegardées localement.\n\n'
-                                  'Erreur: $e'
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () {
-                                      Navigator.of(dialogContext).pop();
-                                      // Aller directement vers MainApp
-                                      Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
-                                        MaterialPageRoute(builder: (_) => const MainApp()),
-                                        (route) => false,
-                                      );
-                                    },
-                                    child: const Text('Continuer'),
-                                  ),
-                                ],
-                              ),
-                            );
+                            // En cas d'erreur, continuer quand même
+                            widget.onComplete();
                           }
                         }
                       },
@@ -2618,16 +2577,16 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           const Icon(
-                            LucideIcons.rocket,
+                            LucideIcons.calendar,
                             size: 24,
                             color: Colors.white,
                           ),
                           const SizedBox(width: 12),
                           Consumer<LocalizationService>(
                             builder: (context, locService, _) => Text(
-                              'start_journey'.tr(locService.currentLanguageCode),
+                              'onboarding_plan_first_week'.tr(locService.currentLanguageCode),
                               style: const TextStyle(
-                                fontSize: 18,
+                                fontSize: 17,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.white,
                               ),

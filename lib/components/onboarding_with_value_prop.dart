@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'ui/video_welcome_screen.dart';
 import 'ui/onboarding_video_screen.dart';
 import 'onboarding_gamified_hybrid.dart';
+import 'onboarding_planner_demo.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/onboarding_chat_screen.dart';
 import '../screens/weekly_contract_screen.dart';
@@ -10,7 +11,7 @@ import '../screens/weekly_contract_screen.dart';
 /// Widget qui encapsule Video Welcome + Onboarding
 /// Flow:
 /// - Non connecté: Video Welcome → Login/Signup
-/// - Connecté mais pas onboardé: Video Welcome → Video Onboarding → Onboarding IA → Contract → Onboarding classique
+/// - Connecté mais pas onboardé: Video Welcome → Video Onboarding → Onboarding IA → Contract → Onboarding classique → Planner Demo
 class OnboardingWithValueProp extends StatefulWidget {
   final VoidCallback onComplete;
   final bool showValuePropFirst;
@@ -30,7 +31,7 @@ class OnboardingWithValueProp extends StatefulWidget {
 }
 
 class _OnboardingWithValuePropState extends State<OnboardingWithValueProp> {
-  // 0: Video Welcome, 1: Video Onboarding, 2: Onboarding IA, 3: Contract/Pacte, 4: Onboarding classique
+  // 0: Video Welcome, 1: Video Onboarding, 2: Onboarding IA, 3: Contract/Pacte, 4: Onboarding classique, 5: Planner Demo
   int _currentStep = 0;
 
   @override
@@ -98,6 +99,15 @@ class _OnboardingWithValuePropState extends State<OnboardingWithValueProp> {
     }
   }
 
+  /// Callback quand le questionnaire est terminé → passer à la démo planner
+  void _onQuestionnaireComplete() {
+    if (mounted) {
+      setState(() {
+        _currentStep = 5; // Passer à la démo planner
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     switch (_currentStep) {
@@ -123,9 +133,14 @@ class _OnboardingWithValuePropState extends State<OnboardingWithValueProp> {
           onSkip: _onContractComplete, // Skip va aussi à l'étape suivante
         );
       case 4:
-      default:
-        // Onboarding classique (questions)
+        // Onboarding classique (questions) → transitions vers planner demo
         return OnboardingGamifiedHybrid(
+          onComplete: _onQuestionnaireComplete,
+        );
+      case 5:
+      default:
+        // Démo planner (meals → sport → hard paywall)
+        return OnboardingPlannerDemo(
           onComplete: widget.onComplete,
         );
     }
