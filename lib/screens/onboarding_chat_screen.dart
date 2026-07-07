@@ -107,7 +107,7 @@ class _OnboardingChatScreenState extends State<OnboardingChatScreen>
         temperature: 0.85,
         topK: 40,
         topP: 0.9,
-        maxOutputTokens: 120, // Reduced to force shorter responses
+        maxOutputTokens: 150, // Short responses for conversational chat
       ),
     );
 

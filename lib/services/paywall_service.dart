@@ -19,6 +19,7 @@ enum PaywallContext {
 
   // Contexte générique
   genericUpgrade,       // Upgrade générique (avatar sans tenue)
+  onboarding,           // Hard paywall après la démo onboarding
 }
 
 /// Service pour gérer l'affichage des paywalls
@@ -114,6 +115,9 @@ class PaywallService {
 
       case PaywallContext.genericUpgrade:
         return CoachRyzeAvatarType.workout; // Avatar sans tenue spéciale
+
+      case PaywallContext.onboarding:
+        return CoachRyzeAvatarType.workout;
     }
   }
 
@@ -136,6 +140,8 @@ class PaywallService {
         return 'paywall_title_planner';
       case PaywallContext.genericUpgrade:
         return 'paywall_title_generic';
+      case PaywallContext.onboarding:
+        return 'paywall_title_onboarding';
     }
   }
 
@@ -518,6 +524,50 @@ class PaywallService {
           },
         ];
 
+      case PaywallContext.onboarding:
+        return [
+          {
+            'icon': '📋',
+            'text': isGerman
+                ? 'Dein Mahlzeiten- & Trainingsplan der Woche wartet auf dich'
+                : isFrench
+                    ? 'Ton plan repas + entraînements de la semaine t\'attend'
+                    : 'Your weekly meal + workout plan is waiting for you',
+          },
+          {
+            'icon': '📸',
+            'text': isGerman
+                ? 'Scanne jedes Gericht in 2 Sekunden — Kalorien und Makros sofort'
+                : isFrench
+                    ? 'Scanne tes repas en 2 secondes pour suivre tes macros'
+                    : 'Scan your meals in 2 seconds to track your macros',
+          },
+          {
+            'icon': '🔄',
+            'text': isGerman
+                ? 'Jede Woche ein neues Programm, angepasst an deine Fortschritte'
+                : isFrench
+                    ? 'Chaque semaine, un nouveau programme adapté à tes progrès'
+                    : 'Every week, a new program adapted to your progress',
+          },
+          {
+            'icon': '💬',
+            'text': isGerman
+                ? 'Coach Ryze 24/7 verfügbar, um deinen Plan anzupassen'
+                : isFrench
+                    ? 'Coach Ryze disponible 24/7 pour ajuster ton plan'
+                    : 'Coach Ryze available 24/7 to adjust your plan',
+          },
+          {
+            'icon': '🎯',
+            'text': isGerman
+                ? 'Athleten, die planen, erreichen ihre Ziele 2x schneller'
+                : isFrench
+                    ? 'Les athlètes qui planifient atteignent leurs objectifs 2x plus vite'
+                    : 'Athletes who plan reach their goals 2x faster',
+          },
+        ];
+
       default:
         // Benefices generiques (5 points)
         return [
@@ -584,6 +634,8 @@ class PaywallService {
         return 'paywall_bubble_planner';
       case PaywallContext.genericUpgrade:
         return 'paywall_bubble_generic';
+      case PaywallContext.onboarding:
+        return 'paywall_bubble_onboarding';
     }
   }
 
@@ -715,6 +767,20 @@ class PaywallService {
                   ? 'Débloque toutes les fonctionnalités Premium et atteins tes objectifs plus rapidement.'
                   : 'Unlock all Premium features and reach your goals faster.',
         };
+
+      case PaywallContext.onboarding:
+        return {
+          'title': isGerman
+              ? '✨ Dein Programm ist fertig'
+              : isFrench
+                  ? '✨ Ton programme est prêt'
+                  : '✨ Your program is ready',
+          'message': isGerman
+              ? 'Aktiviere deinen personalisierten Plan und starte noch heute.'
+              : isFrench
+                  ? 'Active ton plan personnalisé et commence dès aujourd\'hui.'
+                  : 'Activate your personalized plan and start today.',
+        };
     }
   }
 
@@ -741,6 +807,8 @@ class PaywallService {
         return FeatureTrialService.keyPlanner;
       case PaywallContext.genericUpgrade:
         return ''; // Pas de trial pour générique
+      case PaywallContext.onboarding:
+        return ''; // Hard paywall, pas de trial
     }
   }
 

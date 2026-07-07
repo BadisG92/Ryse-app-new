@@ -56,7 +56,7 @@ class CoachChatService {
         temperature: 0.8, // More creative for conversational tone
         topK: 40,
         topP: 0.95,
-        maxOutputTokens: 400, // Shorter responses (~150 words max)
+        maxOutputTokens: 400, // Short responses for conversational coach
       ),
     );
 

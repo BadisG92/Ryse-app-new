@@ -92,6 +92,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
     if (widget.demoMode) {
       // In demo mode, bypass premium checks
       _isPremium = true;
+      PlannerAIService.setDemoMode(true);
     } else {
       _loadFreeUsageStatus();
     }
@@ -131,8 +132,64 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
     }
   }
 
+  void _addMealsToWeekDataLocally(List<PendingMeal> meals) {
+    final newActivities = List<PlannedActivity>.from(_weekData.activities);
+    for (final meal in meals) {
+      newActivities.add(PlannedActivity(
+        id: 'demo_meal_${DateTime.now().millisecondsSinceEpoch}_${newActivities.length}',
+        userId: '',
+        plannedDate: meal.plannedDate,
+        activityType: meal.mealType,
+        activityData: meal.toActivityData(),
+        status: PlannedStatus.planned,
+        isAiGenerated: true,
+        createdAt: DateTime.now(),
+      ));
+    }
+    setState(() {
+      _weekData = WeeklyPlannerData.fromLists(
+        weekStart: _weekData.weekStart,
+        activities: newActivities,
+        workouts: _weekData.workouts.toList(),
+      );
+    });
+  }
+
+  void _addWorkoutsToWeekDataLocally(List<PendingWorkout> workouts) {
+    final newWorkouts = List<PlannedWorkout>.from(_weekData.workouts);
+    for (final w in workouts) {
+      newWorkouts.add(w.toPlannedWorkout());
+    }
+    setState(() {
+      _weekData = WeeklyPlannerData.fromLists(
+        weekStart: _weekData.weekStart,
+        activities: _weekData.activities.toList(),
+        workouts: newWorkouts,
+      );
+    });
+  }
+
+  void _addSessionToWeekDataLocally(PendingSession session) {
+    if (session.isWorkout && session.workout != null) {
+      _addWorkoutsToWeekDataLocally([session.workout!]);
+    } else if (session.isCardio && session.cardio != null) {
+      final newActivities = List<PlannedActivity>.from(_weekData.activities);
+      newActivities.add(session.cardio!.toPlannedActivity());
+      setState(() {
+        _weekData = WeeklyPlannerData.fromLists(
+          weekStart: _weekData.weekStart,
+          activities: newActivities,
+          workouts: _weekData.workouts.toList(),
+        );
+      });
+    }
+  }
+
   @override
   void dispose() {
+    if (widget.demoMode) {
+      PlannerAIService.setDemoMode(false);
+    }
     _textController.dispose();
     _focusNode.dispose();
     _chatScrollController.dispose();
@@ -390,6 +447,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
       if (widget.demoMode) {
         // Demo mode: store in memory, don't save to DB
         _demoConfirmedWorkouts.addAll(_pendingWorkouts!);
+        _addWorkoutsToWeekDataLocally(_pendingWorkouts!);
         final langCode = LocalizationService.instance.currentLanguageCode;
         final successMsg = 'planner_all_sessions_planned'.tr(langCode);
         _addBotMessage(successMsg);
@@ -445,6 +503,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
       if (widget.demoMode) {
         // Demo mode: store in memory, don't save to DB
         _demoConfirmedMeals.addAll(mealsForCurrentDay);
+        _addMealsToWeekDataLocally(mealsForCurrentDay);
 
         final remainingMeals = _pendingMeals!.where((meal) {
           final mealDate = DateTime(meal.plannedDate.year, meal.plannedDate.month, meal.plannedDate.day);
@@ -453,7 +512,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
 
         if (remainingMeals.isEmpty) {
           final langCode = LocalizationService.instance.currentLanguageCode;
-          final successMsg = 'planner_all_sessions_planned'.tr(langCode);
+          final successMsg = 'planner_all_meals_planned'.tr(langCode);
           _addBotMessage(successMsg);
           PlannerAIService.addToHistory('assistant', successMsg);
           PlannerAIService.clearHistory();
@@ -974,6 +1033,31 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
     );
   }
 
+  TextSpan _parseMarkdownBold(String text, Color color) {
+    final regex = RegExp(r'\*\*(.+?)\*\*');
+    final spans = <InlineSpan>[];
+    int lastEnd = 0;
+
+    for (final match in regex.allMatches(text)) {
+      if (match.start > lastEnd) {
+        spans.add(TextSpan(text: text.substring(lastEnd, match.start)));
+      }
+      spans.add(TextSpan(
+        text: match.group(1),
+        style: const TextStyle(fontWeight: FontWeight.w700),
+      ));
+      lastEnd = match.end;
+    }
+    if (lastEnd < text.length) {
+      spans.add(TextSpan(text: text.substring(lastEnd)));
+    }
+
+    return TextSpan(
+      style: TextStyle(fontSize: 14, color: color, height: 1.4),
+      children: spans,
+    );
+  }
+
   Widget _buildMessageBubble(_ChatMessage message, int index) {
     final bool canUndo = message.isUndoable && index == _undoableMessageIndex;
 
@@ -1032,12 +1116,10 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      message.text,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: message.isUser ? Colors.white : const Color(0xFF0B132B),
-                        height: 1.4,
+                    RichText(
+                      text: _parseMarkdownBold(
+                        message.text,
+                        message.isUser ? Colors.white : const Color(0xFF0B132B),
                       ),
                     ),
                     if (message.actions != null && message.actions!.isNotEmpty) ...[
@@ -2310,6 +2392,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
       if (widget.demoMode) {
         // Demo mode: store in memory
         _demoConfirmedSessions.add(session);
+        _addSessionToWeekDataLocally(session);
         final remaining = List<PendingSession>.from(_pendingSessions!);
         remaining.removeAt(_currentSessionIndex);
 
@@ -2419,10 +2502,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
           children: [
             // Skip button
             TextButton(
-              onPressed: () {
-                _collectDemoData();
-                Navigator.pop(context);
-              },
+              onPressed: _collectDemoData,
               child: Text(
                 'onboarding_demo_skip'.tr(langCode),
                 style: const TextStyle(
@@ -2434,10 +2514,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
             const Spacer(),
             // Main action button
             ElevatedButton.icon(
-              onPressed: () {
-                _collectDemoData();
-                Navigator.pop(context);
-              },
+              onPressed: _collectDemoData,
               icon: Icon(
                 widget.initialMode == 'meals' ? LucideIcons.dumbbell : LucideIcons.check,
                 size: 18,
@@ -2472,10 +2549,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
       child: SafeArea(
         top: false,
         child: ElevatedButton.icon(
-          onPressed: () {
-            _collectDemoData();
-            Navigator.pop(context);
-          },
+          onPressed: _collectDemoData,
           icon: Icon(
             widget.initialMode == 'meals' ? LucideIcons.dumbbell : LucideIcons.check,
             size: 18,

@@ -1145,6 +1145,9 @@ class _PaywallScreenState extends State<PaywallScreen>
 
       case PaywallContext.planner:
         return [const Color(0xFFFFD700), const Color(0xFFFFA500)]; // Gold to Orange (same as trial badge)
+
+      case PaywallContext.onboarding:
+        return [const Color(0xFFFFD700), const Color(0xFFFFA500)]; // Gold to Orange
     }
   }
 

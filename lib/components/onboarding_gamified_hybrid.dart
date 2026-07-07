@@ -537,17 +537,17 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
     Color color;
 
     if (bmi < 18.5) {
-      name = langCode == 'fr' ? 'Insuffisant' : (langCode == 'de' ? 'Untergewicht' : 'Underweight');
-      color = const Color(0xFF64748B); // Slate (neutral)
+      name = langCode == 'fr' ? 'Léger' : (langCode == 'de' ? 'Leicht' : 'Light');
+      color = const Color(0xFF94A3B8); // Soft slate
     } else if (bmi < 25) {
-      name = langCode == 'fr' ? 'Normal' : (langCode == 'de' ? 'Normal' : 'Normal');
-      color = const Color(0xFF22C55E); // Green
+      name = langCode == 'fr' ? 'Équilibré' : (langCode == 'de' ? 'Ausgeglichen' : 'Balanced');
+      color = const Color(0xFF10B981); // Soft green
     } else if (bmi < 30) {
-      name = langCode == 'fr' ? 'Surpoids' : (langCode == 'de' ? 'Übergewicht' : 'Overweight');
-      color = const Color(0xFFF97316); // Orange
+      name = langCode == 'fr' ? 'Au-dessus' : (langCode == 'de' ? 'Darüber' : 'Above');
+      color = const Color(0xFFF59E0B); // Soft amber
     } else {
-      name = langCode == 'fr' ? 'Obésité' : (langCode == 'de' ? 'Fettleibigkeit' : 'Obese');
-      color = const Color(0xFFEF4444); // Red
+      name = langCode == 'fr' ? 'Élevé' : (langCode == 'de' ? 'Hoch' : 'High');
+      color = const Color(0xFFF97316); // Soft orange (instead of red)
     }
 
     // Calculate position on bar (BMI 15-40 range mapped to 0-1)
@@ -632,10 +632,10 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                 borderRadius: BorderRadius.circular(6),
                 gradient: const LinearGradient(
                   colors: [
-                    Color(0xFF64748B), // Slate - Underweight
-                    Color(0xFF22C55E), // Green - Normal
-                    Color(0xFFF97316), // Orange - Overweight
-                    Color(0xFFEF4444), // Red - Obese
+                    Color(0xFF94A3B8), // Soft slate - Light
+                    Color(0xFF10B981), // Soft green - Balanced
+                    Color(0xFFF59E0B), // Soft amber - Above
+                    Color(0xFFF97316), // Soft orange - High
                   ],
                   stops: [0.0, 0.35, 0.6, 1.0],
                 ),
@@ -1280,6 +1280,19 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                       bmi: currentBMI,
                       langCode: languageCode,
                     ),
+                    const SizedBox(height: 6),
+                    Text(
+                      isGerman
+                          ? 'Richtwert — berücksichtigt nicht die Muskelmasse'
+                          : (isFrench
+                              ? 'Indicatif — ne prend pas en compte la masse musculaire'
+                              : 'Indicative — does not account for muscle mass'),
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontStyle: FontStyle.italic,
+                        color: Colors.grey.shade400,
+                      ),
+                    ),
                   ],
                 );
               },
@@ -1345,27 +1358,28 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                   ),
                 ],
               ),
-              // ====== TARGET BMI INDICATOR (after target weight) ======
+              // ====== ENCOURAGEMENT MESSAGE (after target weight) ======
               Builder(
                 builder: (context) {
-                  final bmiValues = _getBMIValues();
-                  final heightCm = bmiValues['heightCm'];
-                  final targetWeightKg = bmiValues['targetWeightKg'];
-                  final targetBMI = _calculateBMI(heightCm, targetWeightKg);
-
-                  if (targetBMI == null) {
+                  final targetWeight = userData['targetWeight'];
+                  if (targetWeight == null || targetWeight.toString().isEmpty) {
                     return const SizedBox.shrink();
                   }
 
-                  return Column(
-                    children: [
-                      const SizedBox(height: 24),
-                      _buildBMIIndicator(
-                        label: isGerman ? 'Ziel-BMI' : (isFrench ? 'IMC objectif' : 'Target BMI'),
-                        bmi: targetBMI,
-                        langCode: languageCode,
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 16),
+                    child: Text(
+                      isGerman
+                          ? 'Tolles Ziel — gemeinsam schaffen wir das.'
+                          : (isFrench
+                              ? 'Super objectif — on va y arriver ensemble.'
+                              : 'Great goal — we\'ll get there together.'),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF64748B),
                       ),
-                    ],
+                    ),
                   );
                 },
               ),
@@ -2401,88 +2415,84 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
         ),
         child: SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             child: Column(
               children: [
                 // En-tête Coach Ryze avec panda félicitations
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      // Bulle + nom Coach Ryze à GAUCHE (augmenté en largeur)
-                      Expanded(
-                        flex: 3,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            // Nom "Coach Ryze" au-dessus de la bulle
-                            const Padding(
-                              padding: EdgeInsets.only(left: 8, bottom: 6),
-                              child: Text(
-                                'Coach Ryze',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF64748B),
-                                  letterSpacing: 0.5,
-                                ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // Bulle + nom Coach Ryze à GAUCHE
+                    Expanded(
+                      flex: 3,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Nom "Coach Ryze" au-dessus de la bulle
+                          const Padding(
+                            padding: EdgeInsets.only(left: 8, bottom: 4),
+                            child: Text(
+                              'Coach Ryze',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF64748B),
+                                letterSpacing: 0.5,
                               ),
                             ),
-                            // Bulle de message avec gradient
-                            Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+                          ),
+                          // Bulle de message avec gradient
+                          Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+                              ),
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF0B132B).withOpacity(0.3),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 8),
                                 ),
-                                borderRadius: BorderRadius.circular(20),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: const Color(0xFF0B132B).withOpacity(0.3),
-                                    blurRadius: 20,
-                                    offset: const Offset(0, 8),
+                              ],
+                            ),
+                            child: Consumer<LocalizationService>(
+                              builder: (context, locService, _) {
+                                final isFrench = locService.currentLanguageCode == 'fr';
+                                final isGerman = locService.currentLanguageCode == 'de';
+                                return Text(
+                                  isGerman ? 'Hier ist, was ich fur dich vorbereitet habe!' : (isFrench ? 'Voici ce que j\'ai prepare pour toi !' : 'Here\'s what I prepared for you!'),
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                    height: 1.4,
                                   ),
-                                ],
-                              ),
-                              child: Consumer<LocalizationService>(
-                                builder: (context, locService, _) {
-                                  final isFrench = locService.currentLanguageCode == 'fr';
-                                  final isGerman = locService.currentLanguageCode == 'de';
-                                  return Text(
-                                    isGerman ? 'Hier ist, was ich fur dich vorbereitet habe!' : (isFrench ? 'Voici ce que j\'ai prepare pour toi !' : 'Here\'s what I prepared for you!'),
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w600,
-                                      height: 1.5,
-                                    ),
-                                  );
-                                },
-                              ),
+                                );
+                              },
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 20),
-                      // Panda félicitations à DROITE
-                      Container(
-                        width: 140,
-                        height: 140,
-                        child: Image.asset(
-                          'assets/images/coach_ryze_congratulations.png',
-                          fit: BoxFit.contain,
-                        ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Panda félicitations à DROITE
+                    SizedBox(
+                      width: 100,
+                      height: 100,
+                      child: Image.asset(
+                        'assets/images/coach_ryze_congratulations.png',
+                        fit: BoxFit.contain,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
 
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
 
                 // Carte principale calories - Style de l'app
                 _buildMainCaloriesCard(calories, bmr, totalNeeds, activityMultiplier, goalAdjustment),
@@ -2536,27 +2546,15 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
                             debugPrint('⚠️ Erreur rafraîchissement GlobalState: $e');
                           }
 
-                          // Marquer onboarding comme terminé
-                          final prefs = await SharedPreferences.getInstance();
-                          await prefs.setBool('has_seen_intro', true);
-                          await prefs.setBool('is_onboarded', true);
-
-                          // Mettre à jour Supabase
+                          // Sauvegarder la langue dans Supabase
                           final supabase = Supabase.instance.client;
                           final user = supabase.auth.currentUser;
                           if (user != null) {
                             try {
-                              await supabase.from('users').update({
-                                'is_onboarded': true,
-                              }).eq('id', user.id);
-                              debugPrint('✅ Onboarding marqué comme terminé dans Supabase');
-
-                              // Sauvegarder la langue de l'utilisateur dans Supabase
-                              debugPrint('🔄 Tentative de sync langue...');
                               await LocalizationService.instance.syncLanguageToSupabase();
                               debugPrint('✅ Langue synchronisée dans Supabase');
                             } catch (e) {
-                              debugPrint('⚠️ Erreur mise à jour onboarding Supabase: $e');
+                              debugPrint('⚠️ Erreur sync langue: $e');
                             }
                           }
 
@@ -2747,121 +2745,40 @@ class _OnboardingGamifiedHybridState extends State<OnboardingGamifiedHybrid>
             ],
           ),
 
-          // Estimation du temps pour atteindre le poids cible
-          Builder(
-            builder: (context) {
-              final profile = UserProfile.fromMap(userData);
-              final timeEstimateText = MetabolicCalculations.getTimeEstimateText(
-                profile,
-                isMetric: userData['isMetric'] ?? true,
-              );
-
-              if (timeEstimateText.isEmpty) {
-                return const SizedBox.shrink();
-              }
-
-              return Column(
-                children: [
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          const Color(0xFF0B132B).withOpacity(0.08),
-                          const Color(0xFF1C2951).withOpacity(0.05),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: const Color(0xFF0B132B).withOpacity(0.1),
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          LucideIcons.clock,
-                          size: 16,
-                          color: const Color(0xFF0B132B).withOpacity(0.7),
-                        ),
-                        const SizedBox(width: 8),
-                        Flexible(
-                          child: Text(
-                            timeEstimateText,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: const Color(0xFF1A1A1A).withOpacity(0.85),
-                              fontWeight: FontWeight.w500,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
-
-          // Recommandation de séances de sport par semaine
+          // Estimation temps + séances sport (ligne compacte)
           Builder(
             builder: (context) {
               final profile = UserProfile.fromMap(userData);
               final languageCode = Provider.of<LocalizationService>(context, listen: false).currentLanguageCode;
+              final timeEstimateText = MetabolicCalculations.getTimeEstimateText(
+                profile,
+                isMetric: userData['isMetric'] ?? true,
+              );
               final workoutText = MetabolicCalculations.getWorkoutRecommendationText(
                 profile,
                 languageCode: languageCode,
               );
 
-              if (workoutText.isEmpty) {
+              if (timeEstimateText.isEmpty && workoutText.isEmpty) {
                 return const SizedBox.shrink();
               }
 
-              return Column(
-                children: [
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          const Color(0xFF10B981).withOpacity(0.08),
-                          const Color(0xFF059669).withOpacity(0.05),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: const Color(0xFF10B981).withOpacity(0.15),
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          LucideIcons.dumbbell,
-                          size: 16,
-                          color: const Color(0xFF10B981).withOpacity(0.8),
-                        ),
-                        const SizedBox(width: 8),
-                        Flexible(
-                          child: Text(
-                            workoutText,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: const Color(0xFF065F46).withOpacity(0.9),
-                              fontWeight: FontWeight.w500,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      ],
-                    ),
+              final combined = [
+                if (timeEstimateText.isNotEmpty) timeEstimateText,
+                if (workoutText.isNotEmpty) workoutText,
+              ].join(' · ');
+
+              return Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: Text(
+                  combined,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF64748B),
+                    fontWeight: FontWeight.w500,
                   ),
-                ],
+                ),
               );
             },
           ),

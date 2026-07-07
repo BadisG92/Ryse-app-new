@@ -7275,6 +7275,16 @@ class AppTranslations {
       'en': 'Ready to unlock your results?',
       'de': 'Bereit, deine Ergebnisse freizuschalten?',
     },
+    'paywall_title_onboarding': {
+      'fr': '✨ Ton programme est prêt',
+      'en': '✨ Your program is ready',
+      'de': '✨ Dein Programm ist fertig',
+    },
+    'paywall_bubble_onboarding': {
+      'fr': 'Ton programme repas + sport est prêt ! Active-le pour commencer dès aujourd\'hui 💪',
+      'en': 'Your meal + workout program is ready! Activate it to start today 💪',
+      'de': 'Dein Mahlzeiten- & Sportprogramm ist fertig! Aktiviere es und starte noch heute 💪',
+    },
 
     // Paywall - Bénéfices Scanner
     'paywall_benefit_scanner_1': {
@@ -9347,9 +9357,19 @@ class AppTranslations {
       'en': 'All your sessions are planned! 💪',
       'de': 'Alle deine Einheiten sind geplant! 💪',
     },
+    'planner_all_meals_planned': {
+      'fr': 'Tous tes repas sont planifiés ! 🍽️',
+      'en': 'All your meals are planned! 🍽️',
+      'de': 'Alle deine Mahlzeiten sind geplant! 🍽️',
+    },
 
     // ===== Onboarding Planner Demo =====
     'onboarding_plan_first_week': {
+      'fr': 'Planifions ta première semaine',
+      'en': 'Let\'s plan your first week',
+      'de': 'Planen wir deine erste Woche',
+    },
+    'onboarding_plan_first_week_button': {
       'fr': 'Planifier ma première semaine',
       'en': 'Plan my first week',
       'de': 'Meine erste Woche planen',
@@ -9385,9 +9405,9 @@ class AppTranslations {
       'de': 'Zum Sport wechseln',
     },
     'onboarding_demo_finish': {
-      'fr': 'Terminer la démo',
-      'en': 'Finish demo',
-      'de': 'Demo beenden',
+      'fr': 'Activer mon programme',
+      'en': 'Activate my program',
+      'de': 'Mein Programm aktivieren',
     },
     'onboarding_demo_skip': {
       'fr': 'Passer cette étape',

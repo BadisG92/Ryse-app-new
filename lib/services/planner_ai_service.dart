@@ -279,8 +279,12 @@ class PlannerAIService {
   // FREE TIER LIMITS - 5 planifications IA à vie (sport + repas combinés)
   // =====================================================
 
+  static bool _demoMode = false;
+  static void setDemoMode(bool value) => _demoMode = value;
+
   /// Vérifier si l'utilisateur peut utiliser l'IA (premium ou essais restants)
   static Future<bool> canUseAI() async {
+    if (_demoMode) return true;
     // Premium = accès illimité
     if (UnifiedSubscriptionService().isPremium) {
       return true;
@@ -303,6 +307,7 @@ class PlannerAIService {
   /// Incrémenter le compteur d'utilisation (appelé après une planification réussie)
   /// Utilise maintenant FeatureTrialService (compteur persistant en base de données)
   static Future<void> incrementUsageCount() async {
+    if (_demoMode) return;
     // Ne pas incrémenter pour les premium
     if (UnifiedSubscriptionService().isPremium) {
       return;

@@ -32,6 +32,7 @@ class _OnboardingPlannerDemoState extends State<OnboardingPlannerDemo>
   int _phase = 0;
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
 
   // Collected demo data
   final List<PendingMeal> _allMeals = [];
@@ -49,6 +50,13 @@ class _OnboardingPlannerDemoState extends State<OnboardingPlannerDemo>
       parent: _fadeController,
       curve: Curves.easeOut,
     );
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0.08, 0),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _fadeController,
+      curve: Curves.easeOutCubic,
+    ));
     _fadeController.forward();
   }
 
@@ -122,17 +130,16 @@ class _OnboardingPlannerDemoState extends State<OnboardingPlannerDemo>
 
   void _showHardPaywall() {
     final langCode = LocalizationService.instance.currentLanguageCode;
-    // Capture demo data before navigation removes this widget
+    // Capture demo data and callback before navigation removes this widget
     final demoMeals = List<PendingMeal>.from(_allMeals);
     final demoWorkouts = List<PendingWorkout>.from(_allWorkouts);
     final demoSessions = List<PendingSession>.from(_allSessions);
+    final onComplete = widget.onComplete;
 
     Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
       MaterialPageRoute(
         builder: (ctx) => PaywallScreen(
-          context: PaywallContext.genericUpgrade,
-          customTitle: 'hard_paywall_title'.tr(langCode),
-          customMessage: 'hard_paywall_subtitle'.tr(langCode),
+          context: PaywallContext.onboarding,
           isHardPaywall: true,
           onPurchaseSuccess: () async {
             // Show loading overlay while saving
@@ -171,6 +178,8 @@ class _OnboardingPlannerDemoState extends State<OnboardingPlannerDemo>
               );
             }
 
+            // Mark onboarding as completed, then navigate to main app
+            onComplete();
             if (ctx.mounted) _navigateToMainApp(ctx);
           },
         ),
@@ -185,20 +194,34 @@ class _OnboardingPlannerDemoState extends State<OnboardingPlannerDemo>
       case 0:
         return _buildIntroScreen();
       case 1:
-        return PlannerChatScreen(
-          initialMode: 'meals',
-          weekData: _buildEmptyWeekData(),
-          demoMode: true,
-          maxMessages: 5,
-          onDemoDataCollected: _onMealsDemoComplete,
+        return FadeTransition(
+          opacity: _fadeAnimation,
+          child: SlideTransition(
+            position: _slideAnimation,
+            child: PlannerChatScreen(
+              key: const ValueKey('demo_meals'),
+              initialMode: 'meals',
+              weekData: _buildEmptyWeekData(),
+              demoMode: true,
+              maxMessages: 5,
+              onDemoDataCollected: _onMealsDemoComplete,
+            ),
+          ),
         );
       case 2:
-        return PlannerChatScreen(
-          initialMode: 'workouts',
-          weekData: _buildEmptyWeekData(),
-          demoMode: true,
-          maxMessages: 5,
-          onDemoDataCollected: _onSportDemoComplete,
+        return FadeTransition(
+          opacity: _fadeAnimation,
+          child: SlideTransition(
+            position: _slideAnimation,
+            child: PlannerChatScreen(
+              key: const ValueKey('demo_workouts'),
+              initialMode: 'workouts',
+              weekData: _buildEmptyWeekData(),
+              demoMode: true,
+              maxMessages: 5,
+              onDemoDataCollected: _onSportDemoComplete,
+            ),
+          ),
         );
       default:
         return const SizedBox.shrink();
@@ -274,18 +297,18 @@ class _OnboardingPlannerDemoState extends State<OnboardingPlannerDemo>
 
                 // Steps preview
                 _buildStepPreview(
-                  icon: LucideIcons.utensils,
+                  icon: LucideIcons.apple,
                   title: 'onboarding_demo_meals_title'.tr(langCode),
                   subtitle: 'onboarding_demo_meals_subtitle'.tr(langCode),
-                  color: const Color(0xFF10B981),
+                  color: Colors.white,
                   step: 1,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 _buildStepPreview(
                   icon: LucideIcons.dumbbell,
                   title: 'onboarding_demo_sport_title'.tr(langCode),
                   subtitle: 'onboarding_demo_sport_subtitle'.tr(langCode),
-                  color: const Color(0xFF3B82F6),
+                  color: Colors.white,
                   step: 2,
                 ),
 
@@ -301,22 +324,21 @@ class _OnboardingPlannerDemoState extends State<OnboardingPlannerDemo>
                       _fadeController.reset();
                       _fadeController.forward();
                     },
-                    icon: const Icon(LucideIcons.rocket, size: 20),
+                    icon: const Icon(LucideIcons.calendar, size: 20),
                     label: Text(
-                      'onboarding_plan_first_week'.tr(langCode),
+                      'onboarding_plan_first_week_button'.tr(langCode),
                       style: const TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF3B82F6),
-                      foregroundColor: Colors.white,
+                      backgroundColor: Colors.white,
+                      foregroundColor: const Color(0xFF0B132B),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
                       ),
-                      elevation: 4,
-                      shadowColor: const Color(0xFF3B82F6).withValues(alpha: 0.4),
+                      elevation: 0,
                     ),
                   ),
                 ),
@@ -366,10 +388,10 @@ class _OnboardingPlannerDemoState extends State<OnboardingPlannerDemo>
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.2),
+              color: Colors.white.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon, color: color, size: 22),
+            child: Icon(icon, color: Colors.white.withValues(alpha: 0.8), size: 22),
           ),
           const SizedBox(width: 16),
           Expanded(
