@@ -1,0 +1,94 @@
+# Compile l'app iOS sur un runner macOS GitHub, sans signature.
+# Objectif : vérifier que le projet iOS (Flutter + pods + widget Swift) compile,
+# sans avoir besoin d'un Mac en local.
+#
+# Secret optionnel : IOS_ENV_FILE (contenu complet d'un fichier .env avec les vraies clés).
+# S'il est absent, la build utilise les valeurs factices de .env.example.
+# Étape suivante (signature + TestFlight) : à ajouter dans un workflow séparé.
+
+name: iOS Build
+
+on:
+  push:
+    branches:
+      - main
+      - ryze-planificateur
+    paths-ignore:
+      - '**.md'
+      - '*.html'
+      - 'screenshots/**'
+      - 'promo-video/**'
+      - 'website/**'
+      - 'legal-docs/**'
+      - 'coach_ryze_image/**'
+      - 'backend/**'
+      - 'supabase/**'
+      - 'android/**'
+      - 'web/**'
+      - 'windows/**'
+      - 'linux/**'
+      - 'macos/**'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: ios-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-ios:
+    name: Compile iOS (unsigned)
+    runs-on: macos-15
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.38.5
+          cache: true
+
+      - name: Toolchain info
+        run: |
+          flutter --version
+          xcodebuild -version
+
+      - name: Prepare env file
+        env:
+          ENV_FILE: ${{ secrets.IOS_ENV_FILE }}
+        run: |
+          if [ -n "$ENV_FILE" ]; then
+            printf '%s\n' "$ENV_FILE" > ci.env
+            echo "Using real values from the IOS_ENV_FILE secret"
+          else
+            tr -d '\r' < .env.example > ci.env
+            echo "::notice::No IOS_ENV_FILE secret found, building with placeholder values from .env.example"
+          fi
+
+      - name: Install Dart dependencies
+        run: flutter pub get
+
+      - name: Cache CocoaPods downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/CocoaPods
+          key: cocoapods-${{ runner.os }}-${{ hashFiles('ios/Podfile', 'pubspec.lock') }}
+          restore-keys: |
+            cocoapods-${{ runner.os }}-
+
+      - name: Build iOS (release, no codesign)
+        run: flutter build ios --release --no-codesign --dart-define-from-file=ci.env
+
+      - name: Upload unsigned Runner.app
+        uses: actions/upload-artifact@v4
+        with:
+          name: Runner-unsigned-${{ github.sha }}
+          path: build/ios/iphoneos/Runner.app
+          retention-days: 3
+          if-no-files-found: error
