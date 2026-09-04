@@ -1,24 +1,25 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../components/onboarding_with_value_prop.dart';
-import '../components/ai_onboarding_flow.dart';
-import '../components/main_app.dart';
-import '../services/auth_service.dart';
-import '../screens/auth/login_screen.dart';
-import '../screens/auth/complete_profile_screen.dart';
-import '../screens/paywall_screen.dart';
-import '../services/paywall_service.dart';
-import '../services/localization_service.dart';
 
-/// RyzeApp - Implémentation du flow AAA (style MyFitnessPal, Headspace, etc.)
+import '../components/main_app.dart';
+import '../components/ui/video_welcome_screen.dart';
+import '../onboarding/onboarding_flow.dart';
+import '../onboarding/onboarding_state.dart';
+import '../screens/auth/complete_profile_screen.dart';
+import '../screens/auth/login_screen.dart';
+import '../services/auth_service.dart';
+
+/// RyzeApp - routing at launch.
 ///
-/// Flow intelligent :
-/// - Utilisateur connecté + onboardé → App directement (pas de slides)
-/// - Utilisateur connecté + non onboardé → Onboarding
-/// - Utilisateur non connecté + 1ère fois → Slides value prop → Login
-/// - Utilisateur non connecté + déjà vu slides → Login directement
+/// - Not logged in, first time → welcome video → login
+/// - Not logged in, seen the intro → login
+/// - Logged in, no name → complete profile
+/// - Logged in, not onboarded → onboarding v2 (resumes where the user left it)
+/// - Logged in, onboarded but the v2 profile was saved without a purchase → onboarding resumes on the paywall
+/// - Logged in, onboarded before the coach part existed → coach-only flow (tone, day, pact)
+/// - Logged in, everything done → app
 class RyzeApp extends StatefulWidget {
   const RyzeApp({super.key});
 
@@ -30,8 +31,8 @@ class _RyzeAppState extends State<RyzeApp> {
   bool _isLoading = true;
   Widget? _targetScreen;
 
-  // Flag de debug pour forcer certains écrans (utile en développement)
-  static const bool _forceOnboarding = false; // ✅ PRODUCTION: Onboarding normal
+  // Debug flags (development only)
+  static const bool _forceOnboarding = false;
   static const bool _forceValueProp = false;
 
   @override
@@ -40,340 +41,127 @@ class _RyzeAppState extends State<RyzeApp> {
     _determineInitialRoute();
   }
 
-  /// Détermine quelle est la bonne page à afficher selon l'état de l'utilisateur
-  /// C'est la logique centrale du flow AAA
   Future<void> _determineInitialRoute() async {
-    // Délayer pour éviter freeze pendant build
     await Future.delayed(const Duration(milliseconds: 100));
-
     if (!mounted) return;
+    setState(() => _isLoading = true);
 
-    // Timeout global de 10 secondes pour éviter écran blanc infini
     try {
       await _determineInitialRouteInternal().timeout(
         const Duration(seconds: 10),
-        onTimeout: () {
-          debugPrint('⚠️ Timeout routing - fallback vers LoginScreen');
-          if (mounted) {
-            setState(() {
-              _targetScreen = const LoginScreen();
-              _isLoading = false;
-            });
-          }
-        },
+        onTimeout: () => _show(const LoginScreen()),
       );
     } catch (e) {
-      debugPrint('❌ Erreur critique routing: $e');
-      if (mounted) {
-        setState(() {
-          _targetScreen = const LoginScreen();
-          _isLoading = false;
-        });
-      }
+      debugPrint('❌ Routing error: $e');
+      _show(const LoginScreen());
     }
+  }
+
+  void _show(Widget screen) {
+    if (!mounted) return;
+    setState(() {
+      _targetScreen = screen;
+      _isLoading = false;
+    });
   }
 
   Future<void> _determineInitialRouteInternal() async {
-    try {
-      final supabase = Supabase.instance.client;
-      final session = supabase.auth.currentSession;
-      final prefs = await SharedPreferences.getInstance();
+    final supabase = Supabase.instance.client;
+    final session = supabase.auth.currentSession;
+    final prefs = await SharedPreferences.getInstance();
 
-      Widget targetScreen;
+    // 🔐 Logged in
+    if (session != null && !_forceValueProp) {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      if (authService.currentUser == null) {
+        await authService.initialize();
+      }
 
-      // 🔐 CAS 1 : UTILISATEUR CONNECTÉ
-      if (session != null && !_forceValueProp) {
-        debugPrint('✅ Session détectée pour: ${session.user.email}');
+      if (!authService.hasCompleteName) {
+        debugPrint('⚠️ Nom manquant → CompleteProfileScreen');
+        _show(CompleteProfileScreen(onComplete: _determineInitialRoute));
+        return;
+      }
 
-        // Vérifier si l'utilisateur a un nom complet
-        final authService = Provider.of<AuthService>(context, listen: false);
+      final firstName = authService.currentUser?.firstName;
+      final resume = await OnbProgressStore.load();
+      final profileSavedLocally = await OnbProgressStore.isProfileSaved();
 
-        // S'assurer que l'AuthService est initialisé
-        if (authService.currentUser == null) {
-          debugPrint('⏳ AuthService non initialisé, initialisation...');
-          await authService.initialize();
-        }
+      try {
+        final response =
+            await supabase.from('users').select('is_onboarded, ai_onboarding_completed').eq('id', session.user.id).single().timeout(const Duration(seconds: 5));
 
-        final hasCompleteName = authService.hasCompleteName;
+        final isOnboarded = _forceOnboarding ? false : (response['is_onboarded'] as bool? ?? false);
+        final aiCompleted = response['ai_onboarding_completed'] as bool? ?? false;
+        await prefs.setBool('is_onboarded', isOnboarded);
 
-        // Si pas de nom complet → écran de complétion de profil
-        if (!hasCompleteName) {
-          debugPrint('⚠️ Nom manquant → CompleteProfileScreen');
-          targetScreen = CompleteProfileScreen(
-            onComplete: () async {
-              // Après avoir complété le nom, naviguer vers l'écran approprié
-              if (!mounted) return;
-
-              try {
-                final response = await supabase
-                    .from('users')
-                    .select('is_onboarded')
-                    .eq('id', session.user.id)
-                    .single()
-                    .timeout(const Duration(seconds: 5));
-
-                final isOnboarded = response['is_onboarded'] ?? false;
-
-                if (mounted) {
-                  if (isOnboarded) {
-                    debugPrint('🎯 Profil complété → App directement');
-                    Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(builder: (context) => const MainApp()),
-                    );
-                  } else {
-                    debugPrint('📋 Profil complété → Onboarding (sans slides)');
-                    Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(
-                        builder: (context) => OnboardingWithValueProp(
-                          onComplete: _completeOnboarding,
-                          isUserLoggedIn: true,
-                          skipValueProp: true, // Skip les slides, direct onboarding
-                        ),
-                      ),
-                    );
-                  }
-                }
-              } catch (e) {
-                debugPrint('❌ Erreur navigation post-profile: $e');
-                // En cas d'erreur, aller vers l'onboarding par défaut
-                if (mounted) {
-                  Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(
-                      builder: (context) => OnboardingWithValueProp(
-                        onComplete: _completeOnboarding,
-                        isUserLoggedIn: true,
-                        skipValueProp: true, // Skip les slides, direct onboarding
-                      ),
-                    ),
-                  );
-                }
-              }
-            },
-          );
-        } else {
-          try {
-            final response = await supabase
-                .from('users')
-                .select('is_onboarded, ai_onboarding_completed')
-                .eq('id', session.user.id)
-                .single()
-                .timeout(const Duration(seconds: 5));
-
-            final isOnboarded = _forceOnboarding ? false : (response['is_onboarded'] ?? false);
-            final aiOnboardingCompleted = response['ai_onboarding_completed'] ?? false;
-
-            // Synchroniser avec SharedPreferences
-            await prefs.setBool('is_onboarded', isOnboarded);
-
-            if (isOnboarded && !aiOnboardingCompleted) {
-              // 🤖 Utilisateur existant qui n'a pas fait l'onboarding IA
-              // → Flow simplifié: Chat IA + Contrat seulement
-              debugPrint('🤖 Utilisateur existant sans onboarding IA → AIOnboardingFlow');
-              targetScreen = AIOnboardingFlow(
-                onComplete: _completeAIOnboarding,
-              );
-            } else if (isOnboarded) {
-              // ✨ Utilisateur complet → APP DIRECTEMENT (jamais de slides)
-              debugPrint('🎯 Utilisateur onboardé + IA complété → App directement');
-              targetScreen = const MainApp();
-            } else {
-              // ⚠️ Compte existe mais onboarding incomplet
-              debugPrint('📋 Onboarding incomplet → Onboarding direct (sans slides)');
-              targetScreen = OnboardingWithValueProp(
-                onComplete: _completeOnboarding,
-                isUserLoggedIn: true,
-                skipValueProp: true, // IMPORTANT: Jamais de slides après login
-              );
-            }
-          } catch (e) {
-            debugPrint('❌ Erreur vérification onboarding: $e');
-
-            // Fallback vers SharedPreferences
-            final isOnboarded = prefs.getBool('is_onboarded') ?? false;
-
-            if (isOnboarded && !_forceOnboarding) {
-              targetScreen = const MainApp();
-            } else {
-              targetScreen = OnboardingWithValueProp(
-                onComplete: _completeOnboarding,
-                isUserLoggedIn: true,
-                skipValueProp: true, // IMPORTANT: Jamais de slides après login
-              );
-            }
+        if (!isOnboarded) {
+          debugPrint('📋 Non onboardé → OnboardingFlow');
+          _show(OnboardingFlow(firstName: firstName, resume: resume, onComplete: _goToApp));
+        } else if (!aiCompleted) {
+          if (profileSavedLocally || resume != null) {
+            // v2 user who saved a profile but never reached the end (hard paywall)
+            debugPrint('💳 Profil v2 sauvegardé sans achat → reprise de l’onboarding');
+            final at = resume ?? (step: 'offer', answers: OnbAnswers());
+            _show(OnboardingFlow(firstName: firstName, resume: at, onComplete: _goToApp));
+          } else {
+            debugPrint('🤖 Utilisateur existant sans partie coach → flow coach');
+            _show(OnboardingFlow(mode: OnbMode.coachOnly, firstName: firstName, onComplete: _goToApp));
           }
-        }
-      }
-      // ❌ CAS 2 : PAS DE SESSION (utilisateur non connecté)
-      else {
-        debugPrint('❌ Pas de session active');
-
-        // Vérifier si c'est la PREMIÈRE ouverture de l'app
-        final hasSeenIntro = prefs.getBool('has_seen_intro') ?? false;
-
-        if (hasSeenIntro && !_forceValueProp) {
-          // 🔄 Déjà vu l'intro → Login DIRECTEMENT (pas de slides)
-          debugPrint('🔄 Utilisateur revient → Login direct (sans slides)');
-          targetScreen = const LoginScreen();
         } else {
-          // 🎬 PREMIÈRE FOIS → Welcome + Slides value proposition → Login
-          debugPrint('🎬 Première ouverture → Welcome + Value proposition slides → Login');
-          targetScreen = OnboardingWithValueProp(
-            onComplete: _completeOnboarding,
-            showValuePropFirst: false, // Toujours montrer le Welcome screen
-            isUserLoggedIn: false, // Pas connecté → aller vers Login après slides
-          );
+          debugPrint('🎯 Onboardé → App');
+          _show(const MainApp());
+        }
+      } catch (e) {
+        debugPrint('❌ Erreur vérification onboarding: $e');
+        final isOnboarded = prefs.getBool('is_onboarded') ?? false;
+        if (isOnboarded && !_forceOnboarding && !profileSavedLocally) {
+          _show(const MainApp());
+        } else {
+          _show(OnboardingFlow(firstName: firstName, resume: resume, onComplete: _goToApp));
         }
       }
-
-      if (mounted) {
-        setState(() {
-          _targetScreen = targetScreen;
-          _isLoading = false;
-        });
-      }
-
-    } catch (e) {
-      debugPrint('❌ Erreur lors de la détermination du routing: $e');
-
-      // En cas d'erreur, aller vers le login par sécurité
-      if (mounted) {
-        setState(() {
-          _targetScreen = const LoginScreen();
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  /// Appelée quand l'onboarding IA simplifié est terminé (utilisateurs existants)
-  /// Redirige directement vers MainApp (pas de paywall, ils l'ont déjà vu)
-  Future<void> _completeAIOnboarding() async {
-    debugPrint('🤖 _completeAIOnboarding appelé');
-
-    if (!mounted) {
-      debugPrint('⚠️ Widget non mounted, navigation annulée');
       return;
     }
 
-    // Navigation directe vers MainApp
-    debugPrint('🏠 AI Onboarding terminé → Navigation vers MainApp');
+    // ❌ Not logged in
+    final hasSeenIntro = prefs.getBool('has_seen_intro') ?? false;
+    if (hasSeenIntro && !_forceValueProp) {
+      debugPrint('🔄 Intro déjà vue → Login');
+      _show(const LoginScreen());
+    } else {
+      debugPrint('🎬 Première ouverture → vidéo welcome → Login');
+      _show(VideoWelcomeScreen(
+        onContinue: () async {
+          final p = await SharedPreferences.getInstance();
+          await p.setBool('has_seen_intro', true);
+          if (!mounted) return;
+          Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const LoginScreen()));
+        },
+      ));
+    }
+  }
+
+  /// The onboarding flow has persisted everything; just enter the app.
+  Future<void> _goToApp() async {
+    if (!mounted) return;
     Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (context) => const MainApp()),
+      MaterialPageRoute(builder: (_) => const MainApp()),
       (route) => false,
     );
   }
 
-  /// Appelée quand l'onboarding est terminé
-  /// Affiche le paywall, puis redirige vers MainApp quelle que soit l'issue
-  Future<void> _completeOnboarding() async {
-    debugPrint('🎯 _completeOnboarding appelé');
-    debugPrint('🎯 Widget mounted: $mounted');
-
-    final supabase = Supabase.instance.client;
-    final user = supabase.auth.currentUser;
-
-    // Marquer que l'utilisateur a vu l'intro (local)
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('has_seen_intro', true);
-    await prefs.setBool('is_onboarded', true);
-
-    // IMPORTANT: Mettre à jour Supabase pour persister l'état
-    if (user != null) {
-      try {
-        await supabase.from('users').update({
-          'is_onboarded': true,
-          'ai_onboarding_completed': true, // Nouveaux utilisateurs ont fait l'onboarding IA
-        }).eq('id', user.id);
-        debugPrint('✅ Onboarding + AI onboarding marqués comme terminés dans Supabase');
-
-        // Sauvegarder la langue de l'utilisateur dans Supabase
-        debugPrint('🔄 Tentative de sync langue...');
-        await LocalizationService.instance.syncLanguageToSupabase();
-        debugPrint('✅ Langue synchronisée dans Supabase');
-      } catch (e) {
-        debugPrint('❌ Erreur mise à jour onboarding dans Supabase: $e');
-        // Continue quand même, l'utilisateur a les SharedPreferences
-      }
-    }
-
-    debugPrint('✅ Onboarding terminé');
-
-    // Navigation directe sans PostFrameCallback pour éviter les race conditions
-    // Le context est passé depuis le widget appelant qui est forcément mounted
-    debugPrint('🚀 Navigation vers PaywallScreen...');
-    try {
-      // Utiliser un délai minimal pour laisser le temps au frame actuel de se terminer
-      await Future.delayed(const Duration(milliseconds: 50));
-
-      if (!mounted) {
-        debugPrint('⚠️ Widget non mounted, navigation annulée');
-        return;
-      }
-
-      // 🎯 Afficher le Paywall après l'onboarding
-      // Quelle que soit l'issue (abonnement, plus tard, restauration), on va vers MainApp
-      // Traductions pour le paywall
-      final locService = LocalizationService.instance;
-      final customTitle = locService.isFrench
-          ? 'Débloquez Coach Ryze Premium'
-          : locService.isGerman
-              ? 'Coach Ryze Premium freischalten'
-              : 'Unlock Coach Ryze Premium';
-      final customMessage = locService.isFrench
-          ? 'Profitez de 3 jours d\'essai gratuit'
-          : locService.isGerman
-              ? '3 Tage gratis testen'
-              : 'Enjoy 3 days free trial';
-
-      Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
-        MaterialPageRoute(
-          builder: (ctx) => PaywallScreen(
-            context: PaywallContext.genericUpgrade,
-            customTitle: customTitle,
-            customMessage: customMessage,
-            onDismiss: () {
-              // Appelé quand l'utilisateur ferme le paywall (peu importe la raison)
-              debugPrint('🏠 Paywall fermé → Navigation vers MainApp');
-              Navigator.of(ctx, rootNavigator: true).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (context) => const MainApp()),
-                (route) => false,
-              );
-            },
-          ),
-        ),
-        (route) => false, // Supprimer toutes les routes précédentes
-      );
-      debugPrint('✅ Navigation réussie vers Paywall');
-    } catch (e) {
-      debugPrint('❌ Erreur navigation: $e');
-      // En cas d'erreur, aller directement vers MainApp
-      if (mounted) {
-        Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const MainApp()),
-          (route) => false,
-        );
-      }
-    }
-  }
-
-  /// Méthode utilitaire pour réinitialiser l'onboarding (développement)
+  /// Development helper: replay the onboarding.
   Future<void> resetOnboarding() async {
     final supabase = Supabase.instance.client;
     final user = supabase.auth.currentUser;
-
     if (user != null) {
       try {
-        await supabase.from('users').update({
-          'is_onboarded': false,
-        }).eq('id', user.id);
-
+        await supabase.from('users').update({'is_onboarded': false, 'ai_onboarding_completed': false}).eq('id', user.id);
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool('is_onboarded', false);
         await prefs.setBool('has_seen_intro', false);
-
-        debugPrint('✅ Onboarding réinitialisé');
-
-        // Redémarrer le routing
+        await OnbProgressStore.clear();
         _determineInitialRoute();
       } catch (e) {
         debugPrint('❌ Erreur réinitialisation: $e');
@@ -383,19 +171,12 @@ class _RyzeAppState extends State<RyzeApp> {
 
   @override
   Widget build(BuildContext context) {
-    // Écran de chargement pendant la détermination du routing
     if (_isLoading) {
       return const Scaffold(
         backgroundColor: Color(0xFFF8FAFC),
-        body: Center(
-          child: CircularProgressIndicator(
-            color: Color(0xFF0B132B),
-          ),
-        ),
+        body: Center(child: CircularProgressIndicator(color: Color(0xFF0B132B))),
       );
     }
-
-    // Afficher l'écran cible déterminé, ou LoginScreen en fallback
     return _targetScreen ?? const LoginScreen();
   }
 }

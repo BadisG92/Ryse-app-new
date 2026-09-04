@@ -4,7 +4,6 @@ import 'main_dashboard_hybrid.dart';
 import 'nutrition_section.dart';
 import 'sport_section.dart';
 import 'global_progress_hybrid.dart';
-import 'onboarding_gamified_hybrid.dart';
 import '../screens/coach_chat_screen.dart';
 import '../services/coach_chat_service.dart';
 import '../services/weekly_bilan_service.dart';

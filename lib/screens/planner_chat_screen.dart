@@ -2525,9 +2525,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
                     : 'onboarding_demo_finish'.tr(langCode),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: widget.initialMode == 'meals'
-                    ? const Color(0xFF3B82F6)
-                    : const Color(0xFF10B981),
+                backgroundColor: const Color(0xFF0B132B), // v2: navy for demo actions
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -2560,9 +2558,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
                 : 'onboarding_demo_finish'.tr(langCode),
           ),
           style: ElevatedButton.styleFrom(
-            backgroundColor: widget.initialMode == 'meals'
-                ? const Color(0xFF3B82F6)
-                : const Color(0xFF10B981),
+            backgroundColor: const Color(0xFF0B132B), // v2: navy for demo actions
             foregroundColor: Colors.white,
             minimumSize: const Size(double.infinity, 50),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

@@ -1,0 +1,384 @@
+import '../services/localization_service.dart';
+
+/// Copy of the v2 onboarding in FR / EN / DE.
+///
+/// Kept apart from the giant `translations.dart` map so the flow stays
+/// self-contained. `t('key')` falls back to English, then to the key itself.
+class OnbStrings {
+  OnbStrings(this.lang);
+
+  factory OnbStrings.current() => OnbStrings(LocalizationService.instance.currentLanguageCode);
+
+  final String lang;
+
+  String t(String key, [Map<String, String> params = const {}]) {
+    final entry = _m[key];
+    var value = entry?[lang] ?? entry?['en'] ?? key;
+    params.forEach((k, v) => value = value.replaceAll('{$k}', v));
+    return value;
+  }
+
+  /// Short and long localized day names, Monday first.
+  List<String> get dayShort => _pick(['L', 'M', 'M', 'J', 'V', 'S', 'D'], ['M', 'T', 'W', 'T', 'F', 'S', 'S'], ['M', 'D', 'M', 'D', 'F', 'S', 'S']);
+  List<String> get dayFull => _pick(
+        ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'],
+        ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+        ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'],
+      );
+
+  List<String> _pick(List<String> fr, List<String> en, List<String> de) => lang == 'fr' ? fr : (lang == 'de' ? de : en);
+
+  static const Map<String, Map<String, String>> _m = {
+    // ---------- Hello ----------
+    'hello_title': {'fr': 'Salut {n}.', 'en': 'Hi {n}.', 'de': 'Hallo {n}.'},
+    'hello_sub': {
+      'fr':
+          'Ryze, c’est deux coachs IA dans ta poche. Un pour le sport, un pour l’assiette. Ils planifient ta semaine, suivent tes séances et tes repas, et font le point avec toi chaque semaine.',
+      'en':
+          'Ryze is two AI coaches in your pocket. One for training, one for food. They plan your week, track your sessions and meals, and check in with you every week.',
+      'de':
+          'Ryze sind zwei KI-Coaches in deiner Tasche. Einer für Sport, einer fürs Essen. Sie planen deine Woche, verfolgen Training und Mahlzeiten und machen jede Woche mit dir Bilanz.',
+    },
+    'hello_punch1': {'fr': 'Les autres apps te font compter.', 'en': 'Other apps make you count.', 'de': 'Andere Apps lassen dich zählen.'},
+    'hello_punch2': {'fr': 'Nous, on te coache.', 'en': 'We coach you.', 'de': 'Wir coachen dich.'},
+    'hello_f1': {
+      'fr': 'Ta semaine repas et sport, planifiée par chat avec les coachs',
+      'en': 'Your meal and training week, planned by chatting with the coaches',
+      'de': 'Deine Ess- und Trainingswoche, per Chat mit den Coaches geplant'
+    },
+    'hello_f2': {
+      'fr': 'Tes séances de muscu, cardio et HIIT, guidées et enregistrées',
+      'en': 'Your strength, cardio and HIIT sessions, guided and logged',
+      'de': 'Deine Kraft-, Cardio- und HIIT-Einheiten, angeleitet und protokolliert'
+    },
+    'hello_f3': {
+      'fr': 'Tes repas scannés en deux secondes, calories et macros',
+      'en': 'Your meals scanned in two seconds, calories and macros',
+      'de': 'Deine Mahlzeiten in zwei Sekunden gescannt, Kalorien und Makros'
+    },
+    'hello_f4': {
+      'fr': 'Un coach qui se souvient de toi et te relance',
+      'en': 'A coach who remembers you and follows up',
+      'de': 'Ein Coach, der sich an dich erinnert und nachhakt'
+    },
+    'hello_f5': {
+      'fr': 'Ton poids, ta progression, et un bilan ensemble chaque semaine',
+      'en': 'Your weight, your progress, and a weekly check-in together',
+      'de': 'Dein Gewicht, dein Fortschritt und jede Woche eine gemeinsame Bilanz'
+    },
+    'hello_cta': {'fr': 'Trois minutes, on construit ta semaine', 'en': 'Three minutes, we build your week', 'de': 'Drei Minuten, wir bauen deine Woche'},
+
+    // ---------- Chapters ----------
+    'ch1_title': {'fr': 'Toi', 'en': 'You', 'de': 'Du'},
+    'ch1_sub': {'fr': 'Neuf questions rapides. Aucun clavier.', 'en': 'Nine quick questions. No keyboard.', 'de': 'Neun schnelle Fragen. Keine Tastatur.'},
+    'ch2_title': {'fr': 'Ton pourquoi', 'en': 'Your why', 'de': 'Dein Warum'},
+    'ch2_sub': {
+      'fr': 'Deux questions, et ce qu’on en fait.',
+      'en': 'Two questions, and what we do with them.',
+      'de': 'Zwei Fragen, und was wir daraus machen.'
+    },
+    'ch3_title': {'fr': 'Ta semaine', 'en': 'Your week', 'de': 'Deine Woche'},
+    'ch3_sub': {'fr': 'L’app, pour de vrai.', 'en': 'The app, for real.', 'de': 'Die App, in echt.'},
+    'ch4_title': {'fr': 'Ton coach', 'en': 'Your coach', 'de': 'Dein Coach'},
+    'ch4_sub': {'fr': 'Le ton, le jour, la signature.', 'en': 'The tone, the day, the signature.', 'de': 'Der Ton, der Tag, die Unterschrift.'},
+
+    // ---------- Shell ----------
+    'coach_name': {'fr': 'Coach Ryze', 'en': 'Coach Ryze', 'de': 'Coach Ryze'},
+    'coach_sport': {'fr': 'sport', 'en': 'training', 'de': 'Sport'},
+    'coach_nutri': {'fr': 'nutrition', 'en': 'nutrition', 'de': 'Ernährung'},
+    'cta_continue': {'fr': 'Continuer', 'en': 'Continue', 'de': 'Weiter'},
+    'back': {'fr': 'Retour', 'en': 'Back', 'de': 'Zurück'},
+
+    // ---------- Chapter 1 ----------
+    'q_goal': {'fr': 'Qu’est-ce qu’on vise ensemble ?', 'en': 'What are we aiming for together?', 'de': 'Was streben wir gemeinsam an?'},
+    'goal_lose': {'fr': 'Perdre du gras', 'en': 'Lose fat', 'de': 'Fett verlieren'},
+    'goal_lose_sub': {'fr': 'Sans régime de misère', 'en': 'No starvation diet', 'de': 'Ohne Hungerdiät'},
+    'goal_gain': {'fr': 'Prendre du muscle', 'en': 'Build muscle', 'de': 'Muskeln aufbauen'},
+    'goal_gain_sub': {'fr': 'Charger intelligemment', 'en': 'Load smart', 'de': 'Clever belasten'},
+    'goal_maintain': {'fr': 'Rester en forme', 'en': 'Stay in shape', 'de': 'In Form bleiben'},
+    'goal_maintain_sub': {'fr': 'Énergie, sommeil, santé', 'en': 'Energy, sleep, health', 'de': 'Energie, Schlaf, Gesundheit'},
+    'react_lose': {
+      'fr': 'Perdre du gras, propre et durable. Ça, on sait faire.',
+      'en': 'Losing fat, clean and lasting. That, we know how to do.',
+      'de': 'Fett verlieren, sauber und nachhaltig. Das können wir.'
+    },
+    'react_gain': {
+      'fr': 'Prendre du muscle, on va charger juste.',
+      'en': 'Building muscle, we’ll load it right.',
+      'de': 'Muskeln aufbauen, wir belasten richtig.'
+    },
+    'react_maintain': {'fr': 'Le meilleur des objectifs.', 'en': 'The best goal there is.', 'de': 'Das beste Ziel überhaupt.'},
+    'q_gender': {'fr': 'Pour calibrer tes besoins, tu es…', 'en': 'To calibrate your needs, you are…', 'de': 'Um deinen Bedarf zu kalibrieren, du bist…'},
+    'gender_m': {'fr': 'Homme', 'en': 'Man', 'de': 'Mann'},
+    'gender_f': {'fr': 'Femme', 'en': 'Woman', 'de': 'Frau'},
+    'q_age': {'fr': 'Ok. T’as quel âge ?', 'en': 'Ok. How old are you?', 'de': 'Ok. Wie alt bist du?'},
+    'unit_years': {'fr': 'ans', 'en': 'years', 'de': 'Jahre'},
+    'q_height': {'fr': 'Et tu mesures combien ?', 'en': 'And how tall are you?', 'de': 'Und wie groß bist du?'},
+    'q_weight': {'fr': 'Ton poids, aujourd’hui ?', 'en': 'Your weight, today?', 'de': 'Dein Gewicht, heute?'},
+    'q_target': {'fr': 'Et on vise quoi, comme poids ?', 'en': 'And what weight are we aiming for?', 'de': 'Und welches Gewicht streben wir an?'},
+    'ruler_hint': {'fr': 'Glisse la règle', 'en': 'Slide the ruler', 'de': 'Schieb das Lineal'},
+    'delta_same': {'fr': 'Même poids qu’aujourd’hui', 'en': 'Same weight as today', 'de': 'Gleiches Gewicht wie heute'},
+    'delta_rate': {'fr': 'Rythme sain : environ {w} semaines', 'en': 'Healthy pace: about {w} weeks', 'de': 'Gesundes Tempo: etwa {w} Wochen'},
+    'cta_projection': {'fr': 'Voir la projection', 'en': 'See the projection', 'de': 'Prognose ansehen'},
+    'q_projection': {
+      'fr': 'À un rythme sain, voilà où on t’emmène.',
+      'en': 'At a healthy pace, this is where we take you.',
+      'de': 'In gesundem Tempo bringen wir dich hierhin.'
+    },
+    'proj_today': {'fr': 'Aujourd’hui', 'en': 'Today', 'de': 'Heute'},
+    'proj_on': {'fr': 'Le {d}', 'en': 'On {d}', 'de': 'Am {d}'},
+    'proj_noplan': {'fr': 'Sans plan', 'en': 'No plan', 'de': 'Ohne Plan'},
+    'legend_with': {'fr': 'Avec Ryze', 'en': 'With Ryze', 'de': 'Mit Ryze'},
+    'legend_without': {'fr': 'En continuant comme avant', 'en': 'Continuing as before', 'de': 'Weiter wie bisher'},
+    'stat_rate': {'fr': 'Rythme', 'en': 'Pace', 'de': 'Tempo'},
+    'stat_duration': {'fr': 'Durée', 'en': 'Duration', 'de': 'Dauer'},
+    'weeks': {'fr': '{w} semaines', 'en': '{w} weeks', 'de': '{w} Wochen'},
+    'per_week': {'fr': '/ sem', 'en': '/ wk', 'de': '/ Wo'},
+    'cta_go': {'fr': 'On y va', 'en': 'Let’s go', 'de': 'Los geht’s'},
+    'q_activity': {
+      'fr': 'Aujourd’hui, tu bouges combien de fois par semaine ?',
+      'en': 'Today, how many times a week do you move?',
+      'de': 'Wie oft pro Woche bewegst du dich heute?'
+    },
+    'act_low': {'fr': 'Presque jamais', 'en': 'Almost never', 'de': 'Fast nie'},
+    'act_low_sub': {'fr': 'On part de là, aucun souci', 'en': 'We start from there, no problem', 'de': 'Da fangen wir an, kein Problem'},
+    'act_light': {'fr': '1 à 2 fois', 'en': '1 to 2 times', 'de': '1 bis 2 Mal'},
+    'act_light_sub': {'fr': 'Une base à solidifier', 'en': 'A base to build on', 'de': 'Eine Basis zum Festigen'},
+    'act_moderate': {'fr': '3 à 4 fois', 'en': '3 to 4 times', 'de': '3 bis 4 Mal'},
+    'act_moderate_sub': {'fr': 'Déjà une vraie routine', 'en': 'Already a real routine', 'de': 'Schon eine echte Routine'},
+    'act_high': {'fr': '5 fois et plus', 'en': '5 times and more', 'de': '5 Mal und mehr'},
+    'act_high_sub': {'fr': 'On optimise', 'en': 'We optimize', 'de': 'Wir optimieren'},
+    'q_diet': {'fr': 'Des préférences dans l’assiette ?', 'en': 'Any preferences on your plate?', 'de': 'Vorlieben auf dem Teller?'},
+
+    // ---------- Chapter 2 ----------
+    'react_motivation': {
+      'fr': 'Les chiffres, c’est fait. Maintenant le vrai sujet.',
+      'en': 'Numbers done. Now the real subject.',
+      'de': 'Zahlen erledigt. Jetzt das eigentliche Thema.'
+    },
+    'q_motivation': {
+      'fr': 'Qu’est-ce qui t’a fait passer à l’action aujourd’hui ?',
+      'en': 'What made you take action today?',
+      'de': 'Was hat dich heute zum Handeln gebracht?'
+    },
+    'mot_event': {'fr': 'Un événement qui approche', 'en': 'An upcoming event', 'de': 'Ein Ereignis, das näher rückt'},
+    'mot_health': {'fr': 'Ma santé', 'en': 'My health', 'de': 'Meine Gesundheit'},
+    'mot_body': {'fr': 'Me sentir bien dans mon corps', 'en': 'Feeling good in my body', 'de': 'Mich in meinem Körper wohlfühlen'},
+    'mot_energy': {'fr': 'Retrouver de l’énergie', 'en': 'Getting my energy back', 'de': 'Wieder Energie haben'},
+    'mot_confidence': {'fr': 'Reprendre confiance', 'en': 'Regaining confidence', 'de': 'Selbstvertrauen zurückgewinnen'},
+    'mot_placeholder': {
+      'fr': 'Dis-le avec tes mots, si tu veux. On s’en souviendra.',
+      'en': 'Say it in your own words, if you like. We’ll remember.',
+      'de': 'Sag es in deinen Worten, wenn du willst. Wir merken es uns.'
+    },
+    'react_mot_event': {'fr': 'On va être prêts à temps.', 'en': 'We’ll be ready in time.', 'de': 'Wir werden rechtzeitig bereit sein.'},
+    'react_mot_health': {'fr': 'La meilleure raison qui existe.', 'en': 'The best reason there is.', 'de': 'Der beste Grund, den es gibt.'},
+    'react_mot_body': {'fr': 'On va y arriver, à ton rythme.', 'en': 'We’ll get there, at your pace.', 'de': 'Wir schaffen das, in deinem Tempo.'},
+    'react_mot_energy': {'fr': 'Ça, c’est notre spécialité.', 'en': 'That’s our specialty.', 'de': 'Das ist unsere Spezialität.'},
+    'react_mot_confidence': {
+      'fr': 'Elle revient vite quand les résultats suivent.',
+      'en': 'It comes back fast once results follow.',
+      'de': 'Es kommt schnell zurück, wenn die Ergebnisse folgen.'
+    },
+    'q_obstacles': {
+      'fr': 'Et avant, qu’est-ce qui t’a fait lâcher ?',
+      'en': 'And before, what made you quit?',
+      'de': 'Und früher, was hat dich aufgeben lassen?'
+    },
+    'obs_time': {'fr': 'Le manque de temps', 'en': 'Lack of time', 'de': 'Zu wenig Zeit'},
+    'obs_time_a': {
+      'fr': 'Séances de 25 minutes, chez toi ou en salle.',
+      'en': '25-minute sessions, at home or at the gym.',
+      'de': '25-Minuten-Einheiten, zu Hause oder im Studio.'
+    },
+    'obs_motiv': {'fr': 'La motivation qui retombe', 'en': 'Motivation fading', 'de': 'Die Motivation lässt nach'},
+    'obs_motiv_a': {
+      'fr': 'Un bilan chaque semaine avec nous, plus les rappels du coach.',
+      'en': 'A weekly check-in with us, plus coach reminders.',
+      'de': 'Jede Woche eine Bilanz mit uns, plus Erinnerungen vom Coach.'
+    },
+    'obs_diet': {'fr': 'Les régimes trop stricts', 'en': 'Diets too strict', 'de': 'Zu strenge Diäten'},
+    'obs_diet_a': {
+      'fr': 'Aucun aliment interdit. Tu scannes ton assiette, on ajuste.',
+      'en': 'No forbidden food. You scan your plate, we adjust.',
+      'de': 'Kein verbotenes Essen. Du scannst deinen Teller, wir passen an.'
+    },
+    'obs_know': {'fr': 'Ne pas savoir quoi faire', 'en': 'Not knowing what to do', 'de': 'Nicht wissen, was zu tun ist'},
+    'obs_know_a': {
+      'fr': 'Programme guidé, chaque exercice expliqué.',
+      'en': 'Guided program, every exercise explained.',
+      'de': 'Angeleitetes Programm, jede Übung erklärt.'
+    },
+    'obs_slow': {'fr': 'Des résultats trop lents', 'en': 'Results too slow', 'de': 'Zu langsame Ergebnisse'},
+    'obs_slow_a': {
+      'fr': 'Poids suivi chaque semaine, projection en face.',
+      'en': 'Weight tracked weekly, projection in front of you.',
+      'de': 'Gewicht wöchentlich verfolgt, Prognose vor Augen.'
+    },
+    'obs_none': {'fr': 'Rien, je débute', 'en': 'Nothing, I’m starting out', 'de': 'Nichts, ich fange an'},
+    'obs_none_a': {
+      'fr': 'On part de zéro ensemble, au bon rythme.',
+      'en': 'We start from scratch together, at the right pace.',
+      'de': 'Wir starten gemeinsam bei null, im richtigen Tempo.'
+    },
+    'answers_title': {
+      'fr': 'Ce qui t’a fait lâcher, on l’a prévu.',
+      'en': 'What made you quit, we planned for it.',
+      'de': 'Was dich aufgeben ließ, haben wir eingeplant.'
+    },
+    'duo_text': {
+      'fr':
+          'Pas une app de comptage : deux coachs. Le coach sport monte ton programme et suit chaque séance, le coach nutrition planifie ta semaine et lit ton assiette. Et ils se parlent. Tu vas le voir tout de suite, pour de vrai.',
+      'en':
+          'Not a counting app: two coaches. The training coach builds your program and tracks every session, the nutrition coach plans your week and reads your plate. And they talk to each other. You’ll see it right now, for real.',
+      'de':
+          'Keine Zähl-App: zwei Coaches. Der Sport-Coach baut dein Programm und verfolgt jede Einheit, der Ernährungs-Coach plant deine Woche und liest deinen Teller. Und sie sprechen miteinander. Du siehst es gleich, in echt.',
+    },
+
+    // ---------- Chapter 3 ----------
+    'both_title': {
+      'fr': 'Un coach sportif et un nutritionniste. En même temps.',
+      'en': 'A personal trainer and a nutritionist. At the same time.',
+      'de': 'Ein Personal Trainer und ein Ernährungsberater. Gleichzeitig.'
+    },
+    'both_coach': {'fr': 'Un coach sportif', 'en': 'A personal trainer', 'de': 'Ein Personal Trainer'},
+    'both_coach_sub': {'fr': 'Programme, suivi des séances', 'en': 'Program, session tracking', 'de': 'Programm, Trainingsverfolgung'},
+    'both_coach_price': {'fr': '40 à 70 €', 'en': '€40 to 70', 'de': '40 bis 70 €'},
+    'both_coach_unit': {'fr': 'la séance', 'en': 'per session', 'de': 'pro Einheit'},
+    'both_nutri': {'fr': 'Un nutritionniste', 'en': 'A nutritionist', 'de': 'Ein Ernährungsberater'},
+    'both_nutri_sub': {'fr': 'Plan repas, ajustements', 'en': 'Meal plan, adjustments', 'de': 'Essensplan, Anpassungen'},
+    'both_nutri_price': {'fr': '50 à 80 €', 'en': '€50 to 80', 'de': '50 bis 80 €'},
+    'both_nutri_unit': {'fr': 'la consultation', 'en': 'per consultation', 'de': 'pro Beratung'},
+    'both_ryze': {'fr': 'Ryze, les deux', 'en': 'Ryze, both', 'de': 'Ryze, beide'},
+    'both_ryze_sub': {
+      'fr': 'Et ils se parlent, tous les jours',
+      'en': 'And they talk to each other, every day',
+      'de': 'Und sie sprechen miteinander, jeden Tag'
+    },
+    'both_ryze_unit': {'fr': 'par mois', 'en': 'per month', 'de': 'pro Monat'},
+    'both_note': {
+      'fr': 'Tarifs moyens constatés en France, à titre indicatif.',
+      'en': 'Average prices observed in France, indicative only.',
+      'de': 'Durchschnittspreise in Frankreich, nur zur Orientierung.'
+    },
+    'both_why1': {
+      'fr': 'Le sport seul, tu brûles mais tu manges ton progrès. L’assiette seule, tu perds mais tu ne construis rien.',
+      'en': 'Training alone, you burn but eat your progress. Food alone, you lose but build nothing.',
+      'de': 'Nur Sport: du verbrennst, isst aber deinen Fortschritt auf. Nur Essen: du verlierst, baust aber nichts auf.',
+    },
+    'both_why2': {'fr': 'Les deux, coordonnés, c’est ce qui tient.', 'en': 'Both, coordinated, is what lasts.', 'de': 'Beides, koordiniert, das hält.'},
+    'cta_see_app': {'fr': 'Voir l’app pour de vrai', 'en': 'See the app for real', 'de': 'Die App in echt sehen'},
+
+    // ---------- Chapter 4 ----------
+    'q_personality': {'fr': 'Comment tu veux qu’on te parle ?', 'en': 'How do you want us to talk to you?', 'de': 'Wie sollen wir mit dir reden?'},
+    'pers_hint': {'fr': 'Choisis un ton, on te montre.', 'en': 'Pick a tone, we’ll show you.', 'de': 'Wähl einen Ton, wir zeigen es dir.'},
+    'pers_friendly': {
+      'fr': 'Yes {n} ! Séance à 18h, on y va ensemble. Tu vas kiffer.',
+      'en': 'Yes {n}! Session at 6pm, we go together. You’ll love it.',
+      'de': 'Yes {n}! Training um 18 Uhr, wir ziehen das zusammen durch. Wird dir gefallen.'
+    },
+    'pers_strict': {
+      'fr': '18h, séance. Pas de négociation, {n}. On avance.',
+      'en': '6pm, session. No negotiation, {n}. We move.',
+      'de': '18 Uhr, Training. Keine Diskussion, {n}. Weiter geht’s.'
+    },
+    'pers_supportive': {
+      'fr': 'Belle semaine, {n}. Ce soir on y va doucement, mais on y va.',
+      'en': 'Good week, {n}. Tonight we go easy, but we go.',
+      'de': 'Gute Woche, {n}. Heute Abend machen wir es ruhig, aber wir machen es.'
+    },
+    'pers_sassy': {
+      'fr': 'Encore sur le canapé, {n} ? Le tapis de course s’ennuie sans toi.',
+      'en': 'Still on the couch, {n}? The treadmill misses you.',
+      'de': 'Noch auf dem Sofa, {n}? Das Laufband vermisst dich.'
+    },
+    'pers_direct': {'fr': 'Séance 18h. 45 min. Go.', 'en': 'Session 6pm. 45 min. Go.', 'de': 'Training 18 Uhr. 45 Min. Los.'},
+    'cta_tone': {'fr': 'C’est ce ton-là', 'en': 'That’s the tone', 'de': 'Genau dieser Ton'},
+    'q_bilan': {
+      'fr': 'Chaque semaine, cinq minutes ensemble pour faire le point. Quel jour ?',
+      'en': 'Every week, five minutes together to check in. Which day?',
+      'de': 'Jede Woche fünf Minuten gemeinsam Bilanz ziehen. Welcher Tag?'
+    },
+    'pact_title': {'fr': 'Notre pacte.', 'en': 'Our pact.', 'de': 'Unser Pakt.'},
+    'pact_h': {'fr': 'Nous, tes Coach Ryze,', 'en': 'We, your Coach Ryze,', 'de': 'Wir, deine Coach Ryze,'},
+    'pact_p1': {
+      'fr': 'on s’engage à te suivre, à te motiver, et à ne jamais te juger. Ni un écart, ni une semaine sans séance.',
+      'en': 'commit to following you, motivating you, and never judging you. Not a slip, not a week without training.',
+      'de': 'verpflichten uns, dich zu begleiten, zu motivieren und niemals zu verurteilen. Keinen Ausrutscher, keine Woche ohne Training.',
+    },
+    'pact_p2_pre': {'fr': 'En échange, tu nous donnes ', 'en': 'In exchange, you give us ', 'de': 'Im Gegenzug gibst du uns '},
+    'pact_p2_bold': {'fr': 'cinq minutes chaque {day}', 'en': 'five minutes every {day}', 'de': 'fünf Minuten jeden {day}'},
+    'pact_p2_post': {'fr': ' pour faire le point.', 'en': ' to check in.', 'de': ' für die Bilanz.'},
+    'pact_signed_by': {'fr': 'Signé par', 'en': 'Signed by', 'de': 'Unterschrieben von'},
+    'hold_label': {'fr': 'Maintiens pour signer', 'en': 'Hold to sign', 'de': 'Halten zum Unterschreiben'},
+    'hold_done': {'fr': 'Pacte scellé', 'en': 'Pact sealed', 'de': 'Pakt besiegelt'},
+    'stamp': {'fr': 'Signé', 'en': 'Signed', 'de': 'Signiert'},
+    'cta_unlock': {'fr': 'Débloquer ma semaine', 'en': 'Unlock my week', 'de': 'Meine Woche freischalten'},
+
+    // ---------- Paywall ----------
+    'offer_title': {'fr': 'Ta semaine t’attend.', 'en': 'Your week is waiting.', 'de': 'Deine Woche wartet.'},
+    'offer_veil': {'fr': 'Débloquée pendant l’essai', 'en': 'Unlocked during the trial', 'de': 'Während der Testphase freigeschaltet'},
+    'offer_oneliner': {
+      'fr': 'Tout Ryze, sport et nutrition : planificateur par chat, séances guidées, scan des repas, coach 24/7, bilan chaque {day}.',
+      'en': 'All of Ryze, training and nutrition: chat planner, guided sessions, meal scan, 24/7 coach, check-in every {day}.',
+      'de': 'Ganz Ryze, Sport und Ernährung: Chat-Planer, angeleitete Einheiten, Mahlzeiten-Scan, Coach rund um die Uhr, Bilanz jeden {day}.',
+    },
+    'tl_now': {'fr': 'Aujourd’hui', 'en': 'Today', 'de': 'Heute'},
+    'tl_now_sub': {
+      'fr': 'Ta semaine, le scan des repas, le programme et les deux coachs. Tout est ouvert.',
+      'en': 'Your week, meal scan, program and both coaches. Everything is open.',
+      'de': 'Deine Woche, Mahlzeiten-Scan, Programm und beide Coaches. Alles offen.'
+    },
+    'tl_2': {'fr': 'Dans 2 jours', 'en': 'In 2 days', 'de': 'In 2 Tagen'},
+    'tl_2_sub': {
+      'fr': 'On te prévient avant la fin de l’essai. Pas de surprise.',
+      'en': 'We remind you before the trial ends. No surprise.',
+      'de': 'Wir erinnern dich vor Ende der Testphase. Keine Überraschung.'
+    },
+    'tl_3': {'fr': 'Dans 3 jours', 'en': 'In 3 days', 'de': 'In 3 Tagen'},
+    'tl_3_sub': {
+      'fr': 'L’abonnement démarre, sauf si tu l’annules. Un tap dans les réglages.',
+      'en': 'The subscription starts, unless you cancel. One tap in settings.',
+      'de': 'Das Abo startet, außer du kündigst. Ein Tipp in den Einstellungen.'
+    },
+    'plan_annual': {'fr': 'Annuel', 'en': 'Annual', 'de': 'Jährlich'},
+    'plan_annual_sub': {'fr': 'Le plan des gens qui vont au bout', 'en': 'The plan for people who go all the way', 'de': 'Der Plan für Leute, die durchziehen'},
+    'plan_annual_eq': {'fr': '{p} par mois', 'en': '{p} per month', 'de': '{p} pro Monat'},
+    'plan_monthly': {'fr': 'Mensuel', 'en': 'Monthly', 'de': 'Monatlich'},
+    'plan_monthly_sub': {'fr': 'Sans engagement', 'en': 'No commitment', 'de': 'Ohne Bindung'},
+    'plan_monthly_unit': {'fr': 'par mois', 'en': 'per month', 'de': 'pro Monat'},
+    'plan_weekly': {'fr': 'Hebdo', 'en': 'Weekly', 'de': 'Wöchentlich'},
+    'plan_weekly_sub': {'fr': 'Pour essayer une semaine', 'en': 'To try for a week', 'de': 'Eine Woche ausprobieren'},
+    'plan_weekly_unit': {'fr': 'par semaine', 'en': 'per week', 'de': 'pro Woche'},
+    'badge_trial': {'fr': '3 jours gratuits', 'en': '3 days free', 'de': '3 Tage gratis'},
+    'cta_trial': {'fr': 'Commencer mes 3 jours gratuits', 'en': 'Start my 3 free days', 'de': 'Meine 3 Gratistage starten'},
+    'cta_monthly': {'fr': 'Continuer avec le mensuel', 'en': 'Continue with monthly', 'de': 'Weiter mit monatlich'},
+    'cta_weekly': {'fr': 'Continuer avec l’hebdo', 'en': 'Continue with weekly', 'de': 'Weiter mit wöchentlich'},
+    'foot_annual': {
+      'fr': 'Gratuit pendant 3 jours, puis {p} par an. Annulable à tout moment.',
+      'en': 'Free for 3 days, then {p} per year. Cancel anytime.',
+      'de': '3 Tage gratis, dann {p} pro Jahr. Jederzeit kündbar.'
+    },
+    'foot_monthly': {'fr': '{p} par mois. Annulable à tout moment.', 'en': '{p} per month. Cancel anytime.', 'de': '{p} pro Monat. Jederzeit kündbar.'},
+    'foot_weekly': {'fr': '{p} par semaine. Annulable à tout moment.', 'en': '{p} per week. Cancel anytime.', 'de': '{p} pro Woche. Jederzeit kündbar.'},
+    'restore': {'fr': 'Restaurer un achat', 'en': 'Restore a purchase', 'de': 'Kauf wiederherstellen'},
+    'restored_ok': {'fr': 'Achats restaurés.', 'en': 'Purchases restored.', 'de': 'Käufe wiederhergestellt.'},
+    'restored_none': {'fr': 'Aucun achat à restaurer.', 'en': 'No purchase to restore.', 'de': 'Kein Kauf zum Wiederherstellen.'},
+    'purchase_error': {
+      'fr': 'L’achat n’a pas abouti. Réessaie.',
+      'en': 'The purchase did not go through. Try again.',
+      'de': 'Der Kauf ist nicht durchgegangen. Versuch es erneut.'
+    },
+    'store_unavailable': {
+      'fr': 'Boutique indisponible pour le moment. Réessaie dans un instant.',
+      'en': 'Store unavailable right now. Try again in a moment.',
+      'de': 'Store gerade nicht verfügbar. Versuch es gleich noch einmal.'
+    },
+    'demo_partial_save': {
+      'fr': 'Données sauvegardées partiellement. Tu peux re-planifier depuis l’app.',
+      'en': 'Data partially saved. You can re-plan from the app.',
+      'de': 'Daten teilweise gespeichert. Du kannst in der App neu planen.',
+    },
+    'welcome_in': {'fr': 'Bienvenue dans Ryze', 'en': 'Welcome to Ryze', 'de': 'Willkommen bei Ryze'},
+  };
+}
