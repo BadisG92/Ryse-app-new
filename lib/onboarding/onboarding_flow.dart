@@ -5,7 +5,9 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../models/weekly_planner_models.dart';
 import '../services/coach_personality_service.dart';
 import '../services/haptic_service.dart';
+import '../services/revenuecat_service.dart';
 import '../services/translations.dart';
+import '../services/unified_subscription_service.dart';
 import 'onboarding_repository.dart';
 import 'onboarding_state.dart';
 import 'onboarding_strings.dart';
@@ -81,6 +83,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     super.initState();
     a = widget.resume?.answers ?? OnbAnswers();
     _motivationCtrl = TextEditingController(text: a.motivationText);
+    _loadAnnualPrice();
     _steps = widget.mode == OnbMode.coachOnly
         ? const [
             _Step('ch4', card: true),
@@ -172,6 +175,32 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   void _autoNext() => Future.delayed(const Duration(milliseconds: 780), () {
         if (mounted) _next();
       });
+
+  /// Annual plan price for the "both coaches" comparison. Falls back to the
+  /// list price when the store has not answered.
+  double _annualPrice = 69.99;
+  String _annualPriceLabel = '69,99 €';
+
+  Future<void> _loadAnnualPrice() async {
+    if (widget.mode == OnbMode.coachOnly) return;
+    try {
+      await UnifiedSubscriptionService().initialize();
+      final packages = await RevenueCatService().getAvailablePackages();
+      for (final p in packages) {
+        final id = p.identifier.toLowerCase();
+        if (id.contains('annual') || id.contains('yearly')) {
+          if (!mounted) return;
+          setState(() {
+            _annualPrice = p.storeProduct.price;
+            _annualPriceLabel = p.storeProduct.priceString;
+          });
+          return;
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Onboarding annual price: $e');
+    }
+  }
 
   Future<void> _onEnter(_Step step) async {
     if (step.id == 'planner') await _ensureProfileSaved();
@@ -795,7 +824,13 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
           step,
           showPast: false,
           centerBody: false,
-          body: BothCoachesContent(s: s, monthlyEquivalent: '5,83 €'),
+          body: BothCoachesContent(
+            s: s,
+            answers: a,
+            projection: OnbMetabolics.projection(a, s.lang),
+            annualPrice: _annualPrice,
+            annualPriceLabel: _annualPriceLabel,
+          ),
           cta: OnbButton(label: s.t('cta_see_app'), onPressed: _next),
         );
 

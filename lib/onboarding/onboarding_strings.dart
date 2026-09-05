@@ -236,37 +236,45 @@ class OnbStrings {
     },
 
     // ---------- Chapter 3 ----------
-    'both_title': {
-      'fr': 'Un coach sportif et un nutritionniste. En même temps.',
-      'en': 'A personal trainer and a nutritionist. At the same time.',
-      'de': 'Ein Personal Trainer und ein Ernährungsberater. Gleichzeitig.'
+    'both_title': {'fr': 'Le même plan, chez des pros :', 'en': 'The same plan, with the pros:', 'de': 'Derselbe Plan, bei Profis:'},
+    'both_caption': {'fr': 'sur {n} semaines · objectif {goal}', 'en': 'over {n} weeks · goal {goal}', 'de': 'über {n} Wochen · Ziel {goal}'},
+    'both_goal_maintain': {'fr': 'maintien', 'en': 'maintain', 'de': 'halten'},
+    'both_line_coach': {'fr': '{n} séances de coach · {p} €', 'en': '{n} coaching sessions · €{p}', 'de': '{n} Coaching-Einheiten · {p} €'},
+    'both_line_nutri': {'fr': '{n} consultations nutrition · {p} €', 'en': '{n} nutrition consultations · €{p}', 'de': '{n} Ernährungsberatungen · {p} €'},
+    'both_missing': {
+      'fr': 'Coordination entre les deux : à toi de faire le lien',
+      'en': 'Coordination between the two: up to you',
+      'de': 'Abstimmung zwischen beiden: deine Aufgabe'
     },
-    'both_coach': {'fr': 'Un coach sportif', 'en': 'A personal trainer', 'de': 'Ein Personal Trainer'},
-    'both_coach_sub': {'fr': 'Programme, suivi des séances', 'en': 'Program, session tracking', 'de': 'Programm, Trainingsverfolgung'},
-    'both_coach_price': {'fr': '40 à 70 €', 'en': '€40 to 70', 'de': '40 bis 70 €'},
-    'both_coach_unit': {'fr': 'la séance', 'en': 'per session', 'de': 'pro Einheit'},
-    'both_nutri': {'fr': 'Un nutritionniste', 'en': 'A nutritionist', 'de': 'Ein Ernährungsberater'},
-    'both_nutri_sub': {'fr': 'Plan repas, ajustements', 'en': 'Meal plan, adjustments', 'de': 'Essensplan, Anpassungen'},
-    'both_nutri_price': {'fr': '50 à 80 €', 'en': '€50 to 80', 'de': '50 bis 80 €'},
-    'both_nutri_unit': {'fr': 'la consultation', 'en': 'per consultation', 'de': 'pro Beratung'},
-    'both_ryze': {'fr': 'Ryze, les deux', 'en': 'Ryze, both', 'de': 'Ryze, beide'},
-    'both_ryze_sub': {
-      'fr': 'Et ils se parlent, tous les jours',
-      'en': 'And they talk to each other, every day',
-      'de': 'Und sie sprechen miteinander, jeden Tag'
+    'both_bar_human': {'fr': 'Coach + nutri', 'en': 'Coach + nutrition', 'de': 'Coach + Ernährung'},
+    'both_bar_ryze': {'fr': 'Ryze, un an', 'en': 'Ryze, one year', 'de': 'Ryze, ein Jahr'},
+    'both_ratio': {'fr': '{x}× moins', 'en': '{x}× less', 'de': '{x}× weniger'},
+    'both_keep': {'fr': 'restent dans ta poche', 'en': 'stay in your pocket', 'de': 'bleiben in deiner Tasche'},
+    'both_keep_sub': {
+      'fr': 'avec les deux coachs, toute l’année',
+      'en': 'with both coaches, all year long',
+      'de': 'mit beiden Coaches, das ganze Jahr'
     },
-    'both_ryze_unit': {'fr': 'par mois', 'en': 'per month', 'de': 'pro Monat'},
+    'both_tick_talk': {
+      'fr': 'Les deux se parlent : la séance s’adapte à ton assiette',
+      'en': 'They talk to each other: the session adapts to your plate',
+      'de': 'Sie sprechen miteinander: die Einheit passt sich deinem Teller an'
+    },
+    'both_tick_247': {
+      'fr': 'Disponibles 24h/24, 7j/7, même le dimanche soir',
+      'en': 'Available 24/7, even on a Sunday night',
+      'de': 'Rund um die Uhr da, auch am Sonntagabend'
+    },
+    'both_tick_after': {
+      'fr': 'Le suivi continue après l’objectif, sans rendez-vous',
+      'en': 'Support continues after the goal, no appointments',
+      'de': 'Die Begleitung geht nach dem Ziel weiter, ohne Termine'
+    },
     'both_note': {
-      'fr': 'Tarifs moyens constatés en France, à titre indicatif.',
-      'en': 'Average prices observed in France, indicative only.',
-      'de': 'Durchschnittspreise in Frankreich, nur zur Orientierung.'
+      'fr': 'Bas de fourchette des tarifs en France : 40 à 70 € la séance, 50 à 80 € la consultation.',
+      'en': 'Low end of French prices: €40 to 70 per session, €50 to 80 per consultation.',
+      'de': 'Untere Preisspanne in Frankreich: 40 bis 70 € pro Einheit, 50 bis 80 € pro Beratung.'
     },
-    'both_why1': {
-      'fr': 'Le sport seul, tu brûles mais tu manges ton progrès. L’assiette seule, tu perds mais tu ne construis rien.',
-      'en': 'Training alone, you burn but eat your progress. Food alone, you lose but build nothing.',
-      'de': 'Nur Sport: du verbrennst, isst aber deinen Fortschritt auf. Nur Essen: du verlierst, baust aber nichts auf.',
-    },
-    'both_why2': {'fr': 'Les deux, coordonnés, c’est ce qui tient.', 'en': 'Both, coordinated, is what lasts.', 'de': 'Beides, koordiniert, das hält.'},
     'cta_see_app': {'fr': 'Voir l’app pour de vrai', 'en': 'See the app for real', 'de': 'Die App in echt sehen'},
 
     // ---------- Chapter 4 ----------
