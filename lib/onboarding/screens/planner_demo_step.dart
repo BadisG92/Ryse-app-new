@@ -18,13 +18,34 @@ class PlannerDemoStep extends StatefulWidget {
 class _PlannerDemoStepState extends State<PlannerDemoStep> {
   bool _sport = false;
 
-  /// Seven days from today, not a calendar week: a demo opened on a Saturday
-  /// would otherwise have two days left to fill. The planner service plans
-  /// into the same window, so what is validated lands where it is shown.
-  WeeklyPlannerData _emptyWeek() {
+  /// Meals confirmed in the first step, carried into the second one.
+  final List<PendingMeal> _meals = [];
+
+  /// The calendar week, like everywhere else in the app. A rolling window read
+  /// better on a Sunday but disagreed with every other week in the product,
+  /// and the disagreement cost more than the empty days it saved.
+  DateTime get _monday {
     final now = DateTime.now();
-    return WeeklyPlannerData.fromLists(weekStart: DateTime(now.year, now.month, now.day), activities: [], workouts: []);
+    return DateTime(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1));
   }
+
+  WeeklyPlannerData _week() => WeeklyPlannerData.fromLists(
+        weekStart: _monday,
+        activities: [
+          for (final (i, meal) in _meals.indexed)
+            PlannedActivity(
+              id: 'demo_meal_$i',
+              userId: '',
+              plannedDate: meal.plannedDate,
+              activityType: meal.mealType,
+              activityData: meal.toActivityData(),
+              status: PlannedStatus.planned,
+              isAiGenerated: true,
+              createdAt: DateTime.now(),
+            ),
+        ],
+        workouts: [],
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -39,7 +60,7 @@ class _PlannerDemoStepState extends State<PlannerDemoStep> {
           ? PlannerChatScreen(
               key: const ValueKey('demo_workouts'),
               initialMode: 'workouts',
-              weekData: _emptyWeek(),
+              weekData: _week(),
               demoMode: true,
               maxMessages: 5,
               onDemoDataCollected: (meals, workouts, sessions) {
@@ -50,12 +71,16 @@ class _PlannerDemoStepState extends State<PlannerDemoStep> {
           : PlannerChatScreen(
               key: const ValueKey('demo_meals'),
               initialMode: 'meals',
-              weekData: _emptyWeek(),
+              weekData: _week(),
               demoMode: true,
               maxMessages: 5,
               onDemoDataCollected: (meals, workouts, sessions) {
                 widget.onCollected(meals, workouts, sessions);
-                setState(() => _sport = true);
+                // the sport step opens on the week the meals already fill
+                setState(() {
+                  _meals.addAll(meals);
+                  _sport = true;
+                });
               },
             ),
     );

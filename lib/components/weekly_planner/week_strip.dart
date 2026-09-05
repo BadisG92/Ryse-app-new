@@ -239,7 +239,8 @@ class _Mark extends StatelessWidget {
   Widget build(BuildContext context) {
     final size = round ? 8.0 : 5.0;
     final done = state == SlotState.done;
-    final drawn = state != SlotState.empty;
+    // incoming stays invisible: only the mark that lands is drawn
+    final drawn = state == SlotState.planned || state == SlotState.done;
     return AnimatedScale(
       scale: pop ? 1.9 : 1,
       duration: const Duration(milliseconds: 220),
@@ -349,8 +350,11 @@ class _Tile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // a slot waiting for a mark keeps its place and draws nothing: an outline
+    // sitting at the landing point makes the flight look like it changes
+    // nothing when it arrives
     if (state == SlotState.incoming) {
-      return const CustomPaint(painter: _DashedBorder(radius: 10), child: SizedBox(height: 40, width: double.infinity));
+      return const SizedBox(height: 40, width: double.infinity);
     }
     final done = state == SlotState.done;
     return GestureDetector(
