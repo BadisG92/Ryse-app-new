@@ -271,10 +271,15 @@ class OnbStrings {
       'de': 'Die Begleitung geht nach dem Ziel weiter, ohne Termine'
     },
     'both_note': {
-      'fr': 'Bas de fourchette des tarifs en France : 40 à 70 € la séance, 50 à 80 € la consultation.',
-      'en': 'Low end of French prices: €40 to 70 per session, €50 to 80 per consultation.',
-      'de': 'Untere Preisspanne in Frankreich: 40 bis 70 € pro Einheit, 50 bis 80 € pro Beratung.'
+      'fr': 'Tarifs indicatifs, bas de fourchette : 40 à 70 € la séance, 50 à 80 € la consultation.',
+      'en': 'Indicative low-end prices: €40 to 70 per session, €50 to 80 per consultation.',
+      'de': 'Richtpreise, untere Spanne: 40 bis 70 € pro Einheit, 50 bis 80 € pro Beratung.'
     },
+    // store price fallbacks, shown only while RevenueCat has not answered
+    'price_default_annual': {'fr': '69,99 €', 'en': '€69.99', 'de': '69,99 €'},
+    'price_default_monthly': {'fr': '9,99 €', 'en': '€9.99', 'de': '9,99 €'},
+    'price_default_weekly': {'fr': '2,99 €', 'en': '€2.99', 'de': '2,99 €'},
+    'price_default_monthly_equiv': {'fr': '5,83 €', 'en': '€5.83', 'de': '5,83 €'},
     'cta_see_app': {'fr': 'Voir l’app pour de vrai', 'en': 'See the app for real', 'de': 'Die App in echt sehen'},
 
     // ---------- Chapter 4 ----------

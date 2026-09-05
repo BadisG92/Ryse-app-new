@@ -79,9 +79,8 @@ class _BothCoachesContentState extends State<BothCoachesContent> with SingleTick
   String _goalLabel() {
     final p = widget.projection;
     if (p == null || widget.answers.goal == 'maintain') return widget.s.t('both_goal_maintain');
-    final kg = p.deltaKg.abs();
-    final txt = kg == kg.roundToDouble() ? kg.round().toString() : kg.toStringAsFixed(1).replaceAll('.', widget.s.lang == 'en' ? '.' : ',');
-    return '${p.deltaKg < 0 ? '−' : '+'}$txt kg';
+    // kg or lb, like every other weight in the onboarding
+    return '${p.deltaKg < 0 ? '−' : '+'}${OnbUnits.weight(p.deltaKg.abs().round(), widget.answers.isMetric)}';
   }
 
   @override

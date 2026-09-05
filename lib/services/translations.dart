@@ -9459,6 +9459,76 @@ class AppTranslations {
       'en': 'Save your plan and access all features',
       'de': 'Speichere deinen Plan und greife auf alle Funktionen zu',
     },
+    'planner_proposed_program': {
+      'fr': 'Programme proposé',
+      'en': 'Proposed program',
+      'de': 'Vorgeschlagenes Programm',
+    },
+    'planner_sessions_word': {
+      'fr': 'séances',
+      'en': 'sessions',
+      'de': 'Einheiten',
+    },
+    'planner_meals_word': {
+      'fr': 'repas',
+      'en': 'meals',
+      'de': 'Mahlzeiten',
+    },
+    'planner_kcal_per_day': {
+      'fr': 'kcal / jour',
+      'en': 'kcal / day',
+      'de': 'kcal / Tag',
+    },
+    'planner_proposed_week': {
+      'fr': 'Semaine proposée',
+      'en': 'Proposed week',
+      'de': 'Vorgeschlagene Woche',
+    },
+    'planner_day_total': {
+      'fr': 'Total du jour',
+      'en': 'Day total',
+      'de': 'Tagessumme',
+    },
+    'planner_see_all_days': {
+      'fr': 'Voir les {n} jours',
+      'en': 'See all {n} days',
+      'de': 'Alle {n} Tage ansehen',
+    },
+    'planner_see_details': {
+      'fr': 'Voir le détail',
+      'en': 'See details',
+      'de': 'Details ansehen',
+    },
+    'planner_dismiss_proposal': {
+      'fr': 'Annuler la proposition',
+      'en': 'Dismiss the proposal',
+      'de': 'Vorschlag verwerfen',
+    },
+    'planner_proposed_sessions': {
+      'fr': 'Séances proposées',
+      'en': 'Proposed sessions',
+      'de': 'Vorgeschlagene Einheiten',
+    },
+    'planner_tap_session_detail': {
+      'fr': 'Touche une séance pour voir le détail',
+      'en': 'Tap a session to see the detail',
+      'de': 'Tippe auf eine Einheit für Details',
+    },
+    'planner_session_word': {
+      'fr': 'Séance',
+      'en': 'Session',
+      'de': 'Einheit',
+    },
+    'planner_this_session': {
+      'fr': 'cette séance',
+      'en': 'this session',
+      'de': 'diese Einheit',
+    },
+    'planner_breakfast_short': {
+      'fr': 'Petit-déj',
+      'en': 'Breakfast',
+      'de': 'Frühstück',
+    },
   };
 
   /// Getter public pour accéder aux traductions (utilisé par TranslationChecker)

@@ -306,8 +306,8 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
 
   void _addConfirmationMessage(String description) {
     final langCode = LocalizationService.instance.currentLanguageCode;
-    final confirmText = {'fr': 'Confirmer', 'en': 'Confirm', 'de': 'Bestätigen'};
-    final cancelText = {'fr': 'Annuler', 'en': 'Cancel', 'de': 'Abbrechen'};
+    final confirmText = 'planner_confirm'.tr(langCode);
+    final cancelText = 'planner_cancel'.tr(langCode);
 
     setState(() {
       _pendingConfirmation = {'description': description};
@@ -316,12 +316,12 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
         isUser: false,
         actions: [
           _ChatAction(
-            label: cancelText[langCode] ?? cancelText['en']!,
+            label: cancelText,
             onTap: _cancelConfirmation,
             isDestructive: false,
           ),
           _ChatAction(
-            label: confirmText[langCode] ?? confirmText['en']!,
+            label: confirmText,
             onTap: _executeConfirmation,
             isDestructive: true,
           ),
@@ -1451,8 +1451,8 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
     if (_pendingWorkouts == null || _pendingWorkouts!.isEmpty) {
       return const SizedBox.shrink();
     }
-    final title = {'fr': 'Programme proposé', 'en': 'Proposed program', 'de': 'Vorgeschlagenes Programm'}[langCode] ?? 'Proposed program';
-    final sessionsWord = {'fr': 'séances', 'en': 'sessions', 'de': 'Einheiten'}[langCode] ?? 'sessions';
+    final title = 'planner_proposed_program'.tr(langCode);
+    final sessionsWord = 'planner_sessions_word'.tr(langCode);
     final totalMin = _pendingWorkouts!.fold<int>(0, (sum, w) => sum + w.durationMinutes);
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -1690,14 +1690,8 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
     }).toList();
   }
 
-  static const Map<PlannedActivityType, Map<String, String>> _mealTypeNames = {
-    PlannedActivityType.breakfast: {'fr': 'Petit-déj', 'en': 'Breakfast', 'de': 'Frühstück'},
-    PlannedActivityType.lunch: {'fr': 'Déjeuner', 'en': 'Lunch', 'de': 'Mittagessen'},
-    PlannedActivityType.dinner: {'fr': 'Dîner', 'en': 'Dinner', 'de': 'Abendessen'},
-    PlannedActivityType.snack: {'fr': 'Collation', 'en': 'Snack', 'de': 'Snack'},
-  };
+  String _mealTypeLabel(PendingMeal meal, String langCode) => _mealTypeKey(meal.mealType, short: true).tr(langCode);
 
-  String _mealTypeLabel(PendingMeal meal, String langCode) => _mealTypeNames[meal.mealType]?[langCode] ?? meal.mealType.value;
   List<String> _macroLetters(String langCode) => ['proteins'.tr(langCode)[0], 'carbs'.tr(langCode)[0], 'fats'.tr(langCode)[0]];
   int _mealKcal(PendingMeal m) => ((m.proteins * 4) + (m.carbs * 4) + (m.fats * 9)).round();
 
@@ -1710,12 +1704,12 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
     }
     final letters = _macroLetters(langCode);
     final several = _mealsDays.length > 1;
-    final mealsWord = {'fr': 'repas', 'en': 'meals', 'de': 'Mahlzeiten'}[langCode] ?? 'meals';
+    final mealsWord = 'planner_meals_word'.tr(langCode);
     final daysWord = 'planner_days_count'.tr(langCode);
-    final perDay = {'fr': 'kcal / jour', 'en': 'kcal / day', 'de': 'kcal / Tag'}[langCode] ?? 'kcal / day';
-    final weekTitle = {'fr': 'Semaine proposée', 'en': 'Proposed week', 'de': 'Vorgeschlagene Woche'}[langCode] ?? 'Proposed week';
-    final totalWord = {'fr': 'Total du jour', 'en': 'Day total', 'de': 'Tagessumme'}[langCode] ?? 'Day total';
-    final moreDays = {'fr': 'Voir les {n} jours', 'en': 'See all {n} days', 'de': 'Alle {n} Tage ansehen'}[langCode] ?? 'See all {n} days';
+    final perDay = 'planner_kcal_per_day'.tr(langCode);
+    final weekTitle = 'planner_proposed_week'.tr(langCode);
+    final totalWord = 'planner_day_total'.tr(langCode);
+    final moreDays = 'planner_see_all_days'.tr(langCode);
 
     if (!several) {
       final day = _mealsDays.first;
@@ -1858,8 +1852,8 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
         busy: _isConfirming,
       );
     }
-    final detail = {'fr': 'Voir le détail', 'en': 'See details', 'de': 'Details ansehen'}[langCode] ?? 'See details';
-    final cancelProposal = {'fr': 'Annuler la proposition', 'en': 'Dismiss the proposal', 'de': 'Vorschlag verwerfen'}[langCode] ?? 'Dismiss the proposal';
+    final detail = 'planner_see_details'.tr(langCode);
+    final cancelProposal = 'planner_dismiss_proposal'.tr(langCode);
     return ProposalActions(
       cancelLabel: detail,
       confirmLabel: '${'planner_confirm_all_days'.tr(langCode)} · ${_mealsDays.length} ${'planner_days_count'.tr(langCode)}',
@@ -1918,8 +1912,8 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
       return const SizedBox.shrink();
     }
     final n = _pendingSessions!.length;
-    final title = {'fr': 'Séances proposées', 'en': 'Proposed sessions', 'de': 'Vorgeschlagene Einheiten'}[langCode] ?? 'Proposed sessions';
-    final tapHint = {'fr': 'Touche une séance pour voir le détail', 'en': 'Tap a session to see the detail', 'de': 'Tippe auf eine Einheit für Details'}[langCode] ?? 'Tap a session to see the detail';
+    final title = 'planner_proposed_sessions'.tr(langCode);
+    final tapHint = 'planner_tap_session_detail'.tr(langCode);
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2362,13 +2356,7 @@ class _MealDetailPage extends StatelessWidget {
     // Parser la description pour extraire les sections
     final sections = _parseDescription(meal.dishDescription);
 
-    final mealTypeNames = {
-      PlannedActivityType.breakfast: {'fr': 'Petit-déjeuner', 'en': 'Breakfast', 'de': 'Frühstück'},
-      PlannedActivityType.lunch: {'fr': 'Déjeuner', 'en': 'Lunch', 'de': 'Mittagessen'},
-      PlannedActivityType.dinner: {'fr': 'Dîner', 'en': 'Dinner', 'de': 'Abendessen'},
-      PlannedActivityType.snack: {'fr': 'Collation', 'en': 'Snack', 'de': 'Snack'},
-    };
-    final mealTypeName = mealTypeNames[meal.mealType]?[langCode] ?? meal.mealType.value;
+    final mealTypeName = _mealTypeKey(meal.mealType).tr(langCode);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -2771,8 +2759,8 @@ class _MealsProposalSheetState extends State<_MealsProposalSheet> {
         final day = days[index];
         final meals = widget.mealsFor(day);
         final lang = widget.langCode;
-        final mealsWord = {'fr': 'repas', 'en': 'meals', 'de': 'Mahlzeiten'}[lang] ?? 'meals';
-        final totalWord = {'fr': 'Total du jour', 'en': 'Day total', 'de': 'Tagessumme'}[lang] ?? 'Day total';
+        final mealsWord = 'planner_meals_word'.tr(lang);
+        final totalWord = 'planner_day_total'.tr(lang);
         final several = days.length > 1;
         final validate = 'planner_validate'.tr(lang);
         final confirmLabel = several ? (lang == 'de' ? '${widget.dayShort(day)} $validate'.toLowerCase() : '$validate ${widget.dayShort(day)}') : validate;
@@ -2905,8 +2893,8 @@ class _SessionProposalSheetState extends State<_SessionProposalSheet> {
         final index = widget.currentIndex().clamp(0, n - 1);
         final session = sessions[index];
         final lang = widget.langCode;
-        final sessionWord = {'fr': 'Séance', 'en': 'Session', 'de': 'Einheit'}[lang] ?? 'Session';
-        final thisOne = {'fr': 'cette séance', 'en': 'this session', 'de': 'diese Einheit'}[lang] ?? 'this session';
+        final sessionWord = 'planner_session_word'.tr(lang);
+        final thisOne = 'planner_this_session'.tr(lang);
         return _sheetFrame(
           context,
           child: Column(
@@ -2935,5 +2923,21 @@ class _SessionProposalSheetState extends State<_SessionProposalSheet> {
         );
       },
     );
+  }
+}
+
+/// Dictionary key of a meal slot; the short form fits a proposal row.
+String _mealTypeKey(PlannedActivityType t, {bool short = false}) {
+  switch (t) {
+    case PlannedActivityType.breakfast:
+      return short ? 'planner_breakfast_short' : 'breakfast';
+    case PlannedActivityType.lunch:
+      return 'lunch';
+    case PlannedActivityType.dinner:
+      return 'dinner';
+    case PlannedActivityType.snack:
+      return 'snack';
+    default:
+      return t.value;
   }
 }

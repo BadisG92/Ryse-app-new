@@ -48,7 +48,6 @@ class _OnboardingPaywallScreenState extends State<OnboardingPaywallScreen> {
   bool _busy = false;
   late String _plan = widget.initialPlan;
 
-  static const _defaults = {'annual': '69,99 €', 'monthly': '9,99 €', 'weekly': '2,99 €'};
 
   @override
   void initState() {
@@ -77,16 +76,16 @@ class _OnboardingPaywallScreenState extends State<OnboardingPaywallScreen> {
     return null;
   }
 
-  String _price(String plan) => _packageFor(plan)?.storeProduct.priceString ?? _defaults[plan]!;
+  String _price(String plan) => _packageFor(plan)?.storeProduct.priceString ?? widget.s.t('price_default_$plan');
 
   String _monthlyEquivalent() {
     final p = _packageFor('annual');
-    if (p == null) return '5,83 €';
+    if (p == null) return widget.s.t('price_default_monthly_equiv');
     try {
       final locale = widget.s.lang == 'fr' ? 'fr_FR' : (widget.s.lang == 'de' ? 'de_DE' : 'en_US');
       return NumberFormat.simpleCurrency(locale: locale, name: p.storeProduct.currencyCode).format(p.storeProduct.price / 12);
     } catch (_) {
-      return '5,83 €';
+      return widget.s.t('price_default_monthly_equiv');
     }
   }
 

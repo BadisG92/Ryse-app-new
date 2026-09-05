@@ -179,7 +179,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   /// Annual plan price for the "both coaches" comparison. Falls back to the
   /// list price when the store has not answered.
   double _annualPrice = 69.99;
-  String _annualPriceLabel = '69,99 €';
+  String? _annualPriceLabel; // null until the store answers; the dictionary fallback is used meanwhile
 
   Future<void> _loadAnnualPrice() async {
     if (widget.mode == OnbMode.coachOnly) return;
@@ -829,7 +829,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             answers: a,
             projection: OnbMetabolics.projection(a, s.lang),
             annualPrice: _annualPrice,
-            annualPriceLabel: _annualPriceLabel,
+            annualPriceLabel: _annualPriceLabel ?? s.t('price_default_annual'),
           ),
           cta: OnbButton(label: s.t('cta_see_app'), onPressed: _next),
         );
