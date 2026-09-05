@@ -12,8 +12,8 @@ class OnbAnswers {
   String? gender;
   int age = 26;
   int heightCm = 178;
-  int weightKg = 82;
-  int targetKg = 74;
+  double weightKg = 82;
+  double targetKg = 74;
   bool isMetric = true;
   String? activity;
   List<String> restrictions = [];
@@ -62,8 +62,8 @@ class OnbAnswers {
     a.gender = j['gender'] as String?;
     a.age = (j['age'] as num?)?.toInt() ?? a.age;
     a.heightCm = (j['heightCm'] as num?)?.toInt() ?? a.heightCm;
-    a.weightKg = (j['weightKg'] as num?)?.toInt() ?? a.weightKg;
-    a.targetKg = (j['targetKg'] as num?)?.toInt() ?? a.targetKg;
+    a.weightKg = (j['weightKg'] as num?)?.toDouble() ?? a.weightKg;
+    a.targetKg = (j['targetKg'] as num?)?.toDouble() ?? a.targetKg;
     a.isMetric = j['isMetric'] as bool? ?? true;
     a.activity = j['activity'] as String?;
     a.restrictions = List<String>.from(j['restrictions'] as List? ?? const []);
@@ -80,11 +80,11 @@ class OnbAnswers {
   UserProfile toProfile() => UserProfile.fromMap({
         'gender': gender ?? '',
         'age': age.toString(),
-        'weight': weightKg.toString(),
+        'weight': OnbUnits.fmtKg(weightKg, decimal: '.'),
         'height': heightCm.toString(),
         'activity': activity ?? '',
         'goal': goal ?? '',
-        'targetWeight': hasTarget ? targetKg.toString() : null,
+        'targetWeight': hasTarget ? OnbUnits.fmtKg(targetKg, decimal: '.') : null,
         'obstacles': obstacles,
         'restrictions': restrictions,
       });
@@ -142,7 +142,7 @@ class OnbMetabolics {
 
 class OnbProjection {
   const OnbProjection({required this.deltaKg, required this.weeks, required this.date, required this.label, required this.ratePerWeekKg});
-  final int deltaKg;
+  final double deltaKg;
   final int weeks;
   final DateTime date;
   final String label;
@@ -155,8 +155,18 @@ class OnbUnits {
 
   static int cmToIn(int cm) => (cm / 2.54).round();
   static int inToCm(int inches) => (inches * 2.54).round();
-  static int kgToLb(int kg) => (kg * 2.20462).round();
-  static int lbToKg(int lb) => (lb / 2.20462).round();
+  static int kgToLb(double kg) => (kg * 2.20462).round();
+
+  /// Pounds are whole, so the kilo they convert to is not: keeping the exact
+  /// value is what stops a round trip from drifting by a pound.
+  static double lbToKg(int lb) => lb / 2.20462;
+
+  /// "82" when the value is round, "82,5" otherwise. Never "82,0".
+  static String fmtKg(double kg, {String decimal = ','}) {
+    final half = (kg * 2).round() / 2;
+    if (half == half.roundToDouble()) return half.round().toString();
+    return half.toStringAsFixed(1).replaceAll('.', decimal);
+  }
 
   static String height(int cm, bool metric) {
     if (metric) return '$cm cm';
@@ -164,7 +174,7 @@ class OnbUnits {
     return '${inches ~/ 12} ft ${inches % 12} in';
   }
 
-  static String weight(int kg, bool metric) => metric ? '$kg kg' : '${kgToLb(kg)} lb';
+  static String weight(double kg, bool metric, {String decimal = ','}) => metric ? '${fmtKg(kg, decimal: decimal)} kg' : '${kgToLb(kg)} lb';
 }
 
 /// Local progress so a user who closes the app comes back where they were,

@@ -368,9 +368,9 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       case 'height':
         return OnbUnits.height(a.heightCm, a.isMetric);
       case 'weight':
-        return OnbUnits.weight(a.weightKg, a.isMetric);
+        return OnbUnits.weight(a.weightKg, a.isMetric, decimal: _decimal);
       case 'target':
-        return OnbUnits.weight(a.targetKg, a.isMetric);
+        return OnbUnits.weight(a.targetKg, a.isMetric, decimal: _decimal);
       case 'activity':
         return a.activity == null ? null : s.t('act_${a.activity}');
       case 'diet':
@@ -390,16 +390,18 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
   /// "−8 kg d'ici le 12 nov., avec les deux coachs." Nine questions come back
   /// as one sentence at the moment the user decides.
+  String get _decimal => s.lang == 'en' ? '.' : ',';
+
   String? _pactGoal() {
     final p = OnbMetabolics.projection(a, s.lang);
     if (p == null) return null;
-    return s.t('pact_goal', {'target': OnbUnits.weight(a.targetKg, a.isMetric), 'date': p.label});
+    return s.t('pact_goal', {'target': OnbUnits.weight(a.targetKg, a.isMetric, decimal: _decimal), 'date': p.label});
   }
 
   String? _goalLine() {
     final p = OnbMetabolics.projection(a, s.lang);
     if (p == null) return null;
-    final delta = '${p.deltaKg < 0 ? '−' : '+'}${OnbUnits.weight(p.deltaKg.abs().round(), a.isMetric)}';
+    final delta = '${p.deltaKg < 0 ? '−' : '+'}${OnbUnits.weight(p.deltaKg.abs(), a.isMetric, decimal: _decimal)}';
     return s.t('offer_goal', {'goal': delta, 'date': p.label, 'day': _dayName(a.bilanDay ?? 7)});
   }
 
@@ -653,10 +655,11 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             isHeight: true,
             minMetric: 130,
             maxMetric: 220,
-            valueMetric: a.heightCm,
+            valueMetric: a.heightCm.toDouble(),
             isMetric: a.isMetric,
+            decimal: _decimal,
             onChanged: (v) => setState(() {
-              a.heightCm = v;
+              a.heightCm = v.round();
               a.markBodyTouched();
             }),
             onUnitChanged: (m) => setState(() => a.isMetric = m),
@@ -674,6 +677,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             maxMetric: 200,
             valueMetric: a.weightKg,
             isMetric: a.isMetric,
+            decimal: _decimal,
             onChanged: (v) => setState(() {
               a.weightKg = v;
               a.markBodyTouched();
@@ -684,12 +688,12 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         );
 
       case 'target':
-        if (a.goal == 'lose' && a.targetKg >= a.weightKg) a.targetKg = (a.weightKg - 8).clamp(35, 200);
-        if (a.goal == 'gain' && a.targetKg <= a.weightKg) a.targetKg = (a.weightKg + 6).clamp(35, 200);
+        if (a.goal == 'lose' && a.targetKg >= a.weightKg) a.targetKg = (a.weightKg - 8).clamp(35.0, 200.0);
+        if (a.goal == 'gain' && a.targetKg <= a.weightKg) a.targetKg = (a.weightKg + 6).clamp(35.0, 200.0);
         final delta = a.targetKg - a.weightKg;
         final rate = a.goal == 'lose' ? 0.6 : 0.3;
         final weeks = (delta.abs() / rate).ceil();
-        final shownDelta = a.isMetric ? '${delta.abs()} kg' : '${OnbUnits.kgToLb(delta.abs())} lb';
+        final shownDelta = OnbUnits.weight(delta.abs(), a.isMetric, decimal: _decimal);
         return _shell(
           step,
           body: OnbRulerPicker(
@@ -698,6 +702,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             maxMetric: 200,
             valueMetric: a.targetKg,
             isMetric: a.isMetric,
+            decimal: _decimal,
             onChanged: (v) => setState(() => a.targetKg = v),
             onUnitChanged: (m) => setState(() => a.isMetric = m),
             footer: delta == 0
@@ -727,9 +732,9 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                     children: [
                       ProjectionChart(
                         startLabel: s.t('proj_today'),
-                        startValue: OnbUnits.weight(a.weightKg, a.isMetric),
+                        startValue: OnbUnits.weight(a.weightKg, a.isMetric, decimal: _decimal),
                         endLabel: s.t('proj_on', {'d': p.label}),
-                        endValue: OnbUnits.weight(a.targetKg, a.isMetric),
+                        endValue: OnbUnits.weight(a.targetKg, a.isMetric, decimal: _decimal),
                         ghostLabel: s.t('proj_noplan'),
                         losing: a.goal == 'lose',
                       ),

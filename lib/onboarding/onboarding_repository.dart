@@ -42,8 +42,8 @@ class OnboardingRepository {
 
       // Storage is always metric (kg, cm); the ruler already converts.
       final double heightValue = a.heightCm.toDouble();
-      final double weightValue = a.weightKg.toDouble();
-      final double targetWeightValue = (a.hasTarget ? a.targetKg : a.weightKg).toDouble();
+      final double weightValue = a.weightKg;
+      final double targetWeightValue = a.hasTarget ? a.targetKg : a.weightKg;
       final now = DateTime.now().toIso8601String();
 
       final updateData = {
@@ -160,7 +160,7 @@ class OnboardingRepository {
         lines.add('- **${s.t('insight_motivation')}**: ${s.t(a.motivation!)}${a.motivationText.trim().isNotEmpty ? ' ("${a.motivationText.trim()}")' : ''}');
       }
       if (goalLabel != null) {
-        final target = a.hasTarget ? ' (${a.weightKg} kg → ${a.targetKg} kg)' : '';
+        final target = a.hasTarget ? ' (${OnbUnits.fmtKg(a.weightKg)} kg → ${OnbUnits.fmtKg(a.targetKg)} kg)' : '';
         lines.add('- **${s.t('insight_goal')}**: $goalLabel$target');
       }
       if (a.obstacles.isNotEmpty && !(a.obstacles.length == 1 && a.obstacles.first == 'obs_none')) {

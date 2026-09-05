@@ -216,14 +216,18 @@ class OnbRulerPicker extends StatefulWidget {
     required this.onChanged,
     required this.onUnitChanged,
     this.footer,
+    this.decimal = ',',
   });
+
+  /// Decimal mark of the current language, for the half kilos.
+  final String decimal;
 
   final bool isHeight;
   final int minMetric;
   final int maxMetric;
-  final int valueMetric;
+  final double valueMetric;
   final bool isMetric;
-  final ValueChanged<int> onChanged;
+  final ValueChanged<double> onChanged;
   final ValueChanged<bool> onUnitChanged;
   final Widget? footer;
 
@@ -232,17 +236,33 @@ class OnbRulerPicker extends StatefulWidget {
 }
 
 class _OnbRulerPickerState extends State<OnbRulerPicker> {
-  int get _lo => widget.isMetric ? widget.minMetric : (widget.isHeight ? OnbUnits.cmToIn(widget.minMetric) : OnbUnits.kgToLb(widget.minMetric));
-  int get _hi => widget.isMetric ? widget.maxMetric : (widget.isHeight ? OnbUnits.cmToIn(widget.maxMetric) : OnbUnits.kgToLb(widget.maxMetric));
+  /// The weight ruler works in half kilos: a bathroom scale does, so it must.
+  /// Everything else counts in whole centimetres, inches or pounds.
+  int get _perUnit => widget.isMetric && !widget.isHeight ? 2 : 1;
 
-  int _fromMetric(int m) => widget.isMetric ? m : (widget.isHeight ? OnbUnits.cmToIn(m) : OnbUnits.kgToLb(m));
-  int _toMetric(int v) => widget.isMetric ? v : (widget.isHeight ? OnbUnits.inToCm(v) : OnbUnits.lbToKg(v));
+  int get _lo => _tickOfUnit(widget.isMetric ? widget.minMetric.toDouble() : (widget.isHeight ? OnbUnits.cmToIn(widget.minMetric).toDouble() : OnbUnits.kgToLb(widget.minMetric.toDouble()).toDouble()));
+  int get _hi => _tickOfUnit(widget.isMetric ? widget.maxMetric.toDouble() : (widget.isHeight ? OnbUnits.cmToIn(widget.maxMetric).toDouble() : OnbUnits.kgToLb(widget.maxMetric.toDouble()).toDouble()));
 
-  String _label(int v) => (!widget.isMetric && widget.isHeight) ? "${v ~/ 12}'${v % 12}" : '$v';
+  int _tickOfUnit(double unit) => (unit * _perUnit).round();
+
+  int _tickOf(double metric) =>
+      _tickOfUnit(widget.isMetric ? metric : (widget.isHeight ? OnbUnits.cmToIn(metric.round()).toDouble() : OnbUnits.kgToLb(metric).toDouble()));
+
+  double _metricOfTick(int tick) {
+    final unit = tick / _perUnit;
+    if (widget.isMetric) return unit;
+    return widget.isHeight ? OnbUnits.inToCm(unit.round()).toDouble() : OnbUnits.lbToKg(unit.round());
+  }
+
+  String _labelOfTick(int tick) {
+    if (!widget.isMetric && widget.isHeight) return "${tick ~/ 12}'${tick % 12}";
+    if (widget.isMetric && !widget.isHeight) return OnbUnits.fmtKg(tick / 2, decimal: widget.decimal);
+    return '$tick';
+  }
 
   @override
   Widget build(BuildContext context) {
-    final shown = _fromMetric(widget.valueMetric);
+    final tick = _tickOf(widget.valueMetric).clamp(_lo, _hi);
     final unit = widget.isMetric ? (widget.isHeight ? 'cm' : 'kg') : (widget.isHeight ? '' : 'lb');
     return Column(
       children: [
@@ -257,7 +277,7 @@ class _OnbRulerPickerState extends State<OnbRulerPicker> {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            RollingNumber(_label(shown), style: OnbText.display(context, 21, letterSpacingEm: -0.045, height: 1)),
+            RollingNumber(_labelOfTick(tick), style: OnbText.display(context, 21, letterSpacingEm: -0.045, height: 1)),
             if (unit.isNotEmpty) ...[
               SizedBox(width: context.vw(1.8)),
               Padding(
@@ -272,10 +292,11 @@ class _OnbRulerPickerState extends State<OnbRulerPicker> {
           key: ValueKey('${widget.isMetric}-${widget.isHeight}'),
           lo: _lo,
           hi: _hi,
-          value: shown,
-          isHeight: widget.isHeight,
-          imperial: !widget.isMetric,
-          onChanged: (v) => widget.onChanged(_toMetric(v)),
+          value: tick,
+          majorEvery: widget.isHeight && !widget.isMetric ? 12 : 10 * _perUnit,
+          midEvery: widget.isHeight && !widget.isMetric ? 6 : 5 * _perUnit,
+          labelOf: (t) => widget.isHeight && !widget.isMetric ? "${t ~/ 12}'" : '${t ~/ _perUnit}',
+          onChanged: (t) => widget.onChanged(_metricOfTick(t)),
         ),
         if (widget.footer != null) ...[SizedBox(height: context.vh(1.6)), widget.footer!],
       ],
@@ -357,13 +378,24 @@ class _TickScrollPhysics extends ScrollPhysics {
 }
 
 class _RulerTrack extends StatefulWidget {
-  const _RulerTrack(
-      {super.key, required this.lo, required this.hi, required this.value, required this.isHeight, required this.imperial, required this.onChanged});
+  const _RulerTrack({
+    super.key,
+    required this.lo,
+    required this.hi,
+    required this.value,
+    required this.majorEvery,
+    required this.midEvery,
+    required this.labelOf,
+    required this.onChanged,
+  });
+
+  /// Bounds and value in graduations, not in units.
   final int lo;
   final int hi;
   final int value;
-  final bool isHeight;
-  final bool imperial;
+  final int majorEvery;
+  final int midEvery;
+  final String Function(int tick) labelOf;
   final ValueChanged<int> onChanged;
 
   @override
@@ -419,8 +451,6 @@ class _RulerTrackState extends State<_RulerTrack> {
   @override
   Widget build(BuildContext context) {
     final height = context.vw(17);
-    final majorEvery = widget.imperial && widget.isHeight ? 12 : 10;
-    final midEvery = widget.imperial && widget.isHeight ? 6 : 5;
     return Container(
       height: height,
       decoration: BoxDecoration(color: OnbColors.surf, borderRadius: BorderRadius.circular(context.vw(4)), border: Border.all(color: OnbColors.line)),
@@ -439,8 +469,8 @@ class _RulerTrackState extends State<_RulerTrack> {
                 itemCount: _count,
                 itemBuilder: (context, i) {
                   final v = widget.lo + i;
-                  final major = v % majorEvery == 0;
-                  final mid = !major && v % midEvery == 0;
+                  final major = v % widget.majorEvery == 0;
+                  final mid = !major && v % widget.midEvery == 0;
                   return Column(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
@@ -456,7 +486,7 @@ class _RulerTrackState extends State<_RulerTrack> {
                             ? OverflowBox(
                                 maxWidth: context.vw(12),
                                 child: Text(
-                                  widget.imperial && widget.isHeight ? "${v ~/ 12}'" : '$v',
+                                  widget.labelOf(v),
                                   style: OnbText.body(context, 2.7, weight: FontWeight.w500, color: OnbColors.mute),
                                 ),
                               )
