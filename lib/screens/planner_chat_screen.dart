@@ -135,15 +135,23 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
     }
   }
 
-  Future<void> _refreshWeekData() async {
-    // The demo's week lives in memory. Reloading it from the server would wipe
-    // what was just validated and, worse, drag the window back to a Monday:
-    // the seven rolling days would shrink to the days left in the calendar
-    // week, and the coach would answer that it cannot plan for tomorrow.
-    if (widget.demoMode) return;
+  /// Demo confirmations are written like real ones, so the coach's modify,
+  /// move and delete tools find the rows they act on. Demo mode stays on, so
+  /// the write does not count against the free planner uses.
+  Future<void> _persistDemo(Future<PlannerActionResult> Function() write) async {
     try {
-      // Le cache est automatiquement invalidé après chaque action (suppression, etc.)
-      final data = await WeeklyPlannerService.getWeekData();
+      final result = await write();
+      if (!result.success) debugPrint('⚠️ Demo confirmation refused: ${result.message}');
+    } catch (e) {
+      debugPrint('⚠️ Demo confirmation failed: $e');
+    }
+    if (mounted) await _refreshWeekData();
+  }
+
+  Future<void> _refreshWeekData() async {
+    try {
+      // the demo bypasses the cache: it just wrote what it wants to see
+      final data = await WeeklyPlannerService.getWeekData(forceRefresh: widget.demoMode);
       if (mounted) {
         setState(() {
           _weekData = data;
@@ -155,7 +163,14 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
   }
 
   void _addMealsToWeekDataLocally(List<PendingMeal> meals) {
-    final newActivities = List<PlannedActivity>.from(_weekData.activities);
+    // one dish per slot: asking for salmon at lunch replaces lunch, it does
+    // not stack a second lunch under the first one
+    bool sameSlot(PlannedActivity a, PendingMeal m) =>
+        a.activityType == m.mealType &&
+        a.plannedDate.year == m.plannedDate.year &&
+        a.plannedDate.month == m.plannedDate.month &&
+        a.plannedDate.day == m.plannedDate.day;
+    final newActivities = _weekData.activities.where((a) => !meals.any((m) => sameSlot(a, m))).toList();
     for (final meal in meals) {
       newActivities.add(PlannedActivity(
         id: 'demo_meal_${DateTime.now().millisecondsSinceEpoch}_${newActivities.length}',
@@ -178,7 +193,8 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
   }
 
   void _addWorkoutsToWeekDataLocally(List<PendingWorkout> workouts) {
-    final newWorkouts = List<PlannedWorkout>.from(_weekData.workouts);
+    bool sameDay(DateTime a, DateTime b) => a.year == b.year && a.month == b.month && a.day == b.day;
+    final newWorkouts = _weekData.workouts.where((w) => !workouts.any((n) => sameDay(w.plannedDate, n.plannedDate))).toList();
     for (final w in workouts) {
       newWorkouts.add(w.toPlannedWorkout());
     }
@@ -493,6 +509,8 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
         // Demo mode: store in memory, don't save to DB
         _demoConfirmedWorkouts.addAll(_pendingWorkouts!);
         _addWorkoutsToWeekDataLocally(_pendingWorkouts!);
+        final confirmed = List<PendingWorkout>.from(_pendingWorkouts!);
+        unawaited(_persistDemo(() => PlannerAIService.confirmWorkouts(confirmed)));
         final langCode = LocalizationService.instance.currentLanguageCode;
         final successMsg = 'planner_all_sessions_planned'.tr(langCode);
         _addBotMessage(successMsg);
@@ -509,15 +527,6 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
       }
 
       unawaited(_landInWeek([for (final (i, w) in _pendingWorkouts!.indexed) (date: w.plannedDate, slot: WeekSlot.sport, row: 'w-$i')]));
-      if (widget.demoMode) {
-        _demoConfirmedWorkouts.addAll(_pendingWorkouts!);
-        _addWorkoutsToWeekDataLocally(_pendingWorkouts!);
-        final langCode = LocalizationService.instance.currentLanguageCode;
-        _addBotMessage('planner_all_sessions_planned'.tr(langCode));
-        setState(() => _pendingWorkouts = null);
-        return;
-      }
-
       final result = await PlannerAIService.confirmWorkouts(_pendingWorkouts!);
 
       _addBotMessage(result.message);
@@ -569,6 +578,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
         // Demo mode: store in memory, don't save to DB
         _demoConfirmedMeals.addAll(mealsForCurrentDay);
         _addMealsToWeekDataLocally(mealsForCurrentDay);
+        unawaited(_persistDemo(() => PlannerAIService.confirmMeals(mealsForCurrentDay)));
 
         final remainingMeals = _pendingMeals!.where((meal) {
           final mealDate = DateTime(meal.plannedDate.year, meal.plannedDate.month, meal.plannedDate.day);
@@ -1039,8 +1049,10 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
           put(WeekSlot.sport, workout.status == PlannedStatus.completed, _shortLabel(workout.workoutName));
         }
       }
+      // while a mark is in the air, its slot shows nothing, whatever the data
+      // already says: the tile appears when the mark lands, not before
       for (final slot in WeekSlot.values) {
-        if (states[slot] == null && _incomingSlots.contains('$i-${slot.name}')) states[slot] = SlotState.incoming;
+        if (_incomingSlots.contains('$i-${slot.name}')) states[slot] = SlotState.incoming;
       }
       return DaySlots(states: states, labels: labels);
     });
@@ -1120,17 +1132,19 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
     if (targets.isEmpty) return;
 
     _weekFoldTimer?.cancel();
-    if (!_weekExpanded) {
-      _weekAutoOpened = true;
-      setState(() => _weekExpanded = true);
-      await Future<void>.delayed(const Duration(milliseconds: 440));
-      if (!mounted) return;
-    }
     setState(() {
       for (final t in targets) {
         _incomingSlots.add('${t.day}-${t.slot.name}');
       }
+      if (!_weekExpanded) {
+        _weekAutoOpened = true;
+        _weekExpanded = true;
+      }
     });
+    if (_weekAutoOpened) {
+      await Future<void>.delayed(const Duration(milliseconds: 440));
+      if (!mounted) return;
+    }
     await WidgetsBinding.instance.endOfFrame;
     if (!mounted) return;
 
@@ -2236,6 +2250,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
         // Demo mode: store in memory
         _demoConfirmedSessions.add(session);
         _addSessionToWeekDataLocally(session);
+        unawaited(_persistDemo(() => PlannerAIService.confirmSingleSession(session)));
         final remaining = List<PendingSession>.from(_pendingSessions!);
         remaining.removeAt(_currentSessionIndex);
 

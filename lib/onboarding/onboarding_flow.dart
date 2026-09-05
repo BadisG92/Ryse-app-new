@@ -254,8 +254,11 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   Future<void> _persistDemoPlan() async {
     if (_demoPlanSaved || widget.mode != OnbMode.full) return;
     if (_demoMeals.isEmpty && _demoWorkouts.isEmpty && _demoSessions.isEmpty) return;
-    _demoPlanSaved = await _repo.saveDemoPlan(_demoMeals, _demoWorkouts, _demoSessions);
-    AnalyticsService.logEvent('onb_demo_plan_saved', parameters: {'success': _demoPlanSaved ? 1 : 0});
+    // the planner screen already wrote each confirmation as it happened, so
+    // the coach could modify, move or delete during the demo; writing the
+    // lists again here would double every row
+    _demoPlanSaved = true;
+    AnalyticsService.logEvent('onb_demo_plan_saved', parameters: {'success': 1});
   }
 
   Future<void> _onPactSigned() async {
