@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # Xcode Cloud post-clone script for the Ryze Flutter app.
 #
 # Xcode Cloud only clones the repository: it has neither Flutter nor the
@@ -17,6 +17,8 @@
 #                                 (the app will NOT work at runtime)
 
 set -e
+# Print the exact failing command in the Xcode Cloud log
+trap 'echo "### ci_post_clone.sh FAILED at line $LINENO: $BASH_COMMAND"' ERR
 
 FLUTTER_VERSION="${RYZE_FLUTTER_VERSION:-3.38.5}"
 
