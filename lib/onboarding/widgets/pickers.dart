@@ -1,40 +1,120 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/physics.dart';
 
 import '../../services/haptic_service.dart';
 import '../onboarding_state.dart';
 import '../onboarding_theme.dart';
 
-/// Digits that roll vertically when the value changes.
+/// Haptic ticks, at most one every 35 ms. A fast drag crosses dozens of
+/// graduations; queuing one click per graduation stalls the UI thread and is
+/// the first thing that makes an instrument feel heavy.
+class _Ticker {
+  static DateTime _last = DateTime.fromMillisecondsSinceEpoch(0);
+
+  static void tick() {
+    final now = DateTime.now();
+    if (now.difference(_last).inMilliseconds < 35) return;
+    _last = now;
+    HapticService.instance.selectionClick();
+  }
+}
+
+/// Digits that roll like an odometer: one column per digit, each rolling ten
+/// times slower than the one on its right. A value that changes mid-roll
+/// retargets the animation from where it currently is, so dragging the ruler
+/// reads as a single continuous movement.
 class RollingNumber extends StatelessWidget {
-  const RollingNumber(this.value, {super.key, required this.style});
+  const RollingNumber(this.value, {super.key, required this.style, this.duration = const Duration(milliseconds: 340)});
+
   final String value;
   final TextStyle style;
+  final Duration duration;
+
+  static final RegExp _runs = RegExp(r'\d+|\D+');
 
   @override
   Widget build(BuildContext context) {
+    final digitStyle = style.copyWith(fontFeatures: const [FontFeature.tabularFigures()]);
+    final cell = _cellSize(digitStyle, MediaQuery.textScalerOf(context));
     return Row(
       mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.baseline,
-      textBaseline: TextBaseline.alphabetic,
       children: [
-        for (var i = 0; i < value.length; i++)
-          ClipRect(
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 380),
-              switchInCurve: OnbCurves.spring,
-              switchOutCurve: OnbCurves.out,
-              transitionBuilder: (child, anim) {
-                final incoming = child.key == ValueKey('$i-${value[i]}');
-                final offset = Tween<Offset>(begin: Offset(0, incoming ? 0.6 : -0.6), end: Offset.zero).animate(anim);
-                return FadeTransition(opacity: anim, child: SlideTransition(position: offset, child: child));
-              },
-              layoutBuilder: (current, previous) => Stack(alignment: Alignment.center, children: [...previous, if (current != null) current]),
-              child: Text(value[i], key: ValueKey('$i-${value[i]}'), style: style),
-            ),
-          ),
+        for (final run in _runs.allMatches(value))
+          if (_isDigits(run[0]!))
+            _DigitRun(value: int.parse(run[0]!), digits: run[0]!.length, style: digitStyle, cell: cell, duration: duration)
+          else
+            Text(run[0]!, style: digitStyle),
       ],
     );
   }
+
+  static bool _isDigits(String s) => s.codeUnitAt(0) >= 0x30 && s.codeUnitAt(0) <= 0x39;
+
+  /// One digit box, measured on the real style so tabular figures line up.
+  static Size _cellSize(TextStyle style, TextScaler scaler) {
+    final painter = TextPainter(text: TextSpan(text: '0', style: style), textDirection: TextDirection.ltr, textScaler: scaler)..layout();
+    final size = painter.size;
+    painter.dispose();
+    return size;
+  }
+}
+
+class _DigitRun extends StatelessWidget {
+  const _DigitRun({required this.value, required this.digits, required this.style, required this.cell, required this.duration});
+
+  final int value;
+  final int digits;
+  final TextStyle style;
+  final Size cell;
+  final Duration duration;
+
+  static const List<double> _pow10 = [1, 10, 100, 1000, 10000];
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(end: value.toDouble()),
+      duration: duration,
+      curve: Curves.easeOutCubic,
+      builder: (context, v, _) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (var c = 0; c < digits; c++) _DigitColumn(position: v / _pow10[(digits - 1 - c).clamp(0, _pow10.length - 1)], style: style, cell: cell),
+        ],
+      ),
+    );
+  }
+}
+
+class _DigitColumn extends StatelessWidget {
+  const _DigitColumn({required this.position, required this.style, required this.cell});
+
+  /// Continuous position of this column: its integer part is the digit shown,
+  /// its fractional part how far it has rolled toward the next one.
+  final double position;
+  final TextStyle style;
+  final Size cell;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = position.isFinite && position > 0 ? position : 0.0;
+    final base = p.floor();
+    final frac = p - base;
+    return SizedBox(
+      width: cell.width,
+      height: cell.height,
+      child: ClipRect(
+        child: Stack(
+          children: [
+            Positioned(top: -frac * cell.height, left: 0, right: 0, child: _glyph(base)),
+            Positioned(top: (1 - frac) * cell.height, left: 0, right: 0, child: _glyph(base + 1)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _glyph(int n) => SizedBox(height: cell.height, child: Text('${((n % 10) + 10) % 10}', style: style, maxLines: 1, textAlign: TextAlign.center));
 }
 
 /// Vertical wheel (age).
@@ -99,7 +179,7 @@ class _OnbWheelPickerState extends State<OnbWheelPicker> {
               overAndUnderCenterOpacity: 0.35,
               physics: const FixedExtentScrollPhysics(),
               onSelectedItemChanged: (i) {
-                HapticService.instance.selectionClick();
+                _Ticker.tick();
                 widget.onChanged(widget.min + i);
               },
               childDelegate: ListWheelChildBuilderDelegate(
@@ -163,7 +243,7 @@ class _OnbRulerPickerState extends State<OnbRulerPicker> {
   @override
   Widget build(BuildContext context) {
     final shown = _fromMetric(widget.valueMetric);
-    final unit = widget.isMetric ? (widget.isHeight ? 'cm' : 'kg') : (widget.isHeight ? 'ft in' : 'lb');
+    final unit = widget.isMetric ? (widget.isHeight ? 'cm' : 'kg') : (widget.isHeight ? '' : 'lb');
     return Column(
       children: [
         _UnitSwitch(
@@ -175,13 +255,16 @@ class _OnbRulerPickerState extends State<OnbRulerPicker> {
         SizedBox(height: context.vh(1.6)),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
+          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            RollingNumber(_label(shown),
-                style: OnbText.display(context, 21, letterSpacingEm: -0.045, height: 1).copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
-            SizedBox(width: context.vw(1.8)),
-            Text(unit, style: OnbText.display(context, 5, weight: FontWeight.w600, color: OnbColors.mute, letterSpacingEm: 0)),
+            RollingNumber(_label(shown), style: OnbText.display(context, 21, letterSpacingEm: -0.045, height: 1)),
+            if (unit.isNotEmpty) ...[
+              SizedBox(width: context.vw(1.8)),
+              Padding(
+                padding: EdgeInsets.only(bottom: context.vw(1.4)),
+                child: Text(unit, style: OnbText.display(context, 5, weight: FontWeight.w600, color: OnbColors.mute, letterSpacingEm: 0)),
+              ),
+            ],
           ],
         ),
         SizedBox(height: context.vh(2)),
@@ -209,11 +292,15 @@ class _UnitSwitch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 44 pt of touch target, whatever the label height
     Widget seg(String label, bool on, bool metric) => GestureDetector(
+          behavior: HitTestBehavior.opaque,
           onTap: () => onChanged(metric),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 220),
-            padding: EdgeInsets.symmetric(horizontal: context.vw(3.4), vertical: context.vw(1.4)),
+            constraints: BoxConstraints(minHeight: context.vw(10.4)),
+            alignment: Alignment.center,
+            padding: EdgeInsets.symmetric(horizontal: context.vw(3.6)),
             decoration: BoxDecoration(
               color: on ? OnbColors.surf : Colors.transparent,
               borderRadius: BorderRadius.circular(999),
@@ -228,6 +315,45 @@ class _UnitSwitch extends StatelessWidget {
       child: Row(mainAxisSize: MainAxisSize.min, children: [seg(metricLabel, isMetric, true), seg(imperialLabel, !isMetric, false)]),
     );
   }
+}
+
+/// Snaps to a graduation while keeping the whole fling: the friction
+/// simulation decides where the flick naturally ends, and the ruler lands on
+/// the nearest graduation to that point. A page view, by contrast, stops one
+/// graduation away whatever the gesture.
+class _TickScrollPhysics extends ScrollPhysics {
+  const _TickScrollPhysics({required this.tick, super.parent});
+
+  final double tick;
+
+  @override
+  _TickScrollPhysics applyTo(ScrollPhysics? ancestor) => _TickScrollPhysics(tick: tick, parent: buildParent(ancestor));
+
+  double _settle(double offset, ScrollMetrics position) =>
+      ((offset / tick).roundToDouble() * tick).clamp(position.minScrollExtent, position.maxScrollExtent);
+
+  @override
+  Simulation? createBallisticSimulation(ScrollMetrics position, double velocity) {
+    if (tick <= 0 || position.outOfRange) return super.createBallisticSimulation(position, velocity);
+    final tolerance = toleranceFor(position);
+    final natural = super.createBallisticSimulation(position, velocity);
+    final end = natural?.x(double.infinity) ?? position.pixels;
+    if (!end.isFinite) return natural;
+    // a fling that runs into an edge keeps the platform's own bounce
+    if (natural != null && (end <= position.minScrollExtent || end >= position.maxScrollExtent)) return natural;
+
+    final target = _settle(end, position);
+    final distance = target - position.pixels;
+    if (distance.abs() < tolerance.distance && velocity.abs() < tolerance.velocity) return null;
+    // enough speed and the same direction: ride the fling all the way to the graduation
+    if (velocity.abs() > tolerance.velocity && distance != 0 && distance.sign == velocity.sign) {
+      return FrictionSimulation.through(position.pixels, target, velocity, tolerance.velocity * velocity.sign);
+    }
+    return ScrollSpringSimulation(spring, position.pixels, target, velocity, tolerance: tolerance);
+  }
+
+  @override
+  bool get allowImplicitScrolling => false;
 }
 
 class _RulerTrack extends StatefulWidget {
@@ -245,8 +371,34 @@ class _RulerTrack extends StatefulWidget {
 }
 
 class _RulerTrackState extends State<_RulerTrack> {
-  PageController? _controller;
-  double? _fraction;
+  ScrollController? _controller;
+  double _tick = 0;
+  int _index = 0;
+
+  int get _count => widget.hi - widget.lo + 1;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final tick = context.vw(3.2);
+    if (_controller != null && tick == _tick) return;
+    final old = _controller;
+    _tick = tick;
+    _index = (widget.value - widget.lo).clamp(0, _count - 1);
+    _controller = ScrollController(initialScrollOffset: _index * tick)..addListener(_onScroll);
+    if (old != null) WidgetsBinding.instance.addPostFrameCallback((_) => old.dispose());
+  }
+
+  @override
+  void didUpdateWidget(covariant _RulerTrack old) {
+    super.didUpdateWidget(old);
+    // the value can also change from the outside (target adjusted to the goal)
+    final target = (widget.value - widget.lo).clamp(0, _count - 1);
+    final c = _controller;
+    if (target == _index || c == null || !c.hasClients || c.position.isScrollingNotifier.value) return;
+    _index = target;
+    c.animateTo(target * _tick, duration: const Duration(milliseconds: 280), curve: Curves.easeOutCubic);
+  }
 
   @override
   void dispose() {
@@ -254,67 +406,70 @@ class _RulerTrackState extends State<_RulerTrack> {
     super.dispose();
   }
 
+  void _onScroll() {
+    final c = _controller;
+    if (_tick <= 0 || c == null || !c.hasClients) return;
+    final i = (c.offset / _tick).round().clamp(0, _count - 1);
+    if (i == _index) return;
+    _index = i;
+    _Ticker.tick();
+    widget.onChanged(widget.lo + i);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final tickW = context.vw(3.2);
     final height = context.vw(17);
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final fraction = (tickW / constraints.maxWidth).clamp(0.01, 0.2);
-        if (_controller == null || _fraction != fraction) {
-          _controller?.dispose();
-          _fraction = fraction;
-          _controller = PageController(initialPage: (widget.value - widget.lo).clamp(0, widget.hi - widget.lo), viewportFraction: fraction);
-        }
-        final majorEvery = widget.imperial && widget.isHeight ? 12 : 10;
-        final midEvery = widget.imperial && widget.isHeight ? 6 : 5;
-        return Container(
-          height: height,
-          decoration: BoxDecoration(color: OnbColors.surf, borderRadius: BorderRadius.circular(context.vw(4)), border: Border.all(color: OnbColors.line)),
-          clipBehavior: Clip.antiAlias,
-          child: Stack(
+    final majorEvery = widget.imperial && widget.isHeight ? 12 : 10;
+    final midEvery = widget.imperial && widget.isHeight ? 6 : 5;
+    return Container(
+      height: height,
+      decoration: BoxDecoration(color: OnbColors.surf, borderRadius: BorderRadius.circular(context.vw(4)), border: Border.all(color: OnbColors.line)),
+      clipBehavior: Clip.antiAlias,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final side = ((constraints.maxWidth - _tick) / 2).clamp(0.0, double.infinity);
+          return Stack(
             children: [
-              ShaderMask(
-                shaderCallback: (rect) => const LinearGradient(
-                  colors: [Colors.transparent, Colors.black, Colors.black, Colors.transparent],
-                  stops: [0, 0.16, 0.84, 1],
-                ).createShader(rect),
-                blendMode: BlendMode.dstIn,
-                child: PageView.builder(
-                  controller: _controller,
-                  itemCount: widget.hi - widget.lo + 1,
-                  onPageChanged: (i) {
-                    HapticService.instance.selectionClick();
-                    widget.onChanged(widget.lo + i);
-                  },
-                  itemBuilder: (context, i) {
-                    final v = widget.lo + i;
-                    final major = v % majorEvery == 0;
-                    final mid = !major && v % midEvery == 0;
-                    final h = major ? context.vw(8) : (mid ? context.vw(5.6) : context.vw(3.6));
-                    return Column(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Container(width: major ? 1.5 : 1, height: h, color: OnbColors.ink.withValues(alpha: major ? 0.75 : (mid ? 0.4 : 0.22))),
-                        SizedBox(height: context.vw(1)),
-                        SizedBox(
-                          height: context.vw(3.6),
-                          child: major
-                              ? OverflowBox(
-                                  maxWidth: context.vw(12),
-                                  child: Text(
-                                    widget.imperial && widget.isHeight ? "${v ~/ 12}'" : '$v',
-                                    style: OnbText.body(context, 2.7, weight: FontWeight.w500, color: OnbColors.mute),
-                                  ),
-                                )
-                              : null,
-                        ),
-                        SizedBox(height: context.vw(0.8)),
-                      ],
-                    );
-                  },
-                ),
+              ListView.builder(
+                controller: _controller,
+                scrollDirection: Axis.horizontal,
+                physics: _TickScrollPhysics(tick: _tick),
+                padding: EdgeInsets.symmetric(horizontal: side),
+                itemExtent: _tick,
+                itemCount: _count,
+                itemBuilder: (context, i) {
+                  final v = widget.lo + i;
+                  final major = v % majorEvery == 0;
+                  final mid = !major && v % midEvery == 0;
+                  return Column(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Container(
+                        width: major ? 1.5 : 1,
+                        height: major ? context.vw(8) : (mid ? context.vw(5.6) : context.vw(3.6)),
+                        color: OnbColors.ink.withValues(alpha: major ? 0.75 : (mid ? 0.4 : 0.22)),
+                      ),
+                      SizedBox(height: context.vw(1)),
+                      SizedBox(
+                        height: context.vw(3.6),
+                        child: major
+                            ? OverflowBox(
+                                maxWidth: context.vw(12),
+                                child: Text(
+                                  widget.imperial && widget.isHeight ? "${v ~/ 12}'" : '$v',
+                                  style: OnbText.body(context, 2.7, weight: FontWeight.w500, color: OnbColors.mute),
+                                ),
+                              )
+                            : null,
+                      ),
+                      SizedBox(height: context.vw(0.8)),
+                    ],
+                  );
+                },
               ),
+              // edges fade into the card: two gradients, no per-frame saveLayer
+              _Fade(width: constraints.maxWidth * 0.16, left: true),
+              _Fade(width: constraints.maxWidth * 0.16, left: false),
               Positioned(
                 left: 0,
                 right: 0,
@@ -324,8 +479,7 @@ class _RulerTrackState extends State<_RulerTrack> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Container(
-                            width: context.vw(2.6), height: context.vw(2.6), decoration: const BoxDecoration(color: OnbColors.acc, shape: BoxShape.circle)),
+                        Container(width: context.vw(2.6), height: context.vw(2.6), decoration: const BoxDecoration(color: OnbColors.acc, shape: BoxShape.circle)),
                         Container(
                           width: 2.4,
                           height: context.vw(9.4),
@@ -341,9 +495,37 @@ class _RulerTrackState extends State<_RulerTrack> {
                 ),
               ),
             ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _Fade extends StatelessWidget {
+  const _Fade({required this.width, required this.left});
+  final double width;
+  final bool left;
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      left: left ? 0 : null,
+      right: left ? null : 0,
+      top: 0,
+      bottom: 0,
+      width: width,
+      child: IgnorePointer(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: left ? Alignment.centerLeft : Alignment.centerRight,
+              end: left ? Alignment.centerRight : Alignment.centerLeft,
+              colors: [OnbColors.surf, OnbColors.surf.withValues(alpha: 0)],
+            ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }
