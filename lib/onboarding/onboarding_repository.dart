@@ -62,7 +62,6 @@ class OnboardingRepository {
         'daily_carbs': macros['carbs'],
         'daily_fat': macros['fat'],
         'bmr': bmr,
-        'is_onboarded': true,
         'updated_at': now,
       };
 
@@ -199,40 +198,65 @@ class OnboardingRepository {
     }
   }
 
+  static const String _pendingSyncKey = 'onb_pending_completion_sync';
+
   /// Port of `RyzeApp._completeOnboarding` (the persistence part).
-  Future<void> markCompleted() async {
+  /// Returns false when the server could not be updated: the local flags are
+  /// set anyway (the user has paid) and [retryPendingCompletion] replays it.
+  Future<bool> markCompleted() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('has_seen_intro', true);
     await prefs.setBool('is_onboarded', true);
-
-    final user = _supabase.auth.currentUser;
-    if (user != null) {
-      try {
-        await _supabase.from('users').update({
-          'is_onboarded': true,
-          'ai_onboarding_completed': true,
-        }).eq('id', user.id);
-        await LocalizationService.instance.syncLanguageToSupabase();
-      } catch (e) {
-        debugPrint('❌ Onboarding markCompleted: $e');
-      }
-    }
-    await OnbProgressStore.clear();
+    final synced = await _pushCompleted();
+    await prefs.setBool(_pendingSyncKey, !synced);
+    if (synced) await OnbProgressStore.clear();
+    return synced;
   }
 
-  /// Port of `OnboardingPlannerDemo` post-purchase save.
+  Future<bool> _pushCompleted() async {
+    final user = _supabase.auth.currentUser;
+    if (user == null) return false;
+    try {
+      await _supabase.from('users').update({
+        'is_onboarded': true,
+        'ai_onboarding_completed': true,
+      }).eq('id', user.id);
+      await LocalizationService.instance.syncLanguageToSupabase();
+      return true;
+    } catch (e) {
+      debugPrint('❌ Onboarding markCompleted: $e');
+      return false;
+    }
+  }
+
+  /// Called at launch: replays a completion the server missed (offline right
+  /// after the purchase). Returns true while the server is still behind.
+  Future<bool> retryPendingCompletion() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!(prefs.getBool(_pendingSyncKey) ?? false)) return false;
+    final synced = await _pushCompleted();
+    if (synced) {
+      await prefs.setBool(_pendingSyncKey, false);
+      await OnbProgressStore.clear();
+    }
+    return !synced;
+  }
+
+  /// Port of `OnboardingPlannerDemo` post-purchase save. False as soon as one
+  /// item was refused (the service reports failures in `success`, it does not throw).
   Future<bool> saveDemoPlan(List<PendingMeal> meals, List<PendingWorkout> workouts, List<PendingSession> sessions) async {
+    var ok = true;
     try {
       for (final meal in meals) {
-        await PlannerAIService.confirmMeals([meal]);
+        ok = (await PlannerAIService.confirmMeals([meal])).success && ok;
       }
       if (workouts.isNotEmpty) {
-        await PlannerAIService.confirmWorkouts(workouts);
+        ok = (await PlannerAIService.confirmWorkouts(workouts)).success && ok;
       }
       for (final session in sessions) {
-        await PlannerAIService.confirmSingleSession(session);
+        ok = (await PlannerAIService.confirmSingleSession(session)).success && ok;
       }
-      return true;
+      return ok;
     } catch (e) {
       debugPrint('⚠️ Onboarding saveDemoPlan: $e');
       return false;

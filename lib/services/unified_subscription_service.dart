@@ -94,6 +94,13 @@ class UnifiedSubscriptionService extends ChangeNotifier {
   }
 
   /// Synchronise le statut RevenueCat avec notre base de données
+  /// Public entry used right after a purchase or a restore, so the app does not
+  /// wait for the next cold start to know it is premium.
+  Future<void> syncFromRevenueCat() async {
+    await _syncRevenueCatStatus();
+    notifyListeners();
+  }
+
   Future<void> _syncRevenueCatStatus() async {
     if (testMode || !_revenueCat.isInitialized) return;
 

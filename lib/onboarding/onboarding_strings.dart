@@ -387,6 +387,32 @@ class OnbStrings {
       'en': 'Store unavailable right now. Try again in a moment.',
       'de': 'Store gerade nicht verfügbar. Versuch es gleich noch einmal.'
     },
+    'offer_veil_paid': {'fr': 'Débloquée dès l’abonnement', 'en': 'Unlocked as soon as you subscribe', 'de': 'Freigeschaltet, sobald du abonnierst'},
+    'tl_paid_now_sub': {
+      'fr': 'L’abonnement démarre aujourd’hui : {p}. Pas de période d’essai sur ce plan.',
+      'en': 'Your subscription starts today: {p}. No trial on this plan.',
+      'de': 'Dein Abo startet heute: {p}. Keine Testphase bei diesem Plan.'
+    },
+    'cta_annual_paid': {'fr': 'Continuer avec l’abonnement annuel', 'en': 'Continue with the annual plan', 'de': 'Weiter mit dem Jahresabo'},
+    'foot_annual_paid': {
+      'fr': '{p} par an, facturé aujourd’hui. Annulable à tout moment dans l’App Store / Google Play.',
+      'en': '{p} per year, billed today. Cancel anytime in the App Store / Google Play.',
+      'de': '{p} pro Jahr, heute abgerechnet. Jederzeit im App Store / Google Play kündbar.'
+    },
+    'legal_terms': {'fr': 'Conditions', 'en': 'Terms', 'de': 'AGB'},
+    'legal_privacy': {'fr': 'Confidentialité', 'en': 'Privacy', 'de': 'Datenschutz'},
+    'retry': {'fr': 'Réessayer', 'en': 'Try again', 'de': 'Erneut versuchen'},
+    'profile_save_failed_title': {'fr': 'Ton profil n’est pas encore enregistré', 'en': 'Your profile is not saved yet', 'de': 'Dein Profil ist noch nicht gespeichert'},
+    'profile_save_failed': {
+      'fr': 'Ton abonnement est bien actif. Il nous manque juste la connexion pour enregistrer tes réponses. Réessaie dans un instant.',
+      'en': 'Your subscription is active. We just need a connection to save your answers. Try again in a moment.',
+      'de': 'Dein Abo ist aktiv. Wir brauchen nur eine Verbindung, um deine Antworten zu speichern. Versuch es gleich noch einmal.'
+    },
+    'purchase_no_entitlement': {
+      'fr': 'Le paiement est passé mais l’accès n’est pas encore actif. Utilise « Restaurer un achat » dans une minute, ou contacte-nous.',
+      'en': 'The payment went through but access is not active yet. Use “Restore purchases” in a minute, or contact us.',
+      'de': 'Die Zahlung ist durch, der Zugang aber noch nicht aktiv. Nutze in einer Minute „Käufe wiederherstellen“ oder kontaktiere uns.'
+    },
     'demo_partial_save': {
       'fr': 'Données sauvegardées partiellement. Tu peux re-planifier depuis l’app.',
       'en': 'Data partially saved. You can re-plan from the app.',

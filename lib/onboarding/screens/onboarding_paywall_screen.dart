@@ -1,3 +1,4 @@
+import 'dart:io' show Platform;
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
@@ -5,7 +6,9 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../services/analytics_service.dart';
 import '../../services/haptic_service.dart';
 import '../../services/revenuecat_service.dart';
 import '../../services/unified_subscription_service.dart';
@@ -46,34 +49,88 @@ class OnboardingPaywallScreen extends StatefulWidget {
 class _OnboardingPaywallScreenState extends State<OnboardingPaywallScreen> {
   List<Package> _packages = [];
   bool _busy = false;
+  bool _loaded = false;
+  bool _loadFailed = false;
+  bool _trialEligible = true;
   late String _plan = widget.initialPlan;
 
+  static const List<String> _plans = ['annual', 'monthly', 'weekly'];
 
   @override
   void initState() {
     super.initState();
     HapticService.instance.mediumImpact();
+    AnalyticsService.logEvent('paywall_view', parameters: {'initial_plan': widget.initialPlan});
     _load();
   }
 
   Future<void> _load() async {
+    if (mounted) setState(() => _loadFailed = false);
     try {
       await UnifiedSubscriptionService().initialize();
       final packages = await RevenueCatService().getAvailablePackages();
-      if (mounted) setState(() => _packages = packages);
+      // the trial is only real if the store has an intro offer and this Apple ID is still eligible
+      var eligible = true;
+      final annual = _findIn(packages, 'annual');
+      if (annual != null && Platform.isIOS) {
+        try {
+          final id = annual.storeProduct.identifier;
+          final map = await Purchases.checkTrialOrIntroductoryPriceEligibility([id]);
+          eligible = map[id]?.status != IntroEligibilityStatus.introEligibilityStatusIneligible;
+        } catch (e) {
+          debugPrint('⚠️ OnboardingPaywall eligibility: $e');
+        }
+      }
+      if (!mounted) return;
+      setState(() {
+        _packages = packages;
+        _loaded = true;
+        _loadFailed = packages.isEmpty;
+        _trialEligible = eligible;
+        if (_packageFor(_plan) == null) {
+          _plan = _plans.firstWhere((p) => _packageFor(p) != null, orElse: () => _plan);
+        }
+      });
+      AnalyticsService.logEvent('paywall_loaded', parameters: {'packages': packages.length, 'trial_eligible': eligible ? 1 : 0});
     } catch (e) {
       debugPrint('❌ OnboardingPaywall load packages: $e');
+      if (mounted) {
+        setState(() {
+          _loaded = true;
+          _loadFailed = true;
+        });
+      }
     }
   }
 
-  Package? _packageFor(String plan) {
-    for (final p in _packages) {
+  static Package? _findIn(List<Package> packages, String plan) {
+    for (final p in packages) {
       final id = p.identifier.toLowerCase();
       if (plan == 'weekly' && id.contains('weekly')) return p;
       if (plan == 'monthly' && id.contains('monthly')) return p;
       if (plan == 'annual' && (id.contains('annual') || id.contains('yearly'))) return p;
     }
     return null;
+  }
+
+  Package? _packageFor(String plan) => _findIn(_packages, plan);
+
+  /// A plan row is shown while loading (list price) and, once loaded, only if the store sells it.
+  bool _showPlan(String plan) => !_loaded || _packageFor(plan) != null;
+
+  /// Only the annual plan is marketed with a trial; before the store answers we assume it.
+  bool _hasTrial(String plan) {
+    if (plan != 'annual') return false;
+    if (!_loaded) return true;
+    return _trialEligible && _packageFor(plan)?.storeProduct.introductoryPrice != null;
+  }
+
+  Future<void> _open(String url) async {
+    try {
+      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    } catch (e) {
+      debugPrint('⚠️ OnboardingPaywall open $url: $e');
+    }
   }
 
   String _price(String plan) => _packageFor(plan)?.storeProduct.priceString ?? widget.s.t('price_default_$plan');
@@ -92,23 +149,45 @@ class _OnboardingPaywallScreenState extends State<OnboardingPaywallScreen> {
   Future<void> _purchase() async {
     if (_busy) return;
     final s = widget.s;
-    if (_packages.isEmpty) {
+    // never bill a product other than the row the user tapped
+    final package = _packageFor(_plan);
+    if (package == null) {
       _toast(s.t('store_unavailable'));
       _load();
       return;
     }
     setState(() => _busy = true);
+    final productId = package.storeProduct.identifier;
+    AnalyticsService.logEvent('purchase_started', parameters: {'plan': _plan, 'product_id': productId, 'has_trial': _hasTrial(_plan) ? 1 : 0});
     try {
-      final package = _packageFor(_plan) ?? _packageFor('monthly') ?? _packages.first;
       final info = await RevenueCatService().purchasePackage(package);
-      if (info != null && mounted) {
-        HapticService.instance.heavyImpact();
-        await widget.onPurchased();
+      if (!mounted) return;
+      if (info == null) {
+        AnalyticsService.logEvent('purchase_failed', parameters: {'plan': _plan, 'error_code': 'no_customer_info'});
+        _toast(s.t('purchase_error'));
+        return;
       }
+      // paid but not entitled (product not attached to the entitlement): say it, do not open the app
+      if (!info.entitlements.active.containsKey(RevenueCatService.premiumEntitlementId)) {
+        AnalyticsService.logEvent('purchase_failed', parameters: {'plan': _plan, 'product_id': productId, 'error_code': 'no_entitlement'});
+        _toast(s.t('purchase_no_entitlement'));
+        return;
+      }
+      await UnifiedSubscriptionService().syncFromRevenueCat();
+      AnalyticsService.logEvent('purchase_success', parameters: {'plan': _plan, 'product_id': productId, 'has_trial': _hasTrial(_plan) ? 1 : 0});
+      HapticService.instance.heavyImpact();
+      await widget.onPurchased();
     } on PlatformException catch (e) {
-      if (e.code != 'PURCHASE_CANCELLED' && mounted) _toast(e.message ?? s.t('purchase_error'));
+      final code = PurchasesErrorHelper.getErrorCode(e);
+      if (code == PurchasesErrorCode.purchaseCancelledError) {
+        AnalyticsService.logEvent('purchase_cancelled', parameters: {'plan': _plan});
+      } else {
+        AnalyticsService.logEvent('purchase_failed', parameters: {'plan': _plan, 'error_code': code.name});
+        if (mounted) _toast(s.t('purchase_error'));
+      }
     } catch (e) {
       debugPrint('❌ OnboardingPaywall purchase: $e');
+      AnalyticsService.logEvent('purchase_failed', parameters: {'plan': _plan, 'error_code': 'exception'});
       if (mounted) _toast(s.t('purchase_error'));
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -121,13 +200,16 @@ class _OnboardingPaywallScreenState extends State<OnboardingPaywallScreen> {
     try {
       final ok = await UnifiedSubscriptionService().restorePurchases();
       if (!mounted) return;
+      AnalyticsService.logEvent('restore_result', parameters: {'success': ok ? 1 : 0});
       if (ok) {
+        await UnifiedSubscriptionService().syncFromRevenueCat();
         _toast(widget.s.t('restored_ok'));
         await widget.onPurchased();
       } else {
         _toast(widget.s.t('restored_none'));
       }
     } catch (e) {
+      AnalyticsService.logEvent('restore_result', parameters: {'success': 0, 'error_code': 'exception'});
       if (mounted) _toast(widget.s.t('purchase_error'));
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -141,10 +223,15 @@ class _OnboardingPaywallScreenState extends State<OnboardingPaywallScreen> {
   @override
   Widget build(BuildContext context) {
     final s = widget.s;
-    final cta = _plan == 'annual' ? s.t('cta_trial') : (_plan == 'monthly' ? s.t('cta_monthly') : s.t('cta_weekly'));
-    final foot = _plan == 'annual'
+    final trial = _hasTrial(_plan);
+    final cta = trial
+        ? s.t('cta_trial')
+        : (_plan == 'annual' ? s.t('cta_annual_paid') : (_plan == 'monthly' ? s.t('cta_monthly') : s.t('cta_weekly')));
+    final foot = trial
         ? s.t('foot_annual', {'p': _price('annual')})
-        : (_plan == 'monthly' ? s.t('foot_monthly', {'p': _price('monthly')}) : s.t('foot_weekly', {'p': _price('weekly')}));
+        : (_plan == 'annual'
+            ? s.t('foot_annual_paid', {'p': _price('annual')})
+            : (_plan == 'monthly' ? s.t('foot_monthly', {'p': _price('monthly')}) : s.t('foot_weekly', {'p': _price('weekly')})));
 
     return PopScope(
       canPop: false,
@@ -177,52 +264,50 @@ class _OnboardingPaywallScreenState extends State<OnboardingPaywallScreen> {
                             children: [
                               PopIn(
                                   delay: const Duration(milliseconds: 250),
-                                  child: _LockedWeek(s: s, mealsPerDay: widget.mealsPerDay, workoutDays: widget.workoutDays)),
+                                  child: _LockedWeek(s: s, mealsPerDay: widget.mealsPerDay, workoutDays: widget.workoutDays, trial: trial)),
                               SizedBox(height: context.vh(1.6)),
                               Text(s.t('offer_oneliner', {'day': widget.bilanDayName}),
                                   textAlign: TextAlign.center, style: OnbText.body(context, 3.2, color: OnbColors.mute, height: 1.45)),
                               SizedBox(height: context.vh(2.2)),
-                              PopIn(delay: const Duration(milliseconds: 400), child: _Timeline(s: s)),
+                              PopIn(delay: const Duration(milliseconds: 400), child: _Timeline(s: s, trial: trial, price: _price(_plan))),
                               SizedBox(height: context.vh(2.2)),
                               PopIn(
                                 delay: const Duration(milliseconds: 520),
-                                child: Column(
-                                  children: [
-                                    _PlanRow(
-                                      name: s.t('plan_annual'),
-                                      sub: s.t('plan_annual_sub'),
-                                      price: _price('annual'),
-                                      unit: s.t('plan_annual_eq', {'p': _monthlyEquivalent()}),
-                                      badge: s.t('badge_trial'),
-                                      selected: _plan == 'annual',
-                                      onTap: () => setState(() => _plan = 'annual'),
-                                    ),
-                                    SizedBox(height: context.vw(1.8)),
-                                    _PlanRow(
-                                        name: s.t('plan_monthly'),
-                                        sub: s.t('plan_monthly_sub'),
-                                        price: _price('monthly'),
-                                        unit: s.t('plan_monthly_unit'),
-                                        selected: _plan == 'monthly',
-                                        onTap: () => setState(() => _plan = 'monthly')),
-                                    SizedBox(height: context.vw(1.8)),
-                                    _PlanRow(
-                                        name: s.t('plan_weekly'),
-                                        sub: s.t('plan_weekly_sub'),
-                                        price: _price('weekly'),
-                                        unit: s.t('plan_weekly_unit'),
-                                        selected: _plan == 'weekly',
-                                        onTap: () => setState(() => _plan = 'weekly')),
-                                  ],
-                                ),
+                                child: _loadFailed
+                                    ? _StoreError(s: s, onRetry: _busy ? null : _load)
+                                    : Column(
+                                        children: [
+                                          for (final (i, plan) in _plans.indexed)
+                                            if (_showPlan(plan)) ...[
+                                              if (i > 0) SizedBox(height: context.vw(1.8)),
+                                              _PlanRow(
+                                                name: s.t('plan_$plan'),
+                                                sub: s.t('plan_${plan}_sub'),
+                                                price: _price(plan),
+                                                unit: plan == 'annual' ? s.t('plan_annual_eq', {'p': _monthlyEquivalent()}) : s.t('plan_${plan}_unit'),
+                                                badge: plan == 'annual' && _hasTrial('annual') ? s.t('badge_trial') : null,
+                                                selected: _plan == plan,
+                                                onTap: () {
+                                                  AnalyticsService.logEvent('paywall_plan_selected', parameters: {'plan': plan});
+                                                  setState(() => _plan = plan);
+                                                },
+                                              ),
+                                            ],
+                                        ],
+                                      ),
                               ),
                               SizedBox(height: context.vh(1.8)),
-                              Center(
-                                child: TextButton(
-                                  onPressed: _busy ? null : _restore,
-                                  child: Text(s.t('restore'),
-                                      style: OnbText.body(context, 3.1, color: OnbColors.mute).copyWith(decoration: TextDecoration.underline)),
-                                ),
+                              // restore + the two legal links App Review expects on a subscription screen
+                              Wrap(
+                                alignment: WrapAlignment.center,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                children: [
+                                  _link(context, s.t('restore'), _busy ? null : _restore),
+                                  _dot(context),
+                                  _link(context, s.t('legal_terms'), () => _open(s.lang == 'fr' ? 'https://coach-ryze.com/terms.html' : 'https://coach-ryze.com/terms_en.html')),
+                                  _dot(context),
+                                  _link(context, s.t('legal_privacy'), () => _open(s.lang == 'fr' ? 'https://coach-ryze.com/privacy.html' : 'https://coach-ryze.com/privacy_en.html')),
+                                ],
                               ),
                             ],
                           ),
@@ -255,9 +340,40 @@ class _OnboardingPaywallScreenState extends State<OnboardingPaywallScreen> {
   }
 }
 
+Widget _link(BuildContext context, String text, VoidCallback? onTap) => TextButton(
+      onPressed: onTap,
+      style: TextButton.styleFrom(padding: EdgeInsets.symmetric(horizontal: context.vw(1.5), vertical: context.vw(2)), minimumSize: Size.zero),
+      child: Text(text, style: OnbText.body(context, 3.1, color: OnbColors.mute).copyWith(decoration: TextDecoration.underline)),
+    );
+
+Widget _dot(BuildContext context) => Text('·', style: OnbText.body(context, 3.1, color: OnbColors.mute2));
+
+/// The store did not answer: say it and offer to retry, never show a phantom price.
+class _StoreError extends StatelessWidget {
+  const _StoreError({required this.s, required this.onRetry});
+  final OnbStrings s;
+  final VoidCallback? onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.all(context.vw(4)),
+      decoration: BoxDecoration(color: OnbColors.surf, borderRadius: BorderRadius.circular(context.vw(4)), border: Border.all(color: OnbColors.line)),
+      child: Column(
+        children: [
+          Text(s.t('store_unavailable'), textAlign: TextAlign.center, style: OnbText.body(context, 3.5, color: OnbColors.mute, height: 1.4)),
+          SizedBox(height: context.vw(2)),
+          TextButton(onPressed: onRetry, child: Text(s.t('retry'), style: OnbText.body(context, 3.6, weight: FontWeight.w600, color: OnbColors.ink))),
+        ],
+      ),
+    );
+  }
+}
+
 /// Seven-column week preview in the planner's own visual language, behind a veil.
 class _LockedWeek extends StatelessWidget {
-  const _LockedWeek({required this.s, required this.mealsPerDay, required this.workoutDays});
+  const _LockedWeek({required this.s, required this.mealsPerDay, required this.workoutDays, this.trial = true});
+  final bool trial;
   final OnbStrings s;
   final List<int> mealsPerDay;
   final Set<int> workoutDays;
@@ -349,7 +465,7 @@ class _LockedWeek extends StatelessWidget {
                     children: [
                       Icon(LucideIcons.lock, size: context.vw(3.8), color: Colors.white),
                       SizedBox(width: context.vw(2)),
-                      Text(s.t('offer_veil'), style: OnbText.body(context, 3.4, weight: FontWeight.w600, color: Colors.white)),
+                      Text(s.t(trial ? 'offer_veil' : 'offer_veil_paid'), style: OnbText.body(context, 3.4, weight: FontWeight.w600, color: Colors.white)),
                     ],
                   ),
                 ),
@@ -363,8 +479,10 @@ class _LockedWeek extends StatelessWidget {
 }
 
 class _Timeline extends StatelessWidget {
-  const _Timeline({required this.s});
+  const _Timeline({required this.s, this.trial = true, this.price = ''});
   final OnbStrings s;
+  final bool trial;
+  final String price;
 
   @override
   Widget build(BuildContext context) {
@@ -403,6 +521,10 @@ class _Timeline extends StatelessWidget {
             ),
           ],
         );
+    if (!trial) {
+      // no trial on this plan: one honest line, billed today
+      return Column(children: [item(LucideIcons.creditCard, s.t('tl_now'), s.t('tl_paid_now_sub', {'p': price}), now: true, last: true)]);
+    }
     return Column(
       children: [
         item(LucideIcons.lockOpen, s.t('tl_now'), s.t('tl_now_sub'), now: true),

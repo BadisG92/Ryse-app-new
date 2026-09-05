@@ -441,6 +441,8 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
       }
     } catch (e) {
       debugPrint('Error processing AI request: $e');
+      // a failed call must not eat one of the demo messages
+      if (widget.demoMode && widget.maxMessages != null && _userMessageCount > 0) _userMessageCount--;
       _addBotMessage(_getErrorMessage());
     } finally {
       if (mounted) {
@@ -2129,9 +2131,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
   }
 
   Widget _buildDemoActionBar(String langCode) {
-    // Only show after at least one message exchange
-    if (_userMessageCount == 0) return const SizedBox.shrink();
-
+    // visible from the start: a hesitant user must always see a way out
     return PopIn(
       key: const ValueKey('planner-demo-bar'),
       dy: 24,

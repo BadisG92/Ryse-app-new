@@ -4,6 +4,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../models/weekly_planner_models.dart';
 import '../services/coach_personality_service.dart';
+import '../services/analytics_service.dart';
 import '../services/haptic_service.dart';
 import '../services/revenuecat_service.dart';
 import '../services/translations.dart';
@@ -146,6 +147,12 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       _idx = index;
       _visit++;
     });
+    AnalyticsService.logEvent('onb_step_view', parameters: {
+      'step_id': step.id,
+      'chapter': step.chapter,
+      'mode': widget.mode == OnbMode.full ? 'full' : 'coach_only',
+      'resumed': widget.resume != null ? 1 : 0,
+    });
     _onEnter(step);
     if (!step.card) OnbProgressStore.save(step.id, a);
   }
@@ -203,7 +210,13 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   Future<void> _onEnter(_Step step) async {
-    if (step.id == 'planner') await _ensureProfileSaved();
+    if (step.id == 'planner') {
+      // a fresh demo run: coming back through the planner must not stack the plan twice
+      _demoMeals.clear();
+      _demoWorkouts.clear();
+      _demoSessions.clear();
+      await _ensureProfileSaved();
+    }
   }
 
   /// Profile goes to the database before the planner demo, like the legacy
@@ -214,13 +227,16 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       await _repo.saveProfile(a);
       await _repo.saveCoachInsights(a, s);
       _profileSaved = true;
+      AnalyticsService.logEvent('onb_profile_saved');
     } catch (e) {
       debugPrint('⚠️ Onboarding: profile save failed, continuing: $e');
+      AnalyticsService.logEvent('onb_profile_save_failed', parameters: {'error': e.toString().substring(0, e.toString().length.clamp(0, 90))});
     }
   }
 
   Future<void> _onPactSigned() async {
     setState(() => _signed = true);
+    AnalyticsService.logEvent('onb_pact_signed', parameters: {'bilan_day': a.bilanDay ?? 0, 'personality': a.personality ?? ''});
     if (a.bilanDay != null) await _repo.saveBilanDay(a.bilanDay!);
     if (a.personality != null) await _repo.savePersonality(a.personality!);
     if (widget.mode == OnbMode.coachOnly) {
@@ -239,15 +255,47 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   Future<void> _finish() async {
     if (_finishing) return;
     _finishing = true;
+    var demoSaved = true;
     if (widget.mode == OnbMode.full) {
       await _ensureProfileSaved();
-      final saved = await _repo.saveDemoPlan(_demoMeals, _demoWorkouts, _demoSessions);
-      if (!saved && mounted && (_demoMeals.isNotEmpty || _demoWorkouts.isNotEmpty || _demoSessions.isNotEmpty)) {
+      if (!_profileSaved) {
+        // the purchase went through, the profile did not: never open an empty account
+        _finishing = false;
+        if (mounted) _askRetry();
+        return;
+      }
+      demoSaved = await _repo.saveDemoPlan(_demoMeals, _demoWorkouts, _demoSessions);
+      if (!demoSaved && mounted && (_demoMeals.isNotEmpty || _demoWorkouts.isNotEmpty || _demoSessions.isNotEmpty)) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.t('demo_partial_save')), duration: const Duration(seconds: 3)));
       }
     }
-    await _repo.markCompleted();
+    final synced = await _repo.markCompleted();
+    AnalyticsService.logEvent('onb_completed', parameters: {
+      'mode': widget.mode == OnbMode.full ? 'full' : 'coach_only',
+      'demo_plan_saved': demoSaved ? 1 : 0,
+      'server_synced': synced ? 1 : 0,
+    });
     await widget.onComplete();
+  }
+
+  void _askRetry() {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: Text(s.t('profile_save_failed_title')),
+        content: Text(s.t('profile_save_failed')),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              _finish();
+            },
+            child: Text(s.t('retry')),
+          ),
+        ],
+      ),
+    );
   }
 
   // ---------------------------------------------------------------- questions

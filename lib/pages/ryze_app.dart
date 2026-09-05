@@ -6,10 +6,12 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../components/main_app.dart';
 import '../components/ui/video_welcome_screen.dart';
 import '../onboarding/onboarding_flow.dart';
+import '../onboarding/onboarding_repository.dart';
 import '../onboarding/onboarding_state.dart';
 import '../screens/auth/complete_profile_screen.dart';
 import '../screens/auth/login_screen.dart';
 import '../services/auth_service.dart';
+import '../services/unified_subscription_service.dart';
 
 /// RyzeApp - routing at launch.
 ///
@@ -85,6 +87,13 @@ class _RyzeAppState extends State<RyzeApp> {
         return;
       }
 
+      // a completion the server missed (offline right after the purchase) is replayed first
+      if (await OnboardingRepository().retryPendingCompletion()) {
+        debugPrint('🎯 Onboarding terminé localement, serveur pas encore à jour → App');
+        _show(const MainApp());
+        return;
+      }
+
       final firstName = authService.currentUser?.firstName;
       final resume = await OnbProgressStore.load();
       final profileSavedLocally = await OnbProgressStore.isProfileSaved();
@@ -101,14 +110,15 @@ class _RyzeAppState extends State<RyzeApp> {
           debugPrint('📋 Non onboardé → OnboardingFlow');
           _show(OnboardingFlow(firstName: firstName, resume: resume, onComplete: _goToApp));
         } else if (!aiCompleted) {
-          if (profileSavedLocally || resume != null) {
-            // v2 user who saved a profile but never reached the end (hard paywall)
-            debugPrint('💳 Profil v2 sauvegardé sans achat → reprise de l’onboarding');
+          // legacy account without the coach chapter: only a paying user skips the
+          // paywall; everyone else resumes the full flow, which ends on the offer
+          if (!profileSavedLocally && resume == null && await _hasActiveSubscription()) {
+            debugPrint('🤖 Abonné existant sans partie coach → flow coach');
+            _show(OnboardingFlow(mode: OnbMode.coachOnly, firstName: firstName, onComplete: _goToApp));
+          } else {
+            debugPrint('💳 Onboardé sans abonnement → reprise de l’onboarding jusqu’au paywall');
             final at = resume ?? (step: 'offer', answers: OnbAnswers());
             _show(OnboardingFlow(firstName: firstName, resume: at, onComplete: _goToApp));
-          } else {
-            debugPrint('🤖 Utilisateur existant sans partie coach → flow coach');
-            _show(OnboardingFlow(mode: OnbMode.coachOnly, firstName: firstName, onComplete: _goToApp));
           }
         } else {
           debugPrint('🎯 Onboardé → App');
@@ -145,6 +155,17 @@ class _RyzeAppState extends State<RyzeApp> {
   }
 
   /// The onboarding flow has persisted everything; just enter the app.
+  /// Hard paywall: an account is trusted only if the store confirms an active subscription.
+  Future<bool> _hasActiveSubscription() async {
+    try {
+      await UnifiedSubscriptionService().initialize().timeout(const Duration(seconds: 5));
+      return UnifiedSubscriptionService().isPremium;
+    } catch (e) {
+      debugPrint('⚠️ Abonnement non vérifiable: $e');
+      return false;
+    }
+  }
+
   Future<void> _goToApp() async {
     if (!mounted) return;
     Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
