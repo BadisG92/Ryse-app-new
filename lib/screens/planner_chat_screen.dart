@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../components/ui/motion.dart';
+import '../components/weekly_planner/proposal_card.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
@@ -1076,22 +1077,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
                 key: ValueKey('preview-$key'),
                 child: Padding(
                   padding: const EdgeInsets.only(left: 24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      card,
-                      Container(
-                        margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                        clipBehavior: Clip.antiAlias,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFE2E8F0)),
-                        ),
-                        child: buttons,
-                      ),
-                    ],
-                  ),
+                  child: ProposalCard(body: card, footer: buttons!),
                 ),
               ),
       ),
@@ -1454,120 +1440,36 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
     if (_pendingWorkouts == null || _pendingWorkouts!.isEmpty) {
       return const SizedBox.shrink();
     }
-
-    final previewTitle = {
-      'fr': 'Aperçu du programme',
-      'en': 'Program preview',
-      'de': 'Programmvorschau',
-    };
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-            child: Row(
-              children: [
-                const Icon(LucideIcons.eye, size: 16, color: Color(0xFF64748B)),
-                const SizedBox(width: 8),
-                Text(
-                  previewTitle[langCode] ?? previewTitle['en']!,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF64748B),
-                  ),
-                ),
-              ],
-            ),
+    final title = {'fr': 'Programme proposé', 'en': 'Proposed program', 'de': 'Vorgeschlagenes Programm'}[langCode] ?? 'Proposed program';
+    final sessionsWord = {'fr': 'séances', 'en': 'sessions', 'de': 'Einheiten'}[langCode] ?? 'sessions';
+    final totalMin = _pendingWorkouts!.fold<int>(0, (sum, w) => sum + w.durationMinutes);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ProposalHeader(icon: LucideIcons.dumbbell, title: title, subtitle: '${_pendingWorkouts!.length} $sessionsWord · $totalMin min'),
+        for (final (i, w) in _pendingWorkouts!.indexed)
+          PopIn(
+            key: ValueKey('pw-${w.plannedDate.toIso8601String()}-${w.workoutType}'),
+            delay: Duration(milliseconds: 80 + i * 50),
+            dy: 10,
+            duration: const Duration(milliseconds: 420),
+            child: _buildWorkoutPreviewItem(w, langCode, last: i == _pendingWorkouts!.length - 1),
           ),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxHeight: 150),
-            child: ListView.builder(
-              shrinkWrap: true,
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-              itemCount: _pendingWorkouts!.length,
-              itemBuilder: (context, index) {
-                final workout = _pendingWorkouts![index];
-                return _buildWorkoutPreviewItem(workout, langCode);
-              },
-            ),
-          ),
-        ],
-      ),
+        const SizedBox(height: 6),
+      ],
     );
   }
 
-  Widget _buildWorkoutPreviewItem(PendingWorkout workout, String langCode) {
-    final dayName = _formatDayName(workout.plannedDate, langCode);
+  Widget _buildWorkoutPreviewItem(PendingWorkout workout, String langCode, {bool last = false}) {
     final exerciseCount = workout.exercises?.length ?? 0;
     final exercisesLabel = 'planner_exercises_count'.tr(langCode);
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: const Color(0xFF0B132B).withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(
-              LucideIcons.dumbbell,
-              size: 16,
-              color: Color(0xFF0B132B),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '$dayName - ${workout.workoutType}',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF0B132B),
-                  ),
-                ),
-                Text(
-                  '${workout.durationMinutes} min • $exerciseCount $exercisesLabel',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF64748B),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            onPressed: () => _showWorkoutDetails(workout, langCode),
-            icon: const Icon(
-              LucideIcons.chevronRight,
-              size: 18,
-              color: Color(0xFF64748B),
-            ),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-          ),
-        ],
-      ),
+    return ProposalWorkoutRow(
+      dayShort: _formatDayNameShort(workout.plannedDate, langCode),
+      title: workout.workoutType,
+      subtitle: '${workout.durationMinutes} min · $exerciseCount $exercisesLabel',
+      onTap: () => _showWorkoutDetails(workout, langCode),
+      last: last,
     );
   }
 
@@ -1760,321 +1662,114 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
   }
 
   Widget _buildPreviewButtons(String langCode) {
-    final confirmText = 'planner_confirm_program'.tr(langCode);
-    final modifyText = 'planner_modify'.tr(langCode);
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: OutlinedButton(
-              onPressed: _isConfirming ? null : _cancelPreview,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF64748B),
-                side: const BorderSide(color: Color(0xFFE2E8F0)),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              child: Text(modifyText),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            flex: 2,
-            child: ElevatedButton.icon(
-              onPressed: _isConfirming ? null : _confirmWorkouts,
-              icon: _isConfirming
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                    )
-                  : const Icon(LucideIcons.check, size: 18),
-              label: Text(confirmText),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF10B981),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-          ),
-        ],
-      ),
+    return ProposalActions(
+      cancelLabel: 'planner_modify'.tr(langCode),
+      confirmLabel: 'planner_confirm_program'.tr(langCode),
+      onCancel: _cancelPreview,
+      onConfirm: _confirmWorkouts,
+      busy: _isConfirming,
     );
+  }
+
+  List<PendingMeal> _mealsForDay(DateTime day) {
+    if (_pendingMeals == null) return const [];
+    return _pendingMeals!.where((meal) {
+      final d = DateTime(meal.plannedDate.year, meal.plannedDate.month, meal.plannedDate.day);
+      return d.isAtSameMomentAs(day);
+    }).toList();
   }
 
   Widget _buildMealsPreview(String langCode) {
     if (_pendingMeals == null || _pendingMeals!.isEmpty || _mealsDays.isEmpty) {
       return const SizedBox.shrink();
     }
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Header avec navigation
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-            child: Row(
-              children: [
-                // Flèche gauche
-                if (_mealsDays.length > 1)
-                  GestureDetector(
-                    onTap: _currentMealsDayIndex > 0
-                        ? () {
-                            _mealsPageController?.previousPage(
-                              duration: const Duration(milliseconds: 300),
-                              curve: Curves.easeInOut,
-                            );
-                          }
-                        : null,
-                    child: Icon(
-                      LucideIcons.chevronLeft,
-                      size: 20,
-                      color: _currentMealsDayIndex > 0
-                          ? const Color(0xFF0B132B)
-                          : const Color(0xFFE2E8F0),
-                    ),
-                  ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    children: [
-                      Text(
-                        _formatDayName(_mealsDays[_currentMealsDayIndex], langCode),
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF0B132B),
-                        ),
-                      ),
-                      if (_mealsDays.length > 1)
-                        Text(
-                          '${_currentMealsDayIndex + 1}/${_mealsDays.length}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF64748B),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                // Flèche droite
-                if (_mealsDays.length > 1)
-                  GestureDetector(
-                    onTap: _currentMealsDayIndex < _mealsDays.length - 1
-                        ? () {
-                            _mealsPageController?.nextPage(
-                              duration: const Duration(milliseconds: 300),
-                              curve: Curves.easeInOut,
-                            );
-                          }
-                        : null,
-                    child: Icon(
-                      LucideIcons.chevronRight,
-                      size: 20,
-                      color: _currentMealsDayIndex < _mealsDays.length - 1
-                          ? const Color(0xFF0B132B)
-                          : const Color(0xFFE2E8F0),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          // PageView des jours
-          SizedBox(
-            height: 220,
-            child: PageView.builder(
-              controller: _mealsPageController,
-              onPageChanged: (index) {
-                setState(() {
-                  _currentMealsDayIndex = index;
-                });
-              },
-              itemCount: _mealsDays.length,
-              itemBuilder: (context, dayIndex) {
-                final day = _mealsDays[dayIndex];
-                final mealsForDay = _pendingMeals!.where((meal) {
-                  final mealDate = DateTime(meal.plannedDate.year, meal.plannedDate.month, meal.plannedDate.day);
-                  return mealDate.isAtSameMomentAs(day);
-                }).toList();
-
-                // Calculer les totaux du jour avec formule
-                final dayProteins = mealsForDay.fold<double>(0, (sum, m) => sum + m.proteins);
-                final dayCarbs = mealsForDay.fold<double>(0, (sum, m) => sum + m.carbs);
-                final dayFats = mealsForDay.fold<double>(0, (sum, m) => sum + m.fats);
-                final dayCalories = ((dayProteins * 4) + (dayCarbs * 4) + (dayFats * 9)).round();
-
-                return ListView(
-                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-                  children: [
-                    ...mealsForDay.indexed.map((e) => PopIn(
-                          key: ValueKey('pm-${e.$2.plannedDate.toIso8601String()}-${e.$2.mealType.name}-${e.$2.dishName}'),
-                          delay: Duration(milliseconds: 80 + e.$1 * 50),
-                          dy: 10,
-                          duration: const Duration(milliseconds: 420),
-                          child: _buildMealPreviewItem(e.$2, langCode, showDay: false),
-                        )),
-                    // Total du jour
-                    Container(
-                      margin: const EdgeInsets.only(top: 4),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF0B132B).withValues(alpha: 0.05),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: [
-                          _buildMacroChip('$dayCalories', 'kcal', const Color(0xFF0B132B)),
-                          _buildMacroChip('${dayProteins.toInt()}g', 'proteins'.tr(langCode)[0], const Color(0xFF3B82F6)),
-                          _buildMacroChip('${dayCarbs.toInt()}g', 'carbs'.tr(langCode)[0], const Color(0xFFF59E0B)),
-                          _buildMacroChip('${dayFats.toInt()}g', 'fats'.tr(langCode)[0], const Color(0xFFEF4444)),
-                        ],
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
-          // Indicateurs de page (dots)
-          if (_mealsDays.length > 1)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(_mealsDays.length, (index) {
-                  return Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 3),
-                    width: index == _currentMealsDayIndex ? 16 : 6,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      color: index == _currentMealsDayIndex
-                          ? const Color(0xFF0B132B)
-                          : const Color(0xFFE2E8F0),
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                  );
-                }),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMacroChip(String value, String label, Color color) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: color,
-          ),
-        ),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 10,
-            color: Color(0xFF64748B),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMealPreviewItem(PendingMeal meal, String langCode, {bool showDay = true}) {
-    final dayName = _formatDayName(meal.plannedDate, langCode);
-    final mealTypeNames = {
+    final day = _mealsDays[_currentMealsDayIndex];
+    final mealsWord = {'fr': 'repas proposés', 'en': 'meals proposed', 'de': 'Mahlzeiten vorgeschlagen'}[langCode] ?? 'meals proposed';
+    final totalWord = {'fr': 'Total du jour', 'en': 'Day total', 'de': 'Tagessumme'}[langCode] ?? 'Day total';
+    final typeNames = {
       PlannedActivityType.breakfast: {'fr': 'Petit-déj', 'en': 'Breakfast', 'de': 'Frühstück'},
       PlannedActivityType.lunch: {'fr': 'Déjeuner', 'en': 'Lunch', 'de': 'Mittagessen'},
       PlannedActivityType.dinner: {'fr': 'Dîner', 'en': 'Dinner', 'de': 'Abendessen'},
       PlannedActivityType.snack: {'fr': 'Collation', 'en': 'Snack', 'de': 'Snack'},
     };
-    final mealTypeName = mealTypeNames[meal.mealType]?[langCode] ?? meal.mealType.value;
+    final letters = ['proteins'.tr(langCode)[0], 'carbs'.tr(langCode)[0], 'fats'.tr(langCode)[0]];
+    var maxMeals = 1;
+    for (final d in _mealsDays) {
+      final n = _mealsForDay(d).length;
+      if (n > maxMeals) maxMeals = n;
+    }
+    // rows are 62 pt, the totals block 78 pt: fixed height keeps the pager stable
+    final pageHeight = maxMeals * 62.0 + 82.0;
 
-    return GestureDetector(
-      onTap: () => _showMealDetailPage(meal, langCode),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ProposalHeader(
+          icon: LucideIcons.utensils,
+          title: _formatDayName(day, langCode),
+          subtitle: '${_mealsForDay(day).length} $mealsWord',
+          paged: _mealsDays.length > 1,
+          canPrev: _currentMealsDayIndex > 0,
+          canNext: _currentMealsDayIndex < _mealsDays.length - 1,
+          onPrev: () => _mealsPageController?.previousPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut),
+          onNext: () => _mealsPageController?.nextPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut),
         ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: meal.mealType.color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(
-                meal.mealType.icon,
-                size: 16,
-                color: meal.mealType.color,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+        SizedBox(
+          height: pageHeight,
+          child: PageView.builder(
+            controller: _mealsPageController,
+            onPageChanged: (index) => setState(() => _currentMealsDayIndex = index),
+            itemCount: _mealsDays.length,
+            itemBuilder: (context, dayIndex) {
+              final meals = _mealsForDay(_mealsDays[dayIndex]);
+              final p = meals.fold<double>(0, (sum, m) => sum + m.proteins);
+              final c = meals.fold<double>(0, (sum, m) => sum + m.carbs);
+              final f = meals.fold<double>(0, (sum, m) => sum + m.fats);
+              final kcal = ((p * 4) + (c * 4) + (f * 9)).round();
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    showDay ? '$dayName - $mealTypeName' : mealTypeName,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF64748B),
+                  for (final (i, meal) in meals.indexed)
+                    PopIn(
+                      key: ValueKey('pm-${meal.plannedDate.toIso8601String()}-${meal.mealType.name}-${meal.dishName}'),
+                      delay: Duration(milliseconds: 80 + i * 50),
+                      dy: 10,
+                      duration: const Duration(milliseconds: 420),
+                      child: _buildMealPreviewItem(meal, langCode, typeLabel: typeNames[meal.mealType]?[langCode] ?? meal.mealType.value, letters: letters),
                     ),
-                  ),
-                  Text(
-                    meal.dishName,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF0B132B),
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  Text(
-                    // Calculer calories avec formule + utiliser traductions pour abréviations
-                    '~${((meal.proteins * 4) + (meal.carbs * 4) + (meal.fats * 9)).round()} kcal | ${'proteins'.tr(langCode)[0]}: ${meal.proteins.toInt()}g | ${'carbs'.tr(langCode)[0]}: ${meal.carbs.toInt()}g | ${'fats'.tr(langCode)[0]}: ${meal.fats.toInt()}g',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: Color(0xFF64748B),
-                    ),
+                  ProposalDayTotals(
+                    calories: kcal,
+                    proteins: p.toInt(),
+                    carbs: c.toInt(),
+                    fats: f.toInt(),
+                    totalLabel: totalWord,
+                    proteinLabel: 'proteins'.tr(langCode),
+                    carbsLabel: 'carbs'.tr(langCode),
+                    fatLabel: 'fats'.tr(langCode),
                   ),
                 ],
-              ),
-            ),
-            const Icon(
-              LucideIcons.chevronRight,
-              size: 16,
-              color: Color(0xFF94A3B8),
-            ),
-          ],
+              );
+            },
+          ),
         ),
-      ),
+        if (_mealsDays.length > 1) ProposalPagerDots(count: _mealsDays.length, index: _currentMealsDayIndex),
+      ],
+    );
+  }
+
+  Widget _buildMealPreviewItem(PendingMeal meal, String langCode, {required String typeLabel, required List<String> letters}) {
+    return ProposalMealRow(
+      icon: meal.mealType.icon,
+      typeLabel: typeLabel,
+      dishName: meal.dishName,
+      calories: ((meal.proteins * 4) + (meal.carbs * 4) + (meal.fats * 9)).round(),
+      proteins: meal.proteins.toInt(),
+      carbs: meal.carbs.toInt(),
+      fats: meal.fats.toInt(),
+      macroLetters: letters,
+      onTap: () => _showMealDetailPage(meal, langCode),
     );
   }
 
@@ -2088,89 +1783,23 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
   }
 
   Widget _buildMealsPreviewButtons(String langCode) {
-    final modifyText = 'planner_cancel'.tr(langCode);
-
-    // Texte du bouton selon si un seul jour ou plusieurs
     String confirmText;
     if (_mealsDays.length <= 1) {
       confirmText = 'planner_validate'.tr(langCode);
     } else {
-      final currentDayName = _mealsDays.isNotEmpty
-          ? _formatDayNameShort(_mealsDays[_currentMealsDayIndex], langCode)
-          : '';
+      final currentDayName = _formatDayNameShort(_mealsDays[_currentMealsDayIndex], langCode);
       final validateText = 'planner_validate'.tr(langCode);
-      confirmText = langCode == 'de'
-          ? '$currentDayName $validateText'.toLowerCase()
-          : '$validateText $currentDayName';
+      confirmText = langCode == 'de' ? '$currentDayName $validateText'.toLowerCase() : '$validateText $currentDayName';
     }
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Boutons principaux
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: _isConfirming ? null : _cancelPreview,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF64748B),
-                    side: const BorderSide(color: Color(0xFFE2E8F0)),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: Text(modifyText),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                flex: 2,
-                child: ElevatedButton.icon(
-                  onPressed: _isConfirming ? null : _confirmMeals,
-                  icon: _isConfirming
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                        )
-                      : const Icon(LucideIcons.check, size: 18),
-                  label: Text(confirmText),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF10B981),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          // Bouton "Tout valider" si plusieurs jours
-          if (_mealsDays.length > 1)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: SizedBox(
-                width: double.infinity,
-                child: TextButton(
-                  onPressed: _isConfirming ? null : _confirmAllMeals,
-                  child: Text(
-                    '${'planner_confirm_all_days'.tr(langCode)} (${_mealsDays.length} ${'planner_days_count'.tr(langCode)})',
-                    style: const TextStyle(
-                      color: Color(0xFF64748B),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
+    final several = _mealsDays.length > 1;
+    return ProposalActions(
+      cancelLabel: 'planner_cancel'.tr(langCode),
+      confirmLabel: confirmText,
+      onCancel: _cancelPreview,
+      onConfirm: _confirmMeals,
+      busy: _isConfirming,
+      secondaryLabel: several ? '${'planner_confirm_all_days'.tr(langCode)} · ${_mealsDays.length} ${'planner_days_count'.tr(langCode)}' : null,
+      onSecondary: several ? _confirmAllMeals : null,
     );
   }
 
@@ -2220,134 +1849,35 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
     if (_pendingSessions == null || _pendingSessions!.isEmpty) {
       return const SizedBox.shrink();
     }
-
-    final currentSession = _pendingSessions![_currentSessionIndex];
-    // Afficher le jour comme pour les repas
-    final dayLabel = _formatDayName(
-      DateTime(currentSession.plannedDate.year, currentSession.plannedDate.month, currentSession.plannedDate.day),
-      langCode,
-    );
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Header avec navigation (même style que meals)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-            child: Row(
-              children: [
-                // Flèche gauche
-                if (_pendingSessions!.length > 1)
-                  GestureDetector(
-                    onTap: _currentSessionIndex > 0
-                        ? () {
-                            _sessionsPageController?.previousPage(
-                              duration: const Duration(milliseconds: 300),
-                              curve: Curves.easeInOut,
-                            );
-                          }
-                        : null,
-                    child: Icon(
-                      LucideIcons.chevronLeft,
-                      size: 20,
-                      color: _currentSessionIndex > 0
-                          ? const Color(0xFF0B132B)
-                          : const Color(0xFFE2E8F0),
-                    ),
-                  ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    children: [
-                      Text(
-                        dayLabel,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF0B132B),
-                        ),
-                      ),
-                      if (_pendingSessions!.length > 1)
-                        Text(
-                          '${_currentSessionIndex + 1}/${_pendingSessions!.length}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF64748B),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                // Flèche droite
-                if (_pendingSessions!.length > 1)
-                  GestureDetector(
-                    onTap: _currentSessionIndex < _pendingSessions!.length - 1
-                        ? () {
-                            _sessionsPageController?.nextPage(
-                              duration: const Duration(milliseconds: 300),
-                              curve: Curves.easeInOut,
-                            );
-                          }
-                        : null,
-                    child: Icon(
-                      LucideIcons.chevronRight,
-                      size: 20,
-                      color: _currentSessionIndex < _pendingSessions!.length - 1
-                          ? const Color(0xFF0B132B)
-                          : const Color(0xFFE2E8F0),
-                    ),
-                  ),
-              ],
-            ),
+    final current = _pendingSessions![_currentSessionIndex];
+    final dayLabel = _formatDayName(DateTime(current.plannedDate.year, current.plannedDate.month, current.plannedDate.day), langCode);
+    final n = _pendingSessions!.length;
+    final sessionWord = {'fr': 'Séance', 'en': 'Session', 'de': 'Einheit'}[langCode] ?? 'Session';
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ProposalHeader(
+          icon: current.isWorkout ? LucideIcons.dumbbell : LucideIcons.activity,
+          title: dayLabel,
+          subtitle: n > 1 ? '$sessionWord ${_currentSessionIndex + 1}/$n · ${current.displayTitle}' : current.displayTitle,
+          paged: n > 1,
+          canPrev: _currentSessionIndex > 0,
+          canNext: _currentSessionIndex < n - 1,
+          onPrev: () => _sessionsPageController?.previousPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut),
+          onNext: () => _sessionsPageController?.nextPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut),
+        ),
+        SizedBox(
+          height: 280,
+          child: PageView.builder(
+            controller: _sessionsPageController,
+            itemCount: n,
+            onPageChanged: (index) => setState(() => _currentSessionIndex = index),
+            itemBuilder: (context, index) => _buildSessionCard(_pendingSessions![index], langCode),
           ),
-
-          // PageView avec les sessions
-          SizedBox(
-            height: 280,
-            child: PageView.builder(
-              controller: _sessionsPageController,
-              itemCount: _pendingSessions!.length,
-              onPageChanged: (index) {
-                setState(() => _currentSessionIndex = index);
-              },
-              itemBuilder: (context, index) {
-                final session = _pendingSessions![index];
-                return _buildSessionCard(session, langCode);
-              },
-            ),
-          ),
-
-          // Indicateurs de page (dots)
-          if (_pendingSessions!.length > 1)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(_pendingSessions!.length, (index) {
-                  return Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 3),
-                    width: index == _currentSessionIndex ? 16 : 6,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      color: index == _currentSessionIndex
-                          ? const Color(0xFF0B132B)
-                          : const Color(0xFFE2E8F0),
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                  );
-                }),
-              ),
-            ),
-        ],
-      ),
+        ),
+        if (n > 1) ProposalPagerDots(count: n, index: _currentSessionIndex),
+      ],
     );
   }
 
@@ -2384,52 +1914,13 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
   }
 
   Widget _buildSessionsPreviewButtons(String langCode) {
-    final cancelText = 'planner_cancel'.tr(langCode);
-    final confirmText = '${'planner_validate'.tr(langCode)} ✓';
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: OutlinedButton(
-              onPressed: _isConfirming ? null : _cancelSessionsPreview,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF64748B),
-                side: const BorderSide(color: Color(0xFFE2E8F0)),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              child: Text(cancelText),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            flex: 2,
-            child: ElevatedButton.icon(
-              onPressed: _isConfirming ? null : _confirmCurrentSession,
-              icon: _isConfirming
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                    )
-                  : const Icon(LucideIcons.check, size: 18),
-              label: Text(confirmText),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF10B981),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-          ),
-        ],
-      ),
+    final thisOne = {'fr': 'cette séance', 'en': 'this session', 'de': 'diese Einheit'}[langCode] ?? 'this session';
+    return ProposalActions(
+      cancelLabel: 'planner_cancel'.tr(langCode),
+      confirmLabel: '${'planner_validate'.tr(langCode)} $thisOne',
+      onCancel: _cancelSessionsPreview,
+      onConfirm: _confirmCurrentSession,
+      busy: _isConfirming,
     );
   }
 
