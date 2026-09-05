@@ -146,7 +146,7 @@ class _PactContentState extends State<PactContent> {
                   widget.onSigned();
                 },
               ),
-              if (_burst) Positioned.fill(child: SparkBurst(key: UniqueKey())),
+              if (_burst) const Positioned.fill(child: SparkBurst(key: ValueKey('pact-sparks'))),
             ],
           ),
         ),

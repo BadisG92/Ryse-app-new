@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 /// Design tokens of the v2 onboarding ("studio" direction).
 ///
@@ -55,7 +54,8 @@ extension OnbSizing on BuildContext {
 class OnbText {
   OnbText._();
 
-  /// Archivo for headlines and big numbers.
+  /// Archivo for headlines and big numbers. Bundled variable font
+  /// (assets/fonts), so the onboarding never waits on a network fetch.
   static TextStyle display(
     BuildContext context,
     double sizeVw, {
@@ -65,9 +65,11 @@ class OnbText {
     double letterSpacingEm = -0.028,
   }) {
     final size = context.vw(sizeVw);
-    return GoogleFonts.archivo(
+    return TextStyle(
+      fontFamily: 'Archivo',
       fontSize: size,
       fontWeight: weight,
+      fontVariations: [FontVariation('wght', _wght(weight)), const FontVariation('wdth', 100)],
       color: color,
       height: height,
       letterSpacing: size * letterSpacingEm,
@@ -82,13 +84,17 @@ class OnbText {
     Color color = OnbColors.ink,
     double height = 1.4,
   }) {
-    return GoogleFonts.instrumentSans(
+    return TextStyle(
+      fontFamily: 'InstrumentSans',
       fontSize: context.vw(sizeVw),
       fontWeight: weight,
+      fontVariations: [FontVariation('wght', _wght(weight)), const FontVariation('wdth', 100)],
       color: color,
       height: height,
     );
   }
+
+  static double _wght(FontWeight w) => (w.index + 1) * 100.0;
 }
 
 class OnbAssets {

@@ -1,6 +1,5 @@
-import 'dart:ui' show ImageFilter;
-
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../models/weekly_planner_models.dart';
@@ -62,7 +61,9 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   final OnboardingRepository _repo = OnboardingRepository();
 
   late OnbAnswers a;
+  late final TextEditingController _motivationCtrl;
   late final List<_Step> _steps;
+  bool _finishing = false;
   int _idx = 0;
   int _visit = 0;
   final List<int> _history = [];
@@ -79,6 +80,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   void initState() {
     super.initState();
     a = widget.resume?.answers ?? OnbAnswers();
+    _motivationCtrl = TextEditingController(text: a.motivationText);
     _steps = widget.mode == OnbMode.coachOnly
         ? const [
             _Step('ch4', card: true),
@@ -196,8 +198,17 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     }
   }
 
+  @override
+  void dispose() {
+    _motivationCtrl.dispose();
+    super.dispose();
+  }
+
   /// End of the flow: after purchase (full) or after the pact (coachOnly).
+  /// Guarded: a purchase and a restore could both resolve.
   Future<void> _finish() async {
+    if (_finishing) return;
+    _finishing = true;
     if (widget.mode == OnbMode.full) {
       await _ensureProfileSaved();
       final saved = await _repo.saveDemoPlan(_demoMeals, _demoWorkouts, _demoSessions);
@@ -304,44 +315,29 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   @override
   Widget build(BuildContext context) {
     final step = _steps[_idx];
-    return Scaffold(
-      backgroundColor: OnbColors.paper,
-      resizeToAvoidBottomInset: true,
-      body: Stack(
-        children: [
-          const Positioned.fill(child: DecoratedBox(decoration: BoxDecoration(gradient: OnbColors.ground))),
-          Positioned.fill(
-            child: IgnorePointer(
-              child: Opacity(
-                opacity: 0.16,
-                child: ImageFiltered(
-                  imageFilter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                  child: ShaderMask(
-                    shaderCallback: (rect) => const LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [Colors.black, Color(0x8C000000), Colors.transparent],
-                        stops: [0, 0.45, 0.8]).createShader(rect),
-                    blendMode: BlendMode.dstIn,
-                    child: Image.asset(OnbAssets.scene, fit: BoxFit.cover, alignment: const Alignment(0, -0.4)),
-                  ),
-                ),
-              ),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      // light ground → dark status bar icons
+      value: SystemUiOverlayStyle.dark,
+      child: Scaffold(
+        backgroundColor: OnbColors.paper,
+        resizeToAvoidBottomInset: true,
+        body: Stack(
+          children: [
+            const Positioned.fill(child: OnbBackground()),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 380),
+              switchInCurve: OnbCurves.out,
+              switchOutCurve: OnbCurves.snap,
+              layoutBuilder: (current, previous) => Stack(fit: StackFit.expand, children: [...previous, if (current != null) current]),
+              transitionBuilder: (child, anim) {
+                final incoming = child.key == ValueKey('${step.id}-$_visit');
+                final slide = Tween<Offset>(begin: Offset(0, incoming ? 0.03 : -0.03), end: Offset.zero).animate(anim);
+                return FadeTransition(opacity: anim, child: SlideTransition(position: slide, child: child));
+              },
+              child: KeyedSubtree(key: ValueKey('${step.id}-$_visit'), child: _buildStep(step)),
             ),
-          ),
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 380),
-            switchInCurve: OnbCurves.out,
-            switchOutCurve: OnbCurves.snap,
-            layoutBuilder: (current, previous) => Stack(fit: StackFit.expand, children: [...previous, if (current != null) current]),
-            transitionBuilder: (child, anim) {
-              final incoming = child.key == ValueKey('${step.id}-$_visit');
-              final slide = Tween<Offset>(begin: Offset(0, incoming ? 0.03 : -0.03), end: Offset.zero).animate(anim);
-              return FadeTransition(opacity: anim, child: SlideTransition(position: slide, child: child));
-            },
-            child: KeyedSubtree(key: ValueKey('${step.id}-$_visit'), child: _buildStep(step)),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -460,7 +456,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                   builder: (context, constraints) => SingleChildScrollView(
                     padding: EdgeInsets.only(bottom: context.vh(3)),
                     child: ConstrainedBox(
-                      constraints: BoxConstraints(minHeight: constraints.maxHeight - context.vh(3)),
+                      // keyboard open → maxHeight can drop below the padding; never go negative
+                      constraints: BoxConstraints(minHeight: (constraints.maxHeight - context.vh(3)).clamp(0.0, double.infinity)),
                       child: Column(
                         mainAxisAlignment: centerBody ? MainAxisAlignment.center : MainAxisAlignment.start,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -730,7 +727,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               PopIn(
                 delay: const Duration(milliseconds: 560),
                 child: TextField(
-                  controller: TextEditingController(text: a.motivationText)..selection = TextSelection.collapsed(offset: a.motivationText.length),
+                  controller: _motivationCtrl,
                   onChanged: (v) => a.motivationText = v,
                   maxLines: 3,
                   minLines: 2,

@@ -94,6 +94,9 @@ class _OnbWheelPickerState extends State<OnbWheelPicker> {
               itemExtent: itemExtent,
               perspective: 0.0025,
               diameterRatio: 1.8,
+              useMagnifier: true,
+              magnification: 1.18,
+              overAndUnderCenterOpacity: 0.35,
               physics: const FixedExtentScrollPhysics(),
               onSelectedItemChanged: (i) {
                 HapticService.instance.selectionClick();

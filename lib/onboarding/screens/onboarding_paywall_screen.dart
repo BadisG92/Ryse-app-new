@@ -153,7 +153,7 @@ class _OnboardingPaywallScreenState extends State<OnboardingPaywallScreen> {
         backgroundColor: OnbColors.paper,
         body: Stack(
           children: [
-            const Positioned.fill(child: DecoratedBox(decoration: BoxDecoration(gradient: OnbColors.ground))),
+            const Positioned.fill(child: OnbBackground(scene: false)),
             SafeArea(
               child: Padding(
                 padding: EdgeInsets.fromLTRB(context.vw(6), context.vh(2.4), context.vw(6), context.vh(2)),

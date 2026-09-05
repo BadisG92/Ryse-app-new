@@ -27,8 +27,8 @@ class HelloContent extends StatelessWidget {
           delay: const Duration(milliseconds: 250),
           child: Row(
             children: [
-              const CoachAvatar(OnbAssets.sportAvatar, sizeVw: 14),
-              Transform.translate(offset: Offset(-context.vw(4), 0), child: const CoachAvatar(OnbAssets.nutriAvatar, sizeVw: 14)),
+              const Bob(child: CoachAvatar(OnbAssets.sportAvatar, sizeVw: 14)),
+              Transform.translate(offset: Offset(-context.vw(4), 0), child: const Bob(phase: 0.5, child: CoachAvatar(OnbAssets.nutriAvatar, sizeVw: 14))),
             ],
           ),
         ),

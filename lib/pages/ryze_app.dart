@@ -32,7 +32,7 @@ class _RyzeAppState extends State<RyzeApp> {
   Widget? _targetScreen;
 
   // Debug flags (development only)
-  static const bool _forceOnboarding = false;
+  static const bool _forceOnboarding = true; // TEMP: emulator test, revert before commit
   static const bool _forceValueProp = false;
 
   @override
@@ -69,6 +69,7 @@ class _RyzeAppState extends State<RyzeApp> {
     final supabase = Supabase.instance.client;
     final session = supabase.auth.currentSession;
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
 
     // 🔐 Logged in
     if (session != null && !_forceValueProp) {

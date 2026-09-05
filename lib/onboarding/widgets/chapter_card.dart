@@ -49,7 +49,7 @@ class _ChapterCardState extends State<ChapterCard> with SingleTickerProviderStat
         return ClipRect(
           child: Align(
             // enters from the bottom, exits by the top
-            alignment: _out.value > 0 ? Alignment.bottomCenter : Alignment.topCenter,
+            alignment: _out.value > 0 ? Alignment.topCenter : Alignment.bottomCenter,
             heightFactor: visibleFactor,
             child: SizedBox(
               height: MediaQuery.sizeOf(context).height,

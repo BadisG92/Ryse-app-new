@@ -56,12 +56,12 @@ class _HoldToSignState extends State<HoldToSign> with SingleTickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => _start(),
-      onTapUp: (_) => _cancel(),
-      onTapCancel: _cancel,
-      onLongPressStart: (_) => _start(),
-      onLongPressEnd: (_) => _cancel(),
+    // Raw pointer events: a GestureDetector would fire onTapCancel when the
+    // long-press recognizer wins the arena, dipping the fill halfway through.
+    return Listener(
+      onPointerDown: (_) => _start(),
+      onPointerUp: (_) => _cancel(),
+      onPointerCancel: (_) => _cancel(),
       child: AnimatedBuilder(
         animation: _c,
         builder: (context, _) {

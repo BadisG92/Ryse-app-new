@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../components/ui/onboarding_models.dart';
@@ -109,8 +108,23 @@ class OnbMetabolics {
     final rate = a.goal == 'lose' ? 0.6 : 0.3;
     final weeks = (delta.abs() / rate).ceil().clamp(2, 200);
     final date = DateTime.now().add(Duration(days: weeks * 7));
-    final label = DateFormat.MMMd(lang).format(date);
-    return OnbProjection(deltaKg: delta, weeks: weeks, date: date, label: label, ratePerWeekKg: delta.abs() / weeks);
+    return OnbProjection(deltaKg: delta, weeks: weeks, date: date, label: shortDate(date, lang), ratePerWeekKg: delta.abs() / weeks);
+  }
+
+  /// "12 nov." / "Nov 12" / "12. Nov." without touching intl's locale data,
+  /// which the app only initializes in the coach chat.
+  static String shortDate(DateTime d, String lang) {
+    const fr = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+    const en = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const de = ['Jan.', 'Feb.', 'März', 'Apr.', 'Mai', 'Juni', 'Juli', 'Aug.', 'Sept.', 'Okt.', 'Nov.', 'Dez.'];
+    switch (lang) {
+      case 'fr':
+        return '${d.day} ${fr[d.month - 1]}';
+      case 'de':
+        return '${d.day}. ${de[d.month - 1]}';
+      default:
+        return '${en[d.month - 1]} ${d.day}';
+    }
   }
 }
 

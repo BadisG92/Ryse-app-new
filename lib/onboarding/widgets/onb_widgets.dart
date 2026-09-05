@@ -1,3 +1,6 @@
+import 'dart:math' as math;
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -159,7 +162,8 @@ class WordStream extends StatelessWidget {
   }
 }
 
-/// Primary pill button. `gold` is reserved for the single trial button.
+/// Primary pill button. `gold` is reserved for the single trial button and
+/// carries the periodic sheen of the prototype.
 class OnbButton extends StatefulWidget {
   const OnbButton({super.key, required this.label, this.onPressed, this.gold = false, this.ghost = false, this.icon});
 
@@ -173,14 +177,49 @@ class OnbButton extends StatefulWidget {
   State<OnbButton> createState() => _OnbButtonState();
 }
 
-class _OnbButtonState extends State<OnbButton> {
+class _OnbButtonState extends State<OnbButton> with SingleTickerProviderStateMixin {
   bool _down = false;
+  late final AnimationController _sheen = AnimationController(vsync: this, duration: const Duration(milliseconds: 4500));
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.gold) _sheen.repeat();
+  }
+
+  @override
+  void dispose() {
+    _sheen.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final enabled = widget.onPressed != null;
     final Color bg = widget.ghost ? OnbColors.surf : (widget.gold ? OnbColors.acc : OnbColors.ink);
     final Color fg = widget.ghost ? OnbColors.ink : (widget.gold ? OnbColors.onAcc : Colors.white);
+
+    final pill = Container(
+      width: double.infinity,
+      constraints: BoxConstraints(minHeight: context.vw(14)),
+      padding: EdgeInsets.symmetric(horizontal: context.vw(6), vertical: context.vw(3.6)),
+      decoration: BoxDecoration(
+        gradient: widget.gold
+            ? const LinearGradient(
+                begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [OnbColors.accLight, OnbColors.acc, OnbColors.accDeep], stops: [0, 0.6, 1])
+            : null,
+        color: widget.gold ? null : bg,
+        borderRadius: BorderRadius.circular(999),
+        border: widget.ghost ? Border.all(color: OnbColors.line) : null,
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          if (widget.icon != null) ...[Icon(widget.icon, size: context.vw(4.4), color: fg), SizedBox(width: context.vw(2))],
+          Flexible(child: Text(widget.label, style: OnbText.body(context, 4.3, weight: FontWeight.w600, color: fg, height: 1.2), textAlign: TextAlign.center)),
+        ],
+      ),
+    );
 
     return GestureDetector(
       onTapDown: enabled ? (_) => setState(() => _down = true) : null,
@@ -195,20 +234,8 @@ class _OnbButtonState extends State<OnbButton> {
           opacity: enabled ? 1 : 0.28,
           duration: const Duration(milliseconds: 250),
           child: Container(
-            width: double.infinity,
-            constraints: BoxConstraints(minHeight: context.vw(14)),
-            padding: EdgeInsets.symmetric(horizontal: context.vw(6), vertical: context.vw(3.6)),
             decoration: BoxDecoration(
-              gradient: widget.gold
-                  ? const LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [OnbColors.accLight, OnbColors.acc, OnbColors.accDeep],
-                      stops: [0, 0.6, 1])
-                  : null,
-              color: widget.gold ? null : bg,
               borderRadius: BorderRadius.circular(999),
-              border: widget.ghost ? Border.all(color: OnbColors.line) : null,
               boxShadow: [
                 if (!widget.ghost)
                   BoxShadow(
@@ -218,15 +245,36 @@ class _OnbButtonState extends State<OnbButton> {
                   ),
               ],
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (widget.icon != null) ...[
-                  Icon(widget.icon, size: context.vw(4.4), color: fg),
-                  SizedBox(width: context.vw(2)),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(999),
+              child: Stack(
+                children: [
+                  pill,
+                  if (widget.gold)
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: AnimatedBuilder(
+                          animation: _sheen,
+                          builder: (context, _) {
+                            final p = (_sheen.value / 0.16).clamp(0.0, 1.0);
+                            return FractionalTranslation(
+                              translation: Offset(-1.2 + 2.4 * p, 0),
+                              child: Transform(
+                                alignment: Alignment.center,
+                                transform: Matrix4.skewX(-0.4),
+                                child: const DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(colors: [Color(0x00FFFFFF), Color(0x48FFFFFF), Color(0x00FFFFFF)], stops: [0.3, 0.5, 0.7]),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
                 ],
-                Text(widget.label, style: OnbText.body(context, 4.3, weight: FontWeight.w600, color: fg, height: 1.2), textAlign: TextAlign.center),
-              ],
+              ),
             ),
           ),
         ),
@@ -307,12 +355,14 @@ class OnbTopBar extends StatelessWidget {
             ),
           ),
           SizedBox(width: context.vw(3)),
-          SizedBox(
-            width: context.vw(18),
+          // intrinsic width: "Ton pourquoi  2/3" must never wrap inside the 9vw bar
+          Flexible(
             child: Text(
               showProgress ? label : '',
-              textAlign: TextAlign.right,
-              style: OnbText.body(context, 3.1, weight: FontWeight.w600, color: OnbColors.mute),
+              maxLines: 1,
+              softWrap: false,
+              overflow: TextOverflow.fade,
+              style: OnbText.body(context, 3.1, weight: FontWeight.w600, color: OnbColors.mute, height: 1.1),
             ),
           ),
         ],
@@ -370,7 +420,8 @@ class SpeakerRow extends StatelessWidget {
           ]),
         ),
         SizedBox(width: context.vw(2)),
-        Container(width: context.vw(1.6), height: context.vw(1.6), decoration: const BoxDecoration(color: OnbColors.green, shape: BoxShape.circle)),
+        Pulse(
+            child: Container(width: context.vw(1.6), height: context.vw(1.6), decoration: const BoxDecoration(color: OnbColors.green, shape: BoxShape.circle))),
       ],
     );
   }
@@ -439,4 +490,160 @@ class OnbCard extends StatelessWidget {
       child: child,
     );
   }
+}
+
+/// Gentle opacity pulse (the coach's "live" dot).
+class Pulse extends StatefulWidget {
+  const Pulse({super.key, required this.child, this.period = const Duration(milliseconds: 1200)});
+  final Widget child;
+  final Duration period;
+
+  @override
+  State<Pulse> createState() => _PulseState();
+}
+
+class _PulseState extends State<Pulse> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(vsync: this, duration: widget.period)..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(opacity: Tween<double>(begin: 1, end: 0.4).animate(CurvedAnimation(parent: _c, curve: Curves.easeInOut)), child: widget.child);
+  }
+}
+
+/// Slow vertical float, used on the coach avatars of the first screen.
+class Bob extends StatefulWidget {
+  const Bob({super.key, required this.child, this.amplitude = 6, this.period = const Duration(milliseconds: 3200), this.phase = 0});
+  final Widget child;
+  final double amplitude;
+  final Duration period;
+
+  /// 0..1 offset in the cycle, so two avatars do not move in sync.
+  final double phase;
+
+  @override
+  State<Bob> createState() => _BobState();
+}
+
+class _BobState extends State<Bob> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(vsync: this, duration: widget.period)..repeat();
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _c,
+      builder: (context, child) {
+        final t = (_c.value + widget.phase) % 1.0;
+        return Transform.translate(offset: Offset(0, -widget.amplitude * (0.5 - 0.5 * math.cos(t * 2 * math.pi))), child: child);
+      },
+      child: widget.child,
+    );
+  }
+}
+
+/// The prototype's ground: paper gradient, warm light top right, a faint cool
+/// glow bottom left, the blurred gym scene, and the fine grid fading at both ends.
+class OnbBackground extends StatelessWidget {
+  const OnbBackground({super.key, this.scene = true});
+  final bool scene;
+
+  @override
+  Widget build(BuildContext context) {
+    final w = context.vw(100);
+    // RepaintBoundary: the blurred scene must not be re-filtered on every animation frame
+    return RepaintBoundary(
+      child: IgnorePointer(
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            const DecoratedBox(decoration: BoxDecoration(gradient: OnbColors.ground)),
+            Positioned(
+              right: -w * 0.35,
+              top: -w * 0.45,
+              child: Container(
+                width: w * 1.4,
+                height: w * 1.1,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(colors: [Color(0x4DFFC478), Color(0x00FFC478)], stops: [0, 0.62]),
+                ),
+              ),
+            ),
+            Positioned(
+              left: -w * 0.3,
+              bottom: -w * 0.3,
+              child: Container(
+                width: w * 1.2,
+                height: w * 0.9,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(colors: [Color(0x141B2A5B), Color(0x001B2A5B)], stops: [0, 0.6]),
+                ),
+              ),
+            ),
+            if (scene)
+              Opacity(
+                opacity: 0.16,
+                child: ImageFiltered(
+                  imageFilter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                  child: ShaderMask(
+                    shaderCallback: (rect) => const LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Colors.black, Color(0x8C000000), Colors.transparent],
+                      stops: [0, 0.45, 0.8],
+                    ).createShader(rect),
+                    blendMode: BlendMode.dstIn,
+                    child: Image.asset(OnbAssets.scene, fit: BoxFit.cover, alignment: const Alignment(0, -0.4)),
+                  ),
+                ),
+              ),
+            ShaderMask(
+              shaderCallback: (rect) => const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Colors.transparent, Colors.black, Colors.black, Colors.transparent],
+                stops: [0, 0.3, 0.7, 1],
+              ).createShader(rect),
+              blendMode: BlendMode.dstIn,
+              child: CustomPaint(painter: _GridPainter(spacing: w * 0.08)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GridPainter extends CustomPainter {
+  const _GridPainter({required this.spacing});
+  final double spacing;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = OnbColors.ink.withValues(alpha: 0.045)
+      ..strokeWidth = 1;
+    for (var x = 0.0; x <= size.width; x += spacing) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
+    }
+    for (var y = 0.0; y <= size.height; y += spacing) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _GridPainter old) => old.spacing != spacing;
 }
