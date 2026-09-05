@@ -9544,6 +9544,16 @@ class AppTranslations {
       'en': 'Halal',
       'de': 'Halal',
     },
+    'planner_meals_preview_one': {
+      'fr': 'Voilà ce que je te propose pour {day}. Regarde le détail et valide.',
+      'en': 'Here is what I suggest for {day}. Check the detail and confirm.',
+      'de': 'Das schlage ich dir für {day} vor. Sieh dir die Details an und bestätige.',
+    },
+    'planner_meals_preview_many': {
+      'fr': 'Voilà {n} jours de repas. Tu peux valider jour par jour, ou tout d’un coup.',
+      'en': 'Here are {n} days of meals. Confirm them day by day, or all at once.',
+      'de': 'Hier sind {n} Tage mit Mahlzeiten. Bestätige Tag für Tag oder alles auf einmal.',
+    },
   };
 
   /// Getter public pour accéder aux traductions (utilisé par TranslationChecker)

@@ -1756,6 +1756,8 @@ class PlannerAIService {
       final remainingCalories = calorieTarget - todayCalories;
 
       return {
+        'today': dayNames[today.weekday - 1],
+        'today_date': '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}',
         'fitness_goal': user.fitnessGoal ?? 'general_fitness',
         'activity_level': user.activityLevel ?? 'moderate',
         'gender': user.gender ?? 'unknown',
@@ -2048,6 +2050,10 @@ If user asks for "today's meals" but some are logged, only plan the REMAINING on
 ## This Week's Planned Workouts (adjust carbs on training days)
 $plannedWorkouts
 
+## Today
+- Today is ${context['today'] ?? 'unknown'} (${context['today_date'] ?? ''}).
+- "today", "tonight" and "this evening" mean that day and no other. "tomorrow" is the day after it.
+
 ## Available Days This Week
 ${context['available_days'] ?? ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']}
 
@@ -2141,6 +2147,10 @@ You CANNOT help with meal planning or nutrition. If the user asks about food/mea
 - Activity Level: ${context['activity_level'] ?? 'moderate'}
 - Gender: ${context['gender'] ?? 'unknown'}
 - Body Weight: ${context['weight_kg'] ?? 'unknown'} kg
+
+## Today
+- Today is ${context['today'] ?? 'unknown'} (${context['today_date'] ?? ''}).
+- "today" and "tonight" mean that day and no other. "tomorrow" is the day after it.
 
 ## This Week's Planned Workouts (can be moved/deleted/modified)
 ${context['planned_workouts_this_week'] ?? 'No workouts planned yet'}
@@ -5452,61 +5462,17 @@ USER REQUEST: "$userMessage"
     }
   }
 
-  /// Générer le message de preview pour les repas
+  /// One short line: the card underneath already lists every dish, its
+  /// calories and its macros, so repeating them in words says it twice.
   static String _getMealsPreviewMessage(String langCode, List<PendingMeal> meals) {
-    final buffer = StringBuffer();
-
-    if (langCode == 'fr') {
-      buffer.writeln('📋 **Voici les repas que je vais ajouter :**\n');
-    } else if (langCode == 'de') {
-      buffer.writeln('📋 **Hier sind die Mahlzeiten, die ich hinzufügen werde:**\n');
-    } else {
-      buffer.writeln('📋 **Here are the meals I will add:**\n');
+    final days = <DateTime>{
+      for (final meal in meals) DateTime(meal.plannedDate.year, meal.plannedDate.month, meal.plannedDate.day),
+    }.toList()
+      ..sort();
+    if (days.length == 1) {
+      return 'planner_meals_preview_one'.tr(langCode).replaceAll('{day}', _formatDayName(days.first, langCode).toLowerCase());
     }
-
-    // Grouper par jour
-    final mealsByDay = <DateTime, List<PendingMeal>>{};
-    for (final meal in meals) {
-      final date = DateTime(meal.plannedDate.year, meal.plannedDate.month, meal.plannedDate.day);
-      mealsByDay[date] = mealsByDay[date] ?? [];
-      mealsByDay[date]!.add(meal);
-    }
-
-    // Trier les jours
-    final sortedDays = mealsByDay.keys.toList()..sort();
-
-    for (final day in sortedDays) {
-      final dayName = _formatDayName(day, langCode);
-      buffer.writeln('**$dayName:**');
-
-      // Calculer le total du jour
-      final dayMeals = mealsByDay[day]!;
-      final dayProteins = dayMeals.fold<double>(0, (sum, m) => sum + m.proteins);
-      final dayCarbs = dayMeals.fold<double>(0, (sum, m) => sum + m.carbs);
-      final dayFats = dayMeals.fold<double>(0, (sum, m) => sum + m.fats);
-
-      for (final meal in dayMeals) {
-        final mealTypeName = _getMealTypeName(meal.mealType, langCode);
-        final mealCalc = ((meal.proteins * 4) + (meal.carbs * 4) + (meal.fats * 9)).round();
-        buffer.writeln('  • $mealTypeName: ${meal.dishName}');
-        buffer.writeln('    ~$mealCalc kcal | ${'proteins'.tr(langCode)[0]}: ${meal.proteins.toInt()}g | ${'carbs'.tr(langCode)[0]}: ${meal.carbs.toInt()}g | ${'fats'.tr(langCode)[0]}: ${meal.fats.toInt()}g');
-      }
-
-      // Total du jour - recalculer les calories
-      final dayCaloriesCalc = dayMeals.fold<int>(0, (sum, m) => sum + ((m.proteins * 4) + (m.carbs * 4) + (m.fats * 9)).round());
-      buffer.writeln('  📊 **Total jour:** ~$dayCaloriesCalc kcal | ${'proteins'.tr(langCode)[0]}: ${dayProteins.toInt()}g | ${'carbs'.tr(langCode)[0]}: ${dayCarbs.toInt()}g | ${'fats'.tr(langCode)[0]}: ${dayFats.toInt()}g');
-      buffer.writeln();
-    }
-
-    if (langCode == 'fr') {
-      buffer.writeln('✅ Confirmes-tu ces repas ?');
-    } else if (langCode == 'de') {
-      buffer.writeln('✅ Bestätigst du diese Mahlzeiten?');
-    } else {
-      buffer.writeln('✅ Do you confirm these meals?');
-    }
-
-    return buffer.toString();
+    return 'planner_meals_preview_many'.tr(langCode).replaceAll('{n}', '${days.length}');
   }
 
   /// Supprimer un repas planifié

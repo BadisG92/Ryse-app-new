@@ -1254,6 +1254,28 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
     );
   }
 
+  /// The coach, cropped on the head inside a white ring, the way the first
+  /// page of the onboarding shows the pair.
+  Widget _coachAvatar({double size = 32}) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: const Color(0xFFDFE4F2),
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white, width: 2),
+        boxShadow: [BoxShadow(color: const Color(0xFF0B132B).withValues(alpha: 0.12), blurRadius: 6, offset: const Offset(0, 2))],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Image.asset(
+        widget.initialMode == 'meals' ? 'assets/images/coach_ryze_nutrition_avatar.png' : 'assets/images/coach_ryze_workout_avatar.png',
+        fit: BoxFit.cover,
+        alignment: const Alignment(0, -0.6),
+        errorBuilder: (context, error, stack) => const Icon(LucideIcons.sparkles, size: 14, color: Color(0xFF0B132B)),
+      ),
+    );
+  }
+
   Widget _buildMessageBubble(_ChatMessage message, int index) {
     final bool canUndo = message.isUndoable && index == _undoableMessageIndex;
     final bool fresh = _shownMessages.add(message);
@@ -1270,30 +1292,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (!message.isUser) ...[
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.asset(
-                widget.initialMode == 'meals'
-                    ? 'assets/images/coach_ryze_nutrition_avatar.png'
-                    : 'assets/images/coach_ryze_workout_avatar.png',
-                width: 32,
-                height: 32,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0B132B),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    LucideIcons.sparkles,
-                    size: 14,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ),
+            _coachAvatar(),
             const SizedBox(width: 8),
           ],
           Flexible(
@@ -1430,21 +1429,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.asset(
-                widget.initialMode == 'meals' ? 'assets/images/coach_ryze_nutrition_avatar.png' : 'assets/images/coach_ryze_workout_avatar.png',
-                width: 32,
-                height: 32,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(color: const Color(0xFF0B132B), borderRadius: BorderRadius.circular(8)),
-                  child: const Icon(LucideIcons.sparkles, size: 14, color: Colors.white),
-                ),
-              ),
-            ),
+            _coachAvatar(),
             const SizedBox(width: 8),
             Flexible(
               child: Container(

@@ -70,6 +70,19 @@ class _DigitRun extends StatelessWidget {
 
   static const List<double> _pow10 = [1, 10, 100, 1000, 10000];
 
+  /// Where one column sits. The units roll continuously; every column above
+  /// them holds its digit and only turns during the carry, in the last tenth
+  /// before the digits on its right wrap. Dividing the whole value by ten per
+  /// column instead would put the hundreds of 171 seven tenths of the way to
+  /// 2, and the number would read 271.
+  static double _columnPosition(double v, int place) {
+    if (place <= 0) return v;
+    final unit = _pow10[place.clamp(0, _pow10.length - 1)];
+    final higher = (v / unit).floorToDouble();
+    final ratio = (v - higher * unit) / unit;
+    return higher + ((ratio - 0.9) * 10).clamp(0.0, 1.0);
+  }
+
   @override
   Widget build(BuildContext context) {
     return TweenAnimationBuilder<double>(
@@ -79,7 +92,7 @@ class _DigitRun extends StatelessWidget {
       builder: (context, v, _) => Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          for (var c = 0; c < digits; c++) _DigitColumn(position: v / _pow10[(digits - 1 - c).clamp(0, _pow10.length - 1)], style: style, cell: cell),
+          for (var c = 0; c < digits; c++) _DigitColumn(position: _columnPosition(v, digits - 1 - c), style: style, cell: cell),
         ],
       ),
     );
@@ -193,8 +206,9 @@ class _OnbWheelPickerState extends State<OnbWheelPicker> {
               ),
             ),
           ),
+          // the unit sits just outside the focus box, not against its edge
           Positioned(
-            left: context.vw(50) + context.vw(10),
+            left: context.vw(80),
             child: Text(widget.unit, style: OnbText.body(context, 3.8, weight: FontWeight.w500, color: OnbColors.mute)),
           ),
         ],
@@ -295,6 +309,9 @@ class _OnbRulerPickerState extends State<OnbRulerPicker> {
           value: tick,
           majorEvery: widget.isHeight && !widget.isMetric ? 12 : 10 * _perUnit,
           midEvery: widget.isHeight && !widget.isMetric ? 6 : 5 * _perUnit,
+          // twice the graduations, so each one takes less room and the ruler
+          // still shows a usable range around the value
+          tickVw: _perUnit == 2 ? 2.1 : 3.2,
           labelOf: (t) => widget.isHeight && !widget.isMetric ? "${t ~/ 12}'" : '${t ~/ _perUnit}',
           onChanged: (t) => widget.onChanged(_metricOfTick(t)),
         ),
@@ -387,7 +404,10 @@ class _RulerTrack extends StatefulWidget {
     required this.midEvery,
     required this.labelOf,
     required this.onChanged,
+    this.tickVw = 3.2,
   });
+
+  final double tickVw;
 
   /// Bounds and value in graduations, not in units.
   final int lo;
@@ -412,7 +432,7 @@ class _RulerTrackState extends State<_RulerTrack> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final tick = context.vw(3.2);
+    final tick = context.vw(widget.tickVw);
     if (_controller != null && tick == _tick) return;
     final old = _controller;
     _tick = tick;
