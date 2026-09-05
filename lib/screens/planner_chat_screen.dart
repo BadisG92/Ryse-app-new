@@ -219,7 +219,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_chatScrollController.hasClients) {
         _chatScrollController.animateTo(
-          0, // reverse: true, donc 0 = bas
+          _chatScrollController.position.maxScrollExtent,
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOut,
         );
@@ -795,7 +795,6 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
   Widget build(BuildContext context) {
     final locService = context.watch<LocalizationService>();
     final langCode = locService.currentLanguageCode;
-    final keyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
 
     final scaffold = Scaffold(
       backgroundColor: Colors.white,
@@ -814,40 +813,11 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
             child: _buildChatSection(langCode),
           ),
 
-          // Quick suggestions (au début, pas de clavier, pas de preview)
-          if (_messages.length <= 1 && !keyboardVisible && _pendingWorkouts == null && _pendingMeals == null && _pendingSessions == null && !_showPaywallButton)
-            _buildQuickSuggestions(langCode),
-
-          AnimatedSize(
-            duration: const Duration(milliseconds: 320),
-            curve: Curves.easeOutCubic,
-            alignment: Alignment.topCenter,
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 320),
-              switchInCurve: Curves.easeOutCubic,
-              switchOutCurve: Curves.easeIn,
-              transitionBuilder: (child, anim) => FadeTransition(
-                opacity: anim,
-                child: SlideTransition(position: Tween<Offset>(begin: const Offset(0, 0.06), end: Offset.zero).animate(anim), child: child),
-              ),
-              child: _pendingWorkouts != null && _pendingWorkouts!.isNotEmpty
-                  ? KeyedSubtree(key: const ValueKey('preview-workouts'), child: _buildWorkoutPreview(langCode))
-                  : _pendingMeals != null && _pendingMeals!.isNotEmpty
-                      ? KeyedSubtree(key: const ValueKey('preview-meals'), child: _buildMealsPreview(langCode))
-                      : _pendingSessions != null && _pendingSessions!.isNotEmpty
-                          ? KeyedSubtree(key: const ValueKey('preview-sessions'), child: _buildSessionsPreview(langCode))
-                          : const SizedBox.shrink(key: ValueKey('preview-none')),
-            ),
-          ),
           // Zone du bas selon l'état
           if (_showPaywallButton && !widget.demoMode)
             _buildPaywallButton(langCode)
-          else if (_pendingSessions != null && _pendingSessions!.isNotEmpty)
-            _buildSessionsPreviewButtons(langCode)
-          else if (_pendingWorkouts != null && _pendingWorkouts!.isNotEmpty)
-            _buildPreviewButtons(langCode)
-          else if (_pendingMeals != null && _pendingMeals!.isNotEmpty)
-            _buildMealsPreviewButtons(langCode)
+          else if (_hasPendingPreview)
+            const SizedBox(height: 8) // validation buttons live in the conversation, under the card
           else if (widget.demoMode && widget.maxMessages != null && _userMessageCount >= widget.maxMessages!)
             _buildDemoLimitReached(langCode)
           else
@@ -974,7 +944,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
         boxShadow: [BoxShadow(color: Color(0x12000000), blurRadius: 14, offset: Offset(0, 6))],
       ),
       child: SizedBox(
-        height: widget.demoMode ? 178 : 150,
+        height: widget.demoMode ? 176 : 144,
         child: ListView.builder(
           controller: _calendarScrollController,
           scrollDirection: Axis.horizontal,
@@ -1030,23 +1000,101 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
     }
   }
 
-  Widget _buildChatSection(String langCode) {
-    final itemCount = _messages.length + (_isProcessing ? 1 : 0);
+  bool get _hasPendingPreview =>
+      (_pendingWorkouts != null && _pendingWorkouts!.isNotEmpty) ||
+      (_pendingMeals != null && _pendingMeals!.isNotEmpty) ||
+      (_pendingSessions != null && _pendingSessions!.isNotEmpty);
 
+  int _lastChatItemCount = 0;
+
+  /// The conversation reads top-down, like the prototype: messages, then the
+  /// typing indicator, then the quick suggestions or the card to validate.
+  Widget _buildChatSection(String langCode) {
+    final keyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
+    final showSuggestions = _messages.length <= 1 && !keyboardVisible && !_hasPendingPreview && !_showPaywallButton && !_isProcessing;
+    final itemCount = _messages.length + (_isProcessing ? 1 : 0) + (showSuggestions ? 1 : 0) + (_hasPendingPreview ? 1 : 0);
+    if (itemCount != _lastChatItemCount) {
+      _lastChatItemCount = itemCount;
+      _scrollChatToBottom();
+    }
     return ListView.builder(
       controller: _chatScrollController,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      reverse: true,
       itemCount: itemCount,
       itemBuilder: (context, index) {
-        if (_isProcessing && index == 0) {
-          return _buildTypingIndicator(langCode);
+        if (index < _messages.length) {
+          return _buildMessageBubble(_messages[index], index);
         }
-
-        final messageIndex = _isProcessing ? index - 1 : index;
-        final actualIndex = _messages.length - 1 - messageIndex;
-        return _buildMessageBubble(_messages[actualIndex], actualIndex);
+        var extra = index - _messages.length;
+        if (_isProcessing) {
+          if (extra == 0) return _buildTypingIndicator(langCode);
+          extra--;
+        }
+        if (showSuggestions) {
+          if (extra == 0) return _buildQuickSuggestions(langCode);
+          extra--;
+        }
+        return _buildInlinePreview(langCode);
       },
+    );
+  }
+
+  /// Pending proposal (meals, workouts or sessions) with its buttons, as a card
+  /// in the conversation, indented under the coach avatar.
+  Widget _buildInlinePreview(String langCode) {
+    Widget? card;
+    Widget? buttons;
+    var key = 'none';
+    if (_pendingWorkouts != null && _pendingWorkouts!.isNotEmpty) {
+      card = _buildWorkoutPreview(langCode);
+      buttons = _buildPreviewButtons(langCode);
+      key = 'workouts';
+    } else if (_pendingMeals != null && _pendingMeals!.isNotEmpty) {
+      card = _buildMealsPreview(langCode);
+      buttons = _buildMealsPreviewButtons(langCode);
+      key = 'meals';
+    } else if (_pendingSessions != null && _pendingSessions!.isNotEmpty) {
+      card = _buildSessionsPreview(langCode);
+      buttons = _buildSessionsPreviewButtons(langCode);
+      key = 'sessions';
+    }
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeOutCubic,
+      alignment: Alignment.topCenter,
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 320),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeIn,
+        transitionBuilder: (child, anim) => FadeTransition(
+          opacity: anim,
+          child: SlideTransition(position: Tween<Offset>(begin: const Offset(0, 0.06), end: Offset.zero).animate(anim), child: child),
+        ),
+        child: card == null
+            ? const SizedBox.shrink(key: ValueKey('preview-none'))
+            : KeyedSubtree(
+                key: ValueKey('preview-$key'),
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      card,
+                      Container(
+                        margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                        clipBehavior: Clip.antiAlias,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: buttons,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+      ),
     );
   }
 
@@ -1297,19 +1345,19 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
   Widget _buildQuickSuggestions(String langCode) {
     final suggestions = _getQuickSuggestions(langCode);
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: suggestions.indexed.map((entry) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 40, bottom: 12),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: suggestions.indexed.map((entry) {
             final suggestion = entry.$2;
             return PopIn(
               key: ValueKey('sugg-$suggestion'),
               delay: Duration(milliseconds: 120 + entry.$1 * 70),
               dy: 10,
               child: Padding(
-              padding: const EdgeInsets.only(right: 8),
+              padding: EdgeInsets.zero,
               child: GestureDetector(
                 onTap: () {
                   // Transformer le bouton en prompt optimisé pour l'IA (mode meals uniquement)
@@ -1338,7 +1386,6 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
               ),
             );
           }).toList(),
-        ),
       ),
     );
   }

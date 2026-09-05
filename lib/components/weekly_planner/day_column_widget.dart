@@ -161,13 +161,34 @@ class _DayColumnWidgetState extends State<DayColumnWidget>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Header du jour avec indicateur de progression
-            _buildDayHeader(),
-            const SizedBox(height: 6),
+            // Header du jour avec indicateur de progression (compact avec le squelette de créneaux)
+            if (widget.isCompact && widget.showEmptySlots) _buildCompactHeader() else _buildDayHeader(),
+            SizedBox(height: widget.isCompact && widget.showEmptySlots ? 5 : 6),
             // Activités du jour - liste verticale
             _buildActivitiesGrid(context),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Small header used with the slot skeleton: letter, number, navy ring on today.
+  Widget _buildCompactHeader() {
+    final muted = _isPast ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final ink = _isPast ? const Color(0xFF94A3B8) : const Color(0xFF0B132B);
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: _isToday ? const Color(0xFF0B132B) : Colors.transparent, width: 2),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(widget.dayName, style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: muted, height: 1)),
+          const SizedBox(height: 3),
+          Text('${widget.date.day}', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: ink, height: 1)),
+        ],
       ),
     );
   }
@@ -601,28 +622,15 @@ class _DayColumnWidgetState extends State<DayColumnWidget>
       ));
     }
 
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
-      decoration: BoxDecoration(
-        color: _isToday
-            ? const Color(0xFF0B132B).withOpacity(0.05)
-            : _isPast
-                ? const Color(0xFFF8FAFC)
-                : Colors.white,
-        border: Border.all(
-          color: _isToday ? const Color(0xFF0B132B).withOpacity(0.2) : const Color(0xFFE2E8F0),
-        ),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (var i = 0; i < slots.length; i++) ...[
-            if (i > 0) const SizedBox(height: 2),
-            slots[i],
-          ],
+    // no frame around the column: the squares breathe like in the prototype
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (var i = 0; i < slots.length; i++) ...[
+          if (i > 0) const SizedBox(height: 4),
+          slots[i],
         ],
-      ),
+      ],
     );
   }
 
@@ -754,7 +762,7 @@ class _EmptySlot extends StatelessWidget {
         width: 28,
         height: 28,
         decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(6)),
-        child: Icon(icon, size: 12, color: const Color(0xFF0B132B).withOpacity(0.28)),
+        child: Icon(icon, size: 12, color: const Color(0xFF0B132B).withOpacity(0.2)),
       ),
     );
   }
