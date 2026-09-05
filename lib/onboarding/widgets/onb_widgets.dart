@@ -4,67 +4,10 @@ import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../components/ui/motion.dart';
 import '../onboarding_theme.dart';
 
-/// Staggered entrance: fade + rise + slight scale, spring curve.
-class PopIn extends StatefulWidget {
-  const PopIn({
-    super.key,
-    required this.child,
-    this.delay = Duration.zero,
-    this.duration = const Duration(milliseconds: 550),
-    this.dy = 18,
-  });
-
-  final Widget child;
-  final Duration delay;
-  final Duration duration;
-  final double dy;
-
-  @override
-  State<PopIn> createState() => _PopInState();
-}
-
-class _PopInState extends State<PopIn> with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(vsync: this, duration: widget.duration);
-  late final Animation<double> _a = CurvedAnimation(parent: _c, curve: OnbCurves.spring);
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.delay == Duration.zero) {
-      _c.forward();
-    } else {
-      Future.delayed(widget.delay, () {
-        if (mounted) _c.forward();
-      });
-    }
-  }
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _a,
-      builder: (context, child) {
-        final t = _a.value;
-        return Opacity(
-          opacity: t.clamp(0.0, 1.0),
-          child: Transform.translate(
-            offset: Offset(0, (1 - t) * widget.dy),
-            child: Transform.scale(scale: 0.94 + 0.06 * t, child: child),
-          ),
-        );
-      },
-      child: widget.child,
-    );
-  }
-}
+export '../../components/ui/motion.dart' show PopIn;
 
 /// Headline revealed by a left-to-right wipe with an amber bar at the front.
 class WipeText extends StatefulWidget {

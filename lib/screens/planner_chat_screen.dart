@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../components/ui/motion.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
@@ -10,7 +11,6 @@ import '../services/planner_ai_service.dart';
 import '../services/paywall_service.dart';
 import '../services/unified_subscription_service.dart';
 import '../components/weekly_planner/day_column_widget.dart';
-import '../components/weekly_planner/add_activity_bottom_sheet.dart';
 import '../components/weekly_planner/workout_recap_bottom_sheet.dart';
 import '../components/weekly_planner/cardio_recap_bottom_sheet.dart';
 
@@ -79,6 +79,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
 
   // Demo mode tracking
   int _userMessageCount = 0;
+  final Set<_ChatMessage> _shownMessages = {}; // bulles déjà animées (pas de rejeu au scroll)
   final List<PendingMeal> _demoConfirmedMeals = [];
   final List<PendingWorkout> _demoConfirmedWorkouts = [];
   final List<PendingSession> _demoConfirmedSessions = [];
@@ -817,18 +818,27 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
           if (_messages.length <= 1 && !keyboardVisible && _pendingWorkouts == null && _pendingMeals == null && _pendingSessions == null && !_showPaywallButton)
             _buildQuickSuggestions(langCode),
 
-          // Preview des workouts générés (ancien mode)
-          if (_pendingWorkouts != null && _pendingWorkouts!.isNotEmpty)
-            _buildWorkoutPreview(langCode),
-
-          // Preview des repas générés
-          if (_pendingMeals != null && _pendingMeals!.isNotEmpty)
-            _buildMealsPreview(langCode),
-
-          // NOUVEAU: Preview des sessions paginé (workouts + cardio)
-          if (_pendingSessions != null && _pendingSessions!.isNotEmpty)
-            _buildSessionsPreview(langCode),
-
+          AnimatedSize(
+            duration: const Duration(milliseconds: 320),
+            curve: Curves.easeOutCubic,
+            alignment: Alignment.topCenter,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 320),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeIn,
+              transitionBuilder: (child, anim) => FadeTransition(
+                opacity: anim,
+                child: SlideTransition(position: Tween<Offset>(begin: const Offset(0, 0.06), end: Offset.zero).animate(anim), child: child),
+              ),
+              child: _pendingWorkouts != null && _pendingWorkouts!.isNotEmpty
+                  ? KeyedSubtree(key: const ValueKey('preview-workouts'), child: _buildWorkoutPreview(langCode))
+                  : _pendingMeals != null && _pendingMeals!.isNotEmpty
+                      ? KeyedSubtree(key: const ValueKey('preview-meals'), child: _buildMealsPreview(langCode))
+                      : _pendingSessions != null && _pendingSessions!.isNotEmpty
+                          ? KeyedSubtree(key: const ValueKey('preview-sessions'), child: _buildSessionsPreview(langCode))
+                          : const SizedBox.shrink(key: ValueKey('preview-none')),
+            ),
+          ),
           // Zone du bas selon l'état
           if (_showPaywallButton && !widget.demoMode)
             _buildPaywallButton(langCode)
@@ -909,8 +919,8 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
                   color: Color(0xFF0B132B),
                 ),
               ),
-              Text(
-                _isPremium
+              SlideSwapText(
+                text: _isPremium
                     ? (widget.demoMode && widget.maxMessages != null
                         ? '${widget.maxMessages! - _userMessageCount} ${'onboarding_demo_messages_left'.tr(langCode)}'
                         : 'planner_ai_subtitle'.tr(langCode))
@@ -959,8 +969,12 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 8),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        boxShadow: [BoxShadow(color: Color(0x12000000), blurRadius: 14, offset: Offset(0, 6))],
+      ),
       child: SizedBox(
-        height: 140,
+        height: widget.demoMode ? 178 : 150,
         child: ListView.builder(
           controller: _calendarScrollController,
           scrollDirection: Axis.horizontal,
@@ -993,7 +1007,10 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
                 },
                 onWorkoutTap: (workout) => _showWorkoutRecap(workout),
                 isCompact: true,
-                filter: filter,
+                filter: widget.demoMode ? ActivityFilter.all : filter,
+                emphasis: filter,
+                showEmptySlots: true,
+                animationIndex: index,
               ),
             );
           },
@@ -1060,8 +1077,14 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
 
   Widget _buildMessageBubble(_ChatMessage message, int index) {
     final bool canUndo = message.isUndoable && index == _undoableMessageIndex;
+    final bool fresh = _shownMessages.add(message);
 
-    return Padding(
+    return PopIn(
+      key: ObjectKey(message),
+      animate: fresh,
+      dy: 12,
+      duration: const Duration(milliseconds: 420),
+      child: Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         mainAxisAlignment: message.isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
@@ -1189,6 +1212,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
           if (message.isUser) const SizedBox(width: 8),
         ],
       ),
+      ),
     );
   }
 
@@ -1218,72 +1242,54 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
         ? 'planner_ai_preparing_meal'.tr(langCode)
         : 'planner_ai_generating_workouts'.tr(langCode);
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Image.asset(
-              widget.initialMode == 'meals'
-                  ? 'assets/images/coach_ryze_nutrition_avatar.png'
-                  : 'assets/images/coach_ryze_workout_avatar.png',
-              width: 32,
-              height: 32,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => Container(
+    return PopIn(
+      key: const ValueKey('planner-typing'),
+      dy: 10,
+      duration: const Duration(milliseconds: 380),
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.asset(
+                widget.initialMode == 'meals' ? 'assets/images/coach_ryze_nutrition_avatar.png' : 'assets/images/coach_ryze_workout_avatar.png',
                 width: 32,
                 height: 32,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(color: const Color(0xFF0B132B), borderRadius: BorderRadius.circular(8)),
+                  child: const Icon(LucideIcons.sparkles, size: 14, color: Colors.white),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0B132B),
-                  borderRadius: BorderRadius.circular(8),
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(16).copyWith(bottomLeft: const Radius.circular(4)),
                 ),
-                child: const Icon(
-                  LucideIcons.sparkles,
-                  size: 14,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(16).copyWith(
-                  bottomLeft: const Radius.circular(4),
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Color(0xFF0B132B),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Flexible(
-                    child: Text(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Padding(padding: EdgeInsets.symmetric(vertical: 3), child: TypingDots(color: Color(0xFF0B132B))),
+                    const SizedBox(height: 6),
+                    Text(
                       loadingText,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Color(0xFF64748B),
-                        fontStyle: FontStyle.italic,
-                      ),
+                      style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8), fontStyle: FontStyle.italic),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1296,8 +1302,13 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
-          children: suggestions.map((suggestion) {
-            return Padding(
+          children: suggestions.indexed.map((entry) {
+            final suggestion = entry.$2;
+            return PopIn(
+              key: ValueKey('sugg-$suggestion'),
+              delay: Duration(milliseconds: 120 + entry.$1 * 70),
+              dy: 10,
+              child: Padding(
               padding: const EdgeInsets.only(right: 8),
               child: GestureDetector(
                 onTap: () {
@@ -1323,6 +1334,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
                     ),
                   ),
                 ),
+              ),
               ),
             );
           }).toList(),
@@ -1863,7 +1875,13 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
                 return ListView(
                   padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
                   children: [
-                    ...mealsForDay.map((meal) => _buildMealPreviewItem(meal, langCode, showDay: false)),
+                    ...mealsForDay.indexed.map((e) => PopIn(
+                          key: ValueKey('pm-${e.$2.plannedDate.toIso8601String()}-${e.$2.mealType.name}-${e.$2.dishName}'),
+                          delay: Duration(milliseconds: 80 + e.$1 * 50),
+                          dy: 10,
+                          duration: const Duration(milliseconds: 420),
+                          child: _buildMealPreviewItem(e.$2, langCode, showDay: false),
+                        )),
                     // Total du jour
                     Container(
                       margin: const EdgeInsets.only(top: 4),
@@ -2490,7 +2508,11 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
     // Only show after at least one message exchange
     if (_userMessageCount == 0) return const SizedBox.shrink();
 
-    return Container(
+    return PopIn(
+      key: const ValueKey('planner-demo-bar'),
+      dy: 24,
+      duration: const Duration(milliseconds: 450),
+      child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -2533,6 +2555,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

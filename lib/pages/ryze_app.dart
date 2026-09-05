@@ -32,7 +32,8 @@ class _RyzeAppState extends State<RyzeApp> {
   Widget? _targetScreen;
 
   // Debug flags (development only)
-  static const bool _forceOnboarding = true; // TEMP: emulator test, revert before commit
+  // Pour tester l'onboarding sur un compte déjà onboardé : flutter run --dart-define=FORCE_ONBOARDING=true
+  static const bool _forceOnboarding = bool.fromEnvironment('FORCE_ONBOARDING', defaultValue: false);
   static const bool _forceValueProp = false;
 
   @override

@@ -1,5 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import '../ui/motion.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:confetti/confetti.dart';
 import '../../models/weekly_planner_models.dart';
 import 'activity_chip_widget.dart';
@@ -24,6 +26,9 @@ class DayColumnWidget extends StatefulWidget {
   final ActivityFilter filter; // Filtre pour les types d'activités
   final int dailyCalorieTarget; // Objectif calorique journalier
   final bool animateProgress; // Animer le remplissage (pour le jour actuel après génération)
+  final bool showEmptySlots; // Squelette de la journée: cases pointillées pour les créneaux vides (mode compact)
+  final ActivityFilter? emphasis; // Catégorie mise en avant quand filter = all (l'autre est atténuée)
+  final int animationIndex; // Décalage d'animation (index du jour) pour le remplissage en cascade
 
   const DayColumnWidget({
     super.key,
@@ -37,6 +42,9 @@ class DayColumnWidget extends StatefulWidget {
     this.filter = ActivityFilter.all,
     this.dailyCalorieTarget = 2000,
     this.animateProgress = false,
+    this.showEmptySlots = false,
+    this.emphasis,
+    this.animationIndex = 0,
   });
 
   @override
@@ -297,6 +305,9 @@ class _DayColumnWidgetState extends State<DayColumnWidget>
 
   /// Construit une liste d'icônes (1 par ligne en normal, 2 colonnes en compact)
   Widget _buildActivitiesGrid(BuildContext context) {
+    if (widget.isCompact && widget.showEmptySlots) {
+      return _buildSlotGrid(context);
+    }
     // Tailles selon le mode
     final emptyWidth = widget.isCompact ? 28.0 : 36.0;
     final emptyHeight = widget.isCompact ? 28.0 : 40.0;
@@ -317,87 +328,8 @@ class _DayColumnWidgetState extends State<DayColumnWidget>
       );
     }
 
-    // Construire la liste des données d'activités selon le filtre
-    final List<_ActivityData> activities = [];
+    final activities = _collectActivities();
 
-    // Ajouter les repas (triés par type) - seulement si filter = all ou meals
-    if (widget.filter == ActivityFilter.all || widget.filter == ActivityFilter.meals) {
-      final meals = List<PlannedActivity>.from(widget.dayPlan!.meals);
-
-      // Créer un map des planned meals par type normalisé
-      final plannedByType = <String, List<PlannedActivity>>{};
-      for (final meal in meals) {
-        final normalizedType = _normalizeMealType(meal.activityType.value);
-        plannedByType.putIfAbsent(normalizedType, () => []).add(meal);
-      }
-
-      // Collecter les IDs des food_entries liées aux repas planifiés validés
-      final linkedFoodEntryIds = <String>{};
-      for (final meal in meals) {
-        final linkedId = meal.mealData?.linkedFoodEntryId;
-        if (linkedId != null) {
-          linkedFoodEntryIds.add(linkedId);
-        }
-      }
-
-      // Filtrer les journal entries non liées à des repas planifiés
-      final unlinkedJournalEntries = widget.dayPlan!.journalEntries
-          .where((e) => !linkedFoodEntryIds.contains(e.id))
-          .toList();
-
-      // Créer un set des types de repas qui ont des journal entries NON LIÉES
-      final journalMealTypes = unlinkedJournalEntries.map((e) => _normalizeMealType(e.mealType)).toSet();
-
-      // Itérer dans l'ordre standard et ajouter UNE SEULE icône par type de repas
-      final mealOrder = ['breakfast', 'lunch', 'dinner', 'snack'];
-      for (final mealType in mealOrder) {
-        // Si on a des planned activities pour ce type, ajouter UNE SEULE icône
-        if (plannedByType.containsKey(mealType)) {
-          final mealsOfType = plannedByType[mealType]!;
-          // Calculer le status du groupe :
-          // - completed (vert) si AU MOINS UN aliment a été validé
-          // - missed (rouge) si TOUS les aliments sont ratés (aucun validé)
-          // - planned (bleu) sinon (tous encore planifiés)
-          final anyCompleted = mealsOfType.any((m) => m.status == PlannedStatus.completed);
-          final allMissed = mealsOfType.every((m) => m.status == PlannedStatus.missed);
-          final PlannedStatus groupStatus;
-          if (anyCompleted) {
-            groupStatus = PlannedStatus.completed;
-          } else if (allMissed) {
-            groupStatus = PlannedStatus.missed;
-          } else {
-            groupStatus = PlannedStatus.planned;
-          }
-
-          // Ajouter une seule entrée avec le premier meal et le groupe complet
-          activities.add(_ActivityData(
-            activity: mealsOfType.first,
-            mealGroup: mealsOfType,
-            groupStatus: groupStatus,
-          ));
-        }
-        // Sinon, si on a des journal entries NON LIÉES pour ce type, ajouter une icône journal
-        else if (journalMealTypes.contains(mealType)) {
-          activities.add(_ActivityData(journalMealType: mealType));
-        }
-      }
-    }
-
-    // Ajouter les cardios - seulement si filter = all ou workouts
-    if (widget.filter == ActivityFilter.all || widget.filter == ActivityFilter.workouts) {
-      for (final cardio in widget.dayPlan!.cardios) {
-        activities.add(_ActivityData(activity: cardio));
-      }
-    }
-
-    // Ajouter les workouts - seulement si filter = all ou workouts
-    if (widget.filter == ActivityFilter.all || widget.filter == ActivityFilter.workouts) {
-      for (final workout in widget.dayPlan!.workouts) {
-        activities.add(_ActivityData(workout: workout));
-      }
-    }
-
-    // Si aucune activité après filtrage, afficher jour vide
     if (activities.isEmpty) {
       return Container(
         width: emptyWidth,
@@ -503,6 +435,191 @@ class _DayColumnWidgetState extends State<DayColumnWidget>
           if (hasMore) ...[
             const SizedBox(height: 4),
             _buildMoreBadge(context, remainingCount),
+          ],
+        ],
+      ),
+    );
+  }
+
+
+  /// Activities of the day, filtered and grouped exactly like the legacy grid.
+  List<_ActivityData> _collectActivities() {
+    // Construire la liste des données d'activités selon le filtre
+    final List<_ActivityData> activities = [];
+
+    // Ajouter les repas (triés par type) - seulement si filter = all ou meals
+    if (widget.filter == ActivityFilter.all || widget.filter == ActivityFilter.meals) {
+      final meals = List<PlannedActivity>.from(widget.dayPlan!.meals);
+
+      // Créer un map des planned meals par type normalisé
+      final plannedByType = <String, List<PlannedActivity>>{};
+      for (final meal in meals) {
+        final normalizedType = _normalizeMealType(meal.activityType.value);
+        plannedByType.putIfAbsent(normalizedType, () => []).add(meal);
+      }
+
+      // Collecter les IDs des food_entries liées aux repas planifiés validés
+      final linkedFoodEntryIds = <String>{};
+      for (final meal in meals) {
+        final linkedId = meal.mealData?.linkedFoodEntryId;
+        if (linkedId != null) {
+          linkedFoodEntryIds.add(linkedId);
+        }
+      }
+
+      // Filtrer les journal entries non liées à des repas planifiés
+      final unlinkedJournalEntries = widget.dayPlan!.journalEntries
+          .where((e) => !linkedFoodEntryIds.contains(e.id))
+          .toList();
+
+      // Créer un set des types de repas qui ont des journal entries NON LIÉES
+      final journalMealTypes = unlinkedJournalEntries.map((e) => _normalizeMealType(e.mealType)).toSet();
+
+      // Itérer dans l'ordre standard et ajouter UNE SEULE icône par type de repas
+      final mealOrder = ['breakfast', 'lunch', 'dinner', 'snack'];
+      for (final mealType in mealOrder) {
+        // Si on a des planned activities pour ce type, ajouter UNE SEULE icône
+        if (plannedByType.containsKey(mealType)) {
+          final mealsOfType = plannedByType[mealType]!;
+          // Calculer le status du groupe :
+          // - completed (vert) si AU MOINS UN aliment a été validé
+          // - missed (rouge) si TOUS les aliments sont ratés (aucun validé)
+          // - planned (bleu) sinon (tous encore planifiés)
+          final anyCompleted = mealsOfType.any((m) => m.status == PlannedStatus.completed);
+          final allMissed = mealsOfType.every((m) => m.status == PlannedStatus.missed);
+          final PlannedStatus groupStatus;
+          if (anyCompleted) {
+            groupStatus = PlannedStatus.completed;
+          } else if (allMissed) {
+            groupStatus = PlannedStatus.missed;
+          } else {
+            groupStatus = PlannedStatus.planned;
+          }
+
+          // Ajouter une seule entrée avec le premier meal et le groupe complet
+          activities.add(_ActivityData(
+            activity: mealsOfType.first,
+            mealGroup: mealsOfType,
+            groupStatus: groupStatus,
+          ));
+        }
+        // Sinon, si on a des journal entries NON LIÉES pour ce type, ajouter une icône journal
+        else if (journalMealTypes.contains(mealType)) {
+          activities.add(_ActivityData(journalMealType: mealType));
+        }
+      }
+    }
+
+    // Ajouter les cardios - seulement si filter = all ou workouts
+    if (widget.filter == ActivityFilter.all || widget.filter == ActivityFilter.workouts) {
+      for (final cardio in widget.dayPlan!.cardios) {
+        activities.add(_ActivityData(activity: cardio));
+      }
+    }
+
+    // Ajouter les workouts - seulement si filter = all ou workouts
+    if (widget.filter == ActivityFilter.all || widget.filter == ActivityFilter.workouts) {
+      for (final workout in widget.dayPlan!.workouts) {
+        activities.add(_ActivityData(workout: workout));
+      }
+    }
+
+    // Si aucune activité après filtrage, afficher jour vide
+    return activities;
+  }
+
+  static const _mealSlots = ['breakfast', 'lunch', 'dinner'];
+
+  String? _slotTypeOf(_ActivityData d) {
+    if (d.activity != null && d.activity!.activityType != PlannedActivityType.cardio) return _normalizeMealType(d.activity!.activityType.value);
+    if (d.journalMealType != null) return _normalizeMealType(d.journalMealType!);
+    return null;
+  }
+
+  bool _isWorkoutData(_ActivityData d) => d.workout != null || d.activity?.activityType == PlannedActivityType.cardio;
+
+  IconData _slotIcon(String type) {
+    switch (type) {
+      case 'breakfast':
+        return LucideIcons.sunrise;
+      case 'lunch':
+        return LucideIcons.sun;
+      case 'dinner':
+        return LucideIcons.sunset;
+      default:
+        return LucideIcons.utensils;
+    }
+  }
+
+  /// Compact column with a fixed skeleton: one dashed slot per meal of the day
+  /// and one for the session, filled squares popping in one after the other.
+  Widget _buildSlotGrid(BuildContext context) {
+    final activities = widget.dayPlan == null ? <_ActivityData>[] : _collectActivities();
+    final showMeals = widget.filter != ActivityFilter.workouts;
+    final showWorkouts = widget.filter != ActivityFilter.meals;
+    final dimMeals = widget.emphasis == ActivityFilter.workouts;
+    final dimWorkouts = widget.emphasis == ActivityFilter.meals;
+
+    final slots = <Widget>[];
+    var slotIndex = 0;
+
+    Widget filled(int i, String keyId) => PopIn(
+          key: ValueKey('slot-$keyId'),
+          delay: Duration(milliseconds: widget.animationIndex * 60 + slotIndex * 40),
+          duration: const Duration(milliseconds: 450),
+          dy: 6,
+          child: _buildMiniSquare(context, activities[i], i),
+        );
+
+    if (showMeals) {
+      final types = List<String>.from(_mealSlots);
+      if (activities.any((d) => _slotTypeOf(d) == 'snack')) types.add('snack');
+      for (final type in types) {
+        final i = activities.indexWhere((d) => _slotTypeOf(d) == type);
+        final data = i >= 0 ? activities[i] : null;
+        final child = data == null
+            ? _EmptySlot(icon: _slotIcon(type))
+            : filled(i, data.activity?.id ?? data.journalMealType ?? type);
+        slots.add(Opacity(opacity: dimMeals ? 0.45 : 1, child: child));
+        slotIndex++;
+      }
+    }
+    if (showWorkouts) {
+      final idx = [for (var i = 0; i < activities.length; i++) if (_isWorkoutData(activities[i])) i];
+      Widget child;
+      if (idx.isEmpty) {
+        child = const _EmptySlot(icon: LucideIcons.dumbbell);
+      } else {
+        final d = activities[idx.first];
+        child = filled(idx.first, d.workout?.id ?? d.activity?.id ?? 'w');
+      }
+      slots.add(Opacity(
+        opacity: dimWorkouts ? 0.45 : 1,
+        child: idx.length > 1
+            ? Column(mainAxisSize: MainAxisSize.min, children: [child, const SizedBox(height: 2), _buildMoreBadge(context, idx.length - 1)])
+            : child,
+      ));
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+      decoration: BoxDecoration(
+        color: _isToday
+            ? const Color(0xFF0B132B).withOpacity(0.05)
+            : _isPast
+                ? const Color(0xFFF8FAFC)
+                : Colors.white,
+        border: Border.all(
+          color: _isToday ? const Color(0xFF0B132B).withOpacity(0.2) : const Color(0xFFE2E8F0),
+        ),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (var i = 0; i < slots.length; i++) ...[
+            if (i > 0) const SizedBox(height: 2),
+            slots[i],
           ],
         ],
       ),
@@ -621,4 +738,49 @@ String _normalizeMealType(String mealType) {
   }
 
   return mealType;
+}
+
+
+/// Dashed 28x28 placeholder with a faint icon: a slot of the day still to plan.
+class _EmptySlot extends StatelessWidget {
+  const _EmptySlot({required this.icon});
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      painter: const _DashedRectPainter(color: Color(0xFFCBD5E1), radius: 6),
+      child: Container(
+        width: 28,
+        height: 28,
+        decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(6)),
+        child: Icon(icon, size: 12, color: const Color(0xFF0B132B).withOpacity(0.28)),
+      ),
+    );
+  }
+}
+
+class _DashedRectPainter extends CustomPainter {
+  const _DashedRectPainter({required this.color, required this.radius});
+  final Color color;
+  final double radius;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1
+      ..style = PaintingStyle.stroke;
+    final path = Path()..addRRect(RRect.fromRectAndRadius(Rect.fromLTWH(0.5, 0.5, size.width - 1, size.height - 1), Radius.circular(radius)));
+    for (final metric in path.computeMetrics()) {
+      var d = 0.0;
+      while (d < metric.length) {
+        canvas.drawPath(metric.extractPath(d, (d + 3).clamp(0, metric.length)), paint);
+        d += 5.5;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DashedRectPainter old) => old.color != color || old.radius != radius;
 }
