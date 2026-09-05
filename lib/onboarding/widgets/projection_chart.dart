@@ -160,14 +160,18 @@ class _ProjectionPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    // One rule, at the level the curve lands on, so it reads as the target
+    // line. The three decorative rules that used to sit here measured nothing:
+    // the chart has no scale, and none of them lined up with a real weight.
     final g = grid.clamp(0.0, 1.0);
     if (g > 0) {
-      final paint = Paint()
-        ..color = OnbColors.ink.withValues(alpha: 0.07 * g)
-        ..strokeWidth = 1;
-      for (final y in [geo.yTop, (geo.yTop + geo.yBot) / 2, geo.yBot]) {
-        canvas.drawLine(Offset(geo.x0, y), Offset(geo.x0 + (geo.x1 - geo.x0) * g, y), paint);
-      }
+      canvas.drawLine(
+        Offset(geo.x0, geo.y1),
+        Offset(geo.x0 + (geo.x1 - geo.x0) * g, geo.y1),
+        Paint()
+          ..color = OnbColors.ink.withValues(alpha: 0.08 * g)
+          ..strokeWidth = 1,
+      );
     }
 
     _paintGhost(canvas);
