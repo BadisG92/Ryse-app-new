@@ -31,8 +31,9 @@ class OnbOptionCard extends StatefulWidget {
 }
 
 class _OnbOptionCardState extends State<OnbOptionCard> with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 350), value: widget.selected ? 1 : 0);
-  late final Animation<double> _a = CurvedAnimation(parent: _c, curve: OnbCurves.snap);
+  // a visible sweep: ease-out over ~half a second, the page waits for it before turning
+  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 480), value: widget.selected ? 1 : 0);
+  late final Animation<double> _a = CurvedAnimation(parent: _c, curve: OnbCurves.out);
 
   @override
   void didUpdateWidget(covariant OnbOptionCard old) {

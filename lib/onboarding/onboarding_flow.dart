@@ -168,7 +168,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     }
   }
 
-  void _autoNext() => Future.delayed(const Duration(milliseconds: 460), () {
+  /// Lets the ink wipe of the chosen card finish (480 ms) and hold a beat before the page turns.
+  void _autoNext() => Future.delayed(const Duration(milliseconds: 780), () {
         if (mounted) _next();
       });
 
@@ -828,7 +829,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             value: a.bilanDay,
             onChanged: (d) {
               setState(() => a.bilanDay = d);
-              Future.delayed(const Duration(milliseconds: 520), () {
+              Future.delayed(const Duration(milliseconds: 780), () {
                 if (mounted) _next();
               });
             },
