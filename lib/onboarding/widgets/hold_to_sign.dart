@@ -82,7 +82,11 @@ class _HoldToSignState extends State<HoldToSign> with SingleTickerProviderStateM
                 Positioned.fill(
                   child: Align(
                     alignment: Alignment.centerLeft,
-                    child: FractionallySizedBox(widthFactor: _done ? 1 : t.clamp(0.0, 1.0), child: const ColoredBox(color: OnbColors.acc)),
+                    child: FractionallySizedBox(
+                      widthFactor: _done ? 1 : t.clamp(0.0, 1.0),
+                      heightFactor: 1,
+                      child: const ColoredBox(color: OnbColors.acc),
+                    ),
                   ),
                 ),
                 Padding(

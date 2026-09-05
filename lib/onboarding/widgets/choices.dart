@@ -84,7 +84,13 @@ class _OnbOptionCardState extends State<OnbOptionCard> with SingleTickerProvider
                   Positioned.fill(
                     child: Align(
                       alignment: Alignment.centerLeft,
-                      child: FractionallySizedBox(widthFactor: t.clamp(0.0, 1.0), child: const ColoredBox(color: OnbColors.ink)),
+                      // heightFactor is what gives the fill a height: a ColoredBox with no
+                      // child collapses to nothing under the loose constraints of an Align.
+                      child: FractionallySizedBox(
+                        widthFactor: t.clamp(0.0, 1.0),
+                        heightFactor: 1,
+                        child: const ColoredBox(color: OnbColors.ink),
+                      ),
                     ),
                   ),
                   Padding(
