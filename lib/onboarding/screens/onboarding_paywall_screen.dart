@@ -60,6 +60,10 @@ class _OnboardingPaywallScreenState extends State<OnboardingPaywallScreen> {
 
   static const List<String> _plans = ['annual', 'monthly', 'weekly'];
 
+  /// The store is what sends the end-of-trial reminder and takes the
+  /// cancellation. Naming the wrong one is worse than naming none.
+  static String get _store => Platform.isIOS ? 'App Store' : 'Google Play';
+
   @override
   void initState() {
     super.initState();
@@ -234,7 +238,7 @@ class _OnboardingPaywallScreenState extends State<OnboardingPaywallScreen> {
     final foot = trial
         ? s.t('foot_annual', {'p': _price('annual')})
         : (_plan == 'annual'
-            ? s.t('foot_annual_paid', {'p': _price('annual')})
+            ? s.t('foot_annual_paid', {'p': _price('annual'), 'store': _store})
             : (_plan == 'monthly' ? s.t('foot_monthly', {'p': _price('monthly')}) : s.t('foot_weekly', {'p': _price('weekly')})));
 
     return PopScope(
@@ -273,7 +277,7 @@ class _OnboardingPaywallScreenState extends State<OnboardingPaywallScreen> {
                               Text(widget.goalLine ?? s.t('offer_oneliner', {'day': widget.bilanDayName}),
                                   textAlign: TextAlign.center, style: OnbText.body(context, 3.4, color: OnbColors.mute, height: 1.45)),
                               SizedBox(height: context.vh(2.2)),
-                              PopIn(delay: const Duration(milliseconds: 400), child: _Timeline(s: s, trial: trial, price: _price(_plan))),
+                              PopIn(delay: const Duration(milliseconds: 400), child: _Timeline(s: s, trial: trial, price: _price(_plan), store: _store)),
                               SizedBox(height: context.vh(2.2)),
                               PopIn(
                                 delay: const Duration(milliseconds: 520),
@@ -482,10 +486,11 @@ class _LockedWeek extends StatelessWidget {
 }
 
 class _Timeline extends StatelessWidget {
-  const _Timeline({required this.s, this.trial = true, this.price = ''});
+  const _Timeline({required this.s, this.trial = true, this.price = '', this.store = ''});
   final OnbStrings s;
   final bool trial;
   final String price;
+  final String store;
 
   @override
   Widget build(BuildContext context) {
@@ -531,8 +536,8 @@ class _Timeline extends StatelessWidget {
     return Column(
       children: [
         item(LucideIcons.lockOpen, s.t('tl_now'), s.t('tl_now_sub'), now: true),
-        item(LucideIcons.bell, s.t('tl_2'), s.t('tl_2_sub')),
-        item(LucideIcons.creditCard, s.t('tl_3'), s.t('tl_3_sub'), last: true),
+        item(LucideIcons.bell, s.t('tl_2'), s.t('tl_2_sub', {'store': store})),
+        item(LucideIcons.creditCard, s.t('tl_3'), s.t('tl_3_sub', {'store': store}), last: true),
       ],
     );
   }

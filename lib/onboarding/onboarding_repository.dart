@@ -246,6 +246,10 @@ class OnboardingRepository {
   /// item was refused (the service reports failures in `success`, it does not throw).
   Future<bool> saveDemoPlan(List<PendingMeal> meals, List<PendingWorkout> workouts, List<PendingSession> sessions) async {
     var ok = true;
+    // The plan is now written before the purchase, so the user keeps their week
+    // if they leave the paywall. Demo mode must stay on while it is written:
+    // the onboarding demo is not one of the five free planner uses.
+    PlannerAIService.setDemoMode(true);
     try {
       for (final meal in meals) {
         ok = (await PlannerAIService.confirmMeals([meal])).success && ok;
@@ -260,6 +264,8 @@ class OnboardingRepository {
     } catch (e) {
       debugPrint('⚠️ Onboarding saveDemoPlan: $e');
       return false;
+    } finally {
+      PlannerAIService.setDemoMode(false);
     }
   }
 }

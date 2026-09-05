@@ -365,15 +365,15 @@ class OnbStrings {
     },
     'tl_2': {'fr': 'Dans 2 jours', 'en': 'In 2 days', 'de': 'In 2 Tagen'},
     'tl_2_sub': {
-      'fr': 'On te prévient la veille de la fin de l’essai. Pas de surprise.',
-      'en': 'We remind you the day before the trial ends. No surprises.',
-      'de': 'Wir erinnern dich am Tag vor Ende der Testphase. Keine Überraschung.',
+      'fr': '{store} te prévient avant la fin de l’essai. Annulation en un tap.',
+      'en': '{store} reminds you before the trial ends. Cancel in one tap.',
+      'de': '{store} erinnert dich vor Ende der Testphase. Kündigung mit einem Tipp.',
     },
     'tl_3': {'fr': 'Dans 3 jours', 'en': 'In 3 days', 'de': 'In 3 Tagen'},
     'tl_3_sub': {
-      'fr': 'L’abonnement démarre, sauf si tu l’as annulé avant dans l’App Store / Google Play.',
-      'en': 'The subscription starts unless you cancelled in the App Store / Google Play.',
-      'de': 'Das Abo startet, außer du hast vorher im App Store / Google Play gekündigt.',
+      'fr': 'L’abonnement démarre, sauf si tu l’as annulé avant dans {store}.',
+      'en': 'The subscription starts unless you cancelled in {store} first.',
+      'de': 'Das Abo startet, außer du hast vorher in {store} gekündigt.',
     },
     'plan_annual': {'fr': 'Annuel', 'en': 'Annual', 'de': 'Jährlich'},
     'plan_annual_sub': {
@@ -424,9 +424,9 @@ class OnbStrings {
     },
     'cta_annual_paid': {'fr': 'Continuer avec l’abonnement annuel', 'en': 'Continue with the annual plan', 'de': 'Weiter mit dem Jahresabo'},
     'foot_annual_paid': {
-      'fr': '{p} par an, facturé aujourd’hui. Annulable à tout moment dans l’App Store / Google Play.',
-      'en': '{p} per year, billed today. Cancel anytime in the App Store / Google Play.',
-      'de': '{p} pro Jahr, heute abgerechnet. Jederzeit im App Store / Google Play kündbar.'
+      'fr': '{p} par an, facturé aujourd’hui. Annulable à tout moment dans {store}.',
+      'en': '{p} per year, billed today. Cancel anytime in {store}.',
+      'de': '{p} pro Jahr, heute abgerechnet. Jederzeit in {store} kündbar.',
     },
     'legal_terms': {'fr': 'Conditions', 'en': 'Terms', 'de': 'AGB'},
     'legal_privacy': {'fr': 'Confidentialité', 'en': 'Privacy', 'de': 'Datenschutz'},
@@ -446,6 +446,11 @@ class OnbStrings {
       'de': 'Dafür: „{why}“',
     },
     'hello_title_anon': {'fr': 'Salut.', 'en': 'Hi.', 'de': 'Hallo.'},
+    'proj_adjust': {
+      'fr': 'Une courbe ne tient pas toute seule. Chaque semaine, on fait le point ensemble et on ajuste le plan.',
+      'en': 'A curve does not hold on its own. Every week we take stock together and adjust the plan.',
+      'de': 'Eine Kurve hält nicht von allein. Jede Woche ziehen wir gemeinsam Bilanz und passen den Plan an.',
+    },
     'stat_cap_kcal': {'fr': 'Ton cap', 'en': 'Your target', 'de': 'Dein Ziel'},
     'stat_cap_protein': {'fr': 'Protéines', 'en': 'Protein', 'de': 'Protein'},
     'insight_motivation': {'fr': 'Motivation principale', 'en': 'Main motivation', 'de': 'Hauptmotivation'},

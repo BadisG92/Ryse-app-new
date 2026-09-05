@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -174,6 +176,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   void _back() {
     while (_history.isNotEmpty) {
       final p = _history.removeLast();
+      if (_steps[p].id == 'planner' && _demoPlanSaved) continue;
       if (!_steps[p].card) {
         _go(p);
         return;
@@ -237,6 +240,19 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     }
   }
 
+  /// The demo plan goes to the database when the user leaves the planner, not
+  /// at the purchase: closing the app on the paywall is the most common moment
+  /// of hesitation, and coming back to an empty week is the worst answer to it.
+  /// The hard paywall still guards the app itself.
+  bool _demoPlanSaved = false;
+
+  Future<void> _persistDemoPlan() async {
+    if (_demoPlanSaved || widget.mode != OnbMode.full) return;
+    if (_demoMeals.isEmpty && _demoWorkouts.isEmpty && _demoSessions.isEmpty) return;
+    _demoPlanSaved = await _repo.saveDemoPlan(_demoMeals, _demoWorkouts, _demoSessions);
+    AnalyticsService.logEvent('onb_demo_plan_saved', parameters: {'success': _demoPlanSaved ? 1 : 0});
+  }
+
   Future<void> _onPactSigned() async {
     setState(() => _signed = true);
     AnalyticsService.logEvent('onb_pact_signed', parameters: {'bilan_day': a.bilanDay ?? 0, 'personality': a.personality ?? ''});
@@ -267,8 +283,9 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         if (mounted) _askRetry();
         return;
       }
-      demoSaved = await _repo.saveDemoPlan(_demoMeals, _demoWorkouts, _demoSessions);
-      if (!demoSaved && mounted && (_demoMeals.isNotEmpty || _demoWorkouts.isNotEmpty || _demoSessions.isNotEmpty)) {
+      await _persistDemoPlan();
+      demoSaved = _demoPlanSaved || (_demoMeals.isEmpty && _demoWorkouts.isEmpty && _demoSessions.isEmpty);
+      if (!demoSaved && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.t('demo_partial_save')), duration: const Duration(seconds: 3)));
       }
     }
@@ -755,9 +772,27 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                   ),
                 ),
               ),
-              SizedBox(height: context.vw(2.2)),
+              SizedBox(height: context.vw(2.6)),
               PopIn(
-                delay: const Duration(milliseconds: 400),
+                delay: const Duration(milliseconds: 1500),
+                dy: 8,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.only(top: context.vw(0.6)),
+                      child: Icon(LucideIcons.refreshCw, size: context.vw(4), color: OnbColors.mute),
+                    ),
+                    SizedBox(width: context.vw(2.6)),
+                    Expanded(
+                      child: Text(s.t('proj_adjust'), style: OnbText.body(context, 3.5, weight: FontWeight.w500, color: OnbColors.mute, height: 1.4)),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: context.vw(2.6)),
+              PopIn(
+                delay: const Duration(milliseconds: 1700),
                 child: Row(
                   children: [
                     Expanded(child: _statTile(s.t('stat_cap_kcal'), '${OnbMetabolics.dailyCalories(a)} kcal')),
@@ -1015,6 +1050,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               },
               onDone: () {
                 HapticService.instance.mediumImpact();
+                unawaited(_persistDemoPlan());
                 _next();
               },
             ),
