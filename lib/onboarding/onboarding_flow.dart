@@ -131,6 +131,9 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       if (i >= 0) {
         if (_steps[i].card && i + 1 < _steps.length) i++;
         _idx = i;
+        // a resumed run must still be able to walk back through its answers;
+        // without this the history is empty and the back button does nothing
+        _history.addAll(_visible.where((v) => v < i));
       }
       OnbProgressStore.isProfileSaved().then((v) {
         if (mounted) setState(() => _profileSaved = v);
@@ -172,6 +175,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     _history.add(_idx);
     _go(vis[pos + 1]);
   }
+
+  bool get _canGoBack => _history.any((h) => !_steps[h].card && !(_steps[h].id == 'planner' && _demoPlanSaved));
 
   void _back() {
     while (_history.isNotEmpty) {
@@ -525,7 +530,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     final prev = showPast ? _previousAnswered(step) : null;
     final react = _react(step.id);
     final headline = _question(step.id);
-    final canBack = _history.any((h) => !_steps[h].card) && step.id != 'hello';
+    final canBack = _canGoBack && step.id != 'hello';
     final chapterCount = _fills(step).length;
     return SafeArea(
       child: Padding(
@@ -1039,7 +1044,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         children: [
           Padding(
             padding: EdgeInsets.fromLTRB(context.vw(6), context.vh(1.6), context.vw(6), context.vh(1.4)),
-            child: OnbTopBar(fills: _fills(step), chapter: step.chapter, label: _chapterLabel(step), onBack: _back),
+            child: OnbTopBar(fills: _fills(step), chapter: step.chapter, label: _chapterLabel(step), onBack: _canGoBack ? _back : null),
           ),
           Expanded(
             child: PlannerDemoStep(
