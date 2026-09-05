@@ -136,6 +136,11 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
   }
 
   Future<void> _refreshWeekData() async {
+    // The demo's week lives in memory. Reloading it from the server would wipe
+    // what was just validated and, worse, drag the window back to a Monday:
+    // the seven rolling days would shrink to the days left in the calendar
+    // week, and the coach would answer that it cannot plan for tomorrow.
+    if (widget.demoMode) return;
     try {
       // Le cache est automatiquement invalidé après chaque action (suppression, etc.)
       final data = await WeeklyPlannerService.getWeekData();
@@ -504,6 +509,15 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
       }
 
       unawaited(_landInWeek([for (final (i, w) in _pendingWorkouts!.indexed) (date: w.plannedDate, slot: WeekSlot.sport, row: 'w-$i')]));
+      if (widget.demoMode) {
+        _demoConfirmedWorkouts.addAll(_pendingWorkouts!);
+        _addWorkoutsToWeekDataLocally(_pendingWorkouts!);
+        final langCode = LocalizationService.instance.currentLanguageCode;
+        _addBotMessage('planner_all_sessions_planned'.tr(langCode));
+        setState(() => _pendingWorkouts = null);
+        return;
+      }
+
       final result = await PlannerAIService.confirmWorkouts(_pendingWorkouts!);
 
       _addBotMessage(result.message);
@@ -1049,14 +1063,38 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
     );
   }
 
+  /// A tile in the unfolded week opens what it holds: the session recap, or
+  /// the dish with its ingredients, its recipe and its macros.
   void _openSlot(int day, WeekSlot slot) {
-    if (slot != WeekSlot.sport) return;
     final plan = _weekData.getDayPlan(_weekData.weekStart.add(Duration(days: day)));
     if (plan == null) return;
-    if (plan.workouts.isNotEmpty) {
-      _showWorkoutRecap(plan.workouts.first);
-    } else if (plan.cardios.isNotEmpty) {
-      _showCardioRecap(plan.cardios.first);
+    if (slot == WeekSlot.sport) {
+      if (plan.workouts.isNotEmpty) {
+        _showWorkoutRecap(plan.workouts.first);
+      } else if (plan.cardios.isNotEmpty) {
+        _showCardioRecap(plan.cardios.first);
+      }
+      return;
+    }
+    for (final meal in plan.meals) {
+      if (_slotOf(meal.activityType) != slot) continue;
+      final data = meal.activityData;
+      _showMealDetailPage(
+        PendingMeal(
+          plannedDate: meal.plannedDate,
+          mealType: meal.activityType,
+          dishName: (data['dish_name'] as String?) ?? '',
+          dishDescription: (data['dish_description'] as String?) ?? '',
+          calories: (data['calories'] as num?)?.round() ?? 0,
+          proteins: (data['proteins'] as num?)?.toDouble() ?? 0,
+          carbs: (data['carbs'] as num?)?.toDouble() ?? 0,
+          fats: (data['fats'] as num?)?.toDouble() ?? 0,
+          estimatedQuantityG: (data['estimated_quantity_g'] as num?)?.toDouble() ?? 0,
+          aiReasoning: data['ai_reasoning'] as String?,
+        ),
+        LocalizationService.instance.currentLanguageCode,
+      );
+      return;
     }
   }
 
