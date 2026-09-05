@@ -388,6 +388,21 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     }
   }
 
+  /// "−8 kg d'ici le 12 nov., avec les deux coachs." Nine questions come back
+  /// as one sentence at the moment the user decides.
+  String? _pactGoal() {
+    final p = OnbMetabolics.projection(a, s.lang);
+    if (p == null) return null;
+    return s.t('pact_goal', {'target': OnbUnits.weight(a.targetKg, a.isMetric), 'date': p.label});
+  }
+
+  String? _goalLine() {
+    final p = OnbMetabolics.projection(a, s.lang);
+    if (p == null) return null;
+    final delta = '${p.deltaKg < 0 ? '−' : '+'}${OnbUnits.weight(p.deltaKg.abs().round(), a.isMetric)}';
+    return s.t('offer_goal', {'goal': delta, 'date': p.label, 'day': _dayName(a.bilanDay ?? 7)});
+  }
+
   /// Only French writes a weekday in lower case mid-sentence.
   String _dayName(int day) {
     final name = s.dayFull[day - 1];
@@ -945,7 +960,15 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         return _shell(
           step,
           showPast: false,
-          body: PactContent(s: s, firstName: _name ?? '', dayName: dayName, signed: _signed, onSigned: _onPactSigned),
+          body: PactContent(
+            s: s,
+            firstName: _name ?? '',
+            dayName: dayName,
+            goal: _pactGoal(),
+            why: a.motivationText.trim().isEmpty ? null : a.motivationText.trim(),
+            signed: _signed,
+            onSigned: _onPactSigned,
+          ),
           cta: _signed ? OnbButton(label: widget.mode == OnbMode.coachOnly ? s.t('cta_continue') : s.t('cta_unlock'), onPressed: _next) : null,
         );
 
@@ -1009,6 +1032,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     return OnboardingPaywallScreen(
       s: s,
       bilanDayName: _dayName(a.bilanDay ?? 7),
+      goalLine: _goalLine(),
       mealsPerDay: mealsPerDay,
       workoutDays: workoutDays,
       initialPlan: a.plan,

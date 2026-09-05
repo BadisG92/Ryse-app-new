@@ -23,6 +23,7 @@ class OnboardingPaywallScreen extends StatefulWidget {
     super.key,
     required this.s,
     required this.bilanDayName,
+    this.goalLine,
     required this.mealsPerDay,
     required this.workoutDays,
     required this.onPurchased,
@@ -31,6 +32,9 @@ class OnboardingPaywallScreen extends StatefulWidget {
 
   final OnbStrings s;
   final String bilanDayName;
+
+  /// The user's own projection ("−8 kg d'ici le 12 nov."), when they set a target.
+  final String? goalLine;
 
   /// Number of planned meals for Monday..Sunday (0..3), from the demo.
   final List<int> mealsPerDay;
@@ -266,8 +270,8 @@ class _OnboardingPaywallScreenState extends State<OnboardingPaywallScreen> {
                                   delay: const Duration(milliseconds: 250),
                                   child: _LockedWeek(s: s, mealsPerDay: widget.mealsPerDay, workoutDays: widget.workoutDays, trial: trial)),
                               SizedBox(height: context.vh(1.6)),
-                              Text(s.t('offer_oneliner', {'day': widget.bilanDayName}),
-                                  textAlign: TextAlign.center, style: OnbText.body(context, 3.2, color: OnbColors.mute, height: 1.45)),
+                              Text(widget.goalLine ?? s.t('offer_oneliner', {'day': widget.bilanDayName}),
+                                  textAlign: TextAlign.center, style: OnbText.body(context, 3.4, color: OnbColors.mute, height: 1.45)),
                               SizedBox(height: context.vh(2.2)),
                               PopIn(delay: const Duration(milliseconds: 400), child: _Timeline(s: s, trial: trial, price: _price(_plan))),
                               SizedBox(height: context.vh(2.2)),

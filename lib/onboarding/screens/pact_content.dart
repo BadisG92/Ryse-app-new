@@ -7,10 +7,22 @@ import '../widgets/onb_widgets.dart';
 
 /// The pact card, the hold-to-sign control and the sparks.
 class PactContent extends StatefulWidget {
-  const PactContent({super.key, required this.s, required this.firstName, required this.dayName, required this.signed, required this.onSigned});
+  const PactContent(
+      {super.key,
+      required this.s,
+      required this.firstName,
+      required this.dayName,
+      required this.signed,
+      required this.onSigned,
+      this.goal,
+      this.why});
   final OnbStrings s;
   final String firstName;
   final String dayName;
+
+  /// The user's own target and the reason they gave, written into the contract.
+  final String? goal;
+  final String? why;
   final bool signed;
   final VoidCallback onSigned;
 
@@ -60,6 +72,27 @@ class _PactContentState extends State<PactContent> {
                       ]),
                       style: OnbText.body(context, 3.8, color: OnbColors.mute, height: 1.5),
                     ),
+                    if (widget.goal != null || widget.why != null) ...[
+                      SizedBox(height: context.vw(3.4)),
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: context.vw(3.4), vertical: context.vw(2.8)),
+                        decoration: BoxDecoration(color: OnbColors.paper2, borderRadius: BorderRadius.circular(context.vw(3))),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (widget.goal != null)
+                              Text(widget.goal!, style: OnbText.body(context, 3.6, weight: FontWeight.w600, color: OnbColors.ink, height: 1.35)),
+                            if (widget.why != null) ...[
+                              if (widget.goal != null) SizedBox(height: context.vw(1)),
+                              Text(s.t('pact_because', {'why': widget.why!}),
+                                  maxLines: 3,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: OnbText.body(context, 3.4, color: OnbColors.mute, height: 1.35)),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
                     SizedBox(height: context.vw(4.6)),
                     Container(height: 1, color: OnbColors.line),
                     SizedBox(height: context.vw(3.6)),

@@ -430,6 +430,21 @@ class OnbStrings {
     },
     'legal_terms': {'fr': 'Conditions', 'en': 'Terms', 'de': 'AGB'},
     'legal_privacy': {'fr': 'Confidentialité', 'en': 'Privacy', 'de': 'Datenschutz'},
+    'offer_goal': {
+      'fr': '{goal} d’ici le {date}, avec les deux coachs. Bilan chaque {day}.',
+      'en': '{goal} by {date}, with both coaches. Check-in every {day}.',
+      'de': '{goal} bis {date}, mit beiden Coaches. Bilanz jeden {day}.',
+    },
+    'pact_goal': {
+      'fr': 'Objectif : {target} le {date}.',
+      'en': 'Goal: {target} by {date}.',
+      'de': 'Ziel: {target} bis {date}.',
+    },
+    'pact_because': {
+      'fr': 'Pour : « {why} »',
+      'en': 'Because: “{why}”',
+      'de': 'Dafür: „{why}“',
+    },
     'hello_title_anon': {'fr': 'Salut.', 'en': 'Hi.', 'de': 'Hallo.'},
     'stat_cap_kcal': {'fr': 'Ton cap', 'en': 'Your target', 'de': 'Dein Ziel'},
     'stat_cap_protein': {'fr': 'Protéines', 'en': 'Protein', 'de': 'Protein'},
