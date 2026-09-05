@@ -63,9 +63,9 @@ class CoachRyzeAvatar extends StatelessWidget {
   String get _imagePath {
     switch (type) {
       case CoachRyzeAvatarType.workout:
-        return 'assets/images/coach_ryze_workout_avatar.png';
+        return 'assets/images/coach_ryze_sport_head.png';
       case CoachRyzeAvatarType.nutrition:
-        return 'assets/images/coach_ryze_nutrition_avatar.png'; // Avec pomme
+        return 'assets/images/coach_ryze_nutrition_head.png'; // Avec pomme
       case CoachRyzeAvatarType.nutritionChat:
         return 'assets/images/coach_ryze_ai_chat_nutrition.png'; // Sans pomme
       case CoachRyzeAvatarType.chef:

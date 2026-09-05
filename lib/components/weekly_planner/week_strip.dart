@@ -252,10 +252,11 @@ class _Mark extends StatelessWidget {
       decoration: BoxDecoration(
         // a free meal is a filled light square, a free session an empty ring:
         // shape tells the two apart, the fill tells free from planned from done
-        color: done ? _ink : (drawn ? Colors.white : (round ? Colors.transparent : _idle)),
+        // free is a light fill for both shapes, planned an outline, done a full navy
+        color: done ? _ink : (drawn ? Colors.white : _idle),
         shape: round ? BoxShape.circle : BoxShape.rectangle,
         borderRadius: round ? null : BorderRadius.circular(1.5),
-        border: done ? null : (drawn ? Border.all(color: _ink, width: 1.4) : (round ? Border.all(color: _idle, width: 1.4) : null)),
+        border: drawn && !done ? Border.all(color: _ink, width: 1.4) : null,
       ),
       ),
     );

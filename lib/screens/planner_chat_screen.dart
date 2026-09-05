@@ -148,6 +148,25 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
     }
   }
 
+  /// The strip shows the week the coach actually planned. Without this, a
+  /// proposal that lands outside the seven days on screen is validated into
+  /// nothing: no mark appears and the flight has no target to reach.
+  void _anchorWeekOn(Iterable<DateTime> dates) => setState(() => _anchorWeekOnSync(dates));
+
+  void _anchorWeekOnSync(Iterable<DateTime> dates) {
+    if (dates.isEmpty) return;
+    final first = dates.reduce((a, b) => a.isBefore(b) ? a : b);
+    final day = DateTime(first.year, first.month, first.day);
+    final start = DateTime(_weekData.weekStart.year, _weekData.weekStart.month, _weekData.weekStart.day);
+    if (!day.isBefore(start) && !day.isAfter(start.add(const Duration(days: 6)))) return;
+    final monday = day.subtract(Duration(days: day.weekday - 1));
+    _weekData = WeeklyPlannerData.fromLists(
+      weekStart: monday,
+      activities: _weekData.activities.toList(),
+      workouts: _weekData.workouts.toList(),
+    );
+  }
+
   void _addMealsToWeekDataLocally(List<PendingMeal> meals) {
     final newActivities = List<PlannedActivity>.from(_weekData.activities);
     for (final meal in meals) {
@@ -416,6 +435,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
         debugPrint('✅ Got ${result.pendingSessions!.length} pending sessions for preview');
         _addBotMessage(result.message);
         PlannerAIService.addToHistory('assistant', result.message);
+        _anchorWeekOn(result.pendingSessions!.map((e) => e.plannedDate));
         setState(() {
           _pendingSessions = result.pendingSessions;
           _currentSessionIndex = 0;
@@ -433,6 +453,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
         PlannerAIService.addToHistory('assistant', result.message);
         setState(() {
           _pendingWorkouts = result.pendingWorkouts;
+          _anchorWeekOnSync(result.pendingWorkouts!.map((e) => e.plannedDate));
         });
       } else if (result.requiresConfirmation && result.pendingMeals != null) {
         debugPrint('✅ Got ${result.pendingMeals!.length} pending meals for preview');
@@ -448,6 +469,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
 
         setState(() {
           _pendingMeals = result.pendingMeals;
+          _anchorWeekOnSync(result.pendingMeals!.map((e) => e.plannedDate));
           _mealsDays = sortedDays;
           _currentMealsDayIndex = 0;
           _mealsPageController?.dispose();
@@ -918,15 +940,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
       automaticallyImplyLeading: !widget.demoMode,
       title: Row(
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Image.asset(
-              'assets/images/coach_ryze_contract.png',
-              width: 32,
-              height: 32,
-              fit: BoxFit.cover,
-            ),
-          ),
+          _coachAvatar(size: 34),
           const SizedBox(width: 10),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1295,7 +1309,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
       ),
       clipBehavior: Clip.antiAlias,
       child: Image.asset(
-        widget.initialMode == 'meals' ? 'assets/images/coach_ryze_nutrition_avatar.png' : 'assets/images/coach_ryze_workout_avatar.png',
+        widget.initialMode == 'meals' ? 'assets/images/coach_ryze_nutrition_head.png' : 'assets/images/coach_ryze_sport_head.png',
         fit: BoxFit.cover,
         alignment: const Alignment(0, -0.6),
         errorBuilder: (context, error, stack) => const Icon(LucideIcons.sparkles, size: 14, color: Color(0xFF0B132B)),

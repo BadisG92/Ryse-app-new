@@ -103,7 +103,8 @@ class OnbText {
 class OnbAssets {
   OnbAssets._();
 
-  static const String sportAvatar = 'assets/images/coach_ryze_sport_avatar.png';
-  static const String nutriAvatar = 'assets/images/coach_ryze_nutrition_avatar.png';
+  // cropped on the bust: the full-body pandas shrink to nothing in a 40 pt circle
+  static const String sportAvatar = 'assets/images/coach_ryze_sport_head.png';
+  static const String nutriAvatar = 'assets/images/coach_ryze_nutrition_head.png';
   static const String scene = 'assets/images/welcome_background.png';
 }

@@ -268,16 +268,18 @@ class _OnbRulerPickerState extends State<OnbRulerPicker> {
     return widget.isHeight ? OnbUnits.inToCm(unit.round()).toDouble() : OnbUnits.lbToKg(unit.round());
   }
 
-  String _labelOfTick(int tick) {
+  /// The whole part only. The half kilo lives in its own slot so the digits
+  /// before it never move when it comes and goes.
+  String _wholeLabel(int tick) {
     if (!widget.isMetric && widget.isHeight) return "${tick ~/ 12}'${tick % 12}";
-    if (widget.isMetric && !widget.isHeight) return OnbUnits.fmtKg(tick / 2, decimal: widget.decimal);
-    return '$tick';
+    return '${tick ~/ _perUnit}';
   }
 
   @override
   Widget build(BuildContext context) {
     final tick = _tickOf(widget.valueMetric).clamp(_lo, _hi);
     final unit = widget.isMetric ? (widget.isHeight ? 'cm' : 'kg') : (widget.isHeight ? '' : 'lb');
+    final bigStyle = OnbText.display(context, 21, letterSpacingEm: -0.045, height: 1);
     return Column(
       children: [
         _UnitSwitch(
@@ -291,7 +293,16 @@ class _OnbRulerPickerState extends State<OnbRulerPicker> {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            RollingNumber(_labelOfTick(tick), style: OnbText.display(context, 21, letterSpacingEm: -0.045, height: 1)),
+            RollingNumber(_wholeLabel(tick), style: bigStyle),
+            // the half keeps its place whether it shows or not: without a
+            // reserved slot every half step shoved the whole number sideways
+            if (_perUnit == 2)
+              AnimatedOpacity(
+                opacity: tick.isOdd ? 1 : 0,
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOut,
+                child: Text('${widget.decimal}5', style: bigStyle),
+              ),
             if (unit.isNotEmpty) ...[
               SizedBox(width: context.vw(1.8)),
               Padding(

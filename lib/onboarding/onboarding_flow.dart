@@ -106,8 +106,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             const _Step('height', chapter: 1, coach: OnbCoach.nutri),
             const _Step('weight', chapter: 1, coach: OnbCoach.nutri),
             _Step('target', chapter: 1, coach: OnbCoach.nutri, skip: (a) => !a.hasTarget),
-            _Step('projection', chapter: 1, coach: OnbCoach.duo, skip: (a) => !a.hasTarget || a.targetKg == a.weightKg),
             const _Step('activity', chapter: 1, coach: OnbCoach.sport),
+            _Step('projection', chapter: 1, coach: OnbCoach.duo, skip: (a) => !a.hasTarget || a.targetKg == a.weightKg),
             const _Step('diet', chapter: 1, coach: OnbCoach.nutri),
             const _Step('ch2', card: true),
             const _Step('motivation', chapter: 2, coach: OnbCoach.sport),
@@ -741,6 +741,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
       case 'projection':
         final p = OnbMetabolics.projection(a, s.lang)!;
+        final cap = OnbMetabolics.dailyCalories(a);
         return _shell(
           step,
           showPast: false,
@@ -800,9 +801,17 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                 delay: const Duration(milliseconds: 1700),
                 child: Row(
                   children: [
-                    Expanded(child: _statTile(s.t('stat_cap_kcal'), '${OnbMetabolics.dailyCalories(a)} kcal')),
-                    SizedBox(width: context.vw(2.2)),
-                    Expanded(child: _statTile(s.t('stat_cap_protein'), '${OnbMetabolics.macros(a)['protein'] ?? 0} g')),
+                    if (cap > 0) ...[
+                      Expanded(child: _statTile(s.t('stat_cap_kcal'), '$cap kcal')),
+                      SizedBox(width: context.vw(2.2)),
+                      Expanded(child: _statTile(s.t('stat_cap_protein'), '${OnbMetabolics.macros(a)['protein'] ?? 0} g')),
+                    ] else ...[
+                      Expanded(
+                          child: _statTile(s.t('stat_rate'),
+                              '${a.goal == 'lose' ? '−' : '+'}${p.ratePerWeekKg.toStringAsFixed(1).replaceAll('.', _decimal)} ${a.isMetric ? 'kg' : 'lb'} ${s.t('per_week')}')),
+                      SizedBox(width: context.vw(2.2)),
+                      Expanded(child: _statTile(s.t('stat_duration'), s.t('weeks', {'w': '${p.weeks}'}))),
+                    ],
                   ],
                 ),
               ),
