@@ -24,6 +24,18 @@ class OnbAnswers {
   int? bilanDay; // 1 = Monday … 7 = Sunday, like `weekly_bilan_day`
   String plan = 'annual';
 
+  /// The ruler defaults are a man's; a woman would otherwise drag two rulers
+  /// across twenty kilos before answering. Only untouched values move.
+  bool _bodyTouched = false;
+  void markBodyTouched() => _bodyTouched = true;
+
+  void applyFemaleDefaults() {
+    if (_bodyTouched) return;
+    heightCm = 165;
+    weightKg = 65;
+    targetKg = goal == 'gain' ? 71 : 59;
+  }
+
   bool get hasTarget => goal != null && goal != 'maintain';
 
   Map<String, dynamic> toJson() => {

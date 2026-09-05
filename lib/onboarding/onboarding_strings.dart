@@ -32,12 +32,9 @@ class OnbStrings {
     // ---------- Hello ----------
     'hello_title': {'fr': 'Salut {n}.', 'en': 'Hi {n}.', 'de': 'Hallo {n}.'},
     'hello_sub': {
-      'fr':
-          'Ryze, c’est deux coachs IA dans ta poche. Un pour le sport, un pour l’assiette. Ils planifient ta semaine, suivent tes séances et tes repas, et font le point avec toi chaque semaine.',
-      'en':
-          'Ryze is two AI coaches in your pocket. One for training, one for food. They plan your week, track your sessions and meals, and check in with you every week.',
-      'de':
-          'Ryze sind zwei KI-Coaches in deiner Tasche. Einer für Sport, einer fürs Essen. Sie planen deine Woche, verfolgen Training und Mahlzeiten und machen jede Woche mit dir Bilanz.',
+      'fr': 'Deux coachs IA : un pour le sport, un pour l’assiette. Ils planifient ta semaine et font le point avec toi chaque semaine.',
+      'en': 'Two AI coaches: one for training, one for food. They plan your week and check in with you every week.',
+      'de': 'Zwei KI-Coaches: einer fürs Training, einer fürs Essen. Sie planen deine Woche und ziehen jede Woche mit dir Bilanz.',
     },
     'hello_punch1': {'fr': 'Les autres apps te font compter.', 'en': 'Other apps make you count.', 'de': 'Andere Apps lassen dich zählen.'},
     'hello_punch2': {'fr': 'Nous, on te coache.', 'en': 'We coach you.', 'de': 'Wir coachen dich.'},
@@ -52,9 +49,9 @@ class OnbStrings {
       'de': 'Deine Kraft-, Cardio- und HIIT-Einheiten, angeleitet und protokolliert'
     },
     'hello_f3': {
-      'fr': 'Tes repas scannés en deux secondes, calories et macros',
-      'en': 'Your meals scanned in two seconds, calories and macros',
-      'de': 'Deine Mahlzeiten in zwei Sekunden gescannt, Kalorien und Makros'
+      'fr': 'Tes repas scannés en une photo, calories et macros',
+      'en': 'Your meals scanned from one photo, calories and macros',
+      'de': 'Deine Mahlzeiten mit einem Foto gescannt, Kalorien und Makros',
     },
     'hello_f4': {
       'fr': 'Un coach qui se souvient de toi et te relance',
@@ -66,11 +63,19 @@ class OnbStrings {
       'en': 'Your weight, your progress, and a weekly check-in together',
       'de': 'Dein Gewicht, dein Fortschritt und jede Woche eine gemeinsame Bilanz'
     },
-    'hello_cta': {'fr': 'Trois minutes, on construit ta semaine', 'en': 'Three minutes, we build your week', 'de': 'Drei Minuten, wir bauen deine Woche'},
+    'hello_cta': {
+      'fr': 'Quelques questions, puis ta semaine',
+      'en': 'A few questions, then your week',
+      'de': 'Ein paar Fragen, dann deine Woche',
+    },
 
     // ---------- Chapters ----------
     'ch1_title': {'fr': 'Toi', 'en': 'You', 'de': 'Du'},
-    'ch1_sub': {'fr': 'Neuf questions rapides. Aucun clavier.', 'en': 'Nine quick questions. No keyboard.', 'de': 'Neun schnelle Fragen. Keine Tastatur.'},
+    'ch1_sub': {
+      'fr': 'Quelques questions rapides. Aucun clavier.',
+      'en': 'A few quick questions. No typing.',
+      'de': 'Ein paar schnelle Fragen. Ohne Tippen.',
+    },
     'ch2_title': {'fr': 'Ton pourquoi', 'en': 'Your why', 'de': 'Dein Warum'},
     'ch2_sub': {
       'fr': 'Deux questions, et ce qu’on en fait.',
@@ -108,7 +113,11 @@ class OnbStrings {
       'de': 'Muskeln aufbauen, wir belasten richtig.'
     },
     'react_maintain': {'fr': 'Le meilleur des objectifs.', 'en': 'The best goal there is.', 'de': 'Das beste Ziel überhaupt.'},
-    'q_gender': {'fr': 'Pour calibrer tes besoins, tu es…', 'en': 'To calibrate your needs, you are…', 'de': 'Um deinen Bedarf zu kalibrieren, du bist…'},
+    'q_gender': {
+      'fr': 'Pour calibrer tes besoins : tu es…',
+      'en': 'So we get your numbers right, you are…',
+      'de': 'Damit wir deinen Bedarf richtig berechnen: Du bist…',
+    },
     'gender_m': {'fr': 'Homme', 'en': 'Man', 'de': 'Mann'},
     'gender_f': {'fr': 'Femme', 'en': 'Woman', 'de': 'Frau'},
     'q_age': {'fr': 'Ok. T’as quel âge ?', 'en': 'Ok. How old are you?', 'de': 'Ok. Wie alt bist du?'},
@@ -146,7 +155,11 @@ class OnbStrings {
     'act_light_sub': {'fr': 'Une base à solidifier', 'en': 'A base to build on', 'de': 'Eine Basis zum Festigen'},
     'act_moderate': {'fr': '3 à 4 fois', 'en': '3 to 4 times', 'de': '3 bis 4 Mal'},
     'act_moderate_sub': {'fr': 'Déjà une vraie routine', 'en': 'Already a real routine', 'de': 'Schon eine echte Routine'},
-    'act_high': {'fr': '5 fois et plus', 'en': '5 times and more', 'de': '5 Mal und mehr'},
+    'act_high': {
+      'fr': '5 fois ou plus',
+      'en': '5 times or more',
+      'de': '5 Mal oder mehr',
+    },
     'act_high_sub': {'fr': 'On optimise', 'en': 'We optimize', 'de': 'Wir optimieren'},
     'q_diet': {'fr': 'Des préférences dans l’assiette ?', 'en': 'Any preferences on your plate?', 'de': 'Vorlieben auf dem Teller?'},
 
@@ -187,9 +200,9 @@ class OnbStrings {
     },
     'obs_time': {'fr': 'Le manque de temps', 'en': 'Lack of time', 'de': 'Zu wenig Zeit'},
     'obs_time_a': {
-      'fr': 'Séances de 25 minutes, chez toi ou en salle.',
-      'en': '25-minute sessions, at home or at the gym.',
-      'de': '25-Minuten-Einheiten, zu Hause oder im Studio.'
+      'fr': 'Séances à la durée que tu choisis, dès 20 minutes, chez toi ou en salle.',
+      'en': 'Sessions as long as you choose, from 20 minutes, at home or at the gym.',
+      'de': 'Einheiten so lang, wie du willst, ab 20 Minuten, zu Hause oder im Studio.',
     },
     'obs_motiv': {'fr': 'La motivation qui retombe', 'en': 'Motivation fading', 'de': 'Die Motivation lässt nach'},
     'obs_motiv_a': {
@@ -236,7 +249,11 @@ class OnbStrings {
     },
 
     // ---------- Chapter 3 ----------
-    'both_title': {'fr': 'Le même plan, chez des pros :', 'en': 'The same plan, with the pros:', 'de': 'Derselbe Plan, bei Profis:'},
+    'both_title': {
+      'fr': 'Le même plan, chez des pros :',
+      'en': 'The same plan, with real-life pros:',
+      'de': 'Derselbe Plan, bei echten Profis:',
+    },
     'both_caption': {'fr': 'sur {n} semaines · objectif {goal}', 'en': 'over {n} weeks · goal {goal}', 'de': 'über {n} Wochen · Ziel {goal}'},
     'both_goal_maintain': {'fr': 'maintien', 'en': 'maintain', 'de': 'halten'},
     'both_line_coach': {'fr': '{n} séances de coach · {p} €', 'en': '{n} coaching sessions · €{p}', 'de': '{n} Coaching-Einheiten · {p} €'},
@@ -256,9 +273,9 @@ class OnbStrings {
       'de': 'mit beiden Coaches, das ganze Jahr'
     },
     'both_tick_talk': {
-      'fr': 'Les deux se parlent : la séance s’adapte à ton assiette',
-      'en': 'They talk to each other: the session adapts to your plate',
-      'de': 'Sie sprechen miteinander: die Einheit passt sich deinem Teller an'
+      'fr': 'Les deux se parlent : les jours de séance, ton assiette monte de 10 à 15 %',
+      'en': 'They talk to each other: on training days your plate goes up 10 to 15 %',
+      'de': 'Sie sprechen miteinander: an Trainingstagen gibt es 10 bis 15 % mehr auf dem Teller',
     },
     'both_tick_247': {
       'fr': 'Disponibles 24h/24, 7j/7, même le dimanche soir',
@@ -313,7 +330,11 @@ class OnbStrings {
       'de': 'Jede Woche fünf Minuten gemeinsam Bilanz ziehen. Welcher Tag?'
     },
     'pact_title': {'fr': 'Notre pacte.', 'en': 'Our pact.', 'de': 'Unser Pakt.'},
-    'pact_h': {'fr': 'Nous, tes Coach Ryze,', 'en': 'We, your Coach Ryze,', 'de': 'Wir, deine Coach Ryze,'},
+    'pact_h': {
+      'fr': 'Nous, tes deux coachs Ryze,',
+      'en': 'We, your two Ryze coaches,',
+      'de': 'Wir, deine beiden Ryze-Coaches,',
+    },
     'pact_p1': {
       'fr': 'on s’engage à te suivre, à te motiver, et à ne jamais te juger. Ni un écart, ni une semaine sans séance.',
       'en': 'commit to following you, motivating you, and never judging you. Not a slip, not a week without training.',
@@ -344,24 +365,32 @@ class OnbStrings {
     },
     'tl_2': {'fr': 'Dans 2 jours', 'en': 'In 2 days', 'de': 'In 2 Tagen'},
     'tl_2_sub': {
-      'fr': 'On te prévient avant la fin de l’essai. Pas de surprise.',
-      'en': 'We remind you before the trial ends. No surprise.',
-      'de': 'Wir erinnern dich vor Ende der Testphase. Keine Überraschung.'
+      'fr': 'On te prévient la veille de la fin de l’essai. Pas de surprise.',
+      'en': 'We remind you the day before the trial ends. No surprises.',
+      'de': 'Wir erinnern dich am Tag vor Ende der Testphase. Keine Überraschung.',
     },
     'tl_3': {'fr': 'Dans 3 jours', 'en': 'In 3 days', 'de': 'In 3 Tagen'},
     'tl_3_sub': {
-      'fr': 'L’abonnement démarre, sauf si tu l’annules. Un tap dans les réglages.',
-      'en': 'The subscription starts, unless you cancel. One tap in settings.',
-      'de': 'Das Abo startet, außer du kündigst. Ein Tipp in den Einstellungen.'
+      'fr': 'L’abonnement démarre, sauf si tu l’as annulé avant dans l’App Store / Google Play.',
+      'en': 'The subscription starts unless you cancelled in the App Store / Google Play.',
+      'de': 'Das Abo startet, außer du hast vorher im App Store / Google Play gekündigt.',
     },
     'plan_annual': {'fr': 'Annuel', 'en': 'Annual', 'de': 'Jährlich'},
-    'plan_annual_sub': {'fr': 'Le plan des gens qui vont au bout', 'en': 'The plan for people who go all the way', 'de': 'Der Plan für Leute, die durchziehen'},
+    'plan_annual_sub': {
+      'fr': 'Le meilleur prix, et le seul avec l’essai gratuit',
+      'en': 'Best price, and the only plan with a free trial',
+      'de': 'Bester Preis, und der einzige Plan mit Gratis-Testphase',
+    },
     'plan_annual_eq': {'fr': '{p} par mois', 'en': '{p} per month', 'de': '{p} pro Monat'},
     'plan_monthly': {'fr': 'Mensuel', 'en': 'Monthly', 'de': 'Monatlich'},
     'plan_monthly_sub': {'fr': 'Sans engagement', 'en': 'No commitment', 'de': 'Ohne Bindung'},
     'plan_monthly_unit': {'fr': 'par mois', 'en': 'per month', 'de': 'pro Monat'},
     'plan_weekly': {'fr': 'Hebdo', 'en': 'Weekly', 'de': 'Wöchentlich'},
-    'plan_weekly_sub': {'fr': 'Pour essayer une semaine', 'en': 'To try for a week', 'de': 'Eine Woche ausprobieren'},
+    'plan_weekly_sub': {
+      'fr': 'Semaine par semaine, facturé aujourd’hui',
+      'en': 'Week by week, billed today',
+      'de': 'Woche für Woche, heute abgerechnet',
+    },
     'plan_weekly_unit': {'fr': 'par semaine', 'en': 'per week', 'de': 'pro Woche'},
     'badge_trial': {'fr': '3 jours gratuits', 'en': '3 days free', 'de': '3 Tage gratis'},
     'cta_trial': {'fr': 'Commencer mes 3 jours gratuits', 'en': 'Start my 3 free days', 'de': 'Meine 3 Gratistage starten'},
@@ -401,6 +430,14 @@ class OnbStrings {
     },
     'legal_terms': {'fr': 'Conditions', 'en': 'Terms', 'de': 'AGB'},
     'legal_privacy': {'fr': 'Confidentialité', 'en': 'Privacy', 'de': 'Datenschutz'},
+    'hello_title_anon': {'fr': 'Salut.', 'en': 'Hi.', 'de': 'Hallo.'},
+    'stat_cap_kcal': {'fr': 'Ton cap', 'en': 'Your target', 'de': 'Dein Ziel'},
+    'stat_cap_protein': {'fr': 'Protéines', 'en': 'Protein', 'de': 'Protein'},
+    'insight_motivation': {'fr': 'Motivation principale', 'en': 'Main motivation', 'de': 'Hauptmotivation'},
+    'insight_goal': {'fr': 'Objectif concret', 'en': 'Concrete goal', 'de': 'Konkretes Ziel'},
+    'insight_blockers': {'fr': 'Blocages passés', 'en': 'Past blockers', 'de': 'Bisherige Hürden'},
+    'insight_constraints': {'fr': 'Contraintes', 'en': 'Constraints', 'de': 'Einschränkungen'},
+    'insight_tone': {'fr': 'Ton du coach choisi', 'en': 'Chosen coach tone', 'de': 'Gewählter Coach-Ton'},
     'retry': {'fr': 'Réessayer', 'en': 'Try again', 'de': 'Erneut versuchen'},
     'profile_save_failed_title': {'fr': 'Ton profil n’est pas encore enregistré', 'en': 'Your profile is not saved yet', 'de': 'Dein Profil ist noch nicht gespeichert'},
     'profile_save_failed': {

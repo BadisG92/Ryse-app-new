@@ -70,7 +70,8 @@ class _BothCoachesContentState extends State<BothCoachesContent> with SingleTick
     final digits = value.round().abs().toString();
     final buf = StringBuffer();
     for (var i = 0; i < digits.length; i++) {
-      if (i > 0 && (digits.length - i) % 3 == 0) buf.write(widget.s.lang == 'en' ? ',' : ' ');
+      // English groups with a comma, German with a full stop, French with a thin space
+      if (i > 0 && (digits.length - i) % 3 == 0) buf.write(widget.s.lang == 'en' ? ',' : (widget.s.lang == 'de' ? '.' : ' '));
       buf.write(digits[i]);
     }
     return widget.s.lang == 'en' ? '€$buf' : '$buf €';

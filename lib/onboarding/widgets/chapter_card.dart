@@ -16,7 +16,7 @@ class ChapterCard extends StatefulWidget {
 }
 
 class _ChapterCardState extends State<ChapterCard> with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 2300));
+  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1700));
   late final Animation<double> _in = CurvedAnimation(parent: _c, curve: const Interval(0, 0.24, curve: OnbCurves.snap));
   late final Animation<double> _out = CurvedAnimation(parent: _c, curve: const Interval(0.78, 1, curve: OnbCurves.snap));
   late final Animation<double> _bar = CurvedAnimation(parent: _c, curve: const Interval(0.22, 0.7, curve: OnbCurves.out));
@@ -40,9 +40,20 @@ class _ChapterCardState extends State<ChapterCard> with SingleTickerProviderStat
     super.dispose();
   }
 
+  /// A curtain nobody can skip is a wall: a tap jumps to the way out.
+  void _skip() {
+    if (_c.value >= 0.78) return;
+    _c.animateTo(0.78, duration: const Duration(milliseconds: 180), curve: Curves.easeOut).whenCompleteOrCancel(() {
+      if (mounted) _c.forward();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: _skip,
+      child: AnimatedBuilder(
       animation: _c,
       builder: (context, _) {
         final visibleFactor = (_in.value - _out.value).clamp(0.0, 1.0);
@@ -103,7 +114,8 @@ class _ChapterCardState extends State<ChapterCard> with SingleTickerProviderStat
             ),
           ),
         );
-      },
+        },
+      ),
     );
   }
 }

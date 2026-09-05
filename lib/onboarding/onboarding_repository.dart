@@ -157,21 +157,21 @@ class OnboardingRepository {
       final lines = <String>[];
       final goalLabel = a.goal == null ? null : s.t('goal_${a.goal}');
       if (a.motivation != null) {
-        lines.add('- **Motivation principale**: ${s.t(a.motivation!)}${a.motivationText.trim().isNotEmpty ? ' ("${a.motivationText.trim()}")' : ''}');
+        lines.add('- **${s.t('insight_motivation')}**: ${s.t(a.motivation!)}${a.motivationText.trim().isNotEmpty ? ' ("${a.motivationText.trim()}")' : ''}');
       }
       if (goalLabel != null) {
         final target = a.hasTarget ? ' (${a.weightKg} kg → ${a.targetKg} kg)' : '';
-        lines.add('- **Objectif concret**: $goalLabel$target');
+        lines.add('- **${s.t('insight_goal')}**: $goalLabel$target');
       }
       if (a.obstacles.isNotEmpty && !(a.obstacles.length == 1 && a.obstacles.first == 'obs_none')) {
-        lines.add('- **Blocages passés**: ${a.obstacles.where((o) => o != 'obs_none').map((o) => s.t(o)).join(', ')}');
+        lines.add('- **${s.t('insight_blockers')}**: ${a.obstacles.where((o) => o != 'obs_none').map((o) => s.t(o)).join(', ')}');
       }
       if (a.restrictions.isNotEmpty) {
-        lines.add('- **Contraintes**: ${a.restrictions.join(', ')}');
+        lines.add('- **${s.t('insight_constraints')}**: ${a.restrictions.join(', ')}');
       }
       if (a.personality != null) {
         lines.add(
-            '- **Ton du coach choisi**: ${CoachPersonalityService.getLocalizedLabel(CoachPersonalityType.values.firstWhere((t) => t.name == a.personality, orElse: () => CoachPersonalityType.friendly), s.lang)}');
+            '- **${s.t('insight_tone')}**: ${CoachPersonalityService.getLocalizedLabel(CoachPersonalityType.values.firstWhere((t) => t.name == a.personality, orElse: () => CoachPersonalityType.friendly), s.lang)}');
       }
       if (lines.isEmpty) return;
       final insights = lines.join('\n');

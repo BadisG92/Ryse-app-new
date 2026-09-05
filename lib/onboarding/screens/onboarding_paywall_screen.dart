@@ -383,7 +383,6 @@ class _LockedWeek extends StatelessWidget {
     final now = DateTime.now();
     final monday = DateTime(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1));
     final hasData = mealsPerDay.any((m) => m > 0) || workoutDays.isNotEmpty;
-    final days = s.dayFull;
     const navy = Color(0xFF0B132B);
 
     Widget slot(IconData icon, bool on, {bool workout = false}) => Container(
@@ -420,7 +419,7 @@ class _LockedWeek extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(context.vw(2))),
                             child: Column(
                               children: [
-                                Text(days[d].substring(0, 3),
+                                Text(s.dayShort[d],
                                     style: OnbText.body(context, 2.7, weight: FontWeight.w600, color: const Color(0xFF64748B), height: 1)),
                                 SizedBox(height: context.vw(0.5)),
                                 Text('${monday.add(Duration(days: d)).day}',

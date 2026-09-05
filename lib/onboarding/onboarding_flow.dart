@@ -60,7 +60,7 @@ class OnboardingFlow extends StatefulWidget {
 }
 
 class _OnboardingFlowState extends State<OnboardingFlow> {
-  late final OnbStrings s = OnbStrings.current();
+  OnbStrings get s => OnbStrings.current();
   final OnboardingRepository _repo = OnboardingRepository();
 
   late OnbAnswers a;
@@ -77,7 +77,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   final List<PendingWorkout> _demoWorkouts = [];
   final List<PendingSession> _demoSessions = [];
 
-  String get _name => (widget.firstName ?? '').trim().isEmpty ? 'toi' : widget.firstName!.trim();
+  String? get _name {
+    final n = (widget.firstName ?? '').trim();
+    return n.isEmpty ? null : n;
+  }
 
   @override
   void initState() {
@@ -109,11 +112,11 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             const _Step('obstacles', chapter: 2, coach: OnbCoach.nutri),
             const _Step('answers', chapter: 2, coach: OnbCoach.duo),
             const _Step('ch3', card: true),
-            const _Step('both', chapter: 3, coach: OnbCoach.duo),
             const _Step('planner', chapter: 3, bare: true),
             const _Step('ch4', card: true),
             const _Step('personality', chapter: 4, coach: OnbCoach.sport),
             const _Step('bilan', chapter: 4, coach: OnbCoach.nutri),
+            const _Step('both', chapter: 4, coach: OnbCoach.duo),
             const _Step('pact', chapter: 4),
             const _Step('offer', bare: true),
           ];
@@ -335,7 +338,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       case 'pact':
         return s.t('pact_title');
       case 'hello':
-        return s.t('hello_title', {'n': _name});
+        return _name == null ? s.t('hello_title_anon') : s.t('hello_title', {'n': _name!});
       default:
         return '';
     }
@@ -359,7 +362,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       case 'goal':
         return a.goal == null ? null : s.t('goal_${a.goal}');
       case 'gender':
-        return a.gender;
+        return a.gender == null ? null : s.t(a.gender == 'Homme' ? 'gender_m' : 'gender_f');
       case 'age':
         return '${a.age} ${s.t('unit_years')}';
       case 'height':
@@ -383,6 +386,12 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       default:
         return null;
     }
+  }
+
+  /// Only French writes a weekday in lower case mid-sentence.
+  String _dayName(int day) {
+    final name = s.dayFull[day - 1];
+    return s.lang == 'fr' ? name.toLowerCase() : name;
   }
 
   CoachPersonalityType _personalityType(String key) =>
@@ -513,7 +522,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               PopIn(dy: 6, child: Text(react, style: OnbText.body(context, 3.9, weight: FontWeight.w500, color: OnbColors.mute, height: 1.35))),
               SizedBox(height: context.vh(1)),
             ],
-            WipeText(headline, style: OnbText.display(context, 7.8)),
+            WipeText(headline, style: OnbText.display(context, headline.length <= 30 ? 7.8 : (headline.length <= 46 ? 6.9 : 6.1))),
             if (step.id == 'hello') ...[
               SizedBox(height: context.vh(1.4)),
               PopIn(
@@ -605,7 +614,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                       title: s.t('gender_f'),
                       selected: a.gender == 'Femme',
                       onTap: () {
-                        setState(() => a.gender = 'Femme');
+                        setState(() {
+                          a.gender = 'Femme';
+                          a.applyFemaleDefaults();
+                        });
                         _autoNext();
                       })),
             ],
@@ -628,7 +640,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             maxMetric: 220,
             valueMetric: a.heightCm,
             isMetric: a.isMetric,
-            onChanged: (v) => setState(() => a.heightCm = v),
+            onChanged: (v) => setState(() {
+              a.heightCm = v;
+              a.markBodyTouched();
+            }),
             onUnitChanged: (m) => setState(() => a.isMetric = m),
             footer: Text(s.t('ruler_hint'), textAlign: TextAlign.center, style: OnbText.body(context, 3.7, color: OnbColors.mute)),
           ),
@@ -644,7 +659,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             maxMetric: 200,
             valueMetric: a.weightKg,
             isMetric: a.isMetric,
-            onChanged: (v) => setState(() => a.weightKg = v),
+            onChanged: (v) => setState(() {
+              a.weightKg = v;
+              a.markBodyTouched();
+            }),
             onUnitChanged: (m) => setState(() => a.isMetric = m),
           ),
           cta: OnbButton(label: s.t('cta_continue'), onPressed: _next),
@@ -681,7 +699,6 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
       case 'projection':
         final p = OnbMetabolics.projection(a, s.lang)!;
-        final rateShown = (p.ratePerWeekKg * (a.isMetric ? 1 : 2.20462)).toStringAsFixed(1).replaceAll('.', s.lang == 'en' ? '.' : ',');
         return _shell(
           step,
           showPast: false,
@@ -723,9 +740,9 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                 delay: const Duration(milliseconds: 400),
                 child: Row(
                   children: [
-                    Expanded(child: _statTile(s.t('stat_rate'), '${a.goal == 'lose' ? '−' : '+'}$rateShown ${a.isMetric ? 'kg' : 'lb'} ${s.t('per_week')}')),
+                    Expanded(child: _statTile(s.t('stat_cap_kcal'), '${OnbMetabolics.dailyCalories(a)} kcal')),
                     SizedBox(width: context.vw(2.2)),
-                    Expanded(child: _statTile(s.t('stat_duration'), s.t('weeks', {'w': '${p.weeks}'}))),
+                    Expanded(child: _statTile(s.t('stat_cap_protein'), '${OnbMetabolics.macros(a)['protein'] ?? 0} g')),
                   ],
                 ),
               ),
@@ -757,7 +774,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
       case 'diet':
         // Same four options and the same stored values as the legacy form.
-        final options = ['classic', 'vegetarian', 'vegan', 'pescetarian'].map((k) => k.tr(s.lang)).toList();
+        final options = ['classic', 'vegetarian', 'vegan', 'pescetarian', 'gluten_free', 'lactose_free', 'halal'].map((k) => k.tr(s.lang)).toList();
         final none = options.first;
         return _shell(
           step,
@@ -807,6 +824,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                 child: TextField(
                   controller: _motivationCtrl,
                   onChanged: (v) => a.motivationText = v,
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) => FocusManager.instance.primaryFocus?.unfocus(),
+                  onTapOutside: (_) => FocusManager.instance.primaryFocus?.unfocus(),
+                  scrollPadding: const EdgeInsets.only(bottom: 120),
                   maxLines: 3,
                   minLines: 2,
                   maxLength: 200,
@@ -879,7 +900,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             annualPrice: _annualPrice,
             annualPriceLabel: _annualPriceLabel ?? s.t('price_default_annual'),
           ),
-          cta: OnbButton(label: s.t('cta_see_app'), onPressed: _next),
+          cta: OnbButton(label: s.t('cta_continue'), onPressed: _next),
         );
 
       case 'personality':
@@ -895,7 +916,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                 key: t.name,
                 emoji: CoachPersonalityService.getEmoji(t),
                 label: CoachPersonalityService.getLocalizedLabel(t, s.lang),
-                sample: s.t('pers_${t.name}', {'n': _name})),
+                sample: s.t('pers_${t.name}', {'n': _name ?? ''}).replaceAll(' ,', ',').replaceAll('  ', ' ')),
         ];
         return _shell(
           step,
@@ -920,11 +941,11 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         );
 
       case 'pact':
-        final dayName = s.dayFull[(a.bilanDay ?? 7) - 1].toLowerCase();
+        final dayName = _dayName(a.bilanDay ?? 7);
         return _shell(
           step,
           showPast: false,
-          body: PactContent(s: s, firstName: _name, dayName: dayName, signed: _signed, onSigned: _onPactSigned),
+          body: PactContent(s: s, firstName: _name ?? '', dayName: dayName, signed: _signed, onSigned: _onPactSigned),
           cta: _signed ? OnbButton(label: widget.mode == OnbMode.coachOnly ? s.t('cta_continue') : s.t('cta_unlock'), onPressed: _next) : null,
         );
 
@@ -987,7 +1008,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     };
     return OnboardingPaywallScreen(
       s: s,
-      bilanDayName: s.dayFull[(a.bilanDay ?? 7) - 1].toLowerCase(),
+      bilanDayName: _dayName(a.bilanDay ?? 7),
       mealsPerDay: mealsPerDay,
       workoutDays: workoutDays,
       initialPlan: a.plan,

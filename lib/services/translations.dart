@@ -9529,6 +9529,21 @@ class AppTranslations {
       'en': 'Breakfast',
       'de': 'Frühstück',
     },
+    'gluten_free': {
+      'fr': 'Sans gluten',
+      'en': 'Gluten-free',
+      'de': 'Glutenfrei',
+    },
+    'lactose_free': {
+      'fr': 'Sans lactose',
+      'en': 'Lactose-free',
+      'de': 'Laktosefrei',
+    },
+    'halal': {
+      'fr': 'Halal',
+      'en': 'Halal',
+      'de': 'Halal',
+    },
   };
 
   /// Getter public pour accéder aux traductions (utilisé par TranslationChecker)

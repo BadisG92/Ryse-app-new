@@ -362,9 +362,6 @@ class SpeakerRow extends StatelessWidget {
             if (!both) TextSpan(text: ', $role', style: OnbText.body(context, 3.3, color: OnbColors.mute)),
           ]),
         ),
-        SizedBox(width: context.vw(2)),
-        Pulse(
-            child: Container(width: context.vw(1.6), height: context.vw(1.6), decoration: const BoxDecoration(color: OnbColors.green, shape: BoxShape.circle))),
       ],
     );
   }
@@ -436,6 +433,7 @@ class OnbCard extends StatelessWidget {
 }
 
 /// Gentle opacity pulse (the coach's "live" dot).
+/// Wraps a continuously animating child in its own layer.
 class Pulse extends StatefulWidget {
   const Pulse({super.key, required this.child, this.period = const Duration(milliseconds: 1200)});
   final Widget child;

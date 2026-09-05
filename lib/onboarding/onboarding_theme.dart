@@ -14,16 +14,19 @@ class OnbColors {
   static const Color surf = Color(0xFFFFFFFF);
   static const Color ink = Color(0xFF0B132B);
   static const Color ink2 = Color(0xFF1B2A5B);
-  static const Color mute = Color(0xFF6B7385);
+  // 5.2:1 on paper, above AA for the small print it carries
+  static const Color mute = Color(0xFF5F6779);
+  /// Decorative only (dashes, borders): too light for text.
   static const Color mute2 = Color(0xFF9AA1B2);
   static const Color line = Color(0x1A0B132B);
   static const Color line2 = Color(0x0F0B132B);
 
   static const Color acc = Color(0xFFF2A93B);
   static const Color accDeep = Color(0xFFD98A16);
+  // amber dark enough to carry text on paper (4.8:1)
   static const Color accLight = Color(0xFFFFC766);
   static const Color accTint = Color(0xFFFDF1DC);
-  static const Color accInk = Color(0xFFA8690F);
+  static const Color accInk = Color(0xFF9A5F0C);
   static const Color onAcc = ink;
 
   static const Color green = Color(0xFF17B26A);
