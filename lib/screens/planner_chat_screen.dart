@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../components/ui/motion.dart';
 import '../components/weekly_planner/proposal_card.dart';
@@ -81,6 +82,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
   // Demo mode tracking
   int _userMessageCount = 0;
   final Set<_ChatMessage> _shownMessages = {}; // bulles déjà animées (pas de rejeu au scroll)
+  final ValueNotifier<int> _proposalVersion = ValueNotifier<int>(0); // bumped on every setState: the detail sheets rebuild with the screen
   final List<PendingMeal> _demoConfirmedMeals = [];
   final List<PendingWorkout> _demoConfirmedWorkouts = [];
   final List<PendingSession> _demoConfirmedSessions = [];
@@ -188,7 +190,14 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
   }
 
   @override
+  void setState(VoidCallback fn) {
+    super.setState(fn);
+    _proposalVersion.value++;
+  }
+
+  @override
   void dispose() {
+    _proposalVersion.dispose();
     if (widget.demoMode) {
       PlannerAIService.setDemoMode(false);
     }
@@ -529,11 +538,12 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
           // Send demo guidance message
           _sendDemoMealsGuidance();
         } else {
-          final remainingDays = _mealsDays.sublist(_currentMealsDayIndex + 1);
+          // keep every other day (validating Wednesday must not discard Monday and Tuesday)
+          final remainingDays = _mealsDays.where((d) => !d.isAtSameMomentAs(currentDay)).toList();
           setState(() {
             _pendingMeals = remainingMeals;
             _mealsDays = remainingDays;
-            _currentMealsDayIndex = 0;
+            _currentMealsDayIndex = _currentMealsDayIndex.clamp(0, remainingDays.length - 1);
             _mealsPageController?.dispose();
             _mealsPageController = PageController(initialPage: 0);
           });
@@ -568,11 +578,12 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
           });
         } else {
           // Passer au jour suivant
-          final remainingDays = _mealsDays.sublist(_currentMealsDayIndex + 1);
+          // keep every other day (validating Wednesday must not discard Monday and Tuesday)
+          final remainingDays = _mealsDays.where((d) => !d.isAtSameMomentAs(currentDay)).toList();
           setState(() {
             _pendingMeals = remainingMeals;
             _mealsDays = remainingDays;
-            _currentMealsDayIndex = 0;
+            _currentMealsDayIndex = _currentMealsDayIndex.clamp(0, remainingDays.length - 1);
             _mealsPageController?.dispose();
             _mealsPageController = PageController(initialPage: 0);
           });
@@ -1679,83 +1690,137 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
     }).toList();
   }
 
+  static const Map<PlannedActivityType, Map<String, String>> _mealTypeNames = {
+    PlannedActivityType.breakfast: {'fr': 'Petit-déj', 'en': 'Breakfast', 'de': 'Frühstück'},
+    PlannedActivityType.lunch: {'fr': 'Déjeuner', 'en': 'Lunch', 'de': 'Mittagessen'},
+    PlannedActivityType.dinner: {'fr': 'Dîner', 'en': 'Dinner', 'de': 'Abendessen'},
+    PlannedActivityType.snack: {'fr': 'Collation', 'en': 'Snack', 'de': 'Snack'},
+  };
+
+  String _mealTypeLabel(PendingMeal meal, String langCode) => _mealTypeNames[meal.mealType]?[langCode] ?? meal.mealType.value;
+  List<String> _macroLetters(String langCode) => ['proteins'.tr(langCode)[0], 'carbs'.tr(langCode)[0], 'fats'.tr(langCode)[0]];
+  int _mealKcal(PendingMeal m) => ((m.proteins * 4) + (m.carbs * 4) + (m.fats * 9)).round();
+
+  /// Compact card in the conversation. One day: the meals and their totals,
+  /// ready to validate. Several days: a digest, "Tout valider" in one tap,
+  /// and the detail sheet for day-by-day review.
   Widget _buildMealsPreview(String langCode) {
     if (_pendingMeals == null || _pendingMeals!.isEmpty || _mealsDays.isEmpty) {
       return const SizedBox.shrink();
     }
-    final day = _mealsDays[_currentMealsDayIndex];
-    final mealsWord = {'fr': 'repas proposés', 'en': 'meals proposed', 'de': 'Mahlzeiten vorgeschlagen'}[langCode] ?? 'meals proposed';
+    final letters = _macroLetters(langCode);
+    final several = _mealsDays.length > 1;
+    final mealsWord = {'fr': 'repas', 'en': 'meals', 'de': 'Mahlzeiten'}[langCode] ?? 'meals';
+    final daysWord = 'planner_days_count'.tr(langCode);
+    final perDay = {'fr': 'kcal / jour', 'en': 'kcal / day', 'de': 'kcal / Tag'}[langCode] ?? 'kcal / day';
+    final weekTitle = {'fr': 'Semaine proposée', 'en': 'Proposed week', 'de': 'Vorgeschlagene Woche'}[langCode] ?? 'Proposed week';
     final totalWord = {'fr': 'Total du jour', 'en': 'Day total', 'de': 'Tagessumme'}[langCode] ?? 'Day total';
-    final typeNames = {
-      PlannedActivityType.breakfast: {'fr': 'Petit-déj', 'en': 'Breakfast', 'de': 'Frühstück'},
-      PlannedActivityType.lunch: {'fr': 'Déjeuner', 'en': 'Lunch', 'de': 'Mittagessen'},
-      PlannedActivityType.dinner: {'fr': 'Dîner', 'en': 'Dinner', 'de': 'Abendessen'},
-      PlannedActivityType.snack: {'fr': 'Collation', 'en': 'Snack', 'de': 'Snack'},
-    };
-    final letters = ['proteins'.tr(langCode)[0], 'carbs'.tr(langCode)[0], 'fats'.tr(langCode)[0]];
-    var maxMeals = 1;
-    for (final d in _mealsDays) {
-      final n = _mealsForDay(d).length;
-      if (n > maxMeals) maxMeals = n;
-    }
-    // rows are 62 pt, the totals block 78 pt: fixed height keeps the pager stable
-    final pageHeight = maxMeals * 62.0 + 82.0;
+    final moreDays = {'fr': 'Voir les {n} jours', 'en': 'See all {n} days', 'de': 'Alle {n} Tage ansehen'}[langCode] ?? 'See all {n} days';
 
+    if (!several) {
+      final day = _mealsDays.first;
+      final meals = _mealsForDay(day);
+      final p = meals.fold<double>(0, (sum, m) => sum + m.proteins);
+      final c = meals.fold<double>(0, (sum, m) => sum + m.carbs);
+      final f = meals.fold<double>(0, (sum, m) => sum + m.fats);
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ProposalHeader(icon: LucideIcons.utensils, title: _formatDayName(day, langCode), subtitle: '${meals.length} $mealsWord'),
+          for (final (i, meal) in meals.indexed)
+            PopIn(
+              key: ValueKey('pm-${meal.plannedDate.toIso8601String()}-${meal.mealType.name}-${meal.dishName}'),
+              delay: Duration(milliseconds: 80 + i * 50),
+              dy: 10,
+              duration: const Duration(milliseconds: 420),
+              child: _buildMealPreviewItem(meal, langCode, typeLabel: _mealTypeLabel(meal, langCode), letters: letters),
+            ),
+          ProposalDayTotals(
+            calories: ((p * 4) + (c * 4) + (f * 9)).round(),
+            proteins: p.toInt(),
+            carbs: c.toInt(),
+            fats: f.toInt(),
+            totalLabel: totalWord,
+            proteinLabel: 'proteins'.tr(langCode),
+            carbsLabel: 'carbs'.tr(langCode),
+            fatLabel: 'fats'.tr(langCode),
+          ),
+        ],
+      );
+    }
+
+    final totalKcal = _pendingMeals!.fold<int>(0, (sum, m) => sum + _mealKcal(m));
+    final avgKcal = (totalKcal / _mealsDays.length).round();
+    final shownDays = _mealsDays.take(3).toList();
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        ProposalHeader(
-          icon: LucideIcons.utensils,
-          title: _formatDayName(day, langCode),
-          subtitle: '${_mealsForDay(day).length} $mealsWord',
-          paged: _mealsDays.length > 1,
-          canPrev: _currentMealsDayIndex > 0,
-          canNext: _currentMealsDayIndex < _mealsDays.length - 1,
-          onPrev: () => _mealsPageController?.previousPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut),
-          onNext: () => _mealsPageController?.nextPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut),
-        ),
-        SizedBox(
-          height: pageHeight,
-          child: PageView.builder(
-            controller: _mealsPageController,
-            onPageChanged: (index) => setState(() => _currentMealsDayIndex = index),
-            itemCount: _mealsDays.length,
-            itemBuilder: (context, dayIndex) {
-              final meals = _mealsForDay(_mealsDays[dayIndex]);
-              final p = meals.fold<double>(0, (sum, m) => sum + m.proteins);
-              final c = meals.fold<double>(0, (sum, m) => sum + m.carbs);
-              final f = meals.fold<double>(0, (sum, m) => sum + m.fats);
-              final kcal = ((p * 4) + (c * 4) + (f * 9)).round();
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  for (final (i, meal) in meals.indexed)
-                    PopIn(
-                      key: ValueKey('pm-${meal.plannedDate.toIso8601String()}-${meal.mealType.name}-${meal.dishName}'),
-                      delay: Duration(milliseconds: 80 + i * 50),
-                      dy: 10,
-                      duration: const Duration(milliseconds: 420),
-                      child: _buildMealPreviewItem(meal, langCode, typeLabel: typeNames[meal.mealType]?[langCode] ?? meal.mealType.value, letters: letters),
-                    ),
-                  ProposalDayTotals(
-                    calories: kcal,
-                    proteins: p.toInt(),
-                    carbs: c.toInt(),
-                    fats: f.toInt(),
-                    totalLabel: totalWord,
-                    proteinLabel: 'proteins'.tr(langCode),
-                    carbsLabel: 'carbs'.tr(langCode),
-                    fatLabel: 'fats'.tr(langCode),
-                  ),
-                ],
-              );
-            },
+        ProposalHeader(icon: LucideIcons.calendarDays, title: weekTitle, subtitle: '${_mealsDays.length} $daysWord · ${_pendingMeals!.length} $mealsWord · ~$avgKcal $perDay'),
+        for (final (i, day) in shownDays.indexed)
+          PopIn(
+            key: ValueKey('pd-${day.toIso8601String()}'),
+            delay: Duration(milliseconds: 80 + i * 50),
+            dy: 10,
+            duration: const Duration(milliseconds: 420),
+            child: ProposalWorkoutRow(
+              dayShort: _formatDayNameShort(day, langCode),
+              title: _mealsForDay(day).map((m) => m.dishName).join(' · '),
+              subtitle: '${_mealsForDay(day).length} $mealsWord · ${_mealsForDay(day).fold<int>(0, (sum, m) => sum + _mealKcal(m))} kcal',
+              onTap: () => _showMealsDetailSheet(langCode, initialDay: i),
+              last: i == shownDays.length - 1 && _mealsDays.length <= 3,
+            ),
           ),
-        ),
-        if (_mealsDays.length > 1) ProposalPagerDots(count: _mealsDays.length, index: _currentMealsDayIndex),
+        if (_mealsDays.length > 3)
+          InkWell(
+            onTap: () => _showMealsDetailSheet(langCode, initialDay: 3),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
+              child: Row(
+                children: [
+                  const SizedBox(width: 52),
+                  Text(moreDays.replaceAll('{n}', '${_mealsDays.length}'), style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF0B132B))),
+                  const SizedBox(width: 4),
+                  const Icon(LucideIcons.chevronRight, size: 14, color: Color(0xFF0B132B)),
+                ],
+              ),
+            ),
+          )
+        else
+          const SizedBox(height: 6),
       ],
+    );
+  }
+
+  /// Bottom sheet: one page per day, meals and totals, validation of the shown
+  /// day or of every day. Follows the screen state through [_proposalVersion].
+  void _showMealsDetailSheet(String langCode, {int initialDay = 0}) {
+    if (_pendingMeals == null || _mealsDays.isEmpty) return;
+    final start = initialDay.clamp(0, _mealsDays.length - 1);
+    setState(() => _currentMealsDayIndex = start);
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => _MealsProposalSheet(
+        version: _proposalVersion,
+        langCode: langCode,
+        initialDay: start,
+        days: () => _mealsDays,
+        currentIndex: () => _currentMealsDayIndex,
+        mealsFor: _mealsForDay,
+        dayName: (d) => _formatDayName(d, langCode),
+        dayShort: (d) => _formatDayNameShort(d, langCode),
+        typeLabel: (m) => _mealTypeLabel(m, langCode),
+        letters: _macroLetters(langCode),
+        isConfirming: () => _isConfirming,
+        onDayChanged: (i) => setState(() => _currentMealsDayIndex = i),
+        onConfirmDay: _confirmMeals,
+        onConfirmAll: _confirmAllMeals,
+        onCancel: _cancelPreview,
+        onMealTap: (m) => _showMealDetailPage(m, langCode),
+      ),
     );
   }
 
@@ -1783,23 +1848,26 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
   }
 
   Widget _buildMealsPreviewButtons(String langCode) {
-    String confirmText;
-    if (_mealsDays.length <= 1) {
-      confirmText = 'planner_validate'.tr(langCode);
-    } else {
-      final currentDayName = _formatDayNameShort(_mealsDays[_currentMealsDayIndex], langCode);
-      final validateText = 'planner_validate'.tr(langCode);
-      confirmText = langCode == 'de' ? '$currentDayName $validateText'.toLowerCase() : '$validateText $currentDayName';
-    }
     final several = _mealsDays.length > 1;
+    if (!several) {
+      return ProposalActions(
+        cancelLabel: 'planner_cancel'.tr(langCode),
+        confirmLabel: 'planner_validate'.tr(langCode),
+        onCancel: _cancelPreview,
+        onConfirm: _confirmMeals,
+        busy: _isConfirming,
+      );
+    }
+    final detail = {'fr': 'Voir le détail', 'en': 'See details', 'de': 'Details ansehen'}[langCode] ?? 'See details';
+    final cancelProposal = {'fr': 'Annuler la proposition', 'en': 'Dismiss the proposal', 'de': 'Vorschlag verwerfen'}[langCode] ?? 'Dismiss the proposal';
     return ProposalActions(
-      cancelLabel: 'planner_cancel'.tr(langCode),
-      confirmLabel: confirmText,
-      onCancel: _cancelPreview,
-      onConfirm: _confirmMeals,
+      cancelLabel: detail,
+      confirmLabel: '${'planner_confirm_all_days'.tr(langCode)} · ${_mealsDays.length} ${'planner_days_count'.tr(langCode)}',
+      onCancel: () => _showMealsDetailSheet(langCode),
+      onConfirm: _confirmAllMeals,
       busy: _isConfirming,
-      secondaryLabel: several ? '${'planner_confirm_all_days'.tr(langCode)} · ${_mealsDays.length} ${'planner_days_count'.tr(langCode)}' : null,
-      onSecondary: several ? _confirmAllMeals : null,
+      linkLabel: cancelProposal,
+      onLink: _cancelPreview,
     );
   }
 
@@ -1849,35 +1917,56 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
     if (_pendingSessions == null || _pendingSessions!.isEmpty) {
       return const SizedBox.shrink();
     }
-    final current = _pendingSessions![_currentSessionIndex];
-    final dayLabel = _formatDayName(DateTime(current.plannedDate.year, current.plannedDate.month, current.plannedDate.day), langCode);
     final n = _pendingSessions!.length;
-    final sessionWord = {'fr': 'Séance', 'en': 'Session', 'de': 'Einheit'}[langCode] ?? 'Session';
+    final title = {'fr': 'Séances proposées', 'en': 'Proposed sessions', 'de': 'Vorgeschlagene Einheiten'}[langCode] ?? 'Proposed sessions';
+    final tapHint = {'fr': 'Touche une séance pour voir le détail', 'en': 'Tap a session to see the detail', 'de': 'Tippe auf eine Einheit für Details'}[langCode] ?? 'Tap a session to see the detail';
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        ProposalHeader(
-          icon: current.isWorkout ? LucideIcons.dumbbell : LucideIcons.activity,
-          title: dayLabel,
-          subtitle: n > 1 ? '$sessionWord ${_currentSessionIndex + 1}/$n · ${current.displayTitle}' : current.displayTitle,
-          paged: n > 1,
-          canPrev: _currentSessionIndex > 0,
-          canNext: _currentSessionIndex < n - 1,
-          onPrev: () => _sessionsPageController?.previousPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut),
-          onNext: () => _sessionsPageController?.nextPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut),
-        ),
-        SizedBox(
-          height: 280,
-          child: PageView.builder(
-            controller: _sessionsPageController,
-            itemCount: n,
-            onPageChanged: (index) => setState(() => _currentSessionIndex = index),
-            itemBuilder: (context, index) => _buildSessionCard(_pendingSessions![index], langCode),
+        ProposalHeader(icon: LucideIcons.dumbbell, title: title, subtitle: n > 1 ? '$n · $tapHint' : tapHint),
+        for (final (i, session) in _pendingSessions!.indexed)
+          PopIn(
+            key: ValueKey('ps-${session.plannedDate.toIso8601String()}-${session.displayTitle}'),
+            delay: Duration(milliseconds: 80 + i * 50),
+            dy: 10,
+            duration: const Duration(milliseconds: 420),
+            child: ProposalWorkoutRow(
+              dayShort: _formatDayNameShort(session.plannedDate, langCode),
+              title: session.displayTitle,
+              subtitle: session.displaySubtitle,
+              selected: n > 1 && i == _currentSessionIndex,
+              last: i == n - 1,
+              onTap: () {
+                setState(() => _currentSessionIndex = i);
+                _showSessionDetailSheet(langCode);
+              },
+            ),
           ),
-        ),
-        if (n > 1) ProposalPagerDots(count: n, index: _currentSessionIndex),
+        const SizedBox(height: 6),
       ],
+    );
+  }
+
+  /// Bottom sheet with the full recap of the current session and its validation.
+  void _showSessionDetailSheet(String langCode) {
+    if (_pendingSessions == null || _pendingSessions!.isEmpty) return;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => _SessionProposalSheet(
+        version: _proposalVersion,
+        langCode: langCode,
+        sessions: () => _pendingSessions,
+        currentIndex: () => _currentSessionIndex,
+        dayName: (d) => _formatDayName(DateTime(d.year, d.month, d.day), langCode),
+        cardBuilder: (session) => _buildSessionCard(session, langCode),
+        isConfirming: () => _isConfirming,
+        onConfirm: _confirmCurrentSession,
+        onCancel: _cancelSessionsPreview,
+        onIndexChanged: (i) => setState(() => _currentSessionIndex = i),
+      ),
     );
   }
 
@@ -1914,10 +2003,13 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
   }
 
   Widget _buildSessionsPreviewButtons(String langCode) {
-    final thisOne = {'fr': 'cette séance', 'en': 'this session', 'de': 'diese Einheit'}[langCode] ?? 'this session';
+    final n = _pendingSessions?.length ?? 0;
+    final current = n > 0 ? _pendingSessions![_currentSessionIndex.clamp(0, n - 1)] : null;
+    final validate = 'planner_validate'.tr(langCode);
+    final label = current == null || n == 1 ? validate : '$validate ${_formatDayNameShort(current.plannedDate, langCode)}';
     return ProposalActions(
       cancelLabel: 'planner_cancel'.tr(langCode),
-      confirmLabel: '${'planner_validate'.tr(langCode)} $thisOne',
+      confirmLabel: label,
       onCancel: _cancelSessionsPreview,
       onConfirm: _confirmCurrentSession,
       busy: _isConfirming,
@@ -2575,6 +2667,273 @@ class _MealDetailPage extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Proposal detail sheets (meals by day, session recap). They read the screen
+// state through getters and rebuild when the screen calls setState.
+// ═══════════════════════════════════════════════════════════════════════════
+
+Widget _sheetFrame(BuildContext context, {required Widget child}) {
+  return Container(
+    height: MediaQuery.of(context).size.height * 0.88,
+    decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+    clipBehavior: Clip.antiAlias,
+    child: SafeArea(
+      top: false,
+      child: Column(
+        children: [
+          Container(margin: const EdgeInsets.only(top: 10, bottom: 2), width: 40, height: 4, decoration: BoxDecoration(color: const Color(0xFFE2E8F0), borderRadius: BorderRadius.circular(2))),
+          Expanded(child: child),
+        ],
+      ),
+    ),
+  );
+}
+
+class _MealsProposalSheet extends StatefulWidget {
+  const _MealsProposalSheet({
+    required this.version,
+    required this.langCode,
+    required this.initialDay,
+    required this.days,
+    required this.currentIndex,
+    required this.mealsFor,
+    required this.dayName,
+    required this.dayShort,
+    required this.typeLabel,
+    required this.letters,
+    required this.isConfirming,
+    required this.onDayChanged,
+    required this.onConfirmDay,
+    required this.onConfirmAll,
+    required this.onCancel,
+    required this.onMealTap,
+  });
+
+  final ValueListenable<int> version;
+  final String langCode;
+  final int initialDay;
+  final List<DateTime> Function() days;
+  final int Function() currentIndex;
+  final List<PendingMeal> Function(DateTime) mealsFor;
+  final String Function(DateTime) dayName;
+  final String Function(DateTime) dayShort;
+  final String Function(PendingMeal) typeLabel;
+  final List<String> letters;
+  final bool Function() isConfirming;
+  final ValueChanged<int> onDayChanged;
+  final VoidCallback onConfirmDay;
+  final VoidCallback onConfirmAll;
+  final VoidCallback onCancel;
+  final ValueChanged<PendingMeal> onMealTap;
+
+  @override
+  State<_MealsProposalSheet> createState() => _MealsProposalSheetState();
+}
+
+class _MealsProposalSheetState extends State<_MealsProposalSheet> {
+  late final PageController _pager = PageController(initialPage: widget.initialDay);
+  bool _popping = false;
+
+  @override
+  void dispose() {
+    _pager.dispose();
+    super.dispose();
+  }
+
+  void _pop() {
+    if (_popping) return;
+    _popping = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) Navigator.of(context).maybePop();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: widget.version,
+      builder: (context, _) {
+        final days = widget.days();
+        if (days.isEmpty) {
+          _pop();
+          return const SizedBox.shrink();
+        }
+        final index = widget.currentIndex().clamp(0, days.length - 1);
+        // the screen is the source of truth (it resets the index after a validation)
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _pager.hasClients && (_pager.page ?? index).round() != index) _pager.jumpToPage(index);
+        });
+        final day = days[index];
+        final meals = widget.mealsFor(day);
+        final lang = widget.langCode;
+        final mealsWord = {'fr': 'repas', 'en': 'meals', 'de': 'Mahlzeiten'}[lang] ?? 'meals';
+        final totalWord = {'fr': 'Total du jour', 'en': 'Day total', 'de': 'Tagessumme'}[lang] ?? 'Day total';
+        final several = days.length > 1;
+        final validate = 'planner_validate'.tr(lang);
+        final confirmLabel = several ? (lang == 'de' ? '${widget.dayShort(day)} $validate'.toLowerCase() : '$validate ${widget.dayShort(day)}') : validate;
+
+        return _sheetFrame(
+          context,
+          child: Column(
+            children: [
+              ProposalHeader(
+                icon: LucideIcons.utensils,
+                title: widget.dayName(day),
+                subtitle: several ? '${index + 1}/${days.length} · ${meals.length} $mealsWord' : '${meals.length} $mealsWord',
+                paged: several,
+                canPrev: index > 0,
+                canNext: index < days.length - 1,
+                onPrev: () => _pager.previousPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut),
+                onNext: () => _pager.nextPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut),
+              ),
+              Expanded(
+                child: PageView.builder(
+                  controller: _pager,
+                  itemCount: days.length,
+                  onPageChanged: widget.onDayChanged,
+                  itemBuilder: (context, i) {
+                    final dayMeals = widget.mealsFor(days[i]);
+                    final p = dayMeals.fold<double>(0, (sum, m) => sum + m.proteins);
+                    final c = dayMeals.fold<double>(0, (sum, m) => sum + m.carbs);
+                    final f = dayMeals.fold<double>(0, (sum, m) => sum + m.fats);
+                    return SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          for (final meal in dayMeals)
+                            ProposalMealRow(
+                              icon: meal.mealType.icon,
+                              typeLabel: widget.typeLabel(meal),
+                              dishName: meal.dishName,
+                              calories: ((meal.proteins * 4) + (meal.carbs * 4) + (meal.fats * 9)).round(),
+                              proteins: meal.proteins.toInt(),
+                              carbs: meal.carbs.toInt(),
+                              fats: meal.fats.toInt(),
+                              macroLetters: widget.letters,
+                              onTap: () => widget.onMealTap(meal),
+                            ),
+                          ProposalDayTotals(
+                            calories: ((p * 4) + (c * 4) + (f * 9)).round(),
+                            proteins: p.toInt(),
+                            carbs: c.toInt(),
+                            fats: f.toInt(),
+                            totalLabel: totalWord,
+                            proteinLabel: 'proteins'.tr(lang),
+                            carbsLabel: 'carbs'.tr(lang),
+                            fatLabel: 'fats'.tr(lang),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+              if (several) ProposalPagerDots(count: days.length, index: index),
+              ProposalActions(
+                cancelLabel: 'planner_cancel'.tr(lang),
+                confirmLabel: confirmLabel,
+                onCancel: widget.onCancel,
+                onConfirm: widget.onConfirmDay,
+                busy: widget.isConfirming(),
+                secondaryLabel: several ? '${'planner_confirm_all_days'.tr(lang)} · ${days.length} ${'planner_days_count'.tr(lang)}' : null,
+                onSecondary: several ? widget.onConfirmAll : null,
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _SessionProposalSheet extends StatefulWidget {
+  const _SessionProposalSheet({
+    required this.version,
+    required this.langCode,
+    required this.sessions,
+    required this.currentIndex,
+    required this.dayName,
+    required this.cardBuilder,
+    required this.isConfirming,
+    required this.onConfirm,
+    required this.onCancel,
+    required this.onIndexChanged,
+  });
+
+  final ValueListenable<int> version;
+  final String langCode;
+  final List<PendingSession>? Function() sessions;
+  final int Function() currentIndex;
+  final String Function(DateTime) dayName;
+  final Widget Function(PendingSession) cardBuilder;
+  final bool Function() isConfirming;
+  final VoidCallback onConfirm;
+  final VoidCallback onCancel;
+  final ValueChanged<int> onIndexChanged;
+
+  @override
+  State<_SessionProposalSheet> createState() => _SessionProposalSheetState();
+}
+
+class _SessionProposalSheetState extends State<_SessionProposalSheet> {
+  bool _popping = false;
+
+  void _pop() {
+    if (_popping) return;
+    _popping = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) Navigator.of(context).maybePop();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: widget.version,
+      builder: (context, _) {
+        final sessions = widget.sessions();
+        if (sessions == null || sessions.isEmpty) {
+          _pop();
+          return const SizedBox.shrink();
+        }
+        final n = sessions.length;
+        final index = widget.currentIndex().clamp(0, n - 1);
+        final session = sessions[index];
+        final lang = widget.langCode;
+        final sessionWord = {'fr': 'Séance', 'en': 'Session', 'de': 'Einheit'}[lang] ?? 'Session';
+        final thisOne = {'fr': 'cette séance', 'en': 'this session', 'de': 'diese Einheit'}[lang] ?? 'this session';
+        return _sheetFrame(
+          context,
+          child: Column(
+            children: [
+              ProposalHeader(
+                icon: session.isWorkout ? LucideIcons.dumbbell : LucideIcons.activity,
+                title: widget.dayName(session.plannedDate),
+                subtitle: n > 1 ? '$sessionWord ${index + 1}/$n · ${session.displayTitle}' : session.displayTitle,
+                paged: n > 1,
+                canPrev: index > 0,
+                canNext: index < n - 1,
+                onPrev: () => widget.onIndexChanged(index - 1),
+                onNext: () => widget.onIndexChanged(index + 1),
+              ),
+              Expanded(child: SingleChildScrollView(padding: const EdgeInsets.only(bottom: 8), child: widget.cardBuilder(session))),
+              if (n > 1) ProposalPagerDots(count: n, index: index),
+              ProposalActions(
+                cancelLabel: 'planner_cancel'.tr(lang),
+                confirmLabel: '${'planner_validate'.tr(lang)} $thisOne',
+                onCancel: widget.onCancel,
+                onConfirm: widget.onConfirm,
+                busy: widget.isConfirming(),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

@@ -312,18 +312,20 @@ class ProposalDayTotals extends StatelessWidget {
 
 /// A workout line: weekday tile, type, duration and exercise count.
 class ProposalWorkoutRow extends StatelessWidget {
-  const ProposalWorkoutRow({super.key, required this.dayShort, required this.title, required this.subtitle, this.onTap, this.last = false});
+  const ProposalWorkoutRow({super.key, required this.dayShort, required this.title, required this.subtitle, this.onTap, this.last = false, this.selected = false});
   final String dayShort;
   final String title;
   final String subtitle;
   final VoidCallback? onTap;
   final bool last;
+  final bool selected;
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
       child: Container(
+        color: selected ? const Color(0xFFF8FAFC) : null,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(border: last ? null : const Border(bottom: BorderSide(color: Color(0xFFF1F5F9)))),
         child: Row(
@@ -331,9 +333,9 @@ class ProposalWorkoutRow extends StatelessWidget {
             Container(
               width: 40,
               height: 40,
-              decoration: BoxDecoration(color: _tile, borderRadius: BorderRadius.circular(12)),
+              decoration: BoxDecoration(color: selected ? _ink : _tile, borderRadius: BorderRadius.circular(12)),
               alignment: Alignment.center,
-              child: Text(dayShort, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: _ink, height: 1)),
+              child: Text(dayShort, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: selected ? Colors.white : _ink, height: 1)),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -366,6 +368,8 @@ class ProposalActions extends StatelessWidget {
     this.busy = false,
     this.secondaryLabel,
     this.onSecondary,
+    this.linkLabel,
+    this.onLink,
   });
 
   final String cancelLabel;
@@ -375,6 +379,10 @@ class ProposalActions extends StatelessWidget {
   final bool busy;
   final String? secondaryLabel;
   final VoidCallback? onSecondary;
+
+  /// Discreet centered text action (e.g. "Annuler la proposition").
+  final String? linkLabel;
+  final VoidCallback? onLink;
 
   @override
   Widget build(BuildContext context) {
@@ -425,6 +433,14 @@ class ProposalActions extends StatelessWidget {
                 label: Text(secondaryLabel!),
                 style: TextButton.styleFrom(foregroundColor: _ink, backgroundColor: _tile, shape: shape, textStyle: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
               ),
+            ),
+          ],
+          if (linkLabel != null) ...[
+            const SizedBox(height: 4),
+            TextButton(
+              onPressed: busy ? null : onLink,
+              style: TextButton.styleFrom(foregroundColor: _mute, textStyle: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500)),
+              child: Text(linkLabel!),
             ),
           ],
         ],
