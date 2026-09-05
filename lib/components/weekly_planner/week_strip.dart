@@ -370,7 +370,9 @@ class _Tile extends StatelessWidget {
         child: Stack(
           clipBehavior: Clip.none,
           children: [
-            Center(child: Icon(iconForSlot(slot), size: 17, color: done ? Colors.white : _ink)),
+            // the icon keeps its original size: without a label the tile is
+            // meant to read as a quiet mark, not as a button
+            Center(child: Icon(iconForSlot(slot), size: 14, color: done ? Colors.white : _ink)),
             if (done)
               Positioned(
                 top: -4,
