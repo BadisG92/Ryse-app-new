@@ -282,6 +282,36 @@ class PlannerAIService {
   static bool _demoMode = false;
   static void setDemoMode(bool value) => _demoMode = value;
 
+  /// First of the seven days the screen is showing. The app passes the Monday
+  /// of the week; the onboarding demo passes today, so its seven days roll.
+  /// Everything the planner creates lands inside this window.
+  static DateTime? _windowStart;
+  static void setPlanningWindow(DateTime? start) => _windowStart = start == null ? null : DateTime(start.year, start.month, start.day);
+  static DateTime get planningWindowStart => _windowStart ?? getCurrentWeekStart();
+
+  /// The date the model meant when it said "saturday": the one day of the
+  /// window that falls on that weekday. Adding an index to a Monday only works
+  /// while the window starts on a Monday.
+  static DateTime? dateForDayName(String day) {
+    const names = {
+      'monday': 1, 'lundi': 1, 'montag': 1,
+      'tuesday': 2, 'mardi': 2, 'dienstag': 2,
+      'wednesday': 3, 'mercredi': 3, 'mittwoch': 3,
+      'thursday': 4, 'jeudi': 4, 'donnerstag': 4,
+      'friday': 5, 'vendredi': 5, 'freitag': 5,
+      'saturday': 6, 'samedi': 6, 'samstag': 6,
+      'sunday': 7, 'dimanche': 7, 'sonntag': 7,
+    };
+    final weekday = names[day.toLowerCase().trim()];
+    if (weekday == null) return null;
+    final start = planningWindowStart;
+    for (var i = 0; i < 7; i++) {
+      final date = start.add(Duration(days: i));
+      if (date.weekday == weekday) return date;
+    }
+    return null;
+  }
+
   /// Vérifier si l'utilisateur peut utiliser l'IA (premium ou essais restants)
   static Future<bool> canUseAI() async {
     if (_demoMode) return true;
@@ -861,7 +891,7 @@ class PlannerAIService {
 
   /// Parser un jour unique
   static DateTime? _parseSingleDay(String dayStr) {
-    final weekStart = getCurrentWeekStart();
+    final weekStart = planningWindowStart;
     final dayMap = {
       'monday': 0, 'lundi': 0, 'montag': 0,
       'tuesday': 1, 'mardi': 1, 'dienstag': 1,
@@ -874,7 +904,7 @@ class PlannerAIService {
 
     final offset = dayMap[dayStr.toLowerCase()];
     if (offset == null) return null;
-    return weekStart.add(Duration(days: offset));
+    return dateForDayName(dayStr) ?? weekStart.add(Duration(days: offset));
   }
 
   /// Parser un type de repas
@@ -1016,7 +1046,7 @@ class PlannerAIService {
       // Nouveau format: tableau de repas générés par l'IA
       if (meals != null && meals.isNotEmpty) {
         final pendingMeals = <PendingMeal>[];
-        final weekStart = getCurrentWeekStart();
+        final weekStart = planningWindowStart;
 
         for (final mealData in meals) {
           final dayStr = mealData['day'] as String? ?? 'monday';
@@ -1033,8 +1063,7 @@ class PlannerAIService {
           final calories = ((proteins * 4) + (carbs * 4) + (fats * 9)).round();
 
           // Convertir le jour en DateTime
-          final dayIndex = _dayStringToIndex(dayStr);
-          final plannedDate = weekStart.add(Duration(days: dayIndex));
+          final plannedDate = dateForDayName(dayStr) ?? weekStart.add(Duration(days: _dayStringToIndex(dayStr)));
 
           // Vérifier que la date n'est pas passée
           final now = DateTime.now();
@@ -1687,7 +1716,7 @@ class PlannerAIService {
       final langCode = LocalizationService.instance.currentLanguageCode;
 
       // Récupérer les workouts déjà planifiés cette semaine
-      final weekStart = getCurrentWeekStart();
+      final weekStart = planningWindowStart;
       final existingData = await WeeklyPlannerService.getWeekData();
 
       // Jours avec workout
@@ -1717,8 +1746,9 @@ class PlannerAIService {
 
       for (int i = 0; i < 7; i++) {
         final day = weekStart.add(Duration(days: i));
+        // named after the weekday it really is: the window does not always start on a Monday
         if (!day.isBefore(today) && !daysWithWorkout.contains(day.weekday)) {
-          availableDays.add(dayNames[i]);
+          availableDays.add(dayNames[day.weekday - 1]);
         }
       }
 
@@ -2333,7 +2363,7 @@ User: "Un petit-déjeuner protéiné"
       }
 
       // Jours disponibles
-      final weekStart = getCurrentWeekStart();
+      final weekStart = planningWindowStart;
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
       final availableDays = <String>[];
@@ -4797,7 +4827,7 @@ USER REQUEST: "$userMessage"
         if (existingWorkout == null && currentWorkoutName != null && currentWorkoutName.isNotEmpty) {
           debugPrint('🔍 modify_workout: Searching by name "$currentWorkoutName"');
           // Chercher dans toute la semaine
-          final weekStart = getCurrentWeekStart();
+          final weekStart = planningWindowStart;
           for (int i = 0; i < 7; i++) {
             final day = weekStart.add(Duration(days: i));
             final workout = await WeeklyPlannerService.findPlannedWorkoutByNameForDate(
@@ -4839,7 +4869,7 @@ USER REQUEST: "$userMessage"
 
           // Chercher séance passée par nom si spécifié
           if (currentWorkoutName != null && currentWorkoutName.isNotEmpty) {
-            final weekStart = getCurrentWeekStart();
+            final weekStart = planningWindowStart;
             for (int i = 0; i < 7; i++) {
               final day = weekStart.add(Duration(days: i));
               final pastWorkout = await WeeklyPlannerService.findPlannedWorkoutByNameForDate(
@@ -6202,7 +6232,7 @@ USER REQUEST: "$userMessage"
   }
 
   static List<DateTime> _parseDays(List<String> dayStrings) {
-    final weekStart = getCurrentWeekStart();
+    final weekStart = planningWindowStart;
     final dayMap = {
       'monday': 0, 'lundi': 0, 'montag': 0,
       'tuesday': 1, 'mardi': 1, 'dienstag': 1,

@@ -18,13 +18,12 @@ class PlannerDemoStep extends StatefulWidget {
 class _PlannerDemoStepState extends State<PlannerDemoStep> {
   bool _sport = false;
 
-  /// The week on screen is the one today belongs to, the same one the planner
-  /// service plans into. Showing a different week is what made a validated
-  /// meal land nowhere.
+  /// Seven days from today, not a calendar week: a demo opened on a Saturday
+  /// would otherwise have two days left to fill. The planner service plans
+  /// into the same window, so what is validated lands where it is shown.
   WeeklyPlannerData _emptyWeek() {
     final now = DateTime.now();
-    final monday = DateTime(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1));
-    return WeeklyPlannerData.fromLists(weekStart: monday, activities: [], workouts: []);
+    return WeeklyPlannerData.fromLists(weekStart: DateTime(now.year, now.month, now.day), activities: [], workouts: []);
   }
 
   @override

@@ -105,6 +105,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
   void initState() {
     super.initState();
     _weekData = widget.weekData;
+    PlannerAIService.setPlanningWindow(_weekData.weekStart);
     if (widget.demoMode) {
       // In demo mode, bypass premium checks
       _isPremium = true;
@@ -221,6 +222,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
 
   @override
   void dispose() {
+    PlannerAIService.setPlanningWindow(null);
     _weekFoldTimer?.cancel();
     _proposalVersion.dispose();
     if (widget.demoMode) {
@@ -1031,10 +1033,13 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
   }
 
   Widget _buildCalendarSection(String langCode) {
+    // the window does not always start on a Monday, so each letter comes from
+    // the weekday its own date falls on
     final letters = _getDayNames(langCode);
+    final days = List<DateTime>.generate(7, (i) => _weekData.weekStart.add(Duration(days: i)));
     return WeekStrip(
-      days: List<DateTime>.generate(7, (i) => _weekData.weekStart.add(Duration(days: i))),
-      dayLetters: letters,
+      days: days,
+      dayLetters: [for (final d in days) letters[d.weekday - 1]],
       slots: _weekSlots(),
       expanded: _weekExpanded,
       onToggle: _toggleWeek,
