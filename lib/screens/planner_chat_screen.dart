@@ -1,7 +1,10 @@
 import 'package:flutter/foundation.dart';
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../components/ui/motion.dart';
 import '../components/weekly_planner/proposal_card.dart';
+import '../components/weekly_planner/week_strip.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
@@ -12,7 +15,6 @@ import '../services/translations.dart';
 import '../services/planner_ai_service.dart';
 import '../services/paywall_service.dart';
 import '../services/unified_subscription_service.dart';
-import '../components/weekly_planner/day_column_widget.dart';
 import '../components/weekly_planner/workout_recap_bottom_sheet.dart';
 import '../components/weekly_planner/cardio_recap_bottom_sheet.dart';
 
@@ -45,6 +47,14 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
   final FocusNode _focusNode = FocusNode();
   final ScrollController _chatScrollController = ScrollController();
   final ScrollController _calendarScrollController = ScrollController();
+
+  // The week above the chat: folded by default, opened while items land on it.
+  bool _weekExpanded = false;
+  bool _weekAutoOpened = false;
+  Timer? _weekFoldTimer;
+  final Map<String, GlobalKey> _slotKeys = {};
+  final GlobalKey _proposalCardKey = GlobalKey();
+  final Set<String> _incomingSlots = {};
   final List<_ChatMessage> _messages = [];
   bool _isProcessing = false;
 
@@ -189,6 +199,14 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
     }
   }
 
+  GlobalKey _slotKey(int day, WeekSlot slot) => _slotKeys.putIfAbsent('$day-${slot.name}', () => GlobalKey());
+
+  void _toggleWeek() {
+    _weekFoldTimer?.cancel();
+    _weekAutoOpened = false;
+    setState(() => _weekExpanded = !_weekExpanded);
+  }
+
   @override
   void setState(VoidCallback fn) {
     super.setState(fn);
@@ -197,6 +215,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
 
   @override
   void dispose() {
+    _weekFoldTimer?.cancel();
     _proposalVersion.dispose();
     if (widget.demoMode) {
       PlannerAIService.setDemoMode(false);
@@ -476,6 +495,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
         return;
       }
 
+      unawaited(_landInWeek([for (final w in _pendingWorkouts!) (date: w.plannedDate, slot: WeekSlot.sport)]));
       final result = await PlannerAIService.confirmWorkouts(_pendingWorkouts!);
 
       _addBotMessage(result.message);
@@ -512,6 +532,11 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
         final mealDate = DateTime(meal.plannedDate.year, meal.plannedDate.month, meal.plannedDate.day);
         return mealDate.isAtSameMomentAs(currentDay);
       }).toList();
+
+      unawaited(_landInWeek([
+        for (final m in mealsForCurrentDay)
+          if (_slotOf(m.mealType) != null) (date: m.plannedDate, slot: _slotOf(m.mealType)!),
+      ]));
 
       if (widget.demoMode) {
         // Demo mode: store in memory, don't save to DB
@@ -948,59 +973,155 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
     }
   }
 
+  WeekSlot? _slotOf(PlannedActivityType type) {
+    switch (type) {
+      case PlannedActivityType.breakfast:
+        return WeekSlot.breakfast;
+      case PlannedActivityType.lunch:
+        return WeekSlot.lunch;
+      case PlannedActivityType.snack:
+        return WeekSlot.snack;
+      case PlannedActivityType.dinner:
+        return WeekSlot.dinner;
+      case PlannedActivityType.cardio:
+        return WeekSlot.sport;
+    }
+  }
+
+  static String _shortLabel(String? name) {
+    if (name == null || name.trim().isEmpty) return '';
+    final first = name.trim().split(RegExp(r'[ ,]')).first;
+    return first.length > 9 ? first.substring(0, 9) : first;
+  }
+
+  /// What each day of the shown week holds, in the strip's own vocabulary.
+  List<DaySlots> _weekSlots() {
+    return List<DaySlots>.generate(7, (i) {
+      final date = _weekData.weekStart.add(Duration(days: i));
+      final plan = _weekData.getDayPlan(date);
+      final states = <WeekSlot, SlotState>{};
+      final labels = <WeekSlot, String>{};
+      void put(WeekSlot slot, bool done, String label) {
+        final current = states[slot];
+        if (current == SlotState.done) return;
+        states[slot] = done ? SlotState.done : SlotState.planned;
+        if (label.isNotEmpty) labels[slot] = label;
+      }
+
+      if (plan != null) {
+        for (final meal in plan.meals) {
+          final slot = _slotOf(meal.activityType);
+          if (slot != null) put(slot, meal.status == PlannedStatus.completed, _shortLabel(meal.mealData?.dishName));
+        }
+        for (final cardio in plan.cardios) {
+          put(WeekSlot.sport, cardio.status == PlannedStatus.completed, _shortLabel(cardio.cardioData?.activityName));
+        }
+        for (final workout in plan.workouts) {
+          put(WeekSlot.sport, workout.status == PlannedStatus.completed, _shortLabel(workout.workoutName));
+        }
+      }
+      for (final slot in WeekSlot.values) {
+        if (states[slot] == null && _incomingSlots.contains('$i-${slot.name}')) states[slot] = SlotState.incoming;
+      }
+      return DaySlots(states: states, labels: labels);
+    });
+  }
+
   Widget _buildCalendarSection(String langCode) {
-    final dayNames = _getDayNames(langCode);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        boxShadow: [BoxShadow(color: Color(0x12000000), blurRadius: 14, offset: Offset(0, 6))],
-      ),
-      child: SizedBox(
-        height: widget.demoMode ? 176 : 144,
-        child: ListView.builder(
-          controller: _calendarScrollController,
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          itemCount: 7,
-          itemBuilder: (context, index) {
-            final date = _weekData.weekStart.add(Duration(days: index));
-            final dayPlan = _weekData.getDayPlan(date);
-
-            // Calculer la largeur pour que 7 jours remplissent l'écran
-            final screenWidth = MediaQuery.of(context).size.width;
-            final dayWidth = (screenWidth - 24) / 7; // 24 = padding horizontal total
-
-            // Filtre selon le mode
-            final filter = widget.initialMode == 'meals'
-                ? ActivityFilter.meals
-                : ActivityFilter.workouts;
-
-            return SizedBox(
-              width: dayWidth,
-              child: DayColumnWidget(
-                date: date,
-                dayName: dayNames[index],
-                dayPlan: dayPlan,
-                onDataRefresh: _refreshWeekData,
-                onActivityTap: (activity) {
-                  if (activity.activityType == PlannedActivityType.cardio) {
-                    _showCardioRecap(activity);
-                  }
-                },
-                onWorkoutTap: (workout) => _showWorkoutRecap(workout),
-                isCompact: true,
-                filter: widget.demoMode ? ActivityFilter.all : filter,
-                emphasis: filter,
-                showEmptySlots: true,
-                animationIndex: index,
-              ),
-            );
-          },
-        ),
-      ),
+    final letters = _getDayNames(langCode);
+    return WeekStrip(
+      days: List<DateTime>.generate(7, (i) => _weekData.weekStart.add(Duration(days: i))),
+      dayLetters: letters,
+      slots: _weekSlots(),
+      expanded: _weekExpanded,
+      onToggle: _toggleWeek,
+      slotKey: _slotKey,
+      onSlotTap: _openSlot,
     );
+  }
+
+  void _openSlot(int day, WeekSlot slot) {
+    if (slot != WeekSlot.sport) return;
+    final plan = _weekData.getDayPlan(_weekData.weekStart.add(Duration(days: day)));
+    if (plan == null) return;
+    if (plan.workouts.isNotEmpty) {
+      _showWorkoutRecap(plan.workouts.first);
+    } else if (plan.cardios.isNotEmpty) {
+      _showCardioRecap(plan.cardios.first);
+    }
+  }
+
+  // ---------------------------------------------------------------- landing
+
+  int _dayIndexOf(DateTime date) {
+    final start = DateTime(_weekData.weekStart.year, _weekData.weekStart.month, _weekData.weekStart.day);
+    return DateTime(date.year, date.month, date.day).difference(start).inDays;
+  }
+
+  /// Opens the week, flies one mark per validated item to its day, then folds
+  /// it back. This is the moment that shows the app placing things in the week.
+  Future<void> _landInWeek(List<({DateTime date, WeekSlot slot})> items) async {
+    if (items.isEmpty || !mounted) return;
+    final from = _rectOf(_proposalCardKey); // resolved now: the card is about to go
+    final targets = <({int day, WeekSlot slot})>[];
+    for (final item in items) {
+      final day = _dayIndexOf(item.date);
+      if (day < 0 || day > 6) continue;
+      if (targets.any((t) => t.day == day && t.slot == item.slot)) continue;
+      targets.add((day: day, slot: item.slot));
+    }
+    if (targets.isEmpty) return;
+
+    _weekFoldTimer?.cancel();
+    if (!_weekExpanded) {
+      _weekAutoOpened = true;
+      setState(() => _weekExpanded = true);
+      await Future<void>.delayed(const Duration(milliseconds: 440));
+      if (!mounted) return;
+    }
+    setState(() {
+      for (final t in targets) {
+        _incomingSlots.add('${t.day}-${t.slot.name}');
+      }
+    });
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
+
+    final overlay = Overlay.of(context);
+    for (var i = 0; i < targets.length; i++) {
+      final t = targets[i];
+      Future<void>.delayed(Duration(milliseconds: i * 70), () {
+        if (!mounted) return;
+        _flyMark(overlay, from, _slotKeys['${t.day}-${t.slot.name}'], t.slot);
+      });
+    }
+    await Future<void>.delayed(Duration(milliseconds: 640 + targets.length * 70));
+    if (!mounted) return;
+    setState(() => _incomingSlots.clear());
+    if (_weekAutoOpened) {
+      _weekFoldTimer = Timer(const Duration(milliseconds: 1500), () {
+        if (mounted && _weekAutoOpened) setState(() => _weekExpanded = false);
+        _weekAutoOpened = false;
+      });
+    }
+  }
+
+  Rect? _rectOf(GlobalKey? key) {
+    final box = key?.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return null;
+    return box.localToGlobal(Offset.zero) & box.size;
+  }
+
+  void _flyMark(OverlayState overlay, Rect? from, GlobalKey? to, WeekSlot slot) {
+    final end = _rectOf(to);
+    if (end == null) return;
+    final source = from ?? Rect.fromCenter(center: Offset(end.center.dx, end.center.dy + 240), width: 34, height: 34);
+    final start = Rect.fromCenter(center: Offset(source.center.dx, source.top + 40), width: 34, height: 34);
+    final entry = OverlayEntry(
+      builder: (context) => _FlyingMark(start: start, end: end, slot: slot),
+    );
+    overlay.insert(entry);
+    Future<void>.delayed(const Duration(milliseconds: 700), entry.remove);
   }
 
   List<String> _getDayNames(String langCode) {
@@ -1025,6 +1146,16 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
   /// typing indicator, then the quick suggestions or the card to validate.
   Widget _buildChatSection(String langCode) {
     final keyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
+    if (keyboardVisible && _weekExpanded) {
+      // typing wins: the conversation keeps its lines
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _weekExpanded && MediaQuery.of(context).viewInsets.bottom > 0) {
+          _weekFoldTimer?.cancel();
+          _weekAutoOpened = false;
+          setState(() => _weekExpanded = false);
+        }
+      });
+    }
     final showSuggestions = _messages.length <= 1 && !keyboardVisible && !_hasPendingPreview && !_showPaywallButton && !_isProcessing;
     final itemCount = _messages.length + (_isProcessing ? 1 : 0) + (showSuggestions ? 1 : 0) + (_hasPendingPreview ? 1 : 0);
     if (itemCount != _lastChatItemCount) {
@@ -1089,6 +1220,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
             : KeyedSubtree(
                 key: ValueKey('preview-$key'),
                 child: Padding(
+                  key: _proposalCardKey,
                   padding: const EdgeInsets.only(left: 24),
                   child: ProposalCard(body: card, footer: buttons!),
                 ),
@@ -1877,6 +2009,10 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
     setState(() => _isConfirming = true);
 
     try {
+      unawaited(_landInWeek([
+        for (final m in _pendingMeals!)
+          if (_slotOf(m.mealType) != null) (date: m.plannedDate, slot: _slotOf(m.mealType)!),
+      ]));
       final result = await PlannerAIService.confirmMeals(_pendingMeals!);
 
       _addBotMessage(result.message);
@@ -2031,6 +2167,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
     final session = _pendingSessions![_currentSessionIndex];
 
     setState(() => _isConfirming = true);
+    unawaited(_landInWeek([(date: session.plannedDate, slot: WeekSlot.sport)]));
 
     try {
       if (widget.demoMode) {
@@ -2939,5 +3076,61 @@ String _mealTypeKey(PlannedActivityType t, {bool short = false}) {
       return 'snack';
     default:
       return t.value;
+  }
+}
+
+/// A mark travelling from the proposal card to its day in the week.
+class _FlyingMark extends StatefulWidget {
+  const _FlyingMark({required this.start, required this.end, required this.slot});
+  final Rect start;
+  final Rect end;
+  final WeekSlot slot;
+
+  @override
+  State<_FlyingMark> createState() => _FlyingMarkState();
+}
+
+class _FlyingMarkState extends State<_FlyingMark> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 620))..forward();
+  late final Animation<double> _t = CurvedAnimation(parent: _c, curve: Curves.easeInOutCubic);
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final sport = widget.slot == WeekSlot.sport;
+    return AnimatedBuilder(
+      animation: _t,
+      builder: (context, _) {
+        final v = _t.value;
+        final rect = Rect.lerp(widget.start, widget.end, v)!;
+        final size = rect.shortestSide.clamp(6.0, 44.0);
+        return Positioned(
+          left: rect.center.dx - size / 2,
+          top: rect.center.dy - size / 2,
+          width: size,
+          height: size,
+          child: IgnorePointer(
+            child: Opacity(
+              opacity: v > 0.9 ? (1 - v) * 10 : 1,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: sport ? BoxShape.circle : BoxShape.rectangle,
+                  borderRadius: sport ? null : BorderRadius.circular(size * 0.24),
+                  border: Border.all(color: const Color(0xFF0B132B), width: 1.6),
+                  boxShadow: [BoxShadow(color: const Color(0xFF0B132B).withValues(alpha: 0.18), blurRadius: 10, offset: const Offset(0, 4))],
+                ),
+                child: size > 16 ? Icon(iconForSlot(widget.slot), size: size * 0.5, color: const Color(0xFF0B132B)) : null,
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 }

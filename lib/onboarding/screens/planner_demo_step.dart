@@ -18,9 +18,12 @@ class PlannerDemoStep extends StatefulWidget {
 class _PlannerDemoStepState extends State<PlannerDemoStep> {
   bool _sport = false;
 
+  /// From Thursday on, the current week has too few days left to be worth
+  /// showing: the demo plans next week instead, so the grid always fills up.
   WeeklyPlannerData _emptyWeek() {
     final now = DateTime.now();
-    final monday = DateTime(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1));
+    var monday = DateTime(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1));
+    if (now.weekday >= DateTime.thursday) monday = monday.add(const Duration(days: 7));
     return WeeklyPlannerData.fromLists(weekStart: monday, activities: [], workouts: []);
   }
 
