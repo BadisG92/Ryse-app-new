@@ -396,18 +396,19 @@ class ProposalActions extends StatelessWidget {
           Row(
             children: [
               Expanded(
+                flex: 2,
                 child: SizedBox(
                   height: 48,
                   child: OutlinedButton(
                     onPressed: busy ? null : onCancel,
                     style: OutlinedButton.styleFrom(foregroundColor: _mute, backgroundColor: Colors.white, side: const BorderSide(color: _line), shape: shape, textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                    child: Text(cancelLabel),
+                    child: Text(cancelLabel, maxLines: 1, overflow: TextOverflow.ellipsis, softWrap: false),
                   ),
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
-                flex: 2,
+                flex: 3,
                 child: SizedBox(
                   height: 48,
                   child: ElevatedButton.icon(

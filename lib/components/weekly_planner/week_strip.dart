@@ -45,6 +45,7 @@ class DaySlots {
 const Color _ink = Color(0xFF0B132B);
 const Color _mute = Color(0xFF5F6779);
 const Color _idle = Color(0xFFD5DAE1);
+const Color _line = Color(0xFFE2E8F0);
 
 class WeekStrip extends StatelessWidget {
   const WeekStrip({
@@ -55,6 +56,7 @@ class WeekStrip extends StatelessWidget {
     required this.expanded,
     required this.onToggle,
     required this.slotKey,
+    this.popped = const {},
     this.onSlotTap,
   });
 
@@ -66,6 +68,9 @@ class WeekStrip extends StatelessWidget {
 
   /// Anchor of a slot, used as the landing point of a validated item.
   final GlobalKey Function(int day, WeekSlot slot) slotKey;
+
+  /// Slots ("2-lunch") something has just landed in: they take the impact.
+  final Set<String> popped;
   final void Function(int day, WeekSlot slot)? onSlotTap;
 
   bool _isToday(DateTime d) {
@@ -101,6 +106,7 @@ class WeekStrip extends StatelessWidget {
                         today: _isToday(days[i]),
                         past: _isPast(days[i]),
                         anchor: expanded ? null : slotKey,
+                        popped: popped,
                         index: i,
                       ),
                     ),
@@ -124,6 +130,7 @@ class WeekStrip extends StatelessWidget {
                               index: i,
                               slots: slots[i],
                               anchor: slotKey,
+                              popped: popped,
                               past: _isPast(days[i]),
                               onSlotTap: onSlotTap,
                             ),
@@ -162,6 +169,7 @@ class _DayChip extends StatelessWidget {
     required this.today,
     required this.past,
     required this.anchor,
+    required this.popped,
     required this.index,
   });
 
@@ -171,6 +179,7 @@ class _DayChip extends StatelessWidget {
   final bool today;
   final bool past;
   final GlobalKey Function(int day, WeekSlot slot)? anchor;
+  final Set<String> popped;
   final int index;
 
   @override
@@ -201,10 +210,14 @@ class _DayChip extends StatelessWidget {
                   if (slot != WeekSlot.snack || slots.state(slot) != SlotState.empty)
                     Padding(
                       padding: const EdgeInsets.only(right: 2),
-                      child: _Mark(key: anchor?.call(index, slot), state: slots.state(slot), round: false),
+                      child: _Mark(key: anchor?.call(index, slot), state: slots.state(slot), round: false, pop: popped.contains('$index-${slot.name}')),
                     ),
                 const SizedBox(width: 1),
-                _Mark(key: anchor?.call(index, WeekSlot.sport), state: slots.state(WeekSlot.sport), round: true),
+                _Mark(
+                    key: anchor?.call(index, WeekSlot.sport),
+                    state: slots.state(WeekSlot.sport),
+                    round: true,
+                    pop: popped.contains('$index-${WeekSlot.sport.name}')),
               ],
             ),
           ),
@@ -217,16 +230,21 @@ class _DayChip extends StatelessWidget {
 /// A meal is a square, a session a circle. Free is a light fill, planned an
 /// outline, done a full navy.
 class _Mark extends StatelessWidget {
-  const _Mark({super.key, required this.state, required this.round});
+  const _Mark({super.key, required this.state, required this.round, this.pop = false});
   final SlotState state;
   final bool round;
+  final bool pop;
 
   @override
   Widget build(BuildContext context) {
     final size = round ? 8.0 : 5.0;
     final done = state == SlotState.done;
     final drawn = state != SlotState.empty;
-    return AnimatedContainer(
+    return AnimatedScale(
+      scale: pop ? 1.9 : 1,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutBack,
+      child: AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeOutCubic,
       width: size,
@@ -239,16 +257,18 @@ class _Mark extends StatelessWidget {
         borderRadius: round ? null : BorderRadius.circular(1.5),
         border: done ? null : (drawn ? Border.all(color: _ink, width: 1.4) : (round ? Border.all(color: _idle, width: 1.4) : null)),
       ),
+      ),
     );
   }
 }
 
 class _DayTiles extends StatelessWidget {
-  const _DayTiles({required this.index, required this.slots, required this.anchor, required this.past, this.onSlotTap});
+  const _DayTiles({required this.index, required this.slots, required this.anchor, required this.popped, required this.past, this.onSlotTap});
 
   final int index;
   final DaySlots slots;
   final GlobalKey Function(int day, WeekSlot slot) anchor;
+  final Set<String> popped;
   final bool past;
   final void Function(int day, WeekSlot slot)? onSlotTap;
 
@@ -269,9 +289,9 @@ class _DayTiles extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 4, left: 1, right: 1),
             child: _Tile(
               key: anchor(index, slot),
+              pop: popped.contains('$index-${slot.name}'),
               slot: slot,
               state: slots.state(slot),
-              label: slots.labels[slot] ?? '',
               onTap: onSlotTap == null ? null : () => onSlotTap!(index, slot),
             ),
           ),
@@ -285,57 +305,86 @@ class _EmptyDot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 20,
-      height: 20,
-      decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: _idle, width: 1.4)),
-      child: const Icon(LucideIcons.plus, size: 11, color: _idle),
+    return const CustomPaint(
+      painter: _DashedBorder(radius: 12),
+      child: SizedBox(width: 24, height: 24, child: Icon(LucideIcons.plus, size: 12, color: _idle)),
     );
   }
 }
 
-class _Tile extends StatelessWidget {
-  const _Tile({super.key, required this.slot, required this.state, required this.label, this.onTap});
+/// Dashed outline of a slot waiting to be filled, drawn like the prototype's
+/// dashed CSS border rather than a solid rule.
+class _DashedBorder extends CustomPainter {
+  const _DashedBorder({required this.radius});
+  final double radius;
 
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = _idle
+      ..strokeWidth = 1.4
+      ..style = PaintingStyle.stroke;
+    final path = Path()..addRRect(RRect.fromRectAndRadius(Offset.zero & size, Radius.circular(radius)));
+    for (final metric in path.computeMetrics()) {
+      var d = 0.0;
+      while (d < metric.length) {
+        canvas.drawPath(metric.extractPath(d, (d + 3.5).clamp(0, metric.length)), paint);
+        d += 6.5;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DashedBorder old) => old.radius != radius;
+}
+
+class _Tile extends StatelessWidget {
+  const _Tile({super.key, required this.slot, required this.state, this.pop = false, this.onTap});
+
+  final bool pop;
   final WeekSlot slot;
   final SlotState state;
-  final String label;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     if (state == SlotState.incoming) {
-      return Container(
-        height: 40,
-        decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), border: Border.all(color: _idle, width: 1.4)),
-      );
+      return const CustomPaint(painter: _DashedBorder(radius: 10), child: SizedBox(height: 40, width: double.infinity));
     }
     final done = state == SlotState.done;
     return GestureDetector(
       onTap: onTap,
-      child: Container(
+      child: AnimatedScale(
+        scale: pop ? 1.12 : 1,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutBack,
+        child: Container(
         height: 40,
         padding: const EdgeInsets.symmetric(horizontal: 2),
         decoration: BoxDecoration(
           color: done ? _ink : Colors.white,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: _ink, width: done ? 1 : 1.4),
+          border: Border.all(color: done || slot == WeekSlot.sport ? _ink : _line, width: slot == WeekSlot.sport && !done ? 1.5 : 1),
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        // the icon alone: a dish name under it crowded a 40 pt tile for no gain
+        child: Stack(
+          clipBehavior: Clip.none,
           children: [
-            Icon(done ? LucideIcons.check : iconForSlot(slot), size: 13, color: done ? Colors.white : _ink),
-            if (label.isNotEmpty) ...[
-              const SizedBox(height: 2),
-              Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 8.5, height: 1, fontWeight: FontWeight.w600, color: done ? Colors.white : _ink),
+            Center(child: Icon(iconForSlot(slot), size: 17, color: done ? Colors.white : _ink)),
+            if (done)
+              Positioned(
+                top: -4,
+                right: -4,
+                child: Container(
+                  width: 14,
+                  height: 14,
+                  decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, border: Border.all(color: _ink, width: 1.5)),
+                  child: const Icon(LucideIcons.check, size: 8, color: _ink),
+                ),
               ),
-            ],
           ],
         ),
+      ),
       ),
     );
   }

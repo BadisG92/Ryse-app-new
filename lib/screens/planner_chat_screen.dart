@@ -54,6 +54,8 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
   Timer? _weekFoldTimer;
   final Map<String, GlobalKey> _slotKeys = {};
   final GlobalKey _proposalCardKey = GlobalKey();
+  final Map<String, GlobalKey> _rowKeys = {};
+  final Set<String> _poppedSlots = {};
   final Set<String> _incomingSlots = {};
   final List<_ChatMessage> _messages = [];
   bool _isProcessing = false;
@@ -200,6 +202,10 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
   }
 
   GlobalKey _slotKey(int day, WeekSlot slot) => _slotKeys.putIfAbsent('$day-${slot.name}', () => GlobalKey());
+
+  /// Anchor of one row of the proposal card, so a validated item flies from
+  /// the line the user read rather than from the top of the card.
+  GlobalKey _rowKey(String id) => _rowKeys.putIfAbsent(id, () => GlobalKey());
 
   void _toggleWeek() {
     _weekFoldTimer?.cancel();
@@ -495,7 +501,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
         return;
       }
 
-      unawaited(_landInWeek([for (final w in _pendingWorkouts!) (date: w.plannedDate, slot: WeekSlot.sport)]));
+      unawaited(_landInWeek([for (final (i, w) in _pendingWorkouts!.indexed) (date: w.plannedDate, slot: WeekSlot.sport, row: 'w-$i')]));
       final result = await PlannerAIService.confirmWorkouts(_pendingWorkouts!);
 
       _addBotMessage(result.message);
@@ -535,7 +541,12 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
 
       unawaited(_landInWeek([
         for (final m in mealsForCurrentDay)
-          if (_slotOf(m.mealType) != null) (date: m.plannedDate, slot: _slotOf(m.mealType)!),
+          if (_slotOf(m.mealType) != null)
+            (
+              date: m.plannedDate,
+              slot: _slotOf(m.mealType)!,
+              row: _mealsDays.length > 1 ? 'd-${_mealsDays.indexWhere((d) => d.isAtSameMomentAs(currentDay))}' : 'm-${m.mealType.name}',
+            ),
       ]));
 
       if (widget.demoMode) {
@@ -1036,6 +1047,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
       expanded: _weekExpanded,
       onToggle: _toggleWeek,
       slotKey: _slotKey,
+      popped: _poppedSlots,
       onSlotTap: _openSlot,
     );
   }
@@ -1060,15 +1072,15 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
 
   /// Opens the week, flies one mark per validated item to its day, then folds
   /// it back. This is the moment that shows the app placing things in the week.
-  Future<void> _landInWeek(List<({DateTime date, WeekSlot slot})> items) async {
+  Future<void> _landInWeek(List<({DateTime date, WeekSlot slot, String? row})> items) async {
     if (items.isEmpty || !mounted) return;
-    final from = _rectOf(_proposalCardKey); // resolved now: the card is about to go
-    final targets = <({int day, WeekSlot slot})>[];
+    final fallback = _rectOf(_proposalCardKey); // the card is about to leave the screen
+    final targets = <({int day, WeekSlot slot, Rect? from})>[];
     for (final item in items) {
       final day = _dayIndexOf(item.date);
       if (day < 0 || day > 6) continue;
       if (targets.any((t) => t.day == day && t.slot == item.slot)) continue;
-      targets.add((day: day, slot: item.slot));
+      targets.add((day: day, slot: item.slot, from: (item.row == null ? null : _rectOf(_rowKeys[item.row!])) ?? fallback));
     }
     if (targets.isEmpty) return;
 
@@ -1092,10 +1104,20 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
       final t = targets[i];
       Future<void>.delayed(Duration(milliseconds: i * 70), () {
         if (!mounted) return;
-        _flyMark(overlay, from, _slotKeys['${t.day}-${t.slot.name}'], t.slot);
+        _flyMark(overlay, t.from, _slotKeys['${t.day}-${t.slot.name}'], t.slot, () {
+          if (!mounted) return;
+          final id = '${t.day}-${t.slot.name}';
+          setState(() {
+            _incomingSlots.remove(id);
+            _poppedSlots.add(id);
+          });
+          Future<void>.delayed(const Duration(milliseconds: 260), () {
+            if (mounted) setState(() => _poppedSlots.remove(id));
+          });
+        });
       });
     }
-    await Future<void>.delayed(Duration(milliseconds: 640 + targets.length * 70));
+    await Future<void>.delayed(Duration(milliseconds: 700 + targets.length * 70));
     if (!mounted) return;
     setState(() => _incomingSlots.clear());
     if (_weekAutoOpened) {
@@ -1112,15 +1134,20 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
     return box.localToGlobal(Offset.zero) & box.size;
   }
 
-  void _flyMark(OverlayState overlay, Rect? from, GlobalKey? to, WeekSlot slot) {
+  void _flyMark(OverlayState overlay, Rect? from, GlobalKey? to, WeekSlot slot, VoidCallback onArrived) {
     final end = _rectOf(to);
-    if (end == null) return;
+    if (end == null) {
+      onArrived();
+      return;
+    }
     final source = from ?? Rect.fromCenter(center: Offset(end.center.dx, end.center.dy + 240), width: 34, height: 34);
-    final start = Rect.fromCenter(center: Offset(source.center.dx, source.top + 40), width: 34, height: 34);
+    // the icon tile at the left of a proposal row is where the eye already is
+    final start = Rect.fromLTWH(source.left + 14, source.center.dy - 20, 40, 40);
     final entry = OverlayEntry(
       builder: (context) => _FlyingMark(start: start, end: end, slot: slot),
     );
     overlay.insert(entry);
+    Future<void>.delayed(const Duration(milliseconds: 620), onArrived);
     Future<void>.delayed(const Duration(milliseconds: 700), entry.remove);
   }
 
@@ -1584,7 +1611,10 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
             delay: Duration(milliseconds: 80 + i * 50),
             dy: 10,
             duration: const Duration(milliseconds: 420),
-            child: _buildWorkoutPreviewItem(w, langCode, last: i == _pendingWorkouts!.length - 1),
+            child: KeyedSubtree(
+              key: _rowKey('w-$i'),
+              child: _buildWorkoutPreviewItem(w, langCode, last: i == _pendingWorkouts!.length - 1),
+            ),
           ),
         const SizedBox(height: 6),
       ],
@@ -1847,7 +1877,10 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
               delay: Duration(milliseconds: 80 + i * 50),
               dy: 10,
               duration: const Duration(milliseconds: 420),
-              child: _buildMealPreviewItem(meal, langCode, typeLabel: _mealTypeLabel(meal, langCode), letters: letters),
+              child: KeyedSubtree(
+                key: _rowKey('m-${meal.mealType.name}'),
+                child: _buildMealPreviewItem(meal, langCode, typeLabel: _mealTypeLabel(meal, langCode), letters: letters),
+              ),
             ),
           ProposalDayTotals(
             calories: ((p * 4) + (c * 4) + (f * 9)).round(),
@@ -1877,14 +1910,16 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
             delay: Duration(milliseconds: 80 + i * 50),
             dy: 10,
             duration: const Duration(milliseconds: 420),
-            child: ProposalWorkoutRow(
+            child: KeyedSubtree(
+              key: _rowKey('d-$i'),
+              child: ProposalWorkoutRow(
               dayShort: _formatDayNameShort(day, langCode),
               title: _mealsForDay(day).map((m) => m.dishName).join(' · '),
               subtitle: '${_mealsForDay(day).length} $mealsWord · ${_mealsForDay(day).fold<int>(0, (sum, m) => sum + _mealKcal(m))} kcal',
               onTap: () => _showMealsDetailSheet(langCode, initialDay: i),
               last: i == shownDays.length - 1 && _mealsDays.length <= 3,
             ),
-          ),
+            ),          ),
         if (_mealsDays.length > 3)
           InkWell(
             onTap: () => _showMealsDetailSheet(langCode, initialDay: 3),
@@ -1996,7 +2031,12 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
     try {
       unawaited(_landInWeek([
         for (final m in _pendingMeals!)
-          if (_slotOf(m.mealType) != null) (date: m.plannedDate, slot: _slotOf(m.mealType)!),
+          if (_slotOf(m.mealType) != null)
+            (
+              date: m.plannedDate,
+              slot: _slotOf(m.mealType)!,
+              row: 'd-${_mealsDays.indexWhere((d) => d.isAtSameMomentAs(DateTime(m.plannedDate.year, m.plannedDate.month, m.plannedDate.day)))}',
+            ),
       ]));
       final result = await PlannerAIService.confirmMeals(_pendingMeals!);
 
@@ -2048,7 +2088,9 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
             delay: Duration(milliseconds: 80 + i * 50),
             dy: 10,
             duration: const Duration(milliseconds: 420),
-            child: ProposalWorkoutRow(
+            child: KeyedSubtree(
+              key: _rowKey('s-$i'),
+              child: ProposalWorkoutRow(
               dayShort: _formatDayNameShort(session.plannedDate, langCode),
               title: session.displayTitle,
               subtitle: session.displaySubtitle,
@@ -2059,7 +2101,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
                 _showSessionDetailSheet(langCode);
               },
             ),
-          ),
+            ),          ),
         const SizedBox(height: 6),
       ],
     );
@@ -2152,7 +2194,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
     final session = _pendingSessions![_currentSessionIndex];
 
     setState(() => _isConfirming = true);
-    unawaited(_landInWeek([(date: session.plannedDate, slot: WeekSlot.sport)]));
+    unawaited(_landInWeek([(date: session.plannedDate, slot: WeekSlot.sport, row: 's-$_currentSessionIndex')]));
 
     try {
       if (widget.demoMode) {
@@ -3077,7 +3119,7 @@ class _FlyingMark extends StatefulWidget {
 
 class _FlyingMarkState extends State<_FlyingMark> with SingleTickerProviderStateMixin {
   late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 620))..forward();
-  late final Animation<double> _t = CurvedAnimation(parent: _c, curve: Curves.easeInOutCubic);
+  late final Animation<double> _t = CurvedAnimation(parent: _c, curve: const Cubic(0.2, 0.7, 0.2, 1));
 
   @override
   void dispose() {
