@@ -61,23 +61,25 @@ if ! grep -q '^SUPABASE_URL=' ci.env; then
   exit 1
 fi
 
-echo "=== Build number ==="
-# pubspec.yaml holds "version: 1.1.1+16". Xcode Cloud's CI_BUILD_NUMBER starts at 1,
-# so it is added to the pubspec build number to always produce a new, increasing
-# build number for TestFlight (e.g. 16 + 3 = 19).
-PUBSPEC_BUILD=$(sed -n 's/^version: *[0-9.]*+\([0-9]*\).*/\1/p' pubspec.yaml)
-PUBSPEC_BUILD="${PUBSPEC_BUILD:-0}"
-BUILD_NUMBER=$((PUBSPEC_BUILD + ${CI_BUILD_NUMBER:-0}))
-echo "pubspec build=$PUBSPEC_BUILD, CI_BUILD_NUMBER=${CI_BUILD_NUMBER:-unset} -> build number $BUILD_NUMBER"
+echo "=== App version ==="
+# Xcode Cloud sets the build number (CFBundleVersion) of the app and its extensions
+# to its own build number, so only the marketing version comes from pubspec.yaml.
+VERSION_NAME=$(sed -n 's/^version: *\([0-9][0-9.]*\)+.*/\1/p' pubspec.yaml)
+[ -n "$VERSION_NAME" ] || { echo "ERROR: could not read version from pubspec.yaml"; exit 1; }
+echo "pubspec version=$VERSION_NAME, Xcode Cloud build number=${CI_BUILD_NUMBER:-unset}"
+# The widget extension has its own MARKETING_VERSION in the Xcode project. Align it
+# with the app version, otherwise App Store Connect warns with ITMS-90473
+# (CFBundleShortVersionString mismatch between Runner.app and the .appex).
+sed -i '' -E "s/MARKETING_VERSION = [^;]+;/MARKETING_VERSION = ${VERSION_NAME};/g" ios/Runner.xcodeproj/project.pbxproj
+echo "MARKETING_VERSION entries set to $VERSION_NAME: $(grep -c "MARKETING_VERSION = ${VERSION_NAME};" ios/Runner.xcodeproj/project.pbxproj)"
 
 echo "=== Flutter dependencies and iOS project configuration ==="
 flutter pub get
-# Writes ios/Flutter/Generated.xcconfig (FLUTTER_ROOT, DART_DEFINES, build number)
+# Writes ios/Flutter/Generated.xcconfig (FLUTTER_ROOT, DART_DEFINES, version)
 # used by the Xcode build phases, and runs pod install. Nothing is compiled here:
 # Xcode Cloud does the actual archive.
 flutter build ios --config-only --release --no-codesign \
-  --dart-define-from-file=ci.env \
-  --build-number="$BUILD_NUMBER"
+  --dart-define-from-file=ci.env
 
 echo "=== CocoaPods dependencies ==="
 cd ios
