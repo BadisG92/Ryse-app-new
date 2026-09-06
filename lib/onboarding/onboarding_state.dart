@@ -8,6 +8,9 @@ import '../components/ui/onboarding_models.dart';
 /// stores them today: metric units, `Homme` / `Femme`, activity keys
 /// `low` / `light` / `moderate` / `high`, goal keys `lose` / `gain` / `maintain`.
 class OnbAnswers {
+  /// Asked by a coach in chapter 1 when the account did not bring one
+  /// (an email sign-up, or Apple with the name hidden).
+  String? firstName;
   String? goal;
   String? gender;
   int age = 26;
@@ -39,6 +42,7 @@ class OnbAnswers {
   bool get hasTarget => goal != null && goal != 'maintain';
 
   Map<String, dynamic> toJson() => {
+        'firstName': firstName,
         'goal': goal,
         'gender': gender,
         'age': age,
@@ -58,6 +62,7 @@ class OnbAnswers {
 
   static OnbAnswers fromJson(Map<String, dynamic> j) {
     final a = OnbAnswers();
+    a.firstName = j['firstName'] as String?;
     a.goal = j['goal'] as String?;
     a.gender = j['gender'] as String?;
     a.age = (j['age'] as num?)?.toInt() ?? a.age;

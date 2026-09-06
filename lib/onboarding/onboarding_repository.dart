@@ -47,6 +47,8 @@ class OnboardingRepository {
       final now = DateTime.now().toIso8601String();
 
       final updateData = {
+        // asked in chapter 1 when the account did not bring one
+        if ((a.firstName ?? '').trim().isNotEmpty) 'first_name': a.firstName!.trim(),
         'gender': a.gender,
         'birth_date': birthDate,
         'age': a.age,

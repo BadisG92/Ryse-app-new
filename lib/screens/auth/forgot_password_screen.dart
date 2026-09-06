@@ -1,9 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
-import '../../services/auth_service.dart';
-import '../../widgets/custom_button.dart';
-import '../../widgets/custom_text_field.dart';
 
+import '../../design/design.dart';
+import '../../services/analytics_service.dart';
+import '../../services/auth_service.dart';
+import '../../services/haptic_service.dart';
+import '../../services/localization_service.dart';
+import '../../services/translations.dart';
+import 'auth_kit.dart';
+
+/// Password reset. Same ground and same type as the rest of the flow — and,
+/// unlike the screen it replaces, it speaks the three languages of the app.
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
 
@@ -12,9 +20,16 @@ class ForgotPasswordScreen extends StatefulWidget {
 }
 
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
-  final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
-  bool _emailSent = false;
+  bool _sent = false;
+  String? _emailError;
+  String? _banner;
+
+  @override
+  void initState() {
+    super.initState();
+    AnalyticsService.logEvent('auth_screen_view', parameters: {'screen': 'forgot_password'});
+  }
 
   @override
   void dispose() {
@@ -22,219 +37,140 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     super.dispose();
   }
 
-  Future<void> _handleResetPassword() async {
-    if (!_formKey.currentState!.validate()) return;
+  String get _lang => Provider.of<LocalizationService>(context, listen: false).currentLanguageCode;
+
+  Future<void> _handleReset() async {
+    FocusManager.instance.primaryFocus?.unfocus();
+    final email = _emailController.text.trim();
+    if (email.isEmpty || !isValidEmail(email)) {
+      HapticService.instance.lightImpact();
+      setState(() => _emailError = (email.isEmpty ? 'enter_email' : 'enter_valid_email').tr(_lang));
+      return;
+    }
+    setState(() {
+      _emailError = null;
+      _banner = null;
+    });
 
     final authService = Provider.of<AuthService>(context, listen: false);
-    final success = await authService.resetPassword(_emailController.text.trim());
+    final success = await authService.resetPassword(email);
+    if (!mounted) return;
 
-    if (success && mounted) {
-      setState(() {
-        _emailSent = true;
-      });
-    } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(authService.errorMessage ?? 'auth_error_password_reset_failed'),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 4),
-        ),
-      );
+    if (success) {
+      HapticService.instance.mediumImpact();
+      AnalyticsService.logEvent('password_reset_sent');
+      setState(() => _sent = true);
+      return;
     }
+    setState(() => _banner = (authService.errorMessage ?? 'forgot.failed').tr(_lang));
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF0B132B)),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-      ),
-      body: SafeArea(
-        child: Consumer<AuthService>(
-          builder: (context, authService, child) {
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const SizedBox(height: 40),
-                  
-                  // Header
-                  Column(
-                    children: [
-                      Container(
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF0B132B),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Icon(
-                          _emailSent ? Icons.mark_email_read : Icons.lock_reset,
-                          color: Colors.white,
-                          size: 40,
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      Text(
-                        _emailSent ? 'Check Your Email' : 'Forgot Password?',
-                        style: const TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF0B132B),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        _emailSent
-                            ? 'We\'ve sent a password reset link to your email address'
-                            : 'Don\'t worry! Enter your email and we\'ll send you a reset link',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ],
-                  ),
-                  
-                  const SizedBox(height: 48),
-                  
-                  if (!_emailSent) ...[
-                    // Reset Form
-                    Form(
-                      key: _formKey,
-                      child: Column(
-                        children: [
-                          CustomTextField(
-                            controller: _emailController,
-                            label: 'Email',
-                            keyboardType: TextInputType.emailAddress,
-                            prefixIcon: Icons.email_outlined,
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Please enter your email';
-                              }
-                              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                                return 'Please enter a valid email';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 24),
-                          
-                          // Reset Button
-                          CustomButton(
-                            text: 'Send Reset Link',
-                            onPressed: authService.isLoading ? null : _handleResetPassword,
-                            isLoading: authService.isLoading,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ] else ...[
-                    // Success State
-                    Column(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.green.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.green.withOpacity(0.3)),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.check_circle,
-                                color: Colors.green[600],
-                                size: 24,
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text(
-                                      'Email Sent Successfully',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'Check your inbox and follow the instructions to reset your password',
-                                      style: TextStyle(
-                                        color: Colors.grey[600],
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 32),
-                        
-                        // Resend Button
-                        TextButton(
-                          onPressed: () {
-                            setState(() {
-                              _emailSent = false;
-                            });
-                          },
-                          child: const Text(
-                            'Didn\'t receive the email? Send again',
-                            style: TextStyle(
-                              color: Color(0xFF0B132B),
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                  
-                  const SizedBox(height: 32),
-                  
-                  // Back to Login
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'Remember your password? ',
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 14,
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: () => Navigator.of(context).pop(),
-                        child: const Text(
-                          'Sign In',
-                          style: TextStyle(
-                            color: Color(0xFF0B132B),
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            );
-          },
-        ),
-      ),
+    return Consumer2<AuthService, LocalizationService>(
+      builder: (context, authService, locService, _) {
+        final lang = locService.currentLanguageCode;
+        return AuthScaffold(
+          onBack: () => Navigator.of(context).pop(),
+          children: _sent ? _sentBody(context, lang) : _formBody(context, lang, authService),
+        );
+      },
     );
   }
-} 
+
+  List<Widget> _formBody(BuildContext context, String lang, AuthService authService) {
+    return [
+      SizedBox(height: context.vh(2)),
+      const PopIn(delay: Duration(milliseconds: 120), child: AuthCoaches(sizeVw: 12)),
+      SizedBox(height: context.vh(2.2)),
+      AuthTitle('forgot.title'.tr(lang)),
+      SizedBox(height: context.vh(1.2)),
+      PopIn(
+        delay: const Duration(milliseconds: 360),
+        dy: 8,
+        child: Text('forgot.subtitle'.tr(lang), style: RyzeText.body(context, 3.9, color: RyzeColors.mute, height: 1.45)),
+      ),
+      SizedBox(height: context.vh(3.4)),
+      PopIn(
+        delay: const Duration(milliseconds: 460),
+        child: AuthField(
+          controller: _emailController,
+          hint: 'email'.tr(lang),
+          icon: LucideIcons.atSign,
+          error: _emailError,
+          keyboardType: TextInputType.emailAddress,
+          textInputAction: TextInputAction.done,
+          autofillHints: const [AutofillHints.username, AutofillHints.email],
+          autocorrect: false,
+          onChanged: (_) {
+            if (_emailError == null && _banner == null) return;
+            setState(() {
+              _emailError = null;
+              _banner = null;
+            });
+          },
+          onSubmitted: (_) => _handleReset(),
+        ),
+      ),
+      if (_banner != null) ...[
+        SizedBox(height: context.vh(2)),
+        AuthBanner(message: _banner!),
+      ],
+      SizedBox(height: context.vh(3)),
+      PopIn(
+        delay: const Duration(milliseconds: 540),
+        child: AuthCta(label: 'forgot.cta'.tr(lang), loading: authService.isLoading, onPressed: _handleReset),
+      ),
+    ];
+  }
+
+  List<Widget> _sentBody(BuildContext context, String lang) {
+    return [
+      SizedBox(height: context.vh(4)),
+      PopIn(
+        child: Container(
+          width: context.vw(18),
+          height: context.vw(18),
+          decoration: BoxDecoration(
+            color: RyzeColors.accTint,
+            shape: BoxShape.circle,
+            border: Border.all(color: RyzeColors.acc.withValues(alpha: 0.5)),
+          ),
+          child: Icon(LucideIcons.mailCheck, size: context.vw(9), color: RyzeColors.accInk),
+        ),
+      ),
+      SizedBox(height: context.vh(2.6)),
+      AuthTitle('forgot.sentTitle'.tr(lang)),
+      SizedBox(height: context.vh(1.2)),
+      PopIn(
+        delay: const Duration(milliseconds: 320),
+        dy: 8,
+        child: Text(
+          'forgot.sentBody'.tr(lang).replaceAll('{email}', _emailController.text.trim()),
+          style: RyzeText.body(context, 3.9, color: RyzeColors.mute, height: 1.45),
+        ),
+      ),
+      SizedBox(height: context.vh(4)),
+      PopIn(
+        delay: const Duration(milliseconds: 420),
+        child: OnbButton(label: 'forgot.backToLogin'.tr(lang), onPressed: () => Navigator.of(context).pop()),
+      ),
+      SizedBox(height: context.vh(1.6)),
+      PopIn(
+        delay: const Duration(milliseconds: 480),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => setState(() => _sent = false),
+          child: Padding(
+            padding: EdgeInsets.symmetric(vertical: context.vw(2)),
+            child: Text(
+              'forgot.resend'.tr(lang),
+              textAlign: TextAlign.center,
+              style: RyzeText.body(context, 3.5, weight: FontWeight.w600, color: RyzeColors.ink),
+            ),
+          ),
+        ),
+      ),
+    ];
+  }
+}

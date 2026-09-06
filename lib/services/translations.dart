@@ -2685,20 +2685,19 @@ class AppTranslations {
       'de': 'Weiter',
     },
     'complete_profile_title': {
-      'fr': 'Complétez votre profil',
-      'en': 'Complete your profile',
-      'de': 'Vervollständigen Sie Ihr Profil',
+      'fr': 'Comment on t’appelle ?',
+      'en': 'What should we call you?',
+      'de': 'Wie sollen wir dich nennen?',
     },
     'complete_profile_subtitle': {
-      'fr':
-          'Nous avons besoin de votre nom pour personnaliser votre expérience',
-      'en': 'We need your name to personalize your experience',
-      'de': 'Wir benötigen Ihren Namen, um Ihr Erlebnis zu personalisieren',
+      'fr': 'Ton prénom, c’est tout. C’est comme ça que les coachs t’appelleront.',
+      'en': 'Your first name, that’s all. That’s how the coaches will call you.',
+      'de': 'Nur dein Vorname. So werden dich die Coaches nennen.',
     },
     'complete_profile_privacy': {
-      'fr': 'Vos informations sont sécurisées et ne seront jamais partagées',
-      'en': 'Your information is secure and will never be shared',
-      'de': 'Ihre Daten sind sicher und werden niemals weitergegeben',
+      'fr': 'Rien d’autre, et ça ne sort pas de l’app.',
+      'en': 'Nothing else, and it never leaves the app.',
+      'de': 'Sonst nichts, und es verlässt die App nicht.',
     },
     'create_new_meal_title': {
       'fr': 'Créer un nouveau repas',
@@ -4972,6 +4971,11 @@ class AppTranslations {
       'de': 'Registrieren',
     },
     // 🔐 Messages d'erreur authentification - Ludiques et clairs
+    'auth_error_email_not_confirmed': {
+      'fr': 'Ton compte existe, il manque juste la confirmation 📩 Ouvre le mail qu’on t’a envoyé, puis reviens.',
+      'en': 'Your account exists, it just needs confirming 📩 Open the email we sent you, then come back.',
+      'de': 'Dein Konto existiert, es fehlt nur die Bestätigung 📩 Öffne die E-Mail, die wir dir geschickt haben, und komm zurück.',
+    },
     'auth_error_invalid_credentials': {
       'fr':
           'Oups ! Email ou mot de passe incorrect 🤔\nVérifie bien tes identifiants !',
@@ -6594,6 +6598,125 @@ class AppTranslations {
       'fr': 'L\'inscription avec Apple a échoué',
       'en': 'Apple registration failed',
       'de': 'Apple-Registrierung fehlgeschlagen',
+    },
+
+    // ========================================
+    // ACCOUNT SCREENS (v2, onboarding design system)
+    // ========================================
+    'auth.createTitle': {
+      'fr': 'On commence ?',
+      'en': 'Shall we start?',
+      'de': 'Fangen wir an?',
+    },
+    'auth.createSubtitle': {
+      'fr': 'Crée ton compte, les deux coachs prennent la suite. Deux minutes, pas plus.',
+      'en': 'Create your account, the two coaches take it from there. Two minutes, no more.',
+      'de': 'Erstelle dein Konto, die beiden Coaches übernehmen. Zwei Minuten, nicht mehr.',
+    },
+    'auth.loginTitle': {
+      'fr': 'Bon retour.',
+      'en': 'Good to see you.',
+      'de': 'Schön, dich zu sehen.',
+    },
+    'auth.loginSubtitle': {
+      'fr': 'Ta semaine t’attend là où tu l’as laissée.',
+      'en': 'Your week is waiting exactly where you left it.',
+      'de': 'Deine Woche wartet genau dort, wo du sie gelassen hast.',
+    },
+    'auth.continueApple': {
+      'fr': 'Continuer avec Apple',
+      'en': 'Continue with Apple',
+      'de': 'Weiter mit Apple',
+    },
+    'auth.continueGoogle': {
+      'fr': 'Continuer avec Google',
+      'en': 'Continue with Google',
+      'de': 'Weiter mit Google',
+    },
+    'auth.orEmail': {
+      'fr': 'ou avec un email',
+      'en': 'or with an email',
+      'de': 'oder mit einer E-Mail',
+    },
+    'auth.passwordHint': {
+      'fr': 'Mot de passe, 8 caractères min.',
+      'en': 'Password, 8 characters min.',
+      'de': 'Passwort, mind. 8 Zeichen',
+    },
+    'auth.createCta': {
+      'fr': 'Créer mon compte',
+      'en': 'Create my account',
+      'de': 'Konto erstellen',
+    },
+    'auth.haveAccount': {
+      'fr': 'Tu as déjà un compte ?',
+      'en': 'Already have an account?',
+      'de': 'Hast du schon ein Konto?',
+    },
+    'auth.consentPrefix': {
+      'fr': 'En continuant, tu acceptes les ',
+      'en': 'By continuing, you accept the ',
+      'de': 'Wenn du fortfährst, akzeptierst du die ',
+    },
+    'auth.consentTerms': {
+      'fr': 'Conditions d’utilisation',
+      'en': 'Terms of Service',
+      'de': 'Nutzungsbedingungen',
+    },
+    'auth.consentAnd': {
+      'fr': ' et la ',
+      'en': ' and the ',
+      'de': ' und die ',
+    },
+    'auth.consentPrivacy': {
+      'fr': 'Politique de confidentialité',
+      'en': 'Privacy Policy',
+      'de': 'Datenschutzrichtlinie',
+    },
+    'forgot.title': {
+      'fr': 'On te réouvre la porte.',
+      'en': 'Let’s get you back in.',
+      'de': 'Wir lassen dich wieder rein.',
+    },
+    'forgot.subtitle': {
+      'fr': 'Donne ton email, on t’envoie un lien pour choisir un nouveau mot de passe.',
+      'en': 'Give us your email and we’ll send a link to pick a new password.',
+      'de': 'Gib deine E-Mail an, wir schicken dir einen Link für ein neues Passwort.',
+    },
+    'forgot.cta': {
+      'fr': 'Envoyer le lien',
+      'en': 'Send the link',
+      'de': 'Link senden',
+    },
+    'forgot.sentTitle': {
+      'fr': 'C’est parti.',
+      'en': 'On its way.',
+      'de': 'Unterwegs.',
+    },
+    'forgot.sentBody': {
+      'fr': 'Ouvre le mail qu’on vient d’envoyer à {email} et suis le lien. Pense à regarder dans les spams.',
+      'en': 'Open the email we just sent to {email} and follow the link. Check your spam folder too.',
+      'de': 'Öffne die E-Mail, die wir gerade an {email} geschickt haben, und folge dem Link. Schau auch im Spam nach.',
+    },
+    'forgot.resend': {
+      'fr': 'Rien reçu ? Renvoyer',
+      'en': 'Nothing received? Send again',
+      'de': 'Nichts erhalten? Erneut senden',
+    },
+    'forgot.backToLogin': {
+      'fr': 'Retour à la connexion',
+      'en': 'Back to sign in',
+      'de': 'Zurück zur Anmeldung',
+    },
+    'forgot.failed': {
+      'fr': 'L’envoi a échoué. Vérifie l’adresse et réessaie.',
+      'en': 'Sending failed. Check the address and try again.',
+      'de': 'Senden fehlgeschlagen. Prüfe die Adresse und versuche es erneut.',
+    },
+    'auth.confirmEmailSent': {
+      'fr': 'Compte créé. Ouvre le mail de confirmation qu’on vient de t’envoyer, puis reviens te connecter.',
+      'en': 'Account created. Open the confirmation email we just sent, then come back and sign in.',
+      'de': 'Konto erstellt. Öffne die Bestätigungs-E-Mail, die wir dir gerade geschickt haben, und melde dich dann an.',
     },
 
     // ========================================

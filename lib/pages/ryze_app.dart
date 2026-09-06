@@ -10,14 +10,16 @@ import '../onboarding/onboarding_repository.dart';
 import '../onboarding/onboarding_state.dart';
 import '../screens/auth/complete_profile_screen.dart';
 import '../screens/auth/login_screen.dart';
+import '../screens/auth/register_screen.dart';
 import '../services/auth_service.dart';
 import '../services/unified_subscription_service.dart';
 
 /// RyzeApp - routing at launch.
 ///
-/// - Not logged in, first time → welcome video → login
-/// - Not logged in, seen the intro → login
-/// - Logged in, no name → complete profile
+/// - Not logged in, first time → welcome video → account screen
+/// - Not logged in, never signed in on this device → account screen
+/// - Not logged in, has signed in before → login
+/// - Logged in, onboarded, but no name (legacy account) → complete profile
 /// - Logged in, not onboarded → onboarding v2 (resumes where the user left it)
 /// - Logged in, onboarded but the v2 profile was saved without a purchase → onboarding resumes on the paywall
 /// - Logged in, onboarded before the coach part existed → coach-only flow (tone, day, pact)
@@ -81,11 +83,10 @@ class _RyzeAppState extends State<RyzeApp> {
         await authService.initialize();
       }
 
-      if (!authService.hasCompleteName) {
-        debugPrint('⚠️ Nom manquant → CompleteProfileScreen');
-        _show(CompleteProfileScreen(onComplete: _determineInitialRoute));
-        return;
-      }
+      // The name is no longer a gate at launch: a coach asks for it in the
+      // first chapter. Only an account that finished the onboarding without
+      // one (legacy, or a social provider that gave nothing) still needs the
+      // rattrapage screen — checked below, once `is_onboarded` is known.
 
       // a completion the server missed (offline right after the purchase) is replayed first
       if (await OnboardingRepository().retryPendingCompletion()) {
@@ -120,6 +121,9 @@ class _RyzeAppState extends State<RyzeApp> {
             final at = resume ?? (step: 'offer', answers: OnbAnswers());
             _show(OnboardingFlow(firstName: firstName, resume: at, onComplete: _goToApp));
           }
+        } else if (!authService.hasCompleteName) {
+          debugPrint('⚠️ Onboardé sans prénom (compte legacy) → CompleteProfileScreen');
+          _show(CompleteProfileScreen(onComplete: _determineInitialRoute));
         } else {
           debugPrint('🎯 Onboardé → App');
           _show(const MainApp());
@@ -136,19 +140,26 @@ class _RyzeAppState extends State<RyzeApp> {
       return;
     }
 
-    // ❌ Not logged in
+    // ❌ Not logged in.
+    // A device that has never signed in is showing the app to a new user:
+    // land on the account screen, not on a login form whose sign-up link sits
+    // at the bottom of the page. A device that has signed in before lands on
+    // the login screen, which is what a returning user needs.
     final hasSeenIntro = prefs.getBool('has_seen_intro') ?? false;
+    final hasLoggedInBefore = prefs.getBool('has_logged_in_before') ?? false;
+    Widget entry() => hasLoggedInBefore ? const LoginScreen() : const RegisterScreen();
+
     if (hasSeenIntro && !_forceValueProp) {
-      debugPrint('🔄 Intro déjà vue → Login');
-      _show(const LoginScreen());
+      debugPrint('🔄 Intro déjà vue → ${hasLoggedInBefore ? 'Login' : 'Création de compte'}');
+      _show(entry());
     } else {
-      debugPrint('🎬 Première ouverture → vidéo welcome → Login');
+      debugPrint('🎬 Première ouverture → vidéo welcome → création de compte');
       _show(VideoWelcomeScreen(
         onContinue: () async {
           final p = await SharedPreferences.getInstance();
           await p.setBool('has_seen_intro', true);
           if (!mounted) return;
-          Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const LoginScreen()));
+          Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => entry()));
         },
       ));
     }

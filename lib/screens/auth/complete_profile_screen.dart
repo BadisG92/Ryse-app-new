@@ -1,205 +1,116 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
+
+import '../../design/design.dart';
 import '../../services/auth_service.dart';
-import '../../services/translations.dart';
+import '../../services/haptic_service.dart';
 import '../../services/localization_service.dart';
-import '../../widgets/custom_button.dart';
-import '../../widgets/custom_text_field.dart';
+import '../../services/translations.dart';
+import 'auth_kit.dart';
 
-/// Écran pour compléter le profil après un login social
-/// Affiché uniquement si le nom n'a pas pu être récupéré depuis le provider
+/// Rattrapage for an account that finished the onboarding without a first
+/// name: a legacy account, or a social sign-in that gave nothing. A new user
+/// never sees this screen — a coach asks the question in chapter 1.
 class CompleteProfileScreen extends StatefulWidget {
-  final VoidCallback onComplete;
+  const CompleteProfileScreen({super.key, required this.onComplete});
 
-  const CompleteProfileScreen({
-    Key? key,
-    required this.onComplete,
-  }) : super(key: key);
+  final VoidCallback onComplete;
 
   @override
   State<CompleteProfileScreen> createState() => _CompleteProfileScreenState();
 }
 
 class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _firstNameController = TextEditingController();
-  final _lastNameController = TextEditingController();
+  final _controller = TextEditingController();
+  String? _error;
 
   @override
   void dispose() {
-    _firstNameController.dispose();
-    _lastNameController.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
-  Future<void> _handleSubmit() async {
-    if (!_formKey.currentState!.validate()) return;
+  String get _lang => Provider.of<LocalizationService>(context, listen: false).currentLanguageCode;
+
+  Future<void> _submit() async {
+    FocusManager.instance.primaryFocus?.unfocus();
+    final name = _controller.text.trim();
+    if (name.length < 2) {
+      HapticService.instance.lightImpact();
+      setState(() => _error = 'register.nameMinLength'.tr(_lang));
+      return;
+    }
 
     final authService = Provider.of<AuthService>(context, listen: false);
-    final success = await authService.updateProfile(
-      firstName: _firstNameController.text.trim(),
-      lastName: _lastNameController.text.trim(),
-    );
+    final success = await authService.updateProfile(firstName: name);
+    if (!mounted) return;
 
-    if (success && mounted) {
+    if (success) {
+      HapticService.instance.mediumImpact();
       widget.onComplete();
-    } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            authService.errorMessage ?? 'Failed to update profile',
-          ),
-          backgroundColor: Colors.red,
-        ),
-      );
+      return;
     }
+    setState(() => _error = (authService.errorMessage ?? 'register.registrationFailed').tr(_lang));
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      body: SafeArea(
-        child: Consumer<AuthService>(
-          builder: (context, authService, child) {
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const SizedBox(height: 40),
-
-                  // Icon de profil
-                  Center(
-                    child: Container(
-                      width: 100,
-                      height: 100,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
-                        ),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF0B132B).withOpacity(0.2),
-                            blurRadius: 20,
-                            offset: const Offset(0, 8),
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.person_outline,
-                        size: 50,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 32),
-
-                  // Titre
-                  Consumer<LocalizationService>(
-                    builder: (context, locService, _) => Text(
-                      'complete_profile_title'.tr(locService.currentLanguageCode),
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF0B132B),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  // Sous-titre
-                  Consumer<LocalizationService>(
-                    builder: (context, locService, _) => Text(
-                      'complete_profile_subtitle'.tr(locService.currentLanguageCode),
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 40),
-
-                  // Formulaire
-                  Form(
-                    key: _formKey,
-                    child: Column(
-                      children: [
-                        Consumer<LocalizationService>(
-                          builder: (context, locService, _) => CustomTextField(
-                            controller: _firstNameController,
-                            label: 'register.firstName'.tr(locService.currentLanguageCode),
-                            prefixIcon: Icons.person_outline,
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'register.firstNameRequired'.tr(locService.currentLanguageCode);
-                              }
-                              if (value.length < 2) {
-                                return 'register.nameMinLength'.tr(locService.currentLanguageCode);
-                              }
-                              return null;
-                            },
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Consumer<LocalizationService>(
-                          builder: (context, locService, _) => CustomTextField(
-                            controller: _lastNameController,
-                            label: 'register.lastName'.tr(locService.currentLanguageCode),
-                            prefixIcon: Icons.person_outline,
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'register.lastNameRequired'.tr(locService.currentLanguageCode);
-                              }
-                              if (value.length < 2) {
-                                return 'register.nameMinLength'.tr(locService.currentLanguageCode);
-                              }
-                              return null;
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 32),
-
-                  // Bouton continuer
-                  Consumer<LocalizationService>(
-                    builder: (context, locService, _) => CustomButton(
-                      text: 'continue'.tr(locService.currentLanguageCode),
-                      onPressed: authService.isLoading ? null : _handleSubmit,
-                      isLoading: authService.isLoading,
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Note de confidentialité
-                  Consumer<LocalizationService>(
-                    builder: (context, locService, _) => Text(
-                      'complete_profile_privacy'.tr(locService.currentLanguageCode),
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey[500],
-                      ),
-                    ),
-                  ),
-                ],
+    return Consumer2<AuthService, LocalizationService>(
+      builder: (context, authService, locService, _) {
+        final lang = locService.currentLanguageCode;
+        return AuthScaffold(
+          children: [
+            SizedBox(height: context.vh(4)),
+            const PopIn(delay: Duration(milliseconds: 120), child: AuthCoaches()),
+            SizedBox(height: context.vh(2.4)),
+            AuthTitle('complete_profile_title'.tr(lang)),
+            SizedBox(height: context.vh(1.2)),
+            PopIn(
+              delay: const Duration(milliseconds: 360),
+              dy: 8,
+              child: Text(
+                'complete_profile_subtitle'.tr(lang),
+                style: RyzeText.body(context, 3.9, color: RyzeColors.mute, height: 1.45),
               ),
-            );
-          },
-        ),
-      ),
+            ),
+            SizedBox(height: context.vh(3.4)),
+            PopIn(
+              delay: const Duration(milliseconds: 460),
+              child: AuthField(
+                controller: _controller,
+                hint: 'register.firstName'.tr(lang),
+                icon: LucideIcons.user,
+                error: _error,
+                autofocus: true,
+                maxLength: 24,
+                textCapitalization: TextCapitalization.words,
+                textInputAction: TextInputAction.done,
+                autofillHints: const [AutofillHints.givenName],
+                autocorrect: false,
+                onChanged: (_) {
+                  if (_error != null) setState(() => _error = null);
+                },
+                onSubmitted: (_) => _submit(),
+              ),
+            ),
+            SizedBox(height: context.vh(3)),
+            PopIn(
+              delay: const Duration(milliseconds: 540),
+              child: AuthCta(label: 'continue'.tr(lang), loading: authService.isLoading, onPressed: _submit),
+            ),
+            SizedBox(height: context.vh(1.6)),
+            PopIn(
+              delay: const Duration(milliseconds: 600),
+              child: Text(
+                'complete_profile_privacy'.tr(lang),
+                textAlign: TextAlign.center,
+                style: RyzeText.body(context, 3.2, color: RyzeColors.mute, height: 1.35),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

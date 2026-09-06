@@ -100,12 +100,16 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  /// Sign up with email and password
+  /// Sign up with email and password.
+  ///
+  /// The name is not asked here any more: a coach asks for it in the first
+  /// chapter of the onboarding. When the project does not require an email
+  /// confirmation, Supabase returns a session — it is loaded exactly like a
+  /// sign-in, so the caller walks straight into the app instead of sending the
+  /// user back to a login form to retype the password they just chose.
   Future<bool> signUp({
     required String email,
     required String password,
-    required String firstName,
-    required String lastName,
   }) async {
     _setLoading(true);
     _clearError();
@@ -114,16 +118,20 @@ class AuthService extends ChangeNotifier {
       final response = await _supabase.auth.signUp(
         email: email,
         password: password,
-        data: {
-          'first_name': firstName,
-          'last_name': lastName,
-        },
       );
 
       if (response.user != null) {
         // 📊 Analytics: Sign up success
         await AnalyticsService.logSignUp(method: 'email');
         await AnalyticsService.setUserId(response.user!.id);
+
+        if (response.session != null) {
+          await _loadUserProfile(response.user!.id);
+          await _storeTokenSecurely(response.session?.accessToken);
+          if (kDebugMode) debugPrint('🔄 Réinitialisation GlobalStateManager après inscription...');
+          await GlobalStateManager.instance.initialize();
+          await MealWidgetDataProvider.forceWidgetUpdate();
+        }
 
         // 🌍 Mettre à jour la langue de l'utilisateur immédiatement après signup
         final userLanguage = LocalizationService.instance.currentLanguageCode;
@@ -550,6 +558,15 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  /// The onboarding writes the first name with the rest of the profile; this
+  /// only brings the in-memory user in line, without a second round trip.
+  void syncLocalFirstName(String firstName) {
+    final name = firstName.trim();
+    if (name.isEmpty || _currentUser == null) return;
+    _currentUser = _currentUser!.copyWith(firstName: name);
+    _safeNotifyListeners();
+  }
+
   /// Update user profile
   Future<bool> updateProfile({
     String? firstName,
@@ -635,10 +652,17 @@ class AuthService extends ChangeNotifier {
   String _getFriendlyErrorMessage(String technicalError) {
     final errorLower = technicalError.toLowerCase();
 
+    // Compte créé mais email pas encore confirmé : ce n'est pas un mauvais
+    // mot de passe, et le dire ainsi envoie l'utilisateur chercher une erreur
+    // qui n'existe pas.
+    if (errorLower.contains('email not confirmed') ||
+        errorLower.contains('email_not_confirmed')) {
+      return 'auth_error_email_not_confirmed';
+    }
+
     // Erreurs d'identifiants invalides
     if (errorLower.contains('invalid login') ||
         errorLower.contains('invalid credentials') ||
-        errorLower.contains('email not confirmed') ||
         errorLower.contains('invalid grant')) {
       return 'auth_error_invalid_credentials';
     }

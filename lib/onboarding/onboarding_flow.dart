@@ -3,10 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:provider/provider.dart';
 
 import '../models/weekly_planner_models.dart';
 import '../services/coach_personality_service.dart';
 import '../services/analytics_service.dart';
+import '../services/auth_service.dart';
 import '../services/haptic_service.dart';
 import '../services/revenuecat_service.dart';
 import '../services/translations.dart';
@@ -67,6 +69,9 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
   late OnbAnswers a;
   late final TextEditingController _motivationCtrl;
+  late final TextEditingController _nameCtrl;
+  final FocusNode _nameFocus = FocusNode();
+  bool _nameFocused = false;
   late final List<_Step> _steps;
   bool _finishing = false;
   int _idx = 0;
@@ -80,8 +85,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   final List<PendingSession> _demoSessions = [];
 
   String? get _name {
-    final n = (widget.firstName ?? '').trim();
-    return n.isEmpty ? null : n;
+    final typed = (a.firstName ?? '').trim();
+    if (typed.isNotEmpty) return typed;
+    final fromAccount = (widget.firstName ?? '').trim();
+    return fromAccount.isEmpty ? null : fromAccount;
   }
 
   @override
@@ -89,6 +96,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     super.initState();
     a = widget.resume?.answers ?? OnbAnswers();
     _motivationCtrl = TextEditingController(text: a.motivationText);
+    _nameCtrl = TextEditingController(text: a.firstName ?? '');
+    _nameFocus.addListener(() {
+      if (mounted) setState(() => _nameFocused = _nameFocus.hasFocus);
+    });
     _loadAnnualPrice();
     _steps = widget.mode == OnbMode.coachOnly
         ? const [
@@ -100,6 +111,9 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         : [
             const _Step('hello'),
             const _Step('ch1', card: true),
+            // the account no longer collects a name; a coach asks for it, and
+            // only when the provider did not already give one
+            _Step('name', chapter: 1, coach: OnbCoach.sport, skip: (_) => (widget.firstName ?? '').trim().isNotEmpty),
             const _Step('goal', chapter: 1, coach: OnbCoach.sport),
             const _Step('gender', chapter: 1, coach: OnbCoach.nutri),
             const _Step('age', chapter: 1, coach: OnbCoach.nutri),
@@ -239,6 +253,9 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     try {
       await _repo.saveProfile(a);
       await _repo.saveCoachInsights(a, s);
+      if (mounted && (a.firstName ?? '').isNotEmpty) {
+        Provider.of<AuthService>(context, listen: false).syncLocalFirstName(a.firstName!);
+      }
       _profileSaved = true;
       AnalyticsService.logEvent('onb_profile_saved');
     } catch (e) {
@@ -276,6 +293,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   @override
   void dispose() {
     _motivationCtrl.dispose();
+    _nameCtrl.dispose();
+    _nameFocus.dispose();
     super.dispose();
   }
 
@@ -332,6 +351,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
   String _question(String id) {
     switch (id) {
+      case 'name':
+        return s.t('q_name');
       case 'goal':
         return s.t('q_goal');
       case 'gender':
@@ -373,6 +394,10 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
   String? _react(String id) {
     switch (id) {
+      case 'goal':
+        // only when the name was just typed; a social account was already
+        // greeted by name on the first screen
+        return a.firstName == null ? null : s.t('react_name', {'n': a.firstName!});
       case 'gender':
         return a.goal == null ? null : s.t('react_${a.goal}');
       case 'motivation':
@@ -386,6 +411,8 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
   String? _answer(String id) {
     switch (id) {
+      case 'name':
+        return a.firstName;
       case 'goal':
         return a.goal == null ? null : s.t('goal_${a.goal}');
       case 'gender':
@@ -613,6 +640,68 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     switch (step.id) {
       case 'hello':
         return _shell(step, body: HelloContent(s: s), cta: OnbButton(label: s.t('hello_cta'), onPressed: _next));
+
+      case 'name':
+        return _shell(
+          step,
+          centerBody: false,
+          body: PopIn(
+            delay: const Duration(milliseconds: 260),
+            // same focus language as the motivation field and the auth fields:
+            // a navy 2 pt edge and a soft lift while the keyboard is up
+            child: AnimatedContainer(
+              duration: RyzeDurations.tap,
+              curve: RyzeCurves.out,
+              padding: EdgeInsets.symmetric(horizontal: context.vw(4.6), vertical: context.vw(1.6)),
+              decoration: BoxDecoration(
+                color: OnbColors.surf,
+                borderRadius: BorderRadius.circular(context.vw(4.6)),
+                border: Border.all(color: _nameFocused ? OnbColors.ink : OnbColors.line, width: _nameFocused ? 2 : 1),
+                boxShadow: _nameFocused ? RyzeShadow.soft : null,
+              ),
+              child: TextField(
+                controller: _nameCtrl,
+                focusNode: _nameFocus,
+                autofocus: true,
+                onChanged: (v) => setState(() => a.firstName = v.trim().isEmpty ? null : v.trim()),
+                textInputAction: TextInputAction.done,
+                textCapitalization: TextCapitalization.words,
+                autofillHints: const [AutofillHints.givenName],
+                autocorrect: false,
+                maxLength: 24,
+                onSubmitted: (_) {
+                  if ((a.firstName ?? '').length >= 2) _next();
+                },
+                onTapOutside: (_) => FocusManager.instance.primaryFocus?.unfocus(),
+                scrollPadding: EdgeInsets.only(bottom: context.vh(16)),
+                cursorColor: OnbColors.ink,
+                style: OnbText.display(context, 6.4, height: 1.2),
+                decoration: InputDecoration(
+                  hintText: s.t('name_placeholder'),
+                  hintStyle: OnbText.display(context, 6.4, height: 1.2, color: OnbColors.mute2, weight: FontWeight.w600),
+                  counterText: '',
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  isDense: true,
+                  contentPadding: EdgeInsets.symmetric(vertical: context.vw(3.4)),
+                ),
+              ),
+            ),
+          ),
+          foot: PopIn(
+            delay: const Duration(milliseconds: 620),
+            child: Text(
+              s.t('name_hint'),
+              textAlign: TextAlign.center,
+              style: OnbText.body(context, 3.2, color: OnbColors.mute, height: 1.35),
+            ),
+          ),
+          cta: OnbButton(
+            label: s.t('cta_continue'),
+            onPressed: (a.firstName ?? '').trim().length >= 2 ? _next : null,
+          ),
+        );
 
       case 'goal':
         return _shell(

@@ -99,6 +99,26 @@ class OnbStrings {
     'back': {'fr': 'Retour', 'en': 'Back', 'de': 'Zurück'},
 
     // ---------- Chapter 1 ----------
+    'q_name': {
+      'fr': 'Comment on t’appelle ?',
+      'en': 'What should we call you?',
+      'de': 'Wie sollen wir dich nennen?',
+    },
+    'name_placeholder': {
+      'fr': 'Ton prénom',
+      'en': 'Your first name',
+      'de': 'Dein Vorname',
+    },
+    'name_hint': {
+      'fr': 'C’est comme ça que les coachs t’appelleront, et c’est ce que tu signeras.',
+      'en': 'That’s how the coaches will call you, and what you’ll sign with.',
+      'de': 'So werden dich die Coaches nennen – und damit unterschreibst du.',
+    },
+    'react_name': {
+      'fr': 'Enchanté, {n}.',
+      'en': 'Nice to meet you, {n}.',
+      'de': 'Freut uns, {n}.',
+    },
     'q_goal': {'fr': 'Qu’est-ce qu’on vise ensemble ?', 'en': 'What are we aiming for together?', 'de': 'Was streben wir gemeinsam an?'},
     'goal_lose': {'fr': 'Perdre du gras', 'en': 'Lose fat', 'de': 'Fett verlieren'},
     'goal_lose_sub': {'fr': 'Sans régime de misère', 'en': 'No starvation diet', 'de': 'Ohne Hungerdiät'},
