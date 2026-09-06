@@ -30,11 +30,15 @@ class OnbStrings {
 
   static const Map<String, Map<String, String>> _m = {
     // ---------- Hello ----------
-    'hello_title': {'fr': 'Salut {n}.', 'en': 'Hi {n}.', 'de': 'Hallo {n}.'},
+    'hello_title': {
+      'fr': 'Bienvenue, {n}.',
+      'en': 'Welcome, {n}.',
+      'de': 'Willkommen, {n}.',
+    },
     'hello_sub': {
-      'fr': 'Deux coachs IA : un pour le sport, un pour l’assiette. Ils planifient ta semaine et font le point avec toi chaque semaine.',
-      'en': 'Two AI coaches: one for training, one for food. They plan your week and check in with you every week.',
-      'de': 'Zwei KI-Coaches: einer fürs Training, einer fürs Essen. Sie planen deine Woche und ziehen jede Woche mit dir Bilanz.',
+      'fr': 'Ryze, c’est deux coachs IA : un pour le sport, un pour l’assiette. Ils planifient ta semaine avec toi et font le point chaque semaine.',
+      'en': 'Ryze is two AI coaches: one for training, one for food. They plan your week with you and check in every week.',
+      'de': 'Ryze sind zwei KI-Coaches: einer fürs Training, einer fürs Essen. Sie planen deine Woche mit dir und ziehen jede Woche Bilanz.',
     },
     'hello_punch1': {'fr': 'Les autres apps te font compter.', 'en': 'Other apps make you count.', 'de': 'Andere Apps lassen dich zählen.'},
     'hello_punch2': {'fr': 'Nous, on te coache.', 'en': 'We coach you.', 'de': 'Wir coachen dich.'},
@@ -450,7 +454,11 @@ class OnbStrings {
       'en': 'Because: “{why}”',
       'de': 'Dafür: „{why}“',
     },
-    'hello_title_anon': {'fr': 'Salut.', 'en': 'Hi.', 'de': 'Hallo.'},
+    'hello_title_anon': {
+      'fr': 'Bienvenue.',
+      'en': 'Welcome.',
+      'de': 'Willkommen.',
+    },
     'proj_adjust': {
       'fr': 'Une courbe ne tient pas toute seule. Chaque semaine, on fait le point ensemble et on ajuste le plan.',
       'en': 'A curve does not hold on its own. Every week we take stock together and adjust the plan.',
