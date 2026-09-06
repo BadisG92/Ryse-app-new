@@ -1,0 +1,176 @@
+<title>RYZE // COACH SELECT</title>
+<style>
+  :root{
+    --bg0:#04060c; --bg1:#081020; --panel:#0a1524; --panel2:#0e1e33;
+    --cyan:#38ecff; --cyan2:#0cccef; --deep:#0a3550;
+    --amber:#ffbe4d; --red:#ff5169;
+    --line:rgba(56,236,255,.18); --grid:rgba(56,236,255,.055);
+    --txt:#d7edf6; --muted:#5c7c92;
+    --fD:Impact,"Haettenschweiler","Arial Narrow Bold","Arial Black",sans-serif;
+    --fM:ui-monospace,"Consolas","SFMono-Regular",monospace;
+    --cut:polygon(0 0,calc(100% - 3.4cqw) 0,100% 3.4cqw,100% 100%,3.4cqw 100%,0 calc(100% - 3.4cqw));
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#02030a;min-height:100vh;display:grid;place-items:center;overflow:hidden;font-family:var(--fM)}
+  .stage{position:relative;width:min(100vw,calc(100svh*9/16));height:min(100svh,calc(100vw*16/9));
+    aspect-ratio:9/16;container-type:size;overflow:hidden;color:var(--txt);
+    background:radial-gradient(130% 80% at 50% 22%,#0d2036 0%,#081324 45%,#03050d 100%)}
+  .grid{position:absolute;inset:0;background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+    background-size:6.25cqw 6.25cqw;mask:radial-gradient(115% 80% at 50% 38%,#000 42%,transparent 88%)}
+  .vig{position:absolute;inset:0;background:radial-gradient(100% 60% at 50% 50%,transparent 55%,rgba(0,0,0,.72) 100%);pointer-events:none}
+  .noise{position:absolute;inset:0;pointer-events:none;opacity:.5;
+    background:repeating-linear-gradient(0deg,transparent 0 2.5px,rgba(0,0,0,.16) 2.5px 3.5px)}
+  .frame{position:absolute;inset:2.4cqw;border:1px solid var(--line);clip-path:var(--cut);pointer-events:none;
+    box-shadow:inset 0 0 12cqw rgba(56,236,255,.06)}
+  .wrap{position:absolute;inset:0;display:flex;flex-direction:column;padding:5cqw 5.2cqw 4.4cqw}
+
+  .top{display:flex;justify-content:space-between;align-items:flex-start;font-size:2cqw;letter-spacing:.28em;color:var(--muted)}
+  .top b{color:var(--cyan);font-weight:400}
+  .brand{display:flex;align-items:center;gap:1.4cqw}
+  .dia{width:2.6cqw;height:2.6cqw;background:var(--cyan);transform:rotate(45deg);box-shadow:0 0 3cqw var(--cyan)}
+  .kick{margin-top:4.4cqw;font-size:2.3cqw;letter-spacing:.52em;color:var(--amber)}
+  .kick::before{content:"";display:inline-block;width:6cqw;height:1px;background:var(--amber);vertical-align:middle;margin-right:1.8cqw;box-shadow:0 0 2cqw var(--amber)}
+  .title{font-family:var(--fD);line-height:.82;text-transform:uppercase;margin-top:1.4cqw}
+  .title .l1{font-size:9cqw;letter-spacing:.02em;color:#9fdfef;text-shadow:0 0 3cqw rgba(56,236,255,.35)}
+  .title .l2{font-size:16.5cqw;letter-spacing:.01em;
+    background:linear-gradient(100deg,#57f2ff 0%,#f2ffff 46%,#38ecff 54%,#0f9dbe 100%);
+    background-size:220% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;
+    text-shadow:0 0 6cqw rgba(56,236,255,.45);animation:sheen 5.5s linear infinite}
+  .title .l2 span{color:var(--amber);-webkit-text-fill-color:var(--amber);text-shadow:0 0 5cqw rgba(255,190,77,.5)}
+
+  .prog{margin-top:3.4cqw}
+  .prog .lab{display:flex;justify-content:space-between;font-size:2cqw;letter-spacing:.3em;color:var(--muted);margin-bottom:1.6cqw}
+  .prog .lab b{color:var(--cyan)}
+  .segs{display:flex;gap:1.4cqw;height:2.6cqw}
+  .seg{flex:1;background:var(--panel);transform:skewX(-20deg);border:1px solid rgba(56,236,255,.14)}
+  .seg.on{background:linear-gradient(var(--cyan),var(--cyan2));box-shadow:0 0 3cqw var(--cyan);border-color:transparent}
+  .seg.new{background:linear-gradient(var(--amber),#e79820);box-shadow:0 0 3cqw var(--amber);animation:blink 2.2s ease-in-out infinite}
+
+  .arena{position:relative;flex:1;margin:3.6cqw 0;display:flex;align-items:flex-end;justify-content:center;min-height:0}
+  .bk{position:absolute;width:7cqw;height:7cqw;border:1.6px solid var(--cyan);opacity:.85;animation:floaty 6s ease-in-out infinite}
+  .bk.tl{top:0;left:0;border-right:0;border-bottom:0}
+  .bk.tr{top:0;right:0;border-left:0;border-bottom:0}
+  .bk.bl{bottom:0;left:0;border-right:0;border-top:0}
+  .bk.br{bottom:0;right:0;border-left:0;border-top:0}
+  .ring{position:absolute;top:20%;left:50%;width:62cqw;height:62cqw;margin-left:-31cqw;border-radius:50%;
+    border:1px dashed rgba(56,236,255,.3);animation:spin 34s linear infinite}
+  .ring::after{content:"";position:absolute;inset:11%;border-radius:50%;border:1px solid rgba(255,190,77,.22)}
+  .halo{position:absolute;top:16%;left:50%;width:70cqw;height:70cqw;margin-left:-35cqw;border-radius:50%;
+    background:radial-gradient(circle,rgba(56,236,255,.28),transparent 62%);filter:blur(6px);animation:pulse 4s ease-in-out infinite}
+  .sideL,.sideR{position:absolute;top:50%;transform:translateY(-50%);font-size:1.9cqw;letter-spacing:.24em;color:var(--muted);line-height:2.5}
+  .sideL{left:0;text-align:left}.sideR{right:0;text-align:right}
+  .sideL b,.sideR b{color:var(--cyan);animation:blink 3s ease-in-out infinite}
+
+  .subject{position:relative;width:50cqw;height:82%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;z-index:2}
+  .head{width:27cqw;height:27cqw;border-radius:48% 48% 44% 44%;
+    background:linear-gradient(160deg,#123650,#071726);box-shadow:inset 3cqw 2cqw 6cqw rgba(56,236,255,.22),0 0 5cqw rgba(56,236,255,.14)}
+  .body{width:44cqw;height:40cqw;margin-top:-3cqw;border-radius:44% 44% 30% 30%/50% 50% 32% 32%;
+    background:linear-gradient(160deg,#123650,#06141f);box-shadow:inset 4cqw 3cqw 8cqw rgba(56,236,255,.2),0 0 6cqw rgba(56,236,255,.14);position:relative;overflow:hidden}
+  .body::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(56,236,255,.14) 3px 4px);animation:scan 3.4s linear infinite;mix-blend-mode:screen}
+  .tag{position:absolute;top:8%;background:rgba(4,10,18,.7);border:1px solid var(--line);padding:.7cqw 2cqw;font-size:1.9cqw;letter-spacing:.34em;color:var(--cyan);z-index:3}
+  .plat{position:absolute;bottom:-1cqw;left:50%;width:54cqw;height:11cqw;margin-left:-27cqw;transform:rotateX(66deg);z-index:1;
+    border-radius:50%;border:1.4px solid var(--cyan);background:radial-gradient(circle,rgba(56,236,255,.34),transparent 70%);
+    box-shadow:0 0 7cqw rgba(56,236,255,.5);animation:pulse 4s ease-in-out infinite}
+  .plat::after{content:"";position:absolute;inset:24% 30%;border-radius:50%;border:1px solid rgba(255,190,77,.5)}
+
+  .card{position:relative;padding:3cqw 4cqw;background:linear-gradient(150deg,var(--panel2),var(--panel));
+    clip-path:var(--cut);box-shadow:inset 0 0 0 1.4px var(--line);display:flex;gap:3cqw;align-items:center}
+  .card::before{content:"";position:absolute;left:0;top:14%;height:72%;width:1cqw;background:var(--amber);box-shadow:0 0 3cqw var(--amber)}
+  .cname{flex:0 0 34%}
+  .cname .r{font-size:1.9cqw;letter-spacing:.34em;color:var(--muted)}
+  .cname h2{font-family:var(--fD);font-size:5.6cqw;line-height:.9;text-transform:uppercase;color:#eafcff;text-shadow:0 0 3cqw rgba(56,236,255,.3)}
+  .cname .sub{font-size:1.8cqw;letter-spacing:.2em;color:var(--cyan)}
+  .chips{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:1.6cqw 2.6cqw}
+  .chip{display:flex;flex-direction:column;gap:.9cqw}
+  .chip .n{font-size:1.85cqw;letter-spacing:.24em;color:var(--muted);display:flex;justify-content:space-between}
+  .chip .n i{color:var(--cyan);font-style:normal}
+  .bar{display:flex;gap:.7cqw;height:1.5cqw}
+  .bar u{flex:1;background:rgba(56,236,255,.12);transform:skewX(-22deg)}
+  .bar u.f{background:var(--cyan);box-shadow:0 0 1.6cqw var(--cyan)}
+  .bar u.a{background:var(--amber);box-shadow:0 0 1.6cqw var(--amber)}
+
+  .roster{margin-top:3.4cqw;display:grid;grid-template-columns:repeat(6,1fr);gap:2cqw}
+  .tile{position:relative;aspect-ratio:1;background:var(--panel);clip-path:polygon(0 0,calc(100% - 2.4cqw) 0,100% 2.4cqw,100% 100%,2.4cqw 100%,0 calc(100% - 2.4cqw));
+    box-shadow:inset 0 0 0 1.4px rgba(56,236,255,.16);display:grid;place-items:center}
+  .tile i{position:absolute;top:.8cqw;left:1.4cqw;font-size:1.7cqw;letter-spacing:.1em;color:var(--muted);font-style:normal}
+  .tile .mini{width:52%;height:52%;border-radius:46% 46% 40% 40%;background:linear-gradient(160deg,#1a4d6b,#0a2233)}
+  .tile.un{background:linear-gradient(160deg,#123a54,#0a1a2b);box-shadow:inset 0 0 0 1.4px var(--cyan),0 0 3cqw rgba(56,236,255,.22)}
+  .tile.act{box-shadow:inset 0 0 0 1.8px var(--amber),0 0 4cqw rgba(255,190,77,.4);background:linear-gradient(160deg,#1c3a4e,#0c1c2b)}
+  .tile.act::after{content:"▲";position:absolute;bottom:-.4cqw;font-size:2.2cqw;color:var(--amber);text-shadow:0 0 2cqw var(--amber);animation:blink 1.4s ease-in-out infinite}
+  .tile.lock{background:repeating-linear-gradient(-45deg,#0a121e 0 2.6cqw,#0c1826 2.6cqw 5.2cqw)}
+  .tile.lock i{color:#3d5568}
+  .tile.lock .q{font-family:var(--fD);font-size:6cqw;color:#2f465a;text-shadow:0 0 2cqw rgba(0,0,0,.6)}
+
+  @keyframes sheen{to{background-position:220% 0}}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @keyframes pulse{0%,100%{opacity:.55}50%{opacity:1}}
+  @keyframes blink{0%,100%{opacity:1}48%{opacity:.4}}
+  @keyframes scan{to{transform:translateY(9cqh)}}
+  @keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-1.2cqh)}}
+  @media(prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+
+<div class="stage">
+  <div class="grid"></div>
+  <div class="vig"></div>
+
+  <div class="wrap">
+    <div class="top">
+      <div class="brand"><span class="dia"></span> RYZE<b>·SYS</b></div>
+      <div>SEL-MODE // <b>v2.6</b></div>
+    </div>
+    <div class="kick">COACH SELECT PROTOCOL</div>
+    <div class="title">
+      <div class="l1">Choose Your</div>
+      <div class="l2">CO<span>A</span>CH</div>
+    </div>
+
+    <div class="prog">
+      <div class="lab"><span>ROSTER UNLOCK</span><b>02 / 06 SYNCED</b></div>
+      <div class="segs">
+        <div class="seg on"></div><div class="seg new"></div>
+        <div class="seg"></div><div class="seg"></div><div class="seg"></div><div class="seg"></div>
+      </div>
+    </div>
+
+    <div class="arena">
+      <div class="halo"></div>
+      <div class="ring"></div>
+      <span class="bk tl"></span><span class="bk tr"></span><span class="bk bl"></span><span class="bk br"></span>
+      <div class="sideL">PWR <b>////</b><br>SYS <b>OK</b><br>LNK <b>98%</b></div>
+      <div class="sideR">SLOT <b>01</b><br>TIER <b>S</b><br>SCN <b>ON</b></div>
+      <div class="subject">
+        <div class="tag">SUBJECT LOADED</div>
+        <div class="head"></div>
+        <div class="body"></div>
+        <div class="plat"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="cname">
+        <div class="r">IDENT //</div>
+        <h2>Character<br>Name</h2>
+        <div class="sub">CLASS · —</div>
+      </div>
+      <div class="chips">
+        <div class="chip"><div class="n">STRENGTH <i>▮▮▮</i></div><div class="bar"><u class="f"></u><u class="f"></u><u class="f"></u><u></u><u></u></div></div>
+        <div class="chip"><div class="n">CARDIO <i>▮▮▮▮</i></div><div class="bar"><u class="f"></u><u class="f"></u><u class="f"></u><u class="f"></u><u></u></div></div>
+        <div class="chip"><div class="n">MOBILITY <i>▮▮</i></div><div class="bar"><u class="a"></u><u class="a"></u><u></u><u></u><u></u></div></div>
+        <div class="chip"><div class="n">FOCUS <i>▮▮▮▮</i></div><div class="bar"><u class="f"></u><u class="f"></u><u class="f"></u><u class="f"></u><u></u></div></div>
+      </div>
+    </div>
+
+    <div class="roster">
+      <div class="tile un act"><i>01</i><div class="mini"></div></div>
+      <div class="tile un"><i>02</i><div class="mini"></div></div>
+      <div class="tile lock"><i>03</i><div class="q">?</div></div>
+      <div class="tile lock"><i>04</i><div class="q">?</div></div>
+      <div class="tile lock"><i>05</i><div class="q">?</div></div>
+      <div class="tile lock"><i>06</i><div class="q">?</div></div>
+    </div>
+  </div>
+
+  <div class="frame"></div>
+  <div class="noise"></div>
+</div>

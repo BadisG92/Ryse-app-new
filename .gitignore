@@ -126,3 +126,6 @@ logs/
 # Fichier temporaire avec clés hardcodées - NE JAMAIS COMMITER
 lib/config/env_config.dart.backup
 lib/config/env_config_temp.dart
+
+# Claude Code worktrees (a full checkout each, never versioned)
+.claude/worktrees/

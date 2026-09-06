@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RYZE — Choose Your Coach</title>
+<style>
+:root{
+  --ink:#070c1c; --ink2:#0b1430; --stock:#14295a; --foil:#ffe6a0; --foil2:#c8922f; --foilD:#6e4c12;
+  --cy:#66f0e4; --mag:#ff77c8; --gold:#ffd275; --blue:#3f8dff; --lime:#a8ff7a;
+  --paper:#eef4ff; --dim:#8ea3cf;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{min-height:100vh;background:#04060e;display:flex;align-items:center;justify-content:center;
+  font-family:system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+.stage{position:relative;aspect-ratio:9/16;height:min(96vh,940px);width:auto;container-type:size;
+  overflow:hidden;border-radius:6cqw;background:var(--ink);
+  box-shadow:0 4cqw 14cqw rgba(0,0,0,.65),0 0 0 1px rgba(255,255,255,.05) inset}
+.bg{position:absolute;inset:0;background:
+  radial-gradient(120% 66% at 50% -12%,rgba(63,141,255,.4),transparent 60%),
+  radial-gradient(120% 60% at 50% 116%,rgba(255,119,200,.24),transparent 62%),
+  radial-gradient(80% 46% at 50% 46%,rgba(102,240,228,.1),transparent 72%),
+  linear-gradient(#0a1330,#060a1a)}
+.bg::before{content:"";position:absolute;inset:0;opacity:.28;
+  background-image:radial-gradient(rgba(255,255,255,.14) 1px,transparent 1.6px);background-size:5cqw 5cqw;
+  -webkit-mask:radial-gradient(72% 66% at 50% 40%,#000,transparent 82%);mask:radial-gradient(72% 66% at 50% 40%,#000,transparent 82%)}
+.bg::after{content:"";position:absolute;left:50%;top:40%;width:170cqw;height:170cqw;transform:translate(-50%,-50%);
+  background:conic-gradient(from 0deg,rgba(102,240,228,.12),rgba(63,141,255,.12),rgba(255,119,200,.12),rgba(255,210,117,.12),rgba(102,240,228,.12));
+  filter:blur(7cqw);opacity:.55;animation:spin 26s linear infinite}
+.ui{position:absolute;inset:0;display:flex;flex-direction:column;gap:2.4cqw;padding:5cqw 4.6cqw 4.6cqw}
+.head{display:flex;align-items:center;justify-content:space-between}
+.kicker{font-family:Georgia,"Times New Roman",serif;font-style:italic;font-size:3.1cqw;letter-spacing:.04em;
+  color:var(--foil);text-shadow:0 0 2.6cqw rgba(255,210,117,.4)}
+.cardno{font-family:ui-monospace,"Cascadia Code",Consolas,monospace;font-size:2.7cqw;letter-spacing:.14em;color:var(--paper);
+  padding:.9cqw 2cqw;border-radius:2cqw;background:rgba(255,255,255,.05);border:1px solid rgba(255,230,160,.34)}
+.title{text-transform:uppercase;line-height:.8}
+.title .s1{display:block;font-family:system-ui,sans-serif;font-weight:800;font-size:5.4cqw;letter-spacing:.24em;
+  color:var(--cy);text-shadow:0 0 3cqw rgba(102,240,228,.55)}
+.title .s2{display:block;font-family:Impact,"Haettenschweiler","Arial Narrow",sans-serif;font-size:18cqw;letter-spacing:.01em;
+  background:linear-gradient(100deg,#fff5d4 0%,#ffd275 22%,#fff 38%,#ffd275 54%,#c8922f 70%,#ffe6a0 88%,#fff 100%);
+  background-size:220% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 .5cqw 0 var(--foilD)) drop-shadow(0 0 4cqw rgba(255,210,117,.4));animation:foil 6s ease-in-out infinite}
+.progress{display:flex;flex-direction:column;gap:1.4cqw}
+.plab{font-family:ui-monospace,Consolas,monospace;font-size:2.5cqw;letter-spacing:.22em;color:var(--dim)}
+.plab b{color:var(--cy)}
+.segs{display:flex;gap:1.2cqw}
+.seg{flex:1;height:2.2cqw;border-radius:2cqw;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.06)}
+.seg.on{border-color:transparent;background:linear-gradient(90deg,var(--cy),var(--blue),var(--mag));background-size:200% 100%;
+  box-shadow:0 0 3cqw rgba(102,240,228,.6);animation:segHolo 4s linear infinite}
+.hero{position:relative;flex:1 1 auto;min-height:0;border-radius:5cqw;padding:.85cqw;
+  background:conic-gradient(from 210deg,var(--foil),var(--foil2) 22%,var(--foilD) 40%,var(--foil) 58%,var(--foil2) 76%,var(--foil) 100%);
+  box-shadow:0 2.4cqw 6cqw rgba(0,0,0,.5),0 0 5cqw rgba(63,141,255,.28)}
+.window{position:absolute;inset:.85cqw;border-radius:4.2cqw;overflow:hidden;
+  background:radial-gradient(120% 90% at 50% 32%,#173563,#0a1836 66%,#070f24)}
+.mono{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-family:Impact,sans-serif;font-size:62cqw;color:rgba(255,255,255,.035);letter-spacing:-.04em;user-select:none}
+.holo{position:absolute;inset:0;pointer-events:none;mix-blend-mode:screen}
+.holo::before{content:"";position:absolute;inset:-25%;mix-blend-mode:color-dodge;opacity:.4;
+  background:repeating-linear-gradient(115deg,rgba(255,0,140,.5) 0 6cqw,rgba(0,225,255,.5) 6cqw 12cqw,rgba(150,255,90,.4) 12cqw 18cqw,rgba(255,215,90,.5) 18cqw 24cqw);
+  animation:holo 9s linear infinite}
+.holo::after{content:"";position:absolute;top:-40%;left:-70%;width:42%;height:180%;transform:rotate(18deg);filter:blur(1cqw);
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.6),transparent);animation:sheen 5.5s ease-in-out infinite}
+.figure{position:absolute;left:0;right:0;bottom:9%;margin:auto;width:66%;height:80%;animation:float 4.6s ease-in-out infinite}
+.glow{position:absolute;left:50%;top:44%;width:96%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;
+  background:radial-gradient(circle,rgba(102,240,228,.5),rgba(63,141,255,.28) 42%,transparent 66%);animation:pulse 3.6s ease-in-out infinite}
+.base{position:absolute;bottom:4%;left:50%;transform:translateX(-50%);width:74%;height:9%;border-radius:50%;
+  background:radial-gradient(closest-side,rgba(102,240,228,.7),rgba(63,141,255,.2) 62%,transparent);
+  box-shadow:0 0 6cqw rgba(63,141,255,.55)}
+.sil{position:absolute;left:50%;bottom:11%;transform:translateX(-50%);width:56%;
+  filter:drop-shadow(2cqw 0 2cqw rgba(255,119,200,.35)) drop-shadow(-2cqw 0 2cqw rgba(102,240,228,.4)) drop-shadow(0 0 3cqw rgba(63,141,255,.5))}
+.sil .head{display:block;width:44%;aspect-ratio:1;margin:0 auto;border-radius:50%;
+  background:linear-gradient(160deg,#2a4276,#0c1636);box-shadow:inset 0 1.4cqw 2cqw rgba(150,190,255,.35)}
+.sil .body{display:block;margin-top:-5%;height:26cqw;border-radius:46% 46% 38% 38%/58% 58% 42% 42%;
+  background:linear-gradient(160deg,#26396d,#0b1430);box-shadow:inset 0 1.6cqw 2.4cqw rgba(140,180,255,.3)}
+.rare{position:absolute;top:2.6cqw;left:2.6cqw;font-family:Impact,sans-serif;font-size:2.8cqw;letter-spacing:.1em;
+  color:#081026;padding:.9cqw 2cqw;border-radius:1.6cqw;
+  background:linear-gradient(120deg,var(--mag),var(--blue),var(--cy));background-size:200% 100%;
+  box-shadow:0 0 3.4cqw rgba(102,240,228,.5);animation:segHolo 6s linear infinite}
+.token{position:absolute;top:2.6cqw;right:2.6cqw;width:8cqw;height:8cqw;border-radius:50%;display:grid;place-items:center;
+  background:radial-gradient(circle at 40% 30%,#1c355f,#0a1836);border:1px solid rgba(255,230,160,.5);box-shadow:0 0 3cqw rgba(255,210,117,.4)}
+.bolt{width:3.4cqw;height:5cqw;background:linear-gradient(180deg,var(--gold),var(--foil2));
+  clip-path:polygon(58% 0,10% 56%,46% 56%,34% 100%,90% 40%,52% 40%)}
+.plate{position:relative;overflow:hidden;border-radius:3.4cqw;padding:2.6cqw 3cqw;
+  background:linear-gradient(180deg,rgba(20,38,78,.92),rgba(9,18,40,.94));border:1px solid rgba(255,230,160,.34);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.05),0 1.6cqw 4cqw rgba(0,0,0,.4)}
+.plate::after{content:"";position:absolute;top:0;left:-60%;width:40%;height:100%;transform:skewX(-18deg);
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.12),transparent);animation:sheen 7s ease-in-out infinite}
+.nrow{display:flex;align-items:flex-start;justify-content:space-between;gap:2cqw}
+.cname{font-family:Impact,"Arial Narrow",sans-serif;text-transform:uppercase;font-size:8cqw;letter-spacing:.02em;line-height:.9;
+  color:var(--paper);text-shadow:0 0 3cqw rgba(63,141,255,.4)}
+.flavor{font-family:Georgia,serif;font-style:italic;font-size:2.7cqw;color:var(--dim);margin-top:.8cqw}
+.stars{font-size:3.4cqw;color:var(--foil);letter-spacing:.1cqw;text-shadow:0 0 2cqw rgba(255,210,117,.6);white-space:nowrap}
+.stars span{color:rgba(255,255,255,.18)}
+.stats{display:flex;gap:1.6cqw;margin-top:2.6cqw}
+.chip{flex:1;padding:1.5cqw 1.4cqw;border-radius:1.8cqw;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09)}
+.chip b{display:block;font:600 2cqw/1 ui-monospace,Consolas,monospace;letter-spacing:.1em;color:var(--dim)}
+.chip .bar{margin-top:1.3cqw;height:1.5cqw;border-radius:1cqw;background:rgba(255,255,255,.09);overflow:hidden}
+.chip .bar i{display:block;height:100%;border-radius:1cqw}
+.c1 .bar i{background:linear-gradient(90deg,var(--gold),var(--mag))}
+.c2 .bar i{background:linear-gradient(90deg,var(--cy),var(--blue))}
+.c3 .bar i{background:linear-gradient(90deg,var(--blue),var(--mag))}
+.c4 .bar i{background:linear-gradient(90deg,var(--lime),var(--cy))}
+.roster{display:grid;grid-template-columns:repeat(6,1fr);gap:1.6cqw}
+.tile{position:relative;aspect-ratio:3/4;border-radius:2cqw}
+.tile em{position:absolute;bottom:.6cqw;right:1cqw;font:700 2cqw/1 ui-monospace,Consolas,monospace;color:rgba(255,255,255,.5);font-style:normal;z-index:2}
+.tile.on{padding:.5cqw;background:linear-gradient(150deg,var(--foil),var(--foil2) 55%,var(--foil));box-shadow:0 0 3cqw rgba(255,210,117,.3)}
+.face{position:absolute;inset:.5cqw;border-radius:1.5cqw;overflow:hidden;background:radial-gradient(120% 90% at 50% 30%,#1b3562,#0a1836)}
+.face .msil{position:absolute;left:50%;bottom:14%;transform:translateX(-50%);width:44%;height:52%;border-radius:44% 44% 40% 40%;
+  background:linear-gradient(160deg,#2b4478,#0b1430);box-shadow:0 0 2cqw rgba(102,240,228,.5)}
+.tsheen{position:absolute;top:-30%;left:-60%;width:40%;height:160%;transform:rotate(18deg);
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);animation:sheen 5.5s ease-in-out infinite}
+.tile.off{background:linear-gradient(150deg,rgba(60,82,132,.32),rgba(18,28,58,.4));border:1px solid rgba(255,255,255,.07)}
+.lock{position:absolute;left:50%;top:46%;transform:translate(-50%,-50%);width:5cqw;height:3.8cqw;border-radius:1cqw;
+  background:rgba(180,204,255,.42)}
+.lock::before{content:"";position:absolute;left:50%;top:-3cqw;transform:translateX(-50%);width:3.4cqw;height:3.4cqw;
+  border:1cqw solid rgba(180,204,255,.42);border-bottom:none;border-radius:3cqw 3cqw 0 0}
+.tile.sel{padding:.6cqw;background:linear-gradient(150deg,var(--cy),var(--blue));box-shadow:0 0 5cqw rgba(102,240,228,.7)}
+.tile.sel::before{content:"";position:absolute;top:-2.6cqw;left:50%;transform:translateX(-50%);
+  border:1.3cqw solid transparent;border-top-color:var(--cy);filter:drop-shadow(0 0 1cqw rgba(102,240,228,.8))}
+@keyframes foil{0%,100%{background-position:0 0}50%{background-position:100% 0}}
+@keyframes holo{0%{transform:translateX(0) rotate(0)}100%{transform:translateX(6cqw) rotate(2deg)}}
+@keyframes sheen{0%{left:-70%}55%,100%{left:150%}}
+@keyframes segHolo{0%{background-position:0 0}100%{background-position:200% 0}}
+@keyframes pulse{0%,100%{opacity:.7;transform:translate(-50%,-50%) scale(.94)}50%{opacity:1;transform:translate(-50%,-50%) scale(1.05)}}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-2.4cqw)}}
+@keyframes spin{to{transform:translate(-50%,-50%) rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+</head>
+<body>
+<main class="stage">
+  <div class="bg"></div>
+  <div class="ui">
+    <div class="head">
+      <div class="kicker">&#9670; Holo Edition — Series 01</div>
+      <div class="cardno">No. 002 / 006</div>
+    </div>
+    <h1 class="title"><span class="s1">Choose your</span><span class="s2">Coach</span></h1>
+    <div class="progress">
+      <div class="plab">COLLECTION &middot; <b>02</b> / 06 UNLOCKED</div>
+      <div class="segs"><i class="seg on"></i><i class="seg on"></i><i class="seg"></i><i class="seg"></i><i class="seg"></i><i class="seg"></i></div>
+    </div>
+    <section class="hero">
+      <div class="window">
+        <div class="mono">R</div>
+        <div class="figure">
+          <div class="glow"></div>
+          <div class="base"></div>
+          <div class="sil"><span class="head"></span><span class="body"></span></div>
+        </div>
+        <div class="holo"></div>
+        <div class="rare">&#9733; Holo Rare</div>
+        <div class="token"><i class="bolt"></i></div>
+      </div>
+    </section>
+    <section class="plate">
+      <div class="nrow">
+        <div>
+          <div class="cname">Character Name</div>
+          <div class="flavor">The next coach in your roster awaits.</div>
+        </div>
+        <div class="stars">&#9733;&#9733;&#9733;&#9733;<span>&#9733;</span></div>
+      </div>
+      <div class="stats">
+        <div class="chip c1"><b>STRENGTH</b><div class="bar"><i style="width:82%"></i></div></div>
+        <div class="chip c2"><b>STAMINA</b><div class="bar"><i style="width:64%"></i></div></div>
+        <div class="chip c3"><b>TECHNIQUE</b><div class="bar"><i style="width:76%"></i></div></div>
+        <div class="chip c4"><b>RECOVERY</b><div class="bar"><i style="width:58%"></i></div></div>
+      </div>
+    </section>
+    <section class="roster">
+      <div class="tile on"><div class="face"><span class="msil"></span><div class="tsheen"></div></div><em>01</em></div>
+      <div class="tile sel"><div class="face"><span class="msil"></span><div class="tsheen"></div></div><em>02</em></div>
+      <div class="tile off"><span class="lock"></span><em>03</em></div>
+      <div class="tile off"><span class="lock"></span><em>04</em></div>
+      <div class="tile off"><span class="lock"></span><em>05</em></div>
+      <div class="tile off"><span class="lock"></span><em>06</em></div>
+    </section>
+  </div>
+</main>
+</body>
+</html>
