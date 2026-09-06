@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../onboarding_state.dart';
@@ -20,7 +21,12 @@ class BothCoachesContent extends StatefulWidget {
     required this.projection,
     required this.annualPrice,
     required this.annualPriceLabel,
+    this.currencyCode = 'EUR',
   });
+
+  /// Currency of the store price: every figure on the page is written in it,
+  /// so a user billed in dollars is not shown a saving in euros.
+  final String currencyCode;
 
   final OnbStrings s;
   final OnbAnswers answers;
@@ -65,16 +71,16 @@ class _BothCoachesContentState extends State<BothCoachesContent> with SingleTick
     super.dispose();
   }
 
-  /// "1 700 €" in French and German, "€1,700" in English.
-  String _eur(num value) {
-    final digits = value.round().abs().toString();
-    final buf = StringBuffer();
-    for (var i = 0; i < digits.length; i++) {
-      // English groups with a comma, German with a full stop, French with a thin space
-      if (i > 0 && (digits.length - i) % 3 == 0) buf.write(widget.s.lang == 'en' ? ',' : (widget.s.lang == 'de' ? '.' : ' '));
-      buf.write(digits[i]);
+  String get _locale => widget.s.lang == 'fr' ? 'fr_FR' : (widget.s.lang == 'de' ? 'de_DE' : 'en_US');
+
+  /// Whole amounts in the store's currency, grouped the way the language
+  /// groups them: "3 080 €", "$3,080", "3.080 €".
+  String _money(num value) {
+    try {
+      return NumberFormat.simpleCurrency(locale: _locale, name: widget.currencyCode, decimalDigits: 0).format(value.round());
+    } catch (_) {
+      return '${value.round()} ${widget.currencyCode}';
     }
-    return widget.s.lang == 'en' ? '€$buf' : '$buf €';
   }
 
   String _goalLabel() {
@@ -94,14 +100,14 @@ class _BothCoachesContentState extends State<BothCoachesContent> with SingleTick
         // the cost of doing it with humans, counted up
         AnimatedBuilder(
           animation: _count,
-          builder: (context, _) => Text(_eur(_human * _count.value), style: numberStyle, maxLines: 1, softWrap: false),
+          builder: (context, _) => Text(_money(_human * _count.value), style: numberStyle, maxLines: 1, softWrap: false),
         ),
         SizedBox(height: context.vw(1.6)),
         Text(s.t('both_caption', {'n': '$_weeks', 'goal': _goalLabel()}), style: OnbText.body(context, 3.6, weight: FontWeight.w500, color: OnbColors.mute)),
         SizedBox(height: context.vh(2)),
-        _Line(index: 0, icon: LucideIcons.dumbbell, text: s.t('both_line_coach', {'n': '$_sessions', 'p': '${BothCoachesContent.pricePerSession}'}), amount: _eur(_coach)),
+        _Line(index: 0, icon: LucideIcons.dumbbell, text: s.t('both_line_coach', {'n': '$_sessions', 'p': '${BothCoachesContent.pricePerSession}'}), amount: _money(_coach)),
         SizedBox(height: context.vw(2)),
-        _Line(index: 1, icon: LucideIcons.apple, text: s.t('both_line_nutri', {'n': '$_consults', 'p': '${BothCoachesContent.pricePerConsult}'}), amount: _eur(_nutri)),
+        _Line(index: 1, icon: LucideIcons.apple, text: s.t('both_line_nutri', {'n': '$_consults', 'p': '${BothCoachesContent.pricePerConsult}'}), amount: _money(_nutri)),
         SizedBox(height: context.vw(2)),
         _Line(index: 2, icon: LucideIcons.unlink, text: s.t('both_missing'), amount: '—', missing: true),
         SizedBox(height: context.vh(2.6)),
@@ -113,11 +119,16 @@ class _BothCoachesContentState extends State<BothCoachesContent> with SingleTick
           share: _ryzeShare,
           color: OnbColors.acc,
           anim: _barRyze,
-          trailing: '${widget.annualPriceLabel} · ${s.t('both_ratio', {'x': '$_times'})}',
+          trailing: widget.annualPriceLabel,
           trailingAnim: _ratio,
           trailingColor: _accText,
         ),
-        SizedBox(height: context.vh(2.8)),
+        SizedBox(height: context.vw(2.6)),
+        FadeTransition(
+          opacity: _ratio,
+          child: Text(s.t('both_ratio_line', {'x': '$_times'}), style: OnbText.body(context, 3.5, weight: FontWeight.w600, color: _accText, height: 1.35)),
+        ),
+        SizedBox(height: context.vh(2.4)),
         // what stays in the pocket
         PopIn(
           delay: const Duration(milliseconds: 2050),
@@ -131,7 +142,7 @@ class _BothCoachesContentState extends State<BothCoachesContent> with SingleTick
             ),
             child: Row(
               children: [
-                Text(_eur(_keep), style: OnbText.display(context, 8.2, color: OnbColors.acc, letterSpacingEm: -0.035, height: 1).copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
+                Text(_money(_keep), style: OnbText.display(context, 8.2, color: OnbColors.acc, letterSpacingEm: -0.035, height: 1).copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
                 SizedBox(width: context.vw(3.6)),
                 Expanded(
                   child: Column(

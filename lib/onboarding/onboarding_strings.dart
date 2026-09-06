@@ -266,6 +266,11 @@ class OnbStrings {
     'both_bar_human': {'fr': 'Coach + nutri', 'en': 'Coach + nutrition', 'de': 'Coach + Ernährung'},
     'both_bar_ryze': {'fr': 'Ryze, un an', 'en': 'Ryze, one year', 'de': 'Ryze, ein Jahr'},
     'both_ratio': {'fr': '{x}× moins', 'en': '{x}× less', 'de': '{x}× weniger'},
+    'both_ratio_line': {
+      'fr': 'Ryze coûte {x} fois moins cher, et c’est pour toute l’année.',
+      'en': 'Ryze costs {x} times less, and that is for the whole year.',
+      'de': 'Ryze kostet {x}-mal weniger, und das für das ganze Jahr.',
+    },
     'both_keep': {'fr': 'restent dans ta poche', 'en': 'stay in your pocket', 'de': 'bleiben in deiner Tasche'},
     'both_keep_sub': {
       'fr': 'avec les deux coachs, toute l’année',
