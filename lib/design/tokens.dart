@@ -39,6 +39,9 @@ class RyzeColors {
   static const Color accInk = Color(0xFF9A5F0C);
   static const Color onAcc = ink;
 
+  /// Errors on a field. Dark enough to read on paper; never used for state.
+  static const Color danger = Color(0xFFA62F1C);
+
   /// Reserved for confirmation controls ("Valider"); never a state colour.
   static const Color confirm = Color(0xFF10B981);
   static const Color green = Color(0xFF17B26A);
