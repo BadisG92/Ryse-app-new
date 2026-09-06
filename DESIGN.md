@@ -46,6 +46,30 @@ the composition holds from 375 to 430 pt. A headline shrinks with its length
 (7.8 / 6.9 / 6.1 vw) so German never pushes the instrument off the screen.
 Digits that change use tabular figures.
 
+## Launch
+
+The app opens on the navy of its icon, the same colour the native launch screen
+paints, so there is no seam between the two. The mark is then written by hand:
+the dot is set down, then the curve rises from the bottom left to the top
+right. The name arrives after it, as one block, rising into place under the
+mark. Nothing else is on the screen.
+
+The mark is laid down by a nib travelling along the middle of each shape, and
+the ink only exists where the pen has already passed. Tracing the outline
+instead would give the whole silhouette away before a stroke was finished. The
+lockup is therefore vector geometry (`RyzeLogo`, generated from
+`logo_ryze.svg`), and each shape of the mark carries the axis a hand would
+follow, computed from its own outline. The name does not get that treatment: a
+hand writes `Ryze` in eight separate strokes, and the seams between them read
+as a stutter rather than as writing.
+
+A hand keeps an even pace with soft ends, so a stroke runs on a sine ease
+rather than one of the three curves below. The name arrives on that same pace
+and over the same length of time as the long stroke of the mark, so the two
+read as one hand rather than as a drawing followed by a title card. Session
+restore runs in parallel and never cuts the writing short; reduce-motion shows
+the finished logo at once.
+
 ## Motion
 
 Three curves: `out` (fast start, soft landing) for almost everything; `spring`

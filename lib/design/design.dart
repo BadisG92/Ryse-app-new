@@ -8,6 +8,8 @@
 /// - tokens.dart   colours, radii, spacing, shadows, assets
 /// - type.dart     Archivo + Instrument Sans, viewport sizing
 /// - motion.dart   curves, durations, PopIn / TypingDots / SlideSwapText
+/// - ryze_logo     the mark and the wordmark as vector geometry
+/// - logo_draw     the launch animation that writes them
 /// - components    background grid, buttons, top bar, coach avatars, cards,
 ///                 choice cards and chips, rulers and wheels, chapter card,
 ///                 hold-to-sign, projection chart, week strip, proposal card
@@ -16,6 +18,8 @@ library;
 export 'tokens.dart';
 export 'type.dart';
 export 'motion.dart';
+export 'ryze_logo.dart';
+export 'logo_draw.dart';
 
 export '../onboarding/widgets/onb_widgets.dart';
 export '../onboarding/widgets/choices.dart';

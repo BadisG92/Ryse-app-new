@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'config/supabase_config.dart';
 import 'config/env_config.dart';
@@ -31,6 +31,8 @@ import 'services/widget_deep_link_handler.dart';
 import 'services/widget_water_handler.dart';
 import 'services/meal_widget_data_provider.dart';
 import 'services/haptic_service.dart';
+import 'design/tokens.dart';
+import 'design/logo_draw.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -218,12 +220,19 @@ class AppInitializer extends StatefulWidget {
   State<AppInitializer> createState() => _AppInitializerState();
 }
 
-class _AppInitializerState extends State<AppInitializer> with SingleTickerProviderStateMixin {
+class _AppInitializerState extends State<AppInitializer> with TickerProviderStateMixin {
+  /// The finished logo holds for a beat before the screen gives way.
+  static const Duration _hold = Duration(milliseconds: 280);
+  static const Duration _exitDuration = Duration(milliseconds: 380);
+
+  /// The draw is never cut short — the app waits for it even when the session
+  /// is already restored. This is only a guard against a draw that never
+  /// reports back, so a launch can never hang on the logo.
+  static const Duration _drawGuard = Duration(seconds: 5);
+
+  late final AnimationController _exit;
+  final Completer<void> _drawn = Completer<void>();
   bool _showSplash = true;
-  late AnimationController _animationController;
-  late Animation<double> _logoFadeAnimation;
-  late Animation<double> _logoScaleAnimation;
-  late Animation<double> _splashFadeOutAnimation;
 
   @override
   void initState() {
@@ -232,36 +241,7 @@ class _AppInitializerState extends State<AppInitializer> with SingleTickerProvid
     // Précharger la police Inter avant de démarrer les animations
     _preloadFont();
 
-    // Animation ultra-rapide style AAA (500ms total)
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 500),
-    );
-
-    // Logo : apparition instantanée (0ms -> 100ms)
-    _logoFadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: const Interval(0.0, 0.2, curve: Curves.easeOut),
-      ),
-    );
-
-    _logoScaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: const Interval(0.0, 0.2, curve: Curves.easeOut),
-      ),
-    );
-
-    // Disparition rapide (300ms -> 500ms)
-    _splashFadeOutAnimation = Tween<double>(begin: 1.0, end: 0.0).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: const Interval(0.6, 1.0, curve: Curves.easeIn),
-      ),
-    );
-
-    _animationController.forward();
+    _exit = AnimationController(vsync: this, duration: _exitDuration);
     _initializeApp();
   }
 
@@ -285,28 +265,32 @@ class _AppInitializerState extends State<AppInitializer> with SingleTickerProvid
 
   @override
   void dispose() {
-    _animationController.dispose();
+    _exit.dispose();
     super.dispose();
   }
 
   Future<void> _initializeApp() async {
-    // Initialiser l'auth en parallèle de l'animation
+    // Initialiser l'auth en parallèle du dessin du logo
     final authService = Provider.of<AuthService>(context, listen: false);
-
-    // Démarrer l'auth
     final authFuture = _performAuthInitialization(authService);
 
-    // Durée minimum de l'animation (300ms pour voir le logo)
-    final minDuration = Future.delayed(const Duration(milliseconds: 300));
+    // Le logo se dessine en entier, quoi qu'il arrive : l'auth n'écourte pas
+    // l'animation, et l'animation ne retarde pas l'auth.
+    await Future.wait([
+      authFuture,
+      _drawn.future.timeout(RyzeLogoDraw.duration + _drawGuard, onTimeout: () {}),
+    ]);
 
-    // Attendre que l'auth ET l'animation minimum soient terminées
-    await Future.wait([authFuture, minDuration]);
+    if (!mounted) return;
+    await Future<void>.delayed(_hold);
+    if (!mounted) return;
 
-    if (mounted) {
-      setState(() {
-        _showSplash = false;
-      });
-    }
+    await _exit.forward();
+    if (!mounted) return;
+
+    setState(() {
+      _showSplash = false;
+    });
   }
 
   Future<void> _performAuthInitialization(AuthService authService) async {
@@ -339,7 +323,8 @@ class _AppInitializerState extends State<AppInitializer> with SingleTickerProvid
     return Consumer<AuthService>(
       builder: (context, authService, child) {
         if (authService.isLoading) {
-          return _buildAnimatedSplash(); // Continuer le splash si auth en cours
+          // Le logo reste posé, sans rejouer le tracé.
+          return _buildSplashGround(RyzeLogoStill(height: _logoHeight(context)));
         }
 
         return const RyzeApp();
@@ -347,69 +332,49 @@ class _AppInitializerState extends State<AppInitializer> with SingleTickerProvid
     );
   }
 
-  Widget _buildAnimatedSplash() {
+  double _logoHeight(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    return math.min(size.width * 0.54, size.height * 0.30);
+  }
+
+  /// Le sol du lancement : le navy de l'icône, donc aucune coupure entre
+  /// l'écran de lancement natif et la première image de Flutter.
+  Widget _buildSplashGround(Widget child) {
     return Scaffold(
-      body: FadeTransition(
-        opacity: _splashFadeOutAnimation,
-        child: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
-            ),
-          ),
-          child: SafeArea(
-            child: Column(
-              children: [
-                // Logo seul au centre
-                Expanded(
-                  child: Center(
-                    child: ScaleTransition(
-                      scale: _logoScaleAnimation,
-                      child: FadeTransition(
-                        opacity: _logoFadeAnimation,
-                        child: SizedBox(
-                          width: 120,
-                          height: 120,
-                          child: Center(
-                            child: SvgPicture.asset(
-                              'assets/images/logo_solo.svg',
-                              width: 72,
-                              height: 72,
-                              colorFilter: const ColorFilter.mode(
-                                Colors.white,
-                                BlendMode.srcIn,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-
-                // Texte "Ryze" en bas
-                FadeTransition(
-                  opacity: _logoFadeAnimation,
-                  child: const Text(
-                    'Ryze',
-                    style: TextStyle(
-                      fontSize: 48,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.white,
-                      letterSpacing: -1.5,
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 80),
-              ],
-            ),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [RyzeColors.ink, RyzeColors.ink2],
           ),
         ),
+        child: Center(child: child),
       ),
     );
   }
 
+  /// Le logo s'écrit : le point se pose, la courbe monte, puis le nom s'écrit
+  /// de gauche à droite dans les lettres de la marque. L'écran ne s'efface
+  /// qu'une fois le dessin terminé.
+  Widget _buildAnimatedSplash() {
+    return AnimatedBuilder(
+      animation: _exit,
+      builder: (context, child) {
+        final t = Curves.easeIn.transform(_exit.value);
+        return Opacity(
+          opacity: 1 - t,
+          child: Transform.scale(scale: 1 + 0.08 * t, child: child),
+        );
+      },
+      child: _buildSplashGround(
+        RyzeLogoDraw(
+          height: _logoHeight(context),
+          onComplete: () {
+            if (!_drawn.isCompleted) _drawn.complete();
+          },
+        ),
+      ),
+    );
+  }
 }
