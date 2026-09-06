@@ -1,110 +1,17 @@
-import 'package:flutter/material.dart';
+/// The onboarding's names for the design system. The tokens, type and motion
+/// live in `lib/design/`; these aliases keep every `Onb*` reference working
+/// without a visual change while the rest of the app is brought to the system.
+library;
 
-/// Design tokens of the v2 onboarding ("studio" direction).
-///
-/// Rule of the system:
-/// - ink (brand navy) = everything the user chooses or presses
-/// - acc (amber) = everything Ryze gives back: progress, live value pointers,
-///   the pact signature and the single gold trial button
-class OnbColors {
-  OnbColors._();
+import '../design/tokens.dart';
+import '../design/type.dart';
+import '../design/motion.dart';
 
-  static const Color paper = Color(0xFFF5F6F8);
-  static const Color paper2 = Color(0xFFEEF0F4);
-  static const Color surf = Color(0xFFFFFFFF);
-  static const Color ink = Color(0xFF0B132B);
-  static const Color ink2 = Color(0xFF1B2A5B);
-  // 5.2:1 on paper, above AA for the small print it carries
-  static const Color mute = Color(0xFF5F6779);
-  /// Decorative only (dashes, borders): too light for text.
-  static const Color mute2 = Color(0xFF9AA1B2);
-  static const Color line = Color(0x1A0B132B);
-  static const Color line2 = Color(0x0F0B132B);
+export '../design/tokens.dart';
+export '../design/type.dart' show RyzeText, RyzeSizing;
+export '../design/motion.dart' show RyzeCurves, RyzeDurations;
 
-  static const Color acc = Color(0xFFF2A93B);
-  static const Color accDeep = Color(0xFFD98A16);
-  // amber dark enough to carry text on paper (4.8:1)
-  static const Color accLight = Color(0xFFFFC766);
-  static const Color accTint = Color(0xFFFDF1DC);
-  static const Color accInk = Color(0xFF9A5F0C);
-  static const Color onAcc = ink;
-
-  static const Color green = Color(0xFF17B26A);
-
-  /// Warm light of the gym scene, top right of every screen.
-  static const LinearGradient ground = LinearGradient(
-    begin: Alignment.topCenter,
-    end: Alignment.bottomCenter,
-    colors: [Color(0xFFF8F9FB), paper, paper2],
-    stops: [0, 0.5, 1],
-  );
-}
-
-class OnbCurves {
-  OnbCurves._();
-
-  static const Curve spring = Cubic(0.22, 1.12, 0.3, 1.02);
-  static const Curve out = Cubic(0.2, 0.7, 0.2, 1);
-  static const Curve snap = Cubic(0.7, 0, 0.2, 1);
-}
-
-/// Viewport-relative sizing, mirrors the prototype's `cqw` / `cqh` units.
-extension OnbSizing on BuildContext {
-  double vw(double percent) => MediaQuery.sizeOf(this).width * percent / 100;
-  double vh(double percent) => MediaQuery.sizeOf(this).height * percent / 100;
-}
-
-class OnbText {
-  OnbText._();
-
-  /// Archivo for headlines and big numbers. Bundled variable font
-  /// (assets/fonts), so the onboarding never waits on a network fetch.
-  static TextStyle display(
-    BuildContext context,
-    double sizeVw, {
-    FontWeight weight = FontWeight.w800,
-    Color color = OnbColors.ink,
-    double height = 1.04,
-    double letterSpacingEm = -0.028,
-  }) {
-    final size = context.vw(sizeVw);
-    return TextStyle(
-      fontFamily: 'Archivo',
-      fontSize: size,
-      fontWeight: weight,
-      fontVariations: [FontVariation('wght', _wght(weight)), const FontVariation('wdth', 100)],
-      color: color,
-      height: height,
-      letterSpacing: size * letterSpacingEm,
-    );
-  }
-
-  /// Instrument Sans for everything else.
-  static TextStyle body(
-    BuildContext context,
-    double sizeVw, {
-    FontWeight weight = FontWeight.w400,
-    Color color = OnbColors.ink,
-    double height = 1.4,
-  }) {
-    return TextStyle(
-      fontFamily: 'InstrumentSans',
-      fontSize: context.vw(sizeVw),
-      fontWeight: weight,
-      fontVariations: [FontVariation('wght', _wght(weight)), const FontVariation('wdth', 100)],
-      color: color,
-      height: height,
-    );
-  }
-
-  static double _wght(FontWeight w) => (w.index + 1) * 100.0;
-}
-
-class OnbAssets {
-  OnbAssets._();
-
-  // cropped on the bust: the full-body pandas shrink to nothing in a 40 pt circle
-  static const String sportAvatar = 'assets/images/coach_ryze_sport_head.png';
-  static const String nutriAvatar = 'assets/images/coach_ryze_nutrition_head.png';
-  static const String scene = 'assets/images/welcome_background.png';
-}
+typedef OnbColors = RyzeColors;
+typedef OnbCurves = RyzeCurves;
+typedef OnbText = RyzeText;
+typedef OnbAssets = RyzeAssets;
