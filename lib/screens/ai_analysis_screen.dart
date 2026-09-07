@@ -15,7 +15,6 @@ import '../bottom_sheets/add_ingredient_bottom_sheet.dart';
 import '../services/food_entries_service.dart';
 import '../services/global_state_manager.dart';
 import '../services/dashboard_service.dart';
-import '../services/celebration_service.dart';
 
 class AIAnalysisScreen extends StatefulWidget {
   final String? imagePath; // Nullable pour le mode texte
@@ -326,12 +325,6 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
       final detectedMealName = _analysisResult.mealName?.isNotEmpty == true
           ? _analysisResult.mealName!
           : (_mealNameController.text.isNotEmpty ? _mealNameController.text : null);
-      // Show celebration popup instead of snackbar
-      CelebrationService().celebrateFoodEntry(
-        context,
-        foodName: detectedMealName,
-        mealName: mealName,
-      );
     }
   }
 

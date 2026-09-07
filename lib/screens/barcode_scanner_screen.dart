@@ -12,7 +12,6 @@ import '../services/openfoodfacts_service.dart';
 import '../services/auth_service.dart';
 import '../services/database_service.dart';
 import '../services/analytics_service.dart';
-import '../services/celebration_service.dart';
 import '../services/food_entries_service.dart';
 // import '../services/barcode_detection_service.dart'; // ANCIEN - Remplacé par unified_barcode_service
 import '../services/unified_barcode_service.dart'; // NOUVEAU - Switch ML Kit / Vision API
@@ -1240,12 +1239,6 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
 
               if (currentContext.mounted) {
                 if (success) {
-                  // Show celebration popup
-                  CelebrationService().celebrateFoodEntry(
-                    currentContext,
-                    foodName: foodItem.name,
-                    mealName: meal.name,
-                  );
 
                   ScaffoldMessenger.of(currentContext).showSnackBar(
                     SnackBar(
@@ -1302,12 +1295,6 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
 
                     if (currentContext.mounted) {
                       if (success) {
-                        // Show celebration popup
-                        CelebrationService().celebrateFoodEntry(
-                          currentContext,
-                          foodName: foodItem.name,
-                          mealName: mealType,
-                        );
 
                         ScaffoldMessenger.of(currentContext).showSnackBar(
                           SnackBar(

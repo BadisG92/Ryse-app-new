@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import '../services/celebration_service.dart';
 
 class ManualFoodEntryScreen extends StatefulWidget {
   const ManualFoodEntryScreen({super.key});
@@ -577,10 +576,6 @@ class _ManualFoodEntryScreenState extends State<ManualFoodEntryScreen> {
       final createdFoodName = _nameController.text;
       Future.delayed(Duration.zero, () {
         if (mounted) {
-          CelebrationService().celebrateFoodEntry(
-            context,
-            foodName: createdFoodName,
-          );
         }
       });
     }

@@ -12,7 +12,6 @@ import '../bottom_sheets/manual_food_search_bottom_sheet.dart';
 import '../components/ui/nutrition_widgets.dart';
 import '../services/food_entries_service.dart';
 import '../services/auth_service.dart';
-import '../services/celebration_service.dart';
 import '../services/localization_service.dart';
 import '../services/translations.dart';
 import '../services/water_service.dart';
@@ -503,10 +502,6 @@ class WidgetDeepLinkHandler {
         }
 
         // Afficher la célébration
-        CelebrationService().celebrateFoodEntryGlobal(
-          foodName: foodItem.name,
-          mealName: mealName,
-        );
 
         // Afficher une notification de succès
         if (context.mounted) {

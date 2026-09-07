@@ -22,7 +22,6 @@ import '../../bottom_sheets/new_meal_type_bottom_sheet.dart';
 import '../../models/nutrition_models.dart' as nutrition_models;
 import '../../services/food_entries_service.dart';
 import '../../services/auth_service.dart';
-import '../../services/celebration_service.dart';
 
 // Bouton d'action rapide.
 class _QuickActionButton extends StatelessWidget {
@@ -2538,10 +2537,6 @@ class NutritionQuickActionsSection extends StatelessWidget {
         mealId: selectedMeal.id, // ID du repas existant pour l'ajouter au bon bloc
       );
 
-      CelebrationService().celebrateFoodEntryGlobal(
-        foodName: foodItem.name,
-        mealName: selectedMeal.name,
-      );
 
       final success = await addEntryFuture;
       
@@ -2589,10 +2584,6 @@ class NutritionQuickActionsSection extends StatelessWidget {
         foodItem: foodItem,
       );
 
-      CelebrationService().celebrateFoodEntryGlobal(
-        foodName: foodItem.name,
-        mealName: mealName,
-      );
 
       await addEntryFuture;
 
@@ -2655,10 +2646,6 @@ class NutritionQuickActionsSection extends StatelessWidget {
           mealId: resolvedMealId,
         );
 
-        CelebrationService().celebrateFoodEntryGlobal(
-          foodName: foodItem.name,
-          mealName: mealType,
-        );
 
         final success = await addEntryFuture;
 
@@ -2758,10 +2745,6 @@ class NutritionQuickActionsSection extends StatelessWidget {
         mealId: targetMealId!,
       );
 
-      CelebrationService().celebrateFoodEntryGlobal(
-        foodName: foodItem.name,
-        mealName: targetMealType,
-      );
 
       final success = await addEntryFuture;
 

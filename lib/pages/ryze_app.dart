@@ -4,7 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../components/main_app.dart';
-import '../components/ui/video_welcome_screen.dart';
+import '../design/design.dart';
+import '../components/ui/ryze_intro.dart';
 import '../onboarding/onboarding_flow.dart';
 import '../onboarding/onboarding_repository.dart';
 import '../onboarding/onboarding_state.dart';
@@ -34,6 +35,11 @@ class RyzeApp extends StatefulWidget {
 class _RyzeAppState extends State<RyzeApp> {
   bool _isLoading = true;
   Widget? _targetScreen;
+
+  /// The opening plays once per launch. RyzeApp is rebuilt after a sign-in,
+  /// and nobody wants to watch the logo written a second time.
+  static bool _introShown = false;
+  late bool _introDone = _introShown;
 
   // Debug flags (development only)
   // Pour tester l'onboarding sur un compte déjà onboardé : flutter run --dart-define=FORCE_ONBOARDING=true
@@ -141,28 +147,13 @@ class _RyzeAppState extends State<RyzeApp> {
     }
 
     // ❌ Not logged in.
-    // A device that has never signed in is showing the app to a new user:
-    // land on the account screen, not on a login form whose sign-up link sits
-    // at the bottom of the page. A device that has signed in before lands on
-    // the login screen, which is what a returning user needs.
-    final hasSeenIntro = prefs.getBool('has_seen_intro') ?? false;
+    // No welcome screen any more: the written logo is the opening, and it is
+    // already playing over this. A device that has never signed in is showing
+    // the app to a new user, so it lands on the account screen rather than on
+    // a login form whose sign-up link sits at the bottom of the page.
     final hasLoggedInBefore = prefs.getBool('has_logged_in_before') ?? false;
-    Widget entry() => hasLoggedInBefore ? const LoginScreen() : const RegisterScreen();
-
-    if (hasSeenIntro && !_forceValueProp) {
-      debugPrint('🔄 Intro déjà vue → ${hasLoggedInBefore ? 'Login' : 'Création de compte'}');
-      _show(entry());
-    } else {
-      debugPrint('🎬 Première ouverture → vidéo welcome → création de compte');
-      _show(VideoWelcomeScreen(
-        onContinue: () async {
-          final p = await SharedPreferences.getInstance();
-          await p.setBool('has_seen_intro', true);
-          if (!mounted) return;
-          Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => entry()));
-        },
-      ));
-    }
+    debugPrint('🎬 Pas de session → ${hasLoggedInBefore ? 'Login' : 'Création de compte'}');
+    _show(hasLoggedInBefore ? const LoginScreen() : const RegisterScreen());
   }
 
   /// The onboarding flow has persisted everything; just enter the app.
@@ -205,12 +196,23 @@ class _RyzeAppState extends State<RyzeApp> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(
-        backgroundColor: Color(0xFFF8FAFC),
-        body: Center(child: CircularProgressIndicator(color: Color(0xFF0B132B))),
-      );
-    }
-    return _targetScreen ?? const LoginScreen();
+    final screen = _isLoading ? null : (_targetScreen ?? const LoginScreen());
+    if (_introDone) return screen ?? const ColoredBox(color: RyzeColors.ink, child: SizedBox.expand());
+    // The intro is the loading screen: it writes the logo while the routing
+    // resolves, and only opens onto the screen once there is one.
+    return Stack(
+      children: [
+        if (screen != null) screen,
+        Positioned.fill(
+          child: RyzeIntro(
+            ready: screen != null,
+            onDone: () {
+              _introShown = true;
+              if (mounted) setState(() => _introDone = true);
+            },
+          ),
+        ),
+      ],
+    );
   }
 }
