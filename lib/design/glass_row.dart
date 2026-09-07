@@ -163,6 +163,13 @@ class _GlassPainter extends CustomPainter {
   /// plutôt qu'un rectangle.
   static const double _taper = 0.14;
 
+  /// Le contour, du buvant droit au buvant gauche : deux flancs et un fond,
+  /// et rien en haut. Le trait faisait le tour complet, ce qui dessinait un
+  /// carré ; un verre est ouvert.
+  ///
+  /// Le chemin reste ouvert. Rempli ou utilisé en découpe, Flutter le referme
+  /// par une droite entre ses deux extrémités — c'est justement le buvant, et
+  /// c'est ce qu'on veut pour l'eau et le reflet. Tracé, il s'arrête.
   Path _silhouette(Size size) {
     final w = size.width;
     final h = size.height;
@@ -171,16 +178,14 @@ class _GlassPainter extends CustomPainter {
     final lip = math.min(w * 0.10, 3.0);
 
     return Path()
-      ..moveTo(lip, 0)
-      ..lineTo(w - lip, 0)
+      ..moveTo(w - lip, 0)
       ..quadraticBezierTo(w, 0, w - inset * 0.35, h * 0.16)
       ..lineTo(w - inset, h - foot)
       ..quadraticBezierTo(w - inset, h, w - inset - foot * 0.55, h)
       ..lineTo(inset + foot * 0.55, h)
       ..quadraticBezierTo(inset, h, inset, h - foot)
       ..lineTo(inset * 0.35, h * 0.16)
-      ..quadraticBezierTo(0, 0, lip, 0)
-      ..close();
+      ..quadraticBezierTo(0, 0, lip, 0);
   }
 
   @override
@@ -218,14 +223,16 @@ class _GlassPainter extends CustomPainter {
     canvas.drawRRect(shine, Paint()..color = RyzeColors.surf.withValues(alpha: 0.55));
     canvas.restore();
 
-    // Le trait du verre, par-dessus tout.
+    // Le trait du verre, par-dessus tout. Les deux bouts sont arrondis :
+    // ce sont les bords du buvant, ils doivent finir proprement.
     canvas.drawPath(
       glass,
       Paint()
         ..color = edge
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.4
-        ..strokeJoin = StrokeJoin.round,
+        ..strokeJoin = StrokeJoin.round
+        ..strokeCap = StrokeCap.round,
     );
   }
 
