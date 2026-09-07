@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -5,8 +6,6 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../components/ui/custom_snackbar.dart';
-import '../components/ui/nutrition_widgets.dart';
 import '../components/weekly_planner/cardio_recap_bottom_sheet.dart';
 import '../components/weekly_planner/workout_recap_bottom_sheet.dart';
 import '../design/design.dart';
@@ -21,6 +20,8 @@ import 'home_slots.dart';
 import 'home_suggestion.dart';
 import 'widgets/coach_line.dart';
 import 'widgets/day_tiles.dart';
+import 'widgets/today_row.dart';
+import '../nutrition/add_food_sheet.dart';
 import 'widgets/home_week.dart';
 
 /// The home: the coach's brief of the day.
@@ -48,6 +49,16 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
   /// simply there.
   static bool _revealed = false;
 
+  /// The day the greeting was last said. It used to be glued to the front of
+  /// every coach line, which produced « Bonsoir Badis. Bonne nuit. » and ate
+  /// the room the button needed.
+  static String? _greetedOn;
+
+  /// What the user just did, held for a few seconds so the page acknowledges
+  /// it before moving on to the next chore.
+  String? _ack;
+  Timer? _ackTimer;
+
   WeeklyPlannerData? _week;
   bool _syncing = false;
   late final bool _first;
@@ -56,12 +67,19 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
   /// zero and rolls up.
   late bool _shown;
 
+  /// True only the first time the home is shown on a given day.
+  late final bool _greet;
+
   @override
   void initState() {
     super.initState();
     // read before it is set, or the entry would never play
     _first = !_revealed;
     _revealed = true;
+    final now = DateTime.now();
+    final today = '${now.year}-${now.month}-${now.day}';
+    _greet = _greetedOn != today;
+    _greetedOn = today;
     _shown = !_first;
     _load();
     if (_first) {
@@ -71,6 +89,22 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
         });
       });
     }
+  }
+
+  @override
+  void dispose() {
+    _ackTimer?.cancel();
+    super.dispose();
+  }
+
+  /// Say back what just happened, then let the coach take over again.
+  void _acknowledge(String message) {
+    RyzeFeedback.success();
+    _ackTimer?.cancel();
+    setState(() => _ack = message);
+    _ackTimer = Timer(const Duration(milliseconds: 4200), () {
+      if (mounted) setState(() => _ack = null);
+    });
   }
 
   @override
@@ -169,30 +203,83 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
     }
   }
 
-  /// The journal's own flow for a named meal: the five ways to add food,
-  /// with the meal already chosen. The name is the one the journal stores.
-  void _logMealOf(WeekSlot slot) {
-    NutritionQuickActionsSection.showAddFoodOptionsForNewMeal(context, 'meal_name_${slot.name}'.tr(_lang));
+  /// One sheet: what the user eats again at this meal, then the five ways to
+  /// describe something new. The same sheet Nutrition opens, so the two tabs
+  /// add food the same way and through the same write path.
+  Future<void> _logMealOf(WeekSlot slot) async {
+    final mealName = 'meal_name_${slot.name}'.tr(_lang);
+    await AddFoodSheet.show(
+      context,
+      mealName: mealName,
+      title: mealName,
+      onAdded: (item) {
+        if (!mounted) return;
+        _acknowledge('home_meal_logged'.tr(_lang).replaceAll('{m}', mealName));
+        _loadWeek(force: true);
+      },
+    );
   }
 
-  /// The journal's "+" button: pick the meal, then the way to add food.
-  void _logMeal() => NutritionQuickActionsSection.showMealSelectionForDashboard(context);
+  /// The meals tile: whichever meal comes next today, so the app never asks
+  /// a question it can answer itself.
+  void _logMeal() {
+    final today = HomeSlots.ofDay(_todayPlan);
+    final next = kFoodSlots.firstWhere(
+      (s) => today.state(s) != SlotState.done && (s != WeekSlot.snack || today.state(s) != SlotState.empty),
+      orElse: () => WeekSlot.dinner,
+    );
+    _logMealOf(next);
+  }
 
   Future<void> _addWater(int millilitres) async {
     if (Supabase.instance.client.auth.currentUser == null) {
-      CustomSnackbarService.showError(context, 'must_be_connected'.tr(_lang));
+      RyzeUndo.failed(context, message: 'must_be_connected'.tr(_lang));
       return;
     }
+    RyzeFeedback.tap();
     final ok = await WaterService.addWaterEntry(amount: millilitres, sourceType: millilitres == 250 ? 'glass' : 'manual');
     if (!mounted) return;
     if (ok) {
-      CustomSnackbarService.showSuccess(context, millilitres == 250 ? 'home_glass_added'.tr(_lang) : '$millilitres ${'water_added'.tr(_lang)}');
+      _acknowledge(millilitres == 250 ? 'home_glass_added'.tr(_lang) : '$millilitres ${'water_added'.tr(_lang)}');
     } else {
-      CustomSnackbarService.showError(context, 'water_add_error'.tr(_lang));
+      RyzeUndo.failed(context, message: 'water_add_error'.tr(_lang));
     }
   }
 
-  void _waterSheet() => NutritionBottomSheetHelper.showWaterSheet(context, (ml) => _addWater(ml));
+  /// Another amount than a glass. The same sheet as Nutrition, so the two
+  /// tabs ask the question the same way.
+  Future<void> _waterSheet() async {
+    final ml = await showRyzeSheet<int>(
+      context,
+      title: 'nutri_water'.tr(_lang),
+      subtitle: 'water_other'.tr(_lang),
+      builder: (sheet) => Wrap(
+        spacing: sheet.vw(2),
+        runSpacing: sheet.vw(2),
+        children: [
+          for (final amount in [250, 500, 750, 1000])
+            Pressable(
+              onTap: () => Navigator.pop(sheet, amount),
+              child: Container(
+                height: 44,
+                padding: EdgeInsets.symmetric(horizontal: sheet.vw(4.1)),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: RyzeColors.surf,
+                  borderRadius: BorderRadius.circular(RyzeRadius.pill),
+                  border: Border.all(color: RyzeColors.ink, width: 1.5),
+                ),
+                child: Text(
+                  amount >= 1000 ? '1 L' : '${amount ~/ 10} cl',
+                  style: RyzeText.body(sheet, 3.6, weight: FontWeight.w600),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+    if (ml != null && mounted) await _addWater(ml);
+  }
 
   /// Today's session, the same item the page draws: its recap. With no
   /// session, the sport tab, where every way of starting one lives.
@@ -231,12 +318,29 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
     if (mounted) _loadWeek(force: true);
   }
 
+  /// A slot that is already done opens what is in it, in the Nutrition tab.
+  /// Offering to add food on top of a logged meal was the app answering a
+  /// question the user did not ask.
   void _onSlotTap(WeekSlot slot) {
     if (slot == WeekSlot.sport) {
       _openSession();
-    } else {
-      _logMealOf(slot);
+      return;
     }
+    if (HomeSlots.ofDay(_todayPlan).state(slot) == SlotState.done) {
+      widget.onTabChange?.call('nutrition');
+      return;
+    }
+    _logMealOf(slot);
+  }
+
+    /// Good morning, good afternoon, good evening. Said once a day.
+  String _greetingFor(DateTime now, String lang) {
+    final who = _name.trim();
+    if (who.isEmpty) return 'home_greet_anon'.tr(lang);
+    final key = now.hour >= 5 && now.hour < 12
+        ? 'home_greet_morning'
+        : (now.hour >= 12 && now.hour < 18 ? 'home_greet_day' : 'home_greet_evening');
+    return key.tr(lang).replaceAll('{n}', who);
   }
 
   // ---------------------------------------------------------------- the page
@@ -255,6 +359,10 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
     final todayIndex = days.indexWhere((d) => d.year == now.year && d.month == now.month && d.day == now.day);
     final today = todayIndex < 0 ? const DaySlots() : slots[todayIndex];
 
+    final calories = gs.currentCalories.round();
+    final goal = gs.calorieGoal.round();
+    final ready = goal > 0;
+
     final suggestion = HomeSuggestion.build(
       lang: lang,
       name: _name,
@@ -265,6 +373,11 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
       calorieGoal: gs.calorieGoal.round(),
     );
     final looks = suggestion.action == HomeAction.viewWorkout || suggestion.action == HomeAction.viewDay;
+
+    // The greeting is said once a day, on its own line, instead of being glued
+    // to the front of every sentence the coach says.
+    final greeting = _greet ? _greetingFor(now, lang) : null;
+    final line = _ack ?? (greeting == null ? suggestion.line : '$greeting ${suggestion.line}');
 
     final gutter = context.vw(5.1);
     return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -295,25 +408,37 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
                     animate: animate,
                     child: Builder(
                       builder: (context) {
-                        final calories = gs.currentCalories.round();
-                        final goal = gs.calorieGoal.round();
                         final remaining = goal - calories;
                         final numbers = NumberFormat.decimalPattern(lang);
                         return DayInstrument(
-                          lead: remaining < 0
-                              ? 'home_over_by'.tr(lang)
-                              : (remaining == 0 ? 'home_goal_reached'.tr(lang) : 'home_remaining'.tr(lang)),
+                          // With no goal yet, "goal reached" would be a lie
+                          // told to every new subscriber whose targets are
+                          // still loading.
+                          lead: !ready
+                              ? 'home_loading'.tr(lang)
+                              : remaining < 0
+                                  ? 'home_over_by'.tr(lang)
+                                  : (remaining == 0 ? 'home_goal_reached'.tr(lang) : 'home_remaining'.tr(lang)),
                           unit: 'home_remaining_unit'.tr(lang),
                           eatenLabel: 'home_eaten'.tr(lang).replaceAll('{n}', numbers.format(calories)),
                           goalLabel: 'home_goal'.tr(lang).replaceAll('{n}', numbers.format(goal)),
                           calories: calories,
                           calorieGoal: goal,
-                          shown: shown,
+                          shown: shown && ready,
                         );
                       },
                     ),
                   ),
-                  SizedBox(height: context.vw(3.6)),
+                  SizedBox(height: context.vw(4.6)),
+                  // Today's five slots are the caption of the number above
+                  // them; they used to arrive last, under the whole page.
+                  PopIn(
+                    delay: const Duration(milliseconds: 420),
+                    dy: 8,
+                    animate: animate,
+                    child: TodayRow(lang: lang, today: today, onSlotTap: _onSlotTap),
+                  ),
+                  SizedBox(height: context.vw(4.1)),
                   PopIn(
                     delay: const Duration(milliseconds: 620),
                     dy: 8,
@@ -336,7 +461,7 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
                     dy: 8,
                     animate: animate,
                     child: CoachLine(
-                      text: suggestion.line,
+                      text: line,
                       sport: suggestion.sport,
                       cta: suggestion.cta,
                       ghost: looks,
@@ -356,7 +481,6 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
                       days: days,
                       slots: slots,
                       onOpenPlanner: _openPlanner,
-                      onSlotTap: _onSlotTap,
                     ),
                   ),
                 ],

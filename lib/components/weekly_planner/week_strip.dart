@@ -46,6 +46,7 @@ class DaySlots {
 
 const Color _ink = Color(0xFF0B132B);
 const Color _mute = Color(0xFF5F6779);
+const Color _mute2 = Color(0xFF9AA1B2);
 const Color _idle = Color(0xFFD5DAE1);
 const Color _line = Color(0xFFE2E8F0);
 
@@ -197,7 +198,7 @@ class _DayChip extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(letter, style: RyzeText.body(context, 2.8, weight: FontWeight.w600, color: dim ? _idle : _mute, height: 1)),
+          Text(letter, style: RyzeText.body(context, 2.8, weight: FontWeight.w600, color: dim ? _mute2 : _mute, height: 1)),
           const SizedBox(height: 2),
           Text('$number',
               style: RyzeText.body(context, 3.8, weight: FontWeight.w700, color: dim ? _mute : _ink, height: 1.1)
@@ -212,13 +213,14 @@ class _DayChip extends StatelessWidget {
                   if (slot != WeekSlot.snack || slots.state(slot) != SlotState.empty)
                     Padding(
                       padding: const EdgeInsets.only(right: 2),
-                      child: _Mark(key: anchor?.call(index, slot), state: slots.state(slot), round: false, pop: popped.contains('$index-${slot.name}')),
+                      child: _Mark(key: anchor?.call(index, slot), state: slots.state(slot), round: false, past: dim, pop: popped.contains('$index-${slot.name}')),
                     ),
                 const SizedBox(width: 1),
                 _Mark(
                     key: anchor?.call(index, WeekSlot.sport),
                     state: slots.state(WeekSlot.sport),
                     round: true,
+                    past: dim,
                     pop: popped.contains('$index-${WeekSlot.sport.name}')),
               ],
             ),
@@ -232,17 +234,21 @@ class _DayChip extends StatelessWidget {
 /// A meal is a square, a session a circle. Free is a light fill, planned an
 /// outline, done a full navy.
 class _Mark extends StatelessWidget {
-  const _Mark({super.key, required this.state, required this.round, this.pop = false});
+  const _Mark({super.key, required this.state, required this.round, this.pop = false, this.past = false});
   final SlotState state;
   final bool round;
   final bool pop;
+
+  /// Une journée écoulée : ce qui n'a pas été fait ne l'est plus, et se lit
+  /// comme une case libre, pas comme une case en attente.
+  final bool past;
 
   @override
   Widget build(BuildContext context) {
     final size = round ? 8.0 : 5.0;
     final done = state == SlotState.done;
     // incoming stays invisible: only the mark that lands is drawn
-    final drawn = state == SlotState.planned || state == SlotState.done;
+    final drawn = done || (state == SlotState.planned && !past);
     return AnimatedScale(
       scale: pop ? 1.9 : 1,
       duration: const Duration(milliseconds: 220),

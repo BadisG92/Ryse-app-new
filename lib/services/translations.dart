@@ -9729,11 +9729,6 @@ class AppTranslations {
       'en': 'Session',
       'de': 'Training',
     },
-    'home_session_free': {
-      'fr': 'libre',
-      'en': 'free',
-      'de': 'frei',
-    },
     'home_session_planned': {
       'fr': 'prévue',
       'en': 'planned',
@@ -9844,11 +9839,6 @@ class AppTranslations {
       'en': 'Goal reached. Nice work.',
       'de': 'Ziel erreicht. Stark.',
     },
-    'home_line_all_logged': {
-      'fr': 'Tous tes repas sont notés. Regarde ta journée.',
-      'en': 'All your meals are logged. Take a look at your day.',
-      'de': 'Alle Mahlzeiten sind eingetragen. Sieh dir deinen Tag an.',
-    },
     'cta_log_breakfast': {
       'fr': 'Enregistrer le petit-déjeuner',
       'en': 'Log breakfast',
@@ -9913,6 +9903,41 @@ class AppTranslations {
       'fr': 'Bonne nuit. On se retrouve demain.',
       'en': 'Good night. See you tomorrow.',
       'de': 'Gute Nacht. Bis morgen.',
+    },
+    'home_today': {
+      'fr': 'Aujourd\'hui',
+      'en': 'Today',
+      'de': 'Heute',
+    },
+    'home_loading': {
+      'fr': 'Ta journée arrive',
+      'en': 'Your day is loading',
+      'de': 'Dein Tag lädt',
+    },
+    'home_line_over': {
+      'fr': 'Tu es à {n} kcal au-dessus. Ça arrive, on regarde ?',
+      'en': 'You are {n} kcal over. It happens, want to look?',
+      'de': 'Du bist {n} kcal darüber. Kommt vor, schauen wir?',
+    },
+    'slot_done': {
+      'fr': 'noté',
+      'en': 'logged',
+      'de': 'notiert',
+    },
+    'slot_planned': {
+      'fr': 'prévu',
+      'en': 'planned',
+      'de': 'geplant',
+    },
+    'slot_free': {
+      'fr': 'libre',
+      'en': 'free',
+      'de': 'frei',
+    },
+    'home_meal_logged': {
+      'fr': '{m} noté. Bien joué.',
+      'en': '{m} logged. Nicely done.',
+      'de': '{m} notiert. Gut gemacht.',
     },
     'home_session_none': {
       'fr': 'Pas de séance',

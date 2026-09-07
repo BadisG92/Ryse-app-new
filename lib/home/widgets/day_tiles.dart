@@ -12,6 +12,10 @@ import '../home_slots.dart';
 /// without scrolling; Nutrition shows the same facts at full length instead.
 /// Tapping the water adds a glass, the meals open the journal's own flow, the
 /// session opens whatever is planned.
+///
+/// The tiles carry no slot marks any more: today's row above them already
+/// draws every slot, and the week band draws them a third time. One reading
+/// per fact.
 class DayTiles extends StatelessWidget {
   const DayTiles({
     super.key,
@@ -60,13 +64,7 @@ class DayTiles extends StatelessWidget {
         Expanded(
           child: _Tile(
             onTap: onMeals,
-            top: Row(
-              children: [
-                for (final slot in kFoodSlots)
-                  if (slot != WeekSlot.snack || today.state(slot) != SlotState.empty)
-                    Padding(padding: const EdgeInsets.only(right: 4), child: _MiniMark(state: today.state(slot), round: false)),
-              ],
-            ),
+            top: const Icon(LucideIcons.utensils),
             value: '$mealsDone',
             unit: 'home_meals_of'.tr(lang).replaceAll('{n}', '$mealsTotal'),
           ),
@@ -75,7 +73,7 @@ class DayTiles extends StatelessWidget {
         Expanded(
           child: _Tile(
             onTap: onSession,
-            top: _MiniMark(state: session, round: true),
+            top: const Icon(LucideIcons.dumbbell),
             value: session == SlotState.empty ? 'home_session_none'.tr(lang) : (today.labels[WeekSlot.sport] ?? 'home_session'.tr(lang)),
             unit: switch (session) {
               SlotState.done => 'home_session_done'.tr(lang),
@@ -189,33 +187,6 @@ class _WaterTile extends StatelessWidget {
                 color: RyzeColors.ink.withValues(alpha: 0.13),
               ),
             ),
-    );
-  }
-}
-
-/// The strip's three states at 10 pt: a square for a meal, a ring for the
-/// session. Free is light grey, planned is white with an ink edge, done is ink.
-class _MiniMark extends StatelessWidget {
-  const _MiniMark({required this.state, required this.round});
-
-  final SlotState state;
-  final bool round;
-
-  @override
-  Widget build(BuildContext context) {
-    final done = state == SlotState.done;
-    final drawn = state == SlotState.planned || state == SlotState.incoming;
-    return AnimatedContainer(
-      duration: RyzeDurations.tap,
-      curve: RyzeCurves.out,
-      width: 10,
-      height: 10,
-      decoration: BoxDecoration(
-        color: done ? RyzeColors.ink : (drawn ? RyzeColors.surf : RyzeColors.idle),
-        shape: round ? BoxShape.circle : BoxShape.rectangle,
-        borderRadius: round ? null : BorderRadius.circular(2),
-        border: drawn ? Border.all(color: RyzeColors.ink, width: 1.4) : null,
-      ),
     );
   }
 }
