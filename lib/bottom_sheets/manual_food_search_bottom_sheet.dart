@@ -536,7 +536,8 @@ class _ManualFoodSearchBottomSheetState extends State<ManualFoodSearchBottomShee
       quantity: defaultQuantity,
       isModified: false,
       isCustomFood: food.isCustom,
-      referenceUnit: food.getLocalizedUnit('fr'),
+      // l'unité dans la langue de l'utilisateur, pas toujours en français
+      referenceUnit: food.getLocalizedUnit(locService.currentLanguageCode),
       onFoodAdded: (foodItem) {
         // Marquer les propriétés de l'aliment dans le résultat
         // Selon les nouvelles règles : 

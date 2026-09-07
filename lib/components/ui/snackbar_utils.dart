@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../design/tokens.dart';
+
 /// Extension pour faciliter l'affichage des snackbars en haut
 extension TopSnackBarExtension on BuildContext {
   void showTopSnackBar({
@@ -33,7 +35,7 @@ class SnackBarUtils {
     showTopSnackBar(
       context,
       message: message,
-      backgroundColor: backgroundColor ?? const Color(0xFF0B132B),
+      backgroundColor: backgroundColor ?? RyzeColors.ink,
       textColor: textColor,
       duration: duration,
       icon: icon,
@@ -55,8 +57,8 @@ class SnackBarUtils {
     _currentOverlay = OverlayEntry(
       builder: (context) => _TopSnackBar(
         message: message,
-        backgroundColor: backgroundColor ?? const Color(0xFF374151),
-        textColor: textColor ?? Colors.white,
+        backgroundColor: backgroundColor ?? RyzeColors.ink,
+        textColor: textColor ?? RyzeColors.surf,
         icon: icon,
         duration: duration ?? const Duration(seconds: 3),
         onDismiss: () {
@@ -79,7 +81,7 @@ class SnackBarUtils {
     showTopSnackBar(
       context,
       message: message,
-      backgroundColor: const Color(0xFFDC2626), // Rouge
+      backgroundColor: RyzeColors.danger,
       icon: Icons.error_outline,
       duration: duration,
     );
@@ -94,7 +96,7 @@ class SnackBarUtils {
     showTopSnackBar(
       context,
       message: message,
-      backgroundColor: const Color(0xFF10B981), // Vert
+      backgroundColor: RyzeColors.ink,
       icon: Icons.check_circle_outline,
       duration: duration,
     );
@@ -109,7 +111,7 @@ class SnackBarUtils {
     showTopSnackBar(
       context,
       message: message,
-      backgroundColor: const Color(0xFF3B82F6), // Bleu
+      backgroundColor: RyzeColors.ink,
       icon: Icons.info_outline,
       duration: duration,
     );
@@ -124,7 +126,7 @@ class SnackBarUtils {
     showTopSnackBar(
       context,
       message: message,
-      backgroundColor: const Color(0xFFF59E0B), // Orange
+      backgroundColor: RyzeColors.accInk,
       icon: Icons.warning_outlined,
       duration: duration,
     );
@@ -238,7 +240,7 @@ class _TopSnackBarState extends State<_TopSnackBar>
                       widget.message,
                       style: TextStyle(
                         color: widget.textColor,
-                        fontSize: 14,
+                        fontSize: MediaQuery.sizeOf(context).width * 0.036,
                         fontWeight: FontWeight.w500,
                       ),
                     ),

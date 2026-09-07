@@ -316,6 +316,16 @@ class CelebrationService {
   }
 
   /// Show celebration popup after adding a food entry
+  /// Noter un aliment ne déclenche plus de popup plein écran.
+  ///
+  /// Elle arrivait à chaque validation, par-dessus la page, pour un geste que
+  /// l'utilisateur fait cinq fois par jour. Les surfaces refaites disent
+  /// elles-mêmes ce qui vient d'être enregistré : la ligne du coach sur
+  /// l'accueil, la barre d'annulation dans Nutrition, la pastille du repas qui
+  /// se remplit, et un retour haptique. C'est assez.
+  ///
+  /// Les célébrations de séance, elles, restent : une séance terminée est un
+  /// événement, pas une routine.
   void celebrateFoodEntry(
     BuildContext context, {
     String? customMessage,
@@ -324,6 +334,8 @@ class CelebrationService {
     String? foodName,
     String? mealName,
   }) {
+    return;
+    // ignore: dead_code
     debugPrint('🎊 CelebrationService.celebrateFoodEntry - START');
     debugPrint('   Context: $context');
 

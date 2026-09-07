@@ -1,8 +1,5 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'ui/recipe_models.dart';
-import 'ui/recipe_cards.dart';
 import 'ui/recipe_widgets.dart';
 import '../screens/recipe_details_screen.dart';
 
@@ -172,52 +169,6 @@ class _NutritionRecipesHybridState extends State<NutritionRecipesHybrid> {
         builder: (context) => RecipeDetailsScreen(
           recipe: recipe,
           isFromDashboard: false, // L'onglet recettes affiche "Ajouter à un repas"
-        ),
-      ),
-    );
-  }
-
-  void _showFiltersModal() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setModalState) => Container(
-          height: MediaQuery.of(context).size.height * 0.75,
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(20),
-              topRight: Radius.circular(20),
-            ),
-          ),
-          child: FilterModalContent(
-            selectedFilters: selectedAdvancedFilters,
-            onFilterChanged: (filterKey, option, selected) {
-              setModalState(() {
-                if (selected) {
-                  selectedAdvancedFilters[filterKey]?.add(option);
-                } else {
-                  selectedAdvancedFilters[filterKey]?.remove(option);
-                }
-              });
-            },
-            onClearAll: () {
-              setModalState(() {
-                selectedAdvancedFilters.forEach((key, value) {
-                  value.clear();
-                });
-              });
-            },
-            onApply: () {
-              setState(() {
-                // Les filtres sont déjà mis à jour dans setModalState
-              });
-              Navigator.pop(context);
-            },
-            selectedCount: RecipeFilters.countSelectedFilters(selectedAdvancedFilters),
-          ),
         ),
       ),
     );

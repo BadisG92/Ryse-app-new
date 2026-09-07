@@ -60,23 +60,31 @@ class DayInstrument extends StatelessWidget {
         Text(lead, style: RyzeText.body(context, 3.9, color: RyzeColors.mute)),
         if (showFigure) ...[
           SizedBox(height: context.vw(0.5)),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              // the odometer retargets within one shape; a figure that gains or
-              // loses a digit is swapped rather than spun through a hundred turns
-              KeyedSubtree(
-                key: ValueKey(shape),
-                child: RollingNumber(
-                  shown ? figure : shape,
-                  style: RyzeText.display(context, 15.4, height: 1),
-                  duration: RyzeDurations.advance,
+          // Hauteur figée : l'odomètre reconstruit ses colonnes à chaque
+          // image, et une rangée alignée sur la ligne de base recalculerait
+          // sa hauteur autant de fois, faisant trembler la page entière.
+          SizedBox(
+            height: context.vw(15.4) * 1.06,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                // the odometer retargets within one shape; a figure that gains or
+                // loses a digit is swapped rather than spun through a hundred turns
+                KeyedSubtree(
+                  key: ValueKey(shape),
+                  child: RollingNumber(
+                    shown ? figure : shape,
+                    style: RyzeText.display(context, 15.4, height: 1),
+                    duration: RyzeDurations.advance,
+                  ),
                 ),
-              ),
-              SizedBox(width: context.vw(2.4)),
-              Text(unit, style: RyzeText.body(context, 4.2, weight: FontWeight.w600, color: RyzeColors.mute)),
-            ],
+                SizedBox(width: context.vw(2.4)),
+                Padding(
+                  padding: EdgeInsets.only(bottom: context.vw(1.5)),
+                  child: Text(unit, style: RyzeText.body(context, 4.2, weight: FontWeight.w600, color: RyzeColors.mute)),
+                ),
+              ],
+            ),
           ),
         ],
         SizedBox(height: context.vw(3.1)),

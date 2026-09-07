@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../design/design.dart';
+import '../services/portions.dart';
 import '../models/nutrition_models.dart';
 import '../components/ui/snackbar_utils.dart';
 import '../components/ui/numeric_text_field.dart';
@@ -399,6 +400,7 @@ class _EditableFoodDetailsContentState extends State<_EditableFoodDetailsContent
                 controller: _quantityController,
                 unit: unit,
                 lang: lang,
+                presets: RyzePortions.presets(unit: widget.referenceUnit, reference: _baseQuantity),
                 onStep: _step,
                 onPreset: _setQuantity,
               ),
@@ -519,17 +521,17 @@ class _EditableFoodDetailsContentState extends State<_EditableFoodDetailsContent
     );
   }
 
-  /// Un pas de portion : dix grammes, ou une unité quand l'aliment se compte.
+  /// Un pas de portion, à l'échelle de l'aliment : dix grammes pour du riz,
+  /// une pièce pour un œuf, cinq grammes pour une épice.
   void _step(int direction) {
     final current = double.tryParse(_quantityController.text.isEmpty ? '0' : _quantityController.text) ?? 0;
-    final step = _baseQuantity >= 50 ? 10.0 : 1.0;
+    final step = RyzePortions.step(unit: widget.referenceUnit, reference: _baseQuantity);
     _setQuantity((current + direction * step).clamp(0, 5000));
   }
 
   void _setQuantity(double value) {
     RyzeFeedback.tap();
-    final text = value.truncateToDouble() == value ? value.toStringAsFixed(0) : value.toStringAsFixed(1);
-    _quantityController.text = text;
+    _quantityController.text = RyzePortions.format(value);
   }
 
   /// Ce que valide le bouton : l'aliment tel qu'il est affiché, puis le
@@ -556,14 +558,12 @@ class _EditableFoodDetailsContentState extends State<_EditableFoodDetailsContent
     );
 
     if (widget.onFoodSaved != null) {
-      final locService = Provider.of<LocalizationService>(context, listen: false);
+      final lang = LocalizationService.instance.currentLanguageCode;
       widget.onFoodSaved?.call(foodItem);
       Navigator.pop(context);
-      SnackBarUtils.showSuccessSnackBar(
+      SnackBarUtils.show(
         context,
-        message: locService.currentLanguageCode == 'fr'
-            ? '${widget.name} enregistré${_isModified ? ' (modifié)' : ''}'
-            : '${widget.name} saved${_isModified ? ' (modified)' : ''}',
+        message: (_isModified ? 'food_saved_modified' : 'food_saved').tr(lang).replaceAll('{name}', widget.name),
       );
       return;
     }
@@ -596,6 +596,7 @@ class _PortionControl extends StatelessWidget {
     required this.controller,
     required this.unit,
     required this.lang,
+    required this.presets,
     required this.onStep,
     required this.onPreset,
   });
@@ -603,10 +604,12 @@ class _PortionControl extends StatelessWidget {
   final TextEditingController controller;
   final String unit;
   final String lang;
+
+  /// Ce qu'on propose pour cet aliment-là, pas une échelle universelle.
+  final List<double> presets;
+
   final void Function(int direction) onStep;
   final void Function(double value) onPreset;
-
-  static const List<double> _presets = [30, 50, 100, 150, 200, 250];
 
   @override
   Widget build(BuildContext context) {
@@ -624,8 +627,7 @@ class _PortionControl extends StatelessWidget {
             Expanded(
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   IntrinsicWidth(
                     child: NumericTextField(
@@ -654,10 +656,10 @@ class _PortionControl extends StatelessWidget {
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             padding: EdgeInsets.zero,
-            itemCount: _presets.length,
+            itemCount: presets.length,
             separatorBuilder: (_, __) => SizedBox(width: context.vw(2.1)),
             itemBuilder: (_, i) {
-              final value = _presets[i];
+              final value = presets[i];
               final selected = (double.tryParse(controller.text) ?? -1) == value;
               return Pressable(
                 onTap: () => onPreset(value),
@@ -672,7 +674,7 @@ class _PortionControl extends StatelessWidget {
                     border: Border.all(color: selected ? RyzeColors.ink : RyzeColors.line),
                   ),
                   child: Text(
-                    '${value.toStringAsFixed(0)} $unit',
+                    RyzePortions.label(value, unit, lang),
                     style: RyzeText.body(context, 3.3, weight: FontWeight.w600, color: selected ? RyzeColors.surf : RyzeColors.ink),
                   ),
                 ),

@@ -10157,6 +10157,36 @@ class AppTranslations {
       'en': 'That day, over by',
       'de': 'An dem Tag überschritten um',
     },
+    'done': {
+      'fr': 'Terminé',
+      'en': 'Done',
+      'de': 'Fertig',
+    },
+    'edit_ingredients': {
+      'fr': 'Ajuster les quantités',
+      'en': 'Adjust the amounts',
+      'de': 'Mengen anpassen',
+    },
+    'clear_filters': {
+      'fr': 'Tout effacer',
+      'en': 'Clear all',
+      'de': 'Alles löschen',
+    },
+    'recipe_macros_updated': {
+      'fr': 'Macros recalculées avec tes quantités',
+      'en': 'Macros recalculated with your amounts',
+      'de': 'Makros mit deinen Mengen neu berechnet',
+    },
+    'recipe_no_ingredients': {
+      'fr': "Pas encore d'ingrédients",
+      'en': 'No ingredients yet',
+      'de': 'Noch keine Zutaten',
+    },
+    'recipe_no_steps': {
+      'fr': "Pas encore d'étapes",
+      'en': 'No steps yet',
+      'de': 'Noch keine Schritte',
+    },
     'recipe_minutes': {
       'fr': 'min',
       'en': 'min',
@@ -10276,6 +10306,41 @@ class AppTranslations {
       'fr': 'Autre produit',
       'en': 'Another product',
       'de': 'Anderes Produkt',
+    },
+    'food_saved': {
+      'fr': '{name} enregistré',
+      'en': '{name} saved',
+      'de': '{name} gespeichert',
+    },
+    'food_saved_modified': {
+      'fr': '{name} enregistré, modifié',
+      'en': '{name} saved, modified',
+      'de': '{name} gespeichert, geändert',
+    },
+    'search': {
+      'fr': 'Chercher',
+      'en': 'Search',
+      'de': 'Suchen',
+    },
+    'barcode_manual_hint': {
+      'fr': 'Les treize chiffres sous les barres',
+      'en': 'The thirteen digits under the bars',
+      'de': 'Die dreizehn Ziffern unter den Balken',
+    },
+    'save_to_my_foods': {
+      'fr': 'Le garder dans tes aliments ?',
+      'en': 'Keep it in your foods?',
+      'de': 'In deinen Lebensmitteln behalten?',
+    },
+    'save_to_my_foods_hint': {
+      'fr': "Tu le retrouveras dans la recherche sans avoir à le rescanner. Ses valeurs restent modifiables.",
+      'en': 'You will find it in the search without scanning it again. Its values stay editable.',
+      'de': 'Du findest es in der Suche wieder, ohne erneut zu scannen. Die Werte bleiben änderbar.',
+    },
+    'no_thanks': {
+      'fr': 'Non merci',
+      'en': 'No thanks',
+      'de': 'Nein danke',
     },
     'barcode_point_at_code': {
       'fr': 'Vise le code-barres, il se lit tout seul',

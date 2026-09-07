@@ -12,6 +12,7 @@ import '../services/food_add_flow.dart';
 import '../services/food_entries_service.dart';
 import '../services/global_state_manager.dart';
 import '../services/localization_service.dart';
+import '../services/portions.dart';
 import '../services/notification_service.dart';
 import '../services/translations.dart';
 import '../services/water_service.dart';
@@ -251,9 +252,9 @@ class _NutritionTodayPageState extends State<NutritionTodayPage> with GlobalStat
     final parts = item.portion.trim().split(RegExp(r'\s+'));
     final current = double.tryParse(parts.first.replaceAll(',', '.')) ?? 100;
     final unit = parts.length > 1 ? parts.sublist(1).join(' ') : 'g';
-    final steps = current >= 40
-        ? [current / 2, current * 0.75, current, current * 1.25, current * 1.5, current * 2]
-        : [1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
+    // Les portions plausibles pour cet aliment, plus celle qui est enregistrée
+    // si elle n'y figure pas : on doit toujours pouvoir revenir en arrière.
+    final steps = <double>{...RyzePortions.presets(unit: unit, reference: current), current}.toList()..sort();
 
     final chosen = await showRyzeSheet<double>(
       context,
@@ -265,7 +266,7 @@ class _NutritionTodayPageState extends State<NutritionTodayPage> with GlobalStat
         children: [
           for (final value in steps)
             _Chip(
-              label: '${value.toStringAsFixed(value.truncateToDouble() == value ? 0 : 1)} $unit',
+              label: RyzePortions.label(value, unit, _lang),
               selected: (value - current).abs() < 0.05,
               onTap: () => Navigator.pop(context, value),
             ),
@@ -423,8 +424,7 @@ class _BlockHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.baseline,
-      textBaseline: TextBaseline.alphabetic,
+      crossAxisAlignment: CrossAxisAlignment.end,
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(title, style: RyzeText.body(context, 3.6, weight: FontWeight.w600)),

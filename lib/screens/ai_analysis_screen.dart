@@ -706,10 +706,9 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
           ),
           SizedBox(height: context.vw(1.5)),
           Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              RollingNumber('$_animatedCalories', style: RyzeText.display(context, 11.5, weight: FontWeight.w600)),
+              RollingNumber('$_totalCalories', style: RyzeText.display(context, 11.5, weight: FontWeight.w600)),
               SizedBox(width: context.vw(2.1)),
               Text('kcal', style: RyzeText.body(context, 3.9, color: RyzeColors.mute)),
             ],
@@ -724,6 +723,10 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
       ),
     );
   }
+
+  /// Le total du repas, tel quel : l'odomètre s'occupe de le faire monter.
+  int get _totalCalories =>
+      _analysisResult.detectedFoods.fold<double>(0, (sum, f) => sum + f.calories).round();
 
   /// La plus grosse des trois macros donne l'échelle : sans objectif à
   /// atteindre, un rail plein n'a pas de sens, mais la proportion en a.

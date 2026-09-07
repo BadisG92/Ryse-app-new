@@ -7,7 +7,6 @@ import '../screens/ai_scanner_screen.dart';
 import '../screens/barcode_scanner_screen.dart';
 import '../screens/select_recipe_screen.dart';
 import 'auth_service.dart';
-import 'celebration_service.dart';
 import 'food_entries_service.dart';
 import 'paywall_service.dart';
 
@@ -173,8 +172,6 @@ class FoodAddFlow {
       consumedAt: at,
       mealId: id,
     );
-
-    CelebrationService().celebrateFoodEntryGlobal(foodName: item.name, mealName: mealName);
 
     final ok = await writing;
     if (ok) reset();

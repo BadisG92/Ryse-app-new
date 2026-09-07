@@ -1,5 +1,9 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+
+import '../../design/design.dart';
+import '../../services/localization_service.dart';
+import '../../services/translations.dart';
 import 'package:flutter/services.dart';
 
 /// Widget personnalisé pour les champs de saisie numérique
@@ -175,26 +179,22 @@ class _DoneButtonToolbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // La barre au-dessus du clavier numérique. Elle disait « Done » en bleu
+    // système, en anglais, quelle que soit la langue de l'app.
     return Container(
       height: 44,
-      decoration: BoxDecoration(
-        color: const Color(0xFFF7F7F7),
-        border: Border(
-          top: BorderSide(color: Colors.grey[300]!, width: 0.5),
-        ),
+      decoration: const BoxDecoration(
+        color: RyzeColors.paper2,
+        border: Border(top: BorderSide(color: RyzeColors.line)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           TextButton(
             onPressed: onPressed,
-            child: const Text(
-              'Done',
-              style: TextStyle(
-                color: Colors.blue,
-                fontSize: 17,
-                fontWeight: FontWeight.w600,
-              ),
+            child: Text(
+              'done'.tr(LocalizationService.instance.currentLanguageCode),
+              style: RyzeText.body(context, 4.1, weight: FontWeight.w600),
             ),
           ),
           const SizedBox(width: 8),

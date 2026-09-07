@@ -1,134 +1,102 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'recipe_models.dart';
+
+import '../../design/design.dart';
+import '../../services/localization_service.dart';
 import '../../services/recipe_image_service.dart';
+import '../../services/translations.dart';
+import 'recipe_models.dart';
 
-// Card de recette pour la liste verticale
+/// Une recette dans une liste : sa photo, son nom, ce qu'elle coûte en temps
+/// et en calories.
+///
+/// Le chiffre qui décide est à droite, comme partout ailleurs depuis la
+/// refonte, et les macros restent en dessous du nom sans réclamer de couleur.
 class RecipeListCard extends StatelessWidget {
-  final Recipe recipe;
-  final VoidCallback? onTap;
-  final bool useSimpleMacros;
-
   const RecipeListCard({
     super.key,
     required this.recipe,
     this.onTap,
-    this.useSimpleMacros = false, // Par défaut, utilise l'ancien format avec cartes colorées
+    this.useSimpleMacros = false,
   });
+
+  final Recipe recipe;
+  final VoidCallback? onTap;
+
+  /// Une seule ligne de macros au lieu de trois puces.
+  final bool useSimpleMacros;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
+    final lang = LocalizationService.instance.currentLanguageCode;
+
+    return Pressable(
+      onTap: onTap == null
+          ? null
+          : () {
+              RyzeFeedback.select();
+              onTap!();
+            },
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(context.vw(2.6)),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          color: RyzeColors.surf,
+          borderRadius: BorderRadius.circular(RyzeRadius.md),
+          border: Border.all(color: RyzeColors.line),
         ),
         child: Row(
           children: [
-            // Image de la recette
-            RecipeImageService.buildRecipeImage(
-              imageUrl: recipe.image,
-              width: 80,
-              height: 80,
-              fit: BoxFit.cover,
+            ClipRRect(
+              borderRadius: BorderRadius.circular(RyzeRadius.sm),
+              child: RecipeImageService.buildRecipeImage(
+                imageUrl: recipe.image,
+                width: context.vw(18.5),
+                height: context.vw(18.5),
+                fit: BoxFit.cover,
+              ),
             ),
-            
-            const SizedBox(width: 16),
-            
-            // Contenu
+            SizedBox(width: context.vw(3.6)),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Titre de la recette
                   Text(
                     recipe.name,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF1A1A1A),
-                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: RyzeText.body(context, 3.9, weight: FontWeight.w600),
+                  ),
+                  SizedBox(height: context.vw(1)),
+                  Text(
+                    '${recipe.duration} ${'recipe_minutes'.tr(lang)} · ${recipe.safeServings} ${'recipe_servings'.tr(lang)}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
+                    style: RyzeText.body(context, 3.1, color: RyzeColors.mute),
                   ),
-                  
-                  const SizedBox(height: 6),
-                  
-                  // Informations de base
-                  Row(
-                    children: [
-                      Text(
-                        '${recipe.duration} min • ${recipe.safeServings} pers.',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: Color(0xFF666666),
-                        ),
-                      ),
-                      const Text(
-                        ' • ',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Color(0xFF666666),
-                        ),
-                      ),
-                      Text(
-                        '${recipe.safeCalories} kcal',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          color: Color(0xFF0B132B),
-                        ),
-                      ),
-                    ],
+                  SizedBox(height: context.vw(0.8)),
+                  Text(
+                    'P ${recipe.safeProteins} · G ${recipe.safeCarbs} · L ${recipe.safeFats}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: RyzeText.body(context, 3.0, color: RyzeColors.mute2),
                   ),
-                  
-                  const SizedBox(height: 8),
-                  
-                  // Macros - conditionnels selon le paramètre
-                  if (useSimpleMacros) 
-                    // Macros en ligne simple
-                    Text(
-                      'P : ${recipe.safeProteins}g • G : ${recipe.safeCarbs}g • L : ${recipe.safeFats}g',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF94A3B8),
-                      ),
-                    )
-                  else
-                    // Macros en cartes colorées (ancien format)
-                    Row(
-                      children: [
-                        _MacroChip(
-                          label: 'P',
-                          value: '${recipe.safeProteins}g',
-                          color: const Color(0xFF10B981),
-                        ),
-                        const SizedBox(width: 8),
-                        _MacroChip(
-                          label: 'G',
-                          value: '${recipe.safeCarbs}g',
-                          color: const Color(0xFF3B82F6),
-                        ),
-                        const SizedBox(width: 8),
-                        _MacroChip(
-                          label: 'L',
-                          value: '${recipe.safeFats}g',
-                          color: const Color(0xFFF59E0B),
-                        ),
-                      ],
-                    ),
                 ],
+              ),
+            ),
+            SizedBox(width: context.vw(2.6)),
+            Padding(
+              padding: EdgeInsets.only(right: context.vw(1.5)),
+              child: Text.rich(
+                TextSpan(
+                  style: RyzeText.body(context, 3.9, weight: FontWeight.w600).copyWith(
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                  children: [
+                    TextSpan(text: '${recipe.safeCalories}'),
+                    TextSpan(text: ' kcal', style: RyzeText.body(context, 3.0, color: RyzeColors.mute)),
+                  ],
+                ),
               ),
             ),
           ],
@@ -138,219 +106,111 @@ class RecipeListCard extends StatelessWidget {
   }
 }
 
-// Card de recette pour le carousel horizontal
+/// Une recette mise en avant : la photo tient la carte, le nom se pose dessus.
 class RecipeCarouselCard extends StatelessWidget {
+  const RecipeCarouselCard({super.key, required this.recipe, this.onTap});
+
   final Recipe recipe;
   final VoidCallback? onTap;
 
-  const RecipeCarouselCard({
-    super.key,
-    required this.recipe,
-    this.onTap,
-  });
-
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 280,
-        height: 180,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          color: const Color(0xFFF8F8F8),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Stack(
-          children: [
-            // Image de fond
-            Positioned.fill(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: RecipeImageService.buildRecipeImage(
-                  imageUrl: recipe.image,
-                  width: null, // Laisse le widget s'adapter au container parent
-                  height: null,
-                  fit: BoxFit.cover,
-                ),
+    final lang = LocalizationService.instance.currentLanguageCode;
+
+    return Pressable(
+      onTap: onTap == null
+          ? null
+          : () {
+              RyzeFeedback.select();
+              onTap!();
+            },
+      child: SizedBox(
+        width: context.vw(56),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(RyzeRadius.md),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              RecipeImageService.buildRecipeImage(
+                imageUrl: recipe.image,
+                width: double.infinity,
+                height: double.infinity,
+                fit: BoxFit.cover,
               ),
-            ),
-            
-            // Badge calories en haut à droite
-            Positioned(
-              top: 12,
-              right: 12,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.95),
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 4,
-                      offset: const Offset(0, 1),
+              // Le nom doit rester lisible quelle que soit la photo.
+              IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.bottomCenter,
+                      end: Alignment.topCenter,
+                      colors: [RyzeColors.ink.withValues(alpha: 0.82), RyzeColors.ink.withValues(alpha: 0)],
+                      stops: const [0, 0.62],
                     ),
-                  ],
-                ),
-                child: Text(
-                  '${recipe.safeCalories} kcal',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF0B132B),
                   ),
                 ),
               ),
-            ),
-            
-            // Titre en overlay en bas
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  borderRadius: const BorderRadius.only(
-                    bottomLeft: Radius.circular(16),
-                    bottomRight: Radius.circular(16),
-                  ),
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      Colors.black.withOpacity(0.7),
-                    ],
-                  ),
-                ),
+              Positioned(
+                left: context.vw(3.6),
+                right: context.vw(3.6),
+                bottom: context.vw(3.1),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       recipe.name,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
+                      style: RyzeText.body(context, 3.9, weight: FontWeight.w600, color: RyzeColors.surf, height: 1.2),
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: context.vw(1)),
                     Text(
-                      '${recipe.duration} min • ${recipe.safeServings} pers.',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.white70,
-                      ),
+                      '${recipe.safeCalories} kcal · ${recipe.duration} ${'recipe_minutes'.tr(lang)}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: RyzeText.body(context, 3.0, color: RyzeColors.surf.withValues(alpha: 0.82)),
                     ),
                   ],
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-// Chip de filtre actif
+/// Un filtre actif : ce qu'il retient, et la croix qui l'enlève.
 class ActiveFilterChip extends StatelessWidget {
+  const ActiveFilterChip({super.key, required this.label, required this.onRemove});
+
   final String label;
   final VoidCallback onRemove;
 
-  const ActiveFilterChip({
-    super.key,
-    required this.label,
-    required this.onRemove,
-  });
-
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFFF1F5F9),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: Color(0xFF0B132B),
-            ),
-          ),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: onRemove,
-            child: const Icon(
-              LucideIcons.x,
-              size: 14,
-              color: Color(0xFF0B132B),
-            ),
-          ),
-        ],
+    return Pressable(
+      onTap: () {
+        RyzeFeedback.removed();
+        onRemove();
+      },
+      child: Container(
+        padding: EdgeInsets.fromLTRB(context.vw(3.1), context.vw(1.8), context.vw(2.3), context.vw(1.8)),
+        decoration: BoxDecoration(
+          color: RyzeColors.ink,
+          borderRadius: BorderRadius.circular(RyzeRadius.pill),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(label, style: RyzeText.body(context, 3.1, weight: FontWeight.w600, color: RyzeColors.surf)),
+            SizedBox(width: context.vw(1.5)),
+            Icon(LucideIcons.x, size: context.vw(3.3), color: RyzeColors.surf.withValues(alpha: 0.8)),
+          ],
+        ),
       ),
     );
   }
 }
-
-// Chip de macro (protéines, glucides, lipides)
-class _MacroChip extends StatelessWidget {
-  final String label;
-  final String value;
-  final Color color;
-
-  const _MacroChip({
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color: color,
-            ),
-          ),
-          const SizedBox(width: 2),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w500,
-              color: color,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-} 

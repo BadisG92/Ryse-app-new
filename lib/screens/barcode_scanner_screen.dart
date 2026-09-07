@@ -4,7 +4,6 @@ import 'dart:io';
 
 import 'package:camera/camera.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:provider/provider.dart';
 import '../bottom_sheets/meal_selection_bottom_sheet.dart';
 import '../bottom_sheets/new_meal_type_bottom_sheet.dart';
 import '../models/nutrition_models.dart' as nutrition_models;
@@ -24,6 +23,7 @@ import '../services/translations.dart';
 import '../design/design.dart';
 import '../components/ui/numeric_text_field.dart';
 import '../services/barcode_stream_service.dart';
+import '../services/portions.dart';
 import '../services/localization_service.dart';
 import '../config/supabase_config.dart';
 
@@ -730,163 +730,86 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
   }
 
   // Afficher la saisie manuelle du code-barres
+  /// Le code à la main, quand l'étiquette est abîmée ou illisible.
   void _showManualBarcodeInput() {
-    final TextEditingController barcodeController = TextEditingController();
-    bool isLoading = false;
-    final locService = LocalizationService.instance;
-    final lang = locService.currentLanguageCode;
-    final isFr = lang == 'fr';
-    final isDe = lang == 'de';
+    final controller = TextEditingController();
+    final lang = LocalizationService.instance.currentLanguageCode;
 
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+    showRyzeSheet<String>(
+      context,
+      title: 'enter_barcode_manually'.tr(lang),
+      subtitle: 'barcode_manual_hint'.tr(lang),
+      builder: (sheet) => StatefulBuilder(
+        builder: (sheet, setSheetState) {
+          final code = controller.text.trim();
+          final valid = code.length >= 8;
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  color: RyzeColors.surf,
+                  borderRadius: BorderRadius.circular(RyzeRadius.sm),
+                  border: Border.all(color: RyzeColors.line),
+                ),
+                child: TextField(
+                  controller: controller,
+                  autofocus: true,
+                  keyboardType: TextInputType.number,
+                  onChanged: (_) => setSheetState(() {}),
+                  onSubmitted: (v) {
+                    if (v.trim().length >= 8) Navigator.pop(sheet, v.trim());
+                  },
+                  style: RyzeText.body(sheet, 4.6, weight: FontWeight.w600).copyWith(
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                    letterSpacing: 1.5,
+                  ),
+                  cursorColor: RyzeColors.ink,
+                  textAlign: TextAlign.center,
+                  decoration: InputDecoration(
+                    hintText: '3017620422003',
+                    hintStyle: RyzeText.body(sheet, 4.6, color: RyzeColors.mute2).copyWith(letterSpacing: 1.5),
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.symmetric(vertical: sheet.vw(4.1)),
+                  ),
+                ),
               ),
-              title: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF0B132B).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      LucideIcons.type,
-                      color: Color(0xFF0B132B),
-                      size: 20,
-                    ),
+              SizedBox(height: sheet.vw(4.6)),
+              Pressable(
+                onTap: valid ? () => Navigator.pop(sheet, code) : null,
+                child: AnimatedContainer(
+                  duration: RyzeDurations.tap,
+                  curve: RyzeCurves.out,
+                  height: sheet.vw(13.3),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: valid ? RyzeColors.ink : RyzeColors.idle,
+                    borderRadius: BorderRadius.circular(RyzeRadius.sm),
+                    boxShadow: valid ? RyzeShadow.soft : null,
                   ),
-                  const SizedBox(width: 12),
-                  Text(
-                    isFr ? 'Saisie manuelle' : isDe ? 'Manuelle Eingabe' : 'Manual entry',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF0B132B),
-                    ),
-                  ),
-                ],
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    isFr
-                        ? 'Entrez le code-barres du produit que vous souhaitez ajouter :'
-                        : isDe
-                            ? 'Geben Sie den Barcode des Produkts ein:'
-                            : 'Enter the barcode of the product you want to add:',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Color(0xFF64748B),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: barcodeController,
-                    keyboardType: TextInputType.number,
-                    autofocus: true,
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(
-                          color: Color(0xFF0B132B),
-                          width: 2,
-                        ),
-                      ),
-                      hintText: 'Ex: 3229820129488',
-                      hintStyle: const TextStyle(
-                        color: Color(0xFF94A3B8),
-                      ),
-                      prefixIcon: const Icon(
-                        LucideIcons.scan,
-                        color: Color(0xFF64748B),
-                      ),
-                      suffixIcon: barcodeController.text.isNotEmpty
-                          ? IconButton(
-                              onPressed: () {
-                                barcodeController.clear();
-                                setState(() {});
-                              },
-                              icon: const Icon(LucideIcons.x),
-                            )
-                          : null,
-                    ),
-                    onChanged: (value) => setState(() {}),
-                  ),
-                  const SizedBox(height: 12),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: isLoading ? null : () => Navigator.pop(context),
                   child: Text(
-                    isFr ? 'Annuler' : isDe ? 'Abbrechen' : 'Cancel',
-                    style: const TextStyle(
-                      color: Color(0xFF64748B),
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
+                    'search'.tr(lang),
+                    style: RyzeText.body(sheet, 3.9, weight: FontWeight.w600, color: valid ? RyzeColors.surf : RyzeColors.mute),
                   ),
                 ),
-                ElevatedButton(
-                  onPressed: (barcodeController.text.isNotEmpty && !isLoading)
-                      ? () async {
-                          setState(() => isLoading = true);
-
-                          // 📊 Analytics: Manual barcode entry
-                          AnalyticsService.logFoodScanBarcode(
-                            mealType: widget.mealName ?? 'unknown',
-                            success: true,
-                            source: 'manual',
-                          );
-
-                          Navigator.pop(context);
-                          await _fetchProductData(barcodeController.text);
-                        }
-                      : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0B132B),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: isLoading
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        )
-                      : Text(
-                          isFr ? 'Rechercher' : isDe ? 'Suchen' : 'Search',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
+              ),
+            ],
+          );
+        },
+      ),
+    ).then((code) {
+      if (code != null && code.isNotEmpty && mounted) {
+        setState(() {
+          isProcessing = true;
+          isLoadingProduct = true;
+        });
+        _fetchProductData(code);
+      }
+    });
   }
 
-  // Récupérer les données du produit depuis OpenFoodFacts
+
   Future<void> _fetchProductData(String barcode) async {
     setState(() {
       isLoadingProduct = true;
@@ -1083,179 +1006,73 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
 
     if (!mounted) return;
 
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Container(
-          decoration: BoxDecoration(
-            color: const Color(0xFFF8FAFC),
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
+    final lang = LocalizationService.instance.currentLanguageCode;
+    final save = await showRyzeSheet<bool>(
+      context,
+      title: 'save_to_my_foods'.tr(lang),
+      subtitle: _scannedProduct?.productName ?? '',
+      builder: (sheet) => Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(LucideIcons.bookmark, size: sheet.vw(4.1), color: RyzeColors.mute2),
+              SizedBox(width: sheet.vw(2.6)),
+              Expanded(
+                child: Text(
+                  'save_to_my_foods_hint'.tr(lang),
+                  style: RyzeText.body(sheet, 3.4, color: RyzeColors.mute, height: 1.45),
+                ),
               ),
             ],
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Icône
-                Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0B132B).withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    LucideIcons.scan,
-                    size: 32,
-                    color: Color(0xFF0B132B),
+          SizedBox(height: sheet.vw(5.1)),
+          Row(
+            children: [
+              Expanded(
+                child: Pressable(
+                  onTap: () => Navigator.pop(sheet, false),
+                  child: Container(
+                    height: sheet.vw(13.3),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: RyzeColors.surf,
+                      borderRadius: BorderRadius.circular(RyzeRadius.sm),
+                      border: Border.all(color: RyzeColors.line),
+                    ),
+                    child: Text('no_thanks'.tr(lang), maxLines: 1, overflow: TextOverflow.ellipsis, style: RyzeText.body(sheet, 3.6, weight: FontWeight.w600)),
                   ),
                 ),
-                
-                const SizedBox(height: 16),
-
-                Consumer<LocalizationService>(
-                  builder: (context, locService, child) {
-                    String title;
-                    if (locService.currentLanguageCode == 'fr') {
-                      title = 'Sauvegarder l\'aliment ?';
-                    } else if (locService.currentLanguageCode == 'de') {
-                      title = 'Lebensmittel speichern?';
-                    } else {
-                      title = 'Save food item?';
-                    }
-                    return Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF1A1A1A),
-                      ),
-                    );
-                  },
-                ),
-
-                const SizedBox(height: 8),
-
-                Consumer<LocalizationService>(
-                  builder: (context, locService, child) {
-                    final productName = _scannedProduct?.productName ?? 'this_product'.tr(locService.currentLanguageCode);
-                    final message = 'add_to_custom_foods_question'.tr(locService.currentLanguageCode)
-                        .replaceAll('{productName}', productName);
-                    return Text(
-                      message,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Color(0xFF64748B),
-                      ),
-                      textAlign: TextAlign.center,
-                    );
-                  },
-                ),
-                
-                const SizedBox(height: 24),
-                
-                // Boutons
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () {
-                          Navigator.pop(context); // Fermer le popup
-                          if (widget.isFromDashboard && _pendingDashboardFoodItem != null) {
-                            _handleDashboardFoodSelection(_pendingDashboardFoodItem!);
-                          } else {
-                            _handleJournalFoodAddition(); // Mode journal
-                          }
-                        },
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: Color(0xFFE2E8F0)),
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: Consumer<LocalizationService>(
-                          builder: (context, locService, child) {
-                            String label;
-                            if (locService.currentLanguageCode == 'fr') {
-                              label = 'Non';
-                            } else if (locService.currentLanguageCode == 'de') {
-                              label = 'Nein';
-                            } else {
-                              label = 'No';
-                            }
-                            return Text(
-                              label,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF64748B),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
+              ),
+              SizedBox(width: sheet.vw(3.1)),
+              Expanded(
+                flex: 2,
+                child: Pressable(
+                  onTap: () => Navigator.pop(sheet, true),
+                  child: Container(
+                    height: sheet.vw(13.3),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: RyzeColors.ink,
+                      borderRadius: BorderRadius.circular(RyzeRadius.sm),
+                      boxShadow: RyzeShadow.soft,
                     ),
-
-                    const SizedBox(width: 16),
-
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () async {
-                          Navigator.pop(context); // Fermer popup
-                          await _saveToCustomFoods();
-                          if (widget.isFromDashboard && _pendingDashboardFoodItem != null) {
-                            _handleDashboardFoodSelection(_pendingDashboardFoodItem!);
-                          } else {
-                            _handleJournalFoodAddition(); // Mode journal
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF0B132B),
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: Consumer<LocalizationService>(
-                          builder: (context, locService, child) {
-                            String label;
-                            if (locService.currentLanguageCode == 'fr') {
-                              label = 'Oui';
-                            } else if (locService.currentLanguageCode == 'de') {
-                              label = 'Ja';
-                            } else {
-                              label = 'Yes';
-                            }
-                            return Text(
-                              label,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                  ],
+                    child: Text('save'.tr(lang), style: RyzeText.body(sheet, 3.9, weight: FontWeight.w600, color: RyzeColors.surf)),
+                  ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ),
+        ],
       ),
     );
+
+    if (save == true && mounted) await _saveToCustomFoods();
   }
+
+
 
   Future<void> _saveToCustomFoods() async {
     if (_scannedProduct == null) return;
@@ -1558,22 +1375,21 @@ class _BarcodeQuantity extends StatelessWidget {
   final String lang;
   final VoidCallback onChanged;
 
-  static const List<double> _presets = [30, 50, 100, 150, 200, 250];
-
   void _step(int direction) {
     final current = double.tryParse(controller.text.isEmpty ? '0' : controller.text) ?? 0;
-    _set((current + direction * 10).clamp(0, 5000).toDouble());
+    _set((current + direction * RyzePortions.step(unit: unit)).clamp(0, 5000).toDouble());
   }
 
   void _set(double value) {
     RyzeFeedback.tap();
-    controller.text = value.truncateToDouble() == value ? value.toStringAsFixed(0) : value.toStringAsFixed(1);
+    controller.text = RyzePortions.format(value);
     onChanged();
   }
 
   @override
   Widget build(BuildContext context) {
     final current = double.tryParse(controller.text) ?? -1;
+    final presets = RyzePortions.presets(unit: unit);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1585,8 +1401,7 @@ class _BarcodeQuantity extends StatelessWidget {
             Expanded(
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   IntrinsicWidth(
                     child: NumericTextField(
@@ -1616,10 +1431,10 @@ class _BarcodeQuantity extends StatelessWidget {
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             padding: EdgeInsets.zero,
-            itemCount: _presets.length,
+            itemCount: presets.length,
             separatorBuilder: (_, __) => SizedBox(width: context.vw(2.1)),
             itemBuilder: (_, i) {
-              final value = _presets[i];
+              final value = presets[i];
               final on = current == value;
               return Pressable(
                 onTap: () => _set(value),
@@ -1634,7 +1449,7 @@ class _BarcodeQuantity extends StatelessWidget {
                     border: Border.all(color: on ? RyzeColors.ink : RyzeColors.line),
                   ),
                   child: Text(
-                    '${value.toStringAsFixed(0)} $unit',
+                    RyzePortions.label(value, unit, lang),
                     style: RyzeText.body(context, 3.3, weight: FontWeight.w600, color: on ? RyzeColors.surf : RyzeColors.ink),
                   ),
                 ),

@@ -1,19 +1,18 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:provider/provider.dart';
+
+import '../../design/design.dart';
 import '../../services/localization_service.dart';
 import '../../services/translations.dart';
-import 'recipe_models.dart';
 import 'recipe_cards.dart';
+import 'recipe_models.dart';
 
-// Section de recherche avec filtre
+/// Chercher une recette, et resserrer par étiquettes.
+///
+/// Le champ mène et se vide d'un geste ; le bouton à droite ouvre les filtres.
+/// La lecture des `content_tags` et la façon de rendre les filtres choisis à
+/// l'appelant sont inchangées : seule leur présentation a bougé.
 class RecipeSearchSection extends StatelessWidget {
-  final TextEditingController searchController;
-  final String searchQuery;
-  final ValueChanged<String> onSearchChanged;
-  final Function(Map<String, Set<String>>)? onFiltersApplied;
-
   const RecipeSearchSection({
     super.key,
     required this.searchController,
@@ -22,321 +21,271 @@ class RecipeSearchSection extends StatelessWidget {
     this.onFiltersApplied,
   });
 
+  final TextEditingController searchController;
+  final String searchQuery;
+  final ValueChanged<String> onSearchChanged;
+  final Function(Map<String, Set<String>>)? onFiltersApplied;
+
   @override
   Widget build(BuildContext context) {
+    final lang = LocalizationService.instance.currentLanguageCode;
     return Row(
       children: [
-        // Barre de recherche
         Expanded(
           child: Container(
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFCCCCCC)),
+              color: RyzeColors.surf,
+              borderRadius: BorderRadius.circular(RyzeRadius.pill),
+              border: Border.all(color: RyzeColors.line),
             ),
-            child: Consumer<LocalizationService>(
-              builder: (context, locService, child) => TextField(
-                controller: searchController,
-                decoration: InputDecoration(
-                  hintText: 'search_recipe_placeholder'.tr(locService.currentLanguageCode),
-                  hintStyle: const TextStyle(color: Color(0xFF888888)),
-                  prefixIcon: const Icon(
-                    LucideIcons.search,
-                    size: 20,
-                    color: Color(0xFF888888),
-                  ),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.all(12),
-                ),
-                onChanged: onSearchChanged,
+            child: TextField(
+              controller: searchController,
+              onChanged: onSearchChanged,
+              style: RyzeText.body(context, 3.9),
+              cursorColor: RyzeColors.ink,
+              decoration: InputDecoration(
+                hintText: 'search_recipe_placeholder'.tr(lang),
+                hintStyle: RyzeText.body(context, 3.9, color: RyzeColors.mute2),
+                prefixIcon: Icon(LucideIcons.search, size: context.vw(4.6), color: RyzeColors.mute),
+                suffixIcon: searchQuery.isEmpty
+                    ? null
+                    : Pressable(
+                        onTap: () {
+                          RyzeFeedback.tap();
+                          searchController.clear();
+                          onSearchChanged('');
+                        },
+                        child: Icon(LucideIcons.x, size: context.vw(4.6), color: RyzeColors.mute),
+                      ),
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.symmetric(horizontal: context.vw(4.1), vertical: context.vw(3.1)),
               ),
             ),
           ),
         ),
-        
-        // Icône de filtre à l'extérieur
-        const SizedBox(width: 12),
-        IconButton(
-          onPressed: () {
-            debugPrint('🔴 OUVERTURE MODAL BOTTOM SHEET 🔴');
-            
-            // Récupérer les filtres depuis content_tags
-            final availableFilters = RecipeFilters.advancedFilters;
-            debugPrint('🔴 Filtres disponibles: ${availableFilters.keys}');
-            
-            // État persistant pour tous les tags
-            Map<String, bool> selectedTags = {};
-            for (var category in availableFilters.entries) {
-              final tags = category.value.values.first; // Les tags de cette catégorie
-              for (String tag in tags) {
-                selectedTags[tag] = false;
-              }
-            }
-            
-            debugPrint('🔴 CALLBACK onFiltersApplied: ${onFiltersApplied.runtimeType}');
-            
-            showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              builder: (context) {
-                return StatefulBuilder(
-                  builder: (context, setModalState) {
-                    return Container(
-                      height: MediaQuery.of(context).size.height * 0.75,
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(20),
-                          topRight: Radius.circular(20),
-                        ),
+        SizedBox(width: context.vw(2.6)),
+        Pressable(
+          onTap: () {
+            RyzeFeedback.select();
+            _openFilters(context);
+          },
+          child: Container(
+            width: context.vw(12.3),
+            height: context.vw(12.3),
+            decoration: BoxDecoration(
+              color: RyzeColors.surf,
+              shape: BoxShape.circle,
+              border: Border.all(color: RyzeColors.line),
+            ),
+            child: Icon(LucideIcons.slidersHorizontal, size: context.vw(4.6), color: RyzeColors.ink),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Les étiquettes disponibles viennent des `content_tags` ; ce qui est coché
+  /// repart à l'appelant rangé par catégorie, exactement comme avant.
+  void _openFilters(BuildContext context) {
+    final availableFilters = RecipeFilters.advancedFilters;
+    final selected = <String, bool>{};
+    for (final category in availableFilters.entries) {
+      for (final tag in category.value.values.first) {
+        selected[tag] = false;
+      }
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: RyzeColors.ink.withValues(alpha: 0.34),
+      builder: (sheet) => StatefulBuilder(
+        builder: (sheet, setModalState) {
+          final lang = LocalizationService.instance.currentLanguageCode;
+          final count = selected.values.where((v) => v).length;
+          final gutter = sheet.vw(5.1);
+
+          return Container(
+            height: sheet.vh(78),
+            decoration: const BoxDecoration(
+              color: RyzeColors.paper,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(RyzeRadius.lg)),
+            ),
+            child: Column(
+              children: [
+                SizedBox(height: sheet.vw(2.6)),
+                Container(
+                  width: 36,
+                  height: 5,
+                  decoration: BoxDecoration(color: RyzeColors.idle, borderRadius: BorderRadius.circular(RyzeRadius.pill)),
+                ),
+                SizedBox(height: sheet.vw(4.1)),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: gutter),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text('filters'.tr(lang), style: RyzeText.body(sheet, 5.1, weight: FontWeight.w600)),
                       ),
-                      child: Column(
-                        children: [
-                          const SizedBox(height: 20),
-                          Consumer<LocalizationService>(
-                            builder: (context, locService, child) => Text(
-                              'filters'.tr(locService.currentLanguageCode),
-                              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-                            ),
+                      if (count > 0)
+                        Pressable(
+                          onTap: () {
+                            RyzeFeedback.removed();
+                            setModalState(() => selected.updateAll((_, __) => false));
+                          },
+                          child: Text(
+                            'clear_filters'.tr(lang),
+                            style: RyzeText.body(sheet, 3.4, weight: FontWeight.w600, color: RyzeColors.mute),
                           ),
-                          const SizedBox(height: 20),
-                          Expanded(
-                            child: SingleChildScrollView(
-                              padding: const EdgeInsets.symmetric(horizontal: 20),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: availableFilters.entries.map((categoryEntry) {
-                                  final categoryName = categoryEntry.key;
-                                  final tags = categoryEntry.value.values.first;
-                                  
-                                  return Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        categoryName,
-                                        style: const TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w600,
-                                          color: Color(0xFF1A1A1A),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 12),
-                                      Wrap(
-                                        spacing: 8,
-                                        runSpacing: 8,
-                                        children: tags.map<Widget>((tag) {
-                                          final isSelected = selectedTags[tag] ?? false;
-                                          return GestureDetector(
-                                            onTap: () {
-                                              debugPrint('🔴 TAG CLIQUÉ: $tag dans $categoryName (était $isSelected)');
-                                              setModalState(() {
-                                                selectedTags[tag] = !isSelected;
-                                                debugPrint('🔴 TAG MAINTENANT: $tag = ${selectedTags[tag]}');
-                                              });
-                                            },
-                                            child: Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                              decoration: BoxDecoration(
-                                                color: isSelected ? const Color(0xFF0B132B) : const Color(0xFFF8F8F8),
-                                                borderRadius: BorderRadius.circular(20),
-                                                border: Border.all(
-                                                  color: isSelected ? const Color(0xFF0B132B) : const Color(0xFFE2E8F0),
-                                                ),
-                                              ),
-                                              child: Text(
-                                                tag,
-                                                style: TextStyle(
-                                                  color: isSelected ? Colors.white : const Color(0xFF1A1A1A),
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                              ),
-                                            ),
-                                          );
-                                        }).toList(),
-                                      ),
-                                      const SizedBox(height: 24),
-                                    ],
-                                  );
-                                }).toList(),
-                              ),
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.all(20),
-                            child: SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton(
-                                onPressed: () {
-                                  final selectedTagsList = selectedTags.entries.where((e) => e.value).map((e) => e.key).toList();
-                                  debugPrint('🔴 VALIDER: ${selectedTagsList.length} filtres sélectionnés');
-                                  debugPrint('🔴 Tags sélectionnés: $selectedTagsList');
-                                  
-                                  // Organiser les tags par catégorie pour le callback
-                                  Map<String, Set<String>> filtersForCallback = {};
-                                  for (var categoryEntry in availableFilters.entries) {
-                                    final categoryName = categoryEntry.key;
-                                    final categoryTags = categoryEntry.value.values.first;
-                                    
-                                    // Filtres sélectionnés pour cette catégorie
-                                    final selectedInCategory = categoryTags.where((tag) => selectedTags[tag] == true).toSet();
-                                    if (selectedInCategory.isNotEmpty) {
-                                      filtersForCallback[categoryName] = selectedInCategory;
-                                    }
-                                  }
-                                  
-                                  debugPrint('🔴 Filtres organisés par catégorie: $filtersForCallback');
-                                  
-                                  // Appeler le callback pour appliquer les filtres
-                                  if (onFiltersApplied != null) {
-                                    try {
-                                      onFiltersApplied!(filtersForCallback);
-                                      debugPrint('🔴 Callback onFiltersApplied appelé avec: $filtersForCallback');
-                                    } catch (e) {
-                                      debugPrint('🔴 ERREUR callback: $e');
-                                    }
-                                  }
-                                  
-                                  Navigator.pop(context);
+                        ),
+                    ],
+                  ),
+                ),
+                SizedBox(height: sheet.vw(4.1)),
+                Expanded(
+                  child: ListView(
+                    padding: EdgeInsets.symmetric(horizontal: gutter),
+                    children: [
+                      for (final category in availableFilters.entries) ...[
+                        Text(
+                          category.key,
+                          style: RyzeText.body(sheet, 3.2, weight: FontWeight.w600, color: RyzeColors.mute),
+                        ),
+                        SizedBox(height: sheet.vw(2.3)),
+                        Wrap(
+                          spacing: sheet.vw(2.1),
+                          runSpacing: sheet.vw(2.1),
+                          children: [
+                            for (final tag in category.value.values.first)
+                              Pressable(
+                                onTap: () {
+                                  RyzeFeedback.tap();
+                                  setModalState(() => selected[tag] = !(selected[tag] ?? false));
                                 },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF0B132B),
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
+                                child: AnimatedContainer(
+                                  duration: RyzeDurations.tap,
+                                  curve: RyzeCurves.out,
+                                  padding: EdgeInsets.symmetric(horizontal: sheet.vw(3.6), vertical: sheet.vw(2.3)),
+                                  decoration: BoxDecoration(
+                                    color: (selected[tag] ?? false) ? RyzeColors.ink : RyzeColors.surf,
+                                    borderRadius: BorderRadius.circular(RyzeRadius.pill),
+                                    border: Border.all(color: (selected[tag] ?? false) ? RyzeColors.ink : RyzeColors.line),
                                   ),
-                                ),
-                                child: Consumer<LocalizationService>(
-                                  builder: (context, locService, child) => Text(
-                                    '${"apply_filters".tr(locService.currentLanguageCode)} (${selectedTags.values.where((v) => v).length})',
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.white,
+                                  child: Text(
+                                    tag,
+                                    style: RyzeText.body(
+                                      sheet,
+                                      3.3,
+                                      weight: FontWeight.w600,
+                                      color: (selected[tag] ?? false) ? RyzeColors.surf : RyzeColors.ink,
                                     ),
                                   ),
                                 ),
                               ),
-                            ),
-                          ),
-                        ],
+                          ],
+                        ),
+                        SizedBox(height: sheet.vw(5.6)),
+                      ],
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(gutter, sheet.vw(2.6), gutter, sheet.vw(4.6)),
+                  child: Pressable(
+                    onTap: () {
+                      final byCategory = <String, Set<String>>{};
+                      for (final category in availableFilters.entries) {
+                        final chosen = category.value.values.first.where((tag) => selected[tag] == true).toSet();
+                        if (chosen.isNotEmpty) byCategory[category.key] = chosen;
+                      }
+                      try {
+                        onFiltersApplied?.call(byCategory);
+                      } catch (e) {
+                        debugPrint('❌ filtres: $e');
+                      }
+                      RyzeFeedback.confirm();
+                      Navigator.pop(sheet);
+                    },
+                    child: Container(
+                      height: sheet.vw(13.3),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: RyzeColors.ink,
+                        borderRadius: BorderRadius.circular(RyzeRadius.sm),
+                        boxShadow: RyzeShadow.soft,
                       ),
-                    );
-                  },
-                );
-              },
-            );
-          },
-          icon: const Icon(
-            LucideIcons.settings,
-            size: 20,
-            color: Color(0xFF0B132B),
-          ),
-          style: IconButton.styleFrom(
-            backgroundColor: const Color(0xFFF1F5F9),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+                      child: Text(
+                        count == 0 ? 'apply_filters'.tr(lang) : '${'apply_filters'.tr(lang)} ($count)',
+                        style: RyzeText.body(sheet, 3.9, weight: FontWeight.w600, color: RyzeColors.surf),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-            padding: const EdgeInsets.all(12),
-          ),
-        ),
-      ],
+          );
+        },
+      ),
     );
   }
 }
 
-// Section des filtres actifs
+/// Les filtres retenus, chacun avec sa croix.
 class ActiveFiltersSection extends StatelessWidget {
+  const ActiveFiltersSection({super.key, required this.activeFilters, required this.onRemoveFilter});
+
   final List<Map<String, String>> activeFilters;
   final Function(Map<String, String>) onRemoveFilter;
-
-  const ActiveFiltersSection({
-    super.key,
-    required this.activeFilters,
-    required this.onRemoveFilter,
-  });
 
   @override
   Widget build(BuildContext context) {
     if (activeFilters.isEmpty) return const SizedBox.shrink();
-    
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 8),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            alignment: WrapAlignment.start,
-            crossAxisAlignment: WrapCrossAlignment.start,
-            children: activeFilters.map((filterData) {
-              return ActiveFilterChip(
-                label: filterData['label']!,
-                onRemove: () => onRemoveFilter(filterData),
-              );
-            }).toList(),
-          ),
-        ),
-      ],
+    return Padding(
+      padding: EdgeInsets.only(top: context.vw(2.6)),
+      child: Wrap(
+        spacing: context.vw(2.1),
+        runSpacing: context.vw(2.1),
+        children: [
+          for (final filter in activeFilters)
+            ActiveFilterChip(label: filter['label']!, onRemove: () => onRemoveFilter(filter)),
+        ],
+      ),
     );
   }
 }
 
-// Section carousel horizontal
+/// Ce que Ryze met en avant : une rangée de photos qu'on fait défiler.
 class RecipeCarouselSection extends StatelessWidget {
+  const RecipeCarouselSection({super.key, required this.featuredRecipes, this.onRecipeTap});
+
   final List<Recipe> featuredRecipes;
   final Function(Recipe)? onRecipeTap;
 
-  const RecipeCarouselSection({
-    super.key,
-    required this.featuredRecipes,
-    this.onRecipeTap,
-  });
-
   @override
   Widget build(BuildContext context) {
+    if (featuredRecipes.isEmpty) return const SizedBox.shrink();
+    final lang = LocalizationService.instance.currentLanguageCode;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Titre de section
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: Consumer<LocalizationService>(
-            builder: (context, locService, child) => Text(
-              'recommended_recipes'.tr(locService.currentLanguageCode),
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF1A1A1A),
-              ),
-            ),
-          ),
+        Text(
+          'recommended_recipes'.tr(lang),
+          style: RyzeText.body(context, 3.6, weight: FontWeight.w600),
         ),
-        
-        const SizedBox(height: 16),
-        
-        // Carousel horizontal
+        SizedBox(height: context.vw(2.6)),
         SizedBox(
-          height: 180,
-          child: SingleChildScrollView(
+          height: context.vw(41),
+          child: ListView.separated(
             scrollDirection: Axis.horizontal,
-            physics: const ClampingScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Row(
-              children: featuredRecipes.asMap().entries.map((entry) {
-                final index = entry.key;
-                final recipe = entry.value;
-                return Row(
-                  children: [
-                    RecipeCarouselCard(
-                      recipe: recipe,
-                      onTap: onRecipeTap != null ? () => onRecipeTap!(recipe) : null,
-                    ),
-                    if (index < featuredRecipes.length - 1) const SizedBox(width: 12),
-                  ],
-                );
-              }).toList(),
+            padding: EdgeInsets.zero,
+            physics: const BouncingScrollPhysics(),
+            itemCount: featuredRecipes.length,
+            separatorBuilder: (_, __) => SizedBox(width: context.vw(2.6)),
+            itemBuilder: (_, i) => RecipeCarouselCard(
+              recipe: featuredRecipes[i],
+              onTap: onRecipeTap == null ? null : () => onRecipeTap!(featuredRecipes[i]),
             ),
           ),
         ),
@@ -345,12 +294,8 @@ class RecipeCarouselSection extends StatelessWidget {
   }
 }
 
-// Section liste des recettes
+/// Toutes les recettes, ou celles qui restent une fois filtré.
 class RecipeListSection extends StatelessWidget {
-  final List<Recipe> recipes;
-  final bool hasActiveFilter;
-  final Function(Recipe)? onRecipeTap;
-
   const RecipeListSection({
     super.key,
     required this.recipes,
@@ -358,250 +303,59 @@ class RecipeListSection extends StatelessWidget {
     this.onRecipeTap,
   });
 
+  final List<Recipe> recipes;
+  final bool hasActiveFilter;
+  final Function(Recipe)? onRecipeTap;
+
   @override
   Widget build(BuildContext context) {
+    final lang = LocalizationService.instance.currentLanguageCode;
+
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Titre de section avec compteur
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Consumer<LocalizationService>(
-                builder: (context, locService, child) => Text(
-                  hasActiveFilter 
-                    ? 'results'.tr(locService.currentLanguageCode)
-                    : 'all_recipes'.tr(locService.currentLanguageCode),
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF1A1A1A),
-                  ),
-                ),
-              ),
-              if (hasActiveFilter)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0B132B),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    '${recipes.length}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-            ],
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              hasActiveFilter ? 'results'.tr(lang) : 'all_recipes'.tr(lang),
+              style: RyzeText.body(context, 3.6, weight: FontWeight.w600),
+            ),
+            Text('${recipes.length}', style: RyzeText.body(context, 3.3, color: RyzeColors.mute)),
+          ],
         ),
-        
-        const SizedBox(height: 16),
-        
-        // Liste des recettes avec dividers
-        ...recipes.asMap().entries.map((entry) {
-          final int index = entry.key;
-          final Recipe recipe = entry.value;
-          
-          return Column(
-            children: [
-              RecipeListCard(
-                recipe: recipe,
-                onTap: onRecipeTap != null ? () => onRecipeTap!(recipe) : null,
-                useSimpleMacros: true, // Format simple pour la page des recettes
-              ),
-              if (index < recipes.length - 1)
-                const Divider(
-                  color: Color(0xFFE2E8F0),
-                  height: 1,
-                  thickness: 1,
+        SizedBox(height: context.vw(2.6)),
+        if (recipes.isEmpty)
+          Padding(
+            padding: EdgeInsets.symmetric(vertical: context.vw(10)),
+            child: Column(
+              children: [
+                Icon(LucideIcons.chefHat, size: context.vw(12.3), color: RyzeColors.mute2),
+                SizedBox(height: context.vw(3.6)),
+                Text(
+                  'recipe_none_found'.tr(lang),
+                  style: RyzeText.body(context, 4.1, weight: FontWeight.w600, color: RyzeColors.mute),
                 ),
-            ],
-          );
-        }).toList(),
+                SizedBox(height: context.vw(1.5)),
+                Text(
+                  'recipe_adjust_filters'.tr(lang),
+                  textAlign: TextAlign.center,
+                  style: RyzeText.body(context, 3.4, color: RyzeColors.mute2),
+                ),
+              ],
+            ),
+          )
+        else
+          for (final recipe in recipes)
+            Padding(
+              padding: EdgeInsets.only(bottom: context.vw(2.1)),
+              child: RecipeListCard(
+                recipe: recipe,
+                onTap: onRecipeTap == null ? null : () => onRecipeTap!(recipe),
+                useSimpleMacros: true,
+              ),
+            ),
       ],
     );
   }
 }
-
-// Widget de filtre modal (contenu seulement)
-class FilterModalContent extends StatelessWidget {
-  final Map<String, Set<String>> selectedFilters;
-  final Function(String, String, bool) onFilterChanged;
-  final VoidCallback onClearAll;
-  final VoidCallback onApply;
-  final int selectedCount;
-
-  const FilterModalContent({
-    super.key,
-    required this.selectedFilters,
-    required this.onFilterChanged,
-    required this.onClearAll,
-    required this.onApply,
-    required this.selectedCount,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        // Handle du modal
-        Container(
-          margin: const EdgeInsets.only(top: 8),
-          width: 40,
-          height: 4,
-          decoration: BoxDecoration(
-            color: const Color(0xFFCCCCCC),
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-        
-        // Header
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: const BoxDecoration(
-            border: Border(
-              bottom: BorderSide(
-                color: Color(0xFFF8F8F8),
-                width: 1,
-              ),
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Consumer<LocalizationService>(
-                builder: (context, locService, child) => Text(
-                  'filters'.tr(locService.currentLanguageCode),
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1A1A),
-                  ),
-                ),
-              ),
-              TextButton(
-                onPressed: onClearAll,
-                child: Consumer<LocalizationService>(
-                  builder: (context, locService, child) => Text(
-                    'clear_all'.tr(locService.currentLanguageCode),
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Color(0xFF64748B),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        
-        // Liste des filtres
-        Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: RecipeFilters.advancedFilters.entries.map((categoryEntry) {
-                final categoryTitle = categoryEntry.key;
-                final categoryFilters = categoryEntry.value;
-                
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      categoryTitle,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF1A1A1A),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    // Tags du filtre - structure simplifiée
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: (categoryFilters.values.expand((list) => list).toList()).map((option) {
-                        final isSelected = selectedFilters[categoryTitle]?.contains(option) ?? false;
-                        
-                        return GestureDetector(
-                          onTap: () {
-                            onFilterChanged(categoryTitle, option, !isSelected);
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: isSelected ? const Color(0xFF0B132B) : const Color(0xFFF8F8F8),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: isSelected ? const Color(0xFF0B132B) : const Color(0xFFE2E8F0),
-                              ),
-                            ),
-                            child: Text(
-                              option,
-                              style: TextStyle(
-                                color: isSelected ? Colors.white : const Color(0xFF1A1A1A),
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 24),
-                  ],
-                );
-              }).toList(),
-            ),
-          ),
-        ),
-        
-        // Bouton Valider
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: const BoxDecoration(
-            border: Border(
-              top: BorderSide(
-                color: Color(0xFFF8F8F8),
-                width: 1,
-              ),
-            ),
-          ),
-          child: SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: onApply,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0B132B),
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                elevation: 0,
-              ),
-              child: Consumer<LocalizationService>(
-                builder: (context, locService, child) => Text(
-                  selectedCount > 0 
-                    ? '${"apply_filters".tr(locService.currentLanguageCode)} ($selectedCount)' 
-                    : 'apply_filters'.tr(locService.currentLanguageCode),
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-} 
