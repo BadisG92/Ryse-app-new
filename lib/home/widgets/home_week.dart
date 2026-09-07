@@ -4,11 +4,16 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../design/design.dart';
 import '../../services/translations.dart';
 
-/// The planner's week band on the home: the seven chips with their marks.
+/// La semaine du planificateur sur l'accueil : les sept jours et leurs
+/// marques, et « Planifier » à droite.
 ///
-/// Today's own slots used to hang below it; they now sit under the instrument,
-/// where the day they describe is still the subject. Tapping the band opens
-/// the planner.
+/// La bande se déplie. Tout la touchait — les jours, la poignée du bas —
+/// ouvrait le chat des repas, donc il n'existait aucun moyen de *regarder* la
+/// semaine ni de toucher un autre jour qu'aujourd'hui. Un tap la déplie
+/// maintenant et montre ce qui est prévu chaque jour ; un tap sur un créneau
+/// dit à l'accueil quel jour et quel créneau, et c'est lui qui décide où
+/// mener. « Planifier » reste le bouton, et il demande d'abord de quoi on
+/// parle : les repas ou les séances.
 class HomeWeek extends StatefulWidget {
   const HomeWeek({
     super.key,
@@ -16,12 +21,22 @@ class HomeWeek extends StatefulWidget {
     required this.days,
     required this.slots,
     required this.onOpenPlanner,
+    required this.onSlotTap,
+    required this.onEmptyDayTap,
   });
 
   final String lang;
   final List<DateTime> days;
   final List<DaySlots> slots;
+
+  /// Le bouton « Planifier » : la feuille qui demande repas ou séances.
   final VoidCallback onOpenPlanner;
+
+  /// Un créneau d'un jour donné, une fois la bande dépliée.
+  final void Function(DateTime day, WeekSlot slot) onSlotTap;
+
+  /// Un jour dont rien n'est prévu : la pastille en pointillés.
+  final ValueChanged<DateTime> onEmptyDayTap;
 
   @override
   State<HomeWeek> createState() => _HomeWeekState();
@@ -32,6 +47,13 @@ class _HomeWeekState extends State<HomeWeek> {
   // flies nothing, but the keys must stay stable across rebuilds
   final Map<String, GlobalKey> _keys = {};
   GlobalKey _key(int day, WeekSlot slot) => _keys.putIfAbsent('$day-${slot.name}', GlobalKey.new);
+
+  bool _expanded = false;
+
+  void _toggle() {
+    RyzeFeedback.tap();
+    setState(() => _expanded = !_expanded);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -77,9 +99,11 @@ class _HomeWeekState extends State<HomeWeek> {
             days: widget.days,
             dayLetters: letters.length == widget.days.length ? letters : List.filled(widget.days.length, ''),
             slots: widget.slots,
-            expanded: false,
-            onToggle: widget.onOpenPlanner,
+            expanded: _expanded,
+            onToggle: _toggle,
             slotKey: _key,
+            onSlotTap: (index, slot) => widget.onSlotTap(widget.days[index], slot),
+            onEmptyTap: (index) => widget.onEmptyDayTap(widget.days[index]),
           ),
         ),
       ],

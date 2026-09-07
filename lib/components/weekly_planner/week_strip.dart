@@ -61,6 +61,7 @@ class WeekStrip extends StatelessWidget {
     required this.slotKey,
     this.popped = const {},
     this.onSlotTap,
+    this.onEmptyTap,
   });
 
   final List<DateTime> days;
@@ -75,6 +76,10 @@ class WeekStrip extends StatelessWidget {
   /// Slots ("2-lunch") something has just landed in: they take the impact.
   final Set<String> popped;
   final void Function(int day, WeekSlot slot)? onSlotTap;
+
+  /// Un jour ou rien n'est prévu : la pastille en pointillés devient un
+  /// bouton. Elle portait un « + » sur lequel il ne se passait rien.
+  final void Function(int day)? onEmptyTap;
 
   bool _isToday(DateTime d) {
     final now = DateTime.now();
@@ -136,6 +141,7 @@ class WeekStrip extends StatelessWidget {
                               popped: popped,
                               past: _isPast(days[i]),
                               onSlotTap: onSlotTap,
+                              onEmptyTap: onEmptyTap,
                             ),
                           ),
                       ],
@@ -273,7 +279,7 @@ class _Mark extends StatelessWidget {
 }
 
 class _DayTiles extends StatelessWidget {
-  const _DayTiles({required this.index, required this.slots, required this.anchor, required this.popped, required this.past, this.onSlotTap});
+  const _DayTiles({required this.index, required this.slots, required this.anchor, required this.popped, required this.past, this.onSlotTap, this.onEmptyTap});
 
   final int index;
   final DaySlots slots;
@@ -281,6 +287,7 @@ class _DayTiles extends StatelessWidget {
   final Set<String> popped;
   final bool past;
   final void Function(int day, WeekSlot slot)? onSlotTap;
+  final void Function(int day)? onEmptyTap;
 
   @override
   Widget build(BuildContext context) {
@@ -289,7 +296,16 @@ class _DayTiles extends StatelessWidget {
         if (slots.state(slot) != SlotState.empty) slot,
     ];
     if (drawn.isEmpty) {
-      return const SizedBox(height: 40, child: Center(child: _EmptyDot()));
+      return SizedBox(
+        height: 40,
+        child: Center(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: onEmptyTap == null ? null : () => onEmptyTap!(index),
+            child: const Padding(padding: EdgeInsets.all(6), child: _EmptyDot()),
+          ),
+        ),
+      );
     }
     return Column(
       mainAxisSize: MainAxisSize.min,

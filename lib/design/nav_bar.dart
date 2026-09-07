@@ -11,9 +11,13 @@ import '../onboarding/widgets/onb_widgets.dart';
 import '../services/translations.dart';
 
 /// The bar of the app: four tabs with no box around them, the active one in
-/// ink with an amber dot under it, and in the middle the two coaches in a
-/// paper pill — the door to the conversation. An amber dot on the pill says a
-/// weekly review is waiting.
+/// ink and underlined by a short ink bar, and in the middle the two coaches in
+/// a paper pill — the door to the conversation. An amber dot on the pill, and
+/// only there, says a weekly review is waiting.
+///
+/// Ink for where you are, amber for what waits: two meanings, two colours, two
+/// shapes. The active tab used to carry an amber dot too, which read as a
+/// notification badge on the page you were already looking at.
 ///
 /// The pill rises above the bar, so it is laid out in a stack that is not
 /// clipped: it is drawn whole, and taps land where it is drawn.
@@ -121,12 +125,22 @@ class _Tab extends StatelessWidget {
                 offset: Offset(0, active ? -0.04 : 0),
                 child: Icon(icon, size: 24, color: active ? RyzeColors.ink : RyzeColors.mute),
               ),
-              const SizedBox(height: 5),
-              AnimatedScale(
+              const SizedBox(height: 6),
+              // La page ouverte est soulignée d'un trait d'encre. C'était un
+              // point ambre, et un point ambre dans une barre d'onglets se lit
+              // comme une pastille de notification — d'autant que la pilule
+              // du coach en porte justement un, ambre lui aussi, pour dire
+              // qu'un bilan attend. Deux sens pour un seul signe. Le trait
+              // n'est ni rond ni ambre : il ne peut plus être confondu.
+              AnimatedContainer(
                 duration: RyzeDurations.enter,
                 curve: RyzeCurves.spring,
-                scale: active ? 1 : 0,
-                child: Container(width: 5, height: 5, decoration: const BoxDecoration(color: RyzeColors.acc, shape: BoxShape.circle)),
+                width: active ? 20 : 0,
+                height: 3,
+                decoration: BoxDecoration(
+                  color: RyzeColors.ink,
+                  borderRadius: BorderRadius.circular(1.5),
+                ),
               ),
             ],
           ),
@@ -166,16 +180,23 @@ class _CoachPill extends StatelessWidget {
                   boxShadow: RyzeShadow.lift,
                 ),
               ),
-              // the two busts overlap by a third; on the widest phones they
-              // outgrow the pill by a point, which is theirs to keep
+              // Les deux bustes se chevauchent d'un tiers. Le chevauchement se
+              // fait par une translation, qui ne change pas la largeur que la
+              // rangée déclare : centrée, elle plaçait donc son milieu de
+              // calcul au centre de la pilule, et le dessin, plus étroit d'un
+              // chevauchement, se retrouvait décalé vers la gauche de la
+              // moitié de celui-ci. On rend cette moitié.
               OverflowBox(
                 maxWidth: double.infinity,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const CoachAvatar(RyzeAssets.sportAvatar, sizeVw: 10.3),
-                    Transform.translate(offset: Offset(-context.vw(3.1), 0), child: const CoachAvatar(RyzeAssets.nutriAvatar, sizeVw: 10.3)),
-                  ],
+                child: Transform.translate(
+                  offset: Offset(context.vw(3.1) / 2, 0),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const CoachAvatar(RyzeAssets.sportAvatar, sizeVw: 10.3),
+                      Transform.translate(offset: Offset(-context.vw(3.1), 0), child: const CoachAvatar(RyzeAssets.nutriAvatar, sizeVw: 10.3)),
+                    ],
+                  ),
                 ),
               ),
               if (badge)

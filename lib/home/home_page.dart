@@ -346,19 +346,61 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
     if (mounted) await _checkAnalysis();
   }
 
+  /// « Planifier » demande d'abord de quoi on parle.
+  ///
+  /// Il ouvrait le planificateur des repas, sans le dire et sans autre porte :
+  /// celui des séances n'était atteignable que depuis Sport → Aujourd'hui, ce
+  /// que rien n'indiquait. Deux rangées, deux coachs, et le doute tombe.
   Future<void> _openPlanner() async {
+    final mode = await showRyzeSheet<String>(
+      context,
+      title: 'plan_with_ryze'.tr(_lang),
+      subtitle: 'home_this_week'.tr(_lang),
+      builder: (sheet) => RyzeSheetGroup(
+        children: [
+          RyzeSheetRow(
+            first: true,
+            icon: LucideIcons.utensils,
+            label: 'plan_my_meals'.tr(_lang),
+            onTap: () => Navigator.pop(sheet, 'meals'),
+          ),
+          RyzeSheetRow(
+            icon: LucideIcons.dumbbell,
+            label: 'plan_my_workouts'.tr(_lang),
+            onTap: () => Navigator.pop(sheet, 'workouts'),
+          ),
+        ],
+      ),
+    );
+    if (mode == null || !mounted) return;
+    await _pushPlanner(mode);
+  }
+
+  Future<void> _pushPlanner(String mode) async {
     final week = _week ?? await WeeklyPlannerService.getWeekData();
     if (!mounted) return;
     await Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => PlannerChatScreen(initialMode: 'meals', weekData: week),
+        pageBuilder: (_, __, ___) => PlannerChatScreen(initialMode: mode, weekData: week),
         transitionsBuilder: (_, animation, __, child) => FadeTransition(opacity: animation, child: child),
         transitionDuration: const Duration(milliseconds: 600),
         reverseTransitionDuration: const Duration(milliseconds: 500),
       ),
     );
     if (mounted) _loadWeek(force: true);
+  }
+
+  /// Un créneau touché dans la bande dépliée. Aujourd'hui se comporte comme la
+  /// rangée du jour ; un autre jour mène au planificateur, dans le mode du
+  /// créneau — c'est là qu'on écrit dans l'avenir, pas dans le journal.
+  void _onWeekSlotTap(DateTime day, WeekSlot slot) {
+    final now = DateTime.now();
+    if (day.year == now.year && day.month == now.month && day.day == now.day) {
+      _onSlotTap(slot);
+      return;
+    }
+    _pushPlanner(slot == WeekSlot.sport ? 'workouts' : 'meals');
   }
 
   /// A slot that is already done opens what is in it, in the Nutrition tab.
@@ -525,6 +567,8 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
                       days: days,
                       slots: slots,
                       onOpenPlanner: _openPlanner,
+                      onSlotTap: _onWeekSlotTap,
+                      onEmptyDayTap: (_) => _openPlanner(),
                     ),
                   ),
                 ],
