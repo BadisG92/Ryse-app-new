@@ -10927,6 +10927,22 @@ class AppTranslations {
       'en': "yrs",
       'de': "J.",
     },
+    // Sport, the levels a programme is filed under
+    'level_beginner': {
+      'fr': "Débutant",
+      'en': "Beginner",
+      'de': "Anfänger",
+    },
+    'level_intermediate': {
+      'fr': "Intermédiaire",
+      'en': "Intermediate",
+      'de': "Fortgeschritten",
+    },
+    'level_advanced': {
+      'fr': "Avancé",
+      'en': "Advanced",
+      'de': "Profi",
+    },
     // Sport, the tab by day
     'sport_hiit_rounds': {
       'fr': "tours",

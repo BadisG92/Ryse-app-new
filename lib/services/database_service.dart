@@ -644,6 +644,7 @@ class DatabaseService {
       description_fr,
       created_at,
       estimated_duration_minutes,
+      difficulty_level,
       workout_template_exercises(
         order_index,
         suggested_sets,
@@ -824,6 +825,7 @@ class DatabaseService {
         description: lang == 'fr' ? descFr : descEn,
         type: '',
         estimatedDuration: (map['estimated_duration_minutes'] as int?) ?? 45,
+        difficulty: (map['difficulty_level'] as String?) ?? '',
         exercises: exercises,
         isCustom: isCustomTemplate,
         isFromAI: map['is_from_ai'] == true, // ⚡ Load Coach Ryze flag
@@ -843,6 +845,7 @@ class DatabaseService {
             'description_en': p.description,
             'description_fr': p.description,
             'estimated_duration_minutes': p.estimatedDuration,
+            'difficulty_level': p.difficulty,
             'exercises': p.exercises
                 .map((e) => {
                       'order_index': 0, // not needed for display order here
@@ -874,6 +877,7 @@ class DatabaseService {
       description_fr,
       created_at,
       estimated_duration_minutes,
+      difficulty_level,
       is_custom,
       user_id
     ''';
@@ -911,6 +915,7 @@ class DatabaseService {
         description: lang == 'fr' ? (map['description_fr'] as String? ?? '') : (map['description_en'] as String? ?? ''),
         type: '',
         estimatedDuration: (map['estimated_duration_minutes'] as int?) ?? 45,
+        difficulty: (map['difficulty_level'] as String?) ?? '',
         exercises: const [],
       );
     }).toList();
@@ -998,6 +1003,7 @@ class DatabaseService {
             description: map['description_fr'] as String? ?? map['description_en'] as String? ?? '',
             type: '',
             estimatedDuration: (map['estimated_duration_minutes'] as int?) ?? 45,
+            difficulty: (map['difficulty_level'] as String?) ?? '',
             exercises: exercises,
           );
         }).toList();
@@ -1042,6 +1048,7 @@ class DatabaseService {
             description: map['description_fr'] as String? ?? map['description_en'] as String? ?? '',
             type: '',
             estimatedDuration: (map['estimated_duration_minutes'] as int?) ?? 45,
+            difficulty: (map['difficulty_level'] as String?) ?? '',
             exercises: exercises,
           );
         }).toList();

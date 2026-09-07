@@ -106,12 +106,46 @@ class _SportProgramsPageState extends State<SportProgramsPage> {
     await SportStart.program(context, p);
   }
 
+  /// L'ordre des niveaux. Un programme sans niveau passe en dernier, dans son
+  /// propre groupe : mieux vaut un groupe « Autres » qu'un programme rangé
+  /// sous un niveau qu'il n'a jamais déclaré.
+  static const List<String> _levels = ['beginner', 'intermediate', 'advanced'];
+
+  static int _rank(String difficulty) {
+    final i = _levels.indexOf(difficulty);
+    return i < 0 ? _levels.length : i;
+  }
+
+  /// Alphabétique, insensible à la casse et aux accents — sinon « Épaules »
+  /// tomberait après « Zone » dans une liste française.
+  static int _byName(WorkoutProgram a, WorkoutProgram b) =>
+      _fold(a.name).compareTo(_fold(b.name));
+
+  static String _fold(String s) {
+    var out = s.toLowerCase();
+    const map = {'é': 'e', 'è': 'e', 'ê': 'e', 'ë': 'e', 'à': 'a', 'â': 'a', 'î': 'i', 'ï': 'i', 'ô': 'o', 'ù': 'u', 'û': 'u', 'ç': 'c'};
+    map.forEach((from, to) => out = out.replaceAll(from, to));
+    return out;
+  }
+
   @override
   Widget build(BuildContext context) {
     final lang = context.watch<LocalizationService>().currentLanguageCode;
     final gutter = context.vw(5.1);
-    final yours = _all.where((p) => p.isCustom).toList();
-    final ryze = _all.where((p) => !p.isCustom).toList();
+
+    // Les tiens : pas de niveau, donc simplement par ordre alphabétique.
+    final yours = _all.where((p) => p.isCustom).toList()..sort(_byName);
+
+    // Ceux de Ryze : par niveau, puis alphabétique dans chaque niveau.
+    final ryze = _all.where((p) => !p.isCustom).toList()
+      ..sort((a, b) {
+        final byLevel = _rank(a.difficulty).compareTo(_rank(b.difficulty));
+        return byLevel != 0 ? byLevel : _byName(a, b);
+      });
+    final byLevel = <String, List<WorkoutProgram>>{};
+    for (final p in ryze) {
+      byLevel.putIfAbsent(_rank(p.difficulty) < _levels.length ? p.difficulty : '', () => []).add(p);
+    }
 
     if (_loading) {
       return const Center(child: CircularProgressIndicator(color: RyzeColors.ink, strokeWidth: 2));
@@ -138,8 +172,24 @@ class _SportProgramsPageState extends State<SportProgramsPage> {
         ],
         if (ryze.isNotEmpty) ...[
           _Header(title: 'sport_programs_ryze'.tr(lang), count: ryze.length),
-          for (var i = 0; i < ryze.length; i++)
-            PopIn(delay: Duration(milliseconds: 40 * (i + yours.length)), dy: 8, child: ProgramCard(lang: lang, program: ryze[i], onTap: () => _open(ryze[i]))),
+          // Un sous-titre par niveau, dans l'ordre débutant → avancé.
+          for (final level in [..._levels, ''])
+            if (byLevel[level] != null) ...[
+              Padding(
+                padding: EdgeInsets.only(top: context.vw(1), bottom: context.vw(2.1)),
+                child: Text(
+                  level.isEmpty ? 'other'.tr(lang) : 'level_$level'.tr(lang),
+                  style: RyzeText.body(context, 3.1, weight: FontWeight.w600, color: RyzeColors.mute),
+                ),
+              ),
+              for (var i = 0; i < byLevel[level]!.length; i++)
+                PopIn(
+                  delay: Duration(milliseconds: 40 * i),
+                  dy: 8,
+                  child: ProgramCard(lang: lang, program: byLevel[level]![i], onTap: () => _open(byLevel[level]![i])),
+                ),
+              SizedBox(height: context.vw(3.1)),
+            ],
         ],
       ],
     );

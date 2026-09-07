@@ -389,6 +389,10 @@ class WorkoutProgram {
   final bool isCustom; // true si le programme vient de user_workout_templates
   final bool isFromAI; // ⚡ true si le programme vient de Coach Ryze
 
+  /// 'beginner' | 'intermediate' | 'advanced', vide si la ligne n'en porte
+  /// pas. Sert à ranger la bibliothèque par niveau.
+  final String difficulty;
+
   const WorkoutProgram({
     required this.id,
     required this.name,
@@ -398,6 +402,7 @@ class WorkoutProgram {
     required this.exercises,
     this.isCustom = false,
     this.isFromAI = false, // ⚡ Par défaut false
+    this.difficulty = '',
   });
 
   factory WorkoutProgram.fromJson(Map<String, dynamic> json) {
@@ -412,6 +417,7 @@ class WorkoutProgram {
           .toList(),
       isCustom: json['isCustom'] ?? false,
       isFromAI: json['isFromAI'] ?? false, // ⚡ Charger depuis JSON
+      difficulty: json['difficulty'] ?? '',
     );
   }
 
@@ -425,6 +431,7 @@ class WorkoutProgram {
       'exercises': exercises.map((exercise) => exercise.toJson()).toList(),
       'isCustom': isCustom,
       'isFromAI': isFromAI, // ⚡ Sauvegarder dans JSON
+      'difficulty': difficulty,
     };
   }
 } 
