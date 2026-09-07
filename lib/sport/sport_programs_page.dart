@@ -198,11 +198,9 @@ class ProgramCard extends StatelessWidget {
                 shape: BoxShape.circle,
                 border: Border.all(color: program.isCustom ? RyzeColors.ink : RyzeColors.line),
               ),
-              child: Icon(
-                program.isFromAI ? LucideIcons.sparkles : LucideIcons.dumbbell,
-                size: context.vw(5.1),
-                color: program.isCustom ? RyzeColors.surf : RyzeColors.ink,
-              ),
+              child: program.isFromAI
+                  ? Center(child: RyzeMark(size: context.vw(5.1), color: program.isCustom ? RyzeColors.surf : RyzeColors.ink))
+                  : Icon(LucideIcons.dumbbell, size: context.vw(5.1), color: program.isCustom ? RyzeColors.surf : RyzeColors.ink),
             ),
             SizedBox(width: context.vw(3.6)),
             Expanded(

@@ -1,12 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../onboarding/onboarding_state.dart';
-import '../services/auth_service.dart';
 import '../services/cardio_service.dart';
 import '../services/global_state_manager.dart';
 import '../services/sport_dashboard_service.dart';
 import '../services/weekly_planner_service.dart';
+import 'sport_goal.dart';
 
 /// Une séance est un anneau ; la forme ne change pas, la famille si.
 enum SportKind { strength, cardio }
@@ -38,7 +37,8 @@ class SportSessionRow {
   String get dayKey => SportData.dayKey(date);
 }
 
-/// La semaine en cours, en quatre chiffres et un objectif.
+/// La semaine en cours, en quatre chiffres — et l'objectif si l'utilisateur
+/// en a fixé un. Nul sinon : un objectif qu'on n'a pas choisi n'en est pas un.
 class SportWeek {
   const SportWeek({required this.sessions, required this.minutes, required this.kcal, required this.streak, required this.goal});
 
@@ -46,9 +46,9 @@ class SportWeek {
   final int minutes;
   final int kcal;
   final int streak;
-  final int goal;
+  final int? goal;
 
-  static const empty = SportWeek(sessions: 0, minutes: 0, kcal: 0, streak: 0, goal: 3);
+  static const empty = SportWeek(sessions: 0, minutes: 0, kcal: 0, streak: 0, goal: null);
 }
 
 /// Les lectures de l'onglet Sport, sur les deux tables vivantes :
@@ -63,12 +63,8 @@ class SportData {
 
   static String dayKey(DateTime d) => '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
-  /// L'objectif hebdomadaire vient du niveau d'activité de l'onboarding —
-  /// jamais d'un chiffre en dur.
-  static int weeklyGoal() => OnbMetabolics.sessionsPerWeekFor(AuthService().currentUser?.activityLevel);
-
   static Future<SportWeek> week() async {
-    final goal = weeklyGoal();
+    final goal = await SportGoal.load();
     try {
       final d = await SportDashboardService.getDashboardData();
       return SportWeek(sessions: d.totalSessions, minutes: d.totalDurationMinutes, kcal: d.totalCalories, streak: d.streak, goal: goal);

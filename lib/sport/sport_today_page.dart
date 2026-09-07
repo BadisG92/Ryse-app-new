@@ -1,33 +1,38 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
+import '../components/weekly_planner/cardio_recap_bottom_sheet.dart';
+import '../components/weekly_planner/workout_recap_bottom_sheet.dart';
 import '../design/design.dart';
 import '../home/home_slots.dart';
 import '../models/sport_models.dart';
 import '../models/weekly_planner_models.dart';
+import '../screens/planner_chat_screen.dart';
 import '../services/database_service.dart';
 import '../services/global_state_manager.dart';
 import '../services/localization_service.dart';
+import '../services/ryze_dates.dart';
 import '../services/translations.dart';
 import '../services/weekly_planner_service.dart';
 import '../services/workout_session_store.dart';
+import 'sheets/goal_sheet.dart';
 import 'sheets/session_recap_sheet.dart';
 import 'sheets/start_session_sheet.dart';
 import 'sport_data.dart';
+import 'sport_goal.dart';
 import 'sport_start.dart';
 import 'widgets/pending_sync_line.dart';
 import 'widgets/resume_session_card.dart';
 import 'widgets/session_timeline.dart';
+import 'widgets/week_rings.dart';
 
 /// La journée sportive, lue comme une seule chose.
 ///
-/// L'instrument dit où en est la semaine face à l'objectif de l'onboarding ;
-/// la carte du jour est dans l'un de quatre états (en cours, prévue, faite,
-/// rien) ; la feuille de départ ramène les huit façons de commencer à une ;
-/// les dernières séances sont sur le rail. Quand l'instrument sort de
-/// l'écran, la barre collante le ramène.
+/// En haut, la semaine : combien de séances, sept anneaux, l'objectif si
+/// l'utilisateur en a fixé un. Dessous, la séance du jour dans l'un de quatre
+/// états — en cours, prévue, faite, rien — avec un seul bouton. Rien de plus :
+/// les séances passées sont l'affaire de l'Historique, une position à droite.
 class SportTodayPage extends StatefulWidget {
   const SportTodayPage({super.key});
 
@@ -37,26 +42,28 @@ class SportTodayPage extends StatefulWidget {
 
 class _SportTodayPageState extends State<SportTodayPage> with GlobalStateListener {
   SportWeek _week = SportWeek.empty;
-  List<SportSessionRow> _recent = const [];
+  Map<String, Set<SportKind>> _kinds = const {};
   List<SportSessionRow> _today = const [];
-  DayPlanData? _plan;
+  WeeklyPlannerData? _plan;
   SessionDraft? _draft;
   List<WorkoutProgram> _redo = const [];
-  bool _shown = false;
+  bool _loaded = false;
 
   final ScrollController _scroll = ScrollController();
   bool _stuck = false;
+
+  /// Lundi → dimanche de cette semaine.
+  List<DateTime> get _days {
+    final now = DateTime.now();
+    final monday = DateTime(now.year, now.month, now.day - (now.weekday - 1));
+    return [for (var i = 0; i < 7; i++) DateTime(monday.year, monday.month, monday.day + i)];
+  }
 
   @override
   void initState() {
     super.initState();
     _scroll.addListener(_onScroll);
     _load();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Future.delayed(const Duration(milliseconds: 220), () {
-        if (mounted) setState(() => _shown = true);
-      });
-    });
   }
 
   @override
@@ -81,15 +88,16 @@ class _SportTodayPageState extends State<SportTodayPage> with GlobalStateListene
 
   void _onScroll() {
     if (!_scroll.hasClients) return;
-    final past = _scroll.offset > context.vw(26);
+    final past = _scroll.offset > context.vw(30);
     if (past != _stuck) setState(() => _stuck = past);
   }
 
   Future<void> _load() async {
     final now = DateTime.now();
+    final days = _days;
     final results = await Future.wait<Object?>([
       SportData.week(),
-      SportData.recent(limit: 3),
+      SportData.kinds(from: days.first, to: days.last),
       SportData.onDay(now),
       WorkoutSessionStore.instance.loadDraft(),
       WeeklyPlannerService.getWeekData().then<WeeklyPlannerData?>((w) => w).catchError((_) => null),
@@ -99,23 +107,23 @@ class _SportTodayPageState extends State<SportTodayPage> with GlobalStateListene
           .catchError((_) => <WorkoutProgram>[]),
     ]);
     if (!mounted) return;
-    final week = results[4] as WeeklyPlannerData?;
-    final programs = (results[5] as List<WorkoutProgram>).where((p) => p.isCustom).take(3).toList();
     setState(() {
       _week = results[0] as SportWeek;
-      _recent = results[1] as List<SportSessionRow>;
+      _kinds = results[1] as Map<String, Set<SportKind>>;
       _today = results[2] as List<SportSessionRow>;
       _draft = results[3] as SessionDraft?;
-      _plan = week?.getDayPlan(now);
-      _redo = programs;
+      _plan = results[4] as WeeklyPlannerData?;
+      _redo = (results[5] as List<WorkoutProgram>).where((p) => p.isCustom).take(3).toList();
+      _loaded = true;
     });
   }
+
+  String get _lang => LocalizationService.instance.currentLanguageCode;
 
   // --------------------------------------------------------------- actions
 
   Future<void> _start() async {
-    final lang = LocalizationService.instance.currentLanguageCode;
-    final choice = await StartSessionSheet.show(context, lang: lang, redo: _redo);
+    final choice = await StartSessionSheet.show(context, lang: _lang, redo: _redo);
     if (choice == null || !mounted) return;
     switch (choice.kind) {
       case StartKind.free:
@@ -157,15 +165,63 @@ class _SportTodayPageState extends State<SportTodayPage> with GlobalStateListene
     _load();
   }
 
+  /// Voir ce qu'il y a dans la séance prévue avant de la lancer : le récap,
+  /// le même que l'accueil ouvre.
+  Future<void> _showPlanned(HomeSession s) async {
+    if (s.workout != null) {
+      await WorkoutRecapBottomSheet.show(context, workout: s.workout!);
+    } else if (s.cardio != null) {
+      await CardioRecapBottomSheet.show(context, activity: s.cardio!);
+    }
+    _load();
+  }
+
+  Future<void> _openPlanner() async {
+    final week = _plan ?? await WeeklyPlannerService.getWeekData();
+    if (!mounted) return;
+    await Navigator.of(context).push(
+      PageRouteBuilder(
+        pageBuilder: (_, __, ___) => PlannerChatScreen(initialMode: 'workouts', weekData: week),
+        transitionsBuilder: (_, animation, __, child) => FadeTransition(opacity: animation, child: child),
+        transitionDuration: RyzeDurations.enter,
+        reverseTransitionDuration: RyzeDurations.enter,
+      ),
+    );
+    _load();
+  }
+
+  Future<void> _goal() async {
+    final picked = await GoalSheet.show(context, lang: _lang, current: _week.goal);
+    if (picked == null || !mounted) return;
+    await SportGoal.save(picked == 0 ? null : picked);
+    RyzeFeedback.select();
+    _load();
+  }
+
+  /// Un jour de la semaine qui a une séance : la seule, ou le choix.
+  Future<void> _openDay(DateTime day) async {
+    final rows = await SportData.onDay(day);
+    if (!mounted || rows.isEmpty) return;
+    if (rows.length == 1) return _open(rows.first);
+    final lang = _lang;
+    final picked = await showRyzeSheet<SportSessionRow>(
+      context,
+      title: RyzeDates.full(day, lang),
+      subtitle: 'sport_sessions_n'.tr(lang).replaceAll('{n}', '${rows.length}'),
+      builder: (sheet) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [for (final r in rows) SessionRow(lang: lang, row: r, onTap: () => Navigator.pop(sheet, r), showDate: false)],
+      ),
+    );
+    if (picked != null && mounted) await _open(picked);
+  }
+
   Future<void> _open(SportSessionRow row) async {
-    final lang = LocalizationService.instance.currentLanguageCode;
+    final lang = _lang;
     final action = await SessionRecapSheet.show(context, lang: lang, row: row);
     if (!mounted) return;
     if (action == RecapAction.delete) {
-      setState(() {
-        _recent = _recent.where((r) => r.id != row.id).toList();
-        _today = _today.where((r) => r.id != row.id).toList();
-      });
+      setState(() => _today = _today.where((r) => r.id != row.id).toList());
       SessionDeletion.schedule(context, lang: lang, row: row, onRestore: _load, onDeleted: _load);
     } else if (action == RecapAction.edited) {
       _load();
@@ -177,12 +233,9 @@ class _SportTodayPageState extends State<SportTodayPage> with GlobalStateListene
   @override
   Widget build(BuildContext context) {
     final lang = context.watch<LocalizationService>().currentLanguageCode;
-    final numbers = NumberFormat.decimalPattern(lang);
     final gutter = context.vw(5.1);
     final w = _week;
-    final remaining = w.goal - w.sessions;
-    final lead = remaining < 0 ? 'sport_over_week'.tr(lang) : (remaining == 0 ? 'sport_week_met'.tr(lang) : 'sport_left_week'.tr(lang));
-    final time = w.minutes >= 60 ? '${w.minutes ~/ 60} h ${(w.minutes % 60).toString().padLeft(2, '0')}' : '${w.minutes} min';
+    final goal = w.goal;
 
     return Stack(
       children: [
@@ -194,24 +247,20 @@ class _SportTodayPageState extends State<SportTodayPage> with GlobalStateListene
               delay: const Duration(milliseconds: 60),
               dy: 8,
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  DayInstrument(
-                    lead: lead,
-                    unit: 'sport_sessions_unit'.tr(lang),
-                    eatenLabel: 'sport_done_n'.tr(lang).replaceAll('{n}', '${w.sessions}'),
-                    goalLabel: 'sport_goal_n'.tr(lang).replaceAll('{n}', '${w.goal}'),
-                    calories: w.sessions,
-                    calorieGoal: w.goal,
-                    shown: _shown,
-                  ),
-                  SizedBox(height: context.vw(2.1)),
-                  Text(
-                    [
-                      'sport_week_line'.tr(lang).replaceAll('{time}', time).replaceAll('{kcal}', numbers.format(w.kcal)),
-                      if (w.streak > 1) 'sport_week_streak'.tr(lang).replaceAll('{n}', '${w.streak}'),
-                    ].join(' · '),
-                    style: RyzeText.body(context, 3.1, color: RyzeColors.mute).copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
+                  WeekBlock(
+                    lang: lang,
+                    days: _days,
+                    kinds: _kinds,
+                    sessions: w.sessions,
+                    minutes: w.minutes,
+                    kcal: w.kcal,
+                    streak: w.streak,
+                    goal: goal,
+                    loaded: _loaded,
+                    onDay: _openDay,
+                    onGoal: _goal,
                   ),
                   PendingSyncLine(lang: lang, compact: false),
                 ],
@@ -221,212 +270,224 @@ class _SportTodayPageState extends State<SportTodayPage> with GlobalStateListene
             PopIn(
               delay: const Duration(milliseconds: 320),
               dy: 8,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _BlockHeader(title: 'sport_today_block'.tr(lang)),
-                  SizedBox(height: context.vw(2.6)),
-                  _todayCard(context, lang),
-                ],
-              ),
-            ),
-            SizedBox(height: context.vw(7)),
-            PopIn(
-              delay: const Duration(milliseconds: 500),
-              dy: 8,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _BlockHeader(title: 'sport_last_sessions'.tr(lang)),
-                  SizedBox(height: context.vw(1)),
-                  if (_recent.isEmpty)
-                    Padding(
-                      padding: EdgeInsets.symmetric(vertical: context.vw(4), horizontal: context.vw(2)),
-                      child: Text('sport_no_sessions_yet'.tr(lang), style: RyzeText.body(context, 3.4, color: RyzeColors.mute)),
-                    )
-                  else
-                    SessionTimeline(lang: lang, rows: _recent, onTap: _open),
-                ],
-              ),
+              child: _todayBlock(context, lang),
             ),
           ],
         ),
-        Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          child: StickyTotal(
-            shown: _stuck,
-            lead: lead,
-            value: '${remaining.abs()}',
-            unit: 'sport_sessions_unit'.tr(lang),
-            fraction: w.goal > 0 ? w.sessions / w.goal : 0,
+        // Le compte revient dès que la semaine a quitté le haut — avec sa
+        // jauge seulement quand il y a un objectif à mesurer.
+        if (goal != null)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: StickyTotal(
+              shown: _stuck,
+              lead: 'sport_this_week'.tr(lang),
+              value: 'sport_goal_progress'.tr(lang).replaceAll('{done}', '${w.sessions}').replaceAll('{goal}', '$goal'),
+              unit: 'sport_sessions_unit'.tr(lang),
+              fraction: goal > 0 ? w.sessions / goal : 0,
+            ),
           ),
-        ),
       ],
     );
   }
 
-  /// La carte du jour : en cours, prévue, faite, ou rien.
-  Widget _todayCard(BuildContext context, String lang) {
+  /// La séance du jour : en cours, prévue, faite, ou rien. Un seul bouton
+  /// dans chaque état ; le « + » du titre sert à commencer autre chose.
+  Widget _todayBlock(BuildContext context, String lang) {
     final draft = _draft;
-    if (draft != null) {
-      return ResumeSessionCard(lang: lang, draft: draft, onResume: _resume, onDiscard: _discardDraft);
-    }
-    final planned = HomeSlots.session(_plan);
-    if (planned != null && planned.status != PlannedStatus.completed) {
-      final w = planned.workout;
-      final hint = w != null
-          ? 'sport_exercises_n_min'.tr(lang).replaceAll('{n}', '${w.exercises.length}').replaceAll('{min}', '${w.durationMinutes ?? 0}')
-          : (planned.cardio?.cardioData?.targetMinutes != null ? 'sport_objective_min'.tr(lang).replaceAll('{n}', '${planned.cardio!.cardioData!.targetMinutes}') : 'sport_kind_cardio'.tr(lang));
-      return _TodayCard(
-        ring: SessionRing(kind: w != null ? SportKind.strength : SportKind.cardio),
-        title: planned.label,
-        hint: hint,
-        action: 'sport_planned_start'.tr(lang),
-        onTap: () => _startPlanned(planned),
-        secondary: 'sport_start_session'.tr(lang),
-        onSecondary: _start,
-      );
-    }
-    // Le jour a déjà ses séances : elles sont la carte, et on peut en ajouter.
-    if (_today.isNotEmpty) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (final row in _today) SessionRow(lang: lang, row: row, onTap: () => _open(row), showDate: false),
-          _GhostButton(label: 'sport_start_session'.tr(lang), onTap: _start),
-        ],
-      );
-    }
-    return _TodayCard(
-      ring: Container(
-        width: 16,
-        height: 16,
-        decoration: BoxDecoration(color: RyzeColors.idle, shape: BoxShape.circle, border: Border.all(color: RyzeColors.idle)),
-      ),
-      title: 'sport_nothing_planned'.tr(lang),
-      hint: null,
-      action: 'sport_start_session'.tr(lang),
-      onTap: _start,
+    final planned = HomeSlots.session(_plan?.getDayPlan(DateTime.now()));
+    final waiting = planned != null && planned.status != PlannedStatus.completed;
+    final showPlus = draft == null && (waiting || _today.isNotEmpty);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(child: Text('sport_session_of_day'.tr(lang), style: RyzeText.body(context, 3.9, weight: FontWeight.w600))),
+            if (showPlus)
+              Semantics(
+                label: 'sport_another_session'.tr(lang),
+                button: true,
+                child: Pressable(
+                  onTap: _start,
+                  child: Container(
+                    width: context.vw(8.7),
+                    height: context.vw(8.7),
+                    decoration: BoxDecoration(color: RyzeColors.surf, shape: BoxShape.circle, border: Border.all(color: RyzeColors.line)),
+                    child: Icon(LucideIcons.plus, size: context.vw(4.1), color: RyzeColors.ink),
+                  ),
+                ),
+              ),
+          ],
+        ),
+        SizedBox(height: context.vw(2.6)),
+        if (draft != null)
+          ResumeSessionCard(lang: lang, draft: draft, onResume: _resume, onDiscard: _discardDraft)
+        else if (waiting)
+          _PlannedCard(
+            lang: lang,
+            session: planned,
+            onOpen: () => _showPlanned(planned),
+            onStart: () => _startPlanned(planned),
+          )
+        else if (_today.isNotEmpty)
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [for (final row in _today) SessionRow(lang: lang, row: row, onTap: () => _open(row), showDate: false)],
+          )
+        else
+          _EmptyCard(lang: lang, onStart: _start, onPlan: _openPlanner),
+      ],
     );
   }
 }
 
-class _TodayCard extends StatelessWidget {
-  const _TodayCard({required this.ring, required this.title, required this.hint, required this.action, required this.onTap, this.secondary, this.onSecondary});
+/// La séance prévue : le nom, ce qu'elle contient, *Commencer*. La carte se
+/// presse pour voir les exercices avant de partir.
+class _PlannedCard extends StatelessWidget {
+  const _PlannedCard({required this.lang, required this.session, required this.onOpen, required this.onStart});
 
-  final Widget ring;
-  final String title;
-  final String? hint;
-  final String action;
-  final VoidCallback onTap;
-  final String? secondary;
-  final VoidCallback? onSecondary;
+  final String lang;
+  final HomeSession session;
+  final VoidCallback onOpen;
+  final VoidCallback onStart;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Container(
-          padding: EdgeInsets.all(context.vw(4.1)),
-          decoration: BoxDecoration(
-            color: RyzeColors.surf,
-            borderRadius: BorderRadius.circular(RyzeRadius.md),
-            border: Border.all(color: RyzeColors.line),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
+    final w = session.workout;
+    final kind = w != null ? SportKind.strength : SportKind.cardio;
+    final String hint;
+    if (w != null) {
+      hint = 'sport_exercises_n_min'.tr(lang).replaceAll('{n}', '${w.exercises.length}').replaceAll('{min}', '${w.durationMinutes ?? 0}');
+    } else {
+      final m = session.cardio?.cardioData?.targetMinutes;
+      hint = m != null ? 'sport_objective_min'.tr(lang).replaceAll('{n}', '$m') : 'sport_kind_cardio'.tr(lang);
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: RyzeColors.surf,
+        borderRadius: BorderRadius.circular(RyzeRadius.md),
+        border: Border.all(color: RyzeColors.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Pressable(
+            onTap: onOpen,
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(context.vw(4.1), context.vw(3.6), context.vw(2.6), context.vw(1)),
+              child: Row(
                 children: [
-                  ring,
+                  SessionRing(kind: kind, size: 16),
                   SizedBox(width: context.vw(3.1)),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: RyzeText.body(context, 3.9, weight: FontWeight.w600)),
-                        if (hint != null) ...[
-                          SizedBox(height: context.vw(0.5)),
-                          Text(hint!, maxLines: 1, overflow: TextOverflow.ellipsis, style: RyzeText.body(context, 3.1, color: RyzeColors.mute)),
-                        ],
+                        Text(session.label, maxLines: 2, overflow: TextOverflow.ellipsis, style: RyzeText.body(context, 3.9, weight: FontWeight.w600)),
+                        SizedBox(height: context.vw(0.5)),
+                        Text(
+                          '${'home_session_planned'.tr(lang)} · $hint',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: RyzeText.body(context, 3.1, color: RyzeColors.mute),
+                        ),
                       ],
                     ),
                   ),
+                  Icon(LucideIcons.chevronRight, size: context.vw(4.6), color: RyzeColors.mute2),
                 ],
               ),
-              SizedBox(height: context.vw(3.6)),
-              Pressable(
-                onTap: onTap,
-                child: Container(
-                  height: context.vw(12.3),
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: RyzeColors.ink,
-                    borderRadius: BorderRadius.circular(RyzeRadius.sm),
-                    boxShadow: RyzeShadow.soft,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(LucideIcons.play, size: context.vw(4.1), color: RyzeColors.surf),
-                      SizedBox(width: context.vw(2.1)),
-                      Text(action, style: RyzeText.body(context, 3.9, weight: FontWeight.w600, color: RyzeColors.surf)),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
-        if (secondary != null) _GhostButton(label: secondary!, onTap: onSecondary!),
-      ],
+          Padding(
+            padding: EdgeInsets.fromLTRB(context.vw(4.1), context.vw(2.1), context.vw(4.1), context.vw(4.1)),
+            child: _InkButton(label: 'sport_planned_start'.tr(lang), onTap: onStart),
+          ),
+        ],
+      ),
     );
   }
 }
 
-class _GhostButton extends StatelessWidget {
-  const _GhostButton({required this.label, required this.onTap});
+/// Rien de prévu : démarrer, ou laisser Ryze planifier la semaine.
+class _EmptyCard extends StatelessWidget {
+  const _EmptyCard({required this.lang, required this.onStart, required this.onPlan});
+
+  final String lang;
+  final VoidCallback onStart;
+  final VoidCallback onPlan;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.all(context.vw(4.1)),
+      decoration: BoxDecoration(
+        color: RyzeColors.surf,
+        borderRadius: BorderRadius.circular(RyzeRadius.md),
+        border: Border.all(color: RyzeColors.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('sport_nothing_planned'.tr(lang), style: RyzeText.body(context, 3.9, weight: FontWeight.w600)),
+          SizedBox(height: context.vw(3.6)),
+          _InkButton(label: 'sport_start_session'.tr(lang), onTap: onStart),
+          SizedBox(height: context.vw(1)),
+          Pressable(
+            onTap: () {
+              RyzeFeedback.tap();
+              onPlan();
+            },
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: context.vw(2.6)),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  RyzeMark(size: context.vw(3.6)),
+                  SizedBox(width: context.vw(1.5)),
+                  Text('sport_plan_week'.tr(lang), style: RyzeText.body(context, 3.4, weight: FontWeight.w600)),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InkButton extends StatelessWidget {
+  const _InkButton({required this.label, required this.onTap});
 
   final String label;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(top: context.vw(2.1)),
-      child: Pressable(
-        onTap: onTap,
-        child: Container(
-          height: context.vw(11.3),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(RyzeRadius.sm),
-            border: Border.all(color: RyzeColors.idle),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(LucideIcons.plus, size: context.vw(4.1), color: RyzeColors.ink),
-              SizedBox(width: context.vw(1.5)),
-              Text(label, style: RyzeText.body(context, 3.4, weight: FontWeight.w600)),
-            ],
-          ),
+    return Pressable(
+      onTap: onTap,
+      child: Container(
+        height: context.vw(12.3),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: RyzeColors.ink,
+          borderRadius: BorderRadius.circular(RyzeRadius.sm),
+          boxShadow: RyzeShadow.soft,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(LucideIcons.play, size: context.vw(4.1), color: RyzeColors.surf),
+            SizedBox(width: context.vw(2.1)),
+            Text(label, style: RyzeText.body(context, 3.9, weight: FontWeight.w600, color: RyzeColors.surf)),
+          ],
         ),
       ),
     );
-  }
-}
-
-class _BlockHeader extends StatelessWidget {
-  const _BlockHeader({required this.title});
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(title, style: RyzeText.body(context, 3.9, weight: FontWeight.w600));
   }
 }

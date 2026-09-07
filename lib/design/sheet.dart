@@ -119,9 +119,14 @@ class _RyzeSheet extends StatelessWidget {
 /// A row of a sheet: a glyph in a paper circle, a label, a hint under it, and a
 /// chevron. The shape every list in a sheet uses, so they all read as one thing.
 class RyzeSheetRow extends StatelessWidget {
-  const RyzeSheetRow({super.key, required this.icon, required this.label, this.hint, required this.onTap, this.first = false, this.danger = false});
+  const RyzeSheetRow({super.key, this.icon, this.leading, required this.label, this.hint, required this.onTap, this.first = false, this.danger = false})
+      : assert(icon != null || leading != null, 'a row shows an icon or a leading widget');
 
-  final IconData icon;
+  final IconData? icon;
+
+  /// Takes the icon's place in the circle — the Ryze mark, when the row is
+  /// Ryze speaking.
+  final Widget? leading;
   final String label;
   final String? hint;
   final VoidCallback onTap;
@@ -155,7 +160,7 @@ class RyzeSheetRow extends StatelessWidget {
                 shape: BoxShape.circle,
                 border: Border.all(color: RyzeColors.line),
               ),
-              child: Icon(icon, size: context.vw(4.6), color: danger ? RyzeColors.danger : RyzeColors.ink),
+              child: leading != null ? Center(child: leading) : Icon(icon, size: context.vw(4.6), color: danger ? RyzeColors.danger : RyzeColors.ink),
             ),
             SizedBox(width: context.vw(3.1)),
             Expanded(

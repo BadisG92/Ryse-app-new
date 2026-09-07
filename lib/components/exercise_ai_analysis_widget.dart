@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../design/design.dart';
@@ -174,7 +173,7 @@ class _ExerciseAiAnalysisWidgetState extends State<ExerciseAiAnalysisWidget> {
                 width: context.vw(9.7),
                 height: context.vw(9.7),
                 decoration: const BoxDecoration(color: RyzeColors.acc, shape: BoxShape.circle),
-                child: Icon(LucideIcons.sparkles, size: context.vw(4.6), color: RyzeColors.accInk),
+                child: Center(child: RyzeMark(size: context.vw(4.6), color: RyzeColors.accInk)),
               ),
               SizedBox(width: context.vw(3.1)),
               Expanded(
@@ -203,7 +202,7 @@ class _ExerciseAiAnalysisWidgetState extends State<ExerciseAiAnalysisWidget> {
               SizedBox(height: context.vw(3.1)),
               _Button(label: 'ai_analysis_retry'.tr(lang), onTap: _generate),
             ] else if (_analysis == null)
-              _Button(label: 'analyze_with_ai'.tr(lang), icon: LucideIcons.sparkles, onTap: _generate)
+              _Button(label: 'analyze_with_ai'.tr(lang), leading: RyzeMark(size: context.vw(4.1), color: RyzeColors.surf), onTap: _generate)
             else ...[
               Text(_analysis!.analysis, style: RyzeText.body(context, 3.4, height: 1.5)),
               if (_analysis!.recommendations.isNotEmpty) ...[
@@ -282,11 +281,13 @@ class _Busy extends StatelessWidget {
 }
 
 class _Button extends StatelessWidget {
-  const _Button({required this.label, required this.onTap, this.icon, this.ghost = false});
+  const _Button({required this.label, required this.onTap, this.leading, this.ghost = false});
 
   final String label;
   final VoidCallback onTap;
-  final IconData? icon;
+
+  /// Ce qui précède le libellé : le signe de Ryze quand c'est lui qui agit.
+  final Widget? leading;
   final bool ghost;
 
   @override
@@ -304,8 +305,8 @@ class _Button extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            if (icon != null) ...[
-              Icon(icon, size: context.vw(4.1), color: ghost ? RyzeColors.ink : RyzeColors.surf),
+            if (leading != null) ...[
+              leading!,
               SizedBox(width: context.vw(2.1)),
             ],
             Flexible(

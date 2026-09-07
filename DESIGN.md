@@ -104,10 +104,16 @@ and nothing else has to say which family a row belongs to — no second tab, no
 coloured badge. The day's card, the twelve-week strip and the session rail all
 use it.
 
-The tab reads like Nutrition: a date, three positions, one instrument. The
-figure is the week's sessions against the goal the onboarding implied, and the
-amber gauge fills toward it; a line under it says the time and the calories of
-the week. Everything below is one card per state, never a stack of them.
+The tab reads like Nutrition: a date, three positions, and the week at the
+top — how many sessions, then seven rings Monday to Sunday that say which days
+without a word, today circled. A weekly goal exists only if the user set one;
+until then the page shows facts, no gauge and nothing "left". The onboarding's
+"how often do you move?" describes a habit, not an aim, so it only pre-selects
+the goal sheet. Below, one card per state, never a stack of them.
+
+Whenever Ryze itself speaks — a generated session, an analysis, the coach's
+row in a sheet — the sign is the Ryze mark (`RyzeMark`), never a sparkle
+glyph. Sparkles say "an AI did this"; the mark says "Ryze did this".
 
 A live activity owns the screen on the ink, the language the camera
 viewfinder set: one number that leads, one status line, two controls under the

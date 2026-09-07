@@ -29,6 +29,7 @@ export 'type.dart';
 export 'motion.dart';
 export 'ryze_logo.dart';
 export 'logo_draw.dart';
+export 'mark.dart';
 export 'nav_bar.dart';
 export 'feedback.dart';
 export 'sheet.dart';

@@ -112,10 +112,16 @@ file : ce n'est pas un échec.**
 
 Le calque exact de Nutrition : la date, `RyzeSegmented`, un `PageView`.
 
-- **Aujourd'hui** : l'instrument (séances de la semaine / objectif tiré du
-  niveau d'activité de l'onboarding, jamais d'un `4` en dur), la ligne de
-  synchronisation, la carte du jour (en cours / prévue / faite / rien), les
-  dernières séances sur le rail, la barre collante quand l'instrument sort.
+- **Aujourd'hui** : la semaine (le compte, sept anneaux lundi → dimanche,
+  navy musculation / ambre cardio, aujourd'hui cerclé), la ligne de
+  synchronisation, puis la séance du jour (en cours / prévue / faite / rien)
+  avec **un seul bouton** — le « + » du titre sert à commencer autre chose.
+  Rien d'autre : les séances passées sont l'affaire de l'Historique.
+  **L'objectif hebdomadaire n'existe que si l'utilisateur l'a fixé.** La
+  question d'onboarding « combien de fois par semaine tu bouges ? » décrit
+  une habitude, pas une visée ; elle ne sert qu'à pré-sélectionner la
+  feuille de choix (`SportGoal`, sur le téléphone). Sans objectif : les
+  faits, pas de jauge, pas de « restantes ».
 - **Historique** : douze semaines de jours, chaque jour portant son anneau ;
   les séances du jour ; **« Tes exercices »**, la porte de l'analyse.
 - **Programmes** : les tiens puis ceux de Ryze, en cartes, avec repli sur le

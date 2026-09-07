@@ -10660,6 +10660,82 @@ class AppTranslations {
       'en': "Move down",
       'de': "Nach unten",
     },
+    // Sport, the week block and the chosen goal
+    'sport_this_week': {
+      'fr': "Cette semaine",
+      'en': "This week",
+      'de': "Diese Woche",
+    },
+    'sport_session_one': {
+      'fr': "1 séance",
+      'en': "1 session",
+      'de': "1 Einheit",
+    },
+    'sport_sessions_n': {
+      'fr': "{n} séances",
+      'en': "{n} sessions",
+      'de': "{n} Einheiten",
+    },
+    'sport_set_goal': {
+      'fr': "Fixer un objectif",
+      'en': "Set a goal",
+      'de': "Ziel festlegen",
+    },
+    'sport_goal_progress': {
+      'fr': "{done} sur {goal}",
+      'en': "{done} of {goal}",
+      'de': "{done} von {goal}",
+    },
+    'sport_goal_left': {
+      'fr': "encore {n}",
+      'en': "{n} to go",
+      'de': "noch {n}",
+    },
+    'sport_goal_met_short': {
+      'fr': "objectif atteint",
+      'en': "goal reached",
+      'de': "Ziel erreicht",
+    },
+    'sport_goal_edit': {
+      'fr': "modifier",
+      'en': "change",
+      'de': "ändern",
+    },
+    'sport_goal_title': {
+      'fr': "Ton objectif de la semaine",
+      'en': "Your weekly goal",
+      'de': "Dein Wochenziel",
+    },
+    'sport_goal_hint': {
+      'fr': "Suggéré d'après ce que tu as dit faire à l'inscription ({n} fois). Change-le quand tu veux.",
+      'en': "Suggested from what you said you do at sign-up ({n} times). Change it any time.",
+      'de': "Vorschlag nach deiner Angabe bei der Anmeldung ({n}-mal). Jederzeit änderbar.",
+    },
+    'sport_goal_none': {
+      'fr': "Pas d'objectif",
+      'en': "No goal",
+      'de': "Kein Ziel",
+    },
+    'sport_goal_unit': {
+      'fr': "séances par semaine",
+      'en': "sessions a week",
+      'de': "Einheiten pro Woche",
+    },
+    'sport_session_of_day': {
+      'fr': "Séance du jour",
+      'en': "Today's session",
+      'de': "Training des Tages",
+    },
+    'sport_plan_week': {
+      'fr': "Planifier ma semaine",
+      'en': "Plan my week",
+      'de': "Meine Woche planen",
+    },
+    'sport_another_session': {
+      'fr': "Une autre séance",
+      'en': "Another session",
+      'de': "Weitere Einheit",
+    },
     // Sport, the tab by day
     'sport_hiit_rounds': {
       'fr': "tours",
