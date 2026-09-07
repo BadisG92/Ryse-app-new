@@ -9677,6 +9677,486 @@ class AppTranslations {
       'en': 'Here are {n} days of meals. Confirm them day by day, or all at once.',
       'de': 'Hier sind {n} Tage mit Mahlzeiten. Bestätige Tag für Tag oder alles auf einmal.',
     },
+
+    // Home page, the coach's brief of the day
+    'day_letters': {
+      'fr': 'L,M,M,J,V,S,D',
+      'en': 'M,T,W,T,F,S,S',
+      'de': 'M,D,M,D,F,S,S',
+    },
+    'home_remaining': {
+      'fr': 'Il te reste',
+      'en': 'Left for today',
+      'de': 'Dir bleiben',
+    },
+    'home_remaining_unit': {
+      'fr': 'kcal',
+      'en': 'kcal',
+      'de': 'kcal',
+    },
+    'home_goal_reached': {
+      'fr': 'Objectif du jour atteint',
+      'en': 'Today\'s goal reached',
+      'de': 'Tagesziel erreicht',
+    },
+    'home_over_by': {
+      'fr': 'Tu as dépassé de',
+      'en': 'You are over by',
+      'de': 'Du bist drüber um',
+    },
+    'home_eaten': {
+      'fr': '{n} kcal mangées',
+      'en': '{n} kcal eaten',
+      'de': '{n} kcal gegessen',
+    },
+    'home_goal': {
+      'fr': 'objectif {n}',
+      'en': 'goal {n}',
+      'de': 'Ziel {n}',
+    },
+    'home_water_of': {
+      'fr': '/ {n} L',
+      'en': '/ {n} L',
+      'de': '/ {n} L',
+    },
+    'home_meals_of': {
+      'fr': '/ {n} repas',
+      'en': '/ {n} meals',
+      'de': 'von {n}',
+    },
+    'home_session': {
+      'fr': 'Séance',
+      'en': 'Session',
+      'de': 'Training',
+    },
+    'home_session_free': {
+      'fr': 'libre',
+      'en': 'free',
+      'de': 'frei',
+    },
+    'home_session_planned': {
+      'fr': 'prévue',
+      'en': 'planned',
+      'de': 'geplant',
+    },
+    'home_session_done': {
+      'fr': 'faite',
+      'en': 'done',
+      'de': 'erledigt',
+    },
+    'home_this_week': {
+      'fr': 'Cette semaine',
+      'en': 'This week',
+      'de': 'Diese Woche',
+    },
+    'home_plan': {
+      'fr': 'Planifier',
+      'en': 'Plan',
+      'de': 'Planen',
+    },
+    'slot_breakfast': {
+      'fr': 'Petit-déj',
+      'en': 'Breakfast',
+      'de': 'Frühstück',
+    },
+    'slot_lunch': {
+      'fr': 'Déjeuner',
+      'en': 'Lunch',
+      'de': 'Mittag',
+    },
+    'slot_snack': {
+      'fr': 'Collation',
+      'en': 'Snack',
+      'de': 'Snack',
+    },
+    'slot_dinner': {
+      'fr': 'Dîner',
+      'en': 'Dinner',
+      'de': 'Abend',
+    },
+    'slot_sport': {
+      'fr': 'Séance',
+      'en': 'Session',
+      'de': 'Training',
+    },
+    'home_greet_morning': {
+      'fr': 'Bonjour {n}.',
+      'en': 'Morning, {n}.',
+      'de': 'Guten Morgen, {n}.',
+    },
+    'home_greet_day': {
+      'fr': 'Salut {n}.',
+      'en': 'Hi {n}.',
+      'de': 'Hallo {n}.',
+    },
+    'home_greet_evening': {
+      'fr': 'Bonsoir {n}.',
+      'en': 'Evening, {n}.',
+      'de': 'Guten Abend, {n}.',
+    },
+    'home_greet_anon': {
+      'fr': 'Salut.',
+      'en': 'Hi.',
+      'de': 'Hallo.',
+    },
+    'home_line_breakfast': {
+      'fr': 'Ton petit-déjeuner n\'est pas encore enregistré.',
+      'en': 'Your breakfast isn\'t logged yet.',
+      'de': 'Dein Frühstück ist noch nicht eingetragen.',
+    },
+    'home_line_lunch': {
+      'fr': 'Ton déjeuner n\'est pas encore enregistré.',
+      'en': 'Your lunch isn\'t logged yet.',
+      'de': 'Dein Mittagessen ist noch nicht eingetragen.',
+    },
+    'home_line_snack': {
+      'fr': 'Une collation est prévue. Tu l\'as prise ?',
+      'en': 'A snack is planned. Had it yet?',
+      'de': 'Ein Snack ist geplant. Schon gegessen?',
+    },
+    'home_line_dinner': {
+      'fr': 'Ton dîner n\'est pas encore enregistré.',
+      'en': 'Your dinner isn\'t logged yet.',
+      'de': 'Dein Abendessen ist noch nicht eingetragen.',
+    },
+    'home_line_water': {
+      'fr': 'Tu n\'as presque rien bu aujourd\'hui.',
+      'en': 'You\'ve barely had any water today.',
+      'de': 'Du hast heute kaum getrunken.',
+    },
+    'home_line_workout': {
+      'fr': 'Ta séance {name} t\'attend aujourd\'hui.',
+      'en': 'Your {name} session is waiting today.',
+      'de': 'Dein Training {name} wartet heute auf dich.',
+    },
+    'home_line_workout_generic': {
+      'fr': 'Une séance t\'attend aujourd\'hui.',
+      'en': 'A session is waiting today.',
+      'de': 'Heute wartet ein Training.',
+    },
+    'home_line_remaining': {
+      'fr': 'Il te reste {n} kcal à enregistrer.',
+      'en': 'You have {n} kcal left to log.',
+      'de': 'Dir bleiben {n} kcal zum Eintragen.',
+    },
+    'home_line_goal_done': {
+      'fr': 'Objectif atteint. Belle journée.',
+      'en': 'Goal reached. Nice work.',
+      'de': 'Ziel erreicht. Stark.',
+    },
+    'home_line_all_logged': {
+      'fr': 'Tous tes repas sont notés. Regarde ta journée.',
+      'en': 'All your meals are logged. Take a look at your day.',
+      'de': 'Alle Mahlzeiten sind eingetragen. Sieh dir deinen Tag an.',
+    },
+    'cta_log_breakfast': {
+      'fr': 'Enregistrer le petit-déjeuner',
+      'en': 'Log breakfast',
+      'de': 'Frühstück eintragen',
+    },
+    'cta_log_lunch': {
+      'fr': 'Enregistrer le déjeuner',
+      'en': 'Log lunch',
+      'de': 'Mittagessen eintragen',
+    },
+    'cta_log_snack': {
+      'fr': 'Enregistrer la collation',
+      'en': 'Log snack',
+      'de': 'Snack eintragen',
+    },
+    'cta_log_dinner': {
+      'fr': 'Enregistrer le dîner',
+      'en': 'Log dinner',
+      'de': 'Abendessen eintragen',
+    },
+    'cta_log_meal': {
+      'fr': 'Enregistrer un repas',
+      'en': 'Log a meal',
+      'de': 'Mahlzeit eintragen',
+    },
+    'cta_drink': {
+      'fr': 'Ajouter un verre d\'eau',
+      'en': 'Add a glass of water',
+      'de': 'Ein Glas Wasser hinzufügen',
+    },
+    'cta_view_workout': {
+      'fr': 'Voir ma séance',
+      'en': 'See my session',
+      'de': 'Mein Training ansehen',
+    },
+    'cta_view_day': {
+      'fr': 'Voir ma journée',
+      'en': 'See my day',
+      'de': 'Meinen Tag ansehen',
+    },
+    'home_glass_added': {
+      'fr': 'Un verre ajouté',
+      'en': 'Glass added',
+      'de': 'Ein Glas hinzugefügt',
+    },
+    'nav_coaches': {
+      'fr': 'Parler aux coachs',
+      'en': 'Talk to the coaches',
+      'de': 'Mit den Coaches sprechen',
+    },
+    'nav_home': {
+      'fr': 'Accueil',
+      'en': 'Home',
+      'de': 'Start',
+    },
+    'home_date': {
+      'fr': '{d} {n}',
+      'en': '{d} {n}',
+      'de': '{d}, {n}.',
+    },
+    'home_line_night': {
+      'fr': 'Bonne nuit. On se retrouve demain.',
+      'en': 'Good night. See you tomorrow.',
+      'de': 'Gute Nacht. Bis morgen.',
+    },
+    'home_session_none': {
+      'fr': 'Pas de séance',
+      'en': 'No session',
+      'de': 'Kein Training',
+    },
+    'meal_name_breakfast': {
+      'fr': 'Petit-déjeuner',
+      'en': 'Breakfast',
+      'de': 'Frühstück',
+    },
+    'meal_name_lunch': {
+      'fr': 'Déjeuner',
+      'en': 'Lunch',
+      'de': 'Mittagessen',
+    },
+    'meal_name_snack': {
+      'fr': 'Collation',
+      'en': 'Snack',
+      'de': 'Zwischenmahlzeit',
+    },
+    'meal_name_dinner': {
+      'fr': 'Dîner',
+      'en': 'Dinner',
+      'de': 'Abendessen',
+    },
+
+    // Nutrition tab, the day as a line
+    'nutri_page_today': {
+      'fr': 'Aujourd\'hui',
+      'en': 'Today',
+      'de': 'Heute',
+    },
+    'nutri_page_history': {
+      'fr': 'Historique',
+      'en': 'History',
+      'de': 'Verlauf',
+    },
+    'nutri_page_recipes': {
+      'fr': 'Mes plats',
+      'en': 'My dishes',
+      'de': 'Meine Gerichte',
+    },
+    'nutri_water': {
+      'fr': 'Eau',
+      'en': 'Water',
+      'de': 'Wasser',
+    },
+    'nutri_water_of': {
+      'fr': '/ {n} L',
+      'en': '/ {n} L',
+      'de': '/ {n} L',
+    },
+    'nutri_meals': {
+      'fr': 'Mes repas',
+      'en': 'My meals',
+      'de': 'Meine Mahlzeiten',
+    },
+    'nutri_nothing_logged': {
+      'fr': 'Rien d\'enregistré',
+      'en': 'Nothing logged',
+      'de': 'Nichts eingetragen',
+    },
+    'nutri_planned_prefix': {
+      'fr': 'Prévu',
+      'en': 'Planned',
+      'de': 'Geplant',
+    },
+    'nutri_add_food': {
+      'fr': 'Ajouter un aliment',
+      'en': 'Add a food',
+      'de': 'Lebensmittel hinzufügen',
+    },
+    'nutri_left_today': {
+      'fr': 'Reste aujourd\'hui',
+      'en': 'Left today',
+      'de': 'Noch übrig',
+    },
+    'nutri_over_goal': {
+      'fr': 'Au-dessus de l\'objectif',
+      'en': 'Over goal',
+      'de': 'Über dem Ziel',
+    },
+    'nutri_goal_met': {
+      'fr': 'Objectif atteint',
+      'en': 'Goal reached',
+      'de': 'Ziel erreicht',
+    },
+    'nutri_eaten': {
+      'fr': 'Mangé {n} kcal',
+      'en': 'Eaten {n} kcal',
+      'de': 'Gegessen {n} kcal',
+    },
+    'nutri_goal': {
+      'fr': 'Objectif {n}',
+      'en': 'Goal {n}',
+      'de': 'Ziel {n}',
+    },
+    'nutri_kcal': {
+      'fr': 'kcal',
+      'en': 'kcal',
+      'de': 'kcal',
+    },
+    'nutri_proteins': {
+      'fr': 'Protéines',
+      'en': 'Protein',
+      'de': 'Protein',
+    },
+    'nutri_carbs': {
+      'fr': 'Glucides',
+      'en': 'Carbs',
+      'de': 'Kohlenhydrate',
+    },
+    'nutri_fats': {
+      'fr': 'Lipides',
+      'en': 'Fat',
+      'de': 'Fett',
+    },
+    'water_other': {
+      'fr': 'Autre quantité',
+      'en': 'Another amount',
+      'de': 'Andere Menge',
+    },
+    'undo': {
+      'fr': 'Annuler',
+      'en': 'Undo',
+      'de': 'Rückgängig',
+    },
+    'undo_glass_added': {
+      'fr': 'Verre noté',
+      'en': 'Glass logged',
+      'de': 'Glas eingetragen',
+    },
+    'undo_glass_removed': {
+      'fr': 'Verre retiré',
+      'en': 'Glass removed',
+      'de': 'Glas entfernt',
+    },
+    'undo_item_removed': {
+      'fr': '{name} retiré',
+      'en': '{name} removed',
+      'de': '{name} entfernt',
+    },
+    'undo_offline': {
+      'fr': 'Pas de réseau, gardé pour plus tard',
+      'en': 'No network, kept for later',
+      'de': 'Kein Netz, für später gespeichert',
+    },
+    // Feuille d'ajout : les récents, puis les cinq façons
+    'nutri_how_add': {
+      'fr': 'Comment veux-tu l\'ajouter ?',
+      'en': 'How do you want to add it?',
+      'de': 'Wie möchtest du es hinzufügen?',
+    },
+    'way_recent': {
+      'fr': 'Tu remanges souvent',
+      'en': 'You often eat again',
+      'de': 'Isst du oft wieder',
+    },
+    'way_search': {
+      'fr': 'Chercher un aliment',
+      'en': 'Search a food',
+      'de': 'Lebensmittel suchen',
+    },
+    'way_search_hint': {
+      'fr': 'Dans la base et tes aliments',
+      'en': 'In the database and your foods',
+      'de': 'In der Datenbank und deinen Lebensmitteln',
+    },
+    'way_photo': {
+      'fr': 'Photographier le plat',
+      'en': 'Photograph the dish',
+      'de': 'Gericht fotografieren',
+    },
+    'way_photo_hint': {
+      'fr': 'Ryze lit l\'assiette',
+      'en': 'Ryze reads the plate',
+      'de': 'Ryze liest den Teller',
+    },
+    'way_barcode': {
+      'fr': 'Scanner un code-barres',
+      'en': 'Scan a barcode',
+      'de': 'Barcode scannen',
+    },
+    'way_barcode_hint': {
+      'fr': 'Pour un produit emballé',
+      'en': 'For a packaged product',
+      'de': 'Für ein verpacktes Produkt',
+    },
+    'way_recipe': {
+      'fr': 'Prendre une de mes recettes',
+      'en': 'Pick one of my recipes',
+      'de': 'Eines meiner Rezepte nehmen',
+    },
+    'way_recipe_hint': {
+      'fr': 'Tes plats enregistrés',
+      'en': 'Your saved dishes',
+      'de': 'Deine gespeicherten Gerichte',
+    },
+    'way_coach': {
+      'fr': 'Le décrire au coach',
+      'en': 'Describe it to the coach',
+      'de': 'Dem Coach beschreiben',
+    },
+    'way_coach_hint': {
+      'fr': 'En une phrase, comme à quelqu\'un',
+      'en': 'In one sentence, like to someone',
+      'de': 'In einem Satz, wie zu jemandem',
+    },
+    'nutri_left_that_day': {
+      'fr': 'Ce jour-là, il restait',
+      'en': 'That day, left',
+      'de': 'An dem Tag blieben',
+    },
+    'nutri_over_that_day': {
+      'fr': 'Ce jour-là, dépassé de',
+      'en': 'That day, over by',
+      'de': 'An dem Tag überschritten um',
+    },
+    'recipe_minutes': {
+      'fr': 'min',
+      'en': 'min',
+      'de': 'Min',
+    },
+    'recipe_servings': {
+      'fr': 'pers.',
+      'en': 'servings',
+      'de': 'Pers.',
+    },
+    'recipe_none_found': {
+      'fr': 'Aucune recette trouvée',
+      'en': 'No recipe found',
+      'de': 'Kein Rezept gefunden',
+    },
+    'recipe_adjust_filters': {
+      'fr': 'Essaie de retirer un filtre',
+      'en': 'Try removing a filter',
+      'de': 'Versuche, einen Filter zu entfernen',
+    },
+    'undo_item_added': {
+      'fr': '{name} ajouté',
+      'en': '{name} added',
+      'de': '{name} hinzugefügt',
+    },
   };
 
   /// Getter public pour accéder aux traductions (utilisé par TranslationChecker)

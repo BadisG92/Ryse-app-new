@@ -88,6 +88,7 @@ class MealPlannerSyncService {
 
       // Notifier le GlobalStateManager pour mettre à jour le planner
       GlobalStateManager.instance.invalidateWeeklyData();
+      WeeklyPlannerService.invalidateCache();
 
       debugPrint('✅ Repas validé: ${mealData.displayName} → food_entry $foodEntryId');
       return foodEntryId;

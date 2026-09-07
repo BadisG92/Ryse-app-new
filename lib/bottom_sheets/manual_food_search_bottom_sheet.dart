@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
-import '../widgets/nutrition/option_widgets.dart';
 import '../bottom_sheets/editable_food_details_bottom_sheet.dart';
 import '../bottom_sheets/create_custom_food_bottom_sheet.dart';
+import '../design/design.dart';
 import '../models/nutrition_models.dart';
-import '../components/ui/nutrition_widgets.dart';
 import '../services/database_service.dart';
 import '../services/auth_service.dart';
 import '../services/localization_service.dart';
@@ -304,323 +303,222 @@ class _ManualFoodSearchBottomSheetState extends State<ManualFoodSearchBottomShee
     }
   }
 
-  String _getEmptyStateMessage(String languageCode) {
-    if (_searchQuery.isNotEmpty) {
-      return 'no_food_found'.tr(languageCode).replaceAll('{query}', _searchQuery);
-    } else if (_frequentFoods.isEmpty) {
-      return 'type_to_search'.tr(languageCode);
-    } else {
-      return 'no_food_available'.tr(languageCode);
-    }
+  /// Ouvre la création d'un aliment, en fermant d'abord la recherche pour ne
+  /// pas empiler deux feuilles.
+  Future<void> _createFood() async {
+    RyzeFeedback.select();
+    final navigator = Navigator.of(context);
+    navigator.pop();
+    await Future.delayed(const Duration(milliseconds: 100));
+    if (!navigator.mounted) return;
+    showModalBottomSheet(
+      context: navigator.context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.9,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (_, __) => CreateCustomFoodBottomSheet(onFoodSelected: widget.onFoodCreated),
+      ),
+    );
   }
 
-  Widget _buildEmptyState() {
-    return Consumer<LocalizationService>(
-      builder: (context, localizationService, _) {
-        return Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                _searchQuery.isNotEmpty ? LucideIcons.search : LucideIcons.type,
-                size: 48,
-                color: const Color(0xFF64748B),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                _getEmptyStateMessage(localizationService.currentLanguageCode),
-                style: const TextStyle(
-                  fontSize: 16,
-                  color: Color(0xFF64748B),
-                ),
-                textAlign: TextAlign.center,
-              ),
-              if (_searchQuery.isEmpty && _frequentFoods.isEmpty) ...[
-                const SizedBox(height: 8),
-                Text(
-                  'start_adding_foods'.tr(localizationService.currentLanguageCode),
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: Color(0xFF94A3B8),
+  /// Rien à montrer : soit on n'a pas encore tapé, soit la base ne connaît pas
+  /// ce mot. Dans le second cas, créer l'aliment est la seule suite utile, donc
+  /// c'est ce qu'on propose.
+  Widget _emptyState(String lang) {
+    final searching = _searchQuery.isNotEmpty;
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: context.vw(10)),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(searching ? LucideIcons.searchX : LucideIcons.search, size: context.vw(9.2), color: RyzeColors.mute2),
+            SizedBox(height: context.vw(3.6)),
+            Text(
+              searching
+                  ? 'no_food_found'.tr(lang).replaceAll('{query}', _searchQuery)
+                  : 'type_to_search'.tr(lang),
+              textAlign: TextAlign.center,
+              style: RyzeText.body(context, 3.9, weight: FontWeight.w600, color: RyzeColors.mute),
+            ),
+            if (searching) ...[
+              SizedBox(height: context.vw(5.1)),
+              Pressable(
+                onTap: _createFood,
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: context.vw(5.1), vertical: context.vw(3.1)),
+                  decoration: BoxDecoration(
+                    color: RyzeColors.ink,
+                    borderRadius: BorderRadius.circular(RyzeRadius.pill),
+                    boxShadow: RyzeShadow.soft,
                   ),
-                  textAlign: TextAlign.center,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(LucideIcons.plus, size: context.vw(4.1), color: RyzeColors.surf),
+                      SizedBox(width: context.vw(2.1)),
+                      Text(
+                        'create_food'.tr(lang),
+                        style: RyzeText.body(context, 3.6, weight: FontWeight.w600, color: RyzeColors.surf),
+                      ),
+                    ],
+                  ),
                 ),
-              ],
+              ),
             ],
-          ),
-        );
-      },
+          ],
+        ),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final displayFoods = _getCurrentDisplayFoods();
+    final lang = context.watch<LocalizationService>().currentLanguageCode;
+    final foods = _getCurrentDisplayFoods();
+    final gutter = context.vw(5.1);
 
     return ConstrainedBox(
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.9,
-      ),
+      constraints: BoxConstraints(maxHeight: context.vh(92)),
       child: Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(20),
-              topRight: Radius.circular(20),
+        decoration: const BoxDecoration(
+          color: RyzeColors.paper,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(RyzeRadius.lg)),
+        ),
+        child: Column(
+          children: [
+            SizedBox(height: context.vw(2.6)),
+            Container(
+              width: 36,
+              height: 5,
+              decoration: BoxDecoration(color: RyzeColors.idle, borderRadius: BorderRadius.circular(RyzeRadius.pill)),
             ),
-          ),
-          child: Column(
-        children: [
-          Container(
-            margin: const EdgeInsets.only(top: 12),
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: const Color(0xFFE5E5E5),
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          
-          Container(
-            padding: const EdgeInsets.all(24),
-            child: Row(
-              children: [
-                GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      color: Colors.transparent,
-                    ),
-                    child: const Icon(
-                      LucideIcons.chevronLeft,
-                      size: 20,
-                      color: Color(0xFF0B132B),
+            SizedBox(height: context.vw(4.1)),
+
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: gutter),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'search_food'.tr(lang),
+                      style: RyzeText.body(context, 5.1, weight: FontWeight.w600),
                     ),
                   ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Consumer<LocalizationService>(
-                    builder: (context, localizationService, _) {
-                      return Text(
-                        'search_food'.tr(localizationService.currentLanguageCode),
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF1A1A1A),
-                        ),
-                      );
-                    },
+                  Pressable(
+                    onTap: () => Navigator.pop(context),
+                    child: Container(
+                      width: context.vw(9.2),
+                      height: context.vw(9.2),
+                      decoration: const BoxDecoration(color: RyzeColors.surf, shape: BoxShape.circle),
+                      child: Icon(LucideIcons.x, size: context.vw(4.6), color: RyzeColors.mute),
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 24),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8F9FA),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: const Color(0xFFE5E7EB),
-                width: 1,
+                ],
               ),
             ),
-            child: Consumer<LocalizationService>(
-              builder: (context, localizationService, _) {
-                return TextField(
+            SizedBox(height: context.vw(3.6)),
+
+            // Le champ mène : il est ouvert dès l'arrivée et se vide d'un geste.
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: gutter),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: RyzeColors.surf,
+                  borderRadius: BorderRadius.circular(RyzeRadius.pill),
+                  border: Border.all(color: RyzeColors.line),
+                ),
+                child: TextField(
                   controller: _searchController,
+                  autofocus: true,
                   textInputAction: TextInputAction.search,
                   onSubmitted: (_) => FocusScope.of(context).unfocus(),
+                  style: RyzeText.body(context, 3.9),
+                  cursorColor: RyzeColors.ink,
                   decoration: InputDecoration(
-                    hintText: 'search_food_placeholder'.tr(localizationService.currentLanguageCode),
-                    hintStyle: const TextStyle(
-                      color: Color(0xFF64748B),
-                      fontSize: 16,
-                    ),
-                    prefixIcon: const Icon(
-                      LucideIcons.search,
-                      color: Color(0xFF64748B),
-                      size: 20,
-                    ),
+                    hintText: 'search_food_placeholder'.tr(lang),
+                    hintStyle: RyzeText.body(context, 3.9, color: RyzeColors.mute2),
+                    prefixIcon: Icon(LucideIcons.search, color: RyzeColors.mute, size: context.vw(4.6)),
+                    suffixIcon: _searchQuery.isEmpty
+                        ? null
+                        : Pressable(
+                            onTap: () {
+                              RyzeFeedback.tap();
+                              _searchController.clear();
+                            },
+                            child: Icon(LucideIcons.x, color: RyzeColors.mute, size: context.vw(4.6)),
+                          ),
                     border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 16,
-                    ),
+                    contentPadding: EdgeInsets.symmetric(horizontal: context.vw(4.1), vertical: context.vw(3.6)),
                   ),
-                );
-              },
-            ),
-          ),
-          
-          const SizedBox(height: 16),
-          
-          // Option "Créer un aliment"
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 24),
-            child: GestureDetector(
-              onTap: () async {
-                Navigator.pop(context);
-                await Future.delayed(const Duration(milliseconds: 100));
-                if (context.mounted) {
-                  showModalBottomSheet(
-                    context: context,
-                    isScrollControlled: true,
-                    backgroundColor: Colors.transparent,
-                    builder: (context) => DraggableScrollableSheet(
-                      initialChildSize: 0.9,
-                      minChildSize: 0.5,
-                      maxChildSize: 0.95,
-                      expand: false,
-                      builder: (_, __) => CreateCustomFoodBottomSheet(
-                        onFoodSelected: widget.onFoodCreated,
-                      ),
-                    ),
-                  );
-                }
-              },
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0B132B).withOpacity(0.05),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: const Color(0xFF0B132B).withOpacity(0.2),
-                    width: 1,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF0B132B),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(
-                        LucideIcons.plus,
-                        size: 16,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Consumer<LocalizationService>(
-                        builder: (context, localizationService, _) {
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'create_food'.tr(localizationService.currentLanguageCode),
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF0B132B),
-                                ),
-                              ),
-                              Text(
-                                'create_custom_food_desc'.tr(localizationService.currentLanguageCode),
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Color(0xFF64748B),
-                                ),
-                              ),
-                            ],
-                          );
-                        },
-                      ),
-                    ),
-                    const Icon(
-                      LucideIcons.chevronRight,
-                      size: 16,
-                      color: Color(0xFF64748B),
-                    ),
-                  ],
                 ),
               ),
             ),
-          ),
-          
-          const SizedBox(height: 16),
-      
-          // Section titre pour les aliments fréquents
-          if (_showingFrequentFoods && _frequentFoods.isNotEmpty) ...[
-            Consumer<LocalizationService>(
-              builder: (context, localizationService, _) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        LucideIcons.trendingUp,
-                        size: 16,
-                        color: Color(0xFF0B132B),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'frequently_used_foods'.tr(localizationService.currentLanguageCode),
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF0B132B),
-                        ),
-                      ),
-                    ],
+
+            if (_showingFrequentFoods && _frequentFoods.isNotEmpty) ...[
+              SizedBox(height: context.vw(4.1)),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: gutter),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'frequently_used_foods'.tr(lang),
+                    style: RyzeText.body(context, 3.2, weight: FontWeight.w600, color: RyzeColors.mute),
                   ),
-                );
-              },
-            ),
-            const SizedBox(height: 12),
-          ],
-          
-          // Contenu principal scrollable
-          Expanded(
-            child: _isLoading
-                ? const Center(
-                    child: CircularProgressIndicator(
-                      color: Color(0xFF0B132B),
-                    ),
-                  )
-                : displayFoods.isEmpty
-                    ? _buildEmptyState()
-                    : SingleChildScrollView(
-                        controller: widget.scrollController,
-                        padding: const EdgeInsets.symmetric(horizontal: 24),
-                        child: Column(
-                          children: [
-                            ...displayFoods.map((food) {
-                              final locService = LocalizationService.instance;
-                              
-                              return FoodSuggestionWidget(
-                                name: food.getLocalizedName(locService.currentLanguageCode),
-                                calories: food.calories,
-                                per: food.getLocalizedUnit(locService.currentLanguageCode) != null && food.referenceQuantity != null 
-                                    ? '${food.referenceQuantity!.toStringAsFixed(food.referenceQuantity!.truncateToDouble() == food.referenceQuantity ? 0 : 1)} ${food.getLocalizedUnit(locService.currentLanguageCode)}'
-                                    : '100 g',
-                                isCustom: food.isCustom,
-                                origin: food.origin, // Transmettre l'origine pour l'affichage
-                                hasModifiedMacros: false, // Les aliments dans la recherche ne sont pas modifiés
-                                isRecipe: false, // Ce ne sont pas des recettes
-                                onTap: () {
-                                  Navigator.pop(context);
-                                  _showFoodDetailsBottomSheet(food);
-                                },
+                ),
+              ),
+            ],
+            SizedBox(height: context.vw(2.6)),
+
+            Expanded(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator(color: RyzeColors.ink, strokeWidth: 2))
+                  : foods.isEmpty
+                      ? _emptyState(lang)
+                      : ListView.separated(
+                          controller: widget.scrollController,
+                          padding: EdgeInsets.fromLTRB(gutter, 0, gutter, context.vw(6)),
+                          itemCount: foods.length + 1,
+                          separatorBuilder: (_, __) => SizedBox(height: context.vw(2.1)),
+                          itemBuilder: (_, i) {
+                            if (i == foods.length) {
+                              // La création se range après les résultats : elle
+                              // reste à portée sans prendre leur place.
+                              return Padding(
+                                padding: EdgeInsets.only(top: context.vw(2.1)),
+                                child: _CreateRow(lang: lang, onTap: _createFood),
                               );
-                            }),
-                            const SizedBox(height: 20), // Espace en bas pour le défilement
-                          ],
+                            }
+                            final food = foods[i];
+                            final unit = food.getLocalizedUnit(lang);
+                            final quantity = food.referenceQuantity;
+                            return _FoodRow(
+                              name: food.getLocalizedName(lang),
+                              calories: food.calories,
+                              per: unit != null && quantity != null
+                                  ? '${quantity.toStringAsFixed(quantity.truncateToDouble() == quantity ? 0 : 1)} $unit'
+                                  : '100 g',
+                              custom: food.isCustom,
+                              onTap: () {
+                                RyzeFeedback.select();
+                                Navigator.pop(context);
+                                _showFoodDetailsBottomSheet(food);
+                              },
+                            );
+                          },
                         ),
-                      ),
-          ),
-        ],
-      ),
+            ),
+          ],
         ),
+      ),
     );
   }
+
+
 
   void _showFoodDetailsBottomSheet(Food food) {
     // Utiliser la quantité de référence de l'aliment si disponible
@@ -671,3 +569,119 @@ class _ManualFoodSearchBottomSheetState extends State<ManualFoodSearchBottomShee
     );
   }
 } 
+
+/// Un aliment de la liste : son nom, ce qu'il pèse, ses calories.
+class _FoodRow extends StatelessWidget {
+  const _FoodRow({
+    required this.name,
+    required this.calories,
+    required this.per,
+    required this.custom,
+    required this.onTap,
+  });
+
+  final String name;
+  final int calories;
+  final String per;
+  final bool custom;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Pressable(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: context.vw(4.1), vertical: context.vw(3.1)),
+        decoration: BoxDecoration(
+          color: RyzeColors.surf,
+          borderRadius: BorderRadius.circular(RyzeRadius.md),
+          border: Border.all(color: RyzeColors.line),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: RyzeText.body(context, 3.9, weight: FontWeight.w600),
+                        ),
+                      ),
+                      if (custom) ...[
+                        SizedBox(width: context.vw(1.5)),
+                        Icon(LucideIcons.bookmark, size: context.vw(3.3), color: RyzeColors.mute2),
+                      ],
+                    ],
+                  ),
+                  SizedBox(height: context.vw(0.5)),
+                  Text(per, style: RyzeText.body(context, 3.1, color: RyzeColors.mute)),
+                ],
+              ),
+            ),
+            SizedBox(width: context.vw(3.1)),
+            Text.rich(
+              TextSpan(
+                style: RyzeText.body(context, 3.9, weight: FontWeight.w600).copyWith(
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+                children: [
+                  TextSpan(text: '$calories'),
+                  TextSpan(text: ' kcal', style: RyzeText.body(context, 3.1, color: RyzeColors.mute)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// La sortie de secours quand la base ne connaît pas ce qu'on mange.
+class _CreateRow extends StatelessWidget {
+  const _CreateRow({required this.lang, required this.onTap});
+
+  final String lang;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Pressable(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: context.vw(4.1), vertical: context.vw(3.1)),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(RyzeRadius.md),
+          border: Border.all(color: RyzeColors.idle),
+        ),
+        child: Row(
+          children: [
+            Icon(LucideIcons.plus, size: context.vw(4.6), color: RyzeColors.ink),
+            SizedBox(width: context.vw(3.1)),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('create_food'.tr(lang), style: RyzeText.body(context, 3.9, weight: FontWeight.w600)),
+                  Text(
+                    'create_custom_food_desc'.tr(lang),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: RyzeText.body(context, 3.1, color: RyzeColors.mute),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, size: 20, color: RyzeColors.mute2),
+          ],
+        ),
+      ),
+    );
+  }
+}

@@ -1098,17 +1098,20 @@ class WeeklyPlannerService {
     try {
       final dateStr = date.toIso8601String().split('T')[0];
 
-      final response = await _client
+      // a day can hold two planned meals of the same type: the first planned
+      // is the one a logged meal completes, the next log takes the next
+      final rows = await _client
           .from('planned_activities')
           .select()
           .eq('user_id', userId)
           .eq('activity_type', mealType)
           .eq('planned_date', dateStr)
           .eq('status', 'planned')
-          .maybeSingle();
+          .order('created_at', ascending: true)
+          .limit(1);
 
-      if (response != null) {
-        return PlannedActivity.fromJson(response);
+      if (rows.isNotEmpty) {
+        return PlannedActivity.fromJson(Map<String, dynamic>.from(rows.first as Map));
       }
       return null;
     } catch (e) {
@@ -1140,17 +1143,19 @@ class WeeklyPlannerService {
         query = query.eq('status', 'planned');
       }
 
-      final response = await query.maybeSingle();
+      // several cardios can share a day: take the first that matches the
+      // requested type, in the order they were planned
+      final rows = await query.order('created_at', ascending: true);
 
-      if (response != null) {
-        // Si un activityType spécifique est demandé, vérifier dans activity_data
+      for (final raw in rows) {
+        final row = Map<String, dynamic>.from(raw as Map);
         if (activityType != null) {
-          final activityData = response['activity_data'] as Map<String, dynamic>?;
+          final activityData = row['activity_data'] as Map<String, dynamic>?;
           if (activityData != null && activityData['cardio_type'] != activityType) {
-            return null; // Ne correspond pas au type demandé
+            continue; // Ne correspond pas au type demandé
           }
         }
-        return PlannedActivity.fromJson(response);
+        return PlannedActivity.fromJson(row);
       }
       return null;
     } catch (e) {
@@ -1180,10 +1185,11 @@ class WeeklyPlannerService {
         query = query.eq('status', 'planned');
       }
 
-      final response = await query.maybeSingle();
+      // two workouts on one day: the first planned is the one to complete
+      final rows = await query.order('created_at', ascending: true).limit(1);
 
-      if (response != null) {
-        return PlannedWorkout.fromJson(response);
+      if (rows.isNotEmpty) {
+        return PlannedWorkout.fromJson(Map<String, dynamic>.from(rows.first as Map));
       }
       return null;
     } catch (e) {

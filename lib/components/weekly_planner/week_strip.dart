@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../design/type.dart';
+
 /// The week above the conversation, in two states.
 ///
 /// Folded, it is a row of seven days, each carrying small marks: one square per
@@ -195,11 +197,11 @@ class _DayChip extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(letter, style: TextStyle(fontSize: 11, height: 1, fontWeight: FontWeight.w600, color: dim ? _idle : _mute)),
+          Text(letter, style: RyzeText.body(context, 2.8, weight: FontWeight.w600, color: dim ? _idle : _mute, height: 1)),
           const SizedBox(height: 2),
           Text('$number',
-              style: TextStyle(
-                  fontSize: 15, height: 1.1, fontWeight: FontWeight.w700, color: dim ? _mute : _ink, fontFeatures: const [FontFeature.tabularFigures()])),
+              style: RyzeText.body(context, 3.8, weight: FontWeight.w700, color: dim ? _mute : _ink, height: 1.1)
+                  .copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
           const SizedBox(height: 6),
           SizedBox(
             height: 8,

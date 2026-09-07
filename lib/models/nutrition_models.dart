@@ -8,12 +8,18 @@ class Meal {
   final String? mealType; // 'breakfast', 'lunch', 'dinner', 'snack' - optionnel pour compatibilité
   final List<FoodItem> items;
 
+  /// Quand le repas a réellement été mangé : le `consumed_at` le plus ancien du
+  /// bloc. Null pour les repas construits sans base (démo, valeurs par défaut).
+  /// `time` reste une chaîne d'affichage ; c'est ce champ qui porte la vérité.
+  final DateTime? at;
+
   Meal({
     this.id,
     required this.time,
     required this.name,
     this.mealType,
     required this.items,
+    this.at,
   });
 
   void addItem(FoodItem item) {

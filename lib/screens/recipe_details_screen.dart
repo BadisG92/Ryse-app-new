@@ -978,14 +978,13 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
     debugPrint('🔵 FoodItem créé: ${foodItem.name}, calories: ${foodItem.calories}');
     
     if (widget.onRecipeSelected != null) {
-      debugPrint('🔵 Utilisation du callback onRecipeSelected');
-      // Si on a un callback (dashboard avec repas présélectionné ou journal), l'utiliser
-      Navigator.pop(context); // Ferme RecipeDetailsScreen
-      Navigator.pop(context); // Ferme SelectRecipeScreen
-      
-      // Ajouter la recette via le callback
+      // La recette part d'abord, puis les deux écrans du choix se retirent :
+      // le détail, et la liste qui l'a ouvert. Appeler le callback avant les
+      // pop laisse au chemin d'écriture un contexte encore vivant.
+      final navigator = Navigator.of(context);
       widget.onRecipeSelected!(foodItem);
-      debugPrint('🔵 Callback appelé avec succès');
+      if (navigator.canPop()) navigator.pop(); // le détail
+      if (navigator.canPop()) navigator.pop(); // la liste
     } else {
       // Si on vient de l'onglet recettes ou dashboard sans callback, afficher la sélection de repas
       await _showMealSelectionBottomSheet(foodItem);

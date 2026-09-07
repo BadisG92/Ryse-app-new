@@ -32,6 +32,7 @@ import 'services/widget_water_handler.dart';
 import 'services/meal_widget_data_provider.dart';
 import 'services/haptic_service.dart';
 import 'design/tokens.dart';
+import 'design/feedback.dart';
 import 'design/logo_draw.dart';
 
 void main() async {
@@ -113,6 +114,7 @@ void main() async {
 
   // Initialiser le service de retour haptique
   await HapticService.instance.initialize();
+  await RyzeFeedback.initialize();
   // Mettre les données widget à jour dès que le state global est prêt avec les VRAIES valeurs
   await MealWidgetDataProvider.forceWidgetUpdate();
 

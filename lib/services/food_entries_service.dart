@@ -109,6 +109,7 @@ class FoodEntriesService {
             'meal_type': mealType,
             'display_name': displayName,
             'consumed_at': entry['consumed_at'],
+            'min_consumed_at': entry['consumed_at'], // L'heure réelle du repas
             'created_at': entry['created_at'],
             'min_created_at': entry['created_at'], // Pour le tri par ordre de création
             'items': <FoodItem>[],
@@ -119,6 +120,11 @@ class FoodEntriesService {
           final entryCreatedAt = DateTime.parse(entry['created_at']);
           if (entryCreatedAt.isBefore(currentMinCreatedAt)) {
             mealBlocks[mealId]!['min_created_at'] = entry['created_at'];
+          }
+          final currentMinConsumed = DateTime.parse(mealBlocks[mealId]!['min_consumed_at']);
+          final entryConsumed = DateTime.parse(entry['consumed_at']);
+          if (entryConsumed.isBefore(currentMinConsumed)) {
+            mealBlocks[mealId]!['min_consumed_at'] = entry['consumed_at'];
           }
         }
         
@@ -180,13 +186,6 @@ class FoodEntriesService {
       // Convertir les blocs en objets Meal
       final meals = <Meal>[];
       
-      // Horaires par défaut
-      final Map<String, String> defaultTimes = {
-        'breakfast': '8h00',
-        'lunch': '12h30',
-        'snack': '16h00',
-        'dinner': '19h30',
-      };
       
       // Trier les blocs par ordre de création (created_at minimum de chaque bloc)
       final sortedBlocks = mealBlocks.values.toList()
@@ -201,11 +200,17 @@ class FoodEntriesService {
         // Sinon, utiliser le meal_id qui contient déjà l'incrémentation
         String mealName = mealId;
         
+        // L'heure affichée est celle du premier aliment du bloc, pas une
+        // constante par type de repas : c'est la seule que l'utilisateur
+        // reconnaît quand il relit sa journée.
+        final at = DateTime.parse(block['min_consumed_at'] as String).toLocal();
         meals.add(Meal(
           id: mealId,
-          time: defaultTimes[mealType] ?? '00h00',
+          time: '${at.hour} h ${at.minute.toString().padLeft(2, '0')}',
           name: mealName,
+          mealType: mealType,
           items: List<FoodItem>.from(block['items']),
+          at: at,
         ));
       }
 
@@ -217,8 +222,208 @@ class FoodEntriesService {
       return meals;
     } catch (e) {
       debugPrint('Erreur lors de la récupération des entrées: $e');
-      return getDefaultMeals(); // Fallback vers les données statiques
+      // Une lecture qui échoue ne doit pas inventer des repas : l'appelant
+      // affiche son état vide, et le prochain rafraîchissement réessaie.
+      return <Meal>[];
     }
+  }
+
+  /// Les calories de chaque jour d'une période, en une seule requête.
+  ///
+  /// La bande d'historique en a besoin pour trente jours d'un coup : trente
+  /// appels séparés feraient trente allers-retours pour une rangée de barres.
+  /// Clé : 'année-mois-jour'.
+  static Future<Map<String, int>> getDailyCalories({
+    required String userId,
+    required DateTime from,
+    required DateTime to,
+  }) async {
+    try {
+      final start = DateTime(from.year, from.month, from.day);
+      final end = DateTime(to.year, to.month, to.day).add(const Duration(days: 1));
+      final rows = await _supabase
+          .from('food_entries')
+          .select('calories, consumed_at')
+          .eq('user_id', userId)
+          .gte('consumed_at', start.toIso8601String())
+          .lt('consumed_at', end.toIso8601String());
+
+      final out = <String, int>{};
+      for (final row in rows) {
+        final at = DateTime.tryParse(row['consumed_at'] as String? ?? '')?.toLocal();
+        if (at == null) continue;
+        final key = '${at.year}-${at.month}-${at.day}';
+        out[key] = (out[key] ?? 0) + ((row['calories'] as num?)?.round() ?? 0);
+      }
+      return out;
+    } catch (e) {
+      debugPrint('❌ getDailyCalories: $e');
+      return <String, int>{};
+    }
+  }
+
+  /// L'entrée la plus récente d'un aliment donné, pour pouvoir annuler l'ajout
+  /// qu'on vient de faire sans avoir à recharger la journée d'abord.
+  static Future<String?> findLastEntryId({
+    required String userId,
+    required String name,
+    required DateTime onDate,
+  }) async {
+    if (userId.isEmpty) return null;
+    try {
+      final start = DateTime(onDate.year, onDate.month, onDate.day);
+      final end = start.add(const Duration(days: 1));
+      final rows = await _supabase
+          .from('food_entries')
+          .select('''
+            id,
+            scanned_food_name,
+            food_database:food_id ( name_fr, name_en ),
+            custom_foods:custom_food_id ( name ),
+            recipes_database:recipe_id ( name_fr, name_en )
+          ''')
+          .eq('user_id', userId)
+          .gte('consumed_at', start.toIso8601String())
+          .lt('consumed_at', end.toIso8601String())
+          .order('created_at', ascending: false)
+          .limit(40);
+
+      final loc = LocalizationService.instance;
+      final wanted = name.trim().toLowerCase();
+      for (final row in rows) {
+        final scanned = row['scanned_food_name'] as String?;
+        final recipe = row['recipes_database'];
+        final custom = row['custom_foods'];
+        final food = row['food_database'];
+        final rowName = scanned != null && scanned.isNotEmpty
+            ? scanned
+            : recipe != null
+                ? loc.getTextFromColumns(recipe['name_fr'], recipe['name_en'])
+                : custom != null
+                    ? (custom['name'] as String? ?? '')
+                    : food != null
+                        ? loc.getTextFromColumns(food['name_fr'], food['name_en'])
+                        : '';
+        if (rowName.trim().toLowerCase() == wanted) return row['id'] as String?;
+      }
+      return null;
+    } catch (e) {
+      debugPrint('❌ findLastEntryId: $e');
+      return null;
+    }
+  }
+
+  /// Ce que l'utilisateur remet le plus souvent dans ce repas.
+  ///
+  /// Filtré par type de repas : on ne propose pas du poulet au petit-déjeuner.
+  /// Un même aliment n'apparaît qu'une fois, dans la portion de sa dernière
+  /// occurrence, et les plus fréquents passent devant. Si le repas n'a pas
+  /// assez d'histoire, on complète avec les récents tous repas confondus
+  /// plutôt que de montrer une rangée vide.
+  static Future<List<FoodItem>> getRecentFoodsForMealType(
+    String userId,
+    String mealName, {
+    int limit = 6,
+    int days = 30,
+  }) async {
+    final mealType = _mealTypeMapping[mealName];
+    try {
+      final since = DateTime.now().subtract(Duration(days: days));
+      final rows = await _supabase
+          .from('food_entries')
+          .select('''
+            quantity,
+            unit,
+            meal_type,
+            consumed_at,
+            calories,
+            proteins,
+            carbs,
+            fats,
+            has_modified_macros,
+            scanned_food_name,
+            is_scanned,
+            food_database:food_id ( name_fr, name_en ),
+            custom_foods:custom_food_id ( name, origin ),
+            recipes_database:recipe_id ( name_fr, name_en )
+          ''')
+          .eq('user_id', userId)
+          .gte('consumed_at', since.toIso8601String())
+          .order('consumed_at', ascending: false)
+          .limit(300);
+
+      final matching = <FoodItem>[];
+      final others = <FoodItem>[];
+      final seenMatching = <String>{};
+      final seenOthers = <String>{};
+
+      for (final row in rows) {
+        final item = _recentItemFrom(row);
+        if (item == null) continue;
+        final key = item.name.toLowerCase();
+        if (mealType != null && row['meal_type'] == mealType) {
+          if (seenMatching.add(key)) matching.add(item);
+        } else {
+          if (seenOthers.add(key)) others.add(item);
+        }
+      }
+
+      final out = <FoodItem>[...matching.take(limit)];
+      for (final item in others) {
+        if (out.length >= limit) break;
+        if (seenMatching.contains(item.name.toLowerCase())) continue;
+        out.add(item);
+      }
+      return out;
+    } catch (e) {
+      debugPrint('❌ getRecentFoodsForMealType: $e');
+      return <FoodItem>[];
+    }
+  }
+
+  /// Le nom d'une ligne de journal, résolu comme dans la lecture du jour.
+  static FoodItem? _recentItemFrom(Map<String, dynamic> row) {
+    final loc = LocalizationService.instance;
+    String name;
+    var isCustom = false;
+    var isRecipe = false;
+    var isScanned = row['is_scanned'] ?? false;
+
+    final scanned = row['scanned_food_name'];
+    if (scanned != null && (scanned as String).isNotEmpty) {
+      name = scanned;
+      isScanned = true;
+    } else if (row['recipes_database'] != null) {
+      final recipe = row['recipes_database'];
+      name = loc.getTextFromColumns(recipe['name_fr'], recipe['name_en']);
+      isRecipe = true;
+      isScanned = false;
+    } else if (row['custom_foods'] != null) {
+      final custom = row['custom_foods'];
+      name = custom['name'] ?? '';
+      isCustom = true;
+      isScanned = custom['origin'] == 'barcode';
+    } else if (row['food_database'] != null) {
+      final food = row['food_database'];
+      name = loc.getTextFromColumns(food['name_fr'], food['name_en']);
+      isScanned = false;
+    } else {
+      return null;
+    }
+    if (name.trim().isEmpty) return null;
+
+    return FoodItem(
+      name: name,
+      calories: (row['calories'] as num?)?.round() ?? 0,
+      proteins: (row['proteins'] as num?)?.toDouble() ?? 0,
+      carbs: (row['carbs'] as num?)?.toDouble() ?? 0,
+      fats: (row['fats'] as num?)?.toDouble() ?? 0,
+      portion: '${row['quantity']} ${row['unit']}',
+      isCustom: isCustom,
+      isRecipe: isRecipe,
+      isScanned: isScanned,
+      hasModifiedMacros: row['has_modified_macros'] ?? false,
+    );
   }
 
   // Pré-générer un meal_id pour un nouveau repas sans créer l'entrée

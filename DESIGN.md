@@ -70,6 +70,32 @@ read as one hand rather than as a drawing followed by a title card. Session
 restore runs in parallel and never cuts the writing short; reduce-motion shows
 the finished logo at once.
 
+## Home
+
+The home is the coach's brief of the day, not a dashboard. One thing to read:
+what is left of the calorie goal, as one big number with the rulers' gauge and
+amber pointer under it. One thing to do: the coach, in bust and ring, says one
+sentence and offers one button, chosen from the hour and the day's state (an
+unlogged meal at its hour, then untouched water, then a waiting session, then
+what is left of the goal). Then the week as the planner's band, with today's
+slots opened under it. Nothing else.
+
+Under the number, three tiles are readouts and controls at once: the water
+fills like a glass and a tap adds one, the meals show the day's marks, the
+session shows its ring. They follow the three states of the strip. The snack
+appears only on days that have one, in the tile, in the row and in the band.
+In today's row, a free slot is a white tile with a light edge rather than a
+grey fill: it is an invitation to fill it, not a mark on the week.
+
+The bar is paper: four tabs with no box, the active one in ink with an amber
+dot, and the two coaches in a paper pill in the middle, the door to the
+conversation. An amber dot on the pill means a weekly review is waiting.
+
+One reveal on entry, in order: the date, the number rolling up from zero with
+its gauge filling, the tiles, the coach typing, the button, the week's marks.
+Code lives in `lib/home/` on top of `lib/design/`; the data layer is the one
+the old dashboard used.
+
 ## Motion
 
 Three curves: `out` (fast start, soft landing) for almost everything; `spring`

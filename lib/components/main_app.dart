@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
-import 'bottom_navigation.dart';
-import 'main_dashboard_hybrid.dart';
-import 'nutrition_section.dart';
+import 'package:provider/provider.dart';
+import '../design/nav_bar.dart';
+import '../home/home_page.dart';
+import '../services/localization_service.dart';
+import '../nutrition/nutrition_page.dart';
 import 'sport_section.dart';
 import 'global_progress_hybrid.dart';
 import '../screens/coach_chat_screen.dart';
@@ -64,27 +66,15 @@ class _MainAppState extends State<MainApp> {
   Widget _renderContent() {
     switch (_activeTab) {
       case 'home':
-        return MainDashboardHybrid(
-          onTabChange: _onTabChange,
-          nutritionTabKey: _nutritionTabKey,
-          sportTabKey: _sportTabKey,
-          progressTabKey: _progressTabKey,
-          coachFabKey: _coachFabKey,
-        );
+        return HomePage(onTabChange: _onTabChange);
       case 'nutrition':
-        return const NutritionSection();
+        return const NutritionPage();
       case 'sport':
         return const SportSection();
       case 'progress':
         return const GlobalProgress();
       default:
-        return MainDashboardHybrid(
-          onTabChange: _onTabChange,
-          nutritionTabKey: _nutritionTabKey,
-          sportTabKey: _sportTabKey,
-          progressTabKey: _progressTabKey,
-          coachFabKey: _coachFabKey,
-        );
+        return HomePage(onTabChange: _onTabChange);
     }
   }
 
@@ -116,15 +106,18 @@ class _MainAppState extends State<MainApp> {
               left: 0,
               right: 0,
               bottom: 0,
-              child: BottomNavigation(
-                activeTab: _activeTab,
-                onTabChange: _onTabChange,
-                onCoachTap: _onCoachTap,
-                nutritionTabKey: _nutritionTabKey,
-                sportTabKey: _sportTabKey,
-                progressTabKey: _progressTabKey,
-                coachFabKey: _coachFabKey,
-                showBilanBadge: _showBilanBadge,
+              child: Consumer<LocalizationService>(
+                builder: (context, loc, _) => RyzeNavBar(
+                  activeTab: _activeTab,
+                  onTabChange: _onTabChange,
+                  onCoachTap: _onCoachTap,
+                  lang: loc.currentLanguageCode,
+                  nutritionTabKey: _nutritionTabKey,
+                  sportTabKey: _sportTabKey,
+                  progressTabKey: _progressTabKey,
+                  coachFabKey: _coachFabKey,
+                  showBadge: _showBilanBadge,
+                ),
               ),
             ),
         ],

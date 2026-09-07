@@ -48,3 +48,42 @@ class RyzeDurations {
   /// A chapter curtain; a tap skips it.
   static const Duration curtain = Duration(milliseconds: 1700);
 }
+
+/// A control reacting under the finger: it sinks a little while pressed and
+/// springs back on release, the way OnbButton does. Wrap anything tappable
+/// that is not a button; it is announced as one.
+class Pressable extends StatefulWidget {
+  const Pressable({super.key, required this.child, this.onTap, this.onLongPress});
+
+  final Widget child;
+  final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
+
+  @override
+  State<Pressable> createState() => _PressableState();
+}
+
+class _PressableState extends State<Pressable> {
+  bool _down = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapDown: (_) => setState(() => _down = true),
+        onTapUp: (_) => setState(() => _down = false),
+        onTapCancel: () => setState(() => _down = false),
+        onTap: widget.onTap,
+        onLongPress: widget.onLongPress,
+        child: AnimatedScale(
+          scale: _down ? 0.975 : 1,
+          duration: const Duration(milliseconds: 180),
+          curve: RyzeCurves.spring,
+          child: widget.child,
+        ),
+      ),
+    );
+  }
+}

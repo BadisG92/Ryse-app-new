@@ -1,15 +1,12 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../services/localization_service.dart';
 import '../services/translations.dart';
 import 'recipe_details_screen.dart';
-import 'test_filter_screen.dart';
 import '../components/ui/recipe_models.dart';
 import '../components/ui/recipe_widgets.dart';
-import '../components/ui/recipe_cards.dart';
-import '../components/ui/working_filter_modal.dart';
+import '../design/design.dart';
 import '../models/nutrition_models.dart';
 import '../services/recipe_image_service.dart';
 
@@ -121,219 +118,157 @@ class _SelectRecipeScreenState extends State<SelectRecipeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Vérifier si un filtre ou une recherche est active
-    final bool hasAdvancedFilters = selectedAdvancedFilters.values.any((set) => set.isNotEmpty);
-    final bool hasActiveFilter = searchQuery.isNotEmpty || hasAdvancedFilters;
+    final lang = context.watch<LocalizationService>().currentLanguageCode;
+    final filtered = selectedAdvancedFilters.values.any((set) => set.isNotEmpty);
+    final narrowed = searchQuery.isNotEmpty || filtered;
+    final recipes = filteredRecipes;
+    final gutter = context.vw(5.1);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: GestureDetector(
-          onTap: () => Navigator.pop(context),
-          child: Container(
-            margin: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              color: Colors.transparent,
-            ),
-            child: const Icon(
-              LucideIcons.chevronLeft,
-              size: 20,
-              color: Color(0xFF0B132B),
-            ),
-          ),
-        ),
-        title: Consumer<LocalizationService>(
-          builder: (context, locService, child) => Text(
-            'add_recipe_meal_title'.tr(locService.currentLanguageCode),
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF1A1A1A),
-            ),
-          ),
-        ),
-        centerTitle: true,
-      ),
-      body: Column(
-        children: [
-          // Section recherche et filtres
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                // Barre de recherche avec bouton filtre
-                RecipeSearchSection(
-                  searchController: _searchController,
-                  searchQuery: searchQuery,
-                  onSearchChanged: _onSearchChanged,
-                  onFiltersApplied: (Map<String, Set<String>> filters) {
-                    debugPrint('🔥🔥🔥 onFiltersApplied APPELÉ avec: $filters');
-                    setState(() {
-                      selectedAdvancedFilters = filters;
-                    });
-                    debugPrint('🔥🔥🔥 selectedAdvancedFilters mis à jour: $selectedAdvancedFilters');
-                  },
-                ),
-                
-                // Filtres actifs
-                ActiveFiltersSection(
-                  activeFilters: RecipeFilters.getActiveFilterTags(selectedAdvancedFilters),
-                  onRemoveFilter: _removeSpecificFilter,
-                ),
-              ],
-            ),
-          ),
-          
-          // Liste des recettes
-          Expanded(
-            child: Container(
-              color: Colors.white,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+      backgroundColor: RyzeColors.paper,
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: EdgeInsets.fromLTRB(gutter, context.vw(2.6), gutter, context.vw(3.6)),
+              child: Row(
                 children: [
-                  // Titre avec compteur
-                  Container(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Consumer<LocalizationService>(
-                          builder: (context, locService, child) => Text(
-                            hasActiveFilter ?
-                              'results'.tr(locService.currentLanguageCode) :
-                              'all_recipes'.tr(locService.currentLanguageCode),
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF1A1A1A),
-                            ),
-                          ),
-                        ),
-                        if (hasActiveFilter)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF0B132B),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              '${filteredRecipes.length}',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                      ],
+                  Pressable(
+                    onTap: () => Navigator.pop(context),
+                    child: Container(
+                      width: context.vw(9.7),
+                      height: context.vw(9.7),
+                      decoration: BoxDecoration(
+                        color: RyzeColors.surf,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: RyzeColors.line),
+                      ),
+                      child: Icon(LucideIcons.chevronLeft, size: context.vw(4.6), color: RyzeColors.ink),
                     ),
                   ),
-                  
-                  // Liste des recettes
+                  SizedBox(width: context.vw(3.6)),
                   Expanded(
-                    child: RecipeData.isLoading
-                        ? _buildLoadingPlaceholder()
-                        : filteredRecipes.isEmpty
-                            ? _buildEmptyState()
-                            : ListView.builder(
-                                itemCount: filteredRecipes.length,
-                                itemBuilder: (context, index) {
-                                  final recipe = filteredRecipes[index];
-                                  return Column(
-                                    children: [
-                                      _buildRecipeCard(recipe),
-                                      if (index < filteredRecipes.length - 1)
-                                        const Divider(
-                                          color: Color(0xFFE2E8F0),
-                                          height: 1,
-                                          thickness: 1,
-                                        ),
-                                    ],
-                                  );
-                                },
-                              ),
+                    child: Text(
+                      'add_recipe_meal_title'.tr(lang),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: RyzeText.body(context, 4.6, weight: FontWeight.w600),
+                    ),
+                  ),
+                  if (narrowed)
+                    Text(
+                      '${recipes.length}',
+                      style: RyzeText.body(context, 3.6, weight: FontWeight.w600, color: RyzeColors.mute),
+                    ),
+                ],
+              ),
+            ),
+
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: gutter),
+              child: Column(
+                children: [
+                  RecipeSearchSection(
+                    searchController: _searchController,
+                    searchQuery: searchQuery,
+                    onSearchChanged: _onSearchChanged,
+                    onFiltersApplied: (filters) => setState(() => selectedAdvancedFilters = filters),
+                  ),
+                  ActiveFiltersSection(
+                    activeFilters: RecipeFilters.getActiveFilterTags(selectedAdvancedFilters),
+                    onRemoveFilter: _removeSpecificFilter,
                   ),
                 ],
               ),
             ),
-          ),
-        ],
+            SizedBox(height: context.vw(2.6)),
+
+            Expanded(
+              child: RecipeData.isLoading
+                  ? _buildLoadingPlaceholder()
+                  : recipes.isEmpty
+                      ? _buildEmptyState()
+                      : ListView.separated(
+                          padding: EdgeInsets.fromLTRB(gutter, 0, gutter, context.vw(8)),
+                          itemCount: recipes.length,
+                          separatorBuilder: (_, __) => SizedBox(height: context.vw(2.1)),
+                          itemBuilder: (_, i) => _buildRecipeCard(recipes[i]),
+                        ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
+
   Widget _buildRecipeCard(Recipe recipe) {
-    return GestureDetector(
-      onTap: () => _openRecipeDetails(recipe),
+    final lang = LocalizationService.instance.currentLanguageCode;
+    return Pressable(
+      onTap: () {
+        RyzeFeedback.select();
+        _openRecipeDetails(recipe);
+      },
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+        padding: EdgeInsets.all(context.vw(2.6)),
+        decoration: BoxDecoration(
+          color: RyzeColors.surf,
+          borderRadius: BorderRadius.circular(RyzeRadius.md),
+          border: Border.all(color: RyzeColors.line),
+        ),
         child: Row(
           children: [
-            // Image carrée 64x64
             ClipRRect(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(RyzeRadius.sm),
               child: RecipeImageService.buildRecipeImage(
                 imageUrl: recipe.image,
-                width: 64,
-                height: 64,
+                width: context.vw(18.5),
+                height: context.vw(18.5),
                 fit: BoxFit.cover,
               ),
             ),
-            
-            const SizedBox(width: 12),
-            
-            // Contenu texte
+            SizedBox(width: context.vw(3.6)),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Titre de la recette
                   Text(
                     recipe.name,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF1A1A1A),
-                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: RyzeText.body(context, 3.9, weight: FontWeight.w600),
+                  ),
+                  SizedBox(height: context.vw(1)),
+                  Text(
+                    '${recipe.duration} ${'recipe_minutes'.tr(lang)} · ${recipe.safeServings} ${'recipe_servings'.tr(lang)}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
+                    style: RyzeText.body(context, 3.1, color: RyzeColors.mute),
                   ),
-                  
-                  const SizedBox(height: 4),
-                  
-                  // Résumé (durée, portions, calories)
-                  Consumer<LocalizationService>(
-                    builder: (context, locService, child) => Text(
-                      locService.currentLanguageCode == 'fr'
-                        ? '${recipe.duration} min • ${recipe.safeServings} pers. • ${recipe.safeCalories} kcal'
-                        : '${recipe.duration} min • ${recipe.safeServings} servings • ${recipe.safeCalories} kcal',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: Color(0xFF64748B),
-                      ),
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 4),
-                  
-                  // Ligne macros
-                  Consumer<LocalizationService>(
-                    builder: (context, locService, child) => Text(
-                      locService.currentLanguageCode == 'fr'
-                        ? 'P : ${recipe.safeProteins}g • G : ${recipe.safeCarbs}g • L : ${recipe.safeFats}g'
-                        : 'P: ${recipe.safeProteins}g • C: ${recipe.safeCarbs}g • F: ${recipe.safeFats}g',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF94A3B8),
-                      ),
-                    ),
+                  SizedBox(height: context.vw(0.8)),
+                  Text(
+                    'P ${recipe.safeProteins} · G ${recipe.safeCarbs} · L ${recipe.safeFats}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: RyzeText.body(context, 3.0, color: RyzeColors.mute2),
                   ),
                 ],
+              ),
+            ),
+            SizedBox(width: context.vw(2.6)),
+            Padding(
+              padding: EdgeInsets.only(right: context.vw(1.5)),
+              child: Text.rich(
+                TextSpan(
+                  style: RyzeText.body(context, 3.9, weight: FontWeight.w600).copyWith(
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                  children: [
+                    TextSpan(text: '${recipe.safeCalories}'),
+                    TextSpan(text: ' kcal', style: RyzeText.body(context, 3.0, color: RyzeColors.mute)),
+                  ],
+                ),
               ),
             ),
           ],
@@ -341,6 +276,7 @@ class _SelectRecipeScreenState extends State<SelectRecipeScreen> {
       ),
     );
   }
+
 
 
 
@@ -360,98 +296,40 @@ class _SelectRecipeScreenState extends State<SelectRecipeScreen> {
   }
 
   Widget _buildLoadingPlaceholder() {
-    return ListView.builder(
+    return ListView.separated(
+      padding: EdgeInsets.fromLTRB(context.vw(5.1), 0, context.vw(5.1), context.vw(8)),
       itemCount: 6,
-      itemBuilder: (context, index) {
-        return Container(
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+      separatorBuilder: (_, __) => SizedBox(height: context.vw(2.1)),
+      itemBuilder: (_, __) => Container(
+        height: context.vw(23.6),
+        decoration: BoxDecoration(
+          color: RyzeColors.surf,
+          borderRadius: BorderRadius.circular(RyzeRadius.md),
+          border: Border.all(color: RyzeColors.line),
+        ),
+        child: Padding(
+          padding: EdgeInsets.all(context.vw(2.6)),
           child: Row(
             children: [
-              // Placeholder image
               Container(
-                width: 64,
-                height: 64,
+                width: context.vw(18.5),
+                height: context.vw(18.5),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE2E8F0),
-                  borderRadius: BorderRadius.circular(12),
+                  color: RyzeColors.paper2,
+                  borderRadius: BorderRadius.circular(RyzeRadius.sm),
                 ),
               ),
-              const SizedBox(width: 12),
-              // Placeholder texte
+              SizedBox(width: context.vw(3.6)),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Container(
-                      height: 16,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE2E8F0),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      height: 12,
-                      width: 150,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF1F5F9),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Container(
-                      height: 12,
-                      width: 200,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF1F5F9),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ),
+                    Container(height: context.vw(3.6), decoration: BoxDecoration(color: RyzeColors.paper2, borderRadius: BorderRadius.circular(4))),
+                    SizedBox(height: context.vw(2.1)),
+                    Container(width: context.vw(38), height: context.vw(3.1), decoration: BoxDecoration(color: RyzeColors.paper2, borderRadius: BorderRadius.circular(4))),
                   ],
                 ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Consumer<LocalizationService>(
-          builder: (context, locService, child) => Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(
-                LucideIcons.chefHat,
-                size: 64,
-                color: Color(0xFFCBD5E1),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                locService.currentLanguageCode == 'fr'
-                    ? 'Aucune recette trouvée'
-                    : 'No recipes found',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF64748B),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                locService.currentLanguageCode == 'fr'
-                    ? 'Essayez de modifier vos filtres'
-                    : 'Try adjusting your filters',
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF94A3B8),
-                ),
-                textAlign: TextAlign.center,
               ),
             ],
           ),
@@ -459,6 +337,34 @@ class _SelectRecipeScreenState extends State<SelectRecipeScreen> {
       ),
     );
   }
+
+
+  Widget _buildEmptyState() {
+    final lang = LocalizationService.instance.currentLanguageCode;
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: context.vw(10)),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(LucideIcons.chefHat, size: context.vw(12.3), color: RyzeColors.mute2),
+            SizedBox(height: context.vw(3.6)),
+            Text(
+              'recipe_none_found'.tr(lang),
+              style: RyzeText.body(context, 4.1, weight: FontWeight.w600, color: RyzeColors.mute),
+            ),
+            SizedBox(height: context.vw(1.5)),
+            Text(
+              'recipe_adjust_filters'.tr(lang),
+              textAlign: TextAlign.center,
+              style: RyzeText.body(context, 3.4, color: RyzeColors.mute2),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
 
   void _openRecipeDetails(Recipe recipe) {
     Navigator.push(

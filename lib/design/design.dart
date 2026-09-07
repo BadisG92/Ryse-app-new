@@ -10,6 +10,15 @@
 /// - motion.dart   curves, durations, PopIn / TypingDots / SlideSwapText
 /// - ryze_logo     the mark and the wordmark as vector geometry
 /// - logo_draw     the launch animation that writes them
+/// - nav_bar       the bar of the app, four tabs and the two coaches
+/// - feedback      what the phone answers: haptics and the system click
+/// - sheet         the sheet of the system, its rows and its groups
+/// - segmented     two or three pages of the same subject
+/// - undo_bar      what the app says after a write, and how to take it back
+/// - macro_rail    one macro nutrient against its goal
+/// - glass_row     the day's water, as glasses you fill and empty
+/// - day_instrument the one number of the day and its amber gauge
+/// - meal_timeline the day's meals as one line, opening in place
 /// - components    background grid, buttons, top bar, coach avatars, cards,
 ///                 choice cards and chips, rulers and wheels, chapter card,
 ///                 hold-to-sign, projection chart, week strip, proposal card
@@ -20,6 +29,15 @@ export 'type.dart';
 export 'motion.dart';
 export 'ryze_logo.dart';
 export 'logo_draw.dart';
+export 'nav_bar.dart';
+export 'feedback.dart';
+export 'sheet.dart';
+export 'segmented.dart';
+export 'undo_bar.dart';
+export 'macro_rail.dart';
+export 'glass_row.dart';
+export 'day_instrument.dart';
+export 'meal_timeline.dart';
 
 export '../onboarding/widgets/onb_widgets.dart';
 export '../onboarding/widgets/choices.dart';

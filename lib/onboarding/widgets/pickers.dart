@@ -119,6 +119,10 @@ class _DigitColumn extends StatelessWidget {
       child: ClipRect(
         child: Stack(
           children: [
+            // an unpositioned child so the column reports a baseline: without
+            // it a Row aligned on the baseline finds none and drops the unit
+            // to the top of the figure as soon as there is no thousands mark
+            Opacity(opacity: 0, child: _glyph(0)),
             Positioned(top: -frac * cell.height, left: 0, right: 0, child: _glyph(base)),
             Positioned(top: (1 - frac) * cell.height, left: 0, right: 0, child: _glyph(base + 1)),
           ],
