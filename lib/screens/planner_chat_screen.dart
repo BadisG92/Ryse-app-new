@@ -834,37 +834,11 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
   }
 
   void _showWorkoutRecap(PlannedWorkout workout) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => WorkoutRecapBottomSheet(
-        workout: workout,
-        onWorkoutStarted: () {
-          _refreshWeekData();
-        },
-        onWorkoutDeleted: () {
-          _refreshWeekData();
-        },
-      ),
-    );
+    WorkoutRecapBottomSheet.show(context, workout: workout, onWorkoutStarted: _refreshWeekData, onWorkoutDeleted: _refreshWeekData);
   }
 
   void _showCardioRecap(PlannedActivity activity) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => CardioRecapBottomSheet(
-        activity: activity,
-        onCardioStarted: () {
-          _refreshWeekData();
-        },
-        onCardioDeleted: () {
-          _refreshWeekData();
-        },
-      ),
-    );
+    CardioRecapBottomSheet.show(context, activity: activity, onCardioStarted: _refreshWeekData, onCardioDeleted: _refreshWeekData);
   }
 
   @override

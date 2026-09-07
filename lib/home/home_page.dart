@@ -286,21 +286,12 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
   void _openSession() {
     final s = HomeSlots.session(_todayPlan);
     if (s?.workout != null) {
-      _sheet(WorkoutRecapBottomSheet(workout: s!.workout!));
+      WorkoutRecapBottomSheet.show(context, workout: s!.workout!).then((_) => _loadWeek(force: true));
     } else if (s?.cardio != null) {
-      _sheet(CardioRecapBottomSheet(activity: s!.cardio!));
+      CardioRecapBottomSheet.show(context, activity: s!.cardio!).then((_) => _loadWeek(force: true));
     } else {
       widget.onTabChange?.call('sport');
     }
-  }
-
-  void _sheet(Widget child) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => child,
-    ).then((_) => _loadWeek(force: true));
   }
 
   Future<void> _openPlanner() async {

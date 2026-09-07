@@ -371,37 +371,11 @@ class _WeeklyPlannerWidgetState extends State<WeeklyPlannerWidget> {
   }
 
   void _showWorkoutRecap(BuildContext context, PlannedWorkout workout) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => WorkoutRecapBottomSheet(
-        workout: workout,
-        onWorkoutStarted: () {
-          _loadData();
-        },
-        onWorkoutDeleted: () {
-          _loadData();
-        },
-      ),
-    );
+    WorkoutRecapBottomSheet.show(context, workout: workout, onWorkoutStarted: _loadData, onWorkoutDeleted: _loadData);
   }
 
   void _showCardioRecap(BuildContext context, PlannedActivity activity) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => CardioRecapBottomSheet(
-        activity: activity,
-        onCardioStarted: () {
-          _loadData();
-        },
-        onCardioDeleted: () {
-          _loadData();
-        },
-      ),
-    );
+    CardioRecapBottomSheet.show(context, activity: activity, onCardioStarted: _loadData, onCardioDeleted: _loadData);
   }
 
   @override

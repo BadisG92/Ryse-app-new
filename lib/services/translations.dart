@@ -10343,6 +10343,11 @@ class AppTranslations {
       'de': 'Nein danke',
     },
     // Sport, the tab by day
+    'sport_hiit_rounds': {
+      'fr': "tours",
+      'en': "rounds",
+      'de': "Runden",
+    },
     'sport_page_today': {
       'fr': "Aujourd'hui",
       'en': "Today",

@@ -1,23 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
+
+import '../../design/design.dart';
 import '../../models/weekly_planner_models.dart';
-import '../../models/cardio_session_models.dart';
-import '../../models/hiit_models.dart';
-import '../../services/weekly_planner_service.dart';
 import '../../services/localization_service.dart';
+import '../../services/ryze_dates.dart';
 import '../../services/translations.dart';
-import '../../screens/cardio_tracking_screen.dart';
-import '../../screens/hiit_session_screen.dart';
+import '../../services/weekly_planner_service.dart';
+import '../../sport/sport_start.dart';
 
-/// Bottom sheet pour afficher le récapitulatif d'une activité cardio planifiée
-/// Peut aussi être utilisé en mode preview (sans actions ni handle bar)
+/// Le récapitulatif d'une séance cardio ou HIIT prévue.
+///
+/// Le corps (objectifs, ou les trois chiffres du HIIT) est le widget, pour
+/// l'aperçu du chat du planificateur. La feuille est `show`, avec
+/// *Commencer* et *Supprimer* quand la date le permet. Même signature
+/// qu'avant pour ses appelants ; les libellés en dur ont rejoint le
+/// dictionnaire.
 class CardioRecapBottomSheet extends StatelessWidget {
-  final PlannedActivity activity;
-  final VoidCallback? onCardioStarted;
-  final VoidCallback? onCardioDeleted;
-  final bool isPreview; // Mode preview: sans actions, handle bar, ni bouton close
-
   const CardioRecapBottomSheet({
     super.key,
     required this.activity,
@@ -26,566 +26,145 @@ class CardioRecapBottomSheet extends StatelessWidget {
     this.isPreview = false,
   });
 
+  final PlannedActivity activity;
+  final VoidCallback? onCardioStarted;
+  final VoidCallback? onCardioDeleted;
+
+  /// En aperçu (le chat du planificateur), le corps porte son propre titre.
+  final bool isPreview;
+
+  static String _title(PlannedActivity a, String lang) => a.cardioData?.activityName ?? 'sport_kind_cardio'.tr(lang);
+
+  static String _subtitle(PlannedActivity a, String lang) => [
+        RyzeDates.full(a.plannedDate, lang),
+        if (a.isAiGenerated) 'sport_coach_ryze'.tr(lang),
+        if (a.status == PlannedStatus.completed) 'planner_completed'.tr(lang),
+      ].join(' · ');
+
+  /// Ouvre la feuille. Rend la main quand elle est fermée.
+  static Future<void> show(
+    BuildContext context, {
+    required PlannedActivity activity,
+    VoidCallback? onCardioStarted,
+    VoidCallback? onCardioDeleted,
+  }) async {
+    final lang = LocalizationService.instance.currentLanguageCode;
+    final completed = activity.status == PlannedStatus.completed;
+    final editable = isDateEditable(activity.plannedDate) && !completed;
+    final canStart = editable && isToday(activity.plannedDate);
+
+    final action = await showRyzeSheet<_Action>(
+      context,
+      title: _title(activity, lang),
+      subtitle: _subtitle(activity, lang),
+      builder: (_) => CardioRecapBottomSheet(activity: activity),
+      actions: [
+        if (editable)
+          Row(
+            children: [
+              if (onCardioDeleted != null) ...[
+                Expanded(
+                  flex: canStart ? 1 : 2,
+                  child: OnbButton(label: 'planner_delete'.tr(lang), ghost: true, icon: LucideIcons.trash2, onPressed: () => Navigator.pop(context, _Action.delete)),
+                ),
+                if (canStart) SizedBox(width: context.vw(2.6)),
+              ],
+              if (canStart)
+                Expanded(
+                  flex: 2,
+                  child: OnbButton(label: 'planner_start_cardio'.tr(lang), onPressed: () => Navigator.pop(context, _Action.start)),
+                ),
+            ],
+          ),
+      ],
+    );
+    if (action == null || !context.mounted) return;
+    switch (action) {
+      case _Action.start:
+        await SportStart.plannedCardio(context, activity);
+        onCardioStarted?.call();
+      case _Action.delete:
+        final sure = await _confirmDelete(context, lang);
+        if (!sure || !context.mounted) return;
+        final ok = await WeeklyPlannerService.deleteCardioWithSync(activity.id);
+        if (!context.mounted) return;
+        if (ok) {
+          RyzeFeedback.removed();
+          onCardioDeleted?.call();
+        } else {
+          RyzeUndo.failed(context, message: 'sport_delete_failed'.tr(lang));
+        }
+    }
+  }
+
+  static Future<bool> _confirmDelete(BuildContext context, String lang) async {
+    final yes = await showRyzeSheet<bool>(
+      context,
+      title: 'planner_delete_cardio_title'.tr(lang),
+      subtitle: 'planner_delete_cardio_message'.tr(lang),
+      builder: (sheet) => RyzeSheetGroup(
+        children: [
+          RyzeSheetRow(first: true, icon: LucideIcons.trash2, label: 'planner_delete'.tr(lang), danger: true, onTap: () => Navigator.pop(sheet, true)),
+          RyzeSheetRow(icon: LucideIcons.x, label: 'planner_cancel'.tr(lang), onTap: () => Navigator.pop(sheet, false)),
+        ],
+      ),
+    );
+    return yes ?? false;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final locService = context.watch<LocalizationService>();
-    final langCode = locService.currentLanguageCode;
-    final isEditable = isDateEditable(activity.plannedDate);
-    final isTodayCardio = isToday(activity.plannedDate);
-    final isCompleted = activity.status == PlannedStatus.completed;
-    final cardioData = activity.cardioData;
-
-    // En mode preview, contenu simple sans actions (pas de fond blanc, le parent gère)
-    if (isPreview) {
-      return SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeaderPreview(context, langCode, cardioData),
-            if (cardioData != null) _buildObjectivesPreview(langCode, cardioData),
-            const SizedBox(height: 12),
-          ],
-        ),
-      );
+    final lang = context.watch<LocalizationService>().currentLanguageCode;
+    final data = activity.cardioData;
+    final stats = <Widget>[];
+    if (data != null && data.isHiit && data.hiitConfig != null) {
+      final c = data.hiitConfig!;
+      stats.addAll([
+        _Stat(value: '${c.workSeconds} s', label: 'planner_hiit_work'.tr(lang)),
+        _Stat(value: '${c.restSeconds} s', label: 'planner_hiit_rest'.tr(lang)),
+        _Stat(value: '${c.rounds}', label: 'sport_hiit_rounds'.tr(lang)),
+        _Stat(value: '${c.totalMinutes}', label: 'minutes'.tr(lang)),
+      ]);
+    } else if (data != null) {
+      if (data.targetMinutes != null && data.targetMinutes! > 0) stats.add(_Stat(value: '${data.targetMinutes}', label: 'minutes'.tr(lang)));
+      if (data.targetKm != null && data.targetKm! > 0) stats.add(_Stat(value: data.targetKm!.toStringAsFixed(1), label: 'cardio_km_unit'.tr(lang)));
     }
 
-    // Mode normal (bottom sheet modal)
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      child: SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Handle bar
-            Center(
-              child: Container(
-                margin: const EdgeInsets.only(top: 12),
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE2E8F0),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-
-            // Header
-            _buildHeader(context, langCode, isCompleted, cardioData),
-
-            // Objectifs
-            if (cardioData != null) _buildObjectives(langCode, cardioData),
-
-            // Boutons d'action
-            if (isEditable && !isCompleted)
-              _buildActions(context, langCode, cardioData, isTodayCardio),
-
-            const SizedBox(height: 20),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader(
-    BuildContext context,
-    String langCode,
-    bool isCompleted,
-    PlannedCardioData? cardioData,
-  ) {
-    final activityName = cardioData?.activityName ?? 'Cardio';
-    final activityIcon = _getActivityIcon(cardioData?.activityKey ?? '');
-
-    return Padding(
-      padding: const EdgeInsets.all(20),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: isCompleted
-                  ? const Color(0xFF10B981).withOpacity(0.1)
-                  : const Color(0xFF0B132B).withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              isCompleted ? LucideIcons.circleCheck : activityIcon,
-              size: 24,
-              color: isCompleted
-                  ? const Color(0xFF10B981)
-                  : const Color(0xFF0B132B),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  activityName,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF0B132B),
-                  ),
-                ),
-                Text(
-                  _formatDate(activity.plannedDate, langCode),
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF64748B),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (isCompleted)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: const Color(0xFF10B981).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(LucideIcons.check, size: 14, color: Color(0xFF10B981)),
-                  const SizedBox(width: 4),
-                  Text(
-                    'planner_completed'.tr(langCode),
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF10B981),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          // Bouton close (masqué en mode preview)
-          if (!isPreview)
-            IconButton(
-              onPressed: () => Navigator.pop(context),
-              icon: const Icon(LucideIcons.x, color: Color(0xFF64748B)),
-            ),
-        ],
-      ),
-    );
-  }
-
-  /// Header pour le mode preview (sans date, sans bouton close)
-  Widget _buildHeaderPreview(BuildContext context, String langCode, PlannedCardioData? cardioData) {
-    final activityName = cardioData?.activityName ?? 'Cardio';
-    final activityIcon = _getActivityIcon(cardioData?.activityKey ?? '');
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: const Color(0xFF0B132B).withOpacity(0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(
-              activityIcon,
-              size: 20,
-              color: const Color(0xFF0B132B),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              activityName,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF0B132B),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildObjectives(String langCode, PlannedCardioData cardioData) {
-    // Si c'est un HIIT, afficher les objectifs HIIT
-    if (cardioData.isHiit && cardioData.hiitConfig != null) {
-      return _buildHiitObjectives(langCode, cardioData.hiitConfig!);
-    }
-
-    final hasDistance = cardioData.targetKm != null && cardioData.targetKm! > 0;
-    final hasTime = cardioData.targetMinutes != null && cardioData.targetMinutes! > 0;
-
-    if (!hasDistance && !hasTime) {
-      return const SizedBox.shrink();
-    }
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF8FAFC),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          children: [
-            if (hasTime)
-              Expanded(child: _buildStatItem(LucideIcons.clock, '${cardioData.targetMinutes}', 'min')),
-            if (hasTime && hasDistance)
-              Container(width: 1, height: 40, color: const Color(0xFFE2E8F0)),
-            if (hasDistance)
-              Expanded(child: _buildStatItem(LucideIcons.mapPin, cardioData.targetKm!.toStringAsFixed(1), 'km')),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Objectifs pour le mode preview (dans une boîte compacte)
-  Widget _buildObjectivesPreview(String langCode, PlannedCardioData cardioData) {
-    // Si c'est un HIIT, afficher les objectifs HIIT
-    if (cardioData.isHiit && cardioData.hiitConfig != null) {
-      return _buildHiitObjectivesPreview(langCode, cardioData.hiitConfig!);
-    }
-
-    final hasDistance = cardioData.targetKm != null && cardioData.targetKm! > 0;
-    final hasTime = cardioData.targetMinutes != null && cardioData.targetMinutes! > 0;
-
-    if (!hasDistance && !hasTime) {
-      return const SizedBox.shrink();
-    }
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (hasTime)
-              _buildStatItemCompact(LucideIcons.clock, '${cardioData.targetMinutes}', 'min'),
-            if (hasTime && hasDistance)
-              const SizedBox(width: 24),
-            if (hasDistance)
-              _buildStatItemCompact(LucideIcons.mapPin, cardioData.targetKm!.toStringAsFixed(1), 'km'),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatItemCompact(IconData icon, String value, String label) {
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 16, color: const Color(0xFF64748B)),
-        const SizedBox(width: 6),
-        Text(
-          '$value $label',
-          style: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF0B132B),
-          ),
-        ),
+        if (isPreview) ...[
+          Text(_title(activity, lang), style: RyzeText.body(context, 4.1, weight: FontWeight.w600)),
+          SizedBox(height: context.vw(0.5)),
+          Text(_subtitle(activity, lang), style: RyzeText.body(context, 3.1, color: RyzeColors.mute)),
+          SizedBox(height: context.vw(3.1)),
+        ],
+        if (stats.isEmpty)
+          Text('sport_objective_free'.tr(lang), style: RyzeText.body(context, 3.6, color: RyzeColors.mute))
+        else
+          Row(children: [for (final s in stats) Expanded(child: s)]),
       ],
     );
   }
+}
 
-  Widget _buildHiitObjectivesPreview(String langCode, HiitConfig hiitConfig) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            _buildStatItemCompact(LucideIcons.zap, '${hiitConfig.workSeconds}s', 'effort'),
-            _buildStatItemCompact(LucideIcons.pause, '${hiitConfig.restSeconds}s', 'repos'),
-            _buildStatItemCompact(LucideIcons.repeat, '${hiitConfig.rounds}', 'rounds'),
-          ],
-        ),
-      ),
-    );
-  }
+enum _Action { start, delete }
 
-  Widget _buildHiitObjectives(String langCode, HiitConfig hiitConfig) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF8FAFC),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          children: [
-            // Effort
-            Expanded(
-              child: _buildStatItem(
-                LucideIcons.zap,
-                '${hiitConfig.workSeconds}s',
-                'planner_hiit_work'.tr(langCode),
-              ),
-            ),
-            Container(width: 1, height: 40, color: const Color(0xFFE2E8F0)),
-            // Repos
-            Expanded(
-              child: _buildStatItem(
-                LucideIcons.pause,
-                '${hiitConfig.restSeconds}s',
-                'planner_hiit_rest'.tr(langCode),
-              ),
-            ),
-            Container(width: 1, height: 40, color: const Color(0xFFE2E8F0)),
-            // Rounds
-            Expanded(
-              child: _buildStatItem(
-                LucideIcons.repeat,
-                '${hiitConfig.rounds}',
-                'rounds',
-              ),
-            ),
-            Container(width: 1, height: 40, color: const Color(0xFFE2E8F0)),
-            // Durée totale
-            Expanded(
-              child: _buildStatItem(
-                LucideIcons.clock,
-                '~${hiitConfig.totalMinutes}',
-                'min',
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+class _Stat extends StatelessWidget {
+  const _Stat({required this.value, required this.label});
 
-  Widget _buildStatItem(IconData icon, String value, String label) {
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
     return Column(
       children: [
-        Icon(icon, size: 18, color: const Color(0xFF64748B)),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF0B132B),
-          ),
-        ),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12,
-            color: Color(0xFF64748B),
-          ),
-        ),
+        Text(value, style: RyzeText.display(context, 6.7, weight: FontWeight.w600).copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
+        SizedBox(height: context.vw(0.5)),
+        Text(label, textAlign: TextAlign.center, maxLines: 2, style: RyzeText.body(context, 2.9, color: RyzeColors.mute)),
       ],
     );
-  }
-
-  Widget _buildActions(
-    BuildContext context,
-    String langCode,
-    PlannedCardioData? cardioData,
-    bool canStart,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-      child: Row(
-        children: [
-          // Bouton supprimer (toujours disponible pour les jours éditables)
-          if (onCardioDeleted != null)
-            Expanded(
-              flex: canStart ? 1 : 2,
-              child: OutlinedButton.icon(
-                onPressed: () async {
-                  final confirm = await _showDeleteConfirmation(context, langCode);
-                  if (confirm == true) {
-                    // Suppression bidirectionnelle: planificateur + historique si lié
-                    await WeeklyPlannerService.deleteCardioWithSync(activity.id);
-                    if (context.mounted) {
-                      Navigator.pop(context);
-                      onCardioDeleted?.call();
-                    }
-                  }
-                },
-                icon: const Icon(LucideIcons.trash2, size: 18),
-                label: Text('planner_delete'.tr(langCode)),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFFEF4444),
-                  side: const BorderSide(color: Color(0xFFEF4444)),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-            ),
-          if (onCardioDeleted != null && canStart) const SizedBox(width: 12),
-
-          // Bouton commencer (uniquement pour aujourd'hui)
-          if (canStart)
-            Expanded(
-              flex: 2,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.pop(context);
-                  _startCardio(context, cardioData);
-                },
-                icon: const Icon(LucideIcons.play, size: 18),
-                label: Text('planner_start_cardio'.tr(langCode)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0B132B),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  void _startCardio(BuildContext context, PlannedCardioData? cardioData) {
-    final activityKey = cardioData?.activityKey ?? 'running';
-    final activityName = cardioData?.activityName ?? 'Running';
-
-    // Si c'est un HIIT, lancer l'écran HIIT
-    if (cardioData != null && cardioData.isHiit && cardioData.hiitConfig != null) {
-      _startHiit(context, cardioData);
-      return;
-    }
-
-    // Créer l'objectif cardio si défini
-    CardioObjective? objective;
-    if (cardioData != null) {
-      if (cardioData.targetKm != null && cardioData.targetKm! > 0) {
-        objective = CardioObjective(
-          type: 'distance',
-          targetDistance: cardioData.targetKm,
-          activityType: activityKey,
-          formatTitle: '$activityName (${cardioData.targetKm} km)',
-        );
-      } else if (cardioData.targetMinutes != null && cardioData.targetMinutes! > 0) {
-        objective = CardioObjective(
-          type: 'duration',
-          targetDuration: Duration(minutes: cardioData.targetMinutes!),
-          activityType: activityKey,
-          formatTitle: '$activityName (${cardioData.targetMinutes} min)',
-        );
-      }
-    }
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => CardioTrackingScreen(
-          activityType: activityKey,
-          activityTitle: activityName,
-          formatTitle: activityName,
-          objective: objective,
-        ),
-      ),
-    ).then((_) {
-      onCardioStarted?.call();
-    });
-  }
-
-  void _startHiit(BuildContext context, PlannedCardioData cardioData) {
-    final hiitConfig = cardioData.hiitConfig!;
-
-    // Créer le workout HIIT avec la config stockée
-    final hiitWorkout = HiitWorkout(
-      id: hiitConfig.type,
-      title: cardioData.activityName,
-      description: '${hiitConfig.totalMinutes} min - ${hiitConfig.workSeconds}s effort / ${hiitConfig.restSeconds}s repos',
-      workDuration: hiitConfig.workSeconds,
-      restDuration: hiitConfig.restSeconds,
-      totalDuration: hiitConfig.totalMinutes,
-      totalRounds: hiitConfig.rounds,
-    );
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => HiitSessionScreen(
-          workout: hiitWorkout,
-          isFromCustomConfig: hiitConfig.type == 'custom',
-        ),
-      ),
-    ).then((_) {
-      onCardioStarted?.call();
-    });
-  }
-
-  Future<bool?> _showDeleteConfirmation(BuildContext context, String langCode) {
-    return showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('planner_delete_cardio_title'.tr(langCode)),
-        content: Text('planner_delete_cardio_message'.tr(langCode)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text('planner_cancel'.tr(langCode)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: const Color(0xFFEF4444)),
-            child: Text('planner_delete'.tr(langCode)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  IconData _getActivityIcon(String activityKey) {
-    switch (activityKey.toLowerCase()) {
-      case 'running':
-      case 'course':
-        return LucideIcons.footprints;
-      case 'bike':
-      case 'vélo':
-      case 'cycling':
-        return LucideIcons.bike;
-      case 'walking':
-      case 'marche':
-        return LucideIcons.footprints;
-      case 'swimming':
-      case 'natation':
-        return LucideIcons.waves;
-      case 'hiit':
-        return LucideIcons.zap;
-      default:
-        return LucideIcons.activity;
-    }
-  }
-
-  String _formatDate(DateTime date, String langCode) {
-    final dayName = 'day_${date.weekday}'.tr(langCode);
-    return '$dayName ${date.day}/${date.month}';
   }
 }
