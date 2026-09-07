@@ -167,7 +167,7 @@ class _ExerciseAiAnalysisWidgetState extends State<ExerciseAiAnalysisWidget> {
                 width: context.vw(9.7),
                 height: context.vw(9.7),
                 decoration: const BoxDecoration(color: RyzeColors.acc, shape: BoxShape.circle),
-                child: Center(child: RyzeMark(size: context.vw(5.6), color: RyzeColors.accInk)),
+                child: Center(child: RyzeMark(size: context.vw(5.6), color: RyzeColors.surf)),
               ),
               SizedBox(width: context.vw(3.1)),
               Expanded(

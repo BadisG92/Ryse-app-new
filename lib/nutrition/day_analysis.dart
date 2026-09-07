@@ -109,28 +109,14 @@ class DayAnalysis {
     }
   }
 
-  /// Un voile d'encre le temps de la réponse : l'appel prend quelques
-  /// secondes et l'écran ne doit pas rester muet.
+  /// L'écran entier passe à l'encre le temps de la réponse.
+  ///
+  /// C'était une boîte blanche au centre d'un voile gris : la silhouette
+  /// exacte d'un dialogue Material, avec un logo figé dedans. Le moment où
+  /// Ryze réfléchit se traite comme le viseur ou la séance en direct — plein
+  /// cadre sur l'encre, une seule chose au centre, et elle respire.
   static OverlayEntry _showBusy(BuildContext context, String lang) {
-    final entry = OverlayEntry(
-      builder: (_) => ColoredBox(
-        color: RyzeColors.ink.withValues(alpha: 0.55),
-        child: Center(
-          child: Container(
-            padding: EdgeInsets.symmetric(horizontal: context.vw(6), vertical: context.vw(5)),
-            decoration: BoxDecoration(color: RyzeColors.surf, borderRadius: BorderRadius.circular(RyzeRadius.md)),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                RyzeMark(size: context.vw(9)),
-                SizedBox(height: context.vw(3.1)),
-                Text('day_analysis_running'.tr(lang), style: RyzeText.body(context, 3.4, color: RyzeColors.mute)),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
+    final entry = OverlayEntry(builder: (_) => _Busy(lang: lang));
     Overlay.of(context, rootOverlay: true).insert(entry);
     return entry;
   }
@@ -146,6 +132,88 @@ class DayAnalysis {
       title: 'day_analysis_title'.tr(lang),
       subtitle: 'day_analysis_by'.tr(lang),
       builder: (sheet) => _Body(lang: lang, analysis: analysis),
+    );
+  }
+}
+
+/// Ryze en train de lire la journée : l'encre plein cadre, la marque en
+/// ambre au centre, et une onde qui part d'elle toutes les deux secondes.
+///
+/// L'onde est la seule chose qui bouge. Elle ne prétend pas mesurer une
+/// progression — l'appel dure ce qu'il dure, et une barre qui avance sans
+/// rien savoir serait un mensonge de plus.
+class _Busy extends StatefulWidget {
+  const _Busy({required this.lang});
+
+  final String lang;
+
+  @override
+  State<_Busy> createState() => _BusyState();
+}
+
+class _BusyState extends State<_Busy> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 2200))..repeat();
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final still = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    final ring = context.vw(34);
+
+    return ColoredBox(
+      color: RyzeColors.ink,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: ring,
+              height: ring,
+              child: AnimatedBuilder(
+                animation: _c,
+                builder: (context, child) {
+                  return Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      if (!still)
+                        for (final offset in const [0.0, 0.5])
+                          Builder(
+                            builder: (context) {
+                              final t = (_c.value + offset) % 1;
+                              return Opacity(
+                                opacity: (1 - t) * 0.30,
+                                child: Container(
+                                  width: ring * (0.34 + t * 0.66),
+                                  height: ring * (0.34 + t * 0.66),
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: RyzeColors.acc, width: 1.2),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                      child!,
+                    ],
+                  );
+                },
+                child: RyzeMark(size: context.vw(11), color: RyzeColors.acc),
+              ),
+            ),
+            SizedBox(height: context.vw(4.6)),
+            Text(
+              'day_analysis_running'.tr(widget.lang),
+              textAlign: TextAlign.center,
+              style: RyzeText.body(context, 3.9, color: RyzeColors.surf.withValues(alpha: 0.78)),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -276,7 +344,7 @@ class DayAnalysisRow extends StatelessWidget {
               width: context.vw(9.7),
               height: context.vw(9.7),
               decoration: const BoxDecoration(color: RyzeColors.acc, shape: BoxShape.circle),
-              child: Center(child: RyzeMark(size: context.vw(5.4), color: RyzeColors.accInk)),
+              child: Center(child: RyzeMark(size: context.vw(5.4), color: RyzeColors.surf)),
             ),
             SizedBox(width: context.vw(3.1)),
             Expanded(
