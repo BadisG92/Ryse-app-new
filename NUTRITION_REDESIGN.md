@@ -316,13 +316,53 @@ journée depuis l'historique, au lieu de tomber sur aujourd'hui.
 | **Créer un aliment** (`create_custom_food_bottom_sheet.dart`) | L'unité dans un menu déroulant qui cache ses options ; les calories noyées parmi les champs | Les cinq unités en pastilles, chacune avec sa quantité de référence. Les calories roulent au-dessus des trois macros qui les écrivent |
 | **Chemin mort** | `EditableFoodDetailsBottomSheet.showCreateFood` et son `_CreateFoodContent` : 380 lignes que personne n'appelait | Supprimés |
 
-### Ce qui n'est pas redessiné
+### Les caméras
 
-Le scanner code-barres et le scanner photo restent tels quels pour l'instant :
-ce sont deux écrans de caméra de deux mille lignes chacun, où le dessin se
-limite à un viseur, et où une réécriture à l'aveugle coûterait plus cher
-qu'elle ne rapporterait. Leur branchement, lui, est corrigé : le code-barres
-rend son aliment à `FoodAddFlow`, qui l'écrit vraiment.
+D'abord ce qui n'était pas une question de dessin. **Le lecteur de code-barres
+demandait de photographier un code-barres.** ML Kit tournait déjà sur
+l'appareil, en moins d'une demi-seconde, mais on ne lui donnait qu'une image
+fixe prise au déclencheur : viser, appuyer, attendre, et sur un raté une
+snackbar orange invitant à recommencer. `BarcodeStreamService`
+(`lib/services/barcode_stream_service.dart`) lit désormais les images du flux
+et part au premier code valide, retour haptique et cadre qui se referme en
+ambre.
+
+Ce chemin ne peut pas être essayé ici : le format des trames diffère entre iOS
+et Android et d'un appareil à l'autre. Le service est donc défensif — format
+inconnu, conversion qui échoue, flux qui refuse de démarrer, il se déclare
+indisponible et **le déclencheur réapparaît**. Le pire cas est exactement le
+comportement d'aujourd'hui.
+
+**Le scanner photo tenait en trois écrans empilés** : un viseur noir, une page
+blanche à AppBar pour saisir une note, puis l'analyse. On prenait une photo et
+on atterrissait dans une autre application. Il n'en reste qu'un : la photo fige
+le viseur sur place et une carte monte pour demander un détail. `AIPreviewScreen`
+est supprimé.
+
+**Il y avait deux classes `AIAnalysisScreen`**, une recopiée dans le scanner et
+une autonome, faisant le même travail pour la photo et pour le coach : deux
+endroits à corriger. Il n'en reste qu'une, redessinée. Chaque aliment détecté
+est une ligne qu'on tape pour corriger ou qu'on balaie pour retirer, au lieu
+d'un menu à trois points ; la confiance se dit « à confirmer » en toutes
+lettres au lieu d'une pastille verte ou jaune.
+
+Les deux viseurs partagent enfin une seule coquille,
+`lib/design/camera_shell.dart` : voiles en encre plutôt qu'en noir, déclencheur
+en papier, une ligne d'indication qui s'efface une fois lue, et un réticule qui
+répond quand il trouve.
+
+| Fichier | Avant | Après |
+|---|---|---|
+| `ai_scanner_screen.dart` | 1979 lignes | 503 |
+| `barcode_scanner_screen.dart` | 2190 lignes | ~1500, et le résultat est une feuille sur le viseur |
+| `ai_analysis_screen.dart` | 1004 lignes, plus une copie de 1300 | une seule, redessinée |
+| `ai_chat_input_screen.dart` | micro en dégradé vert émeraude, erreur en `red.shade50` | papier et encre |
+
+Aucun contrat n'a bougé : tous les appelants gardent leur constructeur et leur
+callback, y compris le widget iOS.
+
+Prototype interactif des cinq étapes :
+https://claude.ai/code/artifact/f2d6c74f-11b7-4924-9d00-304f11bd806f
 
 ## 9. Les textes
 
@@ -369,8 +409,9 @@ Chaque étape se termine par `flutter analyze --no-pub` à 2027 problèmes ou
 moins, aucun texte littéral, aucune couleur hors tokens. Ne pas lancer
 `flutter run`.
 
-**Où on en est.** Les points 1 à 6 sont faits, le 7 sauf la musculation, le 9
-sur quatre écrans. Tous les bugs du § 8 sont couverts. L'analyse est à 2007 problèmes, soit vingt de moins que la référence.
+**Où on en est.** Tout est fait sauf la musculation du point 7, qui relève de
+la passe Sport. Les huit écrans d'ajout sont redessinés, les deux caméras
+comprises, et tous les bugs du § 8 sont couverts. L'analyse est à 2007 problèmes, soit vingt de moins que la référence.
 Rien n'est poussé : la refonte partira quand Sport et l'accueil seront prêts.
 
 ## 11. Ce qui reste ouvert

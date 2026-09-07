@@ -4105,9 +4105,9 @@ class AppTranslations {
       'de': 'Analyseergebnisse',
     },
     'ai_analysis_results': {
-      'fr': 'Résultats de l\'analyse',
-      'en': 'Analysis Results',
-      'de': 'Analyseergebnisse',
+      'fr': 'Ton repas',
+      'en': 'Your meal',
+      'de': 'Deine Mahlzeit',
     },
     'add_all_foods': {
       'fr': 'Ajouter tous les aliments',
@@ -10273,9 +10273,9 @@ class AppTranslations {
       'de': 'Sauce separat, mittlere Portion…',
     },
     'scan_another': {
-      'fr': 'Scanner autre chose',
-      'en': 'Scan something else',
-      'de': 'Etwas anderes scannen',
+      'fr': 'Autre produit',
+      'en': 'Another product',
+      'de': 'Anderes Produkt',
     },
     'barcode_point_at_code': {
       'fr': 'Vise le code-barres, il se lit tout seul',
