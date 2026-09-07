@@ -89,7 +89,6 @@ class SportStart {
     final canUse = await PaywallService.instance.canUseFeature(
       context: context,
       paywallContext: PaywallContext.workoutGenerator,
-      markAsUsed: false,
     );
     if (!canUse || !context.mounted) return;
     await _push(context, const AIWorkoutGeneratorScreen());

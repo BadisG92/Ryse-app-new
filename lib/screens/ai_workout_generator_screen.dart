@@ -6,9 +6,7 @@ import '../bottom_sheets/exercise_info_bottom_sheet.dart';
 import '../design/design.dart';
 import '../models/sport_models.dart';
 import '../services/ai_workout_generation_service.dart';
-import '../services/feature_trial_service.dart';
 import '../services/localization_service.dart';
-import '../services/subscription_service.dart';
 import '../services/translations.dart';
 import '../sport/session/session_screen.dart';
 import '../sport/session/sheets/exercise_picker_sheet.dart';
@@ -20,9 +18,8 @@ import '../sport/session/sheets/exercise_picker_sheet.dart';
 /// sont qu'un raccourci pour l'écrire — plus trois réglages repliés, parce
 /// que la plupart du temps la phrase suffit.
 ///
-/// Le paywall et l'essai gratuit ne changent pas : `SportStart.coach` a déjà
-/// vérifié l'accès avant de pousser cet écran, et l'essai n'est consommé que
-/// si la génération aboutit.
+/// L'accès a déjà été vérifié par `SportStart.coach` avant que cet écran soit
+/// poussé.
 class AIWorkoutGeneratorScreen extends StatefulWidget {
   const AIWorkoutGeneratorScreen({super.key});
 
@@ -98,10 +95,6 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> {
       );
       if (!mounted) return;
       if (result.success && result.exercises.isNotEmpty) {
-        // L'essai n'est consommé que si la séance existe vraiment.
-        if (!SubscriptionService.instance.isPremium) {
-          FeatureTrialService.instance.markFeatureAsUsed(FeatureTrialService.keyWorkout);
-        }
         RyzeFeedback.success();
         setState(() {
           _workout = result.exercises;

@@ -4,7 +4,6 @@ import '../components/ui/dashboard_models.dart';
 import '../core/cache/local_cache.dart';
 import '../services/dashboard_service.dart';
 import '../services/localization_service.dart';
-import '../services/optimistic_update_service.dart';
 import '../services/water_service.dart';
 import '../services/food_entries_service.dart';
 import '../config/supabase_config.dart';

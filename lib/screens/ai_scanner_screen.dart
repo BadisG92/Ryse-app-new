@@ -58,18 +58,15 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
     });
   }
 
-  /// Vérifier si l'utilisateur a accès au scanner (Premium uniquement ou Trial)
+  /// Le scanner est une fonctionnalité de l'abonnement.
   Future<void> _checkPremiumAccess() async {
-    // Utiliser canUseFeature pour gérer le trial
-    // markAsUsed: false car on marque seulement après succès
     final canAccess = await PaywallService.instance.canUseFeature(
       context: context,
       paywallContext: PaywallContext.scanner,
-      markAsUsed: false,
     );
 
     if (!canAccess) {
-      // L'utilisateur n'a pas accès (ni Premium, ni trial, et a refusé le paywall)
+      // Sans abonnement, le paywall a été montré puis refermé.
       if (mounted) {
         Navigator.pop(context);
       }

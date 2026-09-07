@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'recipe_models.dart';
 import '../../services/localization_service.dart';
-import '../../services/translations.dart';
 
 class WorkingFilterModal extends StatefulWidget {
   final Map<String, Set<String>> currentFilters;

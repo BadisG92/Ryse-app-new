@@ -63,16 +63,6 @@ class AppTranslations {
       'en': 'Feature available with Premium',
       'de': 'Funktion mit Premium verfügbar',
     },
-    'unlock_badge': {
-      'fr': 'UPGRADE',
-      'en': 'UPGRADE',
-      'de': 'UPGRADE',
-    },
-    'trial_badge': {
-      'fr': 'ESSAI GRATUIT',
-      'en': 'TRY FREE',
-      'de': 'GRATIS TESTEN',
-    },
     'must_be_connected': {
       'fr': 'Vous devez être connecté pour enregistrer l\'hydratation',
       'en': 'You must be logged in to record hydration',
@@ -7388,11 +7378,6 @@ class AppTranslations {
       'en': 'I\'ll plan your week in a flash!',
       'de': 'Ich plane deine Woche im Handumdrehen!',
     },
-    'paywall_bubble_limit': {
-      'fr': 'Tu as atteint ta limite gratuite !',
-      'en': 'You\'ve reached your free limit!',
-      'de': 'Du hast dein kostenloses Limit erreicht!',
-    },
     'paywall_bubble_generic': {
       'fr': 'Prêt à débloquer tes résultats ?',
       'en': 'Ready to unlock your results?',
@@ -8381,11 +8366,6 @@ class AppTranslations {
       'en': 'messages',
       'de': 'Nachrichten',
     },
-    'coach_chat_free_messages_total': {
-      'fr': '10 messages gratuits',
-      'en': '10 free messages',
-      'de': '10 kostenlose Nachrichten',
-    },
     'coach_chat_remaining': {
       'fr': 'restants',
       'en': 'remaining',
@@ -8945,11 +8925,6 @@ class AppTranslations {
       'en': 'Weights adapted to your history - adjust if needed',
       'de': 'Gewichte an deinen Verlauf angepasst - bei Bedarf anpassen',
     },
-    'planner_limit_reached': {
-      'fr': 'Limite atteinte cette semaine',
-      'en': 'Limit reached this week',
-      'de': 'Limit diese Woche erreicht',
-    },
     'planner_series_reps_format': {
       'fr': 'séries',
       'en': 'sets',
@@ -9389,16 +9364,6 @@ class AppTranslations {
       'fr': 'Aucun ingrédient trouvé',
       'en': 'No ingredients found',
       'de': 'Keine Zutaten gefunden',
-    },
-    'planner_remaining_one': {
-      'fr': '1 planification gratuite restante',
-      'en': '1 free planning left',
-      'de': '1 kostenlose Planung übrig',
-    },
-    'planner_remaining_multiple': {
-      'fr': 'planifications gratuites restantes',
-      'en': 'free plannings left',
-      'de': 'kostenlose Planungen übrig',
     },
     'planner_confirm_program': {
       'fr': 'Valider ce programme',

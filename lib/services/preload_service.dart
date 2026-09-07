@@ -3,7 +3,6 @@ import 'dart:async';
 import 'dashboard_service.dart';
 import 'recipe_service.dart';
 import 'sport_dashboard_service.dart';
-import 'fast_cache_service.dart';
 
 /// Service de préchargement intelligent
 /// Précharge les données en avance pour avoir zéro latence

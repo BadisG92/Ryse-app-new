@@ -3,10 +3,8 @@ import 'package:provider/provider.dart';
 
 import '../design/design.dart';
 import '../services/exercise_ai_analysis_service.dart';
-import '../services/feature_trial_service.dart';
 import '../services/localization_service.dart';
 import '../services/paywall_service.dart';
-import '../services/subscription_service.dart';
 import '../services/translations.dart';
 
 /// L'analyse d'un exercice par Coach Ryze.
@@ -98,7 +96,6 @@ class _ExerciseAiAnalysisWidgetState extends State<ExerciseAiAnalysisWidget> {
     final canUse = await PaywallService.instance.canUseFeature(
       context: context,
       paywallContext: PaywallContext.exerciseAnalysis,
-      markAsUsed: false,
     );
     if (!canUse || !mounted) return;
 
@@ -119,9 +116,6 @@ class _ExerciseAiAnalysisWidgetState extends State<ExerciseAiAnalysisWidget> {
         analysis: analysis,
         sessionCount: widget.sessionHistory.length,
       );
-      if (!SubscriptionService.instance.isPremium) {
-        await FeatureTrialService.instance.markFeatureAsUsed(FeatureTrialService.keyExerciseAnalysis);
-      }
       if (!mounted) return;
       RyzeFeedback.success();
       setState(() {

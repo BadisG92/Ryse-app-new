@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../services/translations.dart';
-import 'coach_ryze_avatar.dart';
 
 /// Écran de bienvenue du Coach Ryze avant le tutorial
 /// Présente le coach IA et ses capacités

@@ -7,105 +7,7 @@ import '../../services/translations.dart';
 import '../../services/paywall_service.dart';
 import '../../services/subscription_service.dart';
 
-// Badge Premium avec animation pulse pour trial
-class _PremiumBadge extends StatefulWidget {
-  final bool isLocked;
-  final String langCode;
 
-  const _PremiumBadge({
-    required this.isLocked,
-    required this.langCode,
-  });
-
-  @override
-  State<_PremiumBadge> createState() => _PremiumBadgeState();
-}
-
-class _PremiumBadgeState extends State<_PremiumBadge> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _pulseAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    // Animation pulse pour trial ET upgrade
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 1500),
-      vsync: this,
-    );
-
-    _pulseAnimation = Tween<double>(
-      begin: 1.0,
-      end: 1.08,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeInOut,
-    ));
-
-    // Démarrer l'animation pour tous les badges
-    _controller.repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final badge = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: widget.isLocked
-            ? [const Color(0xFFFFD700), const Color(0xFFFFA500)] // Doré pour UPGRADE
-            : [const Color(0xFF0B132B), const Color(0xFF1C2951)], // Bleu DA pour TRY FREE
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(8),
-        boxShadow: [
-          BoxShadow(
-            color: widget.isLocked
-              ? const Color(0xFFFFD700).withOpacity(0.4) // Glow doré
-              : const Color(0xFF0B132B).withOpacity(0.3), // Glow bleu
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            widget.isLocked ? LucideIcons.lockOpen : LucideIcons.gift,
-            size: 11,
-            color: Colors.white,
-          ),
-          const SizedBox(width: 5),
-          Text(
-            widget.isLocked
-              ? 'unlock_badge'.tr(widget.langCode)
-              : 'trial_badge'.tr(widget.langCode),
-            style: const TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-              letterSpacing: 0.5,
-            ),
-          ),
-        ],
-      ),
-    );
-
-    // Animation pulse pour tous les badges
-    return ScaleTransition(
-      scale: _pulseAnimation,
-      child: badge,
-    );
-  }
-}
 
 class FoodOptionWidget extends StatefulWidget {
   final IconData icon;
@@ -246,16 +148,8 @@ class _FoodOptionWidgetState extends State<FoodOptionWidget> {
                   ],
                 ),
               ),
-              // Badge Premium à cheval sur le bord supérieur
-              if (!isPremium)
-                Positioned(
-                  top: -12,
-                  right: 16,
-                  child: _PremiumBadge(
-                    isLocked: isLocked,
-                    langCode: langCode,
-                  ),
-                ),
+              // Plus de badge « essai offert » : le paywall est dur, tout le
+              // monde ici a payé, et il n'y a plus d'essai à annoncer.
             ],
           ),
         ),

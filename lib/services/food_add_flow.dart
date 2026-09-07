@@ -101,7 +101,6 @@ class FoodAddFlow {
       final allowed = await PaywallService.instance.canUseFeature(
         context: context,
         paywallContext: gate,
-        markAsUsed: false,
       );
       if (!allowed) return;
     }

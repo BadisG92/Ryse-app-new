@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import '../models/subscription_models.dart';
 import '../screens/paywall_screen.dart';
 import '../components/ui/coach_ryze_avatar.dart';
 import 'subscription_service.dart';
+import 'unified_subscription_service.dart';
 import 'translations.dart';
-import 'feature_trial_service.dart';
 
 /// Contextes de paywall (pour analytics et personnalisation)
 enum PaywallContext {
@@ -30,8 +29,15 @@ class PaywallService {
 
   static PaywallService get instance => _instance;
 
-  final _subscriptionService = SubscriptionService.instance;
-  final _trialService = FeatureTrialService.instance;
+  /// La même autorité que la porte d'entrée de l'app.
+  ///
+  /// `SubscriptionService` ne lit que notre base ; `UnifiedSubscriptionService`
+  /// interroge RevenueCat d'abord et retombe sur la base. L'app vérifiant
+  /// l'abonnement avec le second à l'ouverture (`ryze_app.dart`) et les
+  /// fonctions avec le premier, un abonné dont l'entitlement RevenueCat est
+  /// actif mais dont la ligne en base ne l'est pas franchissait la porte puis
+  /// se voyait refuser les fonctions qu'il venait de payer.
+  bool get _isPremium => UnifiedSubscriptionService().isPremium;
 
   /// Afficher un paywall en pleine page
   Future<bool> showPaywall({
@@ -41,7 +47,7 @@ class PaywallService {
     String? customMessage,
   }) async {
     // Si déjà Premium, ne pas afficher le paywall
-    if (_subscriptionService.isPremium) {
+    if (_isPremium) {
       return true;
     }
 
@@ -66,7 +72,7 @@ class PaywallService {
     required String featureName,
     required PaywallContext paywallContext,
   }) async {
-    if (_subscriptionService.canAccessFeature(featureName)) {
+    if (SubscriptionService.instance.canAccessFeature(featureName)) {
       return true;
     }
 
@@ -84,9 +90,9 @@ class PaywallService {
     required int limit,
     required PaywallContext paywallContext,
   }) async {
-    if (await _subscriptionService.canUseDailyLimitedFeature(featureName, limit)) {
+    if (await SubscriptionService.instance.canUseDailyLimitedFeature(featureName, limit)) {
       // Incrémenter le compteur
-      await _subscriptionService.incrementDailyUsage(featureName);
+      await SubscriptionService.instance.incrementDailyUsage(featureName);
       return true;
     }
 
@@ -788,29 +794,6 @@ class PaywallService {
   // SYSTÈME D'ESSAIS GRATUITS
   // ═══════════════════════════════════════════════════════
 
-  /// Mapper PaywallContext vers clé de feature trial
-  static String getFeatureTrialKey(PaywallContext context) {
-    switch (context) {
-      case PaywallContext.scanner:
-        return FeatureTrialService.keyScanner;
-      case PaywallContext.barcodeScanner:
-        return FeatureTrialService.keyBarcode;
-      case PaywallContext.chatInput:
-        return FeatureTrialService.keyChat;
-      case PaywallContext.workoutGenerator:
-        return FeatureTrialService.keyWorkout;
-      case PaywallContext.nutritionAnalysis:
-        return FeatureTrialService.keyNutritionAnalysis;
-      case PaywallContext.exerciseAnalysis:
-        return FeatureTrialService.keyExerciseAnalysis;
-      case PaywallContext.planner:
-        return FeatureTrialService.keyPlanner;
-      case PaywallContext.genericUpgrade:
-        return ''; // Pas de trial pour générique
-      case PaywallContext.onboarding:
-        return ''; // Hard paywall, pas de trial
-    }
-  }
 
   /// Vérifier si l'utilisateur peut utiliser la feature (Premium ou 1er essai gratuit)
   ///
@@ -837,75 +820,35 @@ class PaywallService {
   /// }
   /// // Sinon, le paywall s'est affiché automatiquement
   /// ```
+  /// L'accès à une fonction premium.
+  ///
+  /// L'app est derrière un paywall dur : on n'atteint pas [MainApp] sans un
+  /// abonnement confirmé par le store (`ryze_app.dart`). Tout le monde ici a
+  /// donc payé, et la fonction est ouverte. Il ne reste qu'un cas où le
+  /// paywall a encore un sens : un abonnement expiré en cours de session.
+  ///
+  /// Le système d'« essai gratuit par fonction » qui vivait ici datait du
+  /// paywall souple. Il ne donnait plus rien à personne — et, lu depuis la
+  /// mauvaise source d'abonnement, il refusait après un usage une fonction
+  /// déjà payée.
   Future<bool> canUseFeature({
     required BuildContext context,
     required PaywallContext paywallContext,
-    bool markAsUsed = true,
+    @Deprecated('Les essais gratuits ont disparu avec le paywall dur') bool markAsUsed = true,
   }) async {
-    // Si Premium, accès illimité
-    if (_subscriptionService.isPremium) {
-      debugPrint('✅ PaywallService: User is Premium, granting access to ${paywallContext.name}');
-      return true;
-    }
+    if (_isPremium) return true;
 
-    // Vérifier le trial gratuit
-    final trialKey = getFeatureTrialKey(paywallContext);
-    if (trialKey.isEmpty) {
-      debugPrint('⚠️ PaywallService: No trial key for ${paywallContext.name}, showing paywall');
-      await showPaywall(
-        context: context,
-        paywallContext: paywallContext,
-      );
-      return false;
-    }
-
-    final hasUsed = await _trialService.hasUsedFreeTrial(trialKey);
-
-    if (!hasUsed) {
-      // 1er essai gratuit
-      debugPrint('🎁 PaywallService: First free trial for ${paywallContext.name}');
-
-      if (markAsUsed) {
-        await _trialService.markFeatureAsUsed(trialKey);
-        debugPrint('✅ PaywallService: Marked ${paywallContext.name} trial as used');
-      }
-
-      return true;
-    }
-
-    // A déjà utilisé son essai, montrer le paywall
-    debugPrint('🚫 PaywallService: Trial already used for ${paywallContext.name}, showing paywall');
-    await showPaywall(
-      context: context,
-      paywallContext: paywallContext,
-    );
-
+    await showPaywall(context: context, paywallContext: paywallContext);
     return false;
   }
 
-  /// Vérifier si la feature est verrouillée (badge Premium à afficher)
+  /// Vrai quand la fonction doit porter un cadenas.
   ///
-  /// Retourne `true` si l'utilisateur doit voir un badge "Premium" :
-  /// - Non-Premium ET a déjà utilisé son essai gratuit
-  ///
-  /// Retourne `false` si :
-  /// - Premium (accès illimité)
-  /// - Non-Premium mais n'a pas encore utilisé son essai
-  ///
-  /// Utile pour griser les boutons et afficher le badge "PRO"
+  /// Derrière un paywall dur, cela ne peut arriver qu'à un abonnement expiré :
+  /// aucun badge « 1er essai offert » n'a plus de sens, puisqu'il n'y a plus
+  /// d'essai à offrir.
   Future<bool> isFeatureLocked(PaywallContext paywallContext) async {
-    // Si Premium, jamais verrouillé
-    if (_subscriptionService.isPremium) {
-      return false;
-    }
-
-    // Vérifier si l'essai a été utilisé
-    final trialKey = getFeatureTrialKey(paywallContext);
-    if (trialKey.isEmpty) {
-      return true; // Pas de trial = toujours verrouillé pour non-Premium
-    }
-
-    final hasUsed = await _trialService.hasUsedFreeTrial(trialKey);
-    return hasUsed; // Verrouillé si l'essai a déjà été utilisé
+    return !_isPremium;
   }
+
 }

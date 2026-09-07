@@ -16,9 +16,7 @@ import '../services/celebration_service.dart';
 import '../services/food_entries_service.dart';
 // import '../services/barcode_detection_service.dart'; // ANCIEN - Remplacé par unified_barcode_service
 import '../services/unified_barcode_service.dart'; // NOUVEAU - Switch ML Kit / Vision API
-import '../services/subscription_service.dart';
 import '../services/paywall_service.dart';
-import '../services/feature_trial_service.dart';
 import '../services/translations.dart';
 import '../design/design.dart';
 import '../components/ui/numeric_text_field.dart';
@@ -91,11 +89,9 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
   /// Vérifier si l'utilisateur a accès au scanner barcode (Premium uniquement ou Trial)
   Future<void> _checkPremiumAccess() async {
     // Utiliser canUseFeature pour gérer le trial
-    // markAsUsed: false car on marque seulement après succès
     final canAccess = await PaywallService.instance.canUseFeature(
       context: context,
       paywallContext: PaywallContext.barcodeScanner,
-      markAsUsed: false,
     );
 
     if (!canAccess) {
@@ -836,13 +832,6 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
           _errorMessage = null;
         });
 
-        // ✅ Marquer le trial comme utilisé UNIQUEMENT si le produit a été trouvé
-        if (!SubscriptionService.instance.isPremium) {
-          FeatureTrialService.instance.markFeatureAsUsed(
-            FeatureTrialService.keyBarcode,
-          );
-          if (kDebugMode) debugPrint('✅ Barcode scanner trial marked as used after successful product fetch');
-        }
       } else {
         setState(() {
           _errorMessage = OpenFoodFactsService.getErrorMessage(product);

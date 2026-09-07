@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 
 /// Énumération des tiers d'abonnement
 enum SubscriptionTier {

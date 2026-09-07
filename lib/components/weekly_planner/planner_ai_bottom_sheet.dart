@@ -46,7 +46,6 @@ class _PlannerAIBottomSheetState extends State<PlannerAIBottomSheet> {
   _LoadingAction _currentAction = _LoadingAction.thinking;
 
   // Free tier tracking
-  int _remainingFreeUses = 3;
   bool _isPremium = false;
   bool _isTestMode = false;
   bool _showPaywallButton = false;
@@ -93,10 +92,8 @@ class _PlannerAIBottomSheetState extends State<PlannerAIBottomSheet> {
     _isPremium = PlannerAIService.isPremium;
     _isTestMode = UnifiedSubscriptionService().testMode;
     if (!_isPremium && !_isTestMode) {
-      final remaining = await PlannerAIService.getRemainingFreeUses();
       if (mounted) {
         setState(() {
-          _remainingFreeUses = remaining;
         });
       }
     }
@@ -1071,18 +1068,13 @@ Everything is now visible in your planner! Want me to change anything?""",
                     color: Color(0xFF0B132B),
                   ),
                 ),
-                // Afficher selon le mode
                 Text(
-                  _isPremium
-                      ? 'planner_ai_subtitle'.tr(langCode)
-                      : _isTestMode
-                          ? 'planner_test_mode'.tr(langCode)
-                          : _getRemainingUsesText(langCode),
-                  style: TextStyle(
+                  _isTestMode
+                      ? 'planner_test_mode'.tr(langCode)
+                      : 'planner_ai_subtitle'.tr(langCode),
+                  style: const TextStyle(
                     fontSize: 13,
-                    color: _isPremium || _isTestMode || _remainingFreeUses > 0
-                        ? const Color(0xFF64748B)
-                        : const Color(0xFFEF4444),
+                    color: Color(0xFF64748B),
                   ),
                 ),
               ],
@@ -1117,17 +1109,6 @@ Everything is now visible in your planner! Want me to change anything?""",
     return 'planner_ai_placeholder'.tr(langCode);
   }
 
-  String _getRemainingUsesText(String langCode) {
-    if (_remainingFreeUses <= 0) {
-      return 'planner_limit_reached'.tr(langCode);
-    }
-
-    if (_remainingFreeUses == 1) {
-      return 'planner_remaining_one'.tr(langCode);
-    }
-
-    return '$_remainingFreeUses ${'planner_remaining_multiple'.tr(langCode)}';
-  }
 
   Widget _buildMessagesList() {
     final itemCount = _messages.length + (_isProcessing ? 1 : 0);

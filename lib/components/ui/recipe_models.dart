@@ -2,7 +2,6 @@
 import 'package:flutter/foundation.dart';
 import '../../services/recipe_service.dart';
 import '../../services/content_tags_service.dart';
-import '../../config/app_config.dart';
 import '../../services/localization_service.dart';
 
 // Modèle pour un ingrédient dans une recette

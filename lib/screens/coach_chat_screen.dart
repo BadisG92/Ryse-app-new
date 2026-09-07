@@ -8,7 +8,6 @@ import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../models/coach_chat_models.dart';
 import '../services/coach_chat_service.dart';
 import '../services/localization_service.dart';
-import '../services/subscription_service.dart';
 import '../services/translations.dart';
 import '../services/weekly_bilan_service.dart';
 import '../services/paywall_service.dart';
@@ -652,30 +651,6 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
           ),
         ],
       ),
-      actions: [
-        // N'afficher le compteur que pour les utilisateurs non-premium
-        if (_rateLimitStatus != null && !_rateLimitStatus!.isPremium && !SubscriptionService.instance.isPremium)
-          Container(
-            margin: const EdgeInsets.only(right: 16),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: _rateLimitStatus!.canSendMessage
-                  ? const Color(0xFFF1F5F9)
-                  : Colors.red.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              _rateLimitStatus!.displayText,
-              style: TextStyle(
-                color: _rateLimitStatus!.canSendMessage
-                    ? const Color(0xFF64748B)
-                    : Colors.red,
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-      ],
     );
   }
 

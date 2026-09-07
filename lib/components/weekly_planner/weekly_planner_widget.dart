@@ -7,7 +7,6 @@ import '../../services/weekly_planner_service.dart';
 import '../../services/localization_service.dart';
 import '../../services/translations.dart';
 import '../../services/global_state_manager.dart';
-import '../../services/feature_trial_service.dart';
 import '../../services/subscription_service.dart';
 import '../../services/paywall_service.dart';
 import '../../screens/planner_chat_screen.dart';
@@ -16,118 +15,6 @@ import 'day_column_widget.dart';
 import 'workout_recap_bottom_sheet.dart';
 import 'cardio_recap_bottom_sheet.dart';
 
-/// Badge Trial pour le planificateur - affiche le nombre d'essais restants ou UPGRADE
-/// Même style que les autres features (coach_ryze, exercise_ai) avec animation pulse
-class _PlannerTrialBadge extends StatefulWidget {
-  final String langCode;
-  final int remainingUsages;
-  final bool isLocked;
-
-  const _PlannerTrialBadge({
-    required this.langCode,
-    required this.remainingUsages,
-    required this.isLocked,
-  });
-
-  @override
-  State<_PlannerTrialBadge> createState() => _PlannerTrialBadgeState();
-}
-
-class _PlannerTrialBadgeState extends State<_PlannerTrialBadge> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _pulseAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 1500),
-      vsync: this,
-    );
-
-    _pulseAnimation = Tween<double>(
-      begin: 1.0,
-      end: 1.08,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeInOut,
-    ));
-
-    _controller.repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isLocked = widget.isLocked;
-    final count = widget.remainingUsages;
-
-    // Texte du badge
-    String badgeText;
-    if (isLocked) {
-      badgeText = 'UPGRADE';
-    } else {
-      // Afficher "X gratuits" selon la langue
-      if (widget.langCode == 'fr') {
-        badgeText = '$count gratuit${count > 1 ? 's' : ''}';
-      } else if (widget.langCode == 'de') {
-        badgeText = '$count kostenlos';
-      } else {
-        badgeText = '$count free';
-      }
-    }
-
-    // Badge avec style uniforme doré (même design que TrialStatusBadge)
-    final badge = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFFFFD700).withOpacity(0.4),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            isLocked ? LucideIcons.lockOpen : LucideIcons.gift,
-            size: 11,
-            color: Colors.white,
-          ),
-          const SizedBox(width: 5),
-          Text(
-            badgeText,
-            style: const TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-              letterSpacing: 0.5,
-            ),
-          ),
-        ],
-      ),
-    );
-
-    return ScaleTransition(
-      scale: _pulseAnimation,
-      child: badge,
-    );
-  }
-}
 
 /// Widget principal du planificateur hebdomadaire
 class WeeklyPlannerWidget extends StatefulWidget {
@@ -153,50 +40,16 @@ class _WeeklyPlannerWidgetState extends State<WeeklyPlannerWidget> {
   int _dailyCalorieTarget = 2000; // Objectif calorique journalier
   final ScrollController _scrollController = ScrollController();
 
-  // Gestion des essais gratuits du planificateur
-  int _remainingUsages = FeatureTrialService.maxPlannerUsages;
-  bool _isPlannerLocked = false;
-  bool _isCheckingTrials = true;
 
   @override
   void initState() {
     super.initState();
     _loadUserCalorieTarget();
     _loadData(fullSync: true); // Premier chargement: sync complète
-    _loadTrialStatus();
     // S'abonner aux changements globaux
     GlobalStateManager.instance.events.listen(_onGlobalStateChange);
   }
 
-  /// Charger le statut des essais gratuits
-  Future<void> _loadTrialStatus() async {
-    // Si premium, pas besoin de vérifier les trials
-    if (SubscriptionService.instance.isPremium) {
-      if (mounted) {
-        setState(() {
-          _isCheckingTrials = false;
-        });
-      }
-      return;
-    }
-
-    try {
-      final remaining = await FeatureTrialService.instance.getPlannerRemainingUsages();
-      if (mounted) {
-        setState(() {
-          _remainingUsages = remaining;
-          _isPlannerLocked = remaining <= 0;
-          _isCheckingTrials = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isCheckingTrials = false;
-        });
-      }
-    }
-  }
 
   /// Charger l'objectif calorique de l'utilisateur depuis Supabase
   Future<void> _loadUserCalorieTarget() async {
@@ -320,17 +173,15 @@ class _WeeklyPlannerWidgetState extends State<WeeklyPlannerWidget> {
     // Ne pas naviguer si les données ne sont pas encore chargées
     if (_weekData == null) return;
 
-    // Si l'utilisateur n'est pas premium et que le planner est locked, afficher le paywall
-    final isPremium = SubscriptionService.instance.isPremium;
-    if (!isPremium && _isPlannerLocked) {
-      await PaywallService.instance.showPaywall(
-        context: context,
-        paywallContext: PaywallContext.planner,
-      );
-      // Recharger le statut des trials (l'utilisateur a peut-être upgrade)
-      await _loadTrialStatus();
+    // Le paywall est dur : tout le monde ici a payé. Il ne reste que le cas
+    // d'un abonnement expiré en cours de route.
+    if (!await PaywallService.instance.canUseFeature(
+      context: context,
+      paywallContext: PaywallContext.planner,
+    )) {
       return;
     }
+    if (!context.mounted) return;
 
     Navigator.push(
       context,
@@ -357,9 +208,7 @@ class _WeeklyPlannerWidgetState extends State<WeeklyPlannerWidget> {
       });
       // Rafraîchir les données au retour
       _loadData();
-      // Recharger le statut des trials (peut avoir changé après génération)
-      _loadTrialStatus();
-      // Désactiver l'animation après un délai
+        // Désactiver l'animation après un délai
       Future.delayed(const Duration(milliseconds: 2000), () {
         if (mounted) {
           setState(() {
@@ -507,10 +356,6 @@ class _WeeklyPlannerWidgetState extends State<WeeklyPlannerWidget> {
             ? 'Training\nplanen'
             : 'Plan my\nworkouts';
 
-    // Afficher le badge si non premium (essais gratuits ou UPGRADE)
-    final showBadge = !isPremium && !_isCheckingTrials && !WeeklyPlannerService.isDemoMode;
-    final isUpgradeBadge = _remainingUsages <= 0;
-
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       child: Stack(
@@ -540,20 +385,6 @@ class _WeeklyPlannerWidgetState extends State<WeeklyPlannerWidget> {
               ),
             ],
           ),
-          // Badge unique centré en bas, à cheval sur les deux boutons (avec animation pulse)
-          if (showBadge)
-            Positioned(
-              bottom: -12,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: _PlannerTrialBadge(
-                  langCode: langCode,
-                  remainingUsages: _remainingUsages,
-                  isLocked: isUpgradeBadge,
-                ),
-              ),
-            ),
         ],
       ),
     );

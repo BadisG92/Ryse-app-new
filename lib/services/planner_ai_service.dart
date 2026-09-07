@@ -3,13 +3,10 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import '../config/gemini_config.dart';
 import '../models/weekly_planner_models.dart';
 import '../models/sport_models.dart';
-import '../models/ai_analysis_models.dart';
-import '../models/user_model.dart';
 import 'weekly_planner_service.dart';
 import 'planned_cardio_service.dart';
 import 'gemini_analysis_service_v2.dart';
@@ -18,7 +15,6 @@ import 'food_entries_service.dart';
 import 'localization_service.dart';
 import 'auth_service.dart';
 import 'unified_subscription_service.dart';
-import 'feature_trial_service.dart';
 import 'coach_preference_extractor.dart';
 import 'global_state_manager.dart';
 import 'translations.dart';
@@ -152,7 +148,6 @@ class PlannerActionResult {
   final List<String>? createdItems;
   final String? error;
   final bool isPaywallRequired;
-  final int? remainingFreeUses;
   final bool requiresConfirmation; // Pour le mode preview
   final List<PendingWorkout>? pendingWorkouts; // Workouts à valider
   final List<PendingMeal>? pendingMeals; // Repas à valider
@@ -172,7 +167,6 @@ class PlannerActionResult {
     this.createdItems,
     this.error,
     this.isPaywallRequired = false,
-    this.remainingFreeUses,
     this.requiresConfirmation = false,
     this.pendingWorkouts,
     this.pendingMeals,
@@ -312,43 +306,15 @@ class PlannerAIService {
     return null;
   }
 
-  /// Vérifier si l'utilisateur peut utiliser l'IA (premium ou essais restants)
+  /// L'IA du planificateur est réservée aux abonnés.
   static Future<bool> canUseAI() async {
     if (_demoMode) return true;
-    // Premium = accès illimité
-    if (UnifiedSubscriptionService().isPremium) {
-      return true;
-    }
-    // Mode test = accès illimité (sans décompte)
-    if (UnifiedSubscriptionService().testMode) {
-      return true;
-    }
-    // Free = vérifier les essais restants (5 à vie)
-    final remaining = await getRemainingFreeUses();
-    return remaining > 0;
+    if (UnifiedSubscriptionService().isPremium) return true;
+    // Mode test interne : accès sans abonnement.
+    return UnifiedSubscriptionService().testMode;
   }
 
-  /// Obtenir le nombre d'utilisations restantes pour les utilisateurs free
-  /// Utilise maintenant FeatureTrialService (5 essais à vie, pas de reset hebdomadaire)
-  static Future<int> getRemainingFreeUses() async {
-    return await FeatureTrialService.instance.getPlannerRemainingUsages();
-  }
 
-  /// Incrémenter le compteur d'utilisation (appelé après une planification réussie)
-  /// Utilise maintenant FeatureTrialService (compteur persistant en base de données)
-  static Future<void> incrementUsageCount() async {
-    if (_demoMode) return;
-    // Ne pas incrémenter pour les premium
-    if (UnifiedSubscriptionService().isPremium) {
-      return;
-    }
-
-    // Incrémenter via FeatureTrialService (stocké en base de données)
-    await FeatureTrialService.instance.incrementPlannerUsage();
-
-    final remaining = await FeatureTrialService.instance.getPlannerRemainingUsages();
-    debugPrint('📊 AI Planner usage: ${FeatureTrialService.maxPlannerUsages - remaining}/${FeatureTrialService.maxPlannerUsages} (restants: $remaining)');
-  }
 
   /// Vérifier si l'utilisateur est premium
   static bool get isPremium => UnifiedSubscriptionService().isPremium;
@@ -357,23 +323,9 @@ class PlannerAIService {
   // SESSION TRACKING - Pour éviter de compter plusieurs fois par session
   // =====================================================
 
-  /// Flag pour tracker si on a déjà incrémenté le compteur dans cette session de chat
   /// Reset quand on ouvre un nouveau chat ou qu'on clear l'historique
   static bool _sessionAlreadyCounted = false;
 
-  /// Incrémenter le compteur une seule fois par session de génération
-  /// Appelé quand l'utilisateur confirme des repas ou workouts
-  static Future<void> _incrementUsageOncePerSession() async {
-    // Si déjà compté dans cette session, ne pas re-compter
-    if (_sessionAlreadyCounted) {
-      debugPrint('📊 AI Planner: Session déjà comptée, pas de nouveau décompte');
-      return;
-    }
-
-    // Incrémenter et marquer la session comme comptée
-    await incrementUsageCount();
-    _sessionAlreadyCounted = true;
-  }
 
   /// Reset le flag de session (appelé quand on ouvre un nouveau chat)
   static void resetSessionCounter() {
@@ -739,8 +691,6 @@ class PlannerAIService {
         );
       }
 
-      // Incrémenter le compteur UNE SEULE FOIS par session (même si plusieurs workouts confirmés)
-      await _incrementUsageOncePerSession();
 
       return PlannerActionResult.success(
         _getConfirmationMessage(langCode, createdWorkouts),
@@ -1257,8 +1207,6 @@ class PlannerAIService {
         );
       }
 
-      // Incrémenter le compteur UNE SEULE FOIS par session (même si plusieurs repas confirmés)
-      await _incrementUsageOncePerSession();
 
       final message = langCode == 'fr'
           ? '✅ ${createdItems.length} repas ajoutés au planificateur !'
@@ -7097,8 +7045,6 @@ CALCULATE NOW with the EXACT ingredients provided:
         );
 
         if (savedWorkout != null) {
-          // Incrémenter le compteur une fois par session de chat
-          await _incrementUsageOncePerSession();
           final dayName = _formatDayName(workout.plannedDate, langCode);
           return PlannerActionResult.success('✓ $dayName: ${workout.workoutType}');
         }
@@ -7114,8 +7060,6 @@ CALCULATE NOW with the EXACT ingredients provided:
         );
 
         if (activity != null) {
-          // Incrémenter le compteur une fois par session de chat
-          await _incrementUsageOncePerSession();
           final dayName = _formatDayName(cardio.plannedDate, langCode);
           return PlannerActionResult.success('✓ $dayName: ${cardio.displayTitle}');
         }

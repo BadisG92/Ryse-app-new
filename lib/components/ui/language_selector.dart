@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../services/localization_service.dart';
-import '../../services/translations.dart';
 
 class LanguageSelector extends StatelessWidget {
   const LanguageSelector({super.key});

@@ -5,12 +5,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../design/design.dart';
 import '../models/nutrition_analysis.dart';
 import '../services/coach_ryze_nutrition_service.dart';
-import '../services/feature_trial_service.dart';
 import '../services/food_entries_service.dart';
 import '../services/global_state_manager.dart';
 import '../services/localization_service.dart';
 import '../services/paywall_service.dart';
-import '../services/subscription_service.dart';
 import '../services/translations.dart';
 import '../sport/sport_data.dart';
 
@@ -25,7 +23,7 @@ import '../sport/sport_data.dart';
 /// Un seul contexte est offert, `end_of_day`. Les trois autres que le service
 /// sait produire ne valaient pas leur appel : analyser une journée vide donne
 /// de la motivation creuse, et « en cours » à 15 h ne peut dire que
-/// « continue » — au prix d'un essai gratuit.
+/// « continue », sans rien apprendre à personne.
 class DayAnalysis {
   DayAnalysis._();
 
@@ -53,8 +51,7 @@ class DayAnalysis {
     return CoachRyzeNutritionService.getAnalysisForDate(userId: userId, date: date ?? DateTime.now());
   }
 
-  /// Ouvre l'analyse : celle en cache, sinon une nouvelle — paywall d'abord,
-  /// et l'essai gratuit consommé seulement si Gemini a répondu.
+  /// Ouvre l'analyse : celle en cache, sinon une nouvelle.
   static Future<void> open(BuildContext context, {DateTime? date}) async {
     final lang = LocalizationService.instance.currentLanguageCode;
     final day = date ?? DateTime.now();
@@ -74,7 +71,6 @@ class DayAnalysis {
     final canUse = await PaywallService.instance.canUseFeature(
       context: context,
       paywallContext: PaywallContext.nutritionAnalysis,
-      markAsUsed: false,
     );
     if (!canUse || !context.mounted) return;
 
@@ -103,9 +99,6 @@ class DayAnalysis {
         languageCode: lang,
       );
 
-      if (!SubscriptionService.instance.isPremium) {
-        await FeatureTrialService.instance.markFeatureAsUsed(FeatureTrialService.keyNutritionAnalysis);
-      }
       progress.remove();
       if (!context.mounted) return;
       RyzeFeedback.success();

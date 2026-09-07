@@ -14,10 +14,8 @@ import '../../screens/select_recipe_screen.dart';
 import '../../services/localization_service.dart';
 import '../../services/translations.dart';
 import '../../services/paywall_service.dart';
-import '../../services/subscription_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../widgets/nutrition/option_widgets.dart';
-import '../../bottom_sheets/editable_food_details_bottom_sheet.dart';
 import '../../bottom_sheets/manual_food_search_bottom_sheet.dart';
 import '../../bottom_sheets/meal_selection_bottom_sheet.dart';
 import '../../bottom_sheets/new_meal_type_bottom_sheet.dart';
@@ -26,105 +24,8 @@ import '../../services/food_entries_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/celebration_service.dart';
 
-// Badge Premium compact pour boutons d'action rapide
-class _QuickActionBadge extends StatefulWidget {
-  final bool isLocked;
-  final String langCode;
-
-  const _QuickActionBadge({
-    required this.isLocked,
-    required this.langCode,
-  });
-
-  @override
-  State<_QuickActionBadge> createState() => _QuickActionBadgeState();
-}
-
-class _QuickActionBadgeState extends State<_QuickActionBadge> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _pulseAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 1500),
-      vsync: this,
-    );
-
-    _pulseAnimation = Tween<double>(
-      begin: 1.0,
-      end: 1.08,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeInOut,
-    ));
-
-    _controller.repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final badge = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: widget.isLocked
-            ? [const Color(0xFFFFD700), const Color(0xFFFFA500)] // Gold for UPGRADE
-            : [const Color(0xFF0B132B), const Color(0xFF1C2951)], // Blue DA for TRY FREE
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(6),
-        boxShadow: [
-          BoxShadow(
-            color: widget.isLocked
-              ? const Color(0xFFFFD700).withOpacity(0.4)
-              : const Color(0xFF0B132B).withOpacity(0.3),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            widget.isLocked ? LucideIcons.lockOpen : LucideIcons.gift,
-            size: 8,
-            color: Colors.white,
-          ),
-          const SizedBox(width: 3),
-          Text(
-            widget.isLocked
-              ? 'unlock_badge'.tr(widget.langCode)
-              : 'trial_badge'.tr(widget.langCode),
-            style: const TextStyle(
-              fontSize: 8,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-              letterSpacing: 0.3,
-            ),
-          ),
-        ],
-      ),
-    );
-
-    return ScaleTransition(
-      scale: _pulseAnimation,
-      child: badge,
-    );
-  }
-}
-
-// Bouton d'action rapide avec badge Premium
-class _QuickActionButton extends StatefulWidget {
+// Bouton d'action rapide.
+class _QuickActionButton extends StatelessWidget {
   final IconData icon;
   final String actionId;
   final VoidCallback onTap;
@@ -136,111 +37,23 @@ class _QuickActionButton extends StatefulWidget {
   });
 
   @override
-  State<_QuickActionButton> createState() => _QuickActionButtonState();
-}
-
-class _QuickActionButtonState extends State<_QuickActionButton> {
-  bool? _isLocked;
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _checkLockStatus();
-  }
-
-  Future<void> _checkLockStatus() async {
-    final paywallContext = _getPaywallContext(widget.actionId);
-    if (paywallContext != null) {
-      final locked = await PaywallService.instance.isFeatureLocked(paywallContext);
-      if (mounted) {
-        setState(() {
-          _isLocked = locked;
-          _isLoading = false;
-        });
-      }
-    } else {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
-  PaywallContext? _getPaywallContext(String actionId) {
-    switch (actionId) {
-      case 'chat':
-        return PaywallContext.chatInput;
-      case 'photo':
-      case 'camera':
-        return PaywallContext.scanner;
-      case 'barcode':
-        return PaywallContext.barcodeScanner;
-      default:
-        return null;
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final paywallContext = _getPaywallContext(widget.actionId);
-    final isPremium = SubscriptionService.instance.isPremium;
-    final langCode = LocalizationService.instance.currentLanguageCode;
-    final isLocked = _isLocked ?? false;
-
-    // Déterminer la position du badge selon le bouton
-    // Chat et Barcode: en haut à droite
-    // Scanner Photo: en bas à gauche
-    final isBadgeTop = widget.actionId == 'chat' || widget.actionId == 'barcode';
-
     return GestureDetector(
-      onTap: widget.onTap,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Opacity(
-            opacity: (paywallContext != null && isLocked && !_isLoading) ? 0.85 : 1.0,
-            child: Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
-                ),
-                borderRadius: BorderRadius.circular(12),
-                border: (paywallContext != null && isLocked && !_isLoading)
-                  ? Border.all(
-                      color: const Color(0xFFFFD700),
-                      width: 1.5,
-                    )
-                  : null,
-                boxShadow: (paywallContext != null && isLocked && !_isLoading) ? [
-                  BoxShadow(
-                    color: const Color(0xFFFFD700).withOpacity(0.15),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ] : null,
-              ),
-              child: Icon(
-                widget.icon,
-                size: 24,
-                color: Colors.white,
-              ),
-            ),
+      onTap: onTap,
+      child: Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
           ),
-          // Badge Premium - Position à cheval sur le bord selon le type de bouton
-          if (paywallContext != null && !isPremium && !_isLoading)
-            Positioned(
-              top: isBadgeTop ? -10 : null,
-              right: isBadgeTop ? -10 : null,
-              bottom: !isBadgeTop ? -10 : null,
-              left: !isBadgeTop ? -10 : null,
-              child: _QuickActionBadge(
-                isLocked: isLocked,
-                langCode: langCode,
-              ),
-            ),
-        ],
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Icon(
+          icon,
+          size: 24,
+          color: Colors.white,
+        ),
       ),
     );
   }
@@ -324,7 +137,6 @@ class NutritionQuickActionsSection extends StatelessWidget {
       final canUse = await PaywallService.instance.canUseFeature(
         context: context,
         paywallContext: paywallContext,
-        markAsUsed: false,
       );
 
       if (!canUse) {
@@ -1855,7 +1667,6 @@ class NutritionQuickActionsSection extends StatelessWidget {
                     final canUse = await PaywallService.instance.canUseFeature(
                       context: context,
                       paywallContext: PaywallContext.chatInput,
-                      markAsUsed: false, // Ne pas marquer maintenant
                     );
 
                     if (canUse) {
@@ -1886,7 +1697,6 @@ class NutritionQuickActionsSection extends StatelessWidget {
                     final canUse = await PaywallService.instance.canUseFeature(
                       context: context,
                       paywallContext: PaywallContext.scanner,
-                      markAsUsed: false, // Ne pas marquer maintenant
                     );
 
                     if (canUse) {
@@ -1911,7 +1721,6 @@ class NutritionQuickActionsSection extends StatelessWidget {
                     final canUse = await PaywallService.instance.canUseFeature(
                       context: context,
                       paywallContext: PaywallContext.barcodeScanner,
-                      markAsUsed: false, // Ne pas marquer maintenant
                     );
 
                     if (canUse) {
@@ -2167,7 +1976,6 @@ class NutritionQuickActionsSection extends StatelessWidget {
                     final canUse = await PaywallService.instance.canUseFeature(
                       context: context,
                       paywallContext: PaywallContext.chatInput,
-                      markAsUsed: false,
                     );
 
                     if (canUse) {
@@ -2194,7 +2002,6 @@ class NutritionQuickActionsSection extends StatelessWidget {
                     final canUse = await PaywallService.instance.canUseFeature(
                       context: context,
                       paywallContext: PaywallContext.scanner,
-                      markAsUsed: false,
                     );
 
                     if (canUse) {
@@ -2225,7 +2032,6 @@ class NutritionQuickActionsSection extends StatelessWidget {
                     final canUse = await PaywallService.instance.canUseFeature(
                       context: context,
                       paywallContext: PaywallContext.barcodeScanner,
-                      markAsUsed: false,
                     );
 
                     if (canUse) {
@@ -2375,7 +2181,6 @@ class NutritionQuickActionsSection extends StatelessWidget {
                     final canUse = await PaywallService.instance.canUseFeature(
                       context: context,
                       paywallContext: PaywallContext.chatInput,
-                      markAsUsed: false,
                     );
 
                     if (canUse) {
@@ -2404,7 +2209,6 @@ class NutritionQuickActionsSection extends StatelessWidget {
                     final canUse = await PaywallService.instance.canUseFeature(
                       context: context,
                       paywallContext: PaywallContext.scanner,
-                      markAsUsed: false,
                     );
 
                     if (canUse) {
@@ -2428,7 +2232,6 @@ class NutritionQuickActionsSection extends StatelessWidget {
                     final canUse = await PaywallService.instance.canUseFeature(
                       context: context,
                       paywallContext: PaywallContext.barcodeScanner,
-                      markAsUsed: false,
                     );
 
                     if (canUse) {

@@ -14,7 +14,6 @@ import '../services/dashboard_service.dart';
 import '../services/streak_service.dart';
 import '../services/global_state_manager.dart';
 import '../services/notification_messages.dart';
-import '../services/ai_notification_service.dart';
 import '../services/weekly_planner_service.dart';
 import '../models/weekly_planner_models.dart';
 

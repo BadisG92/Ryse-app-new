@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import '../models/coach_chat_models.dart';
 import '../services/coach_chat_service.dart';
 import '../services/localization_service.dart';
-import '../services/subscription_service.dart';
 import '../services/translations.dart';
 import '../components/ui/coach_ryze_avatar.dart';
 import 'coach_chat_screen.dart';
@@ -21,7 +20,6 @@ class CoachConversationsScreen extends StatefulWidget {
 class _CoachConversationsScreenState extends State<CoachConversationsScreen> {
   List<CoachConversation> _conversations = [];
   bool _isLoading = true;
-  CoachRateLimitStatus? _rateLimitStatus;
 
   @override
   void initState() {
@@ -35,12 +33,10 @@ class _CoachConversationsScreenState extends State<CoachConversationsScreen> {
     try {
       await CoachChatService.instance.initialize();
       final conversations = await CoachChatService.instance.getConversations();
-      final rateLimitStatus = await CoachChatService.instance.getRateLimitStatus();
 
       if (mounted) {
         setState(() {
           _conversations = conversations;
-          _rateLimitStatus = rateLimitStatus;
           _isLoading = false;
         });
       }
@@ -138,28 +134,6 @@ class _CoachConversationsScreenState extends State<CoachConversationsScreen> {
           ),
         ],
       ),
-      actions: [
-        // N'afficher le compteur que pour les utilisateurs non-premium
-        if (_rateLimitStatus != null && !_rateLimitStatus!.isPremium && !SubscriptionService.instance.isPremium)
-          Container(
-            margin: const EdgeInsets.only(right: 16),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF1F5F9),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              _rateLimitStatus!.displayText,
-              style: TextStyle(
-                color: _rateLimitStatus!.canSendMessage
-                    ? const Color(0xFF64748B)
-                    : Colors.red,
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-      ],
     );
   }
 
@@ -228,15 +202,6 @@ class _CoachConversationsScreenState extends State<CoachConversationsScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
-            if (!SubscriptionService.instance.isPremium)
-              Text(
-                'coach_chat_free_messages_total'.tr(lang),
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: Color(0xFF94A3B8),
-                ),
-              ),
           ],
         ),
       ),

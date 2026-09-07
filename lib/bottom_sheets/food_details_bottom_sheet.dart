@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import '../components/ui/snackbar_utils.dart';
 import '../services/celebration_service.dart';
 
 class FoodDetailsBottomSheet {

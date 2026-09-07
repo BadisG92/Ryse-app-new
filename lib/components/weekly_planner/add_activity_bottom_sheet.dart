@@ -5,7 +5,6 @@ import '../../models/weekly_planner_models.dart';
 import '../../services/weekly_planner_service.dart';
 import '../../services/localization_service.dart';
 import '../../services/translations.dart';
-import 'activity_chip_widget.dart';
 
 /// Bottom sheet pour ajouter une activité au planner
 class AddActivityBottomSheet extends StatefulWidget {

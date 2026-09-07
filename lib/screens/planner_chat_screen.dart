@@ -64,7 +64,6 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
   late WeeklyPlannerData _weekData;
 
   // Free tier tracking
-  int _remainingFreeUses = 3;
   bool _isPremium = false;
   bool _isTestMode = false;
   bool _showPaywallButton = false;
@@ -126,10 +125,8 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
     _isPremium = PlannerAIService.isPremium;
     _isTestMode = UnifiedSubscriptionService().testMode;
     if (!_isPremium && !_isTestMode) {
-      final remaining = await PlannerAIService.getRemainingFreeUses();
       if (mounted) {
         setState(() {
-          _remainingFreeUses = remaining;
         });
       }
     }
@@ -932,18 +929,12 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
                 ),
               ),
               SlideSwapText(
-                text: _isPremium
-                    ? (widget.demoMode && widget.maxMessages != null
-                        ? '${widget.maxMessages! - _userMessageCount} ${'onboarding_demo_messages_left'.tr(langCode)}'
-                        : 'planner_ai_subtitle'.tr(langCode))
-                    : _isTestMode
-                        ? 'Mode test'
-                        : _getRemainingUsesText(langCode),
-                style: TextStyle(
+                text: widget.demoMode && widget.maxMessages != null
+                    ? '${widget.maxMessages! - _userMessageCount} ${'onboarding_demo_messages_left'.tr(langCode)}'
+                    : 'planner_ai_subtitle'.tr(langCode),
+                style: const TextStyle(
                   fontSize: 12,
-                  color: _isPremium || _isTestMode || _remainingFreeUses > 0
-                      ? const Color(0xFF64748B)
-                      : const Color(0xFFEF4444),
+                  color: Color(0xFF64748B),
                 ),
               ),
             ],
@@ -954,27 +945,6 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
     );
   }
 
-  String _getRemainingUsesText(String langCode) {
-    if (_remainingFreeUses <= 0) {
-      switch (langCode) {
-        case 'fr':
-          return 'Limite atteinte';
-        case 'de':
-          return 'Limit erreicht';
-        default:
-          return 'Limit reached';
-      }
-    }
-
-    switch (langCode) {
-      case 'fr':
-        return '$_remainingFreeUses gratuite${_remainingFreeUses > 1 ? 's' : ''} restante${_remainingFreeUses > 1 ? 's' : ''}';
-      case 'de':
-        return '$_remainingFreeUses kostenlos übrig';
-      default:
-        return '$_remainingFreeUses free left';
-    }
-  }
 
   WeekSlot? _slotOf(PlannedActivityType type) {
     switch (type) {

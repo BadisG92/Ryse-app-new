@@ -5,7 +5,6 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../config/supabase_config.dart';
 import '../components/ui/dashboard_models.dart';
 import '../providers/goals_notifier.dart';
-import 'progress_service_v2.dart';
 import 'streak_service.dart';
 import 'sport_dashboard_service.dart';
 import 'localization_service.dart';

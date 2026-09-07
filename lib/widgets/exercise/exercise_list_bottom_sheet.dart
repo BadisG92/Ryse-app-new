@@ -4,7 +4,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:provider/provider.dart';
 import '../../services/translations.dart';
 import '../../services/localization_service.dart';
-import '../../services/workout_cache_service.dart';
 import '../../services/unit_service.dart';
 import 'exercise_detail_page.dart';
 

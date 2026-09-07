@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'dart:math' as math;
 import '../services/paywall_service.dart';
 import '../components/ui/coach_ryze_avatar.dart';
 import '../models/subscription_models.dart';

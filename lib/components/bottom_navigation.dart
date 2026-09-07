@@ -4,7 +4,6 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'dart:ui';
 import '../services/localization_service.dart';
-import '../services/translations.dart';
 
 class BottomNavigation extends StatelessWidget {
   final String activeTab;
