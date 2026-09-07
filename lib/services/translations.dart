@@ -9684,25 +9684,10 @@ class AppTranslations {
       'en': '/ {n} L',
       'de': '/ {n} L',
     },
-    'home_meals_of': {
-      'fr': '/ {n} repas',
-      'en': '/ {n} meals',
-      'de': 'von {n}',
-    },
-    'home_session': {
-      'fr': 'Séance',
-      'en': 'Session',
-      'de': 'Training',
-    },
     'home_session_planned': {
       'fr': 'prévue',
       'en': 'planned',
       'de': 'geplant',
-    },
-    'home_session_done': {
-      'fr': 'faite',
-      'en': 'done',
-      'de': 'erledigt',
     },
     'home_this_week': {
       'fr': 'Cette semaine',
@@ -9834,6 +9819,16 @@ class AppTranslations {
       'en': 'Add a glass of water',
       'de': 'Ein Glas Wasser hinzufügen',
     },
+    'cta_start_workout': {
+      'fr': 'Commencer ma séance',
+      'en': 'Start my session',
+      'de': 'Training starten',
+    },
+    'home_water_add': {
+      'fr': '+ un verre',
+      'en': '+ a glass',
+      'de': '+ ein Glas',
+    },
     'cta_view_workout': {
       'fr': 'Voir ma séance',
       'en': 'See my session',
@@ -9903,11 +9898,6 @@ class AppTranslations {
       'fr': '{m} noté. Bien joué.',
       'en': '{m} logged. Nicely done.',
       'de': '{m} notiert. Gut gemacht.',
-    },
-    'home_session_none': {
-      'fr': 'Pas de séance',
-      'en': 'No session',
-      'de': 'Kein Training',
     },
     'meal_name_breakfast': {
       'fr': 'Petit-déjeuner',

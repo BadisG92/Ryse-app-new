@@ -16,11 +16,12 @@ import '../services/localization_service.dart';
 import '../services/translations.dart';
 import '../services/water_service.dart';
 import '../services/weekly_planner_service.dart';
+import '../sport/sport_start.dart';
 import 'home_slots.dart';
 import 'home_suggestion.dart';
 import 'widgets/coach_line.dart';
-import 'widgets/day_tiles.dart';
 import 'widgets/today_row.dart';
+import 'widgets/water_tile.dart';
 import '../nutrition/day_analysis.dart';
 import '../nutrition/add_food_sheet.dart';
 import 'widgets/home_week.dart';
@@ -133,7 +134,13 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
   Future<void> _load() async {
     await _loadWeek();
     final user = Supabase.instance.client.auth.currentUser?.id;
-    if (user == null || _syncedFor == user || !mounted) return;
+    if (user == null || !mounted) return;
+    // Cette lecture vient avant la garde de synchronisation. Elle était après,
+    // donc dès la deuxième venue sur l'accueil dans une même exécution elle ne
+    // tournait plus : une analyse lancée depuis Nutrition laissait le coach
+    // proposer « Je la regarde ? » alors qu'elle existait déjà.
+    await _checkAnalysis();
+    if (_syncedFor == user || !mounted) return;
     _syncing = true;
     try {
       await WeeklyPlannerService.cleanupMissedActivities();
@@ -143,7 +150,6 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
       _syncing = false;
     }
     if (mounted) await _loadWeek(force: true);
-    if (mounted) await _checkAnalysis();
   }
 
   Future<void> _checkAnalysis() async {
@@ -210,12 +216,16 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
         _logMeal();
       case HomeAction.drinkWater:
         _addWater(250);
-      case HomeAction.viewWorkout:
-        _openSession();
+      case HomeAction.startWorkout:
+        _startSession();
       case HomeAction.analyseDay:
         _analyseDay();
       case HomeAction.viewDay:
-        widget.onTabChange?.call('progress');
+        // « Voir ma journée » parle des repas du jour — « tu es à 210 kcal
+        // au-dessus, on regarde ? ». Cela envoyait sur la Progression, qui
+        // montre le poids et les tendances : elle ne répond pas à la question
+        // posée. Le journal, lui, y répond.
+        widget.onTabChange?.call('nutrition');
     }
   }
 
@@ -297,8 +307,27 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
     if (ml != null && mounted) await _addWater(ml);
   }
 
-  /// Today's session, the same item the page draws: its recap. With no
-  /// session, the sport tab, where every way of starting one lives.
+  /// Le bouton du coach : la séance prévue démarre. Le coach ne la propose
+  /// que tant qu'elle n'est pas faite, donc il n'y a rien à « voir » — et
+  /// c'est le même chemin de départ que l'onglet Sport, avec l'identifiant du
+  /// planifié transmis pour que ce soit bien celle-là qui se coche.
+  Future<void> _startSession() async {
+    final s = HomeSlots.session(_todayPlan);
+    if (s == null) {
+      widget.onTabChange?.call('sport');
+      return;
+    }
+    if (s.workout != null) {
+      await SportStart.plannedWorkout(context, s.workout!);
+    } else if (s.cardio != null) {
+      await SportStart.plannedCardio(context, s.cardio!);
+    }
+    if (mounted) _loadWeek(force: true);
+  }
+
+  /// La pastille « séance » de la rangée du jour : regarder ce qu'il y a
+  /// dedans, avant de la lancer ou après l'avoir faite. Sans séance du jour,
+  /// l'onglet Sport, où vivent toutes les façons d'en démarrer une.
   void _openSession() {
     final s = HomeSlots.session(_todayPlan);
     if (s?.workout != null) {
@@ -388,7 +417,9 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
       analysisOffered: DayAnalysis.isOffered(),
       analysisReady: _analysisReady,
     );
-    final looks = suggestion.action == HomeAction.viewWorkout || suggestion.action == HomeAction.viewDay;
+    // Le bouton secondaire est pour quand l'étape suivante est de regarder.
+    // Démarrer une séance est un engagement : il prend l'encre pleine.
+    final looks = suggestion.action == HomeAction.viewDay;
 
     // The greeting is said once a day, on its own line, instead of being glued
     // to the front of every sentence the coach says.
@@ -459,16 +490,13 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
                     delay: const Duration(milliseconds: 620),
                     dy: 8,
                     animate: animate,
-                    child: DayTiles(
+                    child: WaterTile(
                       lang: lang,
-                      waterL: gs.currentWaterL,
-                      waterGoalL: gs.waterGoalL,
-                      today: today,
+                      litres: gs.currentWaterL,
+                      goal: gs.waterGoalL,
                       shown: shown,
-                      onWater: () => _addWater(250),
-                      onWaterMore: _waterSheet,
-                      onMeals: _logMeal,
-                      onSession: _openSession,
+                      onTap: () => _addWater(250),
+                      onMore: _waterSheet,
                     ),
                   ),
                   SizedBox(height: context.vw(4.6)),

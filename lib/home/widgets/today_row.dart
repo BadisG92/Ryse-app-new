@@ -32,22 +32,26 @@ class TodayRow extends StatelessWidget {
         SizedBox(height: context.vw(2.1)),
         Row(
           children: [
-            for (final slot in WeekSlot.values)
-              if (slot != WeekSlot.snack || today.state(slot) != SlotState.empty) ...[
-                Expanded(
-                  child: _Slot(
-                    slot: slot,
-                    state: today.state(slot),
-                    label: 'slot_${slot.name}'.tr(lang),
-                    lang: lang,
-                    onTap: () {
-                      RyzeFeedback.select();
-                      onSlotTap(slot);
-                    },
-                  ),
+            // Les cinq créneaux, tout le temps, collation comprise. Elle
+            // n'apparaissait qu'une fois prévue par le planificateur ou déjà
+            // mangée — donc la collation improvisée, celle qu'on oublie le
+            // plus, n'avait aucun bouton sur cette page. « Libre » n'invente
+            // rien : il dit que la place est ouverte, comme pour les autres.
+            for (final slot in WeekSlot.values) ...[
+              Expanded(
+                child: _Slot(
+                  slot: slot,
+                  state: today.state(slot),
+                  label: 'slot_${slot.name}'.tr(lang),
+                  lang: lang,
+                  onTap: () {
+                    RyzeFeedback.select();
+                    onSlotTap(slot);
+                  },
                 ),
-                if (slot != WeekSlot.sport) SizedBox(width: context.vw(1.8)),
-              ],
+              ),
+              if (slot != WeekSlot.sport) SizedBox(width: context.vw(1.5)),
+            ],
           ],
         ),
       ],

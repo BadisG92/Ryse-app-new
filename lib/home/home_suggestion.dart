@@ -4,7 +4,7 @@ import '../components/weekly_planner/week_strip.dart';
 import '../services/translations.dart';
 
 /// What the coach's one button does.
-enum HomeAction { logBreakfast, logLunch, logSnack, logDinner, logMeal, drinkWater, viewWorkout, viewDay, analyseDay }
+enum HomeAction { logBreakfast, logLunch, logSnack, logDinner, logMeal, drinkWater, startWorkout, viewDay, analyseDay }
 
 /// The coach's line for right now, and the one action that follows from it.
 ///
@@ -64,11 +64,16 @@ class HomeSuggestion {
           _ => say('home_line_dinner', 'cta_log_dinner', HomeAction.logDinner),
         };
 
+    /// La séance du jour n'est proposée que tant qu'elle n'est pas faite, donc
+    /// le bouton la lance. Il disait « Voir ma séance » et ouvrait un récap où
+    /// il fallait retrouver « Commencer » : deux taps pour ce que le coach
+    /// vient d'annoncer. Regarder ce qu'il y a dedans reste possible d'un tap
+    /// sur la pastille de la rangée du jour.
     HomeSuggestion workout() {
       final label = today.labels[WeekSlot.sport];
       return label == null || label.isEmpty
-          ? say('home_line_workout_generic', 'cta_view_workout', HomeAction.viewWorkout, sport: true)
-          : say('home_line_workout', 'cta_view_workout', HomeAction.viewWorkout, sport: true, args: {'name': label});
+          ? say('home_line_workout_generic', 'cta_start_workout', HomeAction.startWorkout, sport: true)
+          : say('home_line_workout', 'cta_start_workout', HomeAction.startWorkout, sport: true, args: {'name': label});
     }
 
     HomeSuggestion water() => say('home_line_water', 'cta_drink', HomeAction.drinkWater);

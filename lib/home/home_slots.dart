@@ -62,17 +62,6 @@ class HomeSlots {
     return DaySlots(states: states, labels: labels);
   }
 
-  /// How many meals the day holds and how many are done. The three main
-  /// meals are always the day's frame; the snack counts only when it exists.
-  static (int done, int total) mealCount(DaySlots slots) {
-    var done = 0;
-    for (final slot in kFoodSlots) {
-      if (slots.state(slot) == SlotState.done) done++;
-    }
-    final total = 3 + (slots.state(WeekSlot.snack) == SlotState.empty ? 0 : 1);
-    return (done, total);
-  }
-
   /// The journal stores meal types in whatever the user's language called
   /// them; the plan uses four fixed names.
   static String normalizeMealType(String mealType) {
