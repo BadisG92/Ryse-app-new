@@ -10943,6 +10943,62 @@ class AppTranslations {
       'en': "Advanced",
       'de': "Profi",
     },
+    // The coach reading the day back
+    'day_analysis_title': {
+      'fr': "Ta journée",
+      'en': "Your day",
+      'de': "Dein Tag",
+    },
+    'day_analysis_by': {
+      'fr': "vue par Coach Ryze",
+      'en': "seen by Coach Ryze",
+      'de': "gesehen von Coach Ryze",
+    },
+    'day_analysis_run': {
+      'fr': "Analyser ma journée",
+      'en': "Analyse my day",
+      'de': "Meinen Tag analysieren",
+    },
+    'day_analysis_see': {
+      'fr': "Voir mon analyse du jour",
+      'en': "See my analysis",
+      'de': "Meine Analyse ansehen",
+    },
+    'day_analysis_hint': {
+      'fr': "Ce que tu as mangé, et quoi ajuster demain",
+      'en': "What you ate, and what to adjust tomorrow",
+      'de': "Was du gegessen hast und was du morgen anpassen kannst",
+    },
+    'day_analysis_running': {
+      'fr': "Coach Ryze lit ta journée…",
+      'en': "Coach Ryze is reading your day…",
+      'de': "Coach Ryze liest deinen Tag…",
+    },
+    'day_analysis_failed': {
+      'fr': "L'analyse n'a pas abouti. Réessaie dans un instant.",
+      'en': "The analysis did not come through. Try again in a moment.",
+      'de': "Die Analyse hat nicht geklappt. Versuche es gleich noch einmal.",
+    },
+    'home_line_analysis': {
+      'fr': "Ta journée est presque finie. Je la regarde ?",
+      'en': "Your day is nearly done. Shall I look at it?",
+      'de': "Dein Tag ist fast vorbei. Soll ich ihn ansehen?",
+    },
+    'home_line_analysis_ready': {
+      'fr': "Ton analyse du jour est prête.",
+      'en': "Your analysis for today is ready.",
+      'de': "Deine Analyse für heute ist fertig.",
+    },
+    'cta_analyse_day': {
+      'fr': "Analyser ma journée",
+      'en': "Analyse my day",
+      'de': "Tag analysieren",
+    },
+    'cta_see_analysis': {
+      'fr': "La voir",
+      'en': "See it",
+      'de': "Ansehen",
+    },
     // Sport, the tab by day
     'sport_hiit_rounds': {
       'fr': "tours",

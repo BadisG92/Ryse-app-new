@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import '../config/gemini_config.dart';
 import '../models/nutrition_analysis.dart';
@@ -120,6 +121,7 @@ class CoachRyzeNutritionService {
 
     // Calculer les métriques nutritionnelles
     final metadata = _calculateMetadata(
+      day: date,
       todayMeals: todayMeals,
       calorieTarget: calorieTarget,
       proteinTarget: proteinTarget,
@@ -260,6 +262,7 @@ class CoachRyzeNutritionService {
 
   /// Calcule les métadonnées nutritionnelles
   static NutritionMetadata _calculateMetadata({
+    required DateTime day,
     required List<Meal> todayMeals,
     required int calorieTarget,
     required double proteinTarget,
@@ -351,6 +354,7 @@ class CoachRyzeNutritionService {
       caloriesBurned: caloriesBurned,
       workoutTime: workoutTime,
       timeOfDay: timeOfDay,
+      day: day,
     );
   }
 
@@ -364,12 +368,95 @@ class CoachRyzeNutritionService {
     // Get user's personality preference
     final personalityInstruction = await CoachPersonalityService.instance.buildPersonalityInstruction(languageCode);
 
-    if (languageCode == 'de') {
-      return _buildGermanPrompt(context, metadata, todayMeals, personalityInstruction);
-    } else if (languageCode == 'fr') {
-      return _buildFrenchPrompt(context, metadata, todayMeals, personalityInstruction);
-    } else {
-      return _buildEnglishPrompt(context, metadata, todayMeals, personalityInstruction);
+    final base = languageCode == 'de'
+        ? _buildGermanPrompt(context, metadata, todayMeals, personalityInstruction)
+        : (languageCode == 'fr'
+            ? _buildFrenchPrompt(context, metadata, todayMeals, personalityInstruction)
+            : _buildEnglishPrompt(context, metadata, todayMeals, personalityInstruction));
+
+    return '$base\n\n${await _userContext(languageCode)}';
+  }
+
+  /// Ce que le coach doit savoir de l'utilisateur avant de conseiller quoi
+  /// que ce soit — et ce qu'il ne doit pas faire.
+  ///
+  /// Trois manques que le prompt d'origine avait :
+  ///
+  /// * **L'objectif.** C'est lui qui décide si « il te reste 400 kcal » est
+  ///   un reproche ou un compliment, et si « monte les lipides » a un sens.
+  /// * **Les restrictions.** L'utilisateur les a renseignées dans les
+  ///   réglages ; conseiller du skyr à un végan perd sa confiance en une
+  ///   phrase.
+  /// * **Ne pas répéter les chiffres.** L'écran les affiche au-dessus du
+  ///   texte ; les redire mange la moitié des soixante mots accordés.
+  static Future<String> _userContext(String languageCode) async {
+    String goal = '';
+    var restrictions = <String>[];
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      goal = prefs.getString('user_goal') ?? '';
+      final client = Supabase.instance.client;
+      final userId = client.auth.currentUser?.id;
+      if (userId != null) {
+        final row = await client
+            .from('users')
+            .select('dietary_restrictions')
+            .eq('id', userId)
+            .maybeSingle()
+            .timeout(const Duration(seconds: 5));
+        final r = row?['dietary_restrictions'];
+        if (r is List) restrictions = r.map((e) => '$e').toList();
+      }
+    } catch (e) {
+      debugPrint('⚠️ _userContext: $e');
+    }
+
+    final b = StringBuffer();
+    switch (languageCode) {
+      case 'de':
+        b.writeln('NUTZERPROFIL:');
+        b.writeln('- Ziel: ${_goalLabel(goal, 'de')}');
+        if (restrictions.isNotEmpty) b.writeln('- Ernährungseinschränkungen: ${restrictions.join(', ')}');
+        b.writeln('');
+        b.writeln('ZUSÄTZLICHE REGELN:');
+        b.writeln('- Wiederhole KEINE Zahlen: der Bildschirm zeigt Kalorien und Makros bereits an. Sage, was sie bedeuten.');
+        b.writeln('- Jeder Rat muss zum Ziel passen und darf keine ausgeschlossenen Lebensmittel nennen.');
+        b.writeln('- Keine medizinischen Aussagen, keine erfundenen Zahlen.');
+        b.writeln('- Mindestens ein Rat muss morgen umsetzbar sein.');
+      case 'fr':
+        b.writeln('PROFIL DE L\'UTILISATEUR :');
+        b.writeln('- Objectif : ${_goalLabel(goal, 'fr')}');
+        if (restrictions.isNotEmpty) b.writeln('- Restrictions alimentaires : ${restrictions.join(', ')}');
+        b.writeln('');
+        b.writeln('RÈGLES SUPPLÉMENTAIRES :');
+        b.writeln('- NE répète PAS les chiffres : l\'écran affiche déjà calories et macros. Dis ce qu\'ils veulent dire.');
+        b.writeln('- Chaque conseil doit servir l\'objectif et ne jamais citer un aliment exclu.');
+        b.writeln('- Aucune affirmation médicale, aucun chiffre inventé.');
+        b.writeln('- Au moins un conseil doit être applicable dès demain matin.');
+      default:
+        b.writeln('USER PROFILE:');
+        b.writeln('- Goal: ${_goalLabel(goal, 'en')}');
+        if (restrictions.isNotEmpty) b.writeln('- Dietary restrictions: ${restrictions.join(', ')}');
+        b.writeln('');
+        b.writeln('EXTRA RULES:');
+        b.writeln('- Do NOT restate the numbers: the screen already shows calories and macros. Say what they mean.');
+        b.writeln('- Every tip must serve the goal and must never name an excluded food.');
+        b.writeln('- No medical claims, no invented figures.');
+        b.writeln('- At least one tip must be actionable tomorrow morning.');
+    }
+    return b.toString();
+  }
+
+  static String _goalLabel(String goal, String lang) {
+    switch (goal) {
+      case 'lose':
+        return lang == 'fr' ? 'perdre du poids' : (lang == 'de' ? 'abnehmen' : 'lose weight');
+      case 'gain':
+        return lang == 'fr' ? 'prendre du poids et du muscle' : (lang == 'de' ? 'zunehmen und Muskeln aufbauen' : 'gain weight and muscle');
+      case 'maintain':
+        return lang == 'fr' ? 'maintenir son poids' : (lang == 'de' ? 'Gewicht halten' : 'maintain weight');
+      default:
+        return lang == 'fr' ? 'non précisé' : (lang == 'de' ? 'nicht angegeben' : 'not specified');
     }
   }
 
@@ -417,7 +504,7 @@ class CoachRyzeNutritionService {
     buffer.writeln('');
 
     // Données nutritionnelles
-    buffer.writeln('DONNÉES NUTRITIONNELLES (${DateFormat('dd/MM/yyyy').format(DateTime.now())}):');
+    buffer.writeln('DONNÉES NUTRITIONNELLES (${DateFormat('dd/MM/yyyy').format(metadata.day)}):');
     buffer.writeln('');
     buffer.writeln('Calories: ${metadata.totalCalories} / ${metadata.calorieTarget} kcal (reste: ${metadata.caloriesRemaining})');
     buffer.writeln('Protéines: ${metadata.totalProteins.toStringAsFixed(1)}g / ${metadata.proteinTarget.toStringAsFixed(0)}g (${metadata.proteinPercentage.toStringAsFixed(0)}%)');
@@ -553,7 +640,7 @@ class CoachRyzeNutritionService {
     buffer.writeln('');
 
     // Données nutritionnelles
-    buffer.writeln('NUTRITION DATA (${DateFormat('MM/dd/yyyy').format(DateTime.now())}):');
+    buffer.writeln('NUTRITION DATA (${DateFormat('MM/dd/yyyy').format(metadata.day)}):');
     buffer.writeln('');
     buffer.writeln('Calories: ${metadata.totalCalories} / ${metadata.calorieTarget} kcal (remaining: ${metadata.caloriesRemaining})');
     buffer.writeln('Protein: ${metadata.totalProteins.toStringAsFixed(1)}g / ${metadata.proteinTarget.toStringAsFixed(0)}g (${metadata.proteinPercentage.toStringAsFixed(0)}%)');
@@ -688,7 +775,7 @@ class CoachRyzeNutritionService {
     buffer.writeln('');
 
     // Ernährungsdaten
-    buffer.writeln('ERNÄHRUNGSDATEN (${DateFormat('dd.MM.yyyy').format(DateTime.now())}):');
+    buffer.writeln('ERNÄHRUNGSDATEN (${DateFormat('dd.MM.yyyy').format(metadata.day)}):');
     buffer.writeln('');
     buffer.writeln('Kalorien: ${metadata.totalCalories} / ${metadata.calorieTarget} kcal (verbleibend: ${metadata.caloriesRemaining})');
     buffer.writeln('Protein: ${metadata.totalProteins.toStringAsFixed(1)}g / ${metadata.proteinTarget.toStringAsFixed(0)}g (${metadata.proteinPercentage.toStringAsFixed(0)}%)');

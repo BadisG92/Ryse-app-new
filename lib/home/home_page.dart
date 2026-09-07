@@ -21,6 +21,7 @@ import 'home_suggestion.dart';
 import 'widgets/coach_line.dart';
 import 'widgets/day_tiles.dart';
 import 'widgets/today_row.dart';
+import '../nutrition/day_analysis.dart';
 import '../nutrition/add_food_sheet.dart';
 import 'widgets/home_week.dart';
 
@@ -58,6 +59,10 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
   /// it before moving on to the next chore.
   String? _ack;
   Timer? _ackTimer;
+
+  /// Vrai quand le coach a deja lu la journee : il propose alors de la
+  /// revoir plutot que de la relancer, et l'appel n'est pas refacture.
+  bool _analysisReady = false;
 
   WeeklyPlannerData? _week;
   bool _syncing = false;
@@ -138,6 +143,15 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
       _syncing = false;
     }
     if (mounted) await _loadWeek(force: true);
+    if (mounted) await _checkAnalysis();
+  }
+
+  Future<void> _checkAnalysis() async {
+    if (!DayAnalysis.isOffered()) return;
+    final found = await DayAnalysis.cached();
+    if (mounted && (found != null) != _analysisReady) {
+      setState(() => _analysisReady = found != null);
+    }
   }
 
   Future<void> _loadWeek({bool force = false}) async {
@@ -198,6 +212,8 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
         _addWater(250);
       case HomeAction.viewWorkout:
         _openSession();
+      case HomeAction.analyseDay:
+        _analyseDay();
       case HomeAction.viewDay:
         widget.onTabChange?.call('progress');
     }
@@ -294,6 +310,13 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
     }
   }
 
+  /// La lecture de la journee par Coach Ryze. Le cache est par date :
+  /// rouvrir ne relance rien et ne consomme pas d'essai.
+  Future<void> _analyseDay() async {
+    await DayAnalysis.open(context);
+    if (mounted) await _checkAnalysis();
+  }
+
   Future<void> _openPlanner() async {
     final week = _week ?? await WeeklyPlannerService.getWeekData();
     if (!mounted) return;
@@ -362,6 +385,8 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
       waterGoalL: gs.waterGoalL,
       calories: gs.currentCalories.round(),
       calorieGoal: gs.calorieGoal.round(),
+      analysisOffered: DayAnalysis.isOffered(),
+      analysisReady: _analysisReady,
     );
     final looks = suggestion.action == HomeAction.viewWorkout || suggestion.action == HomeAction.viewDay;
 

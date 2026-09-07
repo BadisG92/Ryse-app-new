@@ -11,6 +11,7 @@ import '../services/day_meals.dart';
 import '../services/food_add_flow.dart';
 import '../services/food_entries_service.dart';
 import '../services/global_state_manager.dart';
+import 'day_analysis.dart';
 import '../services/localization_service.dart';
 import '../services/portions.dart';
 import '../services/notification_service.dart';
@@ -40,6 +41,10 @@ class _NutritionTodayPageState extends State<NutritionTodayPage> with GlobalStat
   final Set<WeekSlot> _open = {};
   bool _shown = false;
 
+  /// Vrai quand le coach a deja lu la journee : la rangee du soir propose
+  /// alors de la revoir plutot que de la relancer.
+  bool _analysisReady = false;
+
   /// Le total revient en barre dès que l'instrument a quitté le haut.
   final ScrollController _scroll = ScrollController();
   bool _stuck = false;
@@ -53,6 +58,7 @@ class _NutritionTodayPageState extends State<NutritionTodayPage> with GlobalStat
     _scroll.addListener(_onScroll);
     _load();
     _loadPrefs();
+    _checkAnalysis();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Future.delayed(const Duration(milliseconds: 220), () {
         if (mounted) setState(() => _shown = true);
@@ -90,6 +96,19 @@ class _NutritionTodayPageState extends State<NutritionTodayPage> with GlobalStat
     if (!_scroll.hasClients) return;
     final past = _scroll.offset > context.vw(26);
     if (past != _stuck) setState(() => _stuck = past);
+  }
+
+  Future<void> _checkAnalysis() async {
+    if (!DayAnalysis.isOffered()) return;
+    final found = await DayAnalysis.cached(date: _date);
+    if (mounted && (found != null) != _analysisReady) {
+      setState(() => _analysisReady = found != null);
+    }
+  }
+
+  Future<void> _openAnalysis() async {
+    await DayAnalysis.open(context, date: _date);
+    if (mounted) await _checkAnalysis();
   }
 
   Future<void> _loadPrefs() async {
@@ -428,6 +447,17 @@ class _NutritionTodayPageState extends State<NutritionTodayPage> with GlobalStat
               ],
             ),
           ),
+          // Le soir, quand la journée a assez servi : la lecture du coach.
+          // L'accueil l'a déjà proposée une fois ; celle-ci est là pour qui
+          // revient dans son journal.
+          if (DayAnalysis.isOffered()) ...[
+            SizedBox(height: context.vw(7)),
+            PopIn(
+              delay: const Duration(milliseconds: 640),
+              dy: 8,
+              child: DayAnalysisRow(lang: lang, hasAnalysis: _analysisReady, onTap: _openAnalysis),
+            ),
+          ],
         ],
         ),
 

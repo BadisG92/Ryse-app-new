@@ -129,6 +129,10 @@ class NutritionMetadata {
   // Heure de l'analyse
   final String timeOfDay; // 'morning', 'afternoon', 'evening', 'night'
 
+  /// Le jour analysé. Le prompt datait ses données de `DateTime.now()`, donc
+  /// une journée passée s'annonçait à la mauvaise date.
+  final DateTime day;
+
   NutritionMetadata({
     required this.totalCalories,
     required this.totalProteins,
@@ -152,6 +156,7 @@ class NutritionMetadata {
     this.caloriesBurned,
     this.workoutTime,
     required this.timeOfDay,
+    required this.day,
   });
 
   factory NutritionMetadata.fromJson(Map<String, dynamic> json) {
@@ -180,6 +185,8 @@ class NutritionMetadata {
           ? DateTime.parse(json['workout_time'] as String)
           : null,
       timeOfDay: json['time_of_day'] as String,
+      // Absente des analyses écrites avant l'ajout du champ.
+      day: DateTime.tryParse('${json['day'] ?? ''}') ?? DateTime.now(),
     );
   }
 
@@ -207,6 +214,7 @@ class NutritionMetadata {
       'calories_burned': caloriesBurned,
       'workout_time': workoutTime?.toIso8601String(),
       'time_of_day': timeOfDay,
+      'day': day.toIso8601String(),
     };
   }
 }

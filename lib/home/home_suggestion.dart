@@ -4,7 +4,7 @@ import '../components/weekly_planner/week_strip.dart';
 import '../services/translations.dart';
 
 /// What the coach's one button does.
-enum HomeAction { logBreakfast, logLunch, logSnack, logDinner, logMeal, drinkWater, viewWorkout, viewDay }
+enum HomeAction { logBreakfast, logLunch, logSnack, logDinner, logMeal, drinkWater, viewWorkout, viewDay, analyseDay }
 
 /// The coach's line for right now, and the one action that follows from it.
 ///
@@ -36,6 +36,13 @@ class HomeSuggestion {
     required double waterGoalL,
     required int calories,
     required int calorieGoal,
+
+    /// Vrai quand la journée a assez servi pour être lue par le coach.
+    bool analysisOffered = false,
+
+    /// Vrai quand elle a déjà été produite : le coach propose alors de la
+    /// voir, pas de la relancer.
+    bool analysisReady = false,
     DateTime? now,
   }) {
     final h = (now ?? DateTime.now()).hour;
@@ -65,6 +72,13 @@ class HomeSuggestion {
     }
 
     HomeSuggestion water() => say('home_line_water', 'cta_drink', HomeAction.drinkWater);
+
+    /// La lecture de la journée, en fin de soirée. C'est le coach qui la
+    /// porte, et lui seul : elle vivait avant dans un second bouton du
+    /// journal, ce qui faisait deux coachs pour une seule voix.
+    HomeSuggestion analysis() => analysisReady
+        ? say('home_line_analysis_ready', 'cta_see_analysis', HomeAction.analyseDay)
+        : say('home_line_analysis', 'cta_analyse_day', HomeAction.analyseDay);
 
     /// What is left of the goal, the goal met, or the goal passed. Three
     /// distinct states: the coach and the instrument above it must never say
@@ -106,6 +120,7 @@ class HomeSuggestion {
       // the evening is the last chance to close the bottle, so it is checked
       // against the whole goal and not just against a quarter of it
       if (waterUnfinished) return water();
+      if (analysisOffered) return analysis();
       return rest();
     }
 
@@ -113,6 +128,7 @@ class HomeSuggestion {
     // exactly what happens at this hour, so the coach still offers to log it
     // rather than handing back a dead end.
     if (!done(WeekSlot.dinner)) return meal(WeekSlot.dinner);
+    if (analysisOffered) return analysis();
     if (waterUnfinished) return water();
     return say('home_line_night', 'cta_view_day', HomeAction.viewDay);
   }
