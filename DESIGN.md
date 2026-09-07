@@ -135,6 +135,28 @@ time; it never draws a distance it did not measure.
 Code lives in `lib/sport/` on top of `lib/design/`; `SPORT_REDESIGN.md` has
 the decisions behind it.
 
+## Progress and settings
+
+Progress asks one question — is this working? — so it leads with the one
+number that answers it, the weight, and the curve under it. The chart draws
+the real weigh-ins as faint points and the trend on top, because a figure
+that appears nowhere on its own curve is a figure nobody trusts. A projection
+to the target appears only when the weigh-ins earn it; otherwise the page
+says nothing rather than extrapolating a date from three points.
+
+Under it, the week as seven rings: the fill is how the day's calories went,
+an amber dot under it means a session. One reading per fact — the totals line
+below gives the sums the rings cannot say, and nothing is drawn twice.
+
+Settings are three groups of rows — you, the app, the account — each row
+showing its current value and opening a sheet. A row that says
+"2 100 kcal · 150/200/70 g" answers the question without being opened; that
+is the point. Macro shares always sum to 100 %, so the four numbers cannot
+disagree. Switches that change a single preference save on the spot: a switch
+waiting for a Save button is a switch the user believes they already flipped.
+The gear lives in the Progress header, because settings are about you and
+Progress is the "you" tab.
+
 ## Motion
 
 Three curves: `out` (fast start, soft landing) for almost everything; `spring`
