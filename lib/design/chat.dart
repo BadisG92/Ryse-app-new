@@ -140,6 +140,23 @@ class RyzeBubble extends StatelessWidget {
     RyzeUndo.note(context, message: copyLabel!);
   }
 
+  /// Ryze écrit en gras avec des astérisques — c'est ce que le modèle rend, et
+  /// les deux conversations le lisaient chacune de son côté. Sans ce passage,
+  /// la bulle afficherait les astérisques.
+  static final RegExp _bold = RegExp(r'\*\*(.+?)\*\*', dotAll: true);
+
+  static List<InlineSpan> _spans(String raw) {
+    final out = <InlineSpan>[];
+    var at = 0;
+    for (final m in _bold.allMatches(raw)) {
+      if (m.start > at) out.add(TextSpan(text: raw.substring(at, m.start)));
+      out.add(TextSpan(text: m.group(1), style: const TextStyle(fontWeight: FontWeight.w700)));
+      at = m.end;
+    }
+    if (at < raw.length) out.add(TextSpan(text: raw.substring(at)));
+    return out;
+  }
+
   @override
   Widget build(BuildContext context) {
     final bubble = Container(
@@ -161,7 +178,7 @@ class RyzeBubble extends StatelessWidget {
           Text.rich(
             TextSpan(
               children: [
-                TextSpan(text: text),
+                ..._spans(text),
                 if (streaming)
                   TextSpan(
                     text: ' ▋',

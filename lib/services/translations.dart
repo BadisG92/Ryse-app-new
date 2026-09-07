@@ -8304,6 +8304,24 @@ class AppTranslations {
 
     // ==================== COACH CHAT ====================
     // Les conversations avec Ryze : le mobilier commun aux deux.
+    // Les amorces du planificateur : ce sont des messages envoyes en ton
+    // nom, donc du texte d'interface, et ils disaient leurs trois langues
+    // en dur dans le code.
+    'prompt_next_meal': {
+      'fr': "Propose-moi un {meal} équilibré pour aujourd'hui",
+      'en': 'Suggest a balanced {meal} for today',
+      'de': 'Schlage mir ein ausgewogenes {meal} für heute vor',
+    },
+    'prompt_today_meals': {
+      'fr': "Planifie tous mes repas pour aujourd'hui (petit-déjeuner, déjeuner, dîner)",
+      'en': 'Plan all my meals for today (breakfast, lunch, dinner)',
+      'de': 'Plane alle meine Mahlzeiten für heute (Frühstück, Mittagessen, Abendessen)',
+    },
+    'prompt_week_meals': {
+      'fr': 'Planifie tous mes repas pour toute la semaine (petit-déjeuner, déjeuner et dîner pour chaque jour)',
+      'en': 'Plan all my meals for the entire week (breakfast, lunch and dinner for each day)',
+      'de': 'Plane alle meine Mahlzeiten für die ganze Woche (Frühstück, Mittagessen und Abendessen für jeden Tag)',
+    },
     'chat_copied': {
       'fr': 'Message copié',
       'en': 'Message copied',

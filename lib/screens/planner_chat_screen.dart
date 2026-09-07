@@ -10,6 +10,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../models/weekly_planner_models.dart';
 import '../services/weekly_planner_service.dart';
+import '../design/design.dart';
 import '../services/localization_service.dart';
 import '../services/translations.dart';
 import '../services/planner_ai_service.dart';
@@ -844,16 +845,15 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
     final langCode = locService.currentLanguageCode;
 
     final scaffold = Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: RyzeColors.paper,
       resizeToAvoidBottomInset: true,
-      appBar: _buildAppBar(langCode),
       body: Column(
         children: [
-          // Calendrier fixe en haut
-          _buildCalendarSection(langCode),
+          SafeArea(bottom: false, child: _buildHeader(langCode)),
 
-          // Divider
-          const Divider(height: 1, color: Color(0xFFE2E8F0)),
+          // La semaine, fixe sous l'en-tete.
+          _buildCalendarSection(langCode),
+          const Divider(height: 1, color: RyzeColors.line),
 
           // Chat (prend tout l'espace restant)
           Expanded(
@@ -885,8 +885,8 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
       tag: 'weekly_planner_hero',
       flightShuttleBuilder: (flightContext, animation, flightDirection, fromHeroContext, toHeroContext) {
         return Material(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          color: RyzeColors.surf,
+          borderRadius: BorderRadius.circular(RyzeRadius.md),
           child: const SizedBox.expand(),
         );
       },
@@ -894,7 +894,9 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
     );
   }
 
-  PreferredSizeWidget _buildAppBar(String langCode) {
+  /// L'en-tete de la conversation. C'etait une `AppBar` Material ; c'est
+  /// maintenant celle du systeme, la meme que le chat du coach.
+  Widget _buildHeader(String langCode) {
     final title = widget.demoMode
         ? (widget.initialMode == 'meals'
             ? 'onboarding_demo_meals_title'.tr(langCode)
@@ -903,45 +905,15 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
             ? 'plan_my_meals'.tr(langCode)
             : 'plan_my_workouts'.tr(langCode));
 
-    return AppBar(
-      backgroundColor: Colors.white,
-      elevation: 0,
-      leading: widget.demoMode
-          ? null
-          : IconButton(
-              onPressed: () => Navigator.pop(context),
-              icon: const Icon(LucideIcons.chevronLeft, color: Color(0xFF0B132B)),
-            ),
-      automaticallyImplyLeading: !widget.demoMode,
-      title: Row(
-        children: [
-          _coachAvatar(size: 34),
-          const SizedBox(width: 10),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF0B132B),
-                ),
-              ),
-              SlideSwapText(
-                text: widget.demoMode && widget.maxMessages != null
-                    ? '${widget.maxMessages! - _userMessageCount} ${'onboarding_demo_messages_left'.tr(langCode)}'
-                    : 'planner_ai_subtitle'.tr(langCode),
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: Color(0xFF64748B),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-      centerTitle: false,
+    final subtitle = widget.demoMode && widget.maxMessages != null
+        ? '${widget.maxMessages! - _userMessageCount} ${'onboarding_demo_messages_left'.tr(langCode)}'
+        : 'planner_ai_subtitle'.tr(langCode);
+
+    return RyzeChatHeader(
+      title: title,
+      subtitle: subtitle,
+      avatar: widget.initialMode == 'meals' ? RyzeAssets.nutriAvatar : RyzeAssets.sportAvatar,
+      onBack: widget.demoMode ? null : () => Navigator.pop(context),
     );
   }
 
@@ -1184,7 +1156,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
     }
     return ListView.builder(
       controller: _chatScrollController,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      padding: EdgeInsets.all(context.vw(4.1)),
       itemCount: itemCount,
       itemBuilder: (context, index) {
         if (index < _messages.length) {
@@ -1249,188 +1221,74 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
     );
   }
 
-  TextSpan _parseMarkdownBold(String text, Color color) {
-    final regex = RegExp(r'\*\*(.+?)\*\*');
-    final spans = <InlineSpan>[];
-    int lastEnd = 0;
-
-    for (final match in regex.allMatches(text)) {
-      if (match.start > lastEnd) {
-        spans.add(TextSpan(text: text.substring(lastEnd, match.start)));
-      }
-      spans.add(TextSpan(
-        text: match.group(1),
-        style: const TextStyle(fontWeight: FontWeight.w700),
-      ));
-      lastEnd = match.end;
-    }
-    if (lastEnd < text.length) {
-      spans.add(TextSpan(text: text.substring(lastEnd)));
-    }
-
-    return TextSpan(
-      style: TextStyle(fontSize: 14, color: color, height: 1.4),
-      children: spans,
-    );
-  }
-
-  /// The coach, cropped on the head inside a white ring, the way the first
-  /// page of the onboarding shows the pair.
-  Widget _coachAvatar({double size = 32}) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: const Color(0xFFDFE4F2),
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white, width: 2),
-        boxShadow: [BoxShadow(color: const Color(0xFF0B132B).withValues(alpha: 0.12), blurRadius: 6, offset: const Offset(0, 2))],
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Image.asset(
-        widget.initialMode == 'meals' ? 'assets/images/coach_ryze_nutrition_head.png' : 'assets/images/coach_ryze_sport_head.png',
-        fit: BoxFit.cover,
-        alignment: const Alignment(0, -0.6),
-        errorBuilder: (context, error, stack) => const Icon(LucideIcons.sparkles, size: 14, color: Color(0xFF0B132B)),
-      ),
-    );
-  }
-
   Widget _buildMessageBubble(_ChatMessage message, int index) {
-    final bool canUndo = message.isUndoable && index == _undoableMessageIndex;
-    final bool fresh = _shownMessages.add(message);
+    final lang = LocalizationService.instance.currentLanguageCode;
+    final canUndo = message.isUndoable && index == _undoableMessageIndex;
+    final fresh = _shownMessages.add(message);
 
     return PopIn(
       key: ObjectKey(message),
       animate: fresh,
       dy: 12,
       duration: const Duration(milliseconds: 420),
-      child: Padding(
-      padding: const EdgeInsets.only(bottom: 12),
       child: Row(
-        mainAxisAlignment: message.isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (!message.isUser) ...[
-            _coachAvatar(),
-            const SizedBox(width: 8),
-          ],
-          Flexible(
-            child: GestureDetector(
-              onLongPress: () => _copyMessage(message.text),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(
-                  color: message.isUser
-                      ? const Color(0xFF0B132B)
-                      : const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(16).copyWith(
-                    bottomRight: message.isUser
-                        ? const Radius.circular(4)
-                        : const Radius.circular(16),
-                    bottomLeft: message.isUser
-                        ? const Radius.circular(16)
-                        : const Radius.circular(4),
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    RichText(
-                      text: _parseMarkdownBold(
-                        message.text,
-                        message.isUser ? Colors.white : const Color(0xFF0B132B),
-                      ),
-                    ),
-                    if (message.actions != null && message.actions!.isNotEmpty) ...[
-                      const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: message.actions!.map((action) {
-                          return Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap: action.onTap,
-                              borderRadius: BorderRadius.circular(8),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                                decoration: BoxDecoration(
-                                  color: action.isDestructive
-                                      ? const Color(0xFFEF4444)
-                                      : Colors.white,
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color: action.isDestructive
-                                        ? const Color(0xFFEF4444)
-                                        : const Color(0xFFE2E8F0),
-                                  ),
-                                ),
-                                child: Text(
-                                  action.label,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: action.isDestructive
-                                        ? Colors.white
-                                        : const Color(0xFF0B132B),
-                                  ),
+          Expanded(
+            child: RyzeBubble(
+              text: message.text,
+              mine: message.isUser,
+              copyLabel: 'chat_copied'.tr(lang),
+              footer: message.actions == null || message.actions!.isEmpty
+                  ? null
+                  : Wrap(
+                      spacing: context.vw(2.1),
+                      runSpacing: context.vw(2.1),
+                      children: [
+                        for (final action in message.actions!)
+                          Pressable(
+                            onTap: action.onTap,
+                            child: Container(
+                              padding: EdgeInsets.symmetric(horizontal: context.vw(4.1), vertical: context.vw(2.3)),
+                              decoration: BoxDecoration(
+                                color: action.isDestructive ? RyzeColors.danger : RyzeColors.paper,
+                                borderRadius: BorderRadius.circular(RyzeRadius.sm),
+                                border: Border.all(color: action.isDestructive ? RyzeColors.danger : RyzeColors.line),
+                              ),
+                              child: Text(
+                                action.label,
+                                style: RyzeText.body(
+                                  context,
+                                  3.2,
+                                  weight: FontWeight.w600,
+                                  color: action.isDestructive ? RyzeColors.surf : RyzeColors.ink,
                                 ),
                               ),
                             ),
-                          );
-                        }).toList(),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
+                          ),
+                      ],
+                    ),
             ),
           ),
           if (canUndo) ...[
-            const SizedBox(width: 8),
-            GestureDetector(
-              onTap: () => _executeUndo(index),
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: const Icon(
-                  LucideIcons.undo2,
-                  size: 16,
-                  color: Color(0xFF64748B),
+            SizedBox(width: context.vw(2.1)),
+            Padding(
+              padding: EdgeInsets.only(top: context.vw(2.6)),
+              child: Pressable(
+                onTap: () => _executeUndo(index),
+                child: Container(
+                  padding: EdgeInsets.all(context.vw(2.3)),
+                  decoration: BoxDecoration(
+                    color: RyzeColors.surf,
+                    borderRadius: BorderRadius.circular(RyzeRadius.sm),
+                    border: Border.all(color: RyzeColors.line),
+                  ),
+                  child: Icon(LucideIcons.undo2, size: context.vw(4.1), color: RyzeColors.mute),
                 ),
               ),
             ),
           ],
-          if (message.isUser) const SizedBox(width: 8),
         ],
-      ),
-      ),
-    );
-  }
-
-  /// Copy message on long press (like iMessage/WhatsApp)
-  void _copyMessage(String text) {
-    HapticFeedback.mediumImpact();
-    Clipboard.setData(ClipboardData(text: text));
-
-    final locService = context.read<LocalizationService>();
-    final lang = locService.currentLanguageCode;
-    final copiedText = lang == 'fr' ? 'Copié' : lang == 'de' ? 'Kopiert' : 'Copied';
-
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(copiedText),
-        backgroundColor: const Color(0xFF0B132B),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(milliseconds: 1500),
-        margin: const EdgeInsets.only(bottom: 50, left: 50, right: 50),
       ),
     );
   }
@@ -1444,84 +1302,30 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
       key: const ValueKey('planner-typing'),
       dy: 10,
       duration: const Duration(milliseconds: 380),
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _coachAvatar(),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(16).copyWith(bottomLeft: const Radius.circular(4)),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Padding(padding: EdgeInsets.symmetric(vertical: 3), child: TypingDots(color: Color(0xFF0B132B))),
-                    const SizedBox(height: 6),
-                    Text(
-                      loadingText,
-                      style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8), fontStyle: FontStyle.italic),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const RyzeThinking(),
+          Padding(
+            padding: EdgeInsets.only(left: context.vw(7.7), bottom: context.vw(3.1)),
+            child: Text(loadingText, style: RyzeText.body(context, 2.9, color: RyzeColors.mute2)),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildQuickSuggestions(String langCode) {
-    final suggestions = _getQuickSuggestions(langCode);
-
     return Padding(
-      padding: const EdgeInsets.only(left: 40, bottom: 12),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: suggestions.indexed.map((entry) {
-            final suggestion = entry.$2;
-            return PopIn(
-              key: ValueKey('sugg-$suggestion'),
-              delay: Duration(milliseconds: 120 + entry.$1 * 70),
-              dy: 10,
-              child: Padding(
-              padding: EdgeInsets.zero,
-              child: GestureDetector(
-                onTap: () {
-                  // Transformer le bouton en prompt optimisé pour l'IA (mode meals uniquement)
-                  final prompt = widget.initialMode == 'meals'
-                      ? _transformQuickSuggestionToPrompt(suggestion, langCode)
-                      : suggestion;
-                  _textController.text = prompt;
-                  _handleSend();
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                  ),
-                  child: Text(
-                    suggestion,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: Color(0xFF64748B),
-                    ),
-                  ),
-                ),
-              ),
-              ),
-            );
-          }).toList(),
+      padding: EdgeInsets.only(left: context.vw(7.7), bottom: context.vw(3.1)),
+      child: RyzeChatChips(
+        labels: _getQuickSuggestions(langCode),
+        onTap: (suggestion) {
+          _textController.text = widget.initialMode == 'meals'
+              ? _transformQuickSuggestionToPrompt(suggestion, langCode)
+              : suggestion;
+          _handleSend();
+        },
       ),
     );
   }
@@ -1566,21 +1370,9 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
     final suggestionWeek = 'suggestion_week'.tr(langCode);
 
     final prompts = {
-      suggestionNextMeal: langCode == 'fr'
-          ? 'Propose-moi un $nextMealType équilibré pour aujourd\'hui'
-          : langCode == 'de'
-              ? 'Schlage mir ein ausgewogenes $nextMealType für heute vor'
-              : 'Suggest a balanced $nextMealType for today',
-      suggestionToday: langCode == 'fr'
-          ? 'Planifie tous mes repas pour aujourd\'hui (petit-déjeuner, déjeuner, dîner)'
-          : langCode == 'de'
-              ? 'Plane alle meine Mahlzeiten für heute (Frühstück, Mittagessen, Abendessen)'
-              : 'Plan all my meals for today (breakfast, lunch, dinner)',
-      suggestionWeek: langCode == 'fr'
-          ? 'Planifie tous mes repas pour toute la semaine (petit-déjeuner, déjeuner et dîner pour chaque jour)'
-          : langCode == 'de'
-              ? 'Plane alle meine Mahlzeiten für die ganze Woche (Frühstück, Mittagessen und Abendessen für jeden Tag)'
-              : 'Plan all my meals for the entire week (breakfast, lunch and dinner for each day)',
+      suggestionNextMeal: 'prompt_next_meal'.tr(langCode).replaceAll('{meal}', nextMealType),
+      suggestionToday: 'prompt_today_meals'.tr(langCode),
+      suggestionWeek: 'prompt_week_meals'.tr(langCode),
     };
 
     return prompts[suggestion] ?? suggestion;
@@ -1638,7 +1430,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
       builder: (context) => Container(
         height: MediaQuery.of(context).size.height * 0.6,
         decoration: const BoxDecoration(
-          color: Colors.white,
+          color: RyzeColors.surf,
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
         child: Column(
@@ -1650,7 +1442,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE2E8F0),
+                  color: RyzeColors.line,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -1663,13 +1455,13 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF0B132B).withValues(alpha: 0.1),
+                      color: RyzeColors.ink.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Icon(
                       LucideIcons.dumbbell,
                       size: 24,
-                      color: Color(0xFF0B132B),
+                      color: RyzeColors.ink,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -1682,14 +1474,14 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF0B132B),
+                            color: RyzeColors.ink,
                           ),
                         ),
                         Text(
                           '$dayName • ${workout.durationMinutes} min',
                           style: const TextStyle(
                             fontSize: 14,
-                            color: Color(0xFF64748B),
+                            color: RyzeColors.mute,
                           ),
                         ),
                       ],
@@ -1697,7 +1489,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
                   ),
                   IconButton(
                     onPressed: () => Navigator.pop(context),
-                    icon: const Icon(LucideIcons.x, color: Color(0xFF64748B)),
+                    icon: const Icon(LucideIcons.x, color: RyzeColors.mute),
                   ),
                 ],
               ),
@@ -1707,7 +1499,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
               margin: const EdgeInsets.symmetric(horizontal: 16),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                color: RyzeColors.confirm.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
@@ -1715,7 +1507,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
                   const Icon(
                     LucideIcons.sparkles,
                     size: 14,
-                    color: Color(0xFF10B981),
+                    color: RyzeColors.confirm,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -1723,7 +1515,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
                       personalizedText,
                       style: const TextStyle(
                         fontSize: 12,
-                        color: Color(0xFF10B981),
+                        color: RyzeColors.confirm,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -1751,9 +1543,9 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
                     margin: const EdgeInsets.only(bottom: 8),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAFC),
+                      color: RyzeColors.paper,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                      border: Border.all(color: RyzeColors.line),
                     ),
                     child: Row(
                       children: [
@@ -1761,7 +1553,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
                           width: 28,
                           height: 28,
                           decoration: BoxDecoration(
-                            color: const Color(0xFF0B132B).withValues(alpha: 0.1),
+                            color: RyzeColors.ink.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Center(
@@ -1770,7 +1562,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
                               style: const TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF0B132B),
+                                color: RyzeColors.ink,
                               ),
                             ),
                           ),
@@ -1785,14 +1577,14 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
                                 style: const TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
-                                  color: Color(0xFF0B132B),
+                                  color: RyzeColors.ink,
                                 ),
                               ),
                               Text(
                                 '${exercise.sets.length} $seriesLabel • ${exercise.suggestedRepsMin ?? 8}-${exercise.suggestedRepsMax ?? 12} reps${weightText.isNotEmpty ? ' • $weightText' : ''}',
                                 style: const TextStyle(
                                   fontSize: 12,
-                                  color: Color(0xFF64748B),
+                                  color: RyzeColors.mute,
                                 ),
                               ),
                             ],
@@ -1921,9 +1713,9 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
               child: Row(
                 children: [
                   const SizedBox(width: 52),
-                  Text(moreDays.replaceAll('{n}', '${_mealsDays.length}'), style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF0B132B))),
+                  Text(moreDays.replaceAll('{n}', '${_mealsDays.length}'), style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: RyzeColors.ink)),
                   const SizedBox(width: 4),
-                  const Icon(LucideIcons.chevronRight, size: 14, color: Color(0xFF0B132B)),
+                  const Icon(LucideIcons.chevronRight, size: 14, color: RyzeColors.ink),
                 ],
               ),
             ),
@@ -2297,8 +2089,8 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
       child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
+        color: RyzeColors.surf,
+        border: Border(top: BorderSide(color: RyzeColors.line)),
       ),
       child: SafeArea(
         top: false,
@@ -2311,7 +2103,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
                 'onboarding_demo_skip'.tr(langCode),
                 style: const TextStyle(
                   fontSize: 13,
-                  color: Color(0xFF94A3B8),
+                  color: RyzeColors.mute2,
                 ),
               ),
             ),
@@ -2329,8 +2121,8 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
                     : 'onboarding_demo_finish'.tr(langCode),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0B132B), // v2: navy for demo actions
-                foregroundColor: Colors.white,
+                backgroundColor: RyzeColors.ink, // v2: navy for demo actions
+                foregroundColor: RyzeColors.surf,
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
@@ -2346,8 +2138,8 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
+        color: RyzeColors.surf,
+        border: Border(top: BorderSide(color: RyzeColors.line)),
       ),
       child: SafeArea(
         top: false,
@@ -2363,8 +2155,8 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
                 : 'onboarding_demo_finish'.tr(langCode),
           ),
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF0B132B), // v2: navy for demo actions
-            foregroundColor: Colors.white,
+            backgroundColor: RyzeColors.ink, // v2: navy for demo actions
+            foregroundColor: RyzeColors.surf,
             minimumSize: const Size(double.infinity, 50),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
@@ -2380,13 +2172,13 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
+        border: Border(top: BorderSide(color: RyzeColors.line)),
       ),
       child: Column(
         children: [
           Text(
             subtitleText,
-            style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+            style: const TextStyle(fontSize: 13, color: RyzeColors.mute),
           ),
           const SizedBox(height: 12),
           SizedBox(
@@ -2396,8 +2188,8 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
               icon: const Icon(LucideIcons.crown, size: 18),
               label: Text(buttonText),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFD4AF37),
-                foregroundColor: Colors.white,
+                backgroundColor: RyzeColors.accDeep,
+                foregroundColor: RyzeColors.surf,
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
@@ -2409,63 +2201,17 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
   }
 
   Widget _buildInputZone(String langCode) {
-    final placeholder = widget.initialMode == 'meals'
-        ? 'planner_meals_placeholder'.tr(langCode)
-        : 'planner_workouts_placeholder'.tr(langCode);
-
-    return SafeArea(
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
-        ),
-        child: Row(
-        children: [
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: TextField(
-                controller: _textController,
-                focusNode: _focusNode,
-                decoration: InputDecoration(
-                  hintText: placeholder,
-                  hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                ),
-                style: const TextStyle(fontSize: 14, color: Color(0xFF0B132B)),
-                maxLines: 3,
-                minLines: 1,
-                textInputAction: TextInputAction.send,
-                onSubmitted: (_) => _handleSend(),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: _handleSend,
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: _isProcessing ? const Color(0xFFE2E8F0) : const Color(0xFF0B132B),
-                shape: BoxShape.circle,
-              ),
-              child: _isProcessing
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF64748B)),
-                    )
-                  : const Icon(LucideIcons.send, size: 18, color: Colors.white),
-            ),
-          ),
-        ],
-        ),
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: _textController,
+      builder: (context, value, _) => RyzeChatInput(
+        controller: _textController,
+        focusNode: _focusNode,
+        hint: widget.initialMode == 'meals'
+            ? 'planner_meals_placeholder'.tr(langCode)
+            : 'planner_workouts_placeholder'.tr(langCode),
+        canSend: value.text.trim().isNotEmpty,
+        busy: _isProcessing,
+        onSend: _handleSend,
       ),
     );
   }
@@ -2517,25 +2263,20 @@ class _MealDetailPage extends StatelessWidget {
     final mealTypeName = _mealTypeKey(meal.mealType).tr(langCode);
 
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          onPressed: () => Navigator.pop(context),
-          icon: const Icon(LucideIcons.chevronLeft, color: Color(0xFF0B132B)),
-        ),
-        title: Text(
-          mealTypeName,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF0B132B),
+      backgroundColor: RyzeColors.paper,
+      body: Column(
+        children: [
+          SafeArea(
+            bottom: false,
+            child: RyzeChatHeader(
+              title: meal.dishName.isEmpty ? mealTypeName : meal.dishName,
+              subtitle: mealTypeName,
+              avatar: RyzeAssets.nutriAvatar,
+              onBack: () => Navigator.pop(context),
+            ),
           ),
-        ),
-        centerTitle: true,
-      ),
-      body: SingleChildScrollView(
+          Expanded(
+            child: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -2565,7 +2306,7 @@ class _MealDetailPage extends StatelessWidget {
                         style: const TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF0B132B),
+                          color: RyzeColors.ink,
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -2573,7 +2314,7 @@ class _MealDetailPage extends StatelessWidget {
                         '~${meal.estimatedQuantityG.toInt()}g',
                         style: const TextStyle(
                           fontSize: 14,
-                          color: Color(0xFF64748B),
+                          color: RyzeColors.mute,
                         ),
                       ),
                     ],
@@ -2588,19 +2329,19 @@ class _MealDetailPage extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
+                color: RyzeColors.paper,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _buildMacroItem('${meal.calories}', 'kcal', const Color(0xFF0B132B)),
+                  _buildMacroItem('${meal.calories}', 'kcal', RyzeColors.ink),
                   _buildDivider(),
-                  _buildMacroItem('${meal.proteins.toInt()}g', 'planner_proteins'.tr(langCode), const Color(0xFF3B82F6)),
+                  _buildMacroItem('${meal.proteins.toInt()}g', 'planner_proteins'.tr(langCode), RyzeColors.protein),
                   _buildDivider(),
-                  _buildMacroItem('${meal.carbs.toInt()}g', 'planner_carbs'.tr(langCode), const Color(0xFFF59E0B)),
+                  _buildMacroItem('${meal.carbs.toInt()}g', 'planner_carbs'.tr(langCode), RyzeColors.carbs),
                   _buildDivider(),
-                  _buildMacroItem('${meal.fats.toInt()}g', 'planner_fats'.tr(langCode), const Color(0xFFEF4444)),
+                  _buildMacroItem('${meal.fats.toInt()}g', 'planner_fats'.tr(langCode), RyzeColors.danger),
                 ],
               ),
             ),
@@ -2613,7 +2354,7 @@ class _MealDetailPage extends StatelessWidget {
                 sections['description']!,
                 style: const TextStyle(
                   fontSize: 15,
-                  color: Color(0xFF475569),
+                  color: RyzeColors.mute,
                   height: 1.5,
                 ),
               ),
@@ -2625,22 +2366,22 @@ class _MealDetailPage extends StatelessWidget {
               _buildSectionHeader(
                 icon: LucideIcons.shoppingBasket,
                 title: 'section_ingredients'.tr(langCode),
-                color: const Color(0xFF10B981),
+                color: RyzeColors.confirm,
               ),
               const SizedBox(height: 12),
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF10B981).withValues(alpha: 0.05),
+                  color: RyzeColors.confirm.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.2)),
+                  border: Border.all(color: RyzeColors.confirm.withValues(alpha: 0.2)),
                 ),
                 child: Text(
                   sections['ingredients']!,
                   style: const TextStyle(
                     fontSize: 14,
-                    color: Color(0xFF0B132B),
+                    color: RyzeColors.ink,
                     height: 1.6,
                   ),
                 ),
@@ -2653,22 +2394,22 @@ class _MealDetailPage extends StatelessWidget {
               _buildSectionHeader(
                 icon: LucideIcons.chefHat,
                 title: 'section_recipe'.tr(langCode),
-                color: const Color(0xFF3B82F6),
+                color: RyzeColors.protein,
               ),
               const SizedBox(height: 12),
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF3B82F6).withValues(alpha: 0.05),
+                  color: RyzeColors.protein.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFF3B82F6).withValues(alpha: 0.2)),
+                  border: Border.all(color: RyzeColors.protein.withValues(alpha: 0.2)),
                 ),
                 child: Text(
                   sections['recipe']!,
                   style: const TextStyle(
                     fontSize: 14,
-                    color: Color(0xFF0B132B),
+                    color: RyzeColors.ink,
                     height: 1.6,
                   ),
                 ),
@@ -2681,28 +2422,28 @@ class _MealDetailPage extends StatelessWidget {
               _buildSectionHeader(
                 icon: LucideIcons.lightbulb,
                 title: 'section_tip'.tr(langCode),
-                color: const Color(0xFFF59E0B),
+                color: RyzeColors.carbs,
               ),
               const SizedBox(height: 12),
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF59E0B).withValues(alpha: 0.08),
+                  color: RyzeColors.carbs.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.3)),
+                  border: Border.all(color: RyzeColors.carbs.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(LucideIcons.sparkles, size: 18, color: Color(0xFFF59E0B)),
+                    const Icon(LucideIcons.sparkles, size: 18, color: RyzeColors.carbs),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         sections['tip']!,
                         style: const TextStyle(
                           fontSize: 14,
-                          color: Color(0xFF0B132B),
+                          color: RyzeColors.ink,
                           height: 1.5,
                           fontStyle: FontStyle.italic,
                         ),
@@ -2714,8 +2455,11 @@ class _MealDetailPage extends StatelessWidget {
             ],
 
             const SizedBox(height: 40),
-          ],
-        ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -2773,7 +2517,7 @@ class _MealDetailPage extends StatelessWidget {
           label,
           style: const TextStyle(
             fontSize: 11,
-            color: Color(0xFF64748B),
+            color: RyzeColors.mute,
           ),
         ),
       ],
@@ -2784,7 +2528,7 @@ class _MealDetailPage extends StatelessWidget {
     return Container(
       width: 1,
       height: 40,
-      color: const Color(0xFFE2E8F0),
+      color: RyzeColors.line,
     );
   }
 
@@ -2809,7 +2553,7 @@ class _MealDetailPage extends StatelessWidget {
           style: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
-            color: Color(0xFF0B132B),
+            color: RyzeColors.ink,
           ),
         ),
       ],
@@ -2826,13 +2570,13 @@ class _MealDetailPage extends StatelessWidget {
 Widget _sheetFrame(BuildContext context, {required Widget child}) {
   return Container(
     height: MediaQuery.of(context).size.height * 0.88,
-    decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+    decoration: const BoxDecoration(color: RyzeColors.surf, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
     clipBehavior: Clip.antiAlias,
     child: SafeArea(
       top: false,
       child: Column(
         children: [
-          Container(margin: const EdgeInsets.only(top: 10, bottom: 2), width: 40, height: 4, decoration: BoxDecoration(color: const Color(0xFFE2E8F0), borderRadius: BorderRadius.circular(2))),
+          Container(margin: const EdgeInsets.only(top: 10, bottom: 2), width: 40, height: 4, decoration: BoxDecoration(color: RyzeColors.line, borderRadius: BorderRadius.circular(2))),
           Expanded(child: child),
         ],
       ),
@@ -3140,13 +2884,13 @@ class _FlyingMarkState extends State<_FlyingMark> with SingleTickerProviderState
               opacity: v > 0.9 ? (1 - v) * 10 : 1,
               child: Container(
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: RyzeColors.surf,
                   shape: sport ? BoxShape.circle : BoxShape.rectangle,
                   borderRadius: sport ? null : BorderRadius.circular(size * 0.24),
-                  border: Border.all(color: const Color(0xFF0B132B), width: 1.6),
-                  boxShadow: [BoxShadow(color: const Color(0xFF0B132B).withValues(alpha: 0.18), blurRadius: 10, offset: const Offset(0, 4))],
+                  border: Border.all(color: RyzeColors.ink, width: 1.6),
+                  boxShadow: [BoxShadow(color: RyzeColors.ink.withValues(alpha: 0.18), blurRadius: 10, offset: const Offset(0, 4))],
                 ),
-                child: size > 16 ? Icon(iconForSlot(widget.slot), size: size * 0.5, color: const Color(0xFF0B132B)) : null,
+                child: size > 16 ? Icon(iconForSlot(widget.slot), size: size * 0.5, color: RyzeColors.ink) : null,
               ),
             ),
           ),

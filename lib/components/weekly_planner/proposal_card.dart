@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../../design/tokens.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// Building blocks of a proposal card in the planner chat: the coach proposes
@@ -8,15 +10,15 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 /// day and a short summary, rows with a tinted icon tile, actions at the
 /// bottom of the same card.
 
-const Color _ink = Color(0xFF0B132B);
-const Color _mute = Color(0xFF64748B);
-const Color _mute2 = Color(0xFF94A3B8);
-const Color _line = Color(0xFFE2E8F0);
-const Color _tile = Color(0xFFF1F5F9);
-const Color _green = Color(0xFF10B981);
-const Color _protein = Color(0xFF3B82F6);
-const Color _carbs = Color(0xFFF59E0B);
-const Color _fat = Color(0xFFEF4444);
+const Color _ink = RyzeColors.ink;
+const Color _mute = RyzeColors.mute;
+const Color _mute2 = RyzeColors.mute2;
+const Color _line = RyzeColors.line;
+const Color _tile = RyzeColors.paper2;
+const Color _green = RyzeColors.confirm;
+const Color _protein = RyzeColors.protein;
+const Color _carbs = RyzeColors.carbs;
+const Color _fat = RyzeColors.danger;
 
 class ProposalCard extends StatelessWidget {
   const ProposalCard({super.key, required this.body, required this.footer, this.margin = const EdgeInsets.fromLTRB(0, 4, 0, 8)});
@@ -30,7 +32,7 @@ class ProposalCard extends StatelessWidget {
       margin: margin,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: RyzeColors.surf,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: _line),
         boxShadow: [BoxShadow(color: _ink.withValues(alpha: 0.06), blurRadius: 16, offset: const Offset(0, 6))],
@@ -87,7 +89,7 @@ class ProposalHeader extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(color: _ink, borderRadius: BorderRadius.circular(11)),
-            child: Icon(icon, size: 17, color: Colors.white),
+            child: Icon(icon, size: 17, color: RyzeColors.surf),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -281,7 +283,7 @@ class ProposalDayTotals extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.fromLTRB(14, 6, 14, 12),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(12), border: Border.all(color: _line)),
+      decoration: BoxDecoration(color: RyzeColors.paper, borderRadius: BorderRadius.circular(12), border: Border.all(color: _line)),
       child: Row(
         children: [
           Column(
@@ -325,9 +327,9 @@ class ProposalWorkoutRow extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Container(
-        color: selected ? const Color(0xFFF8FAFC) : null,
+        color: selected ? RyzeColors.paper : null,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(border: last ? null : const Border(bottom: BorderSide(color: Color(0xFFF1F5F9)))),
+        decoration: BoxDecoration(border: last ? null : const Border(bottom: BorderSide(color: RyzeColors.paper2))),
         child: Row(
           children: [
             Container(
@@ -335,7 +337,7 @@ class ProposalWorkoutRow extends StatelessWidget {
               height: 40,
               decoration: BoxDecoration(color: selected ? _ink : _tile, borderRadius: BorderRadius.circular(12)),
               alignment: Alignment.center,
-              child: Text(dayShort, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: selected ? Colors.white : _ink, height: 1)),
+              child: Text(dayShort, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: selected ? RyzeColors.surf : _ink, height: 1)),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -389,7 +391,7 @@ class ProposalActions extends StatelessWidget {
     final shape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(12));
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-      decoration: const BoxDecoration(color: Color(0xFFF8FAFC), border: Border(top: BorderSide(color: _line))),
+      decoration: const BoxDecoration(color: RyzeColors.paper, border: Border(top: BorderSide(color: _line))),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -401,7 +403,7 @@ class ProposalActions extends StatelessWidget {
                   height: 48,
                   child: OutlinedButton(
                     onPressed: busy ? null : onCancel,
-                    style: OutlinedButton.styleFrom(foregroundColor: _mute, backgroundColor: Colors.white, side: const BorderSide(color: _line), shape: shape, textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                    style: OutlinedButton.styleFrom(foregroundColor: _mute, backgroundColor: RyzeColors.surf, side: const BorderSide(color: _line), shape: shape, textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                     child: Text(cancelLabel, maxLines: 1, overflow: TextOverflow.ellipsis, softWrap: false),
                   ),
                 ),
@@ -414,10 +416,10 @@ class ProposalActions extends StatelessWidget {
                   child: ElevatedButton.icon(
                     onPressed: busy ? null : onConfirm,
                     icon: busy
-                        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: RyzeColors.surf))
                         : const Icon(LucideIcons.check, size: 18),
                     label: Text(confirmLabel, maxLines: 1, overflow: TextOverflow.ellipsis),
-                    style: ElevatedButton.styleFrom(backgroundColor: _green, foregroundColor: Colors.white, elevation: 0, shape: shape, textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                    style: ElevatedButton.styleFrom(backgroundColor: _green, foregroundColor: RyzeColors.surf, elevation: 0, shape: shape, textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
                   ),
                 ),
               ),
