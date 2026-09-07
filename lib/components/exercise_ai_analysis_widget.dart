@@ -173,7 +173,7 @@ class _ExerciseAiAnalysisWidgetState extends State<ExerciseAiAnalysisWidget> {
                 width: context.vw(9.7),
                 height: context.vw(9.7),
                 decoration: const BoxDecoration(color: RyzeColors.acc, shape: BoxShape.circle),
-                child: Center(child: RyzeMark(size: context.vw(4.6), color: RyzeColors.accInk)),
+                child: Center(child: RyzeMark(size: context.vw(5.6), color: RyzeColors.accInk)),
               ),
               SizedBox(width: context.vw(3.1)),
               Expanded(
@@ -202,7 +202,7 @@ class _ExerciseAiAnalysisWidgetState extends State<ExerciseAiAnalysisWidget> {
               SizedBox(height: context.vw(3.1)),
               _Button(label: 'ai_analysis_retry'.tr(lang), onTap: _generate),
             ] else if (_analysis == null)
-              _Button(label: 'analyze_with_ai'.tr(lang), leading: RyzeMark(size: context.vw(4.1), color: RyzeColors.surf), onTap: _generate)
+              _Button(label: 'analyze_with_ai'.tr(lang), leading: RyzeMark(size: context.vw(5), color: RyzeColors.surf), onTap: _generate)
             else ...[
               Text(_analysis!.analysis, style: RyzeText.body(context, 3.4, height: 1.5)),
               if (_analysis!.recommendations.isNotEmpty) ...[

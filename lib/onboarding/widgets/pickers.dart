@@ -75,10 +75,17 @@ class _DigitRun extends StatelessWidget {
   /// before the digits on its right wrap. Dividing the whole value by ten per
   /// column instead would put the hundreds of 171 seven tenths of the way to
   /// 2, and the number would read 271.
-  static double _columnPosition(double v, int place) {
+  ///
+  /// [settled] is the whole point of the second branch: the carry is an
+  /// animation, not a property of the number. Without it, any value whose
+  /// remainder passes 90 % of a column's unit stayed parked mid-carry once
+  /// the animation was over — 595 showed its hundreds halfway between 5 and
+  /// 6, so the figure read as a sliced digit above a sliced digit.
+  static double _columnPosition(double v, int place, {required bool settled}) {
     if (place <= 0) return v;
     final unit = _pow10[place.clamp(0, _pow10.length - 1)];
     final higher = (v / unit).floorToDouble();
+    if (settled) return higher;
     final ratio = (v - higher * unit) / unit;
     return higher + ((ratio - 0.9) * 10).clamp(0.0, 1.0);
   }
@@ -89,12 +96,16 @@ class _DigitRun extends StatelessWidget {
       tween: Tween<double>(end: value.toDouble()),
       duration: duration,
       curve: Curves.easeOutCubic,
-      builder: (context, v, _) => Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (var c = 0; c < digits; c++) _DigitColumn(position: _columnPosition(v, digits - 1 - c), style: style, cell: cell),
-        ],
-      ),
+      builder: (context, v, _) {
+        final settled = (v - value).abs() < 0.001;
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var c = 0; c < digits; c++)
+              _DigitColumn(position: _columnPosition(v, digits - 1 - c, settled: settled), style: style, cell: cell),
+          ],
+        );
+      },
     );
   }
 }

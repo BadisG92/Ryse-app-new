@@ -56,7 +56,7 @@ class StartSessionSheet {
                     child: Row(
                       children: [
                         redo[i].isFromAI
-                            ? RyzeMark(size: context.vw(3.6))
+                            ? RyzeMark(size: context.vw(4.4))
                             : Icon(LucideIcons.bookmark, size: context.vw(3.6), color: RyzeColors.ink),
                         SizedBox(width: context.vw(1.5)),
                         Text(redo[i].name, style: RyzeText.body(context, 3.4, weight: FontWeight.w600)),
@@ -74,7 +74,7 @@ class StartSessionSheet {
               // savoir faire. Composer sa séance soi-même vient après.
               RyzeSheetRow(
                 first: true,
-                leading: RyzeMark(size: context.vw(4.6)),
+                leading: RyzeMark(size: context.vw(5.8)),
                 label: 'sport_coach_ryze'.tr(lang),
                 hint: 'sport_coach_ryze_hint'.tr(lang),
                 onTap: () => Navigator.pop(sheet, const StartChoice(StartKind.coach)),

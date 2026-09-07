@@ -448,7 +448,7 @@ class _EmptyCard extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  RyzeMark(size: context.vw(3.6)),
+                  RyzeMark(size: context.vw(4.4)),
                   SizedBox(width: context.vw(1.5)),
                   Text('sport_plan_week'.tr(lang), style: RyzeText.body(context, 3.4, weight: FontWeight.w600)),
                 ],

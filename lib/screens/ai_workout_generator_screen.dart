@@ -422,7 +422,7 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> {
                     : Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          RyzeMark(size: context.vw(4.1), color: _canGenerate ? RyzeColors.surf : RyzeColors.mute),
+                          RyzeMark(size: context.vw(5), color: _canGenerate ? RyzeColors.surf : RyzeColors.mute),
                           SizedBox(width: context.vw(2.1)),
                           Text(
                             'ai_workout_generate'.tr(lang),
@@ -501,7 +501,7 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> {
                             width: context.vw(7.7),
                             height: context.vw(7.7),
                             decoration: const BoxDecoration(color: RyzeColors.acc, shape: BoxShape.circle),
-                            child: Center(child: RyzeMark(size: context.vw(3.6), color: RyzeColors.accInk)),
+                            child: Center(child: RyzeMark(size: context.vw(4.4), color: RyzeColors.accInk)),
                           ),
                           SizedBox(width: context.vw(2.6)),
                           Text('ai_workout_suggestions'.tr(lang), style: RyzeText.body(context, 3.4, weight: FontWeight.w600)),

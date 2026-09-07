@@ -199,7 +199,7 @@ class ProgramCard extends StatelessWidget {
                 border: Border.all(color: program.isCustom ? RyzeColors.ink : RyzeColors.line),
               ),
               child: program.isFromAI
-                  ? Center(child: RyzeMark(size: context.vw(5.1), color: program.isCustom ? RyzeColors.surf : RyzeColors.ink))
+                  ? Center(child: RyzeMark(size: context.vw(6.2), color: program.isCustom ? RyzeColors.surf : RyzeColors.ink))
                   : Icon(LucideIcons.dumbbell, size: context.vw(5.1), color: program.isCustom ? RyzeColors.surf : RyzeColors.ink),
             ),
             SizedBox(width: context.vw(3.6)),
