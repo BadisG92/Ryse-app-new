@@ -8,7 +8,7 @@ import '../../services/weekly_planner_service.dart';
 import '../../services/localization_service.dart';
 import '../../services/translations.dart';
 import '../../services/meal_planner_sync_service.dart';
-import '../../screens/workout_session_screen.dart';
+import '../../sport/session/session_screen.dart';
 import '../../screens/cardio_tracking_screen.dart';
 import '../../screens/hiit_session_screen.dart';
 import '../../models/hiit_models.dart';

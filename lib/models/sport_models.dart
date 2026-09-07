@@ -71,19 +71,18 @@ class ExerciseSet {
   /// Le poids peut être 0 pour les exercices au poids du corps
   bool get isValid => reps > 0;
 
+  /// Un `copyWith` qui remettait `isCompleted` à faux à chaque appel : la
+  /// série ne pouvait jamais rester validée. Seul l'ancien écran de séance
+  /// comptait sur cet effacement.
   ExerciseSet copyWith({
     int? reps,
     double? weight,
     bool? isCompleted,
   }) {
-    // ⚡ DÉSACTIVATION de l'auto-validation verte
-    // Les séries ne deviennent JAMAIS vertes automatiquement
-    final newReps = reps ?? this.reps;
-
     return ExerciseSet(
-      reps: newReps,
+      reps: reps ?? this.reps,
       weight: weight ?? this.weight,
-      isCompleted: isCompleted ?? false, // ⚡ Toujours false par défaut
+      isCompleted: isCompleted ?? this.isCompleted,
     );
   }
 

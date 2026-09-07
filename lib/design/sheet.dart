@@ -22,6 +22,10 @@ Future<T?> showRyzeSheet<T>(
 
   /// False for a sheet the user must answer.
   bool dismissible = true,
+
+  /// True for a sheet that holds a text field: it rises above the keyboard
+  /// instead of being covered by it.
+  bool keyboard = false,
 }) {
   RyzeFeedback.confirm();
   return showModalBottomSheet<T>(
@@ -31,7 +35,11 @@ Future<T?> showRyzeSheet<T>(
     enableDrag: dismissible,
     backgroundColor: Colors.transparent,
     barrierColor: RyzeColors.ink.withValues(alpha: 0.34),
-    builder: (context) => _RyzeSheet(title: title, subtitle: subtitle, actions: actions, child: builder(context)),
+    builder: (context) {
+      final sheet = _RyzeSheet(title: title, subtitle: subtitle, actions: actions, child: builder(context));
+      if (!keyboard) return sheet;
+      return Padding(padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom), child: sheet);
+    },
   );
 }
 
@@ -111,7 +119,7 @@ class _RyzeSheet extends StatelessWidget {
 /// A row of a sheet: a glyph in a paper circle, a label, a hint under it, and a
 /// chevron. The shape every list in a sheet uses, so they all read as one thing.
 class RyzeSheetRow extends StatelessWidget {
-  const RyzeSheetRow({super.key, required this.icon, required this.label, this.hint, required this.onTap, this.first = false});
+  const RyzeSheetRow({super.key, required this.icon, required this.label, this.hint, required this.onTap, this.first = false, this.danger = false});
 
   final IconData icon;
   final String label;
@@ -120,6 +128,9 @@ class RyzeSheetRow extends StatelessWidget {
 
   /// The first row of a group draws no top edge.
   final bool first;
+
+  /// A row that destroys something: same shape, the danger colour.
+  final bool danger;
 
   @override
   Widget build(BuildContext context) {
@@ -144,7 +155,7 @@ class RyzeSheetRow extends StatelessWidget {
                 shape: BoxShape.circle,
                 border: Border.all(color: RyzeColors.line),
               ),
-              child: Icon(icon, size: context.vw(4.6), color: RyzeColors.ink),
+              child: Icon(icon, size: context.vw(4.6), color: danger ? RyzeColors.danger : RyzeColors.ink),
             ),
             SizedBox(width: context.vw(3.1)),
             Expanded(
@@ -152,7 +163,7 @@ class RyzeSheetRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(label, style: RyzeText.body(context, 3.9, weight: FontWeight.w600)),
+                  Text(label, style: RyzeText.body(context, 3.9, weight: FontWeight.w600, color: danger ? RyzeColors.danger : RyzeColors.ink)),
                   if (hint != null)
                     Text(hint!, maxLines: 1, overflow: TextOverflow.ellipsis, style: RyzeText.body(context, 3.1, color: RyzeColors.mute)),
                 ],

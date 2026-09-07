@@ -8,7 +8,6 @@ import '../config/supabase_config.dart';
 import 'database_service.dart' as db;
 import 'localization_service.dart';
 import 'ryze_connectivity.dart';
-import 'workout_session_store.dart';
 
 /// Le catalogue d'exercices et de programmes, disponible sans réseau.
 ///
@@ -304,53 +303,4 @@ class OfflineWorkoutService {
     await prefs.remove(_templatesCacheKey);
     await prefs.remove(_cacheTimestampKey);
   }
-
-  // ------------------------------------------------------------------------
-  // Ce qui suit ne sert qu'à l'ancien écran de séance, le temps qu'il soit
-  // remplacé. À supprimer avec lui.
-  // ------------------------------------------------------------------------
-
-  StreamController<OfflineStatus>? _legacyStatus;
-
-  @Deprecated('Remplacé par RyzeConnectivity.instance.online ; disparaît avec l\'ancien écran de séance')
-  Stream<OfflineStatus> get statusStream {
-    _legacyStatus ??= StreamController<OfflineStatus>.broadcast(
-      onListen: () {
-        void push() => _legacyStatus?.add(OfflineStatus(isOnline: isOnline));
-        RyzeConnectivity.instance.online.addListener(push);
-        push();
-      },
-    );
-    return _legacyStatus!.stream;
-  }
-
-  @Deprecated('Remplacé par WorkoutSessionStore.finish ; disparaît avec l\'ancien écran de séance')
-  Future<void> saveSessionForSync(
-    WorkoutSession session, {
-    String? guidedTemplateId,
-    String sessionSource = 'manual',
-    String? intensity,
-    int? durationMinutes,
-    int? caloriesBurned,
-  }) async {
-    await WorkoutSessionStore.instance.enqueue(PendingWorkout(
-      id: DateTime.now().microsecondsSinceEpoch.toString(),
-      historySessionId: session.id.length == 36 ? session.id : DateTime.now().microsecondsSinceEpoch.toString(),
-      session: session,
-      sessionSource: sessionSource,
-      guidedTemplateId: guidedTemplateId,
-      plannedWorkoutId: null,
-      intensity: intensity ?? 'Modéré',
-      durationMinutes: durationMinutes ?? 0,
-      caloriesBurned: caloriesBurned ?? 0,
-      createdAt: DateTime.now(),
-    ));
-  }
-}
-
-/// Ne sert qu'à l'ancien écran de séance. Disparaît avec lui.
-class OfflineStatus {
-  const OfflineStatus({required this.isOnline});
-
-  final bool isOnline;
 }

@@ -7,7 +7,7 @@ import 'ui/workout_widgets.dart';
 import 'ui/exercise_sets_widget.dart';
 import '../models/sport_models.dart';
 import '../bottom_sheets/program_selection_bottom_sheet.dart';
-import '../screens/workout_session_screen.dart';
+import '../sport/session/session_screen.dart';
 import '../screens/ai_workout_generator_screen.dart';
 import '../services/workout_service.dart';
 import '../services/translations.dart';

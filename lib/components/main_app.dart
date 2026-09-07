@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../design/nav_bar.dart';
 import '../home/home_page.dart';
 import '../services/localization_service.dart';
 import '../nutrition/nutrition_page.dart';
@@ -9,6 +8,12 @@ import 'global_progress_hybrid.dart';
 import '../screens/coach_chat_screen.dart';
 import '../services/coach_chat_service.dart';
 import '../services/weekly_bilan_service.dart';
+import '../design/design.dart';
+import '../services/ryze_dates.dart';
+import '../services/translations.dart';
+import '../services/workout_session_store.dart';
+import '../sport/session/session_models.dart';
+import '../sport/session/session_screen.dart';
 
 class MainApp extends StatefulWidget {
   const MainApp({super.key});
@@ -17,7 +22,7 @@ class MainApp extends StatefulWidget {
   State<MainApp> createState() => _MainAppState();
 }
 
-class _MainAppState extends State<MainApp> {
+class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
   String _activeTab = 'home';
   bool _showBilanBadge = false;
 
@@ -30,7 +35,72 @@ class _MainAppState extends State<MainApp> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _checkBilanAvailability();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _offerResume());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Une séance gardée sur le téléphone repart dès que l'app revient.
+    if (state == AppLifecycleState.resumed) {
+      WorkoutSessionStore.instance.syncPending();
+    }
+  }
+
+  /// Une séance de musculation interrompue (app tuée, téléphone éteint)
+  /// est proposée une fois au lancement. Refuser n'est pas un cul-de-sac :
+  /// la carte « Séance de {jour} en cours » de l'onglet Sport la garde.
+  Future<void> _offerResume() async {
+    final draft = await WorkoutSessionStore.instance.loadDraft();
+    if (draft == null || !mounted) return;
+    final LiveSession live;
+    try {
+      live = LiveSession.fromJson(draft.session);
+    } catch (_) {
+      await WorkoutSessionStore.instance.clearDraft();
+      return;
+    }
+    final lang = LocalizationService.instance.currentLanguageCode;
+    if (!mounted) return;
+    final resume = await showRyzeSheet<bool>(
+      context,
+      title: 'session_resume_title'.tr(lang).replaceAll('{day}', RyzeDates.full(live.startedAt, lang)),
+      subtitle: "${live.name} · ${'session_sets_progress'.tr(lang).replaceAll('{done}', '${live.doneSets}').replaceAll('{total}', '${live.totalSets}')}",
+      builder: (sheet) => RyzeSheetGroup(
+        children: [
+          RyzeSheetRow(
+            first: true,
+            icon: Icons.play_arrow_rounded,
+            label: 'session_resume'.tr(lang),
+            onTap: () => Navigator.pop(sheet, true),
+          ),
+          RyzeSheetRow(
+            icon: Icons.delete_outline_rounded,
+            label: 'session_abandon'.tr(lang),
+            danger: true,
+            onTap: () => Navigator.pop(sheet, false),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || resume == null) return;
+    if (!resume) {
+      await WorkoutSessionStore.instance.clearDraft();
+      return;
+    }
+    if (!mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => WorkoutSessionScreen(sessionName: live.name, exercises: const [], draft: draft),
+      ),
+    );
   }
 
   Future<void> _checkBilanAvailability() async {

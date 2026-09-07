@@ -4,7 +4,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 import '../../models/sport_models.dart';
-import '../../screens/workout_session_screen.dart';
+import '../../sport/session/session_screen.dart';
 import '../../screens/ai_workout_generator_screen.dart';
 import '../../bottom_sheets/program_selection_bottom_sheet.dart';
 import '../../services/workout_service.dart';

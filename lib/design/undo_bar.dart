@@ -40,6 +40,13 @@ class RyzeUndo {
     _insert(context, message: message, action: null, onAction: null, danger: true);
   }
 
+  /// Something happened that has nothing to undo — a session saved, a draft
+  /// kept. Same ink pill, no action. It draws in the root overlay, so it
+  /// survives the screen that showed it being popped.
+  static void note(BuildContext context, {required String message}) {
+    _insert(context, message: message, action: null, onAction: null, danger: false);
+  }
+
   static void dismiss() {
     _timer?.cancel();
     _timer = null;

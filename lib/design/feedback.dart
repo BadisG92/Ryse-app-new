@@ -80,4 +80,13 @@ class RyzeFeedback {
   static Future<void> failure() async {
     await HapticService.instance.heavyImpact();
   }
+
+  /// A timer the user was waiting for has ended — the rest between two sets.
+  /// Two heavy beats, felt through a pocket, never silent.
+  static Future<void> alert() async {
+    _click();
+    await HapticService.instance.heavyImpact();
+    await Future<void>.delayed(const Duration(milliseconds: 140));
+    await HapticService.instance.heavyImpact();
+  }
 }

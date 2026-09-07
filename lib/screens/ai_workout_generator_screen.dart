@@ -14,7 +14,7 @@ import '../services/unit_service.dart';
 import '../models/sport_models.dart';
 import '../components/ui/coach_ryze_avatar.dart';
 import '../bottom_sheets/exercise_info_bottom_sheet.dart';
-import 'workout_session_screen.dart';
+import '../sport/session/session_screen.dart';
 
 class AIWorkoutGeneratorScreen extends StatefulWidget {
   const AIWorkoutGeneratorScreen({Key? key}) : super(key: key);

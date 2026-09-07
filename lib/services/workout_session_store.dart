@@ -161,10 +161,14 @@ class WorkoutSessionStore {
     required int caloriesBurned,
     bool saveAsProgram = false,
     bool isFromAI = false,
+
+    /// L'identifiant de la séance en direct, généré à son départ : il devient
+    /// le `history_session_id`, donc un rejeu ne peut jamais dupliquer.
+    String? historySessionId,
   }) async {
     final pending = PendingWorkout(
       id: const Uuid().v4(),
-      historySessionId: const Uuid().v4(),
+      historySessionId: historySessionId ?? const Uuid().v4(),
       session: session,
       sessionSource: sessionSource,
       guidedTemplateId: guidedTemplateId,

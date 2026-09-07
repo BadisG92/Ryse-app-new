@@ -6,7 +6,7 @@ import '../../models/sport_models.dart';
 import '../../services/weekly_planner_service.dart';
 import '../../services/localization_service.dart';
 import '../../services/translations.dart';
-import '../../screens/workout_session_screen.dart';
+import '../../sport/session/session_screen.dart';
 
 /// Bottom sheet pour afficher le récapitulatif d'un workout planifié
 /// Peut aussi être utilisé en mode preview (sans actions ni handle bar)
