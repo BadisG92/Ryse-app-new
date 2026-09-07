@@ -1,15 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:flutter_svg/flutter_svg.dart';
+import '../design/design.dart';
 import '../services/localization_service.dart';
 import '../services/translations.dart';
 import 'ai_analysis_screen.dart';
 import '../services/gemini_analysis_service_v2.dart';
-import '../models/ai_analysis_models.dart';
-import '../components/ui/coach_ryze_avatar.dart';
 import '../services/paywall_service.dart';
 import '../services/feature_trial_service.dart';
 import '../services/subscription_service.dart';
@@ -58,7 +56,6 @@ class _AIChatInputScreenState extends State<AIChatInputScreen> {
   late stt.SpeechToText _speech;
   bool _isListening = false;
   bool _speechEnabled = false;
-  double _speechConfidence = 0;
 
   // Suggestions supprimées pour simplifier l'interface
 
@@ -122,7 +119,6 @@ class _AIChatInputScreenState extends State<AIChatInputScreen> {
         onResult: (result) {
           setState(() {
             _textController.text = result.recognizedWords;
-            _speechConfidence = result.confidence;
 
             // Si la confiance est élevée et que l'utilisateur a fini de parler
             if (result.finalResult && result.confidence > 0.8) {
@@ -244,354 +240,194 @@ class _AIChatInputScreenState extends State<AIChatInputScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final locService = context.watch<LocalizationService>();
-    final isBottomSheet = Navigator.of(context).canPop();
+    final lang = context.watch<LocalizationService>().currentLanguageCode;
+    final isSheet = Navigator.of(context).canPop();
+    final gutter = context.vw(5.1);
 
     final content = Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: isBottomSheet
-            ? const BorderRadius.only(
-                topLeft: Radius.circular(24),
-                topRight: Radius.circular(24),
-              )
-            : BorderRadius.circular(24),
+        color: RyzeColors.paper,
+        borderRadius: isSheet
+            ? const BorderRadius.vertical(top: Radius.circular(RyzeRadius.lg))
+            : BorderRadius.circular(RyzeRadius.lg),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Handle pour bottom sheet
-          if (isBottomSheet) ...[
-            const SizedBox(height: 12),
+          if (isSheet) ...[
+            SizedBox(height: context.vw(2.6)),
             Center(
               child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE2E8F0),
-                  borderRadius: BorderRadius.circular(2),
-                ),
+                width: 36,
+                height: 5,
+                decoration: BoxDecoration(color: RyzeColors.idle, borderRadius: BorderRadius.circular(RyzeRadius.pill)),
               ),
             ),
           ],
-
-          // Header style bilan nutritionnel
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // Texte à gauche
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'describe_meal'.tr(locService.currentLanguageCode),
-                        style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF0B132B),
-                        ),
+            padding: EdgeInsets.fromLTRB(gutter, context.vw(4.6), gutter, context.vw(1)),
+            child: Text('describe_meal'.tr(lang), style: RyzeText.body(context, 5.1, weight: FontWeight.w600)),
+          ),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: gutter),
+            child: Text('coach_will_analyze'.tr(lang), style: RyzeText.body(context, 3.4, color: RyzeColors.mute)),
+          ),
+          SizedBox(height: context.vw(4.6)),
+
+          // Ce qu'on dit au coach. La dictée est à côté du champ, en encre :
+          // c'est un outil de saisie, pas une fonction à part.
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: gutter),
+            child: Container(
+              decoration: BoxDecoration(
+                color: RyzeColors.surf,
+                borderRadius: BorderRadius.circular(RyzeRadius.md),
+                border: Border.all(color: _isListening ? RyzeColors.ink : RyzeColors.line, width: _isListening ? 1.5 : 1),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _textController,
+                      autofocus: !_isListening,
+                      maxLines: 4,
+                      minLines: 2,
+                      textCapitalization: TextCapitalization.sentences,
+                      style: RyzeText.body(context, 3.9, height: 1.45),
+                      cursorColor: RyzeColors.ink,
+                      onSubmitted: (_) => _analyzeText(),
+                      decoration: InputDecoration(
+                        hintText: 'chat_meal_placeholder'.tr(lang),
+                        hintStyle: RyzeText.body(context, 3.9, color: RyzeColors.mute2),
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.fromLTRB(context.vw(4.1), context.vw(3.6), context.vw(2.1), context.vw(3.6)),
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'coach_will_analyze'.tr(locService.currentLanguageCode),
-                        style: const TextStyle(
-                          fontSize: 16,
-                          color: Color(0xFF64748B),
-                          height: 1.3,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: 16),
-                // Avatar Coach Ryze Chat (sans pomme) à droite - taille xxxlarge
-                const CoachRyzeAvatar(
-                  type: CoachRyzeAvatarType.nutritionChat,
-                  size: CoachRyzeAvatarSize.xxxlarge, // 180px - Comme bilan nutritionnel
-                  withShadow: false,
-                ),
-              ],
+                  if (_speechEnabled)
+                    Padding(
+                      padding: EdgeInsets.only(right: context.vw(2.6), bottom: context.vw(2.6)),
+                      child: Pressable(
+                        onTap: _isAnalyzing ? null : _toggleListening,
+                        child: AnimatedContainer(
+                          duration: RyzeDurations.tap,
+                          curve: RyzeCurves.out,
+                          width: context.vw(10.8),
+                          height: context.vw(10.8),
+                          decoration: BoxDecoration(
+                            color: _isListening ? RyzeColors.ink : RyzeColors.paper,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: _isListening ? RyzeColors.ink : RyzeColors.line),
+                          ),
+                          child: Icon(
+                            _isListening ? LucideIcons.audioLines : LucideIcons.mic,
+                            size: context.vw(4.6),
+                            color: _isListening ? RyzeColors.surf : RyzeColors.mute,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
 
-          // Zone de texte
+          if (_isListening)
+            Padding(
+              padding: EdgeInsets.fromLTRB(gutter, context.vw(2.1), gutter, 0),
+              child: Text(
+                'chat_listening'.tr(lang),
+                style: RyzeText.body(context, 3.1, weight: FontWeight.w600, color: RyzeColors.accInk),
+              ),
+            ),
+
+          if (_errorMessage != null)
+            Padding(
+              padding: EdgeInsets.fromLTRB(gutter, context.vw(2.6), gutter, 0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(LucideIcons.info, size: context.vw(3.6), color: RyzeColors.danger),
+                  SizedBox(width: context.vw(2.1)),
+                  Expanded(
+                    child: Text(_errorMessage!, style: RyzeText.body(context, 3.2, color: RyzeColors.danger)),
+                  ),
+                ],
+              ),
+            ),
+
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            padding: EdgeInsets.fromLTRB(gutter, context.vw(4.6), gutter, MediaQuery.of(context).viewInsets.bottom + context.vw(4.6)),
+            child: Row(
               children: [
-                Stack(
-                  children: [
-                    Container(
+                Expanded(
+                  child: Pressable(
+                    onTap: _isAnalyzing ? null : () => Navigator.pop(context),
+                    child: Container(
+                      height: context.vw(13.3),
+                      alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: _errorMessage != null
-                              ? Colors.red.shade300
-                              : _isListening
-                                  ? const Color(0xFF0B132B)
-                                  : const Color(0xFFE2E8F0),
-                          width: _isListening ? 2 : 1,
-                        ),
+                        color: RyzeColors.surf,
+                        borderRadius: BorderRadius.circular(RyzeRadius.sm),
+                        border: Border.all(color: RyzeColors.line),
                       ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: _textController,
-                              maxLines: 3,
-                              maxLength: 500,
-                              enabled: !_isAnalyzing && !_isListening,
-                              decoration: InputDecoration(
-                                hintText: _isListening
-                                    ? (locService.currentLanguageCode == 'fr'
-                                        ? 'Parlez maintenant...'
-                                        : 'Speak now...')
-                                    : 'ai_chat_hint'.tr(locService.currentLanguageCode),
-                                hintStyle: TextStyle(
-                                  color: _isListening
-                                      ? const Color(0xFF0B132B)
-                                      : const Color(0xFF94A3B8),
-                                  fontSize: 14,
-                                  fontWeight: _isListening ? FontWeight.w500 : FontWeight.normal,
-                                ),
-                                border: InputBorder.none,
-                                contentPadding: const EdgeInsets.all(16),
-                                counterText: '',
-                              ),
-                              style: const TextStyle(
-                                fontSize: 14,
-                                color: Color(0xFF1A1A1A),
-                              ),
-                              textInputAction: TextInputAction.done,
-                              onSubmitted: (_) => _analyzeText(),
-                            ),
-                          ),
-                          // Bouton microphone
-                          Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: Material(
-                              color: Colors.transparent,
-                              borderRadius: BorderRadius.circular(12),
-                              child: InkWell(
-                                onTap: _isAnalyzing ? null : _toggleListening,
-                                borderRadius: BorderRadius.circular(12),
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 200),
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    gradient: _isListening
-                                        ? const LinearGradient(
-                                            colors: [
-                                              Color(0xFF10B981), // Vert emerald-500
-                                              Color(0xFF059669), // Vert emerald-600
-                                            ],
-                                            begin: Alignment.topLeft,
-                                            end: Alignment.bottomRight,
-                                          )
-                                        : null,
-                                    color: _isListening ? null : Colors.transparent,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Icon(
-                                    LucideIcons.mic,
-                                    color: _isListening
-                                        ? Colors.white
-                                        : (_speechEnabled
-                                            ? const Color(0xFF0B132B)
-                                            : const Color(0xFF94A3B8)),
-                                    size: 20,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    // Indicateur d'écoute animé
-                    if (_isListening)
-                      Positioned(
-                        bottom: 4,
-                        left: 16,
-                        right: 16,
-                        child: Container(
-                          height: 2,
-                          child: LinearProgressIndicator(
-                            backgroundColor: Colors.transparent,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              const Color(0xFF0B132B).withOpacity(0.3),
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-
-                // Compteur de caractères
-                Padding(
-                  padding: const EdgeInsets.only(top: 8, right: 4),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      ValueListenableBuilder<TextEditingValue>(
-                        valueListenable: _textController,
-                        builder: (context, value, child) {
-                          return Text(
-                            '${value.text.length}/500',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: value.text.length > 450
-                                  ? Colors.orange
-                                  : const Color(0xFF94A3B8),
-                            ),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Message d'erreur
-                if (_errorMessage != null)
-                  Container(
-                    margin: const EdgeInsets.only(top: 8),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.red.shade50,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          LucideIcons.info,
-                          size: 16,
-                          color: Colors.red.shade700,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            _errorMessage!,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.red.shade700,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-              ],
-            ),
-          ),
-
-
-          // Boutons d'action
-          Padding(
-            padding: EdgeInsets.only(
-              left: 16,
-              right: 16,
-              bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-            ),
-            child: Row(
-              children: [
-                // Bouton Annuler
-                Expanded(
-                  child: TextButton(
-                    onPressed: _isAnalyzing ? null : () => Navigator.pop(context),
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: Text(
-                      'cancel'.tr(locService.currentLanguageCode),
-                      style: const TextStyle(
-                        color: Color(0xFF64748B),
-                        fontWeight: FontWeight.w600,
-                      ),
+                      child: Text('cancel'.tr(lang), style: RyzeText.body(context, 3.9, weight: FontWeight.w600)),
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
-                // Bouton Analyser
+                SizedBox(width: context.vw(3.1)),
                 Expanded(
                   flex: 2,
-                  child: ElevatedButton(
-                    onPressed: _isAnalyzing ? null : _analyzeText,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0B132B),
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                  child: Pressable(
+                    onTap: _isAnalyzing ? null : _analyzeText,
+                    child: Container(
+                      height: context.vw(13.3),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: RyzeColors.ink,
+                        borderRadius: BorderRadius.circular(RyzeRadius.sm),
+                        boxShadow: RyzeShadow.soft,
                       ),
-                      elevation: _isAnalyzing ? 0 : 4,
-                    ),
-                    child: _isAnalyzing
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      child: _isAnalyzing
+                          ? SizedBox(
+                              width: context.vw(4.6),
+                              height: context.vw(4.6),
+                              child: const CircularProgressIndicator(strokeWidth: 2, color: RyzeColors.surf),
+                            )
+                          : Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SvgPicture.asset(
+                                  'assets/images/logo_solo.svg',
+                                  width: context.vw(4.6),
+                                  height: context.vw(4.6),
+                                  colorFilter: const ColorFilter.mode(RyzeColors.surf, BlendMode.srcIn),
+                                ),
+                                SizedBox(width: context.vw(2.6)),
+                                Text(
+                                  'analyze_meal'.tr(lang),
+                                  style: RyzeText.body(context, 3.9, weight: FontWeight.w600, color: RyzeColors.surf),
+                                ),
+                              ],
                             ),
-                          )
-                        : Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              SvgPicture.asset(
-                                'assets/images/logo_solo.svg',
-                                width: 20,
-                                height: 20,
-                                colorFilter: const ColorFilter.mode(
-                                  Colors.white,
-                                  BlendMode.srcIn,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Text(
-                                'analyze_meal'.tr(locService.currentLanguageCode),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 15,
-                                ),
-                              ),
-                            ],
-                          ),
+                    ),
                   ),
                 ),
               ],
             ),
           ),
 
-          // Padding bottom pour les appareils sans bottom bar
-          if (!isBottomSheet)
-            SizedBox(height: MediaQuery.of(context).padding.bottom),
+          if (!isSheet) SizedBox(height: MediaQuery.of(context).padding.bottom),
         ],
       ),
     );
 
-    if (isBottomSheet) {
-      return content;
-    } else {
-      return Scaffold(
-        backgroundColor: const Color(0xFFF8FAFC),
-        appBar: AppBar(
-          title: Text('ai_chat_title'.tr(locService.currentLanguageCode)),
-          backgroundColor: const Color(0xFF0B132B),
-          foregroundColor: Colors.white,
-        ),
-        body: SingleChildScrollView(
-          child: content,
-        ),
-      );
-    }
+    if (isSheet) return content;
+    return Scaffold(
+      backgroundColor: RyzeColors.paper,
+      body: SafeArea(child: SingleChildScrollView(child: content)),
+    );
   }
 }

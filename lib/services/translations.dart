@@ -10207,6 +10207,16 @@ class AppTranslations {
       'en': 'Enter the code by hand',
       'de': 'Code von Hand eingeben',
     },
+    'chat_meal_placeholder': {
+      'fr': 'Un bol de riz, deux œufs et une salade',
+      'en': 'A bowl of rice, two eggs and a salad',
+      'de': 'Eine Schale Reis, zwei Eier und ein Salat',
+    },
+    'chat_listening': {
+      'fr': 'Ryze écoute',
+      'en': 'Ryze is listening',
+      'de': 'Ryze hört zu',
+    },
     'ai_reading_plate': {
       'fr': 'Ryze regarde ton assiette',
       'en': 'Ryze is looking at your plate',
