@@ -1,14 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../services/localized_exercise_service.dart';
+
+import '../design/design.dart';
 import '../services/localization_service.dart';
+import '../services/localized_exercise_service.dart';
 import '../services/translations.dart';
 
-/// Bottom sheet affichant les informations détaillées d'un exercice
-/// (description, instructions étape par étape, lien tutoriel)
+/// « Comment faire » un exercice : la description, les étapes, la vidéo.
+///
+/// Même contrat qu'avant (`show(context, exerciseId:, exerciseName:)` et le
+/// cache mémoire par exercice) sur une `showRyzeSheet`. Les étapes arrivent
+/// de Supabase séparées par des barres verticales ; on les numérote, ce qui
+/// est la seule chose que l'utilisateur regarde entre deux séries.
 class ExerciseInfoBottomSheet {
-  // Cache en mémoire pour les infos enrichies (persiste pendant la session)
+  ExerciseInfoBottomSheet._();
+
   static final Map<String, Map<String, dynamic>> _cache = {};
 
   static void show(
@@ -16,466 +23,218 @@ class ExerciseInfoBottomSheet {
     required String exerciseId,
     required String exerciseName,
   }) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => _ExerciseInfoContent(
+    final lang = LocalizationService.instance.currentLanguageCode;
+    showRyzeSheet<void>(
+      context,
+      title: exerciseName,
+      subtitle: 'exercise_how_to_perform'.tr(lang),
+      builder: (_) => _Content(
         exerciseId: exerciseId,
-        exerciseName: exerciseName,
-        cachedData: _cache[exerciseId],
-        onDataLoaded: (data) => _cache[exerciseId] = data,
+        cached: _cache[exerciseId],
+        onLoaded: (data) => _cache[exerciseId] = data,
       ),
     );
   }
 
-  /// Vide le cache (à appeler lors du changement de langue)
-  static void clearCache() {
-    _cache.clear();
-  }
+  /// Vide le cache (au changement de langue).
+  static void clearCache() => _cache.clear();
 }
 
-class _ExerciseInfoContent extends StatefulWidget {
-  final String exerciseId;
-  final String exerciseName;
-  final Map<String, dynamic>? cachedData;
-  final void Function(Map<String, dynamic>)? onDataLoaded;
+class _Content extends StatefulWidget {
+  const _Content({required this.exerciseId, required this.cached, required this.onLoaded});
 
-  const _ExerciseInfoContent({
-    required this.exerciseId,
-    required this.exerciseName,
-    this.cachedData,
-    this.onDataLoaded,
-  });
+  final String exerciseId;
+  final Map<String, dynamic>? cached;
+  final ValueChanged<Map<String, dynamic>> onLoaded;
 
   @override
-  State<_ExerciseInfoContent> createState() => _ExerciseInfoContentState();
+  State<_Content> createState() => _ContentState();
 }
 
-class _ExerciseInfoContentState extends State<_ExerciseInfoContent> {
-  Map<String, dynamic>? _exerciseData;
-  bool _isLoading = true;
-  String? _error;
+class _ContentState extends State<_Content> {
+  Map<String, dynamic>? _data;
+  bool _loading = true;
+  bool _failed = false;
 
   @override
   void initState() {
     super.initState();
-    _loadExerciseInfo();
+    _load();
   }
 
-  Future<void> _loadExerciseInfo() async {
-    // Utiliser le cache si disponible
-    if (widget.cachedData != null) {
-      setState(() {
-        _exerciseData = widget.cachedData;
-        _isLoading = false;
-      });
+  Future<void> _load() async {
+    if (widget.cached != null) {
+      _data = widget.cached;
+      _loading = false;
       return;
     }
-
     try {
-      final data = await LocalizedExerciseService.getExerciseEnrichedDetails(
-        widget.exerciseId,
-      );
-
+      final data = await LocalizedExerciseService.getExerciseEnrichedDetails(widget.exerciseId);
+      if (!mounted) return;
+      if (data != null) widget.onLoaded(data);
+      setState(() {
+        _data = data;
+        _loading = false;
+      });
+    } catch (_) {
       if (mounted) {
         setState(() {
-          _exerciseData = data;
-          _isLoading = false;
-        });
-
-        // Sauvegarder dans le cache
-        if (data != null) {
-          widget.onDataLoaded?.call(data);
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _error = e.toString();
-          _isLoading = false;
+          _failed = true;
+          _loading = false;
         });
       }
     }
   }
 
-  List<String> _parseInstructions(String? instructions) {
-    if (instructions == null || instructions.isEmpty) {
-      return [];
-    }
-    return instructions.split('|').map((s) => s.trim()).toList();
+  static List<String> _steps(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return const [];
+    return raw.split('|').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
   }
 
-  Future<void> _openTutorialLink(String url) async {
-    final uri = Uri.parse(url);
+  Future<void> _openTutorial(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return;
+    RyzeFeedback.tap();
     try {
-      await launchUrl(
-        uri,
-        mode: LaunchMode.externalApplication,
-      );
-    } catch (e) {
-      // Fallback: essayer avec platformDefault
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
       try {
         await launchUrl(uri, mode: LaunchMode.platformDefault);
-      } catch (e2) {
-        debugPrint('Impossible d\'ouvrir le lien: $e2');
+      } catch (_) {
+        if (mounted) RyzeUndo.failed(context, message: 'exercise_error'.tr(LocalizationService.instance.currentLanguageCode));
       }
     }
-  }
-
-  String _translate(String key) {
-    final lang = LocalizationService.instance.currentLanguageCode;
-    return key.tr(lang);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.85,
-      ),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
-        ),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Contenu scrollable
-          Flexible(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    final lang = LocalizationService.instance.currentLanguageCode;
+
+    if (_loading) {
+      return Padding(
+        padding: EdgeInsets.symmetric(vertical: context.vw(10)),
+        child: const Center(child: CircularProgressIndicator(color: RyzeColors.ink, strokeWidth: 2)),
+      );
+    }
+    if (_failed || _data == null) {
+      return Padding(
+        padding: EdgeInsets.symmetric(vertical: context.vw(8)),
+        child: Center(child: Text('exercise_error'.tr(lang), style: RyzeText.body(context, 3.6, color: RyzeColors.mute))),
+      );
+    }
+
+    final d = _data!;
+    final description = d['localized_description'] as String?;
+    final muscleGroup = d['localized_muscle_group'] as String?;
+    final equipment = d['equipment'] as String?;
+    final steps = _steps(d['localized_instructions'] as String?);
+    final url = d['localized_search_url'] as String?;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if ((muscleGroup != null && muscleGroup.isNotEmpty) || (equipment != null && equipment.isNotEmpty)) ...[
+          Wrap(
+            spacing: context.vw(2.1),
+            runSpacing: context.vw(1.5),
+            children: [
+              if (muscleGroup != null && muscleGroup.isNotEmpty) _Tag(text: muscleGroup),
+              if (equipment != null && equipment.isNotEmpty) _Tag(text: equipment),
+            ],
+          ),
+          SizedBox(height: context.vw(3.6)),
+        ],
+        if (description != null && description.trim().isNotEmpty) ...[
+          Text(description, style: RyzeText.body(context, 3.6, color: RyzeColors.mute, height: 1.45)),
+          SizedBox(height: context.vw(4.1)),
+        ],
+        if (steps.isEmpty)
+          Text('exercise_no_instructions'.tr(lang), style: RyzeText.body(context, 3.6, color: RyzeColors.mute))
+        else
+          Container(
+            decoration: BoxDecoration(
+              color: RyzeColors.surf,
+              borderRadius: BorderRadius.circular(RyzeRadius.md),
+              border: Border.all(color: RyzeColors.line),
+            ),
+            child: Column(
+              children: [
+                for (var i = 0; i < steps.length; i++) _Step(number: i + 1, text: steps[i], first: i == 0),
+              ],
+            ),
+          ),
+        if (url != null && url.isNotEmpty) ...[
+          SizedBox(height: context.vw(4.1)),
+          Pressable(
+            onTap: () => _openTutorial(url),
+            child: Container(
+              height: context.vw(13.3),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: RyzeColors.surf,
+                borderRadius: BorderRadius.circular(RyzeRadius.sm),
+                border: Border.all(color: RyzeColors.line),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Handle bar
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE5E5E5),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // Header
-                  Row(
-                    children: [
-                      GestureDetector(
-                        onTap: () => Navigator.pop(context),
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
-                            color: Colors.transparent,
-                          ),
-                          child: const Icon(
-                            LucideIcons.chevronLeft,
-                            size: 20,
-                            color: Color(0xFF0B132B),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Text(
-                          widget.exerciseName,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF1A1A1A),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Contenu principal
-                  if (_isLoading)
-                    _buildLoadingState()
-                  else if (_error != null)
-                    _buildErrorState()
-                  else
-                    _buildContent(),
+                  Icon(LucideIcons.play, size: context.vw(4.1), color: RyzeColors.ink),
+                  SizedBox(width: context.vw(2.1)),
+                  Text('exercise_watch_tutorial'.tr(lang), style: RyzeText.body(context, 3.6, weight: FontWeight.w600)),
                 ],
               ),
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildLoadingState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 40),
-        child: Column(
-          children: [
-            const CircularProgressIndicator(
-              color: Color(0xFF0B132B),
-              strokeWidth: 2,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              _translate('exercise_loading'),
-              style: const TextStyle(
-                fontSize: 14,
-                color: Color(0xFF64748B),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildErrorState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 40),
-        child: Column(
-          children: [
-const Icon(
-              LucideIcons.circleAlert,
-              size: 48,
-              color: Color(0xFFEF4444),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              _translate('exercise_error'),
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF1A1A1A),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildContent() {
-    final description = _exerciseData?['localized_description'] as String?;
-    final instructions = _exerciseData?['localized_instructions'] as String?;
-    final searchUrl = _exerciseData?['localized_search_url'] as String?;
-    final muscleGroup = _exerciseData?['localized_muscle_group'] as String?;
-    final equipment = _exerciseData?['equipment'] as String?;
-
-    final steps = _parseInstructions(instructions);
-    final hasContent = (description != null && description.isNotEmpty && description != 'Non disponible') ||
-        steps.isNotEmpty;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Muscle group et equipment
-        if (muscleGroup != null || equipment != null)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                if (muscleGroup != null && muscleGroup != 'Non disponible')
-                  _buildTag(muscleGroup),
-                if (equipment != null && equipment.isNotEmpty)
-                  _buildTag(equipment),
-              ],
-            ),
-          ),
-
-        // Description
-        if (description != null && description.isNotEmpty && description != 'Non disponible')
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8F9FA),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: const Color(0xFFE5E7EB),
-                width: 1,
-              ),
-            ),
-            child: Text(
-              description,
-              style: const TextStyle(
-                fontSize: 15,
-                height: 1.5,
-                color: Color(0xFF1A1A1A),
-              ),
-            ),
-          ),
-
-        // Instructions
-        if (steps.isNotEmpty) ...[
-          const SizedBox(height: 24),
-          Text(
-            _translate('exercise_how_to_perform'),
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF1A1A1A),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Container(
-            height: 2,
-            width: 60,
-            decoration: BoxDecoration(
-              color: const Color(0xFF0B132B),
-              borderRadius: BorderRadius.circular(1),
-            ),
-          ),
-          const SizedBox(height: 16),
-          ...steps.asMap().entries.map((entry) => _buildStep(entry.key + 1, entry.value)),
-        ],
-
-        // Message si pas de contenu
-        if (!hasContent)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8F9FA),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: const Color(0xFFE5E7EB),
-                width: 1,
-              ),
-            ),
-            child: Column(
-              children: [
-                const Icon(
-                  LucideIcons.info,
-                  size: 32,
-                  color: Color(0xFF64748B),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  _translate('exercise_no_instructions'),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF64748B),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-        // Bouton tutoriel
-        if (searchUrl != null && searchUrl.isNotEmpty) ...[
-          const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: () => _openTutorialLink(searchUrl),
-              icon: const Icon(
-                LucideIcons.externalLink,
-                size: 18,
-                color: Colors.white,
-              ),
-              label: Text(
-                _translate('exercise_watch_tutorial'),
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.white,
-                ),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0B132B),
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ),
-        ],
-
-        // Padding bottom pour le safe area
-        SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
       ],
     );
   }
+}
 
-  Widget _buildTag(String text) {
-    // Design identique aux filter chips sélectionnés de exercise_selector_bottom_sheet.dart
+class _Tag extends StatelessWidget {
+  const _Tag({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 12,
-        vertical: 6,
-      ),
+      padding: EdgeInsets.symmetric(horizontal: context.vw(3.1), vertical: context.vw(1.3)),
       decoration: BoxDecoration(
-        color: const Color(0xFF0B132B),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: const Color(0xFF0B132B),
-          width: 1,
-        ),
+        color: RyzeColors.surf,
+        borderRadius: BorderRadius.circular(RyzeRadius.pill),
+        border: Border.all(color: RyzeColors.line),
       ),
-      child: Text(
-        text,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
+      child: Text(text, style: RyzeText.body(context, 3.1, weight: FontWeight.w600, color: RyzeColors.mute)),
     );
   }
+}
 
-  Widget _buildStep(int number, String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+class _Step extends StatelessWidget {
+  const _Step({required this.number, required this.text, required this.first});
+
+  final int number;
+  final String text;
+  final bool first;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: context.vw(4.1), vertical: context.vw(3.1)),
+      decoration: BoxDecoration(border: first ? null : const Border(top: BorderSide(color: RyzeColors.line))),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              color: const Color(0xFF0B132B),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Center(
-              child: Text(
-                '$number',
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                ),
-              ),
-            ),
+            width: context.vw(6.7),
+            height: context.vw(6.7),
+            alignment: Alignment.center,
+            decoration: const BoxDecoration(color: RyzeColors.ink, shape: BoxShape.circle),
+            child: Text('$number', style: RyzeText.body(context, 2.9, weight: FontWeight.w600, color: RyzeColors.surf)),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Text(
-                text,
-                style: const TextStyle(
-                  fontSize: 15,
-                  height: 1.4,
-                  color: Color(0xFF1A1A1A),
-                ),
-              ),
-            ),
-          ),
+          SizedBox(width: context.vw(3.1)),
+          Expanded(child: Text(text, style: RyzeText.body(context, 3.4, height: 1.4))),
         ],
       ),
     );

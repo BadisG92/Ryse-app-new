@@ -1,114 +1,25 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:provider/provider.dart';
+
+import '../design/design.dart';
 import '../services/exercise_ai_analysis_service.dart';
-import '../services/localization_service.dart';
-import '../services/translations.dart';
-import '../services/paywall_service.dart';
 import '../services/feature_trial_service.dart';
+import '../services/localization_service.dart';
+import '../services/paywall_service.dart';
 import '../services/subscription_service.dart';
+import '../services/translations.dart';
 
-// Export des classes du service pour utilisation dans le widget
-export '../services/exercise_ai_analysis_service.dart' show ExerciseAnalysis, ExerciseRecommendation;
-
-// Badge Premium pour Exercise Analysis
-class _ExerciseAnalysisPremiumBadge extends StatefulWidget {
-  final bool isLocked;
-  final String langCode;
-
-  const _ExerciseAnalysisPremiumBadge({
-    required this.isLocked,
-    required this.langCode,
-  });
-
-  @override
-  State<_ExerciseAnalysisPremiumBadge> createState() => _ExerciseAnalysisPremiumBadgeState();
-}
-
-class _ExerciseAnalysisPremiumBadgeState extends State<_ExerciseAnalysisPremiumBadge> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _pulseAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 1500),
-      vsync: this,
-    );
-
-    _pulseAnimation = Tween<double>(
-      begin: 1.0,
-      end: 1.08,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeInOut,
-    ));
-
-    _controller.repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final badge = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: widget.isLocked
-            ? [const Color(0xFFFFD700), const Color(0xFFFFA500)] // Gold for UPGRADE
-            : [const Color(0xFF0B132B), const Color(0xFF1C2951)], // Blue DA for TRY FREE
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: widget.isLocked
-              ? const Color(0xFFFFD700).withOpacity(0.4)
-              : const Color(0xFF0B132B).withOpacity(0.3),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            widget.isLocked ? LucideIcons.lockOpen : LucideIcons.gift,
-            size: 11,
-            color: Colors.white,
-          ),
-          const SizedBox(width: 5),
-          Text(
-            widget.isLocked
-              ? 'UPGRADE'
-              : (widget.langCode == 'de' ? 'GRATIS TESTEN' : (widget.langCode == 'fr' ? 'ESSAI GRATUIT' : 'TRY FREE')),
-            style: const TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-              letterSpacing: 0.5,
-            ),
-          ),
-        ],
-      ),
-    );
-
-    return ScaleTransition(
-      scale: _pulseAnimation,
-      child: badge,
-    );
-  }
-}
-
+/// L'analyse d'un exercice par Coach Ryze.
+///
+/// Elle vit sous la courbe de la page de progression : la courbe montre ce
+/// qui s'est passé, l'analyse dit quoi en faire. Quatre états — pas assez de
+/// séances, prêt à lancer, en cours, le résultat — et un seul bouton à la
+/// fois. L'ambre est réservé à ce que Ryze rend : le titre, la puce de
+/// chaque recommandation.
+///
+/// Le paywall (`PaywallContext.exerciseAnalysis`) et l'essai gratuit ne
+/// changent pas : l'essai n'est consommé que si l'analyse aboutit.
 class ExerciseAiAnalysisWidget extends StatefulWidget {
   final String exerciseName;
   final String userId;
@@ -126,518 +37,220 @@ class ExerciseAiAnalysisWidget extends StatefulWidget {
 }
 
 class _ExerciseAiAnalysisWidgetState extends State<ExerciseAiAnalysisWidget> {
-  bool _isLoading = false;
-  bool _isExpanded = true;
+  /// En dessous, l'IA n'a rien à lire : trois séances font une tendance.
+  static const int _minSessions = 3;
+
+  bool _loading = false;
   ExerciseAnalysis? _analysis;
-  DateTime? _analysisTimestamp;
+  DateTime? _timestamp;
   bool _hasNewSessions = false;
-  String? _errorMessage;
-  bool? _isLocked;
-  bool _isCheckingLock = true;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
-    _loadCachedAnalysis();
-    _checkLockStatus();
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // Re-check lock status when widget becomes visible again
-    _checkLockStatus();
-  }
-
-  Future<void> _checkLockStatus() async {
-    final locked = await PaywallService.instance.isFeatureLocked(
-      PaywallContext.exerciseAnalysis,
-    );
-    if (mounted) {
-      setState(() {
-        _isLocked = locked;
-        _isCheckingLock = false;
-      });
-    }
+    _loadCached();
   }
 
   @override
   void didUpdateWidget(ExerciseAiAnalysisWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Si le nombre de séances a changé, on revérifie
-    if (oldWidget.sessionHistory.length != widget.sessionHistory.length) {
-      _checkForNewSessions();
+    if (oldWidget.exerciseName != widget.exerciseName || oldWidget.sessionHistory.length != widget.sessionHistory.length) {
+      _loadCached();
     }
   }
 
-  Future<void> _checkForNewSessions() async {
-    final cached = await ExerciseAiAnalysisService.getCachedAnalysis(
-      userId: widget.userId,
-      exerciseName: widget.exerciseName,
-    );
-
-    if (cached != null) {
-      final hasNew = await ExerciseAiAnalysisService.hasNewSessions(
+  Future<void> _loadCached() async {
+    try {
+      final cached = await ExerciseAiAnalysisService.getCachedAnalysis(
         userId: widget.userId,
         exerciseName: widget.exerciseName,
-        currentSessionCount: widget.sessionHistory.length,
       );
-
-      if (mounted) {
+      if (!mounted) return;
+      if (cached != null) {
+        final fresh = await ExerciseAiAnalysisService.hasNewSessions(
+          userId: widget.userId,
+          exerciseName: widget.exerciseName,
+          currentSessionCount: widget.sessionHistory.length,
+        );
+        if (!mounted) return;
         setState(() {
-          _hasNewSessions = hasNew;
+          _analysis = cached.analysis;
+          _timestamp = cached.timestamp;
+          _hasNewSessions = fresh;
+        });
+      } else {
+        setState(() {
+          _analysis = null;
+          _timestamp = null;
+          _hasNewSessions = false;
         });
       }
+    } catch (_) {
+      // Une analyse absente n'est pas une erreur : le bouton reste.
     }
   }
 
-  Future<void> _loadCachedAnalysis() async {
-    final cached = await ExerciseAiAnalysisService.getCachedAnalysis(
-      userId: widget.userId,
-      exerciseName: widget.exerciseName,
-    );
+  Future<void> _generate() async {
+    if (!mounted || _loading) return;
+    final lang = LocalizationService.instance.currentLanguageCode;
 
-    if (cached != null) {
-      setState(() {
-        _analysis = cached.analysis;
-        _analysisTimestamp = cached.timestamp;
-      });
-
-      // Vérifier si de nouvelles séances ont été ajoutées
-      final hasNew = await ExerciseAiAnalysisService.hasNewSessions(
-        userId: widget.userId,
-        exerciseName: widget.exerciseName,
-        currentSessionCount: widget.sessionHistory.length,
-      );
-
-      if (hasNew) {
-        setState(() {
-          _hasNewSessions = true;
-        });
-      }
-    }
-  }
-
-  Future<void> _generateAnalysis() async {
-    if (!mounted) return;
-
-    // Vérifier l'accès (Premium ou 1er essai gratuit)
-    // Ne PAS marquer comme utilisé ici - on le fera seulement si l'analyse réussit
+    // L'essai n'est pas consommé ici : seulement si l'analyse aboutit.
     final canUse = await PaywallService.instance.canUseFeature(
       context: context,
       paywallContext: PaywallContext.exerciseAnalysis,
-      markAsUsed: false, // ← Ne pas marquer maintenant
+      markAsUsed: false,
     );
-
-    if (!canUse) {
-      // Le paywall s'est affiché automatiquement
-      return;
-    }
-
-    final locService = context.read<LocalizationService>();
-    final languageCode = locService.currentLanguageCode;
+    if (!canUse || !mounted) return;
 
     setState(() {
-      _isLoading = true;
-      _errorMessage = null;
+      _loading = true;
+      _error = null;
     });
 
     try {
       final analysis = await ExerciseAiAnalysisService.generateAnalysis(
         exerciseName: widget.exerciseName,
         sessionHistory: widget.sessionHistory,
-        languageCode: languageCode,
+        languageCode: lang,
       );
-
       await ExerciseAiAnalysisService.cacheAnalysis(
         userId: widget.userId,
         exerciseName: widget.exerciseName,
         analysis: analysis,
         sessionCount: widget.sessionHistory.length,
       );
-
-      // ✅ Marquer le trial comme utilisé UNIQUEMENT si l'analyse a été générée avec succès
       if (!SubscriptionService.instance.isPremium) {
-        await FeatureTrialService.instance.markFeatureAsUsed(
-          FeatureTrialService.keyExerciseAnalysis,
-        );
-        debugPrint('✅ Exercise Analysis trial marked as used after successful generation');
+        await FeatureTrialService.instance.markFeatureAsUsed(FeatureTrialService.keyExerciseAnalysis);
       }
-
       if (!mounted) return;
-
+      RyzeFeedback.success();
       setState(() {
         _analysis = analysis;
-        _analysisTimestamp = DateTime.now();
+        _timestamp = DateTime.now();
         _hasNewSessions = false;
-        _isExpanded = true;
       });
     } catch (e) {
-      debugPrint('Error generating analysis: $e');
-
       if (!mounted) return;
-
-      // Gérer différents types d'erreurs avec des messages clairs
-      String errorMsg;
-      final errorString = e.toString().toLowerCase();
-
-      if (errorString.contains('api key') || errorString.contains('quota') || errorString.contains('billing')) {
-        errorMsg = languageCode == 'de'
-            ? 'Der KI-Dienst ist vorübergehend nicht verfügbar. Bitte versuche es in wenigen Augenblicken erneut.'
-            : (languageCode == 'fr'
-            ? 'Le service d\'IA est temporairement indisponible. Veuillez réessayer dans quelques instants.'
-            : 'AI service temporarily unavailable. Please try again in a few moments.');
-      } else if (errorString.contains('sessions are required') || errorString.contains('not enough data')) {
-        errorMsg = languageCode == 'de'
-            ? 'Führe mindestens 3 Einheiten mit dieser Übung durch, um eine personalisierte Analyse zu erhalten.'
-            : (languageCode == 'fr'
-            ? 'Effectuez au moins 3 séances avec cet exercice pour obtenir une analyse personnalisée.'
-            : 'Complete at least 3 sessions with this exercise to get a personalized analysis.');
-      } else if (errorString.contains('network') || errorString.contains('connection') || errorString.contains('timeout')) {
-        errorMsg = languageCode == 'de'
-            ? 'Verbindungsproblem. Überprüfe deine Internetverbindung und versuche es erneut.'
-            : (languageCode == 'fr'
-            ? 'Problème de connexion. Vérifiez votre connexion internet et réessayez.'
-            : 'Connection problem. Check your internet connection and try again.');
-      } else {
-        errorMsg = languageCode == 'de'
-            ? 'Ein Fehler ist aufgetreten. Bitte versuche es in wenigen Augenblicken erneut.'
-            : (languageCode == 'fr'
-            ? 'Une erreur s\'est produite. Réessayez dans quelques instants.'
-            : 'An error occurred. Please try again in a few moments.');
-      }
-
-      setState(() {
-        _errorMessage = errorMsg;
-      });
+      setState(() => _error = _messageFor(e, lang));
     } finally {
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) setState(() => _loading = false);
     }
   }
 
-  String _getTimeAgo(DateTime timestamp, String languageCode) {
-    final diff = DateTime.now().difference(timestamp);
-
-    if (diff.inMinutes < 60) {
-      final minutes = diff.inMinutes;
-      return languageCode == 'de'
-          ? 'Vor ${minutes}min'
-          : (languageCode == 'fr'
-          ? 'Il y a ${minutes}min'
-          : '${minutes}min ago');
-    } else if (diff.inHours < 24) {
-      final hours = diff.inHours;
-      return languageCode == 'de'
-          ? 'Vor ${hours}h'
-          : (languageCode == 'fr'
-          ? 'Il y a ${hours}h'
-          : '${hours}h ago');
-    } else {
-      final days = diff.inDays;
-      return languageCode == 'de'
-          ? 'Vor ${days}T'
-          : (languageCode == 'fr'
-          ? 'Il y a ${days}j'
-          : '${days}d ago');
-    }
+  static String _messageFor(Object e, String lang) {
+    final s = e.toString().toLowerCase();
+    if (s.contains('api key') || s.contains('quota') || s.contains('billing')) return 'ai_analysis_error_service'.tr(lang);
+    if (s.contains('sessions are required') || s.contains('not enough data')) return 'ai_analysis_error_data'.tr(lang);
+    if (s.contains('network') || s.contains('connection') || s.contains('timeout')) return 'ai_analysis_error_network'.tr(lang);
+    return 'ai_analysis_error_generic'.tr(lang);
   }
 
+  static String _ago(DateTime t, String lang) {
+    final d = DateTime.now().difference(t);
+    if (d.inMinutes < 60) return 'ago_minutes'.tr(lang).replaceAll('{n}', '${d.inMinutes}');
+    if (d.inHours < 24) return 'ago_hours'.tr(lang).replaceAll('{n}', '${d.inHours}');
+    return 'ago_days'.tr(lang).replaceAll('{n}', '${d.inDays}');
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<LocalizationService>(
-      builder: (context, locService, _) {
-        final languageCode = locService.currentLanguageCode;
+    final lang = context.watch<LocalizationService>().currentLanguageCode;
+    final enough = widget.sessionHistory.length >= _minSessions;
 
-        // État erreur : Message d'erreur
-        if (_errorMessage != null && !_isLoading) {
-          return _buildErrorState(languageCode);
-        }
-
-        // État 1 : Bouton initial (pas d'analyse en cache)
-        if (_analysis == null && !_isLoading) {
-          return _buildInitialButton(languageCode);
-        }
-
-        // État 2 : Loading
-        if (_isLoading) {
-          return _buildLoadingState(languageCode);
-        }
-
-        // État 3 : Affichage de l'analyse
-        if (_analysis != null) {
-          return _buildAnalysisCard(languageCode);
-        }
-
-        return const SizedBox.shrink();
-      },
-    );
-  }
-
-  Widget _buildInitialButton(String languageCode) {
-    // Si moins de 3 séances, afficher le message informatif
-    final hasMinimumSessions = widget.sessionHistory.length >= 3;
-
-    if (!hasMinimumSessions) {
-      return _buildUnavailableState(languageCode);
-    }
-
-    final isPremium = SubscriptionService.instance.isPremium;
-    final isLocked = _isLocked ?? false;
-
-    // Si 3 séances ou plus, afficher le bouton d'analyse
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        GestureDetector(
-          onTap: _generateAnalysis,
-          child: Container(
-            margin: const EdgeInsets.symmetric(vertical: 8.0),
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-            decoration: BoxDecoration(
-              color: const Color(0xFF0B132B),
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF0B132B).withOpacity(0.1),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
+    return Container(
+      padding: EdgeInsets.all(context.vw(4.1)),
+      decoration: BoxDecoration(
+        color: RyzeColors.surf,
+        borderRadius: BorderRadius.circular(RyzeRadius.md),
+        border: Border.all(color: RyzeColors.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: context.vw(9.7),
+                height: context.vw(9.7),
+                decoration: const BoxDecoration(color: RyzeColors.acc, shape: BoxShape.circle),
+                child: Icon(LucideIcons.sparkles, size: context.vw(4.6), color: RyzeColors.accInk),
+              ),
+              SizedBox(width: context.vw(3.1)),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('ai_performance_analysis'.tr(lang), style: RyzeText.body(context, 3.9, weight: FontWeight.w600)),
+                    if (_timestamp != null && _analysis != null)
+                      Text(_ago(_timestamp!, lang), style: RyzeText.body(context, 2.9, color: RyzeColors.mute)),
+                  ],
                 ),
-              ],
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                SvgPicture.asset(
-                  'assets/images/logo_solo.svg',
-                  width: 20,
-                  height: 20,
-                  colorFilter: const ColorFilter.mode(
-                    Colors.white,
-                    BlendMode.srcIn,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  'analyze_with_ai'.tr(languageCode),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        // Badge Premium/Trial visible uniquement pour les non-Premium
-        if (!isPremium && !_isCheckingLock)
-          Positioned(
-            top: -2,
-            right: 8,
-            child: _ExerciseAnalysisPremiumBadge(
-              isLocked: isLocked,
-              langCode: languageCode,
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildUnavailableState(String languageCode) {
-    final sessionsNeeded = 3 - widget.sessionHistory.length;
-    final isPremium = SubscriptionService.instance.isPremium;
-    final isLocked = _isLocked ?? false;
-
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Container(
-          margin: const EdgeInsets.symmetric(vertical: 8.0),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.03),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
               ),
             ],
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                // Logo Ryze en bleu (sans cercle, même style que le header)
-                SvgPicture.asset(
-                  'assets/images/logo_solo.svg',
-                  width: 20,
-                  height: 20,
-                  colorFilter: const ColorFilter.mode(
-                    Color(0xFF0B132B),
-                    BlendMode.srcIn,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                // Texte
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'ai_performance_analysis'.tr(languageCode),
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF1A1A1A),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'ai_analysis_unavailable'.tr(languageCode),
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: Color(0xFF64748B),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        languageCode == 'de'
-                            ? 'Noch ${sessionsNeeded} Einheit${sessionsNeeded > 1 ? 'en' : ''} erforderlich'
-                            : (languageCode == 'fr'
-                            ? 'Encore ${sessionsNeeded} séance${sessionsNeeded > 1 ? 's' : ''} à faire'
-                            : '${sessionsNeeded} more session${sessionsNeeded > 1 ? 's' : ''} to go'),
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF94A3B8),
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+          SizedBox(height: context.vw(3.6)),
+          if (!enough)
+            Text(
+              'ai_analysis_needs_more'.tr(lang).replaceAll('{n}', '${_minSessions - widget.sessionHistory.length}'),
+              style: RyzeText.body(context, 3.4, color: RyzeColors.mute, height: 1.4),
+            )
+          else if (_loading)
+            _Busy(label: 'analysis_in_progress'.tr(lang))
+          else ...[
+            if (_error != null) ...[
+              Text(_error!, style: RyzeText.body(context, 3.4, color: RyzeColors.danger, height: 1.4)),
+              SizedBox(height: context.vw(3.1)),
+              _Button(label: 'ai_analysis_retry'.tr(lang), onTap: _generate),
+            ] else if (_analysis == null)
+              _Button(label: 'analyze_with_ai'.tr(lang), icon: LucideIcons.sparkles, onTap: _generate)
+            else ...[
+              Text(_analysis!.analysis, style: RyzeText.body(context, 3.4, height: 1.5)),
+              if (_analysis!.recommendations.isNotEmpty) ...[
+                SizedBox(height: context.vw(4.1)),
+                Text('ai_analysis_recommendations'.tr(lang), style: RyzeText.body(context, 3.1, weight: FontWeight.w600, color: RyzeColors.mute)),
+                SizedBox(height: context.vw(2.1)),
+                for (final r in _analysis!.recommendations) _Reco(reco: r),
               ],
-            ),
-          ),
-        ),
-        // Badge Premium/Trial visible uniquement pour les non-Premium
-        if (!isPremium && !_isCheckingLock)
-          Positioned(
-            top: -2,
-            right: 8,
-            child: _ExerciseAnalysisPremiumBadge(
-              isLocked: isLocked,
-              langCode: languageCode,
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildErrorState(String languageCode) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8.0),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.red.shade50,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.red.shade200, width: 1),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.error_outline, color: Colors.red.shade700, size: 20),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              _errorMessage!,
-              style: TextStyle(
-                color: Colors.red.shade900,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.close, size: 18),
-            color: Colors.red.shade700,
-            onPressed: () {
-              setState(() {
-                _errorMessage = null;
-              });
-            },
-          ),
+              if (_hasNewSessions) ...[
+                SizedBox(height: context.vw(3.6)),
+                Text('ai_analysis_new_sessions'.tr(lang), style: RyzeText.body(context, 3.1, color: RyzeColors.accInk)),
+              ],
+              SizedBox(height: context.vw(3.1)),
+              _Button(label: 'ai_analysis_again'.tr(lang), ghost: true, onTap: _generate),
+            ],
+          ],
         ],
       ),
     );
   }
+}
 
-  Widget _buildLoadingState(String languageCode) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8.0),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF0B132B).withOpacity(0.25),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+class _Reco extends StatelessWidget {
+  const _Reco({required this.reco});
+
+  final ExerciseRecommendation reco;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: context.vw(2.6)),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Logo animé
           Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(
-                strokeWidth: 2.5,
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-              ),
-            ),
+            width: 8,
+            height: 8,
+            margin: EdgeInsets.only(top: context.vw(1.5), right: context.vw(2.6)),
+            decoration: const BoxDecoration(color: RyzeColors.acc, shape: BoxShape.circle),
           ),
-          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'analysis_in_progress'.tr(languageCode),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  languageCode == 'de'
-                      ? 'Coach Ryze analysiert deine Leistung...'
-                      : (languageCode == 'fr'
-                      ? 'Le Coach Ryze analyse vos performances...'
-                      : 'Coach Ryze is analyzing your performance...'),
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.7),
-                    fontSize: 12,
-                  ),
-                ),
+                Text(reco.title, style: RyzeText.body(context, 3.4, weight: FontWeight.w600)),
+                if (reco.description.trim().isNotEmpty)
+                  Text(reco.description, style: RyzeText.body(context, 3.1, color: RyzeColors.mute, height: 1.4)),
               ],
             ),
           ),
@@ -645,239 +258,66 @@ class _ExerciseAiAnalysisWidgetState extends State<ExerciseAiAnalysisWidget> {
       ),
     );
   }
+}
 
-  Widget _buildAnalysisCard(String languageCode) {
-    final isGerman = languageCode == 'de';
-    final isFrench = languageCode == 'fr';
+class _Busy extends StatelessWidget {
+  const _Busy({required this.label});
 
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8.0),
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF0B132B), // Bleu foncé Ryze
-            Color(0xFF1E293B), // Slate foncé
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        SizedBox(
+          width: context.vw(4.6),
+          height: context.vw(4.6),
+          child: const CircularProgressIndicator(color: RyzeColors.accInk, strokeWidth: 2),
+        ),
+        SizedBox(width: context.vw(3.1)),
+        Text(label, style: RyzeText.body(context, 3.4, color: RyzeColors.mute)),
+      ],
+    );
+  }
+}
+
+class _Button extends StatelessWidget {
+  const _Button({required this.label, required this.onTap, this.icon, this.ghost = false});
+
+  final String label;
+  final VoidCallback onTap;
+  final IconData? icon;
+  final bool ghost;
+
+  @override
+  Widget build(BuildContext context) {
+    return Pressable(
+      onTap: onTap,
+      child: Container(
+        height: context.vw(12.3),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: ghost ? Colors.transparent : RyzeColors.ink,
+          borderRadius: BorderRadius.circular(RyzeRadius.sm),
+          border: ghost ? Border.all(color: RyzeColors.idle) : null,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (icon != null) ...[
+              Icon(icon, size: context.vw(4.1), color: ghost ? RyzeColors.ink : RyzeColors.surf),
+              SizedBox(width: context.vw(2.1)),
+            ],
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: RyzeText.body(context, 3.6, weight: FontWeight.w600, color: ghost ? RyzeColors.ink : RyzeColors.surf),
+              ),
+            ),
           ],
         ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF0B132B).withOpacity(0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Titre principal avec logo : "Coach Ryze"
-          Row(
-            children: [
-              SizedBox(
-                width: 28,
-                height: 28,
-                child: SvgPicture.asset(
-                  'assets/images/logo_solo.svg',
-                  colorFilter: const ColorFilter.mode(
-                    Colors.white,
-                    BlendMode.srcIn,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'Coach Ryze',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-              // Bouton refresh
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: IconButton(
-                  icon: const Icon(Icons.refresh_rounded, size: 18),
-                  color: Colors.white,
-                  onPressed: _generateAnalysis,
-                  padding: const EdgeInsets.all(6),
-                  constraints: const BoxConstraints(),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 20),
-
-          // Séparateur blanc (symétrique)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 40),
-            child: Container(
-              height: 1,
-              color: Colors.white.withOpacity(0.3),
-            ),
-          ),
-
-          const SizedBox(height: 20),
-
-          // Titre "Analyse" en blanc dans le gradient
-          Row(
-            children: [
-              Icon(
-                Icons.insights_rounded,
-                size: 22,
-                color: Colors.white,
-              ),
-              const SizedBox(width: 10),
-              Text(
-                isGerman ? 'Analyse' : (isFrench ? 'Analyse' : 'Analysis'),
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 12),
-
-          // Bloc blanc d'analyse (sans titre dedans)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              _analysis!.analysis,
-              style: TextStyle(
-                fontSize: 15,
-                height: 1.6,
-                color: const Color(0xFF334155),
-                fontWeight: FontWeight.w400,
-              ),
-            ),
-          ),
-
-          if (_analysis!.recommendations.isNotEmpty) ...[
-            const SizedBox(height: 20),
-
-            // Séparateur blanc (symétrique)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 40),
-              child: Container(
-                height: 1,
-                color: Colors.white.withOpacity(0.3),
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            // Titre "Recommandations" en blanc dans le gradient
-            Row(
-              children: [
-                Icon(
-                  Icons.lightbulb_outline_rounded,
-                  size: 22,
-                  color: Colors.white,
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  isGerman ? 'Empfehlungen' : (isFrench ? 'Recommandations' : 'Recommendations'),
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 12),
-
-            // Cards de recommandations individuelles
-            ..._analysis!.recommendations.asMap().entries.map((entry) {
-              final recommendation = entry.value;
-
-              return Padding(
-                padding: EdgeInsets.only(bottom: 12),
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        recommendation.title,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFF0B132B),
-                        ),
-                      ),
-                      if (recommendation.description.isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        Text(
-                          recommendation.description,
-                          style: TextStyle(
-                            fontSize: 14,
-                            height: 1.5,
-                            color: const Color(0xFF64748B),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              );
-            }).toList(),
-          ],
-
-          // Timestamp stylé
-          if (_analysisTimestamp != null) ...[
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.schedule_rounded,
-                    size: 12,
-                    color: Colors.white.withOpacity(0.7),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    _getTimeAgo(_analysisTimestamp!, languageCode),
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.white.withOpacity(0.7),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ],
       ),
     );
   }

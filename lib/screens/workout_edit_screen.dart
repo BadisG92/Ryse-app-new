@@ -1,19 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import '../models/sport_models.dart';
-import '../services/translations.dart';
-import '../services/localization_service.dart';
-import '../services/sport_dashboard_service.dart';
-import '../services/dashboard_service.dart';
-import '../services/global_state_manager.dart';
-import '../services/calorie_burn_service.dart';
-import '../services/auth_service.dart';
-import '../services/unit_service.dart';
-import '../widgets/exercise/exercise_selector_bottom_sheet.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-/// Screen dédié à l'édition d'une séance de musculation existante
+import '../components/ui/numeric_text_field.dart';
+import '../design/design.dart';
+import '../models/sport_models.dart';
+import '../services/auth_service.dart';
+import '../services/calorie_burn_service.dart';
+import '../services/dashboard_service.dart';
+import '../services/global_state_manager.dart';
+import '../services/localization_service.dart';
+import '../services/sport_dashboard_service.dart';
+import '../services/translations.dart';
+import '../services/unit_service.dart';
+import '../sport/session/sheets/exercise_picker_sheet.dart';
+
+/// Corriger une séance déjà enregistrée.
+///
+/// On n'est plus en salle : le clavier a sa place ici, et chaque cellule est
+/// un champ. Ce qui change par rapport à l'ancien écran, c'est le reste — la
+/// même carte d'exercice que la séance en direct, la même feuille pour
+/// ajouter un exercice (plus de dialogue « combien de séries ? »), les kcal
+/// recalculées à chaque frappe, et l'annulation au lieu des snackbars.
+///
+/// Les écritures ne changent pas : on réécrit `workout_set_history` pour ce
+/// `history_session_id` et on met à jour la ligne de
+/// `workout_session_summaries`. Vider la séance de tous ses exercices la
+/// supprime, comme avant.
 class WorkoutEditScreen extends StatefulWidget {
   final String sessionId;
   final String historySessionId;
@@ -39,738 +53,264 @@ class WorkoutEditScreen extends StatefulWidget {
 }
 
 class _WorkoutEditScreenState extends State<WorkoutEditScreen> {
+  static const List<String> _dbIntensities = ['Faible', 'Modéré', 'Élevé'];
+
   late List<WorkoutExercise> _exercises;
-  late int _durationMinutes;
-  String? _selectedIntensity;
-  final Map<int, bool> _expandedExercises = {};
-  int _estimatedCalories = 0;
+  late int _minutes;
+  late int _intensity;
+  int _open = 0;
+  bool _saving = false;
+  ({int index, WorkoutExercise exercise})? _removed;
 
   @override
   void initState() {
     super.initState();
-    _exercises = List.from(widget.exercises);
-    _durationMinutes = widget.durationMinutes;
-    _selectedIntensity = _mapDbValueToIntensityKey(widget.intensity);
-
-    // Initialiser tous les exercices comme repliés
-    for (int i = 0; i < _exercises.length; i++) {
-      _expandedExercises[i] = false;
-    }
-
-    // Calculer les calories initiales
-    _recalculateCalories();
+    _exercises = [
+      for (final e in widget.exercises) WorkoutExercise(exercise: e.exercise, sets: [...e.sets], suggestedRepsMin: e.suggestedRepsMin, suggestedRepsMax: e.suggestedRepsMax),
+    ];
+    _minutes = widget.durationMinutes > 0 ? widget.durationMinutes : 45;
+    final i = _dbIntensities.indexOf(widget.intensity ?? '');
+    _intensity = i < 0 ? 1 : i;
   }
 
-  void _recalculateCalories() {
-    final totalWeight = _exercises.fold<double>(
-      0,
-      (sum, we) => sum + we.sets.fold<double>(
-        0,
-        (setSum, s) => setSum + (s.weight * s.reps),
-      ),
-    );
+  double get _volumeKg => _exercises.fold<double>(0, (v, e) => v + e.sets.fold<double>(0, (s, set) => s + set.weight * set.reps));
 
-    final user = AuthService().currentUser;
-    final double assumedWeightKg = (user?.weight != null && user!.weight! > 0)
-        ? user.weight!
-        : 75.0;
-    final minutes = _durationMinutes > 0 ? _durationMinutes : 1;
-    final intensity = _selectedIntensity ?? 'moderate';
+  int get _doneSets => _exercises.fold<int>(0, (n, e) => n + e.sets.where((s) => s.reps > 0).length);
 
-    setState(() {
-      _estimatedCalories = CalorieBurnService.calculateKcal(
+  int get _kcal => CalorieBurnService.calculateKcal(
         'musculation',
-        assumedWeightKg,
-        minutes,
-        intensity: intensity,
-        totalWeightKg: totalWeight,
+        AuthService().currentUser?.weight ?? 75.0,
+        _minutes > 0 ? _minutes : 1,
+        intensity: _dbIntensities[_intensity],
+        totalWeightKg: _volumeKg,
+      );
+
+  // ------------------------------------------------------------- édition
+
+  void _setValue(int ei, int si, {int? reps, double? weight}) {
+    final old = _exercises[ei].sets[si];
+    setState(() {
+      _exercises[ei].sets[si] = ExerciseSet(
+        reps: reps ?? old.reps,
+        weight: weight ?? old.weight,
+        isCompleted: old.isCompleted,
       );
     });
   }
 
-  // Mapper les valeurs DB vers les clés d'intensité
-  // La DB stocke: 'Faible', 'Modéré', 'Élevé'
-  String? _mapDbValueToIntensityKey(String? dbValue) {
-    if (dbValue == null) return null;
-
-    switch (dbValue) {
-      case 'Faible':
-        return 'low';
-      case 'Modéré':
-        return 'moderate';
-      case 'Élevé':
-        return 'high';
-      default:
-        return null;
-    }
+  void _addSet(int ei) {
+    RyzeFeedback.tap();
+    final sets = _exercises[ei].sets;
+    final last = sets.isEmpty ? null : sets.last;
+    setState(() => sets.add(ExerciseSet(reps: last?.reps ?? 0, weight: last?.weight ?? 0, isCompleted: true)));
   }
 
-  // Mapper les clés d'intensité UI vers les valeurs françaises de la DB
-  // La DB attend: 'Faible', 'Modéré', 'Élevé' (contrainte CHECK)
-  String _mapIntensityToDbValue(String intensity) {
-    switch (intensity) {
-      case 'low':
-        return 'Faible';
-      case 'moderate':
-        return 'Modéré';
-      case 'high':
-        return 'Élevé';
-      default:
-        return 'Modéré';
-    }
-  }
-
-  void _toggleExercise(int index) {
-    setState(() {
-      _expandedExercises[index] = !(_expandedExercises[index] ?? false);
-    });
-  }
-
-  void _updateSet(int exerciseIndex, int setIndex, int? reps, double? weight) {
-    setState(() {
-      final exercise = _exercises[exerciseIndex];
-      final oldSet = exercise.sets[setIndex];
-      final newSet = ExerciseSet(
-        reps: reps ?? oldSet.reps,
-        weight: weight ?? oldSet.weight,
-        isCompleted: true,
-      );
-
-      final newSets = List<ExerciseSet>.from(exercise.sets);
-      newSets[setIndex] = newSet;
-
-      _exercises[exerciseIndex] = exercise.copyWith(sets: newSets);
-    });
-    _recalculateCalories();
-  }
-
-  void _addSet(int exerciseIndex) {
-    setState(() {
-      final exercise = _exercises[exerciseIndex];
-      final lastSet = exercise.sets.isNotEmpty
-          ? exercise.sets.last
-          : const ExerciseSet(reps: 10, weight: 0);
-
-      final newSets = List<ExerciseSet>.from(exercise.sets);
-      newSets.add(ExerciseSet(
-        reps: lastSet.reps,
-        weight: lastSet.weight,
-        isCompleted: true,
-      ));
-
-      _exercises[exerciseIndex] = exercise.copyWith(sets: newSets);
-    });
-    _recalculateCalories();
-  }
-
-  void _deleteSet(int exerciseIndex, int setIndex) {
-    setState(() {
-      final exercise = _exercises[exerciseIndex];
-      final newSets = List<ExerciseSet>.from(exercise.sets);
-      newSets.removeAt(setIndex);
-
-      _exercises[exerciseIndex] = exercise.copyWith(sets: newSets);
-    });
-    _recalculateCalories();
-  }
-
-  void _deleteExercise(int index) {
-    setState(() {
-      _exercises.removeAt(index);
-      // Réorganiser les clés d'expansion
-      final newExpandedExercises = <int, bool>{};
-      for (int i = 0; i < _exercises.length; i++) {
-        newExpandedExercises[i] = _expandedExercises[i < index ? i : i + 1] ?? false;
-      }
-      _expandedExercises.clear();
-      _expandedExercises.addAll(newExpandedExercises);
-    });
-    _recalculateCalories();
+  void _removeSet(int ei, int si) {
+    if (_exercises[ei].sets.length <= 1) return;
+    RyzeFeedback.removed();
+    setState(() => _exercises[ei].sets.removeAt(si));
   }
 
   Future<void> _addExercise() async {
-    // Ouvrir le bottom sheet de sélection d'exercice
-    final selectedExercise = await ExerciseSelectorBottomSheet.show(context);
-
-    if (selectedExercise == null || !mounted) return;
-
-    // Demander le nombre de séries
-    final setsCount = await _showSetsCountDialog(selectedExercise.name);
-
-    if (setsCount == null || !mounted) return;
-
-    // Ajouter l'exercice avec le nombre de séries demandé
+    final lang = LocalizationService.instance.currentLanguageCode;
+    final picked = await ExercisePickerSheet.show(context, lang: lang);
+    if (picked == null || !mounted) return;
     setState(() {
-      final sets = List.generate(
-        setsCount,
-        (index) => const ExerciseSet(reps: 10, weight: 0, isCompleted: true),
-      );
-
       _exercises.add(WorkoutExercise(
-        exercise: selectedExercise,
-        sets: sets,
+        exercise: picked,
+        sets: List.generate(3, (_) => const ExerciseSet(reps: 0, weight: 0, isCompleted: true)),
       ));
-      _expandedExercises[_exercises.length - 1] = true;
+      _open = _exercises.length - 1;
     });
-    _recalculateCalories();
   }
 
-  Future<int?> _showSetsCountDialog(String exerciseName) async {
-    int selectedSets = 3;
-
-    return await showDialog<int>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Consumer<LocalizationService>(
-            builder: (context, locService, _) => Text(
-              'workout_how_many_sets'.tr(locService.currentLanguageCode),
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF1A1A1A),
-              ),
-            ),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Consumer<LocalizationService>(
-                builder: (context, locService, _) => Text(
-                  'workout_for_exercise'.tr(locService.currentLanguageCode).replaceAll('{0}', exerciseName),
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF64748B),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: List.generate(5, (index) {
-                  final sets = index + 1;
-                  return GestureDetector(
-                    onTap: () {
-                      setDialogState(() {
-                        selectedSets = sets;
-                      });
-                    },
-                    child: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: selectedSets == sets
-                            ? const Color(0xFF0B132B)
-                            : const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: selectedSets == sets
-                              ? const Color(0xFF0B132B)
-                              : const Color(0xFFE2E8F0),
-                        ),
-                      ),
-                      child: Center(
-                        child: Text(
-                          '$sets',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: selectedSets == sets
-                                ? Colors.white
-                                : const Color(0xFF1A1A1A),
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                }),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Consumer<LocalizationService>(
-                builder: (context, locService, _) => Text(
-                  'cancel'.tr(locService.currentLanguageCode),
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: Color(0xFF64748B),
-                  ),
-                ),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context, selectedSets),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0B132B),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                elevation: 0,
-              ),
-              child: Consumer<LocalizationService>(
-                builder: (context, locService, _) => Text(
-                  'workout_create'.tr(locService.currentLanguageCode),
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+  void _removeExercise(int index) {
+    final lang = LocalizationService.instance.currentLanguageCode;
+    final gone = _exercises[index];
+    setState(() {
+      _removed = (index: index, exercise: gone);
+      _exercises.removeAt(index);
+      if (_open >= _exercises.length) _open = _exercises.length - 1;
+    });
+    RyzeFeedback.removed();
+    RyzeUndo.show(
+      context,
+      message: 'session_exercise_removed'.tr(lang).replaceAll('{name}', gone.exercise.name),
+      undoLabel: 'undo'.tr(lang),
+      onUndo: () {
+        final r = _removed;
+        if (r == null) return;
+        setState(() => _exercises.insert(r.index.clamp(0, _exercises.length), r.exercise));
+      },
     );
   }
 
-  Future<void> _saveChanges() async {
+  // ----------------------------------------------------------- écriture
+
+  Future<void> _save() async {
+    if (_saving) return;
+    final lang = LocalizationService.instance.currentLanguageCode;
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) return;
+
+    setState(() => _saving = true);
+    final client = Supabase.instance.client;
     try {
-      final userId = Supabase.instance.client.auth.currentUser?.id;
-      if (userId == null) {
-        throw Exception('User not authenticated');
-      }
-
-      // Afficher un loader
-      if (!mounted) return;
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const Center(
-          child: CircularProgressIndicator(color: Colors.white),
-        ),
-      );
-
-      // Si tous les exercices ont été supprimés, supprimer la séance entière
+      // Vider la séance de tous ses exercices, c'est la supprimer.
       if (_exercises.isEmpty) {
-        debugPrint('🗑️ Tous les exercices ont été supprimés, suppression de la séance');
-
-        // Supprimer les sets
-        await Supabase.instance.client
-            .from('workout_set_history')
-            .delete()
-            .eq('history_session_id', widget.historySessionId);
-
-        // Supprimer le résumé
-        await Supabase.instance.client
-            .from('workout_session_summaries')
-            .delete()
-            .eq('id', widget.sessionId);
-
-        debugPrint('✅ Séance supprimée');
-
-        // Invalider les caches
-        SportDashboardService.forceInvalidateAllCaches();
-        DashboardService.invalidateAndRefreshAfterWorkout();
-        await GlobalStateManager.instance.refreshSportData();
-
-        // Fermer le loader
-        if (mounted) Navigator.pop(context);
-
-        // Retourner avec succès
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Séance supprimée'),
-              backgroundColor: Colors.green,
-            ),
-          );
-          Navigator.pop(context, true);
-        }
+        await client.from('workout_set_history').delete().eq('history_session_id', widget.historySessionId);
+        await client.from('workout_session_summaries').delete().eq('id', widget.sessionId);
+        await _refresh();
+        if (!mounted) return;
+        Navigator.pop(context, true);
+        RyzeUndo.note(context, message: 'sport_session_deleted'.tr(lang));
         return;
       }
 
-      // 1. Supprimer tous les sets existants
-      await Supabase.instance.client
-          .from('workout_set_history')
-          .delete()
-          .eq('history_session_id', widget.historySessionId);
+      await client.from('workout_set_history').delete().eq('history_session_id', widget.historySessionId);
 
-      // 2. Insérer les nouveaux sets
-      final List<Map<String, dynamic>> rows = [];
-      int globalOrder = 1;
-
+      final rows = <Map<String, dynamic>>[];
+      var order = 1;
       for (final we in _exercises) {
         for (final set in we.sets.where((s) => s.reps > 0)) {
           rows.add({
             'user_id': userId,
             'history_session_id': widget.historySessionId,
             'exercise_name': we.exercise.name,
-            'set_order': globalOrder,
+            'set_order': order,
             'reps': set.reps,
             'weight': set.weight,
             'performed_at': widget.sessionDate,
             'session_name': widget.sessionName,
           });
-          globalOrder++;
+          order++;
         }
       }
+      if (rows.isNotEmpty) await client.from('workout_set_history').insert(rows);
 
-      if (rows.isNotEmpty) {
-        await Supabase.instance.client
-            .from('workout_set_history')
-            .insert(rows);
-      }
-
-      // 3. Mettre à jour le résumé
-      final totalWeight = _exercises.fold<double>(
-        0,
-        (sum, we) => sum + we.sets.fold<double>(
-          0,
-          (setSum, s) => setSum + (s.weight * s.reps),
-        ),
-      );
-
-      final completedSets = _exercises.fold<int>(
-        0,
-        (sum, we) => sum + we.sets.where((s) => s.reps > 0).length,
-      );
-
-      debugPrint('📊 Mise à jour du résumé: sessionId=${widget.sessionId}');
-      debugPrint('📊 totalWeight=${totalWeight.round()}, completedSets=$completedSets, calories=$_estimatedCalories');
-
-      final updateData = {
+      await client.from('workout_session_summaries').update({
         'session_name': widget.sessionName,
-        'duration_minutes': _durationMinutes,
-        'calories_burned': _estimatedCalories,
-        'intensity': _selectedIntensity != null ? _mapIntensityToDbValue(_selectedIntensity!) : null,
-        'total_volume_kg': totalWeight.round(),
-      };
+        'duration_minutes': _minutes,
+        'calories_burned': _kcal,
+        'intensity': _dbIntensities[_intensity],
+        'total_volume_kg': _volumeKg.round(),
+        'num_exercises': _exercises.length,
+      }).eq('id', widget.sessionId);
 
-      debugPrint('📝 Données à mettre à jour: $updateData');
-
-      await Supabase.instance.client
-          .from('workout_session_summaries')
-          .update(updateData)
-          .eq('id', widget.sessionId);
-
-      debugPrint('✅ Résumé de séance mis à jour');
-
-      // 4. Invalider les caches
-      SportDashboardService.forceInvalidateAllCaches();
-      DashboardService.invalidateAndRefreshAfterWorkout();
-      await GlobalStateManager.instance.refreshSportData();
-
-      // Fermer le loader
-      if (mounted) Navigator.pop(context);
-
-      // Retourner avec succès
-      if (mounted) {
-        Navigator.pop(context, true);
-      }
-    } catch (e) {
-      debugPrint('❌ Erreur lors de la sauvegarde: $e');
-      // Fermer le loader
-      if (mounted) Navigator.pop(context);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Erreur lors de la sauvegarde des modifications'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      await _refresh();
+      if (!mounted) return;
+      RyzeFeedback.success();
+      Navigator.pop(context, true);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      RyzeUndo.failed(context, message: 'workout_save_failed'.tr(lang));
     }
   }
 
-  void _showDurationPicker() {
-    final controller = TextEditingController(text: _durationMinutes.toString());
-
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Consumer<LocalizationService>(
-                builder: (context, locService, _) => Text(
-                  'workout_duration'.tr(locService.currentLanguageCode),
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1A1A),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              TextField(
-                controller: controller,
-                keyboardType: TextInputType.number,
-                autofocus: true,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF0B132B),
-                ),
-                decoration: InputDecoration(
-                  hintText: '45',
-                  suffixText: 'min',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFF0B132B), width: 2),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        side: const BorderSide(color: Color(0xFFE2E8F0)),
-                      ),
-                      child: Consumer<LocalizationService>(
-                        builder: (context, locService, _) => Text(
-                          'cancel'.tr(locService.currentLanguageCode),
-                          style: const TextStyle(color: Color(0xFF64748B)),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        final value = int.tryParse(controller.text);
-                        if (value != null && value > 0) {
-                          setState(() {
-                            _durationMinutes = value;
-                          });
-                          _recalculateCalories();
-                        }
-                        Navigator.pop(context);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF0B132B),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Consumer<LocalizationService>(
-                        builder: (context, locService, _) => Text(
-                          'validate'.tr(locService.currentLanguageCode),
-                          style: const TextStyle(color: Colors.white),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+  Future<void> _refresh() async {
+    SportDashboardService.forceInvalidateAllCaches();
+    DashboardService.invalidateAndRefreshAfterWorkout();
+    try {
+      await GlobalStateManager.instance.refreshSportData();
+    } catch (_) {}
   }
 
-  void _showIntensityPicker() {
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Consumer<LocalizationService>(
-                builder: (context, locService, _) => Text(
-                  'workout_intensity'.tr(locService.currentLanguageCode),
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1A1A),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              _buildIntensityOption('low'),
-              _buildIntensityOption('moderate'),
-              _buildIntensityOption('high'),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildIntensityOption(String intensity) {
-    final locService = LocalizationService.instance;
-    final isSelected = _selectedIntensity == intensity;
-
-    return Container(
-      margin: const EdgeInsets.only(top: 8),
-      decoration: BoxDecoration(
-        color: isSelected ? const Color(0xFF0B132B).withOpacity(0.1) : Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isSelected ? const Color(0xFF0B132B) : const Color(0xFFE2E8F0),
-          width: isSelected ? 2 : 1,
-        ),
-      ),
-      child: InkWell(
-        onTap: () {
-          setState(() {
-            _selectedIntensity = intensity;
-          });
-          _recalculateCalories();
-          Navigator.pop(context);
-        },
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Row(
-            children: [
-              Icon(
-                intensity == 'high' ? LucideIcons.zap :
-                intensity == 'moderate' ? LucideIcons.activity :
-                LucideIcons.wind,
-                size: 20,
-                color: isSelected ? const Color(0xFF0B132B) : const Color(0xFF64748B),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'workout_intensity_$intensity'.tr(locService.currentLanguageCode),
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                    color: isSelected ? const Color(0xFF0B132B) : const Color(0xFF1A1A1A),
-                  ),
-                ),
-              ),
-              if (isSelected)
-                const Icon(
-                  LucideIcons.check,
-                  size: 20,
-                  color: Color(0xFF0B132B),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  // -------------------------------------------------------------- build
 
   @override
   Widget build(BuildContext context) {
+    final lang = context.watch<LocalizationService>().currentLanguageCode;
+    final gutter = context.vw(5.1);
+    final units = UnitService.instance;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF0B132B),
-        leading: IconButton(
-          icon: const Icon(LucideIcons.x, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          widget.sessionName,
-          style: const TextStyle(color: Colors.white, fontSize: 18),
-        ),
-        actions: [
-          TextButton(
-            onPressed: _saveChanges,
-            child: Consumer<LocalizationService>(
-              builder: (context, locService, _) => Text(
-                'save'.tr(locService.currentLanguageCode),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-      body: Column(
+      backgroundColor: RyzeColors.paper,
+      resizeToAvoidBottomInset: true,
+      body: Stack(
         children: [
-          // Header avec durée et intensité
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.all(16),
-            child: Row(
+          const OnbBackground(scene: false),
+          SafeArea(
+            bottom: false,
+            child: Column(
               children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: _showDurationPicker,
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(gutter, context.vw(1.5), gutter, context.vw(2.6)),
+                  child: Row(
+                    children: [
+                      Pressable(
+                        onTap: () => Navigator.of(context).pop(),
+                        child: Container(
+                          width: context.vw(9.7),
+                          height: context.vw(9.7),
+                          decoration: BoxDecoration(color: RyzeColors.surf, shape: BoxShape.circle, border: Border.all(color: RyzeColors.line)),
+                          child: Icon(LucideIcons.x, size: context.vw(4.6), color: RyzeColors.ink),
+                        ),
                       ),
-                      child: Row(
-                        children: [
-                          const Icon(LucideIcons.clock, size: 16, color: Color(0xFF0B132B)),
-                          const SizedBox(width: 8),
-                          Text(
-                            '$_durationMinutes min',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF1A1A1A),
-                            ),
-                          ),
-                        ],
+                      SizedBox(width: context.vw(3.1)),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(widget.sessionName, maxLines: 1, overflow: TextOverflow.ellipsis, style: RyzeText.body(context, 4.1, weight: FontWeight.w600)),
+                            Text('sport_edit'.tr(lang), style: RyzeText.body(context, 3.1, color: RyzeColors.mute)),
+                          ],
+                        ),
                       ),
-                    ),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 12),
                 Expanded(
-                  child: GestureDetector(
-                    onTap: _showIntensityPicker,
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(LucideIcons.zap, size: 16, color: Color(0xFF0B132B)),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Consumer<LocalizationService>(
-                              builder: (context, locService, _) => Text(
-                                _selectedIntensity != null
-                                    ? 'workout_intensity_$_selectedIntensity'.tr(locService.currentLanguageCode)
-                                    : 'workout_intensity'.tr(locService.currentLanguageCode),
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF1A1A1A),
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
+                  child: ListView(
+                    padding: EdgeInsets.fromLTRB(gutter, 0, gutter, context.vw(6)),
+                    children: [
+                      for (var i = 0; i < _exercises.length; i++) _exerciseCard(context, lang, units, i),
+                      Pressable(
+                        onTap: _addExercise,
+                        child: Container(
+                          height: context.vw(12.3),
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(RyzeRadius.sm),
+                            border: Border.all(color: RyzeColors.idle),
                           ),
-                        ],
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(LucideIcons.plus, size: context.vw(4.1), color: RyzeColors.ink),
+                              SizedBox(width: context.vw(1.5)),
+                              Text('workout_add_exercise'.tr(lang), style: RyzeText.body(context, 3.4, weight: FontWeight.w600)),
+                            ],
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: context.vw(5.1)),
+                      _settings(context, lang, units),
+                    ],
+                  ),
+                ),
+                SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(gutter, context.vw(2.1), gutter, context.vw(2.1)),
+                    child: Pressable(
+                      onTap: _saving ? null : _save,
+                      child: AnimatedContainer(
+                        duration: RyzeDurations.tap,
+                        height: context.vw(13.3),
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: _saving ? RyzeColors.idle : RyzeColors.ink,
+                          borderRadius: BorderRadius.circular(RyzeRadius.sm),
+                          boxShadow: _saving ? null : RyzeShadow.soft,
+                        ),
+                        child: _saving
+                            ? SizedBox(
+                                width: context.vw(4.6),
+                                height: context.vw(4.6),
+                                child: const CircularProgressIndicator(color: RyzeColors.mute, strokeWidth: 2),
+                              )
+                            : Text('save'.tr(lang), style: RyzeText.body(context, 3.9, weight: FontWeight.w600, color: RyzeColors.surf)),
                       ),
                     ),
                   ),
@@ -778,270 +318,306 @@ class _WorkoutEditScreenState extends State<WorkoutEditScreen> {
               ],
             ),
           ),
-
-          // Liste des exercices
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: _exercises.length,
-              itemBuilder: (context, index) => _buildExerciseCard(index),
-            ),
-          ),
-
-          // Bouton ajouter exercice
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.all(16),
-            child: SafeArea(
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: _addExercise,
-                  icon: const Icon(LucideIcons.plus),
-                  label: Consumer<LocalizationService>(
-                    builder: (context, locService, _) => Text(
-                      'workout_add_exercise'.tr(locService.currentLanguageCode),
-                    ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0B132B),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
         ],
       ),
     );
   }
 
-  Widget _buildExerciseCard(int exerciseIndex) {
-    final exercise = _exercises[exerciseIndex];
-    final isExpanded = _expandedExercises[exerciseIndex] ?? false;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Column(
-        children: [
-          // Header de l'exercice
-          InkWell(
-            onTap: () => _toggleExercise(exerciseIndex),
-            borderRadius: BorderRadius.circular(12),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          exercise.exercise.name,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF1A1A1A),
+  Widget _exerciseCard(BuildContext context, String lang, UnitService units, int i) {
+    final we = _exercises[i];
+    final open = _open == i;
+    return Padding(
+      padding: EdgeInsets.only(bottom: context.vw(2.1)),
+      child: AnimatedContainer(
+        duration: RyzeDurations.fill,
+        curve: RyzeCurves.out,
+        decoration: BoxDecoration(
+          color: RyzeColors.surf,
+          borderRadius: BorderRadius.circular(RyzeRadius.md),
+          border: Border.all(color: open ? RyzeColors.ink : RyzeColors.line, width: open ? 1.4 : 1),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Pressable(
+              onTap: () {
+                RyzeFeedback.tap();
+                setState(() => _open = open ? -1 : i);
+              },
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(context.vw(4.1), context.vw(3.1), context.vw(2.6), context.vw(3.1)),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(we.exercise.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: RyzeText.body(context, 3.9, weight: FontWeight.w600)),
+                          Text(
+                            'sport_sets_only'.tr(lang).replaceAll('{sets}', '${we.sets.length}'),
+                            style: RyzeText.body(context, 3.1, color: RyzeColors.mute),
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '${exercise.sets.length} série${exercise.sets.length > 1 ? 's' : ''}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF64748B),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(LucideIcons.x, size: 16, color: Color(0xFF64748B)),
-                    onPressed: () => _deleteExercise(exerciseIndex),
-                    padding: const EdgeInsets.all(8),
-                  ),
-                  Icon(
-                    isExpanded ? LucideIcons.chevronUp : LucideIcons.chevronDown,
-                    size: 20,
-                    color: const Color(0xFF64748B),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // Séries (si déplié)
-          if (isExpanded) ...[
-            const Divider(height: 1),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Liste des séries
-                  ...List.generate(exercise.sets.length, (setIndex) {
-                    return _buildSetRow(exerciseIndex, setIndex);
-                  }),
-
-                  const SizedBox(height: 12),
-
-                  // Bouton ajouter série
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: () => _addSet(exerciseIndex),
-                      icon: const Icon(LucideIcons.plus, size: 16),
-                      label: const Text('Ajouter une série'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF0B132B),
-                        side: const BorderSide(color: Color(0xFFE2E8F0)),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        ],
                       ),
                     ),
-                  ),
-                ],
+                    Pressable(
+                      onTap: () => _removeExercise(i),
+                      child: SizedBox(
+                        width: 36,
+                        height: 36,
+                        child: Icon(LucideIcons.trash2, size: context.vw(4.1), color: RyzeColors.mute2),
+                      ),
+                    ),
+                    Icon(open ? LucideIcons.chevronUp : LucideIcons.chevronDown, size: context.vw(4.6), color: RyzeColors.mute2),
+                  ],
+                ),
               ),
+            ),
+            AnimatedSize(
+              duration: RyzeDurations.enter,
+              curve: RyzeCurves.out,
+              alignment: Alignment.topCenter,
+              child: !open
+                  ? const SizedBox(width: double.infinity)
+                  : Padding(
+                      padding: EdgeInsets.fromLTRB(context.vw(2.6), 0, context.vw(2.6), context.vw(2.6)),
+                      child: Column(
+                        children: [
+                          for (var s = 0; s < we.sets.length; s++) _setRow(context, lang, units, i, s),
+                          Pressable(
+                            onTap: () => _addSet(i),
+                            child: Container(
+                              height: context.vw(10.3),
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(RyzeRadius.sm),
+                                border: Border.all(color: RyzeColors.idle),
+                              ),
+                              child: Text('session_add_set'.tr(lang), style: RyzeText.body(context, 3.4, weight: FontWeight.w600)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
             ),
           ],
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildSetRow(int exerciseIndex, int setIndex) {
-    final set = _exercises[exerciseIndex].sets[setIndex];
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(8),
-      ),
+  Widget _setRow(BuildContext context, String lang, UnitService units, int ei, int si) {
+    final set = _exercises[ei].sets[si];
+    final shownWeight = units.displayWeight(set.weight);
+    return Padding(
+      padding: EdgeInsets.only(bottom: context.vw(1.8)),
       child: Row(
         children: [
-          // Numéro de série
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: const Color(0xFF0B132B),
-              borderRadius: BorderRadius.circular(6),
+          SizedBox(
+            width: context.vw(5.6),
+            child: Text('${si + 1}', style: RyzeText.body(context, 3.3, weight: FontWeight.w600, color: RyzeColors.mute2)),
+          ),
+          Expanded(
+            child: _Field(
+              value: shownWeight <= 0 ? '' : (shownWeight % 1 == 0 ? shownWeight.toStringAsFixed(0) : shownWeight.toStringAsFixed(1)),
+              unit: units.weightUnit,
+              decimals: true,
+              onChanged: (v) {
+                final shown = double.tryParse(v.replaceAll(',', '.')) ?? 0;
+                // Le champ est dans l'unité de l'utilisateur, la base en kilos.
+                _setValue(ei, si, weight: units.isMetric ? shown : shown / 2.2046226218);
+              },
             ),
-            child: Center(
-              child: Text(
-                '${setIndex + 1}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 12,
-                ),
+          ),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: context.vw(1.5)),
+            child: Text('×', style: RyzeText.body(context, 3.9, color: RyzeColors.mute2)),
+          ),
+          Expanded(
+            child: _Field(
+              value: set.reps <= 0 ? '' : '${set.reps}',
+              unit: null,
+              decimals: false,
+              onChanged: (v) => _setValue(ei, si, reps: int.tryParse(v) ?? 0),
+            ),
+          ),
+          SizedBox(width: context.vw(1.5)),
+          Pressable(
+            onTap: _exercises[ei].sets.length > 1 ? () => _removeSet(ei, si) : null,
+            child: SizedBox(
+              width: context.vw(9.2),
+              height: context.vw(9.2),
+              child: Icon(
+                LucideIcons.minus,
+                size: context.vw(4.1),
+                color: _exercises[ei].sets.length > 1 ? RyzeColors.mute : RyzeColors.idle,
               ),
             ),
           ),
-
-          const SizedBox(width: 12),
-
-          // Poids
-          Expanded(
-            child: _buildInputField(
-              value: UnitService.instance.formatWeightValue(set.weight, decimals: set.weight % 1 == 0 ? 0 : 1),
-              suffix: UnitService.instance.weightUnit,
-              onChanged: (value) {
-                final weight = double.tryParse(value);
-                if (weight != null) {
-                  // Convertir en kg pour le stockage
-                  _updateSet(exerciseIndex, setIndex, null, UnitService.instance.storageWeight(weight));
-                }
-              },
-            ),
-          ),
-
-          const SizedBox(width: 12),
-
-          // Reps
-          Expanded(
-            child: _buildInputField(
-              value: set.reps.toString(),
-              suffix: 'reps',
-              onChanged: (value) {
-                final reps = int.tryParse(value);
-                if (reps != null) {
-                  _updateSet(exerciseIndex, setIndex, reps, null);
-                }
-              },
-            ),
-          ),
-
-          const SizedBox(width: 8),
-
-          // Bouton supprimer
-          if (_exercises[exerciseIndex].sets.length > 1)
-            IconButton(
-              icon: const Icon(LucideIcons.x, size: 16, color: Color(0xFF64748B)),
-              onPressed: () => _deleteSet(exerciseIndex, setIndex),
-              padding: const EdgeInsets.all(4),
-              constraints: const BoxConstraints(),
-            ),
         ],
       ),
     );
   }
 
-  Widget _buildInputField({
-    required String value,
-    required String suffix,
-    required Function(String) onChanged,
-  }) {
+  Widget _settings(BuildContext context, String lang, UnitService units) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('workout_duration'.tr(lang), style: RyzeText.body(context, 3.1, weight: FontWeight.w600, color: RyzeColors.mute)),
+        SizedBox(height: context.vw(1.5)),
+        Row(
+          children: [
+            _Step(icon: LucideIcons.minus, onTap: _minutes > 5 ? () => setState(() => _minutes -= 5) : null),
+            Expanded(
+              child: Center(
+                child: RollingNumber('$_minutes ${'minutes'.tr(lang)}', style: RyzeText.display(context, 6.2, weight: FontWeight.w600)),
+              ),
+            ),
+            _Step(icon: LucideIcons.plus, onTap: _minutes < 600 ? () => setState(() => _minutes += 5) : null),
+          ],
+        ),
+        SizedBox(height: context.vw(4.1)),
+        Text('workout_intensity'.tr(lang), style: RyzeText.body(context, 3.1, weight: FontWeight.w600, color: RyzeColors.mute)),
+        SizedBox(height: context.vw(2.1)),
+        RyzeSegmented(
+          labels: [
+            'workout_intensity_low'.tr(lang),
+            'workout_intensity_moderate'.tr(lang),
+            'workout_intensity_high'.tr(lang),
+          ],
+          index: _intensity,
+          onChanged: (i) => setState(() => _intensity = i),
+        ),
+        SizedBox(height: context.vw(4.1)),
+        Container(
+          padding: EdgeInsets.symmetric(horizontal: context.vw(4.1), vertical: context.vw(3.1)),
+          decoration: BoxDecoration(
+            color: RyzeColors.surf,
+            borderRadius: BorderRadius.circular(RyzeRadius.md),
+            border: Border.all(color: RyzeColors.line),
+          ),
+          child: Row(
+            children: [
+              Expanded(child: _Small(value: '$_doneSets', label: 'session_sets_done'.tr(lang))),
+              Expanded(child: _Small(value: units.displayWeight(_volumeKg).round().toString(), label: '${'session_volume'.tr(lang)} · ${units.weightUnit}')),
+              Expanded(child: _Small(value: '$_kcal', label: 'session_kcal_estimated'.tr(lang), amber: true)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Une cellule de valeur : le champ est le seul endroit qui se corrige.
+class _Field extends StatefulWidget {
+  const _Field({required this.value, required this.unit, required this.decimals, required this.onChanged});
+
+  final String value;
+  final String? unit;
+  final bool decimals;
+  final ValueChanged<String> onChanged;
+
+  @override
+  State<_Field> createState() => _FieldState();
+}
+
+class _FieldState extends State<_Field> {
+  late final TextEditingController _c = TextEditingController(text: widget.value);
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        color: RyzeColors.paper,
+        borderRadius: BorderRadius.circular(RyzeRadius.xs),
+        border: Border.all(color: RyzeColors.line),
       ),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Expanded(
-            child: TextField(
-              controller: TextEditingController(text: value)
-                ..selection = TextSelection.fromPosition(
-                  TextPosition(offset: value.length),
-                ),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          Flexible(
+            child: NumericTextField(
+              controller: _c,
+              hintText: '—',
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF1A1A1A),
-              ),
-              decoration: const InputDecoration(
-                isDense: true,
-                contentPadding: EdgeInsets.zero,
+              allowDecimals: widget.decimals,
+              minValue: 0,
+              maxValue: widget.decimals ? 1000 : 200,
+              onChanged: widget.onChanged,
+              style: RyzeText.display(context, 4.6, weight: FontWeight.w600),
+              decoration: InputDecoration(
                 border: InputBorder.none,
+                hintStyle: RyzeText.display(context, 4.6, weight: FontWeight.w600).copyWith(color: RyzeColors.mute2),
+                contentPadding: EdgeInsets.symmetric(vertical: context.vw(2.6), horizontal: context.vw(1)),
+                isDense: true,
               ),
-              onChanged: onChanged,
             ),
           ),
-          const SizedBox(width: 4),
-          Text(
-            suffix,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Color(0xFF64748B),
+          if (widget.unit != null)
+            Padding(
+              padding: EdgeInsets.only(right: context.vw(2.1)),
+              child: Text(widget.unit!, style: RyzeText.body(context, 2.9, color: RyzeColors.mute2)),
             ),
-          ),
         ],
       ),
+    );
+  }
+}
+
+class _Step extends StatelessWidget {
+  const _Step({required this.icon, required this.onTap});
+
+  final IconData icon;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Pressable(
+      onTap: onTap == null
+          ? null
+          : () {
+              RyzeFeedback.tap();
+              onTap!();
+            },
+      child: Container(
+        width: context.vw(11.3),
+        height: context.vw(11.3),
+        decoration: BoxDecoration(color: RyzeColors.surf, shape: BoxShape.circle, border: Border.all(color: RyzeColors.line)),
+        child: Icon(icon, size: context.vw(4.6), color: onTap == null ? RyzeColors.mute2 : RyzeColors.ink),
+      ),
+    );
+  }
+}
+
+class _Small extends StatelessWidget {
+  const _Small({required this.value, required this.label, this.amber = false});
+
+  final String value;
+  final String label;
+  final bool amber;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(
+          value,
+          maxLines: 1,
+          style: RyzeText.display(context, 5.6, weight: FontWeight.w600).copyWith(
+            color: amber ? RyzeColors.accInk : RyzeColors.ink,
+            fontFeatures: const [FontFeature.tabularFigures()],
+          ),
+        ),
+        Text(label, textAlign: TextAlign.center, maxLines: 2, style: RyzeText.body(context, 2.6, color: RyzeColors.mute)),
+      ],
     );
   }
 }

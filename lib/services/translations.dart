@@ -10478,6 +10478,72 @@ class AppTranslations {
       'en': "Yesterday",
       'de': "Gestern",
     },
+    // Sport, the Coach Ryze analysis of one exercise
+    'ai_analysis_error_service': {
+      'fr': "Le service d'IA est indisponible pour le moment. Réessaie dans un instant.",
+      'en': "The AI service is unavailable right now. Try again in a moment.",
+      'de': "Der KI-Dienst ist gerade nicht verfügbar. Versuche es gleich noch einmal.",
+    },
+    'ai_analysis_error_data': {
+      'fr': "Fais au moins 3 séances avec cet exercice pour une analyse personnalisée.",
+      'en': "Do at least 3 sessions with this exercise for a personal analysis.",
+      'de': "Mache mindestens 3 Einheiten mit dieser Übung für eine persönliche Analyse.",
+    },
+    'ai_analysis_error_network': {
+      'fr': "Problème de connexion. Vérifie ta connexion et réessaie.",
+      'en': "Connection problem. Check your connection and try again.",
+      'de': "Verbindungsproblem. Prüfe deine Verbindung und versuche es erneut.",
+    },
+    'ai_analysis_error_generic': {
+      'fr': "Une erreur s'est produite. Réessaie dans un instant.",
+      'en': "Something went wrong. Try again in a moment.",
+      'de': "Etwas ist schiefgelaufen. Versuche es gleich noch einmal.",
+    },
+    'ai_analysis_needs_more': {
+      'fr': "Encore {n} séances et Coach Ryze pourra analyser cet exercice.",
+      'en': "{n} more sessions and Coach Ryze can analyse this exercise.",
+      'de': "Noch {n} Einheiten, dann kann Coach Ryze diese Übung analysieren.",
+    },
+    'ai_analysis_recommendations': {
+      'fr': "Recommandations",
+      'en': "Recommendations",
+      'de': "Empfehlungen",
+    },
+    'ai_analysis_short': {
+      'fr': "Analyse",
+      'en': "Analysis",
+      'de': "Analyse",
+    },
+    'ai_analysis_new_sessions': {
+      'fr': "De nouvelles séances depuis cette analyse",
+      'en': "New sessions since this analysis",
+      'de': "Neue Einheiten seit dieser Analyse",
+    },
+    'ai_analysis_again': {
+      'fr': "Relancer l'analyse",
+      'en': "Run it again",
+      'de': "Erneut analysieren",
+    },
+    'ai_analysis_retry': {
+      'fr': "Réessayer",
+      'en': "Try again",
+      'de': "Erneut versuchen",
+    },
+    'ago_minutes': {
+      'fr': "il y a {n} min",
+      'en': "{n} min ago",
+      'de': "vor {n} Min.",
+    },
+    'ago_hours': {
+      'fr': "il y a {n} h",
+      'en': "{n} h ago",
+      'de': "vor {n} Std.",
+    },
+    'ago_days': {
+      'fr': "il y a {n} j",
+      'en': "{n} d ago",
+      'de': "vor {n} T.",
+    },
     // Sport, the tab by day
     'sport_hiit_rounds': {
       'fr': "tours",
