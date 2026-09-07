@@ -10736,6 +10736,197 @@ class AppTranslations {
       'en': "Another session",
       'de': "Weitere Einheit",
     },
+    // Progress and settings, the last tab
+    'progress_title': {
+      'fr': "Progression",
+      'en': "Progress",
+      'de': "Fortschritt",
+    },
+    'progress_weight_now': {
+      'fr': "Ton poids",
+      'en': "Your weight",
+      'de': "Dein Gewicht",
+    },
+    'progress_since_start': {
+      'fr': "{n} depuis le départ",
+      'en': "{n} since the start",
+      'de': "{n} seit dem Start",
+    },
+    'progress_target': {
+      'fr': "objectif {n}",
+      'en': "target {n}",
+      'de': "Ziel {n}",
+    },
+    'progress_log_weight': {
+      'fr': "Noter mon poids",
+      'en': "Log my weight",
+      'de': "Gewicht eintragen",
+    },
+    'progress_weight_saved': {
+      'fr': "Poids enregistré",
+      'en': "Weight saved",
+      'de': "Gewicht gespeichert",
+    },
+    'progress_weight_failed': {
+      'fr': "Pas enregistré · réessaie",
+      'en': "Not saved · try again",
+      'de': "Nicht gespeichert · versuche es erneut",
+    },
+    'progress_at_this_pace': {
+      'fr': "À ce rythme",
+      'en': "At this pace",
+      'de': "In diesem Tempo",
+    },
+    'progress_eta': {
+      'fr': "{w} vers le {d}",
+      'en': "{w} around {d}",
+      'de': "{w} um den {d}",
+    },
+    'progress_pace': {
+      'fr': "{n} par semaine",
+      'en': "{n} a week",
+      'de': "{n} pro Woche",
+    },
+    'progress_this_week': {
+      'fr': "Cette semaine",
+      'en': "This week",
+      'de': "Diese Woche",
+    },
+    'progress_days_on_target': {
+      'fr': "{n} jours dans les calories",
+      'en': "{n} days on calories",
+      'de': "{n} Tage im Kalorienziel",
+    },
+    'progress_days_hydrated': {
+      'fr': "{n} jours hydratés",
+      'en': "{n} days hydrated",
+      'de': "{n} Tage gut getrunken",
+    },
+    'progress_week_empty': {
+      'fr': "Rien enregistré cette semaine pour le moment.",
+      'en': "Nothing logged this week yet.",
+      'de': "Diese Woche noch nichts erfasst.",
+    },
+    'progress_legend_hit': {
+      'fr': "objectif tenu",
+      'en': "target met",
+      'de': "Ziel erreicht",
+    },
+    'progress_legend_partial': {
+      'fr': "partiellement",
+      'en': "partly",
+      'de': "teilweise",
+    },
+    'progress_legend_sport': {
+      'fr': "séance",
+      'en': "session",
+      'de': "Einheit",
+    },
+    'progress_no_weight': {
+      'fr': "Pas encore de pesée",
+      'en': "No weigh-in yet",
+      'de': "Noch keine Wiegung",
+    },
+    'progress_no_weight_hint': {
+      'fr': "Note ton poids une fois par semaine, au même moment : c'est la courbe qui compte, pas le chiffre du jour.",
+      'en': "Log your weight once a week, at the same time: the curve is what counts, not one day’s figure.",
+      'de': "Wiege dich einmal pro Woche zur gleichen Zeit: Die Kurve zählt, nicht der Tageswert.",
+    },
+    'settings': {
+      'fr': "Paramètres",
+      'en': "Settings",
+      'de': "Einstellungen",
+    },
+    'settings_you': {
+      'fr': "Toi",
+      'en': "You",
+      'de': "Du",
+    },
+    'settings_app': {
+      'fr': "L'app",
+      'en': "The app",
+      'de': "Die App",
+    },
+    'settings_coach': {
+      'fr': "Coach Ryze",
+      'en': "Coach Ryze",
+      'de': "Coach Ryze",
+    },
+    'settings_nutrition': {
+      'fr': "Nutrition",
+      'en': "Nutrition",
+      'de': "Ernährung",
+    },
+    'settings_saved': {
+      'fr': "Enregistré",
+      'en': "Saved",
+      'de': "Gespeichert",
+    },
+    'settings_macros_hint': {
+      'fr': "Ajuste la répartition : les grammes suivent tes calories.",
+      'en': "Adjust the split: the grams follow your calories.",
+      'de': "Passe die Verteilung an: die Gramm folgen deinen Kalorien.",
+    },
+    'settings_custom_personality': {
+      'fr': "Ta consigne",
+      'en': "Your instruction",
+      'de': "Deine Anweisung",
+    },
+    'settings_notif_master': {
+      'fr': "Recevoir des notifications",
+      'en': "Receive notifications",
+      'de': "Benachrichtigungen erhalten",
+    },
+    'settings_notif_meals': {
+      'fr': "Rappels de repas",
+      'en': "Meal reminders",
+      'de': "Mahlzeiten-Erinnerungen",
+    },
+    'settings_notif_water': {
+      'fr': "Rappels d’hydratation",
+      'en': "Water reminders",
+      'de': "Trink-Erinnerungen",
+    },
+    'settings_notif_sessions': {
+      'fr': "Séances prévues",
+      'en': "Planned sessions",
+      'de': "Geplante Einheiten",
+    },
+    'settings_notif_recap': {
+      'fr': "Bilan de la semaine",
+      'en': "Weekly recap",
+      'de': "Wochenrückblick",
+    },
+    'settings_notif_streak': {
+      'fr': "Protection de la série",
+      'en': "Streak protection",
+      'de': "Serien-Schutz",
+    },
+    'settings_water_per_day': {
+      'fr': "{n} fois par jour",
+      'en': "{n} times a day",
+      'de': "{n}-mal pro Tag",
+    },
+    'settings_none': {
+      'fr': "Aucun",
+      'en': "None",
+      'de': "Keine",
+    },
+    'settings_off': {
+      'fr': "Désactivé",
+      'en': "Off",
+      'de': "Aus",
+    },
+    'settings_week_start': {
+      'fr': "Début de semaine",
+      'en': "Week starts on",
+      'de': "Wochenbeginn",
+    },
+    'settings_year_short': {
+      'fr': "ans",
+      'en': "yrs",
+      'de': "J.",
+    },
     // Sport, the tab by day
     'sport_hiit_rounds': {
       'fr': "tours",

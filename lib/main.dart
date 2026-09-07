@@ -14,7 +14,7 @@ import 'components/ui/recipe_models.dart';
 import 'pages/ryze_app.dart';
 import 'services/offline_workout_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'screens/settings_screen.dart';
+import 'settings/settings_page.dart';
 import 'screens/pricing_screen.dart';
 import 'services/preload_service.dart';
 import 'services/fast_cache_service.dart';
@@ -221,7 +221,7 @@ class MyApp extends StatelessWidget {
         ),
         home: const AppInitializer(),
         routes: {
-          '/settings': (context) => const SettingsScreen(),
+          '/settings': (context) => const SettingsPage(),
           '/pricing': (context) => const PricingScreen(),
         },
       ),
