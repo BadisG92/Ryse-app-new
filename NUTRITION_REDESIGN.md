@@ -278,9 +278,9 @@ d'un aliment ouvert peut les montrer sur une seconde ligne.
 ## 8. Les bugs à corriger dans la même passe
 
 1. ~~Écriture sur un jour passé (§ 4).~~ Fait : `FoodAddFlow` porte la date.
-2. Impossible de corriger une quantité : il n'existe aucune mise à jour de `food_entries`. Ajouter `FoodEntriesService.updateFoodEntryQuantity(id, quantity)` qui recalcule calories et macros au prorata, et une petite feuille avec un pas de quantité, ouverte par un tap sur un aliment dans la rangée dépliée.
-3. L'eau ne peut ni être retirée ni corrigée (§ 3.3).
-4. L'objectif d'eau n'est modifiable nulle part (§ 3.3).
+2. ~~Impossible de corriger une quantité~~ Fait : `FoodEntriesService.updateFoodEntryQuantity(id, quantity)` recalcule calories et macros au prorata et répercute l'écart sur la journée ; taper un aliment dans la rangée dépliée ouvre six portions autour de celle qui est enregistrée.
+3. ~~L'eau ne peut ni être retirée ni corrigée (§ 3.3).~~ Fait : taper un verre plein redescend à ce niveau.
+4. ~~L'objectif d'eau n'est modifiable nulle part (§ 3.3).~~ Fait : « Changer l'objectif » en bas de la feuille des quantités, de 1 L à 3,5 L.
 5. ~~Le lien profond code-barres avec repas dit « ajouté » sans écrire (§ 5).~~ Fait : le code-barres rend son aliment à `FoodAddFlow`, qui l'écrit.
 6. Depuis le tableau de bord, « Rechercher » demandait le repas puis redemandait « Rechercher ». Disparaît avec les cinq icônes.
 7. La série ne comptait pas des journées suivies mais des ouvertures de l'app : `getCurrentStreak()` **écrivait**, si bien que lire la valeur le lendemain l'incrémentait sans que rien n'ait été noté, et sept jours de tolérance la faisaient survivre à une semaine de silence. Corrigé : lire ne change plus rien, `notifyActivity()` est ce qui fait avancer la série, et il est appelé depuis l'écriture d'un aliment, d'un verre d'eau et d'une séance de cardio. La tolérance passe à 1. *Reste à faire : la même chose pour une séance de musculation, dans la passe Sport.*
@@ -369,8 +369,8 @@ Chaque étape se termine par `flutter analyze --no-pub` à 2027 problèmes ou
 moins, aucun texte littéral, aucune couleur hors tokens. Ne pas lancer
 `flutter run`.
 
-**Où on en est.** Les points 1 à 6 sont faits, le 7 en partie, le 9 sur quatre
-écrans. L'analyse est à 2007 problèmes, soit vingt de moins que la référence.
+**Où on en est.** Les points 1 à 6 sont faits, le 7 sauf la musculation, le 9
+sur quatre écrans. Tous les bugs du § 8 sont couverts. L'analyse est à 2007 problèmes, soit vingt de moins que la référence.
 Rien n'est poussé : la refonte partira quand Sport et l'accueil seront prêts.
 
 ## 11. Ce qui reste ouvert

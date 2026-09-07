@@ -810,6 +810,63 @@ class FoodEntriesService {
   }
 
   // Supprimer une entrée alimentaire
+  /// Corrige la quantité d'une entrée déjà enregistrée.
+  ///
+  /// L'app savait ajouter et supprimer, mais pas rectifier : se tromper de
+  /// portion obligeait à retirer l'aliment et à le ressaisir. Les calories et
+  /// les macros sont recalculées au prorata de l'ancienne quantité, et l'écart
+  /// est répercuté sur le total du jour comme le font l'ajout et le retrait.
+  static Future<bool> updateFoodEntryQuantity(String entryId, double quantity) async {
+    if (quantity <= 0) return false;
+    try {
+      final row = await _supabase
+          .from('food_entries')
+          .select('user_id, consumed_at, quantity, calories, proteins, carbs, fats')
+          .eq('id', entryId)
+          .maybeSingle();
+      if (row == null) return false;
+
+      final before = (row['quantity'] as num?)?.toDouble() ?? 0;
+      if (before <= 0) return false;
+      final ratio = quantity / before;
+      if ((ratio - 1).abs() < 0.0001) return true;
+
+      final calories = (row['calories'] as num?)?.toDouble() ?? 0;
+      final proteins = (row['proteins'] as num?)?.toDouble() ?? 0;
+      final carbs = (row['carbs'] as num?)?.toDouble() ?? 0;
+      final fats = (row['fats'] as num?)?.toDouble() ?? 0;
+
+      final after = {
+        'quantity': quantity,
+        'calories': (calories * ratio).round(),
+        'proteins': proteins * ratio,
+        'carbs': carbs * ratio,
+        'fats': fats * ratio,
+      };
+
+      await _supabase.from('food_entries').update(after).eq('id', entryId);
+
+      final consumedAt = DateTime.parse(row['consumed_at'] as String);
+      final now = DateTime.now();
+      final isToday = consumedAt.year == now.year && consumedAt.month == now.month && consumedAt.day == now.day;
+      if (isToday) {
+        GlobalStateManager.instance.updateCalories((after['calories'] as int).toDouble() - calories);
+        GlobalStateManager.instance.updateMacros(
+          proteins: (after['proteins'] as double) - proteins,
+          carbs: (after['carbs'] as double) - carbs,
+          fats: (after['fats'] as double) - fats,
+        );
+      }
+
+      await _notifyNutritionUpdate(row['user_id'] as String, consumedAt);
+      await MealWidgetDataProvider.updateWidgetData();
+      return true;
+    } catch (e) {
+      debugPrint('❌ updateFoodEntryQuantity: $e');
+      return false;
+    }
+  }
+
   static Future<bool> removeFoodEntry(String entryId, {bool skipPlannerSync = false}) async {
     try {
       debugPrint('🗑️ Tentative de suppression de l\'entrée: $entryId');

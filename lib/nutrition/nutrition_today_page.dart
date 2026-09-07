@@ -153,15 +153,58 @@ class _NutritionTodayPageState extends State<NutritionTodayPage> with GlobalStat
               label: amount >= 1000 ? '1 L' : '${amount ~/ 10} cl',
               onTap: () => Navigator.pop(context, amount),
             ),
+          // L'objectif n'était réglable nulle part : il l'est ici, là où on
+          // regarde déjà ses verres.
+          _Chip(
+            label: 'water_goal_edit'.tr(_lang),
+            onTap: () => Navigator.pop(context, -1),
+          ),
         ],
       ),
     );
     if (ml == null || !mounted) return;
+    if (ml < 0) {
+      await _waterGoal();
+      return;
+    }
     final ok = await WaterService.addWaterEntry(amount: ml, sourceType: ml == 250 ? 'glass' : 'manual');
     if (!mounted) return;
     if (ok) {
       RyzeFeedback.success();
       RyzeUndo.show(context, message: 'undo_glass_added'.tr(_lang), undoLabel: 'undo'.tr(_lang), onUndo: _removeLastGlass);
+    } else {
+      RyzeUndo.failed(context, message: 'undo_offline'.tr(_lang));
+    }
+  }
+
+  /// Combien on veut boire par jour. Enregistré dans `water_entries` par le
+  /// même service que le reste de l'eau, donc l'app entière suit.
+  Future<void> _waterGoal() async {
+    final current = GlobalStateManager.instance.waterGoalL;
+    final ml = await showRyzeSheet<int>(
+      context,
+      title: 'nutri_water'.tr(_lang),
+      subtitle: 'water_goal_edit'.tr(_lang),
+      builder: (context) => Wrap(
+        spacing: context.vw(2),
+        runSpacing: context.vw(2),
+        children: [
+          for (final litres in [1.0, 1.5, 2.0, 2.5, 3.0, 3.5])
+            _Chip(
+              label: '${NumberFormat.decimalPattern(_lang).format(litres)} L',
+              selected: (current - litres).abs() < 0.05,
+              onTap: () => Navigator.pop(context, (litres * 1000).round()),
+            ),
+        ],
+      ),
+    );
+    if (ml == null || !mounted) return;
+    final ok = await WaterService.updateDailyWaterGoal(ml);
+    if (!mounted) return;
+    if (ok) {
+      RyzeFeedback.confirm();
+      GlobalStateManager.instance.updateGoals(waterGoalL: ml / 1000);
+      setState(() {});
     } else {
       RyzeUndo.failed(context, message: 'undo_offline'.tr(_lang));
     }
@@ -199,6 +242,46 @@ class _NutritionTodayPageState extends State<NutritionTodayPage> with GlobalStat
         _load();
       },
     );
+  }
+
+  /// Taper un aliment enregistré : refixer ce qu'il pesait. Les calories et
+  /// les macros suivent au prorata, du côté du service.
+  Future<void> _editItem(WeekSlot slot, nutrition.FoodItem item) async {
+    if (item.id == null) return;
+    final parts = item.portion.trim().split(RegExp(r'\s+'));
+    final current = double.tryParse(parts.first.replaceAll(',', '.')) ?? 100;
+    final unit = parts.length > 1 ? parts.sublist(1).join(' ') : 'g';
+    final steps = current >= 40
+        ? [current / 2, current * 0.75, current, current * 1.25, current * 1.5, current * 2]
+        : [1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
+
+    final chosen = await showRyzeSheet<double>(
+      context,
+      title: item.name,
+      subtitle: 'nutri_fix_portion'.tr(_lang),
+      builder: (context) => Wrap(
+        spacing: context.vw(2),
+        runSpacing: context.vw(2),
+        children: [
+          for (final value in steps)
+            _Chip(
+              label: '${value.toStringAsFixed(value.truncateToDouble() == value ? 0 : 1)} $unit',
+              selected: (value - current).abs() < 0.05,
+              onTap: () => Navigator.pop(context, value),
+            ),
+        ],
+      ),
+    );
+    if (chosen == null || !mounted || (chosen - current).abs() < 0.05) return;
+
+    final ok = await FoodEntriesService.updateFoodEntryQuantity(item.id!, chosen);
+    if (!mounted) return;
+    if (ok) {
+      RyzeFeedback.confirm();
+    } else {
+      RyzeUndo.failed(context, message: 'undo_offline'.tr(_lang));
+    }
+    _load();
   }
 
   Future<void> _removeItem(WeekSlot slot, nutrition.FoodItem item) async {
@@ -319,6 +402,7 @@ class _NutritionTodayPageState extends State<NutritionTodayPage> with GlobalStat
                   onToggle: (slot) => setState(() => _open.contains(slot) ? _open.remove(slot) : _open.add(slot)),
                   onAdd: _add,
                   onRemoveItem: _removeItem,
+                  onEditItem: _editItem,
                 ),
             ],
           ),
@@ -351,10 +435,13 @@ class _BlockHeader extends StatelessWidget {
 }
 
 class _Chip extends StatelessWidget {
-  const _Chip({required this.label, required this.onTap});
+  const _Chip({required this.label, required this.onTap, this.selected = false});
 
   final String label;
   final VoidCallback onTap;
+
+  /// La valeur en cours, pour qu'on voie ce qu'on est en train de changer.
+  final bool selected;
 
   @override
   Widget build(BuildContext context) {
@@ -365,11 +452,14 @@ class _Chip extends StatelessWidget {
         padding: EdgeInsets.symmetric(horizontal: context.vw(4.1)),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: RyzeColors.surf,
+          color: selected ? RyzeColors.ink : RyzeColors.surf,
           borderRadius: BorderRadius.circular(RyzeRadius.pill),
           border: Border.all(color: RyzeColors.ink, width: 1.5),
         ),
-        child: Text(label, style: RyzeText.body(context, 3.6, weight: FontWeight.w600)),
+        child: Text(
+          label,
+          style: RyzeText.body(context, 3.6, weight: FontWeight.w600, color: selected ? RyzeColors.surf : RyzeColors.ink),
+        ),
       ),
     );
   }

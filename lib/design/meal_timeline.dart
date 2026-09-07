@@ -29,6 +29,7 @@ class MealTimeline extends StatelessWidget {
     required this.onToggle,
     required this.onAdd,
     required this.onRemoveItem,
+    this.onEditItem,
   });
 
   final DayMeals day;
@@ -48,6 +49,10 @@ class MealTimeline extends StatelessWidget {
   final ValueChanged<WeekSlot> onToggle;
   final ValueChanged<WeekSlot> onAdd;
   final void Function(WeekSlot slot, nutrition.FoodItem item) onRemoveItem;
+
+  /// Taper un aliment déjà enregistré : corriger ce qu'il pesait. Absent
+  /// quand la journée est en lecture seule.
+  final void Function(WeekSlot slot, nutrition.FoodItem item)? onEditItem;
 
   @override
   Widget build(BuildContext context) {
@@ -77,6 +82,7 @@ class MealTimeline extends StatelessWidget {
                 onToggle: () => onToggle(slot),
                 onAdd: () => onAdd(slot),
                 onRemoveItem: (item) => onRemoveItem(slot, item),
+                onEditItem: onEditItem == null ? null : (item) => onEditItem!(slot, item),
               ),
           ],
         ),
@@ -97,6 +103,7 @@ class _MealRow extends StatelessWidget {
     required this.onToggle,
     required this.onAdd,
     required this.onRemoveItem,
+    this.onEditItem,
   });
 
   final DayMeal meal;
@@ -109,6 +116,7 @@ class _MealRow extends StatelessWidget {
   final VoidCallback onToggle;
   final VoidCallback onAdd;
   final ValueChanged<nutrition.FoodItem> onRemoveItem;
+  final ValueChanged<nutrition.FoodItem>? onEditItem;
 
   @override
   Widget build(BuildContext context) {
@@ -207,7 +215,11 @@ class _MealRow extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           for (final item in meal.logged!.items)
-                            _ItemRow(item: item, onRemove: () => onRemoveItem(item)),
+                            _ItemRow(
+                              item: item,
+                              onRemove: () => onRemoveItem(item),
+                              onEdit: onEditItem == null ? null : () => onEditItem!(item),
+                            ),
                           Padding(
                             padding: EdgeInsets.only(top: context.vw(2.3), bottom: context.vw(1.5)),
                             child: OnbButton(label: addLabel, ghost: true, onPressed: onAdd),
@@ -270,10 +282,11 @@ class _AddButton extends StatelessWidget {
 }
 
 class _ItemRow extends StatelessWidget {
-  const _ItemRow({required this.item, required this.onRemove});
+  const _ItemRow({required this.item, required this.onRemove, this.onEdit});
 
   final nutrition.FoodItem item;
   final VoidCallback onRemove;
+  final VoidCallback? onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -283,7 +296,9 @@ class _ItemRow extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: Text.rich(
+            child: Pressable(
+              onTap: onEdit,
+              child: Text.rich(
               TextSpan(
                 style: RyzeText.body(context, 3.5),
                 children: [
@@ -292,8 +307,9 @@ class _ItemRow extends StatelessWidget {
                     TextSpan(text: ' · ${item.portion}', style: RyzeText.body(context, 3.1, color: RyzeColors.mute)),
                 ],
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ),
           SizedBox(width: context.vw(2.6)),

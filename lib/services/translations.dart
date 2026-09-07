@@ -10167,6 +10167,16 @@ class AppTranslations {
       'en': 'Create',
       'de': 'Erstellen',
     },
+    'water_goal_edit': {
+      'fr': 'Changer l\'objectif',
+      'en': 'Change the goal',
+      'de': 'Ziel ändern',
+    },
+    'nutri_fix_portion': {
+      'fr': 'Corriger la quantité',
+      'en': 'Fix the quantity',
+      'de': 'Menge korrigieren',
+    },
     'undo_item_added': {
       'fr': '{name} ajouté',
       'en': '{name} added',
