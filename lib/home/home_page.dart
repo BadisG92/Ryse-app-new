@@ -19,6 +19,7 @@ import '../services/weekly_planner_service.dart';
 import '../sport/sport_start.dart';
 import 'home_slots.dart';
 import 'home_suggestion.dart';
+import 'sheets/planned_meal_sheet.dart';
 import 'widgets/coach_line.dart';
 import 'widgets/today_row.dart';
 import 'widgets/water_tile.dart';
@@ -64,6 +65,9 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
   /// Vrai quand le coach a deja lu la journee : il propose alors de la
   /// revoir plutot que de la relancer, et l'appel n'est pas refacture.
   bool _analysisReady = false;
+
+  /// Minuit est passe et la journee qui vient de finir a de quoi etre lue.
+  bool _nightReview = false;
 
   WeeklyPlannerData? _week;
   bool _syncing = false;
@@ -153,6 +157,15 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
   }
 
   Future<void> _checkAnalysis() async {
+    // Entre minuit et 5 h, l'etat global a deja bascule de jour : ses calories
+    // sont celles d'une journee de quelques minutes. Pour savoir si celle qui
+    // vient de finir merite d'etre lue, il faut la relire dans la base.
+    if (DayAnalysis.isNight()) {
+      final worth = await DayAnalysis.worthReading(DayAnalysis.yesterday());
+      if (mounted && worth != _nightReview) setState(() => _nightReview = worth);
+      return;
+    }
+    if (mounted && _nightReview) setState(() => _nightReview = false);
     if (!DayAnalysis.isOffered()) return;
     final found = await DayAnalysis.cached();
     if (mounted && (found != null) != _analysisReady) {
@@ -220,6 +233,8 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
         _startSession();
       case HomeAction.analyseDay:
         _analyseDay();
+      case HomeAction.analyseYesterday:
+        _analyseDay(day: DayAnalysis.yesterday());
       case HomeAction.viewDay:
         // « Voir ma journée » parle des repas du jour — « tu es à 210 kcal
         // au-dessus, on regarde ? ». Cela envoyait sur la Progression, qui
@@ -341,8 +356,8 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
 
   /// La lecture de la journee par Coach Ryze. Le cache est par date :
   /// rouvrir ne relance rien et ne consomme pas d'essai.
-  Future<void> _analyseDay() async {
-    await DayAnalysis.open(context);
+  Future<void> _analyseDay({DateTime? day}) async {
+    await DayAnalysis.open(context, date: day);
     if (mounted) await _checkAnalysis();
   }
 
@@ -391,16 +406,18 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
     if (mounted) _loadWeek(force: true);
   }
 
-  /// Un créneau touché dans la bande dépliée. Aujourd'hui se comporte comme la
-  /// rangée du jour ; un autre jour mène au planificateur, dans le mode du
-  /// créneau — c'est là qu'on écrit dans l'avenir, pas dans le journal.
-  void _onWeekSlotTap(DateTime day, WeekSlot slot) {
-    final now = DateTime.now();
-    if (day.year == now.year && day.month == now.month && day.day == now.day) {
-      _onSlotTap(slot);
-      return;
+  /// Une ligne du jour ouvert : la feuille de ce qu'elle porte. Ce sont les
+  /// mêmes feuilles que partout ailleurs - la séance et le cardio les avaient
+  /// déjà, le repas prévu vient d'avoir la sienne.
+  Future<void> _onWeekLineTap(DateTime day, PlannedLine line) async {
+    if (line.workout != null) {
+      await WorkoutRecapBottomSheet.show(context, workout: line.workout!);
+    } else if (line.slot == WeekSlot.sport && line.activity != null) {
+      await CardioRecapBottomSheet.show(context, activity: line.activity!);
+    } else if (line.activity != null) {
+      await PlannedMealSheet.show(context, meal: line.activity!, lang: _lang);
     }
-    _pushPlanner(slot == WeekSlot.sport ? 'workouts' : 'meals');
+    if (mounted) _loadWeek(force: true);
   }
 
   /// A slot that is already done opens what is in it, in the Nutrition tab.
@@ -440,6 +457,15 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
 
     final days = _days;
     final slots = [for (final d in days) HomeSlots.ofDay(_week?.getDayPlan(d))];
+    final lines = [
+      for (final d in days)
+        HomeSlots.linesOf(
+          _week?.getDayPlan(d),
+          slotLabel: (s) => 'slot_${s.name}'.tr(lang),
+          kcal: 'nutri_kcal'.tr(lang),
+          exercises: 'planner_exercises'.tr(lang),
+        ),
+    ];
     final now = DateTime.now();
     final todayIndex = days.indexWhere((d) => d.year == now.year && d.month == now.month && d.day == now.day);
     final today = todayIndex < 0 ? const DaySlots() : slots[todayIndex];
@@ -458,6 +484,7 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
       calorieGoal: gs.calorieGoal.round(),
       analysisOffered: DayAnalysis.isOffered(),
       analysisReady: _analysisReady,
+      nightReview: _nightReview,
     );
     // Le bouton secondaire est pour quand l'étape suivante est de regarder.
     // Démarrer une séance est un engagement : il prend l'encre pleine.
@@ -566,9 +593,10 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
                       lang: lang,
                       days: days,
                       slots: slots,
+                      lines: lines,
                       onOpenPlanner: _openPlanner,
-                      onSlotTap: _onWeekSlotTap,
-                      onEmptyDayTap: (_) => _openPlanner(),
+                      onLineTap: _onWeekLineTap,
+                      onPlanDay: (_) => _openPlanner(),
                     ),
                   ),
                 ],

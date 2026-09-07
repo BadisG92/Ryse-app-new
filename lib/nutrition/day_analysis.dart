@@ -33,7 +33,25 @@ class DayAnalysis {
   /// En dessous, il n'y a rien à analyser : le coach a mieux à dire.
   static const double minimumShare = 0.3;
 
-  /// Vrai quand l'analyse a un sens maintenant.
+  /// Jusqu'à cette heure, la journée dont on parle est celle d'hier.
+  ///
+  /// L'application bascule de jour à minuit, sur l'horloge locale. Passé
+  /// minuit, l'état global compte donc les calories d'une journée vieille de
+  /// quelques minutes, et la journée qu'on vient de vivre devient muette : son
+  /// analyse cesse d'être proposée alors que c'est le moment où elle vaut le
+  /// plus. Entre minuit et cinq heures, le sujet reste hier.
+  static const int nightUntil = 5;
+
+  /// Vrai entre minuit et cinq heures.
+  static bool isNight({DateTime? now}) => (now ?? DateTime.now()).hour < nightUntil;
+
+  /// La journée qui vient de finir.
+  static DateTime yesterday({DateTime? now}) {
+    final t = now ?? DateTime.now();
+    return DateTime(t.year, t.month, t.day).subtract(const Duration(days: 1));
+  }
+
+  /// Vrai quand l'analyse a un sens maintenant, pour la journée en cours.
   static bool isOffered({DateTime? now}) {
     final t = now ?? DateTime.now();
     if (t.hour < fromHour) return false;
@@ -41,6 +59,22 @@ class DayAnalysis {
     final goal = gs.calorieGoal;
     if (goal <= 0) return false;
     return gs.currentCalories / goal >= minimumShare;
+  }
+
+  /// Vrai quand ce jour-là a assez servi pour être lu. Sert à la nuit, où les
+  /// chiffres du jour ne sont plus ceux de la journée dont on parle : ils sont
+  /// relus dans la base plutôt que pris à l'état global.
+  static Future<bool> worthReading(DateTime day) async {
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    final goal = GlobalStateManager.instance.calorieGoal;
+    if (userId == null || goal <= 0) return false;
+    try {
+      final byDay = await FoodEntriesService.getDailyCalories(userId: userId, from: day, to: day);
+      final eaten = byDay['${day.year}-${day.month}-${day.day}'] ?? 0;
+      return eaten / goal >= minimumShare;
+    } catch (_) {
+      return false;
+    }
   }
 
   /// L'analyse déjà produite pour ce jour, s'il y en a une. Sert à choisir

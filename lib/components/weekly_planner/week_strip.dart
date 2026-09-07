@@ -62,6 +62,8 @@ class WeekStrip extends StatelessWidget {
     this.popped = const {},
     this.onSlotTap,
     this.onEmptyTap,
+    this.onDayTap,
+    this.openDay,
   });
 
   final List<DateTime> days;
@@ -80,6 +82,14 @@ class WeekStrip extends StatelessWidget {
   /// Un jour ou rien n'est prévu : la pastille en pointillés devient un
   /// bouton. Elle portait un « + » sur lequel il ne se passait rien.
   final void Function(int day)? onEmptyTap;
+
+  /// Quand il est donné, chaque jour de la bande est un bouton à lui
+  /// seul et c'est l'appelant qui décide de ce qui s'ouvre. Sans lui,
+  /// toucher la bande la déplie entière, comme dans la conversation.
+  final void Function(int day)? onDayTap;
+
+  /// Le jour ouvert, s'il y en a un.
+  final int? openDay;
 
   bool _isToday(DateTime d) {
     final now = DateTime.now();
@@ -100,22 +110,27 @@ class WeekStrip extends StatelessWidget {
         children: [
           GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onTap: onToggle,
+            onTap: onDayTap == null ? onToggle : null,
             child: Padding(
               padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
               child: Row(
                 children: [
                   for (var i = 0; i < days.length; i++)
                     Expanded(
-                      child: _DayChip(
-                        letter: dayLetters[i],
-                        number: days[i].day,
-                        slots: slots[i],
-                        today: _isToday(days[i]),
-                        past: _isPast(days[i]),
-                        anchor: expanded ? null : slotKey,
-                        popped: popped,
-                        index: i,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: onDayTap == null ? null : () => onDayTap!(i),
+                        child: _DayChip(
+                          letter: dayLetters[i],
+                          number: days[i].day,
+                          slots: slots[i],
+                          today: _isToday(days[i]),
+                          past: _isPast(days[i]),
+                          anchor: expanded ? null : slotKey,
+                          popped: popped,
+                          index: i,
+                          open: openDay == i,
+                        ),
                       ),
                     ),
                 ],
@@ -180,6 +195,7 @@ class _DayChip extends StatelessWidget {
     required this.anchor,
     required this.popped,
     required this.index,
+    this.open = false,
   });
 
   final String letter;
@@ -191,6 +207,9 @@ class _DayChip extends StatelessWidget {
   final Set<String> popped;
   final int index;
 
+  /// Le jour dont le contenu est déplié sous la bande.
+  final bool open;
+
   @override
   Widget build(BuildContext context) {
     final dim = past && !today;
@@ -198,6 +217,11 @@ class _DayChip extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 1),
       padding: const EdgeInsets.fromLTRB(3, 6, 3, 7),
       decoration: BoxDecoration(
+        // Deux marques distinctes, qui peuvent se cumuler : aujourd'hui porte
+        // un liseré d'encre, le jour ouvert un fond. Le jour ouvert n'est pas
+        // forcément aujourd'hui, et aujourd'hui reste reconnaissable même
+        // quand on lit un autre jour.
+        color: open ? _line.withValues(alpha: 0.55) : null,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: today ? _ink : Colors.transparent, width: 2),
       ),

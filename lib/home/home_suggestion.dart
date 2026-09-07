@@ -4,7 +4,7 @@ import '../components/weekly_planner/week_strip.dart';
 import '../services/translations.dart';
 
 /// What the coach's one button does.
-enum HomeAction { logBreakfast, logLunch, logSnack, logDinner, logMeal, drinkWater, startWorkout, viewDay, analyseDay }
+enum HomeAction { logBreakfast, logLunch, logSnack, logDinner, logMeal, drinkWater, startWorkout, viewDay, analyseDay, analyseYesterday }
 
 /// The coach's line for right now, and the one action that follows from it.
 ///
@@ -43,6 +43,11 @@ class HomeSuggestion {
     /// Vrai quand elle a déjà été produite : le coach propose alors de la
     /// voir, pas de la relancer.
     bool analysisReady = false,
+
+    /// Minuit est passé et la journée qui vient de finir vaut d'être lue.
+    /// L'accueil le calcule sur les calories d'hier, que l'état global n'a
+    /// plus : il a basculé de jour en même temps que l'horloge.
+    bool nightReview = false,
     DateTime? now,
   }) {
     final h = (now ?? DateTime.now()).hour;
@@ -129,12 +134,25 @@ class HomeSuggestion {
       return rest();
     }
 
-    // Late. The day is nearly over, but a dinner eaten and not written down is
-    // exactly what happens at this hour, so the coach still offers to log it
-    // rather than handing back a dead end.
-    if (!done(WeekSlot.dinner)) return meal(WeekSlot.dinner);
-    if (analysisOffered) return analysis();
-    if (waterUnfinished) return water();
+    // 22 h – minuit. La journée finit, mais un dîner mangé et pas noté est
+    // exactement ce qui arrive à cette heure : le coach le propose encore
+    // plutôt que de rendre un cul-de-sac.
+    if (h >= 22) {
+      if (!done(WeekSlot.dinner)) return meal(WeekSlot.dinner);
+      if (analysisOffered) return analysis();
+      if (waterUnfinished) return water();
+      return say('home_line_night', 'cta_view_day', HomeAction.viewDay);
+    }
+
+    // Minuit passé. L'application bascule de journée sur l'horloge locale :
+    // à 0 h 30, « today » est un jour vieux de trente minutes, dont rien ne
+    // peut être en retard. Le coach proposait pourtant d'enregistrer son
+    // dîner — un dîner à vingt heures de là.
+    //
+    // À cette heure, la seule journée dont on puisse parler est celle qui
+    // vient de finir. Si elle a de quoi être lue, le coach la lit ; sinon il
+    // souhaite bonne nuit, et c'est tout ce qu'il y a d'honnête à dire.
+    if (nightReview) return say('home_line_analysis_night', 'cta_analyse_yesterday', HomeAction.analyseYesterday);
     return say('home_line_night', 'cta_view_day', HomeAction.viewDay);
   }
 }

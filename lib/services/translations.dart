@@ -9819,6 +9819,21 @@ class AppTranslations {
       'en': 'Add a glass of water',
       'de': 'Ein Glas Wasser hinzufügen',
     },
+    'home_line_analysis_night': {
+      'fr': "Ta journée d'hier est terminée. Je la regarde ?",
+      'en': 'Yesterday is done. Shall I read it?',
+      'de': 'Gestern ist abgeschlossen. Soll ich ihn lesen?',
+    },
+    'cta_analyse_yesterday': {
+      'fr': "Analyser ma journée d'hier",
+      'en': 'Analyse yesterday',
+      'de': 'Gestern analysieren',
+    },
+    'home_day_empty': {
+      'fr': 'Rien de prévu — planifier ce jour',
+      'en': 'Nothing planned — plan this day',
+      'de': 'Nichts geplant — diesen Tag planen',
+    },
     'cta_start_workout': {
       'fr': 'Commencer ma séance',
       'en': 'Start my session',

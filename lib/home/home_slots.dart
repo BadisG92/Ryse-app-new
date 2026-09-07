@@ -6,6 +6,21 @@ import '../models/weekly_planner_models.dart';
 /// the day is done, the first done one does.
 typedef HomeSession = ({PlannedWorkout? workout, PlannedActivity? cardio, PlannedStatus status, String label});
 
+
+/// Une ligne du jour déplié : ce qui est prévu, dit en toutes lettres.
+///
+/// La bande donne l'aperçu — sept jours, leurs marques — mais une marque dit
+/// qu'il y a quelque chose, jamais quoi. Ouvrir un jour donne la largeur de
+/// l'écran à ses lignes, et là on lit « Dîner · Saumon, riz · 620 kcal ».
+typedef PlannedLine = ({
+  WeekSlot slot,
+  SlotState state,
+  String title,
+  String detail,
+  PlannedWorkout? workout,
+  PlannedActivity? activity,
+});
+
 /// Reads one day of the plan in the week strip's language: a state per slot.
 ///
 /// A planned meal is `planned`; once one of its foods is validated, or once a
@@ -60,6 +75,59 @@ class HomeSlots {
       if (s.label.isNotEmpty) labels[WeekSlot.sport] = s.label;
     }
     return DaySlots(states: states, labels: labels);
+  }
+
+  /// Ce qu'un jour contient, une ligne par élément prévu, dans l'ordre de la
+  /// journée. Un jour sans rien rend une liste vide, et la vue propose alors
+  /// de le planifier.
+  static List<PlannedLine> linesOf(
+    DayPlanData? day, {
+    required String Function(WeekSlot) slotLabel,
+    required String kcal,
+    required String exercises,
+  }) {
+    if (day == null) return const [];
+    final lines = <PlannedLine>[];
+
+    for (final slot in kFoodSlots) {
+      for (final meal in day.meals) {
+        if (meal.activityType.value != slot.name) continue;
+        final data = meal.mealData;
+        final name = (data?.dishName?.isNotEmpty ?? false) ? data!.dishName! : slotLabel(slot);
+        final energy = data?.calories;
+        lines.add((
+          slot: slot,
+          state: meal.status == PlannedStatus.completed ? SlotState.done : SlotState.planned,
+          title: name,
+          detail: energy == null || energy <= 0 ? '' : '$energy $kcal',
+          workout: null,
+          activity: meal,
+        ));
+      }
+    }
+
+    for (final w in day.workouts) {
+      lines.add((
+        slot: WeekSlot.sport,
+        state: w.status == PlannedStatus.completed ? SlotState.done : SlotState.planned,
+        title: w.workoutName,
+        detail: w.exercises.isEmpty ? '' : '${w.exercises.length} $exercises',
+        workout: w,
+        activity: null,
+      ));
+    }
+    for (final c in day.cardios) {
+      final data = c.cardioData;
+      lines.add((
+        slot: WeekSlot.sport,
+        state: c.status == PlannedStatus.completed ? SlotState.done : SlotState.planned,
+        title: data?.activityName ?? '',
+        detail: data?.targetMinutes == null ? '' : '${data!.targetMinutes} min',
+        workout: null,
+        activity: c,
+      ));
+    }
+    return lines;
   }
 
   /// The journal stores meal types in whatever the user's language called
