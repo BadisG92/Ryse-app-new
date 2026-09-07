@@ -15,8 +15,8 @@ import '../services/translations.dart';
 /// fois. L'ambre est réservé à ce que Ryze rend : le titre, la puce de
 /// chaque recommandation.
 ///
-/// Le paywall (`PaywallContext.exerciseAnalysis`) et l'essai gratuit ne
-/// changent pas : l'essai n'est consommé que si l'analyse aboutit.
+/// L'analyse est une fonctionnalité de l'abonnement
+/// (`PaywallContext.exerciseAnalysis`).
 class ExerciseAiAnalysisWidget extends StatefulWidget {
   final String exerciseName;
   final String userId;
