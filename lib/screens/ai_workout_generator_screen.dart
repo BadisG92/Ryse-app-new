@@ -1,1719 +1,653 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
-import '../services/ai_workout_generation_service.dart';
-import '../services/localization_service.dart';
-import '../services/offline_workout_service.dart';
-import '../services/translations.dart';
-import '../services/auth_service.dart';
-import '../services/subscription_service.dart';
-import '../services/feature_trial_service.dart';
-import '../services/unit_service.dart';
-import '../models/sport_models.dart';
-import '../components/ui/coach_ryze_avatar.dart';
-import '../bottom_sheets/exercise_info_bottom_sheet.dart';
-import '../sport/session/session_screen.dart';
 
+import '../bottom_sheets/exercise_info_bottom_sheet.dart';
+import '../design/design.dart';
+import '../models/sport_models.dart';
+import '../services/ai_workout_generation_service.dart';
+import '../services/feature_trial_service.dart';
+import '../services/localization_service.dart';
+import '../services/subscription_service.dart';
+import '../services/translations.dart';
+import '../sport/session/session_screen.dart';
+import '../sport/session/sheets/exercise_picker_sheet.dart';
+
+/// Coach Ryze prépare une séance de musculation.
+///
+/// Deux temps, jamais mélangés : on demande, puis on regarde ce qui est
+/// proposé et on le corrige. La demande est une phrase — les huit puces ne
+/// sont qu'un raccourci pour l'écrire — plus trois réglages repliés, parce
+/// que la plupart du temps la phrase suffit.
+///
+/// Le paywall et l'essai gratuit ne changent pas : `SportStart.coach` a déjà
+/// vérifié l'accès avant de pousser cet écran, et l'essai n'est consommé que
+/// si la génération aboutit.
 class AIWorkoutGeneratorScreen extends StatefulWidget {
-  const AIWorkoutGeneratorScreen({Key? key}) : super(key: key);
+  const AIWorkoutGeneratorScreen({super.key});
 
   @override
   State<AIWorkoutGeneratorScreen> createState() => _AIWorkoutGeneratorScreenState();
 }
 
-class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> with SingleTickerProviderStateMixin {
-  final TextEditingController _textController = TextEditingController();
-  String? _selectedChip;
-  bool _showParams = false;
-  int _duration = 45;
-  double _intensity = 0.5;
-  String _focus = 'Hypertrophie';
-  List<String> _equipment = ['Haltères', 'Barre'];
-  bool _isGenerating = false;
-  List<WorkoutExercise>? _generatedWorkout;
-  String? _aiSuggestions;
-  String? _errorMessage;
-  bool _isEditMode = false; // Mode édition du plan
-  String _sessionName = ''; // Nom de la séance généré automatiquement
-
-  // Animation du panda
-  late AnimationController _animationController;
-  late Animation<double> _fadeAnimation;
-  late Animation<Offset> _slideAnimation;
-
-  // 8 chips de suggestions rapides
-  final List<Map<String, String>> _quickChips = [
-    {'label_fr': 'Haut du corps', 'label_en': 'Upper body', 'label_de': 'Oberkörper', 'emoji': '💪'},
-    {'label_fr': 'Jambes', 'label_en': 'Legs', 'label_de': 'Beine', 'emoji': '🦵'},
-    {'label_fr': 'Full body', 'label_en': 'Full body', 'label_de': 'Ganzkörper', 'emoji': '🏋️'},
-    {'label_fr': 'Push', 'label_en': 'Push', 'label_de': 'Drücken', 'emoji': '🔥'},
-    {'label_fr': 'Pull', 'label_en': 'Pull', 'label_de': 'Ziehen', 'emoji': '💙'},
-    {'label_fr': 'Abdos/Core', 'label_en': 'Abs/Core', 'label_de': 'Bauch/Rumpf', 'emoji': '🎯'},
-    {'label_fr': 'Bras', 'label_en': 'Arms', 'label_de': 'Arme', 'emoji': '💪'},
-    {'label_fr': 'Circuit training', 'label_en': 'Circuit training', 'label_de': 'Zirkeltraining', 'emoji': '🔥'},
+class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> {
+  static const List<String> _chipKeys = [
+    'ai_workout_chip_upper',
+    'ai_workout_chip_legs',
+    'ai_workout_chip_full',
+    'ai_workout_chip_push',
+    'ai_workout_chip_pull',
+    'ai_workout_chip_core',
+    'ai_workout_chip_arms',
+    'ai_workout_chip_circuit',
   ];
+  static const List<int> _durations = [30, 45, 60, 90];
+  static const List<String> _focusKeys = ['ai_workout_focus_strength', 'ai_workout_focus_hypertrophy', 'ai_workout_focus_endurance'];
+  static const List<String> _focusValues = ['Force', 'Hypertrophie', 'Endurance'];
+  static const List<double> _intensityValues = [0.2, 0.5, 0.85];
+
+  final TextEditingController _prompt = TextEditingController();
+
+  int? _chip;
+  bool _params = false;
+  int _duration = 1; // 45 min
+  int _intensity = 1;
+  int _focus = 1;
+
+  bool _generating = false;
+  List<WorkoutExercise>? _workout;
+  String? _suggestions;
+  String? _error;
+  String _name = '';
 
   @override
   void initState() {
     super.initState();
-
-    // Initialiser l'animation du panda
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    );
-
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeOut,
-    ));
-
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0.3, 0), // Vient de la droite
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeOutCubic,
-    ));
-
-    // Démarrer l'animation
-    _animationController.forward();
+    _prompt.addListener(() => setState(() {}));
   }
 
   @override
   void dispose() {
-    _animationController.dispose();
-    _textController.dispose();
+    _prompt.dispose();
     super.dispose();
   }
 
-  bool get _canGenerate =>
-      _selectedChip != null || _textController.text.trim().isNotEmpty;
+  String get _lang => LocalizationService.instance.currentLanguageCode;
 
-  Future<void> _generateWorkout() async {
-    if (!_canGenerate) return;
+  bool get _canGenerate => _chip != null || _prompt.text.trim().isNotEmpty;
 
+  Future<void> _generate() async {
+    if (!_canGenerate || _generating) return;
+    final lang = _lang;
+    FocusScope.of(context).unfocus();
+    RyzeFeedback.confirm();
     setState(() {
-      _isGenerating = true;
-      _errorMessage = null;
-      _generatedWorkout = null;
+      _generating = true;
+      _error = null;
+      _workout = null;
     });
 
     try {
-      final locService = LocalizationService.instance;
-      final userRequest = _textController.text.trim().isNotEmpty
-          ? _textController.text.trim()
-          : _selectedChip!;
-
+      final request = _prompt.text.trim().isNotEmpty ? _prompt.text.trim() : _chipKeys[_chip!].tr(lang);
       final result = await AIWorkoutGenerationService.generateWorkout(
-        userRequest: userRequest,
-        durationMinutes: _duration,
-        intensity: _intensity,
-        focus: _focus,
-        equipment: _equipment,
+        userRequest: request,
+        durationMinutes: _durations[_duration],
+        intensity: _intensityValues[_intensity],
+        focus: _focusValues[_focus],
+        equipment: const ['Haltères', 'Barre'],
       );
-
+      if (!mounted) return;
       if (result.success && result.exercises.isNotEmpty) {
-        setState(() {
-          _generatedWorkout = result.exercises;
-          _aiSuggestions = result.aiSuggestions;
-          _sessionName = _generateSessionName(result.exercises, locService.isFrench);
-        });
-
-        // ✅ Marquer le trial comme utilisé UNIQUEMENT si le workout a été généré avec succès
+        // L'essai n'est consommé que si la séance existe vraiment.
         if (!SubscriptionService.instance.isPremium) {
-          FeatureTrialService.instance.markFeatureAsUsed(
-            FeatureTrialService.keyWorkout,
-          );
-          if (kDebugMode) debugPrint('✅ Workout Generator trial marked as used after successful generation');
+          FeatureTrialService.instance.markFeatureAsUsed(FeatureTrialService.keyWorkout);
         }
-      } else {
+        RyzeFeedback.success();
         setState(() {
-          _errorMessage = result.error ?? 'ai_workout_error_unknown'.tr(locService.currentLanguageCode);
+          _workout = result.exercises;
+          _suggestions = result.aiSuggestions;
+          _name = _nameFor(result.exercises, lang);
         });
+      } else {
+        setState(() => _error = result.error ?? 'ai_workout_error_unknown'.tr(lang));
       }
-    } catch (e) {
-      setState(() {
-        _errorMessage = e.toString();
-      });
+    } catch (_) {
+      if (mounted) setState(() => _error = 'ai_workout_error_unknown'.tr(lang));
     } finally {
-      setState(() {
-        _isGenerating = false;
-      });
+      if (mounted) setState(() => _generating = false);
     }
   }
 
-  void _startWorkout() {
-    if (_generatedWorkout == null) {
-      debugPrint('❌ _startWorkout: _generatedWorkout est null!');
-      return;
+  /// Le nom vient des groupes musculaires que la séance travaille le plus.
+  /// Ils arrivent déjà traduits de Supabase, donc pas de table par langue.
+  static String _nameFor(List<WorkoutExercise> exercises, String lang) {
+    final counts = <String, int>{};
+    for (final e in exercises) {
+      final g = e.exercise.muscleGroup.trim();
+      if (g.isEmpty) continue;
+      counts[g] = (counts[g] ?? 0) + 1;
     }
+    if (counts.isEmpty) return 'ai_workout_generated_session'.tr(lang);
+    final top = counts.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+    final parts = top.take(2).map((e) => e.key[0].toUpperCase() + e.key.substring(1)).toList();
+    return parts.join(' & ');
+  }
 
-    debugPrint('✅ _startWorkout: ${_generatedWorkout!.length} exercices');
-    for (var i = 0; i < _generatedWorkout!.length; i++) {
-      final ex = _generatedWorkout![i];
-      debugPrint('  [$i] ${ex.exercise.name} - ${ex.sets.length} séries');
-    }
-
-    // ⚡ FIX: Use push instead of pushReplacement to preserve navigation stack
-    Navigator.push(
-      context,
+  void _start() {
+    final workout = _workout;
+    if (workout == null || workout.isEmpty) return;
+    Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => WorkoutSessionScreen(
-          sessionName: _sessionName.isNotEmpty ? _sessionName : 'ai_workout_generated_session'.tr(LocalizationService.instance.currentLanguageCode),
-          exercises: _generatedWorkout!,
-          isFromProgram: false, // ⚡ Coach Ryze is NOT a predefined program - user chooses whether to save
-          isFromAI: true, // ⚡ Marks as Coach Ryze for 3-pop navigation
+        builder: (_) => WorkoutSessionScreen(
+          sessionName: _name.isNotEmpty ? _name : 'ai_workout_generated_session'.tr(_lang),
+          exercises: workout,
+          isFromAI: true,
         ),
       ),
     );
   }
 
-  /// Génère un nom de séance intelligent basé sur les groupes musculaires
-  String _generateSessionName(List<WorkoutExercise> exercises, bool isFrench) {
-    final isGerman = LocalizationService.instance.isGerman;
-    // Compter les groupes musculaires
-    final muscleGroups = <String, int>{};
-    for (final ex in exercises) {
-      final group = ex.exercise.muscleGroup.toLowerCase();
-      muscleGroups[group] = (muscleGroups[group] ?? 0) + 1;
-    }
-
-    // Mapper vers noms français/anglais/allemand
-    final muscleNamesFr = {
-      'chest': 'Pectoraux',
-      'pectoraux': 'Pectoraux',
-      'back': 'Dos',
-      'dorsaux': 'Dos',
-      'legs': 'Jambes',
-      'quadriceps': 'Jambes',
-      'ischio-jambiers': 'Jambes',
-      'hamstrings': 'Jambes',
-      'shoulders': 'Épaules',
-      'épaules': 'Épaules',
-      'arms': 'Bras',
-      'biceps': 'Bras',
-      'triceps': 'Bras',
-      'core': 'Core',
-      'abdominaux': 'Core',
-      'abs': 'Core',
-      'glutes': 'Fessiers',
-      'fessiers': 'Fessiers',
-      'calves': 'Mollets',
-      'mollets': 'Mollets',
-    };
-
-    final muscleNamesEn = {
-      'chest': 'Chest',
-      'pectoraux': 'Chest',
-      'back': 'Back',
-      'dorsaux': 'Back',
-      'legs': 'Legs',
-      'quadriceps': 'Legs',
-      'ischio-jambiers': 'Legs',
-      'hamstrings': 'Legs',
-      'shoulders': 'Shoulders',
-      'épaules': 'Shoulders',
-      'arms': 'Arms',
-      'biceps': 'Arms',
-      'triceps': 'Arms',
-      'core': 'Core',
-      'abdominaux': 'Core',
-      'abs': 'Core',
-      'glutes': 'Glutes',
-      'fessiers': 'Glutes',
-      'calves': 'Calves',
-      'mollets': 'Calves',
-    };
-
-    final muscleNamesDe = {
-      'chest': 'Brust',
-      'pectoraux': 'Brust',
-      'back': 'Rücken',
-      'dorsaux': 'Rücken',
-      'legs': 'Beine',
-      'quadriceps': 'Beine',
-      'ischio-jambiers': 'Beine',
-      'hamstrings': 'Beine',
-      'shoulders': 'Schultern',
-      'épaules': 'Schultern',
-      'arms': 'Arme',
-      'biceps': 'Arme',
-      'triceps': 'Arme',
-      'core': 'Rumpf',
-      'abdominaux': 'Rumpf',
-      'abs': 'Rumpf',
-      'glutes': 'Gesäß',
-      'fessiers': 'Gesäß',
-      'calves': 'Waden',
-      'mollets': 'Waden',
-    };
-
-    final nameMap = isGerman ? muscleNamesDe : (isFrench ? muscleNamesFr : muscleNamesEn);
-
-    // Trouver les groupes dominants (>= 2 exercices)
-    final dominantGroups = <String>[];
-    for (final entry in muscleGroups.entries) {
-      if (entry.value >= 2) {
-        final normalizedName = nameMap[entry.key] ?? entry.key;
-        if (!dominantGroups.contains(normalizedName)) {
-          dominantGroups.add(normalizedName);
-        }
-      }
-    }
-
-    // Si pas de groupes dominants, prendre les 2 premiers différents
-    if (dominantGroups.isEmpty) {
-      final uniqueGroups = <String>[];
-      for (final entry in muscleGroups.entries) {
-        final normalizedName = nameMap[entry.key] ?? entry.key;
-        if (!uniqueGroups.contains(normalizedName)) {
-          uniqueGroups.add(normalizedName);
-          if (uniqueGroups.length >= 2) break;
-        }
-      }
-      dominantGroups.addAll(uniqueGroups);
-    }
-
-    // Construire le nom
-    if (dominantGroups.isEmpty) {
-      return isGerman ? 'Coach Ryze - Ganzkörper' : (isFrench ? 'Coach Ryze - Full Body' : 'Coach Ryze - Full Body');
-    } else if (dominantGroups.length == 1) {
-      return 'Coach Ryze - ${dominantGroups[0]}';
-    } else if (dominantGroups.length == 2) {
-      return 'Coach Ryze - ${dominantGroups[0]} + ${dominantGroups[1]}';
-    } else if (dominantGroups.length >= 3) {
-      return isGerman ? 'Coach Ryze - Ganzkörper' : (isFrench ? 'Coach Ryze - Full Body' : 'Coach Ryze - Full Body');
-    }
-
-    return isGerman ? 'Coach Ryze - Training' : (isFrench ? 'Coach Ryze - Séance' : 'Coach Ryze - Workout');
+  Future<void> _rename() async {
+    final lang = _lang;
+    final controller = TextEditingController(text: _name);
+    final name = await showRyzeSheet<String>(
+      context,
+      title: 'ai_workout_rename'.tr(lang),
+      keyboard: true,
+      builder: (sheet) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: RyzeColors.surf,
+              borderRadius: BorderRadius.circular(RyzeRadius.sm),
+              border: Border.all(color: RyzeColors.line),
+            ),
+            child: TextField(
+              controller: controller,
+              autofocus: true,
+              textCapitalization: TextCapitalization.sentences,
+              style: RyzeText.body(context, 3.9),
+              cursorColor: RyzeColors.ink,
+              onSubmitted: (v) => Navigator.pop(sheet, v.trim()),
+              decoration: InputDecoration(
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.symmetric(horizontal: context.vw(4.1), vertical: context.vw(3.1)),
+              ),
+            ),
+          ),
+          SizedBox(height: context.vw(3.1)),
+          OnbButton(label: 'save'.tr(lang), onPressed: () => Navigator.pop(sheet, controller.text.trim())),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (name != null && name.isNotEmpty && mounted) setState(() => _name = name);
   }
 
-  /// Génère un message contextuel basé sur l'heure et l'état de l'utilisateur
-  String _getContextualMessage(bool isFrench, String userName) {
-    final hour = DateTime.now().hour;
-    final isGerman = LocalizationService.instance.isGerman;
+  Future<void> _addExercise() async {
+    final picked = await ExercisePickerSheet.show(context, lang: _lang);
+    if (picked == null || !mounted) return;
+    setState(() {
+      _workout = [
+        ...?_workout,
+        WorkoutExercise(
+          exercise: picked,
+          sets: List.generate(3, (_) => const ExerciseSet(reps: 0, weight: 0)),
+          suggestedRepsMin: 8,
+          suggestedRepsMax: 12,
+        ),
+      ];
+    });
+  }
 
-    // Message selon l'heure de la journée
-    if (_generatedWorkout != null) {
-      // Si un workout est déjà généré
-      if (isGerman) {
-        return 'Dein Training ist bereit! Gib alles 💪';
-      } else if (isFrench) {
-        return 'Ta séance est prête ! Lance-toi et donne tout 💪';
-      } else {
-        return 'Your workout is ready! Let\'s crush it 💪';
-      }
-    } else {
-      // Aucun workout généré encore
-      if (hour >= 5 && hour < 12) {
-        return isGerman
-          ? 'Bereit, stark in den Tag zu starten?'
-          : (isFrench
-            ? 'Prêt à commencer la journée en force ?'
-            : 'Ready to start your day strong?');
-      } else if (hour >= 12 && hour < 18) {
-        return isGerman
-          ? 'Die perfekte Zeit für ein Training!'
-          : (isFrench
-            ? 'C\'est le moment parfait pour t\'entraîner !'
-            : 'Perfect time for a workout!');
-      } else if (hour >= 18 && hour < 22) {
-        return isGerman
-          ? 'Eine gute Einheit zum Tagesabschluss?'
-          : (isFrench
-            ? 'Une bonne séance pour finir la journée ?'
-            : 'End your day with a great session?');
-      } else {
-        return isGerman
-          ? 'Motiviert für ein spätes Training?'
-          : (isFrench
-            ? 'Motivé pour une séance nocturne ?'
-            : 'Motivated for a late workout?');
-      }
-    }
+  void _move(int index, int by) {
+    final list = _workout;
+    if (list == null) return;
+    final to = index + by;
+    if (to < 0 || to >= list.length) return;
+    RyzeFeedback.tap();
+    setState(() {
+      final e = list.removeAt(index);
+      list.insert(to, e);
+    });
+  }
+
+  void _remove(int index) {
+    final list = _workout;
+    if (list == null || index >= list.length) return;
+    final lang = _lang;
+    final gone = list[index];
+    RyzeFeedback.removed();
+    setState(() => list.removeAt(index));
+    RyzeUndo.show(
+      context,
+      message: 'session_exercise_removed'.tr(lang).replaceAll('{name}', gone.exercise.name),
+      undoLabel: 'undo'.tr(lang),
+      onUndo: () => setState(() => list.insert(index.clamp(0, list.length), gone)),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final locService = Provider.of<LocalizationService>(context);
-    final isFrench = locService.isFrench;
+    final lang = context.watch<LocalizationService>().currentLanguageCode;
+    final gutter = context.vw(5.1);
+    final workout = _workout;
 
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(LucideIcons.chevronLeft, color: Color(0xFF0B132B)),
-          onPressed: () {
-            // Si en mode édition, sortir du mode édition au lieu de quitter
-            if (_isEditMode && _generatedWorkout != null) {
-              setState(() {
-                _isEditMode = false;
-              });
-            } else {
-              Navigator.pop(context);
-            }
-          },
-        ),
-        title: Text(
-          'ai_workout_title'.tr(locService.currentLanguageCode),
-          style: const TextStyle(
-            color: Color(0xFF0B132B),
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        actions: [
-          // Icône Modifier (seulement si workout généré)
-          if (_generatedWorkout != null)
-            IconButton(
-              icon: Icon(
-                _isEditMode ? LucideIcons.check : LucideIcons.pencil,
-                color: _isEditMode ? const Color(0xFF10B981) : const Color(0xFF1C2951),
-              ),
-              onPressed: () {
-                setState(() {
-                  _isEditMode = !_isEditMode;
-                });
-              },
-              tooltip: _isEditMode
-                  ? (locService.isGerman ? 'Bestätigen' : (isFrench ? 'Valider' : 'Confirm'))
-                  : (locService.isGerman ? 'Bearbeiten' : (isFrench ? 'Modifier' : 'Edit')),
-            ),
-        ],
-      ),
-      body: _generatedWorkout == null
-          ? _buildGeneratorView(isFrench)
-          : _buildPreviewView(isFrench),
-    );
-  }
-
-  Widget _buildGeneratorView(bool isFrench) {
-    return Consumer<AuthService>(
-      builder: (context, authService, child) {
-        // Capitaliser le prénom (même méthode que le dashboard)
-        final rawName = authService.currentUser?.firstName ?? 'Champion';
-        final userName = rawName.isEmpty ? rawName : rawName[0].toUpperCase() + rawName.substring(1).toLowerCase();
-        final isGerman = LocalizationService.instance.isGerman;
-        final greeting = isGerman ? 'Hallo' : (isFrench ? 'Salut' : 'Hey');
-
-        return SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Header avec Coach Ryze - Design simple et unifié
-              Padding(
-                padding: const EdgeInsets.all(24),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    // Message principal
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '$greeting $userName !',
-                            style: const TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF0B132B),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            isGerman
-                              ? 'Bereit für ein individuelles Training?'
-                              : (isFrench
-                                  ? 'Prêt pour une séance sur-mesure ?'
-                                  : 'Ready for a custom workout?'),
-                            style: const TextStyle(
-                              fontSize: 16,
-                              color: Color(0xFF64748B),
-                              height: 1.3,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    // Avatar Coach Ryze à droite avec animation
-                    FadeTransition(
-                      opacity: _fadeAnimation,
-                      child: SlideTransition(
-                        position: _slideAnimation,
-                        child: const CoachRyzeAvatar(
-                          type: CoachRyzeAvatarType.workout,
-                          size: CoachRyzeAvatarSize.xxlarge, // 160px
-                          withShadow: false, // Pas besoin, le container a déjà une ombre
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-
-          // Suggestions rapides (sans emoji)
-          Row(
-            children: [
-              const Icon(
-                LucideIcons.zap,
-                size: 18,
-                color: Color(0xFF0B132B),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                LocalizationService.instance.isGerman
-                    ? 'Schnelle Vorschläge'
-                    : (isFrench ? 'Suggestions rapides' : 'Quick suggestions'),
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF0B132B),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 12),
-
-          // Chips horizontaux (sans emojis)
-          SizedBox(
-            height: 40,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: _quickChips.length,
-              itemBuilder: (context, index) {
-                final chip = _quickChips[index];
-                final label = LocalizationService.instance.isGerman
-                    ? chip['label_de']!
-                    : (isFrench ? chip['label_fr']! : chip['label_en']!);
-                final isSelected = _selectedChip == label;
-
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _selectedChip = isSelected ? null : label;
-                        if (_selectedChip != null) {
-                          _textController.clear();
-                        }
-                      });
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? const Color(0xFF0B132B)
-                            : Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: isSelected
-                              ? const Color(0xFF0B132B)
-                              : const Color(0xFFE2E8F0),
-                          width: 1.5,
-                        ),
-                      ),
-                      child: Text(
-                        label,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: isSelected ? Colors.white : const Color(0xFF0B132B),
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-
-          const SizedBox(height: 24),
-
-          // Séparateur "ou"
-          Row(
-            children: [
-              const Expanded(child: Divider(color: Color(0xFFE2E8F0))),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  isGerman ? 'oder' : (isFrench ? 'ou' : 'or'),
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: Color(0xFF94A3B8),
-                  ),
-                ),
-              ),
-              const Expanded(child: Divider(color: Color(0xFFE2E8F0))),
-            ],
-          ),
-
-          const SizedBox(height: 24),
-
-          // Décris ta séance (sans emoji)
-          Row(
-            children: [
-              const Icon(
-                LucideIcons.messageSquare,
-                size: 18,
-                color: Color(0xFF0B132B),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                isGerman
-                    ? 'Beschreibe dein Training'
-                    : (isFrench ? 'Décris ta séance' : 'Describe your workout'),
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF0B132B),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 12),
-
-          TextField(
-            controller: _textController,
-            maxLines: 3,
-            decoration: InputDecoration(
-              hintText: isGerman
-                  ? 'z.B.: Ich möchte Brust und Schultern trainieren'
-                  : (isFrench
-                      ? 'Ex: Je veux travailler les pectoraux et les épaules'
-                      : 'Ex: I want to work chest and shoulders'),
-              hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
-              filled: true,
-              fillColor: const Color(0xFFF8FAFC),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFF0B132B), width: 2),
-              ),
-            ),
-            onChanged: (value) {
-              if (value.trim().isNotEmpty) {
-                setState(() {
-                  _selectedChip = null;
-                });
-              }
-            },
-          ),
-
-          const SizedBox(height: 24),
-
-          // Paramètres (expandable)
-          GestureDetector(
-            onTap: () {
-              setState(() {
-                _showParams = !_showParams;
-              });
-            },
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
+      backgroundColor: RyzeColors.paper,
+      resizeToAvoidBottomInset: true,
+      body: Stack(
+        children: [
+          const OnbBackground(scene: false),
+          SafeArea(
+            bottom: false,
+            child: Column(
+              children: [
+                Padding(
+                  padding: EdgeInsets.fromLTRB(gutter, context.vw(1.5), gutter, context.vw(2.6)),
+                  child: Row(
                     children: [
-                      const Icon(LucideIcons.settings, size: 20, color: Color(0xFF0B132B)),
-                      const SizedBox(width: 8),
-                      Text(
-                        isGerman
-                            ? 'Einstellungen'
-                            : (isFrench ? 'Paramètres' : 'Settings'),
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF0B132B),
+                      Pressable(
+                        onTap: () => Navigator.of(context).pop(),
+                        child: Container(
+                          width: context.vw(9.7),
+                          height: context.vw(9.7),
+                          decoration: BoxDecoration(color: RyzeColors.surf, shape: BoxShape.circle, border: Border.all(color: RyzeColors.line)),
+                          child: Icon(LucideIcons.x, size: context.vw(4.6), color: RyzeColors.ink),
                         ),
                       ),
+                      SizedBox(width: context.vw(3.1)),
+                      Expanded(child: Text('ai_workout_title'.tr(lang), style: RyzeText.body(context, 4.1, weight: FontWeight.w600))),
                     ],
                   ),
-                  Icon(
-                    _showParams ? LucideIcons.chevronUp : LucideIcons.chevronDown,
-                    size: 20,
-                    color: const Color(0xFF64748B),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          if (_showParams) ...[
-            const SizedBox(height: 16),
-            _buildParametersSection(isFrench),
-          ],
-
-          const SizedBox(height: 32),
-
-          // Message d'erreur
-          if (_errorMessage != null) ...[
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.red.withOpacity(0.3)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.error_outline, size: 20, color: Colors.red),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      _errorMessage!,
-                      style: const TextStyle(fontSize: 13, color: Colors.red),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
-
-          // Bouton Générer
-          SizedBox(
-            height: 56,
-            child: ElevatedButton(
-              onPressed: _canGenerate && !_isGenerating ? _generateWorkout : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0B132B),
-                foregroundColor: Colors.white,
-                disabledBackgroundColor: const Color(0xFFE2E8F0),
-                disabledForegroundColor: const Color(0xFF94A3B8),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
                 ),
-                elevation: 0,
-              ),
-              child: _isGenerating
-                  ? const SizedBox(
-                      height: 24,
-                      width: 24,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    )
-                  : Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        SvgPicture.asset(
-                          'assets/images/logo_solo.svg',
-                          width: 20,
-                          height: 20,
-                          colorFilter: const ColorFilter.mode(
-                            Colors.white,
-                            BlendMode.srcIn,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          isGerman
-                              ? 'Training generieren'
-                              : (isFrench ? 'Générer ma séance' : 'Generate my workout'),
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                Expanded(
+                  child: workout == null
+                      ? _ask(context, lang, gutter)
+                      : _preview(context, lang, gutter, workout),
                 ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  /// Helper pour afficher les détails de l'exercice de façon compacte (colonne à droite)
-  Widget _buildCompactExerciseDetails(WorkoutExercise workoutEx, bool isFrench) {
-    final weights = workoutEx.sets.map((s) => s.weight).toSet().toList();
-    weights.sort();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Text(
-          '${workoutEx.sets.length}×${workoutEx.sets.first.reps}',
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF0B132B),
-          ),
-        ),
-        if (weights.isNotEmpty && weights.first > 0) ...[
-          const SizedBox(height: 2),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                LucideIcons.dumbbell,
-                size: 12,
-                color: Color(0xFF64748B),
-              ),
-              const SizedBox(width: 4),
-              Text(
-                weights.length == 1
-                    ? UnitService.instance.formatWeight(weights.first, decimals: weights.first.truncateToDouble() == weights.first ? 0 : 1)
-                    : '${UnitService.instance.formatWeight(weights.first, decimals: weights.first.truncateToDouble() == weights.first ? 0 : 1).split(' ').first}-${UnitService.instance.formatWeight(weights.last, decimals: weights.last.truncateToDouble() == weights.last ? 0 : 1)}',
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: Color(0xFF64748B),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ],
-    );
-  }
-
-  /// Helper pour afficher les détails de l'exercice avec poids
-  Widget _buildExerciseDetails(WorkoutExercise workoutEx, bool isFrench) {
-    final weights = workoutEx.sets.map((s) => s.weight).toSet().toList();
-    weights.sort();
-
-    String weightText = '';
-    if (weights.isNotEmpty && weights.first > 0) {
-      if (weights.length == 1) {
-        // Un seul poids pour toutes les séries
-        weightText = UnitService.instance.formatWeight(weights.first, decimals: weights.first.truncateToDouble() == weights.first ? 0 : 1);
-      } else {
-        // Plusieurs poids différents
-        final minWeight = weights.first;
-        final maxWeight = weights.last;
-        final minDec = minWeight.truncateToDouble() == minWeight ? 0 : 1;
-        final maxDec = maxWeight.truncateToDouble() == maxWeight ? 0 : 1;
-        weightText = '${UnitService.instance.displayWeight(minWeight).toStringAsFixed(minDec)} - ${UnitService.instance.formatWeight(maxWeight, decimals: maxDec)}';
-      }
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '${workoutEx.sets.length} ${LocalizationService.instance.isGerman ? 'Sätze' : (isFrench ? 'séries' : 'sets')} × ${workoutEx.sets.first.reps} ${LocalizationService.instance.isGerman ? 'Wdh' : (isFrench ? 'reps' : 'reps')}',
-          style: const TextStyle(
-            fontSize: 14,
-            color: Color(0xFF64748B),
-          ),
-        ),
-        if (weightText.isNotEmpty) ...[
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              const Icon(Icons.fitness_center, size: 14, color: Color(0xFF64748B)),
-              const SizedBox(width: 4),
-              Text(
-                weightText,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF0B132B),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildParametersSection(bool isFrench) {
-    final isGerman = LocalizationService.instance.isGerman;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Durée
-          Text(
-            isGerman ? 'Dauer' : (isFrench ? 'Durée' : 'Duration'),
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF0B132B),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            children: [30, 45, 60, 90].map((duration) {
-              final isSelected = _duration == duration;
-              return GestureDetector(
-                onTap: () => setState(() => _duration = duration),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: isSelected ? const Color(0xFF0B132B) : const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: isSelected ? const Color(0xFF0B132B) : const Color(0xFFE2E8F0),
-                    ),
-                  ),
-                  child: Text(
-                    '${duration}min',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: isSelected ? Colors.white : const Color(0xFF1A1A1A),
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-
-          const SizedBox(height: 16),
-
-          // Intensité
-          Text(
-            isGerman ? 'Intensität' : (isFrench ? 'Intensité' : 'Intensity'),
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF0B132B),
-            ),
-          ),
-          Slider(
-            value: _intensity,
-            onChanged: (value) => setState(() => _intensity = value),
-            activeColor: const Color(0xFF0B132B),
-            inactiveColor: const Color(0xFFE2E8F0),
-            divisions: 2,
-            label: _intensity < 0.33
-                ? (isGerman ? 'Leicht' : (isFrench ? 'Léger' : 'Light'))
-                : _intensity < 0.67
-                    ? (isGerman ? 'Mittel' : (isFrench ? 'Modéré' : 'Moderate'))
-                    : (isGerman ? 'Intensiv' : (isFrench ? 'Intense' : 'Intense')),
-          ),
-
-          const SizedBox(height: 8),
-
-          // Focus
-          Text(
-            isGerman ? 'Fokus' : (isFrench ? 'Focus' : 'Focus'),
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF0B132B),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            children: [
-              isGerman ? 'Kraft' : (isFrench ? 'Force' : 'Strength'),
-              isGerman ? 'Hypertrophie' : (isFrench ? 'Hypertrophie' : 'Hypertrophy'),
-              isGerman ? 'Ausdauer' : (isFrench ? 'Endurance' : 'Endurance'),
-            ].map((focus) {
-              final isSelected = _focus == focus;
-              return GestureDetector(
-                onTap: () => setState(() => _focus = focus),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: isSelected ? const Color(0xFF0B132B) : const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: isSelected ? const Color(0xFF0B132B) : const Color(0xFFE2E8F0),
-                    ),
-                  ),
-                  child: Text(
-                    focus,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: isSelected ? Colors.white : const Color(0xFF1A1A1A),
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPreviewView(bool isFrench) {
-    return Column(
-      children: [
-        Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Nom de la séance (éditable en mode édition)
-                GestureDetector(
-                  onTap: _isEditMode ? _showEditNameDialog : null,
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: _isEditMode
-                          ? const Color(0xFF1C2951).withOpacity(0.05)
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(12),
-                      border: _isEditMode
-                          ? Border.all(color: const Color(0xFF1C2951).withOpacity(0.3))
-                          : null,
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            _sessionName.isNotEmpty ? _sessionName : 'Coach Ryze - Séance',
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF0B132B),
-                            ),
-                          ),
-                        ),
-                        if (_isEditMode)
-                          Icon(
-                            LucideIcons.pencil,
-                            size: 18,
-                            color: const Color(0xFF1C2951).withOpacity(0.6),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 8),
-
-                // Nombre d'exercices
-                Text(
-                  LocalizationService.instance.isGerman
-                      ? '${_generatedWorkout!.length} Übungen'
-                      : (isFrench
-                          ? '${_generatedWorkout!.length} exercices'
-                          : '${_generatedWorkout!.length} exercises'),
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: const Color(0xFF64748B),
-                  ),
-                ),
-
-                const SizedBox(height: 16),
-
-                // Liste des exercices (compacte ou éditable)
-                ..._generatedWorkout!.asMap().entries.map((entry) {
-                  final index = entry.key;
-                  final workoutEx = entry.value;
-
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                    ),
-                    child: Row(
-                      children: [
-                        // Mode édition : boutons haut/bas
-                        if (_isEditMode) ...[
-                          Column(
-                            children: [
-                              // Bouton monter
-                              GestureDetector(
-                                onTap: index > 0
-                                    ? () => _moveExerciseUp(index)
-                                    : null,
-                                child: Container(
-                                  width: 28,
-                                  height: 28,
-                                  decoration: BoxDecoration(
-                                    color: index > 0
-                                        ? const Color(0xFF0B132B).withOpacity(0.1)
-                                        : Colors.grey.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Icon(
-                                    LucideIcons.arrowUp,
-                                    size: 16,
-                                    color: index > 0
-                                        ? const Color(0xFF0B132B)
-                                        : Colors.grey,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              // Bouton descendre
-                              GestureDetector(
-                                onTap: index < _generatedWorkout!.length - 1
-                                    ? () => _moveExerciseDown(index)
-                                    : null,
-                                child: Container(
-                                  width: 28,
-                                  height: 28,
-                                  decoration: BoxDecoration(
-                                    color: index < _generatedWorkout!.length - 1
-                                        ? const Color(0xFF0B132B).withOpacity(0.1)
-                                        : Colors.grey.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Icon(
-                                    LucideIcons.arrowDown,
-                                    size: 16,
-                                    color: index < _generatedWorkout!.length - 1
-                                        ? const Color(0xFF0B132B)
-                                        : Colors.grey,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(width: 8),
-                        ] else
-                          // Numéro normal (mode preview)
-                          Container(
-                            width: 28,
-                            height: 28,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF0B132B),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Center(
-                              child: Text(
-                                '${index + 1}',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ),
-                          ),
-                        const SizedBox(width: 12),
-                        // Infos exercice
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                workoutEx.exercise.name,
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF0B132B),
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                workoutEx.exercise.muscleGroup,
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Color(0xFF64748B),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        // Icône info (seulement pour les exercices non-custom)
-                        if (!workoutEx.exercise.isCustom) ...[
-                          const SizedBox(width: 8),
-                          GestureDetector(
-                            onTap: () {
-                              ExerciseInfoBottomSheet.show(
-                                context,
-                                exerciseId: workoutEx.exercise.id,
-                                exerciseName: workoutEx.exercise.name,
-                              );
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF1F5F9),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: const Icon(
-                                LucideIcons.info,
-                                size: 14,
-                                color: Color(0xFF64748B),
-                              ),
-                            ),
-                          ),
-                        ],
-                        const SizedBox(width: 8),
-                        // Mode édition : bouton supprimer
-                        if (_isEditMode)
-                          GestureDetector(
-                            onTap: () => _removeExercise(index),
-                            child: Container(
-                              width: 32,
-                              height: 32,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFEF4444).withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: const Icon(
-                                LucideIcons.trash2,
-                                size: 16,
-                                color: Color(0xFFEF4444),
-                              ),
-                            ),
-                          )
-                        else
-                          // Détails à droite (mode preview)
-                          _buildCompactExerciseDetails(workoutEx, isFrench),
-                      ],
-                    ),
-                  );
-                }).toList(),
-
-                // Bouton ajouter exercice (mode édition)
-                if (_isEditMode) ...[
-                  const SizedBox(height: 8),
-                  OutlinedButton.icon(
-                    onPressed: _showAddExerciseToWorkout,
-                    icon: const Icon(LucideIcons.plus, size: 18),
-                    label: Text(LocalizationService.instance.isGerman
-                        ? 'Übung hinzufügen'
-                        : (isFrench ? 'Ajouter un exercice' : 'Add exercise')),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF0B132B),
-                      side: const BorderSide(color: Color(0xFFE2E8F0)),
-                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                ],
-
-                // Conseils de Coach Ryze (style identique à l'analyse d'exercice)
-                if (_aiSuggestions != null && _aiSuggestions!.isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  Container(
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF0B132B).withOpacity(0.25),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Header avec logo Ryze
-                        Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.15),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: SvgPicture.asset(
-                                  'assets/images/logo_solo.svg',
-                                  width: 20,
-                                  height: 20,
-                                  colorFilter: const ColorFilter.mode(
-                                    Colors.white,
-                                    BlendMode.srcIn,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  LocalizationService.instance.isGerman
-                                      ? 'Coach Ryze Tipps'
-                                      : (isFrench ? 'Conseils de Coach Ryze' : 'Coach Ryze Tips'),
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        // Contenu blanc
-                        Container(
-                          margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            _aiSuggestions!,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              height: 1.6,
-                              color: Color(0xFF334155),
-                              letterSpacing: 0.2,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
               ],
             ),
           ),
-        ),
+        ],
+      ),
+    );
+  }
 
-        // Bottom buttons
-        Container(
-          padding: const EdgeInsets.all(24),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            border: Border(
-              top: BorderSide(color: Color(0xFFE2E8F0)),
-            ),
-          ),
-          child: Row(
+  // ------------------------------------------------------------ demander
+
+  Widget _ask(BuildContext context, String lang, double gutter) {
+    return Column(
+      children: [
+        Expanded(
+          child: ListView(
+            padding: EdgeInsets.fromLTRB(gutter, 0, gutter, context.vw(6)),
             children: [
-              // Bouton Régénérer (toujours visible)
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () {
-                    setState(() {
-                      _generatedWorkout = null;
-                      _aiSuggestions = null;
-                      _isEditMode = false;
-                    });
-                  },
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF0B132B),
-                    side: const BorderSide(color: Color(0xFF0B132B)),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: Text(
-                    LocalizationService.instance.isGerman
-                        ? 'Neu generieren'
-                        : (isFrench ? 'Régénérer' : 'Regenerate'),
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
+              Text('ai_workout_ask'.tr(lang), style: RyzeText.display(context, 6.7, weight: FontWeight.w600)),
+              SizedBox(height: context.vw(3.6)),
+              Container(
+                decoration: BoxDecoration(
+                  color: RyzeColors.surf,
+                  borderRadius: BorderRadius.circular(RyzeRadius.md),
+                  border: Border.all(color: RyzeColors.line),
+                ),
+                child: TextField(
+                  controller: _prompt,
+                  maxLines: 3,
+                  minLines: 2,
+                  textCapitalization: TextCapitalization.sentences,
+                  style: RyzeText.body(context, 3.9, height: 1.4),
+                  cursorColor: RyzeColors.ink,
+                  decoration: InputDecoration(
+                    hintText: 'ai_workout_hint'.tr(lang),
+                    hintStyle: RyzeText.body(context, 3.9, color: RyzeColors.mute2),
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.all(context.vw(4.1)),
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
-              // Bouton Commencer
-              Expanded(
-                flex: 2,
-                child: ElevatedButton(
-                  onPressed: _startWorkout,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0B132B),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+              SizedBox(height: context.vw(3.1)),
+              Wrap(
+                spacing: context.vw(2.1),
+                runSpacing: context.vw(2.1),
+                children: [
+                  for (var i = 0; i < _chipKeys.length; i++)
+                    OnbChip(
+                      label: _chipKeys[i].tr(lang),
+                      selected: _chip == i,
+                      index: i,
+                      onTap: () => setState(() => _chip = _chip == i ? null : i),
                     ),
-                    elevation: 0,
+                ],
+              ),
+              SizedBox(height: context.vw(4.1)),
+              Pressable(
+                onTap: () {
+                  RyzeFeedback.tap();
+                  setState(() => _params = !_params);
+                },
+                child: Row(
+                  children: [
+                    Text('ai_workout_params'.tr(lang), style: RyzeText.body(context, 3.4, weight: FontWeight.w600, color: RyzeColors.mute)),
+                    SizedBox(width: context.vw(1.5)),
+                    Icon(_params ? LucideIcons.chevronUp : LucideIcons.chevronDown, size: context.vw(4.1), color: RyzeColors.mute2),
+                  ],
+                ),
+              ),
+              AnimatedSize(
+                duration: RyzeDurations.enter,
+                curve: RyzeCurves.out,
+                alignment: Alignment.topCenter,
+                child: !_params
+                    ? const SizedBox(width: double.infinity)
+                    : Padding(
+                        padding: EdgeInsets.only(top: context.vw(2.6)),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Text('workout_duration'.tr(lang), style: RyzeText.body(context, 3.1, weight: FontWeight.w600, color: RyzeColors.mute)),
+                            SizedBox(height: context.vw(1.5)),
+                            RyzeSegmented(
+                              labels: [for (final d in _durations) '$d'],
+                              index: _duration,
+                              onChanged: (i) => setState(() => _duration = i),
+                            ),
+                            SizedBox(height: context.vw(3.6)),
+                            Text('workout_intensity'.tr(lang), style: RyzeText.body(context, 3.1, weight: FontWeight.w600, color: RyzeColors.mute)),
+                            SizedBox(height: context.vw(1.5)),
+                            RyzeSegmented(
+                              labels: [
+                                'workout_intensity_low'.tr(lang),
+                                'workout_intensity_moderate'.tr(lang),
+                                'workout_intensity_high'.tr(lang),
+                              ],
+                              index: _intensity,
+                              onChanged: (i) => setState(() => _intensity = i),
+                            ),
+                            SizedBox(height: context.vw(3.6)),
+                            Text('ai_workout_focus'.tr(lang), style: RyzeText.body(context, 3.1, weight: FontWeight.w600, color: RyzeColors.mute)),
+                            SizedBox(height: context.vw(1.5)),
+                            RyzeSegmented(
+                              labels: [for (final k in _focusKeys) k.tr(lang)],
+                              index: _focus,
+                              onChanged: (i) => setState(() => _focus = i),
+                            ),
+                          ],
+                        ),
+                      ),
+              ),
+              if (_error != null) ...[
+                SizedBox(height: context.vw(4.1)),
+                Text(_error!, style: RyzeText.body(context, 3.4, color: RyzeColors.danger, height: 1.4)),
+              ],
+            ],
+          ),
+        ),
+        SafeArea(
+          top: false,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(gutter, context.vw(2.1), gutter, context.vw(2.1)),
+            child: Pressable(
+              onTap: _canGenerate && !_generating ? _generate : null,
+              child: AnimatedContainer(
+                duration: RyzeDurations.tap,
+                height: context.vw(13.3),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: _canGenerate && !_generating ? RyzeColors.ink : RyzeColors.idle,
+                  borderRadius: BorderRadius.circular(RyzeRadius.sm),
+                  boxShadow: _canGenerate && !_generating ? RyzeShadow.soft : null,
+                ),
+                child: _generating
+                    ? Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            width: context.vw(4.1),
+                            height: context.vw(4.1),
+                            child: const CircularProgressIndicator(color: RyzeColors.mute, strokeWidth: 2),
+                          ),
+                          SizedBox(width: context.vw(2.6)),
+                          Flexible(
+                            child: Text(
+                              'ai_workout_generating'.tr(lang),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: RyzeText.body(context, 3.6, weight: FontWeight.w600, color: RyzeColors.mute),
+                            ),
+                          ),
+                        ],
+                      )
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(LucideIcons.sparkles, size: context.vw(4.1), color: _canGenerate ? RyzeColors.surf : RyzeColors.mute),
+                          SizedBox(width: context.vw(2.1)),
+                          Text(
+                            'ai_workout_generate'.tr(lang),
+                            style: RyzeText.body(context, 3.9, weight: FontWeight.w600, color: _canGenerate ? RyzeColors.surf : RyzeColors.mute),
+                          ),
+                        ],
+                      ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // -------------------------------------------------------------- relire
+
+  Widget _preview(BuildContext context, String lang, double gutter, List<WorkoutExercise> workout) {
+    return Column(
+      children: [
+        Expanded(
+          child: ListView(
+            padding: EdgeInsets.fromLTRB(gutter, 0, gutter, context.vw(6)),
+            children: [
+              Pressable(
+                onTap: _rename,
+                child: Row(
+                  children: [
+                    Flexible(child: Text(_name, style: RyzeText.display(context, 6.2, weight: FontWeight.w600))),
+                    SizedBox(width: context.vw(2.1)),
+                    Icon(LucideIcons.pencil, size: context.vw(4.1), color: RyzeColors.mute2),
+                  ],
+                ),
+              ),
+              SizedBox(height: context.vw(0.5)),
+              Text(
+                'sport_program_exercises'.tr(lang).replaceAll('{n}', '${workout.length}'),
+                style: RyzeText.body(context, 3.1, color: RyzeColors.mute),
+              ),
+              SizedBox(height: context.vw(4.1)),
+              for (var i = 0; i < workout.length; i++) _exerciseCard(context, lang, workout, i),
+              Pressable(
+                onTap: _addExercise,
+                child: Container(
+                  height: context.vw(12.3),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(RyzeRadius.sm),
+                    border: Border.all(color: RyzeColors.idle),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(LucideIcons.play, size: 20),
-                      const SizedBox(width: 8),
-                      Text(
-                        LocalizationService.instance.isGerman
-                            ? 'Training starten'
-                            : (isFrench ? 'Commencer la séance' : 'Start workout'),
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                      Icon(LucideIcons.plus, size: context.vw(4.1), color: RyzeColors.ink),
+                      SizedBox(width: context.vw(1.5)),
+                      Text('workout_add_exercise'.tr(lang), style: RyzeText.body(context, 3.4, weight: FontWeight.w600)),
                     ],
                   ),
                 ),
               ),
+              if (_suggestions != null && _suggestions!.trim().isNotEmpty) ...[
+                SizedBox(height: context.vw(5.1)),
+                Container(
+                  padding: EdgeInsets.all(context.vw(4.1)),
+                  decoration: BoxDecoration(
+                    color: RyzeColors.surf,
+                    borderRadius: BorderRadius.circular(RyzeRadius.md),
+                    border: Border.all(color: RyzeColors.line),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: context.vw(7.7),
+                            height: context.vw(7.7),
+                            decoration: const BoxDecoration(color: RyzeColors.acc, shape: BoxShape.circle),
+                            child: Icon(LucideIcons.sparkles, size: context.vw(3.6), color: RyzeColors.accInk),
+                          ),
+                          SizedBox(width: context.vw(2.6)),
+                          Text('ai_workout_suggestions'.tr(lang), style: RyzeText.body(context, 3.4, weight: FontWeight.w600)),
+                        ],
+                      ),
+                      SizedBox(height: context.vw(2.1)),
+                      Text(_suggestions!, style: RyzeText.body(context, 3.4, color: RyzeColors.mute, height: 1.5)),
+                    ],
+                  ),
+                ),
+              ],
             ],
+          ),
+        ),
+        SafeArea(
+          top: false,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(gutter, context.vw(2.1), gutter, context.vw(2.1)),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Pressable(
+                    onTap: _generating ? null : _generate,
+                    child: Container(
+                      height: context.vw(13.3),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: RyzeColors.surf,
+                        borderRadius: BorderRadius.circular(RyzeRadius.sm),
+                        border: Border.all(color: RyzeColors.line),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(LucideIcons.refreshCw, size: context.vw(4.1), color: RyzeColors.ink),
+                          SizedBox(width: context.vw(1.5)),
+                          Flexible(
+                            child: Text(
+                              'ai_workout_regenerate'.tr(lang),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: RyzeText.body(context, 3.6, weight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(width: context.vw(3.1)),
+                Expanded(
+                  flex: 2,
+                  child: Pressable(
+                    onTap: _start,
+                    child: Container(
+                      height: context.vw(13.3),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: RyzeColors.ink,
+                        borderRadius: BorderRadius.circular(RyzeRadius.sm),
+                        boxShadow: RyzeShadow.soft,
+                      ),
+                      child: Text('ai_workout_start'.tr(lang), style: RyzeText.body(context, 3.9, weight: FontWeight.w600, color: RyzeColors.surf)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ],
     );
   }
 
-  // ========================================
-  // EDIT MODE FUNCTIONS
-  // ========================================
+  Widget _exerciseCard(BuildContext context, String lang, List<WorkoutExercise> workout, int i) {
+    final we = workout[i];
+    final min = we.suggestedRepsMin, max = we.suggestedRepsMax;
+    final sets = (min != null && max != null)
+        ? 'sport_sets_reps'.tr(lang).replaceAll('{sets}', '${we.sets.length}').replaceAll('{min}', '$min').replaceAll('{max}', '$max')
+        : 'sport_sets_only'.tr(lang).replaceAll('{sets}', '${we.sets.length}');
 
-  void _moveExerciseUp(int index) {
-    if (index == 0 || _generatedWorkout == null) return;
-
-    setState(() {
-      final workout = List<WorkoutExercise>.from(_generatedWorkout!);
-      final temp = workout[index];
-      workout[index] = workout[index - 1];
-      workout[index - 1] = temp;
-      _generatedWorkout = workout;
-    });
-  }
-
-  void _moveExerciseDown(int index) {
-    if (_generatedWorkout == null || index >= _generatedWorkout!.length - 1) return;
-
-    setState(() {
-      final workout = List<WorkoutExercise>.from(_generatedWorkout!);
-      final temp = workout[index];
-      workout[index] = workout[index + 1];
-      workout[index + 1] = temp;
-      _generatedWorkout = workout;
-    });
-  }
-
-  void _removeExercise(int index) {
-    if (_generatedWorkout == null) return;
-
-    setState(() {
-      final workout = List<WorkoutExercise>.from(_generatedWorkout!);
-      workout.removeAt(index);
-      _generatedWorkout = workout.isEmpty ? null : workout;
-
-      // Si plus d'exercices, sortir du mode édition
-      if (_generatedWorkout == null) {
-        _isEditMode = false;
-      }
-    });
-  }
-
-  Future<void> _showAddExerciseToWorkout() async {
-    // Utiliser le même bottom sheet que l'écran de session
-    // Pour l'instant, navigation vers sélection d'exercice simple
-    final locService = LocalizationService.instance;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.9,
-        minChildSize: 0.5,
-        maxChildSize: 0.95,
-        builder: (context, scrollController) {
-          return Container(
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-            ),
-            child: Column(
-              children: [
-                // Header
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: const BoxDecoration(
-                    border: Border(
-                      bottom: BorderSide(color: Color(0xFFE2E8F0)),
+    return Padding(
+      padding: EdgeInsets.only(bottom: context.vw(2.1)),
+      child: Container(
+        padding: EdgeInsets.fromLTRB(context.vw(4.1), context.vw(3.1), context.vw(2.1), context.vw(3.1)),
+        decoration: BoxDecoration(
+          color: RyzeColors.surf,
+          borderRadius: BorderRadius.circular(RyzeRadius.md),
+          border: Border.all(color: RyzeColors.line),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Pressable(
+                onTap: () => ExerciseInfoBottomSheet.show(context, exerciseId: we.exercise.id, exerciseName: we.exercise.name),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(we.exercise.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: RyzeText.body(context, 3.9, weight: FontWeight.w600)),
+                        ),
+                        SizedBox(width: context.vw(1.5)),
+                        Icon(LucideIcons.info, size: context.vw(3.6), color: RyzeColors.mute2),
+                      ],
                     ),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          locService.isGerman
-                              ? 'Übung hinzufügen'
-                              : (locService.isFrench ? 'Ajouter un exercice' : 'Add exercise'),
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF0B132B),
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(LucideIcons.x),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ],
-                  ),
+                    Text(
+                      [if (we.exercise.muscleGroup.isNotEmpty) we.exercise.muscleGroup, sets].join(' · '),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: RyzeText.body(context, 3.1, color: RyzeColors.mute),
+                    ),
+                  ],
                 ),
-
-                // Note importante
-                Container(
-                  margin: const EdgeInsets.all(16),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1C2951).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        LucideIcons.info,
-                        size: 20,
-                        color: Color(0xFF1C2951),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          locService.isGerman
-                              ? 'Hinzugefügte Übungen haben kein vorausgefülltes Gewicht oder Wiederholungen'
-                              : (locService.isFrench
-                                  ? 'Les exercices ajoutés n\'auront pas de poids ou répétitions pré-remplis'
-                                  : 'Added exercises won\'t have pre-filled weight or reps'),
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: Color(0xFF1C2951),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Liste simplifiée pour sélection rapide
-                Expanded(
-                  child: FutureBuilder(
-                    future: _loadExercisesForSelection(),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-
-                      final exercises = snapshot.data as List<Exercise>? ?? [];
-
-                      return ListView.builder(
-                        controller: scrollController,
-                        padding: const EdgeInsets.all(16),
-                        itemCount: exercises.length,
-                        itemBuilder: (context, index) {
-                          final exercise = exercises[index];
-
-                          return GestureDetector(
-                            onTap: () {
-                              _addExerciseToWorkout(exercise);
-                              Navigator.pop(context);
-                            },
-                            child: Container(
-                              margin: const EdgeInsets.only(bottom: 8),
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF8FAFC),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: const Color(0xFFE2E8F0)),
-                              ),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          exercise.name,
-                                          style: const TextStyle(
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w600,
-                                            color: Color(0xFF0B132B),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          exercise.muscleGroup,
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            color: Color(0xFF64748B),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const Icon(
-                                    LucideIcons.plus,
-                                    color: Color(0xFF1C2951),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
-                ),
-              ],
+              ),
             ),
-          );
-        },
+            _Icon(icon: LucideIcons.chevronUp, tooltip: 'ai_workout_move_up'.tr(lang), onTap: i == 0 ? null : () => _move(i, -1)),
+            _Icon(icon: LucideIcons.chevronDown, tooltip: 'ai_workout_move_down'.tr(lang), onTap: i == workout.length - 1 ? null : () => _move(i, 1)),
+            _Icon(icon: LucideIcons.trash2, tooltip: 'sport_delete'.tr(lang), onTap: () => _remove(i)),
+          ],
+        ),
       ),
     );
   }
+}
 
-  Future<List<Exercise>> _loadExercisesForSelection() async {
-    // Charger exercices depuis le service offline (cache)
-    try {
-      final offlineService = OfflineWorkoutService();
-      final exercises = await offlineService.getCachedExercises();
-      return exercises;
-    } catch (e) {
-      debugPrint('Error loading exercises: $e');
-      return [];
-    }
-  }
+class _Icon extends StatelessWidget {
+  const _Icon({required this.icon, required this.tooltip, required this.onTap});
 
-  void _addExerciseToWorkout(Exercise exercise) {
-    if (_generatedWorkout == null) return;
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback? onTap;
 
-    setState(() {
-      final workout = List<WorkoutExercise>.from(_generatedWorkout!);
-
-      // Créer un WorkoutExercise SANS reps/poids pré-remplis
-      final newWorkoutExercise = WorkoutExercise(
-        exercise: exercise,
-        sets: [
-          const ExerciseSet(weight: 0, reps: 0, isCompleted: false),
-          const ExerciseSet(weight: 0, reps: 0, isCompleted: false),
-          const ExerciseSet(weight: 0, reps: 0, isCompleted: false),
-        ],
-        suggestedRepsMin: null, // Pas de suggestions
-        suggestedRepsMax: null,
-      );
-
-      workout.add(newWorkoutExercise);
-      _generatedWorkout = workout;
-    });
-  }
-
-  /// Affiche un dialog pour éditer le nom de la séance
-  void _showEditNameDialog() {
-    final locService = LocalizationService.instance;
-    final TextEditingController nameController = TextEditingController(text: _sessionName);
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: tooltip,
+      button: true,
+      child: Pressable(
+        onTap: onTap,
+        child: SizedBox(
+          width: context.vw(9.2),
+          height: context.vw(9.2),
+          child: Icon(icon, size: context.vw(4.1), color: onTap == null ? RyzeColors.idle : RyzeColors.mute),
         ),
-        title: Text(
-          locService.isGerman
-              ? 'Name des Trainings'
-              : (locService.isFrench ? 'Nom de la séance' : 'Session name'),
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF0B132B),
-          ),
-        ),
-        content: TextField(
-          controller: nameController,
-          autofocus: true,
-          maxLength: 50,
-          decoration: InputDecoration(
-            hintText: locService.isGerman
-                ? 'z.B.: Coach Ryze - Brust'
-                : (locService.isFrench ? 'Ex: Coach Ryze - Pectoraux' : 'Ex: Coach Ryze - Chest'),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFF1C2951), width: 2),
-            ),
-            contentPadding: const EdgeInsets.all(16),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              locService.isGerman
-                  ? 'Abbrechen'
-                  : (locService.isFrench ? 'Annuler' : 'Cancel'),
-              style: const TextStyle(
-                fontSize: 16,
-                color: Color(0xFF64748B),
-              ),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              setState(() {
-                _sessionName = nameController.text.trim().isNotEmpty
-                    ? nameController.text.trim()
-                    : _sessionName;
-              });
-              Navigator.pop(context);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1C2951),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              elevation: 0,
-            ),
-            child: Text(
-              locService.isGerman
-                  ? 'Bestätigen'
-                  : (locService.isFrench ? 'Valider' : 'Confirm'),
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

@@ -10544,6 +10544,122 @@ class AppTranslations {
       'en': "{n} d ago",
       'de': "vor {n} T.",
     },
+    // Sport, the Coach Ryze session generator
+    'ai_workout_ask': {
+      'fr': "On travaille quoi aujourd'hui ?",
+      'en': "What are we training today?",
+      'de': "Was trainieren wir heute?",
+    },
+    'ai_workout_hint': {
+      'fr': "Dis-le comme tu veux",
+      'en': "Say it however you like",
+      'de': "Sag es, wie du willst",
+    },
+    'ai_workout_generate': {
+      'fr': "Générer la séance",
+      'en': "Generate the session",
+      'de': "Training erstellen",
+    },
+    'ai_workout_regenerate': {
+      'fr': "Une autre",
+      'en': "Another one",
+      'de': "Noch eine",
+    },
+    'ai_workout_generating': {
+      'fr': "Coach Ryze prépare ta séance…",
+      'en': "Coach Ryze is building your session…",
+      'de': "Coach Ryze stellt dein Training zusammen…",
+    },
+    'ai_workout_params': {
+      'fr': "Régler",
+      'en': "Adjust",
+      'de': "Einstellen",
+    },
+    'ai_workout_focus': {
+      'fr': "Objectif",
+      'en': "Focus",
+      'de': "Fokus",
+    },
+    'ai_workout_focus_strength': {
+      'fr': "Force",
+      'en': "Strength",
+      'de': "Kraft",
+    },
+    'ai_workout_focus_hypertrophy': {
+      'fr': "Hypertrophie",
+      'en': "Hypertrophy",
+      'de': "Hypertrophie",
+    },
+    'ai_workout_focus_endurance': {
+      'fr': "Endurance",
+      'en': "Endurance",
+      'de': "Ausdauer",
+    },
+    'ai_workout_chip_upper': {
+      'fr': "Haut du corps",
+      'en': "Upper body",
+      'de': "Oberkörper",
+    },
+    'ai_workout_chip_legs': {
+      'fr': "Jambes",
+      'en': "Legs",
+      'de': "Beine",
+    },
+    'ai_workout_chip_full': {
+      'fr': "Full body",
+      'en': "Full body",
+      'de': "Ganzkörper",
+    },
+    'ai_workout_chip_push': {
+      'fr': "Push",
+      'en': "Push",
+      'de': "Drücken",
+    },
+    'ai_workout_chip_pull': {
+      'fr': "Pull",
+      'en': "Pull",
+      'de': "Ziehen",
+    },
+    'ai_workout_chip_core': {
+      'fr': "Abdos",
+      'en': "Core",
+      'de': "Rumpf",
+    },
+    'ai_workout_chip_arms': {
+      'fr': "Bras",
+      'en': "Arms",
+      'de': "Arme",
+    },
+    'ai_workout_chip_circuit': {
+      'fr': "Circuit",
+      'en': "Circuit",
+      'de': "Zirkel",
+    },
+    'ai_workout_start': {
+      'fr': "Commencer la séance",
+      'en': "Start the session",
+      'de': "Training starten",
+    },
+    'ai_workout_rename': {
+      'fr': "Renommer la séance",
+      'en': "Rename the session",
+      'de': "Training umbenennen",
+    },
+    'ai_workout_suggestions': {
+      'fr': "Le mot de Coach Ryze",
+      'en': "Coach Ryze's note",
+      'de': "Notiz von Coach Ryze",
+    },
+    'ai_workout_move_up': {
+      'fr': "Monter",
+      'en': "Move up",
+      'de': "Nach oben",
+    },
+    'ai_workout_move_down': {
+      'fr': "Descendre",
+      'en': "Move down",
+      'de': "Nach unten",
+    },
     // Sport, the tab by day
     'sport_hiit_rounds': {
       'fr': "tours",
