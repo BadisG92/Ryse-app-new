@@ -10342,6 +10342,242 @@ class AppTranslations {
       'en': 'No thanks',
       'de': 'Nein danke',
     },
+    // Sport, the day as a session
+    'session_sets_progress': {
+      'fr': '{done} / {total} séries',
+      'en': '{done} / {total} sets',
+      'de': '{done} / {total} Sätze',
+    },
+    'session_add_exercise': {
+      'fr': 'Ajouter un exercice',
+      'en': 'Add an exercise',
+      'de': 'Übung hinzufügen',
+    },
+    'session_add_set': {
+      'fr': 'Ajouter une série',
+      'en': 'Add a set',
+      'de': 'Satz hinzufügen',
+    },
+    'session_finish': {
+      'fr': 'Terminer la séance',
+      'en': 'Finish the session',
+      'de': 'Training beenden',
+    },
+    'session_finish_title': {
+      'fr': 'Terminer la séance',
+      'en': 'Finish the session',
+      'de': 'Training beenden',
+    },
+    'session_rest': {
+      'fr': 'Repos',
+      'en': 'Rest',
+      'de': 'Pause',
+    },
+    'session_rest_done': {
+      'fr': 'Repos terminé',
+      'en': 'Rest over',
+      'de': 'Pause vorbei',
+    },
+    'session_skip': {
+      'fr': 'Passer',
+      'en': 'Skip',
+      'de': 'Überspringen',
+    },
+    'session_plus15': {
+      'fr': '+15 s',
+      'en': '+15 s',
+      'de': '+15 s',
+    },
+    'session_minus15': {
+      'fr': '−15 s',
+      'en': '−15 s',
+      'de': '−15 s',
+    },
+    'session_next': {
+      'fr': 'Suivant',
+      'en': 'Next',
+      'de': 'Weiter',
+    },
+    'session_validate': {
+      'fr': 'Valider',
+      'en': 'Done',
+      'de': 'Fertig',
+    },
+    'session_dictate': {
+      'fr': 'Dicter',
+      'en': 'Dictate',
+      'de': 'Diktieren',
+    },
+    'session_listening': {
+      'fr': 'Ryze écoute',
+      'en': 'Ryze is listening',
+      'de': 'Ryze hört zu',
+    },
+    'session_mic_unavailable': {
+      'fr': 'Le micro ne répond pas',
+      'en': 'The microphone is not responding',
+      'de': 'Das Mikrofon antwortet nicht',
+    },
+    'session_leave_title': {
+      'fr': 'Quitter la séance ?',
+      'en': 'Leave the session?',
+      'de': 'Training verlassen?',
+    },
+    'session_continue': {
+      'fr': 'Continuer',
+      'en': 'Keep going',
+      'de': 'Weitermachen',
+    },
+    'session_pause': {
+      'fr': 'Mettre en pause',
+      'en': 'Pause it',
+      'de': 'Pausieren',
+    },
+    'session_pause_hint': {
+      'fr': "Tu la retrouveras dans l'onglet Sport",
+      'en': 'You will find it in the Sport tab',
+      'de': 'Du findest es im Sport-Tab wieder',
+    },
+    'session_abandon': {
+      'fr': 'Abandonner',
+      'en': 'Discard',
+      'de': 'Verwerfen',
+    },
+    'session_intensity': {
+      'fr': 'Intensité',
+      'en': 'Intensity',
+      'de': 'Intensität',
+    },
+    'session_duration': {
+      'fr': 'Durée',
+      'en': 'Duration',
+      'de': 'Dauer',
+    },
+    'session_save_as_program': {
+      'fr': 'Enregistrer comme programme',
+      'en': 'Save as a programme',
+      'de': 'Als Programm speichern',
+    },
+    'session_undone_sets': {
+      'fr': '{n} série(s) non validée(s) seront ignorées',
+      'en': '{n} unvalidated set(s) will be left out',
+      'de': '{n} nicht bestätigte(r) Satz/Sätze werden ausgelassen',
+    },
+    'session_saved_ack': {
+      'fr': 'Séance enregistrée · {min} min · {sets} séries',
+      'en': 'Session saved · {min} min · {sets} sets',
+      'de': 'Training gespeichert · {min} Min · {sets} Sätze',
+    },
+    'session_queued_ack': {
+      'fr': 'Gardée sur le téléphone · synchronisée dès que possible',
+      'en': 'Kept on your phone · synced as soon as possible',
+      'de': 'Auf dem Handy gespeichert · wird sobald wie möglich synchronisiert',
+    },
+    'session_resume_title': {
+      'fr': 'Reprendre la séance de {day} ?',
+      'en': 'Resume the session from {day}?',
+      'de': 'Training von {day} fortsetzen?',
+    },
+    'session_resume': {
+      'fr': 'Reprendre',
+      'en': 'Resume',
+      'de': 'Fortsetzen',
+    },
+    'session_resume_card': {
+      'fr': 'Séance de {day} en cours',
+      'en': 'Session from {day} in progress',
+      'de': 'Training von {day} läuft',
+    },
+    'session_sync_pending': {
+      'fr': '{n} séance(s) à synchroniser',
+      'en': '{n} session(s) to sync',
+      'de': '{n} Training(s) zu synchronisieren',
+    },
+    'session_sync_retry': {
+      'fr': 'Réessayer',
+      'en': 'Retry',
+      'de': 'Erneut versuchen',
+    },
+    'session_sync_offline': {
+      'fr': 'Hors ligne · les séances sont gardées sur le téléphone',
+      'en': 'Offline · sessions are kept on your phone',
+      'de': 'Offline · Trainings werden auf dem Handy gespeichert',
+    },
+    'session_sync_syncing': {
+      'fr': 'Synchronisation…',
+      'en': 'Syncing…',
+      'de': 'Synchronisiere…',
+    },
+    'session_last_time': {
+      'fr': 'la dernière fois',
+      'en': 'last time',
+      'de': 'letztes Mal',
+    },
+    'session_create_exercise': {
+      'fr': 'Créer « {q} »',
+      'en': 'Create “{q}”',
+      'de': '„{q}“ erstellen',
+    },
+    'session_replace': {
+      'fr': 'Remplacer',
+      'en': 'Replace',
+      'de': 'Ersetzen',
+    },
+    'session_remove': {
+      'fr': 'Retirer',
+      'en': 'Remove',
+      'de': 'Entfernen',
+    },
+    'session_info': {
+      'fr': 'Comment faire',
+      'en': 'How to',
+      'de': 'So geht es',
+    },
+    'session_progression': {
+      'fr': 'Progression',
+      'en': 'Progress',
+      'de': 'Fortschritt',
+    },
+    'session_default_rest': {
+      'fr': 'Repos par défaut',
+      'en': 'Default rest',
+      'de': 'Standardpause',
+    },
+    'session_exercise_removed': {
+      'fr': '{name} retiré',
+      'en': '{name} removed',
+      'de': '{name} entfernt',
+    },
+    'session_search_exercise': {
+      'fr': 'Chercher un exercice',
+      'en': 'Search an exercise',
+      'de': 'Übung suchen',
+    },
+    'session_times': {
+      'fr': '{n} fois',
+      'en': '{n} times',
+      'de': '{n} Mal',
+    },
+    'session_empty': {
+      'fr': 'Ajoute ton premier exercice',
+      'en': 'Add your first exercise',
+      'de': 'Füge deine erste Übung hinzu',
+    },
+    'session_volume': {
+      'fr': 'Volume',
+      'en': 'Volume',
+      'de': 'Volumen',
+    },
+    'session_sets_done': {
+      'fr': 'séries validées',
+      'en': 'sets done',
+      'de': 'Sätze geschafft',
+    },
+    'session_kcal_estimated': {
+      'fr': 'kcal estimées',
+      'en': 'estimated kcal',
+      'de': 'geschätzte kcal',
+    },
     'barcode_point_at_code': {
       'fr': 'Vise le code-barres, il se lit tout seul',
       'en': 'Point at the barcode, it reads itself',

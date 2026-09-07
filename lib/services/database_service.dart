@@ -132,9 +132,7 @@ class DatabaseService {
       debugPrint('📵 Mode hors ligne - Utilisation du cache des exercices');
       final cachedExercises = await offlineService.getCachedExercises();
       
-      if (cachedExercises.isEmpty && offlineService.hasCachedData()) {
-        debugPrint('⚠️ Cache corrompu - tentative de récupération');
-      } else if (cachedExercises.isEmpty) {
+      if (cachedExercises.isEmpty) {
         debugPrint('⚠️ Aucun exercice en cache - première utilisation nécessite une connexion');
       }
       
@@ -231,13 +229,9 @@ class DatabaseService {
 
     // Rafraîchir le cache seulement si nécessaire (pas à chaque appel)
     if (base.isNotEmpty) {
-      final offlineService = OfflineWorkoutService();
-      // Ne rafraîchir que si le cache est expiré ou inexistant
-      if (!offlineService.isCacheValid()) {
-        offlineService.refreshCache().catchError((e) {
-          debugPrint('⚠️ Erreur mise à jour cache: $e');
-        });
-      }
+      OfflineWorkoutService().refreshCache().catchError((e) {
+        debugPrint('⚠️ Erreur mise à jour cache: $e');
+      });
     }
 
     return base;
@@ -1308,8 +1302,16 @@ class DatabaseService {
     return sessionName;
   }
 
-  // Persist session details as per-set history rows
-  // Returns a Map with 'summaryId' and 'historySessionId' on success, or null if offline/error
+  // Persist session details as per-set history rows.
+  //
+  // Écrit la séance dans workout_session_summaries + workout_set_history.
+  // Ne met plus rien en file locale : c'est WorkoutSessionStore qui tient la
+  // file et qui rappelle cette méthode au rejeu. Elle lève en cas d'échec,
+  // et le store garde alors l'entrée.
+  //
+  // [historySessionId] est fourni par le store et rend l'écriture idempotente :
+  // un rejeu après un crash entre l'insertion et le retrait de la file ne
+  // duplique pas la séance.
   static Future<Map<String, String>?> persistCompletedWorkoutAsHistory({
     required models.WorkoutSession session,
     String? guidedTemplateId,
@@ -1317,31 +1319,29 @@ class DatabaseService {
     String? intensity, // 'Faible' | 'Modéré' | 'Élevé'
     int? durationMinutes,
     int? caloriesBurned,
+    String? historySessionId,
   }) async {
-    final offlineService = OfflineWorkoutService();
-    
-    // Si hors ligne, sauvegarder la séance localement pour sync ultérieure
-    if (!offlineService.isOnline) {
-      debugPrint('📵 Mode hors ligne - Sauvegarde locale de la séance');
-      await offlineService.saveSessionForSync(
-        session,
-        guidedTemplateId: guidedTemplateId,
-        sessionSource: sessionSource,
-        intensity: intensity,
-        durationMinutes: durationMinutes,
-        caloriesBurned: caloriesBurned,
-      );
-      return null;
-    }
-    
     final userId = _client.auth.currentUser?.id;
     if (userId == null) {
       throw Exception('User not authenticated');
     }
 
-    // Generate a unique history session id
-    final historySessionId = const Uuid().v4();
+    historySessionId ??= const Uuid().v4();
     final performedAt = (session.endTime ?? DateTime.now()).toIso8601String();
+
+    // Déjà écrite ? Alors c'est un rejeu : on rend ce qui existe.
+    try {
+      final existing = await _client
+          .from('workout_session_summaries')
+          .select('id')
+          .eq('history_session_id', historySessionId)
+          .maybeSingle();
+      if (existing != null) {
+        return {'summaryId': existing['id'] as String, 'historySessionId': historySessionId};
+      }
+    } catch (e) {
+      debugPrint('⚠️ Vérification idempotence: $e');
+    }
 
     // Helper: validate uuid format
     bool _isValidUuid(String value) {
@@ -1483,10 +1483,17 @@ class DatabaseService {
         ? 'Séance ${performedAtDate.toIso8601String().split('T').first}'
         : session.name.trim();
 
-    final sessionName = await generateUniqueSessionName(
-      baseSessionName: baseSessionName,
-      performedAtDate: performedAtDate,
-    );
+    // Un nom déjà pris reçoit un numéro. Si cette lecture échoue, le nom de
+    // base suffit : elle ne doit jamais coûter la séance.
+    String sessionName = baseSessionName;
+    try {
+      sessionName = await generateUniqueSessionName(
+        baseSessionName: baseSessionName,
+        performedAtDate: performedAtDate,
+      );
+    } catch (e) {
+      debugPrint('⚠️ Nom unique indisponible, nom de base gardé: $e');
+    }
 
     // Create session summary row FIRST (parent must exist before children)
     String summaryId = '';

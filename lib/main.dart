@@ -35,6 +35,8 @@ import 'design/tokens.dart';
 import 'design/feedback.dart';
 import 'design/logo_draw.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'services/ryze_connectivity.dart';
+import 'services/workout_session_store.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -149,9 +151,13 @@ void main() async {
     debugPrint('⚠️ Notification service error: $e');
   }));
 
-  // OFFLINE WORKOUT: Initialiser le service offline (non-bloquant)
-  unawaited(OfflineWorkoutService().initialize().then((_) {
-    debugPrint('✅ Offline workout service initialized');
+  // HORS LIGNE : une seule souscription réseau pour l'app, puis le catalogue
+  // d'exercices, puis la file des séances (qui migre l'ancienne et rejoue ce
+  // qui attend). Non bloquant : le lancement n'attend pas le réseau.
+  unawaited(RyzeConnectivity.instance.start().then((_) async {
+    await OfflineWorkoutService().initialize();
+    await WorkoutSessionStore.instance.initialize();
+    debugPrint('✅ Offline workout services initialized');
   }).catchError((e) {
     debugPrint('⚠️ Offline workout service error: $e');
   }));

@@ -1487,6 +1487,7 @@ class WeeklyPlannerService {
     required DateTime sessionDate,
     int? durationMinutes,
     String? historySessionId,
+    String? plannedWorkoutId,
   }) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) {
@@ -1495,17 +1496,44 @@ class WeeklyPlannerService {
     }
 
     try {
-      // Vérifier si la date est dans la semaine courante
-      if (!isInCurrentWeek(sessionDate)) {
-        debugPrint('⚠️ syncWorkoutSessionToPlanner: Date hors semaine courante, skip');
-        return null;
-      }
-
       // Récupérer les exercices depuis workout_set_history si historySessionId fourni
       List<Map<String, dynamic>> exercisesJson = [];
       if (historySessionId != null) {
         exercisesJson = await _getExercisesJsonFromHistory(historySessionId);
         debugPrint('📊 syncWorkoutSessionToPlanner: ${exercisesJson.length} exercices récupérés');
+      }
+
+      // La séance a été lancée depuis une entrée précise du planificateur :
+      // c'est celle-là qu'on coche, quel que soit le jour, et pas la première
+      // trouvée à la même date.
+      if (plannedWorkoutId != null) {
+        final planned = await getPlannedWorkoutById(plannedWorkoutId);
+        if (planned != null) {
+          if (planned.status != PlannedStatus.completed) {
+            await _client
+                .from('planned_workouts')
+                .update({
+                  'status': PlannedStatus.completed.value,
+                  'linked_session_id': sessionId,
+                  'exercises_json': exercisesJson,
+                  'workout_name': workoutName,
+                  'duration_minutes': durationMinutes ?? planned.durationMinutes ?? 45,
+                })
+                .eq('id', planned.id);
+            invalidateCache();
+            if (!_isMigrating) {
+              _notifyPlannerUpdate();
+            }
+          }
+          return planned.id;
+        }
+        // introuvable (supprimée entre-temps) : on retombe sur la date
+      }
+
+      // Vérifier si la date est dans la semaine courante
+      if (!isInCurrentWeek(sessionDate)) {
+        debugPrint('⚠️ syncWorkoutSessionToPlanner: Date hors semaine courante, skip');
+        return null;
       }
 
       // Chercher si un workout planifié existe déjà pour ce jour
