@@ -11,6 +11,7 @@ import '../services/food_entries_service.dart';
 import '../services/global_state_manager.dart';
 import '../services/localization_service.dart';
 import '../services/notification_service.dart';
+import '../services/ryze_dates.dart';
 import '../services/translations.dart';
 import '../services/water_service.dart';
 import 'add_food_sheet.dart';
@@ -175,7 +176,7 @@ class _NutritionHistoryPageState extends State<NutritionHistoryPage> {
     final eaten = day?.caloriesLogged ?? 0;
     final remaining = goal - eaten;
     final gutter = context.vw(5.1);
-    final label = DateFormat.MMMMEEEEd(lang).format(_selected);
+    final label = RyzeDates.full(_selected, lang);
 
     return Column(
       children: [
@@ -204,7 +205,7 @@ class _NutritionHistoryPageState extends State<NutritionHistoryPage> {
             padding: EdgeInsets.fromLTRB(gutter, context.vw(4), gutter, 132),
             children: [
               Text(
-                '${label[0].toUpperCase()}${label.substring(1)}',
+                label,
                 style: RyzeText.body(context, 3.9, weight: FontWeight.w600),
               ),
               SizedBox(height: context.vw(4)),
@@ -276,7 +277,7 @@ class _DayChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final letter = DateFormat.E(lang).format(day);
+    final letter = RyzeDates.short(day, lang);
     final fg = selected ? RyzeColors.surf : RyzeColors.ink;
 
     return Pressable(
@@ -295,7 +296,7 @@ class _DayChip extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              letter.substring(0, letter.length >= 3 ? 3 : letter.length).toUpperCase(),
+              letter,
               style: RyzeText.body(context, 2.6, weight: FontWeight.w600, color: selected ? RyzeColors.surf.withValues(alpha: 0.7) : RyzeColors.mute2),
             ),
             SizedBox(height: context.vw(0.8)),

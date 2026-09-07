@@ -34,6 +34,7 @@ import 'services/haptic_service.dart';
 import 'design/tokens.dart';
 import 'design/feedback.dart';
 import 'design/logo_draw.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -111,6 +112,13 @@ void main() async {
       debugPrint('⚠️ GlobalStateManager timeout - using defaults');
     },
   );
+
+  // Les symboles de date des trois langues, chargés une fois pour toutes.
+  // Sans eux, un DateFormat avec une locale explicite lève une exception, et
+  // en release une exception dans un build donne un écran gris.
+  await initializeDateFormatting('fr');
+  await initializeDateFormatting('en');
+  await initializeDateFormatting('de');
 
   // Initialiser le service de retour haptique
   await HapticService.instance.initialize();

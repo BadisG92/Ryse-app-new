@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../components/nutrition_recipes_hybrid.dart';
 import '../design/design.dart';
 import '../services/localization_service.dart';
+import '../services/ryze_dates.dart';
 import '../services/translations.dart';
 import 'nutrition_history_page.dart';
 import 'nutrition_today_page.dart';
@@ -42,7 +42,7 @@ class _NutritionPageState extends State<NutritionPage> {
   Widget build(BuildContext context) {
     final lang = context.watch<LocalizationService>().currentLanguageCode;
     final gutter = context.vw(5.1);
-    final date = DateFormat.MMMMEEEEd(lang).format(DateTime.now());
+    final date = RyzeDates.full(DateTime.now(), lang);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark,
@@ -59,7 +59,7 @@ class _NutritionPageState extends State<NutritionPage> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
-                        '${date[0].toUpperCase()}${date.substring(1)}',
+                        date,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: RyzeText.body(context, 3.6, weight: FontWeight.w600),
