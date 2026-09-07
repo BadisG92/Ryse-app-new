@@ -19,6 +19,7 @@
 /// - glass_row     the day's water, as glasses you fill and empty
 /// - day_instrument the one number of the day and its amber gauge
 /// - meal_timeline the day's meals as one line, opening in place
+/// - chat         le mobilier des conversations avec Ryze
 /// - components    background grid, buttons, top bar, coach avatars, cards,
 ///                 choice cards and chips, rulers and wheels, chapter card,
 ///                 hold-to-sign, projection chart, week strip, proposal card
@@ -41,6 +42,7 @@ export 'camera_shell.dart';
 export 'day_instrument.dart';
 export 'sticky_total.dart';
 export 'meal_timeline.dart';
+export 'chat.dart';
 
 export '../onboarding/widgets/onb_widgets.dart';
 export '../onboarding/widgets/choices.dart';

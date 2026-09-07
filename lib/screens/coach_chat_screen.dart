@@ -7,14 +7,11 @@ import 'package:provider/provider.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../models/coach_chat_models.dart';
 import '../services/coach_chat_service.dart';
+import '../design/design.dart';
 import '../services/localization_service.dart';
 import '../services/translations.dart';
 import '../services/weekly_bilan_service.dart';
-import '../services/paywall_service.dart';
-import '../components/ui/coach_ryze_avatar.dart';
-import '../components/ui/chat_message_bubble.dart';
 import '../components/ui/microphone_permission_dialog.dart';
-import 'paywall_screen.dart';
 
 /// Main chat screen for conversation with Coach Ryze
 class CoachChatScreen extends StatefulWidget {
@@ -37,10 +34,8 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
   List<CoachMessage> _messages = [];
   bool _isLoading = false;
   bool _isSending = false;
-  String _streamingResponse = '';
   CoachRateLimitStatus? _rateLimitStatus;
   bool _showBilanBanner = false;
-  bool _localeInitialized = false;
 
   // Speech to text
   final stt.SpeechToText _speech = stt.SpeechToText();
@@ -76,9 +71,7 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
     } catch (e) {
       // Locale data may already be initialized
     }
-    if (mounted) {
-      setState(() => _localeInitialized = true);
-    }
+    if (mounted) setState(() {});
   }
 
   Future<void> _checkBilanBanner() async {
@@ -182,7 +175,6 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
     setState(() {
       _isSending = true;
       _textController.clear();
-      _streamingResponse = '';
     });
 
     // Add temporary user message
@@ -224,7 +216,6 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
             displayedText = fullResponse.substring(0, displayedText.length + charsToAdd);
 
             setState(() {
-              _streamingResponse = displayedText;
               if (_messages.isNotEmpty) {
                 final lastIndex = _messages.length - 1;
                 _messages[lastIndex] = _messages[lastIndex].copyWith(
@@ -250,15 +241,12 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur: ${e.toString()}')),
-        );
+        RyzeUndo.failed(context, message: 'error_generic'.tr(LocalizationService.instance.currentLanguageCode));
       }
     } finally {
       if (mounted) {
         setState(() {
           _isSending = false;
-          _streamingResponse = '';
         });
       }
     }
@@ -297,239 +285,97 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
     setState(() => _isListening = false);
   }
 
+  /// La limite d'echanges, si le service la renvoie un jour : une feuille et
+  /// non un dialogue, et pas un mot sur des essais qui n'existent plus.
   void _showUpgradeDialog() {
-    final locService = Provider.of<LocalizationService>(context, listen: false);
-    final lang = locService.currentLanguageCode;
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => Container(
-        padding: EdgeInsets.only(
-          left: 24,
-          right: 24,
-          top: 16,
-          bottom: MediaQuery.of(context).padding.bottom + 24,
-        ),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Handle
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: const Color(0xFFE2E8F0),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 24),
-            // Lock icon
-            Container(
-              width: 72,
-              height: 72,
-              decoration: BoxDecoration(
-                color: const Color(0xFFFBBF24).withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(36),
-              ),
-              child: const Center(
-                child: Icon(
-                  LucideIcons.lock,
-                  size: 32,
-                  color: Color(0xFFFBBF24),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            // Title
-            Text(
-              'coach_chat_limit_reached'.tr(lang),
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF0B132B),
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 12),
-            // Message
-            Text(
-              'coach_chat_limit_reached_message'.tr(lang),
-              style: const TextStyle(
-                fontSize: 15,
-                color: Color(0xFF64748B),
-                height: 1.4,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 28),
-            // Premium button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => PaywallScreen(
-                        context: PaywallContext.genericUpgrade,
-                      ),
-                    ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0B132B),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: Text(
-                  'coach_chat_upgrade_to_premium'.tr(lang),
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            // Later button
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(
-                'coach_chat_later'.tr(lang),
-                style: const TextStyle(
-                  fontSize: 15,
-                  color: Color(0xFF64748B),
-                ),
-              ),
-            ),
-          ],
-        ),
+    final lang = LocalizationService.instance.currentLanguageCode;
+    showRyzeSheet<void>(
+      context,
+      title: 'coach_limit_title'.tr(lang),
+      builder: (sheet) => Text(
+        'coach_limit_body'.tr(lang),
+        style: RyzeText.body(sheet, 3.6, height: 1.5, color: RyzeColors.mute),
       ),
+      actions: [OnbButton(label: 'ok'.tr(lang), onPressed: () => Navigator.pop(context))],
     );
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
-    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+    final lang = context.watch<LocalizationService>().currentLanguageCode;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      resizeToAvoidBottomInset: false, // We handle keyboard manually for smoother UX
-      appBar: _buildAppBar(),
-      body: Column(
+      backgroundColor: RyzeColors.paper,
+      resizeToAvoidBottomInset: false,
+      body: Stack(
         children: [
-          if (_showBilanBanner) _buildBilanBanner(),
-          Expanded(
-            child: GestureDetector(
-              onTap: () => _focusNode.unfocus(), // Dismiss keyboard on tap outside
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _buildMessagesList(),
+          const OnbBackground(scene: false),
+          SafeArea(
+            bottom: false,
+            child: Column(
+              children: [
+                RyzeChatHeader(
+                  title: 'coach_ryze'.tr(lang),
+                  subtitle: _isSending ? 'coach_chat_typing'.tr(lang) : null,
+                  avatar: RyzeAssets.nutriAvatar,
+                  onBack: () => Navigator.pop(context),
+                ),
+                if (_showBilanBanner) _buildBilanBanner(),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => _focusNode.unfocus(),
+                    child: _isLoading
+                        ? const Center(child: CircularProgressIndicator(color: RyzeColors.ink))
+                        : _buildMessagesList(),
+                  ),
+                ),
+                AnimatedPadding(
+                  duration: RyzeDurations.enter,
+                  curve: RyzeCurves.out,
+                  padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+                  child: _buildInputBar(),
+                ),
+              ],
             ),
-          ),
-          // Input bar with keyboard-aware padding
-          AnimatedPadding(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOut,
-            padding: EdgeInsets.only(bottom: keyboardHeight),
-            child: _buildInputBar(),
           ),
         ],
       ),
     );
   }
 
+  /// Le bilan de la semaine : la marque, une phrase, un bouton. La banniere
+  /// disait ses trois langues en dur, hors du dictionnaire.
   Widget _buildBilanBanner() {
-    final locService = Provider.of<LocalizationService>(context, listen: false);
-    final lang = locService.currentLanguageCode;
-
-    final title = lang == 'fr'
-        ? 'Prêt pour ton bilan hebdo ?'
-        : lang == 'de'
-            ? 'Bereit für deinen Wochenbericht?'
-            : 'Ready for your weekly summary?';
-
-    final buttonText = lang == 'fr'
-        ? 'Commencer'
-        : lang == 'de'
-            ? 'Starten'
-            : 'Start';
-
-    return GestureDetector(
-      onTap: _startWeeklyBilan,
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+    final lang = LocalizationService.instance.currentLanguageCode;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(context.vw(4.1), context.vw(3.1), context.vw(4.1), 0),
+      child: Pressable(
+        onTap: _startWeeklyBilan,
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: context.vw(4.1), vertical: context.vw(3.1)),
+          decoration: BoxDecoration(
+            color: RyzeColors.accTint,
+            borderRadius: BorderRadius.circular(RyzeRadius.md),
+            border: Border.all(color: RyzeColors.acc),
           ),
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF0B132B).withValues(alpha: 0.3),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            // Icône calendrier
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(
-                LucideIcons.calendarCheck,
-                size: 20,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(width: 12),
-            // Text
-            Expanded(
-              child: Text(
-                title,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
+          child: Row(
+            children: [
+              RyzeMark(size: context.vw(5.1), color: RyzeColors.accInk),
+              SizedBox(width: context.vw(3.1)),
+              Expanded(
+                child: Text(
+                  'coach_bilan_title'.tr(lang),
+                  style: RyzeText.body(context, 3.4, weight: FontWeight.w600, color: RyzeColors.accInk),
                 ),
               ),
-            ),
-            // Bouton
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
+              Text(
+                'coach_bilan_start'.tr(lang),
+                style: RyzeText.body(context, 3.2, weight: FontWeight.w600, color: RyzeColors.accInk),
               ),
-              child: Text(
-                buttonText,
-                style: const TextStyle(
-                  color: Color(0xFF0B132B),
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                ),
-              ),
-            ),
-          ],
+              Icon(LucideIcons.chevronRight, size: context.vw(3.9), color: RyzeColors.accInk),
+            ],
+          ),
         ),
       ),
     );
@@ -544,7 +390,6 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
 
     setState(() {
       _isSending = true;
-      _streamingResponse = '';
     });
 
     try {
@@ -573,7 +418,6 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
             displayedText = fullResponse.substring(0, displayedText.length + charsToAdd);
 
             setState(() {
-              _streamingResponse = displayedText;
               if (_messages.isNotEmpty) {
                 final lastIndex = _messages.length - 1;
                 _messages[lastIndex] = _messages[lastIndex].copyWith(
@@ -594,65 +438,17 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
 
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur: ${e.toString()}')),
-        );
+        RyzeUndo.failed(context, message: 'error_generic'.tr(LocalizationService.instance.currentLanguageCode));
       }
     } finally {
       if (mounted) {
         setState(() {
           _isSending = false;
-          _streamingResponse = '';
         });
       }
     }
   }
 
-  PreferredSizeWidget _buildAppBar() {
-    final locService = Provider.of<LocalizationService>(context, listen: false);
-    final lang = locService.currentLanguageCode;
-
-    return AppBar(
-      backgroundColor: Colors.white,
-      elevation: 0,
-      leading: IconButton(
-        icon: const Icon(LucideIcons.arrowLeft, color: Color(0xFF0B132B)),
-        onPressed: () => Navigator.pop(context),
-      ),
-      title: Row(
-        children: [
-          const CoachRyzeAvatar(
-            type: CoachRyzeAvatarType.nutritionChat,
-            size: CoachRyzeAvatarSize.small,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'coach_ryze'.tr(lang),
-                  style: const TextStyle(
-                    color: Color(0xFF0B132B),
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                if (_isSending)
-                  Text(
-                    'coach_chat_typing'.tr(lang),
-                    style: const TextStyle(
-                      color: Color(0xFF64748B),
-                      fontSize: 12,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   /// Get day label for date separator
   String _getDayLabel(DateTime date, String lang) {
@@ -703,87 +499,54 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
     return currentDay != previousDay;
   }
 
-  Widget _buildDaySeparator(DateTime date, String lang) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      child: Row(
-        children: [
-          const Expanded(child: Divider(color: Color(0xFFE2E8F0))),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Text(
-              _getDayLabel(date, lang),
-              style: const TextStyle(
-                color: Color(0xFF94A3B8),
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-          const Expanded(child: Divider(color: Color(0xFFE2E8F0))),
-        ],
-      ),
-    );
-  }
+  Widget _buildDaySeparator(DateTime date, String lang) => RyzeChatDay(label: _getDayLabel(date, lang));
 
   Widget _buildMessagesList() {
-    if (_messages.isEmpty) {
-      return _buildWelcomeMessage();
-    }
-
-    final locService = Provider.of<LocalizationService>(context, listen: false);
-    final lang = locService.currentLanguageCode;
+    final lang = LocalizationService.instance.currentLanguageCode;
+    if (_messages.isEmpty) return _buildWelcomeMessage();
 
     return ListView.builder(
       controller: _scrollController,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      reverse: true, // New messages at bottom, natural scroll behavior
+      padding: EdgeInsets.all(context.vw(4.1)),
+      reverse: true,
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       itemCount: _messages.length,
       itemBuilder: (context, index) {
-        // With reverse: true, index 0 is the last message
-        final reversedIndex = _messages.length - 1 - index;
-        final message = _messages[reversedIndex];
-        final needsSeparator = _needsDaySeparator(reversedIndex);
-
+        final at = _messages.length - 1 - index;
+        final message = _messages[at];
         return Column(
           children: [
-            // With reverse, separator comes after the message visually
-            ChatMessageBubble(
-              message: message,
-              isStreaming: _isSending && reversedIndex == _messages.length - 1 && message.isAssistant,
+            RyzeBubble(
+              text: message.content,
+              mine: message.isUser,
+              streaming: _isSending && at == _messages.length - 1 && message.isAssistant,
+              copyLabel: 'chat_copied'.tr(lang),
             ),
-            if (needsSeparator) _buildDaySeparator(message.createdAt, lang),
+            if (_needsDaySeparator(at)) _buildDaySeparator(message.createdAt, lang),
           ],
         );
       },
     );
   }
 
+  /// La conversation vide : le buste, une question, quatre amorces. Le coach
+  /// ne parle pas le premier ; il attend, ce qui vaut mieux que de remplir
+  /// l'ecran d'un message qu'on n'a pas demande.
   Widget _buildWelcomeMessage() {
-    final locService = Provider.of<LocalizationService>(context);
-    final lang = locService.currentLanguageCode;
-
+    final lang = context.watch<LocalizationService>().currentLanguageCode;
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(context.vw(6.2)),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const SizedBox(height: 40),
-          const CoachRyzeAvatar(
-            type: CoachRyzeAvatarType.nutritionChat,
-            size: CoachRyzeAvatarSize.xlarge,
-          ),
-          const SizedBox(height: 24),
+          SizedBox(height: context.vw(8)),
+          const CoachAvatar(RyzeAssets.nutriAvatar, sizeVw: 26),
+          SizedBox(height: context.vw(5.1)),
           Text(
             'coach_chat_how_can_i_help'.tr(lang),
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF0B132B),
-            ),
+            textAlign: TextAlign.center,
+            style: RyzeText.display(context, 5.6, weight: FontWeight.w600),
           ),
-          const SizedBox(height: 32),
+          SizedBox(height: context.vw(7)),
           _buildSuggestionChips(lang),
         ],
       ),
@@ -791,144 +554,33 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
   }
 
   Widget _buildSuggestionChips(String lang) {
-    final suggestions = [
-      'coach_chat_suggestion_dinner'.tr(lang),
-      'coach_chat_suggestion_leg_workout'.tr(lang),
-      'coach_chat_suggestion_macros'.tr(lang),
-      'coach_chat_suggestion_snack'.tr(lang),
-    ];
-
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      alignment: WrapAlignment.center,
-      children: suggestions.map((text) {
-        return InkWell(
-          onTap: () {
-            _textController.text = text;
-            _sendMessage();
-          },
-          borderRadius: BorderRadius.circular(20),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
-            ),
-            child: Text(
-              text,
-              style: const TextStyle(
-                color: Color(0xFF0B132B),
-                fontSize: 14,
-              ),
-            ),
-          ),
-        );
-      }).toList(),
+    return RyzeChatChips(
+      labels: [
+        'coach_chat_suggestion_dinner'.tr(lang),
+        'coach_chat_suggestion_leg_workout'.tr(lang),
+        'coach_chat_suggestion_macros'.tr(lang),
+        'coach_chat_suggestion_snack'.tr(lang),
+      ],
+      onTap: (text) {
+        _textController.text = text;
+        _sendMessage();
+      },
     );
   }
 
   Widget _buildInputBar() {
-    final locService = Provider.of<LocalizationService>(context, listen: false);
-    final lang = locService.currentLanguageCode;
-    final keyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
-
-    return Container(
-      padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 12,
-        // Only add safe area padding when keyboard is hidden
-        bottom: keyboardVisible ? 12 : MediaQuery.of(context).padding.bottom + 12,
-      ),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(
-          top: BorderSide(color: Color(0xFFE2E8F0)),
-        ),
-      ),
-      child: Row(
-        children: [
-          // Voice button - always show, will prompt for permission on first tap
-          GestureDetector(
-            onTap: _isListening ? _stopListening : _startListening,
-            child: Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: _isListening
-                    ? Colors.red.withValues(alpha: 0.1)
-                    : const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(22),
-              ),
-              child: Icon(
-                _isListening ? LucideIcons.micOff : LucideIcons.mic,
-                size: 22,
-                color: _isListening ? Colors.red : const Color(0xFF64748B),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-
-          // Text input
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: TextField(
-                controller: _textController,
-                focusNode: _focusNode,
-                maxLines: 4,
-                minLines: 1,
-                textCapitalization: TextCapitalization.sentences,
-                decoration: InputDecoration(
-                  hintText: _isListening
-                      ? 'coach_chat_listening'.tr(lang)
-                      : 'coach_chat_message_placeholder'.tr(lang),
-                  hintStyle: const TextStyle(color: Color(0xFF94A3B8)),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                ),
-                onSubmitted: (_) => _sendMessage(),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-
-          // Send button
-          GestureDetector(
-            onTap: _isSending ? null : _sendMessage,
-            child: Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
-                ),
-                borderRadius: BorderRadius.circular(22),
-              ),
-              child: _isSending
-                  ? const Padding(
-                      padding: EdgeInsets.all(12),
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    )
-                  : const Icon(
-                      LucideIcons.send,
-                      size: 20,
-                      color: Colors.white,
-                    ),
-            ),
-          ),
-        ],
+    final lang = LocalizationService.instance.currentLanguageCode;
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: _textController,
+      builder: (context, value, _) => RyzeChatInput(
+        controller: _textController,
+        focusNode: _focusNode,
+        hint: _isListening ? 'coach_chat_listening'.tr(lang) : 'coach_chat_message_placeholder'.tr(lang),
+        canSend: value.text.trim().isNotEmpty,
+        busy: _isSending,
+        listening: _isListening,
+        onMic: _isListening ? _stopListening : _startListening,
+        onSend: _sendMessage,
       ),
     );
   }

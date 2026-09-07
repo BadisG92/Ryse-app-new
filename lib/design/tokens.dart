@@ -51,11 +51,21 @@ class RyzeColors {
   static const Color carbs = Color(0xFFF59E0B);
   static const Color fat = Color(0xFFEF4444);
 
+  /// Le blanc a peine teinte du haut du fond.
+  static const Color paper0 = Color(0xFFF8F9FB);
+
+  /// Les deux aureoles du fond : la chaude en haut a droite, la froide en bas
+  /// a gauche. Elles sont de la palette et non du decor - un theme qui change
+  /// la couleur de l'application doit changer le fond avec, sans quoi l'ambre
+  /// resterait seul derriere une interface devenue rose.
+  static const Color glowWarm = Color(0xFFFFC478);
+  static const Color glowCool = ink2;
+
   /// Warm light of the gym scene, top right of every screen.
   static const LinearGradient ground = LinearGradient(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
-    colors: [Color(0xFFF8F9FB), paper, paper2],
+    colors: [paper0, paper, paper2],
     stops: [0, 0.5, 1],
   );
 }

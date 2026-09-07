@@ -516,9 +516,12 @@ class OnbBackground extends StatelessWidget {
               child: Container(
                 width: w * 1.4,
                 height: w * 1.1,
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  gradient: RadialGradient(colors: [Color(0x4DFFC478), Color(0x00FFC478)], stops: [0, 0.62]),
+                  gradient: RadialGradient(
+                    colors: [RyzeColors.glowWarm.withValues(alpha: 0.30), RyzeColors.glowWarm.withValues(alpha: 0)],
+                    stops: const [0, 0.62],
+                  ),
                 ),
               ),
             ),
@@ -528,9 +531,12 @@ class OnbBackground extends StatelessWidget {
               child: Container(
                 width: w * 1.2,
                 height: w * 0.9,
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  gradient: RadialGradient(colors: [Color(0x141B2A5B), Color(0x001B2A5B)], stops: [0, 0.6]),
+                  gradient: RadialGradient(
+                    colors: [RyzeColors.glowCool.withValues(alpha: 0.08), RyzeColors.glowCool.withValues(alpha: 0)],
+                    stops: const [0, 0.6],
+                  ),
                 ),
               ),
             ),

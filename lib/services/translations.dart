@@ -8303,6 +8303,32 @@ class AppTranslations {
     },
 
     // ==================== COACH CHAT ====================
+    // Les conversations avec Ryze : le mobilier commun aux deux.
+    'chat_copied': {
+      'fr': 'Message copié',
+      'en': 'Message copied',
+      'de': 'Nachricht kopiert',
+    },
+    'coach_bilan_title': {
+      'fr': 'Prêt pour ton bilan de la semaine ?',
+      'en': 'Ready for your weekly review?',
+      'de': 'Bereit für deinen Wochenbericht?',
+    },
+    'coach_bilan_start': {
+      'fr': 'Commencer',
+      'en': 'Start',
+      'de': 'Starten',
+    },
+    'coach_limit_title': {
+      'fr': 'Pause dans la conversation',
+      'en': 'Conversation paused',
+      'de': 'Unterhaltung pausiert',
+    },
+    'coach_limit_body': {
+      'fr': "Ryze a atteint sa limite d'échanges pour aujourd'hui. Elle se remet à zéro demain.",
+      'en': 'Ryze has reached its message limit for today. It resets tomorrow.',
+      'de': 'Ryze hat sein Nachrichtenlimit für heute erreicht. Es wird morgen zurückgesetzt.',
+    },
     'coach_ryze': {
       'fr': 'Coach Ryze',
       'en': 'Coach Ryze',

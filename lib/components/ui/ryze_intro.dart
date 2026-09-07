@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui show Gradient;
 import 'dart:ui' show PathMetric;
 
 import 'package:flutter/material.dart';
@@ -29,19 +30,18 @@ class RyzeIntro extends StatefulWidget {
 
 class _RyzeIntroState extends State<RyzeIntro> with SingleTickerProviderStateMixin {
   // The storyboard, in milliseconds.
-  static const int _total = 2460;
-  // One pen, constant speed, across the six shapes in order: the dot, the
-  // swoosh, then R, y, z, e. Time is shared by length, not by shape, so the
-  // hand never speeds up or stalls between them.
-  static const _write = (from: 0, to: 1080);
-  // A beat of silence after the e, before the ink arrives: the eye needs to
-  // read the finished outline as a drawing before it becomes a logo.
-  static const _flood = (from: 1320, to: 1640);
-  // Both measured on the reference: the finished mark stands still for 520 ms,
-  // then the whole rush lasts 300 ms — 135 ms for the white to reach the edges
-  // of the screen, the rest for it to dissolve off.
-  static const _hold = 2160;
-  static const _rush = (from: _hold, to: _total);
+  static const int _total = 2040;
+  // The pen draws the mark and nothing else: it is the shape that becomes the
+  // screen, and it used to get a third of the writing while the word — thrown
+  // away three seconds later — took the rest.
+  static const _write = (from: 0, to: 620);
+  // A beat of silence, then the trace turns solid.
+  static const _flood = (from: 800, to: 1080);
+  // The word is not written, it is inked: one pass, left to right, with a soft
+  // front so it reads as ink being laid down and not as a loading bar.
+  static const _ink = (from: 1080, to: 1420);
+  static const _hold = 1740; // the logo stands still, and waits for the app
+  static const _rush = (from: _hold, to: _total); // 300 ms, and we are inside
 
   late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: _total));
 
@@ -110,7 +110,7 @@ class _Lockup {
         letters = RyzeLogoPaths.letters(width),
         anchor = RyzeLogoPaths.markAnchor(width),
         anchorRadius = RyzeLogoPaths.anchorRadius(width) {
-    for (final p in [...icon, ...letters]) {
+    for (final p in icon) {
       final ms = p.computeMetrics().toList();
       metrics[p] = ms;
       lengths[p] = ms.fold<double>(0, (sum, m) => sum + m.length);
@@ -119,8 +119,8 @@ class _Lockup {
       starts[p] = [for (final m in ms) _touchDown(m)];
     }
     mark = icon.reduce((a, b) => Path.combine(PathOperation.union, a, b));
-    pen = [...icon, ...letters];
-    penLength = pen.fold<double>(0, (sum, p) => sum + lengths[p]!);
+    penLength = icon.fold<double>(0, (sum, p) => sum + lengths[p]!);
+    wordBounds = letters.map((l) => l.getBounds()).reduce((a, b) => a.expandToInclude(b));
   }
 
   final double width;
@@ -153,9 +153,11 @@ class _Lockup {
   /// The two shapes of the mark as one, so the opening is a single window.
   late final Path mark;
 
-  /// The six shapes in writing order, and the distance the pen covers.
-  late final List<Path> pen;
+  /// How far the pen travels across the two contours of the mark.
   late final double penLength;
+
+  /// The box the four letters occupy, so the ink knows where to sweep.
+  late final Rect wordBounds;
 
   static _Lockup? _held;
   static _Lockup of(double width) {
@@ -264,9 +266,9 @@ class _IntroPainter extends CustomPainter {
         canvas.save();
         canvas.transform(blowUp.storage);
         canvas.translate(origin.dx, origin.dy);
-        final ink = Paint()..color = Colors.white.withValues(alpha: carried);
+        final letterInk = Paint()..color = Colors.white.withValues(alpha: carried);
         for (final letter in lock.letters) {
-          canvas.drawPath(letter, ink);
+          canvas.drawPath(letter, letterInk);
         }
         canvas.restore();
       }
@@ -286,17 +288,43 @@ class _IntroPainter extends CustomPainter {
       ..color = Colors.white.withValues(alpha: 0.55 * (1 - flood));
     final fill = Paint()..color = Colors.white.withValues(alpha: flood);
 
+    // one pen, constant speed, across the two contours of the mark
     final pen = reduced ? 1.0 : _phase(ms, _RyzeIntroState._write);
     var covered = 0.0;
-    for (final path in lock.pen) {
+    for (final path in lock.icon) {
       final len = lock.lengths[path]!;
       final from = covered / lock.penLength;
       final to = (covered + len) / lock.penLength;
       covered += len;
       final t = ((pen - from) / (to - from)).clamp(0.0, 1.0);
-
       if (flood > 0) canvas.drawPath(path, fill);
       if (t > 0 && flood < 1) canvas.drawPath(_written(lock, path, t), stroke);
+    }
+
+    // The word, inked in one pass. The gradient is clamped, so everything left
+    // of the front is opaque and everything right of it is gone: the shader is
+    // the whole mask, no rectangle to keep in step with it.
+    final ink = reduced ? 1.0 : _phase(ms, _RyzeIntroState._ink, curve: Curves.easeOut);
+    if (ink > 0) {
+      final box = lock.wordBounds;
+      final soft = box.width * 0.12;
+      final front = box.left - soft + ink * (box.width + soft);
+      canvas.saveLayer(box.inflate(soft), Paint());
+      final white = Paint()..color = Colors.white;
+      for (final letter in lock.letters) {
+        canvas.drawPath(letter, white);
+      }
+      canvas.drawRect(
+        box.inflate(soft),
+        Paint()
+          ..blendMode = BlendMode.dstIn
+          ..shader = ui.Gradient.linear(
+            Offset(front - soft, 0),
+            Offset(front, 0),
+            const [Colors.white, Color(0x00FFFFFF)],
+          ),
+      );
+      canvas.restore();
     }
     canvas.restore();
   }
