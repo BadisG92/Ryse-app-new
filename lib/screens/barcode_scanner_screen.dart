@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'dart:io';
+
 import 'package:camera/camera.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
@@ -19,9 +21,11 @@ import '../services/subscription_service.dart';
 import '../services/paywall_service.dart';
 import '../services/feature_trial_service.dart';
 import '../services/translations.dart';
+import '../design/design.dart';
+import '../components/ui/numeric_text_field.dart';
+import '../services/barcode_stream_service.dart';
 import '../services/localization_service.dart';
 import '../config/supabase_config.dart';
-import '../config/google_vision_config.dart';
 
 class BarcodeScannerScreen extends StatefulWidget {
   final bool isFromDashboard;
@@ -41,16 +45,11 @@ class BarcodeScannerScreen extends StatefulWidget {
   State<BarcodeScannerScreen> createState() => _BarcodeScannerScreenState();
 }
 
-class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
-    with TickerProviderStateMixin {
+class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
   bool isScanning = false;
   bool hasResult = false;
   bool isLoadingProduct = false;
   bool isProcessing = false;
-  late AnimationController _animationController;
-  late Animation<double> _animation;
-  late AnimationController _fadeAnimationController;
-  late Animation<double> _fadeAnimation;
   final TextEditingController _quantityController = TextEditingController();
 
   // Controllers pour les valeurs nutritionnelles éditables (par 100g)
@@ -63,9 +62,16 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
   CameraController? _cameraController;
   bool isCameraInitialized = false;
 
-  // Tap-to-focus
-  Offset? _focusPoint;
-  bool _showFocusIndicator = false;
+  /// La lecture en continu. Null tant que la caméra n'est pas prête, et
+  /// abandonnée si l'appareil ne sait pas nous donner ses images.
+  BarcodeStreamService? _live;
+
+  /// Vrai tant que le flux lit : le déclencheur reste caché.
+  bool _liveOn = false;
+
+  /// Le code vient d'être reconnu : le cadre se referme avant que l'écran
+  /// change, pour qu'on voie ce qui s'est passé.
+  bool _caught = false;
 
   OpenFoodFactsProduct? _scannedProduct;
   String? _errorMessage;
@@ -75,30 +81,6 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
   void initState() {
     super.initState();
     _quantityController.text = '100'; // Quantité par défaut
-    _animationController = AnimationController(
-      duration: const Duration(seconds: 2),
-      vsync: this,
-    );
-    _animation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.linear),
-    );
-    _animationController.repeat();
-
-    // Animation de fade pour le texte et la zone d'instructions
-    _fadeAnimationController = AnimationController(
-      duration: const Duration(seconds: 2),
-      vsync: this,
-    );
-    _fadeAnimation = Tween<double>(begin: 1.0, end: 0.0).animate(
-      CurvedAnimation(parent: _fadeAnimationController, curve: Curves.easeOut),
-    );
-
-    // Démarrer le fade après un court délai
-    Future.delayed(const Duration(milliseconds: 500), () {
-      if (mounted) {
-        _fadeAnimationController.forward();
-      }
-    });
 
     // Vérifier accès Premium après que le widget soit monté
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -138,10 +120,13 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
         return;
       }
 
+      // La lecture en continu veut des images modestes : en haute résolution
+      // chaque trame coûte plus à convertir qu'à lire.
       _cameraController = CameraController(
         cameras.first,
-        ResolutionPreset.high,
+        ResolutionPreset.medium,
         enableAudio: false,
+        imageFormatGroup: Platform.isIOS ? ImageFormatGroup.bgra8888 : ImageFormatGroup.nv21,
       );
 
       await _cameraController?.initialize();
@@ -151,16 +136,50 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
         setState(() {
           isCameraInitialized = true;
         });
+        _startLiveScan();
       }
     } catch (e) {
       if (kDebugMode) debugPrint('❌ Erreur initialisation caméra: $e');
     }
   }
 
+  /// Lire les images au vol. Sur un appareil qui ne sait pas les fournir dans
+  /// un format que ML Kit accepte, on retombe simplement sur le déclencheur :
+  /// l'utilisateur ne perd rien, il appuie comme avant.
+  Future<void> _startLiveScan() async {
+    final controller = _cameraController;
+    if (controller == null || !controller.value.isInitialized) return;
+    final live = BarcodeStreamService(controller);
+    _live = live;
+    setState(() => _liveOn = true);
+    await live.start(
+      onCode: (code) async {
+        if (!mounted || hasResult || isLoadingProduct) return;
+        RyzeFeedback.success();
+        setState(() {
+          _caught = true;
+          _liveOn = false;
+          isProcessing = true;
+          isLoadingProduct = true;
+        });
+        AnalyticsService.logFoodScanBarcode(
+          mealType: widget.mealName ?? 'unknown',
+          success: true,
+          source: 'live',
+        );
+        // laisser le cadre se refermer avant de changer d'écran
+        await Future.delayed(const Duration(milliseconds: 220));
+        if (mounted) await _fetchProductData(code);
+      },
+      onUnavailable: () {
+        if (mounted) setState(() => _liveOn = false);
+      },
+    );
+  }
+
   @override
   void dispose() {
-    _animationController.dispose();
-    _fadeAnimationController.dispose();
+    _live?.stop();
     _quantityController.dispose();
     _caloriesPer100gController.dispose();
     _proteinsPer100gController.dispose();
@@ -172,491 +191,144 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: SafeArea(
-        child: hasResult ? _buildResultScreen() : _buildScannerScreen(),
-      ),
-    );
+    if (hasResult) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: SafeArea(child: _buildResultScreen()),
+      );
+    }
+    return _buildScannerScreen();
   }
 
   Widget _buildScannerScreen() {
-    return Stack(
-      children: [
-        // Vue caméra avec tap-to-focus
-        if (isCameraInitialized && _cameraController != null && !isLoadingProduct)
-          GestureDetector(
-            onTapDown: (details) async {
-              if (isProcessing || _cameraController == null) return;
-
-              final RenderBox box = context.findRenderObject() as RenderBox;
-              final Offset localPosition = box.globalToLocal(details.globalPosition);
-              final double x = localPosition.dx / box.size.width;
-              final double y = localPosition.dy / box.size.height;
-
-              try {
-                await _cameraController?.setFocusPoint(Offset(x, y));
-                await _cameraController?.setExposurePoint(Offset(x, y));
-
-                setState(() {
-                  _focusPoint = details.globalPosition;
-                  _showFocusIndicator = true;
-                });
-
-                Future.delayed(const Duration(seconds: 2), () {
-                  if (mounted) {
-                    setState(() {
-                      _showFocusIndicator = false;
-                    });
-                  }
-                });
-              } catch (e) {
-                debugPrint('❌ Erreur focus: $e');
-              }
-            },
-            child: SizedBox.expand(
-              child: _cameraController != null 
-                ? CameraPreview(_cameraController!)
-                : const SizedBox(),
-            ),
-          ),
-
-        // Vue caméra simulée pendant le chargement ou si pas initialisée
-        if (!isCameraInitialized || isLoadingProduct)
-          Container(
-            width: double.infinity,
-            height: double.infinity,
-            color: Colors.black,
-          ),
-
-        // Indicateur de focus (tap-to-focus)
-        if (_showFocusIndicator && _focusPoint != null)
-          Positioned(
-            left: (_focusPoint?.dx ?? 0) - 40,
-            top: (_focusPoint?.dy ?? 0) - 40,
-            child: Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.yellow, width: 2),
-                shape: BoxShape.circle,
+    final lang = LocalizationService.instance.currentLanguageCode;
+    return RyzeCameraShell(
+      controller: _cameraController,
+      ready: isCameraInitialized && _cameraController != null,
+      title: 'scan_barcode'.tr(lang),
+      hint: isLoadingProduct
+          ? 'searching_database'.tr(lang)
+          : (_liveOn ? 'barcode_point_at_code'.tr(lang) : 'place_barcode_in_zone'.tr(lang)),
+      onClose: () => Navigator.pop(context),
+      frame: BarcodeFrame(found: _caught),
+      busy: isProcessing,
+      // Quand le flux lit, il n'y a rien à appuyer : c'est tout l'intérêt.
+      shutter: _liveOn ? null : (isProcessing ? () {} : _scanBarcodeWithCamera),
+      leftIcon: LucideIcons.type,
+      leftLabel: 'enter_barcode_manually'.tr(lang),
+      leftAction: _showManualBarcodeInput,
+      overlay: isLoadingProduct
+          ? Positioned.fill(
+              child: ColoredBox(
+                color: RyzeColors.ink.withValues(alpha: 0.45),
+                child: const Center(child: CircularProgressIndicator(color: RyzeColors.surf, strokeWidth: 2)),
               ),
-            ),
-          ),
-        
-        // Header
-        Positioned(
-          top: 16,
-          left: 16,
-          right: 16,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            )
+          : null,
+    );
+  }
+
+
+  Widget _buildResultScreen() {
+    final lang = LocalizationService.instance.currentLanguageCode;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        ColoredBox(color: RyzeColors.ink.withValues(alpha: 0.92)),
+        SafeArea(
+          child: Column(
             children: [
-              GestureDetector(
-                onTap: () => Navigator.pop(context),
+              Padding(
+                padding: EdgeInsets.fromLTRB(context.vw(4.1), context.vw(2.1), context.vw(4.1), context.vw(2.1)),
+                child: Row(
+                  children: [
+                    Pressable(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        width: context.vw(10.8),
+                        height: context.vw(10.8),
+                        decoration: BoxDecoration(
+                          color: RyzeColors.surf.withValues(alpha: 0.14),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(LucideIcons.x, size: context.vw(4.6), color: RyzeColors.surf),
+                      ),
+                    ),
+                    Expanded(
+                      child: Text(
+                        _errorMessage != null ? 'error'.tr(lang) : 'product_found'.tr(lang),
+                        textAlign: TextAlign.center,
+                        style: RyzeText.body(context, 3.9, weight: FontWeight.w600, color: RyzeColors.surf),
+                      ),
+                    ),
+                    SizedBox(width: context.vw(10.8)),
+                  ],
+                ),
+              ),
+              Expanded(
                 child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.black54,
-                    borderRadius: BorderRadius.circular(25),
+                  width: double.infinity,
+                  decoration: const BoxDecoration(
+                    color: RyzeColors.paper,
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(RyzeRadius.lg)),
                   ),
-                  child: const Icon(
-                    LucideIcons.chevronLeft,
-                    color: Colors.white,
-                    size: 24,
-                  ),
+                  child: _errorMessage != null ? _buildErrorContent() : _buildProductContent(),
                 ),
               ),
             ],
-          ),
-        ),
-        
-        // Zone de scan overlay
-        Center(
-          child: Container(
-            width: 280,
-            height: 140,
-            margin: const EdgeInsets.symmetric(horizontal: 24),
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.white.withOpacity(0.5), width: 2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Stack(
-              children: [
-                // Coins de la zone de scan
-                Positioned(
-                  top: -2,
-                  left: -2,
-                  child: Container(
-                    width: 30,
-                    height: 30,
-                    decoration: const BoxDecoration(
-                      border: Border(
-                        top: BorderSide(color: Colors.white, width: 4),
-                        left: BorderSide(color: Colors.white, width: 4),
-                      ),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  top: -2,
-                  right: -2,
-                  child: Container(
-                    width: 30,
-                    height: 30,
-                    decoration: const BoxDecoration(
-                      border: Border(
-                        top: BorderSide(color: Colors.white, width: 4),
-                        right: BorderSide(color: Colors.white, width: 4),
-                      ),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  bottom: -2,
-                  left: -2,
-                  child: Container(
-                    width: 30,
-                    height: 30,
-                    decoration: const BoxDecoration(
-                      border: Border(
-                        bottom: BorderSide(color: Colors.white, width: 4),
-                        left: BorderSide(color: Colors.white, width: 4),
-                      ),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  bottom: -2,
-                  right: -2,
-                  child: Container(
-                    width: 30,
-                    height: 30,
-                    decoration: const BoxDecoration(
-                      border: Border(
-                        bottom: BorderSide(color: Colors.white, width: 4),
-                        right: BorderSide(color: Colors.white, width: 4),
-                      ),
-                    ),
-                  ),
-                ),
-
-                // Ligne de scan animée
-                if (!isLoadingProduct)
-                AnimatedBuilder(
-                  animation: _animation,
-                  builder: (context, child) {
-                    return Positioned(
-                      top: 10 + (_animation.value * 100),
-                      left: 10,
-                      right: 10,
-                      child: Container(
-                        height: 3,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              Colors.transparent,
-                              Colors.white,
-                              Colors.white.withOpacity(0.8),
-                              Colors.transparent,
-                            ],
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.white.withOpacity(0.5),
-                              blurRadius: 8,
-                              spreadRadius: 1,
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                
-                // Loading indicator during product fetch
-                if (isLoadingProduct)
-                  const Center(
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 3,
-                    ),
-                ),
-              ],
-            ),
-          ),
-        ),
-
-        // Instructions avec animation de fade
-        Positioned(
-          bottom: 200,
-          left: 24,
-          right: 24,
-          child: AnimatedBuilder(
-            animation: _fadeAnimation,
-            builder: (context, child) {
-              return Opacity(
-                opacity: _fadeAnimation.value,
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.black54,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    children: [
-                      const Icon(
-                        LucideIcons.scan,
-                        color: Colors.white,
-                        size: 32,
-                      ),
-                      const SizedBox(height: 8),
-                      Consumer<LocalizationService>(
-                        builder: (context, locService, _) => Text(
-                          isLoadingProduct
-                              ? 'fetching_product'.tr(locService.currentLanguageCode)
-                              : 'scanning_barcode'.tr(locService.currentLanguageCode),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Consumer<LocalizationService>(
-                        builder: (context, locService, _) => Text(
-                          isLoadingProduct
-                              ? 'searching_database'.tr(locService.currentLanguageCode)
-                              : 'place_barcode_in_zone'.tr(locService.currentLanguageCode),
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 14,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-
-        // Boutons d'action (style iPhone comme scan IA)
-        if (!isLoadingProduct)
-        Positioned(
-          bottom: 0,
-          left: 0,
-          right: 0,
-          child: Container(
-            padding: const EdgeInsets.only(bottom: 40, top: 30),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.transparent,
-                  Colors.black.withOpacity(0.3),
-                  Colors.black.withOpacity(0.6),
-                ],
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                // Bouton saisie manuelle (à gauche) - même style que galerie du scan IA
-                GestureDetector(
-                  onTap: _showManualBarcodeInput,
-                  child: Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.3),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(
-                      LucideIcons.type,
-                      color: Colors.white,
-                      size: 24,
-                    ),
-                  ),
-                ),
-
-                // Bouton capture principal (style iPhone) - cercle blanc
-                GestureDetector(
-                  onTap: isProcessing ? null : _scanBarcodeWithCamera,
-                  child: Container(
-                    width: 72,
-                    height: 72,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: isProcessing ? Colors.white.withOpacity(0.5) : Colors.white,
-                        width: 4,
-                      ),
-                    ),
-                    child: isProcessing
-                        ? Container(
-                            margin: const EdgeInsets.all(3),
-                            child: const CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 3,
-                            ),
-                          )
-                        : Container(
-                            margin: const EdgeInsets.all(3),
-                            decoration: const BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                  ),
-                ),
-
-                // Espace vide pour garder la symétrie
-                const SizedBox(width: 50, height: 50),
-              ],
-            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildResultScreen() {
-    return Container(
-      color: Colors.white,
-      child: Column(
-        children: [
-          // Header
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              border: Border(
-                bottom: BorderSide(color: Color(0xFFE5E7EB), width: 1),
-              ),
-            ),
-            child: Row(
-              children: [
-                GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      color: Colors.transparent,
-                    ),
-                    child: const Icon(
-                      LucideIcons.chevronLeft,
-                      size: 20,
-                      color: Color(0xFF0B132B),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Consumer<LocalizationService>(
-                    builder: (context, locService, _) => Text(
-                      _errorMessage != null
-                          ? 'error'.tr(locService.currentLanguageCode)
-                          : 'product_found'.tr(locService.currentLanguageCode),
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF1A1A1A),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          
-          Expanded(
-            child: _errorMessage != null ? _buildErrorContent() : _buildProductContent(),
-          ),
-          
-          // Boutons d'action (seulement si pas d'erreur)
-          if (_errorMessage == null && _scannedProduct != null)
-            _buildActionButtons(),
-        ],
-      ),
-    );
-  }
-
+  /// Le code n'a rien donné. Deux suites possibles, et aucune n'est un
+  /// cul-de-sac : recommencer, ou saisir le code à la main.
   Widget _buildErrorContent() {
+    final lang = LocalizationService.instance.currentLanguageCode;
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.symmetric(horizontal: context.vw(8), vertical: context.vw(10)),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(
-            LucideIcons.x,
-            size: 64,
-            color: Color(0xFFEF4444),
-          ),
-          const SizedBox(height: 16),
+          Icon(LucideIcons.packageX, size: context.vw(12.3), color: RyzeColors.mute2),
+          SizedBox(height: context.vw(4.1)),
           Text(
-            _errorMessage ?? '',
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF1A1A1A),
-            ),
+            _errorMessage ?? 'error'.tr(lang),
             textAlign: TextAlign.center,
+            style: RyzeText.body(context, 3.9, weight: FontWeight.w600, color: RyzeColors.mute),
           ),
-          const SizedBox(height: 8),
-          Consumer<LocalizationService>(
-            builder: (context, locService, child) => Text(
-              'barcode_not_readable'.tr(locService.currentLanguageCode),
-              style: const TextStyle(
-                fontSize: 14,
-                color: Color(0xFF64748B),
+          SizedBox(height: context.vw(6.2)),
+          Pressable(
+            onTap: _rescan,
+            child: Container(
+              height: context.vw(13.3),
+              width: double.infinity,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: RyzeColors.ink,
+                borderRadius: BorderRadius.circular(RyzeRadius.sm),
+                boxShadow: RyzeShadow.soft,
               ),
+              child: Text('scan_another'.tr(lang), style: RyzeText.body(context, 3.9, weight: FontWeight.w600, color: RyzeColors.surf)),
             ),
           ),
-          const SizedBox(height: 32),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  hasResult = false;
-                  _errorMessage = null;
-                  _scannedProduct = null;
-                });
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0B132B),
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+          SizedBox(height: context.vw(3.1)),
+          Pressable(
+            onTap: () {
+              _rescan();
+              _showManualBarcodeInput();
+            },
+            child: Container(
+              height: context.vw(13.3),
+              width: double.infinity,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: RyzeColors.surf,
+                borderRadius: BorderRadius.circular(RyzeRadius.sm),
+                border: Border.all(color: RyzeColors.line),
               ),
-              child: Consumer<LocalizationService>(
-                builder: (context, locService, child) {
-                  String label;
-                  if (locService.currentLanguageCode == 'fr') {
-                    label = 'Scanner un autre produit';
-                  } else if (locService.currentLanguageCode == 'de') {
-                    label = 'Anderes Produkt scannen';
-                  } else {
-                    label = 'Scan another product';
-                  }
-                  return Text(
-                    label,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.white,
-                    ),
-                  );
-                },
-              ),
+              child: Text('enter_barcode_manually'.tr(lang), style: RyzeText.body(context, 3.9, weight: FontWeight.w600)),
             ),
           ),
         ],
@@ -664,551 +336,263 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
     );
   }
 
+  /// Retourner au viseur, et relancer la lecture en continu.
+  void _rescan() {
+    setState(() {
+      hasResult = false;
+      _errorMessage = null;
+      _scannedProduct = null;
+      _caught = false;
+      isProcessing = false;
+      isLoadingProduct = false;
+    });
+    _startLiveScan();
+  }
+
+  /// Le produit : ce que c'est, combien on en prend, ce que ça vaut.
+  ///
+  /// La quantité mène, comme partout ailleurs depuis la refonte. Les valeurs
+  /// par 100 g restent corrigeables, mais derrière un bouton plutôt qu'étalées
+  /// en quatre champs qu'on ne touchera jamais.
   Widget _buildProductContent() {
-    if (_scannedProduct == null) return const SizedBox();
+    final lang = LocalizationService.instance.currentLanguageCode;
+    final unit = (_scannedProduct?.unit ?? 'g').toLowerCase() == 'ml' ? 'ml' : 'g';
+    final gutter = context.vw(5.1);
 
-    return StatefulBuilder(
-              builder: (context, setModalState) {
-                return SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Image du produit
-                      Container(
-                        width: double.infinity,
-                        height: 200,
-                        decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9), // Fond gris de l'app
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFE5E7EB)),
-                        ),
-                child: (_scannedProduct?.imageUrl?.isNotEmpty ?? false)
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: Image.network(
-                          _scannedProduct!.imageUrl!,
-                          fit: BoxFit.contain, // Utilise contain au lieu de cover
-                          width: double.infinity,
-                          height: 200,
-                          loadingBuilder: (context, child, loadingProgress) {
-                            if (loadingProgress == null) return child;
-                            return const Center(
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF0B132B)),
-                              ),
-                            );
-                          },
-                          errorBuilder: (context, error, stackTrace) {
-                            return _buildImagePlaceholder();
-                          },
-                        ),
-                      )
-                    : _buildImagePlaceholder(),
-                      ),
-                      
-                      const SizedBox(height: 20),
-                      
-                      // Informations du produit
-              Text(
-                _scannedProduct?.productName ?? 'Produit sans nom',
-                style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF1A1A1A),
-                        ),
-                      ),
-                      
-                      const SizedBox(height: 8),
-                      
-              Text(
-                _buildProductSubtitle(),
-                style: const TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF64748B),
-                        ),
-                      ),
-
-                      const SizedBox(height: 16),
-
-                      // Avertissement sur les données OpenFoodFacts
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFFF3CD),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: const Color(0xFFFFE69C)),
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Icon(
-                              Icons.warning_amber_rounded,
-                              size: 20,
-                              color: Color(0xFF856404),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Consumer<LocalizationService>(
-                                builder: (context, locService, child) => Text(
-                                  'openfoodfacts_disclaimer'.tr(locService.currentLanguageCode),
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: Color(0xFF856404),
-                                    height: 1.4,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(height: 20),
-                      
-              // Informations nutritionnelles
-              if (_scannedProduct?.nutriments != null)
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF8F9FA),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFE5E7EB)),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Header avec bouton modifier
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Consumer<LocalizationService>(
-                                  builder: (context, locService, child) {
-                                    // Si on est en mode édition, afficher "Pour 100g/ml"
-                                    // Sinon afficher "Pour la quantité indiquée"
-                                    if (_isEditingNutritionalValues) {
-                                      final unit = _scannedProduct?.unit ?? 'g';
-                                      final displayUnit = unit.toLowerCase() == 'ml' ? 'ml' : 'g';
-
-                                      return Text(
-                                        locService.currentLanguageCode == 'fr'
-                                            ? 'Pour 100$displayUnit'
-                                            : 'Per 100$displayUnit',
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                          color: Color(0xFF64748B),
-                                        ),
-                                      );
-                                    } else {
-                                      return Text(
-                                        'for_indicated_quantity'.tr(locService.currentLanguageCode),
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                          color: Color(0xFF64748B),
-                                        ),
-                                      );
-                                    }
-                                  },
-                                ),
-                                Flexible(
-                                  child: TextButton.icon(
-                                    onPressed: () {
-                                      setModalState(() {
-                                        _isEditingNutritionalValues = !_isEditingNutritionalValues;
-                                      });
-                                    },
-                                    icon: Icon(
-                                      _isEditingNutritionalValues ? Icons.check : Icons.edit_outlined,
-                                      size: 16,
-                                    ),
-                                    label: Consumer<LocalizationService>(
-                                      builder: (context, locService, _) {
-                                        // Obtenir l'unité correcte (g ou ml)
-                                        final unit = _scannedProduct?.unit ?? 'g';
-                                        final displayUnit = unit.toLowerCase() == 'ml' ? 'ml' : 'g';
-
-                                        return Flexible(
-                                          child: Text(
-                                            _isEditingNutritionalValues
-                                                ? 'validate'.tr(locService.currentLanguageCode)
-                                                : locService.currentLanguageCode == 'fr'
-                                                    ? 'Modifier/100$displayUnit'
-                                                    : 'Edit/100$displayUnit',
-                                            style: const TextStyle(fontSize: 11),
-                                            overflow: TextOverflow.ellipsis,
-                                            maxLines: 1,
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                    style: TextButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-
-                            // Calories
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Consumer<LocalizationService>(
-                                  builder: (context, locService, child) {
-                                    String label;
-                                    if (locService.currentLanguageCode == 'de') {
-                                      label = 'Kalorien';
-                                    } else {
-                                      label = 'Calories';
-                                    }
-                                    return Text(
-                                      label,
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w500,
-                                        color: Color(0xFF1A1A1A),
-                                      ),
-                                    );
-                                  },
-                                ),
-                                if (_isEditingNutritionalValues)
-                                  Row(
-                                    children: [
-                                      SizedBox(
-                                        width: 60,
-                                        child: TextField(
-                                          controller: _caloriesPer100gController,
-                                          keyboardType: TextInputType.number,
-                                          textAlign: TextAlign.end,
-                                          style: const TextStyle(fontSize: 14),
-                                          decoration: const InputDecoration(
-                                            isDense: true,
-                                            contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                                            border: OutlineInputBorder(),
-                                          ),
-                                          onChanged: (_) => setModalState(() {}),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      const Text('kcal/100g', style: TextStyle(fontSize: 12)),
-                                    ],
-                                  )
-                                else
-                                  Text(
-                                    '${_getCalculatedCalories().round()} kcal',
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: Color(0xFF0B132B),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-
-                            // Protéines
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Consumer<LocalizationService>(
-                                  builder: (context, locService, child) => Text(
-                                    'proteins_label'.tr(locService.currentLanguageCode),
-                                    style: const TextStyle(fontSize: 14, color: Color(0xFF64748B)),
-                                  ),
-                                ),
-                                if (_isEditingNutritionalValues)
-                                  Row(
-                                    children: [
-                                      SizedBox(
-                                        width: 60,
-                                        child: TextField(
-                                          controller: _proteinsPer100gController,
-                                          keyboardType: TextInputType.numberWithOptions(decimal: true),
-                                          textAlign: TextAlign.end,
-                                          style: const TextStyle(fontSize: 14),
-                                          decoration: const InputDecoration(
-                                            isDense: true,
-                                            contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                                            border: OutlineInputBorder(),
-                                          ),
-                                          onChanged: (_) => setModalState(() {}),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      const Text('g/100g', style: TextStyle(fontSize: 12)),
-                                    ],
-                                  )
-                                else
-                                  Text(
-                                    '${_getCalculatedProtein().toStringAsFixed(1)} g',
-                                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF1A1A1A)),
-                                  ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-
-                            // Glucides
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Consumer<LocalizationService>(
-                                  builder: (context, locService, child) {
-                                    String label;
-                                    if (locService.currentLanguageCode == 'fr') {
-                                      label = 'Glucides';
-                                    } else if (locService.currentLanguageCode == 'de') {
-                                      label = 'Kohlenhydrate';
-                                    } else {
-                                      label = 'Carbs';
-                                    }
-                                    return Text(label, style: const TextStyle(fontSize: 14, color: Color(0xFF64748B)));
-                                  },
-                                ),
-                                if (_isEditingNutritionalValues)
-                                  Row(
-                                    children: [
-                                      SizedBox(
-                                        width: 60,
-                                        child: TextField(
-                                          controller: _carbsPer100gController,
-                                          keyboardType: TextInputType.numberWithOptions(decimal: true),
-                                          textAlign: TextAlign.end,
-                                          style: const TextStyle(fontSize: 14),
-                                          decoration: const InputDecoration(
-                                            isDense: true,
-                                            contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                                            border: OutlineInputBorder(),
-                                          ),
-                                          onChanged: (_) => setModalState(() {}),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      const Text('g/100g', style: TextStyle(fontSize: 12)),
-                                    ],
-                                  )
-                                else
-                                  Text(
-                                    '${_getCalculatedCarbs().toStringAsFixed(1)} g',
-                                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF1A1A1A)),
-                                  ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-
-                            // Lipides
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Consumer<LocalizationService>(
-                                  builder: (context, locService, child) {
-                                    String label;
-                                    if (locService.currentLanguageCode == 'fr') {
-                                      label = 'Lipides';
-                                    } else if (locService.currentLanguageCode == 'de') {
-                                      label = 'Fett';
-                                    } else {
-                                      label = 'Fat';
-                                    }
-                                    return Text(label, style: const TextStyle(fontSize: 14, color: Color(0xFF64748B)));
-                                  },
-                                ),
-                                if (_isEditingNutritionalValues)
-                                  Row(
-                                    children: [
-                                      SizedBox(
-                                        width: 60,
-                                        child: TextField(
-                                          controller: _fatsPer100gController,
-                                          keyboardType: TextInputType.numberWithOptions(decimal: true),
-                                          textAlign: TextAlign.end,
-                                          style: const TextStyle(fontSize: 14),
-                                          decoration: const InputDecoration(
-                                            isDense: true,
-                                            contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                                            border: OutlineInputBorder(),
-                                          ),
-                                          onChanged: (_) => setModalState(() {}),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      const Text('g/100g', style: TextStyle(fontSize: 12)),
-                                    ],
-                                  )
-                                else
-                                  Text(
-                                    '${_getCalculatedFat().toStringAsFixed(1)} g',
-                                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF1A1A1A)),
-                                  ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      
-                      const SizedBox(height: 20),
-                      
-              // Quantité
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF8F9FA),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFE5E7EB)),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Consumer<LocalizationService>(
-                              builder: (context, locService, child) => Text(
-                                'quantity_label'.tr(locService.currentLanguageCode),
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF1A1A1A),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: TextField(
-                                    controller: _quantityController,
-                                    decoration: const InputDecoration(
-                                      border: OutlineInputBorder(),
-                                      contentPadding: EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 8,
-                                      ),
-                                    ),
-                                    keyboardType: TextInputType.number,
-                                    onChanged: (value) {
-                                      setModalState(() {});
-                                    },
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                        Text(
-                          _scannedProduct?.unit ?? 'g',
-                          style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w500,
-                                    color: Color(0xFF1A1A1A),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+    return Column(
+      children: [
+        Expanded(
+          child: ListView(
+            padding: EdgeInsets.fromLTRB(gutter, context.vw(4.6), gutter, context.vw(4.1)),
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(RyzeRadius.sm),
+                    child: SizedBox(
+                      width: context.vw(18.5),
+                      height: context.vw(18.5),
+                      child: (_scannedProduct?.imageUrl?.isNotEmpty ?? false)
+                          ? Image.network(
+                              _scannedProduct!.imageUrl!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => _buildImagePlaceholder(),
+                            )
+                          : _buildImagePlaceholder(),
+                    ),
                   ),
-                );
-              },
+                  SizedBox(width: context.vw(3.6)),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _scannedProduct?.productName ?? 'no_additional_info'.tr(lang),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: RyzeText.body(context, 4.6, weight: FontWeight.w600),
+                        ),
+                        SizedBox(height: context.vw(1)),
+                        Text(
+                          _buildProductSubtitle(),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: RyzeText.body(context, 3.1, color: RyzeColors.mute),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: context.vw(5.6)),
+
+              // La quantité, en grand, avec les portions courantes.
+              _BarcodeQuantity(
+                controller: _quantityController,
+                unit: unit,
+                lang: lang,
+                onChanged: () => setState(() {}),
+              ),
+              SizedBox(height: context.vw(5.1)),
+
+              Container(
+                padding: EdgeInsets.all(context.vw(4.1)),
+                decoration: BoxDecoration(
+                  color: RyzeColors.surf,
+                  borderRadius: BorderRadius.circular(RyzeRadius.md),
+                  border: Border.all(color: RyzeColors.line),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text('calories'.tr(lang), style: RyzeText.body(context, 3.9, weight: FontWeight.w600)),
+                        ),
+                        RollingNumber(
+                          '${_getCalculatedCalories().round()}',
+                          style: RyzeText.display(context, 6.9, weight: FontWeight.w600),
+                        ),
+                        SizedBox(width: context.vw(1.5)),
+                        Padding(
+                          padding: EdgeInsets.only(top: context.vw(1.5)),
+                          child: Text('kcal', style: RyzeText.body(context, 3.3, color: RyzeColors.mute)),
+                        ),
+                        SizedBox(width: context.vw(2.6)),
+                        Pressable(
+                          onTap: () {
+                            RyzeFeedback.tap();
+                            setState(() => _isEditingNutritionalValues = !_isEditingNutritionalValues);
+                          },
+                          child: Container(
+                            width: context.vw(8.7),
+                            height: context.vw(8.7),
+                            decoration: BoxDecoration(
+                              color: _isEditingNutritionalValues ? RyzeColors.ink : RyzeColors.paper,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: _isEditingNutritionalValues ? RyzeColors.ink : RyzeColors.line),
+                            ),
+                            child: Icon(
+                              _isEditingNutritionalValues ? LucideIcons.check : LucideIcons.pencil,
+                              size: context.vw(4.1),
+                              color: _isEditingNutritionalValues ? RyzeColors.surf : RyzeColors.mute,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: context.vw(3.6)),
+                    const Divider(height: 1, color: RyzeColors.line),
+                    SizedBox(height: context.vw(3.1)),
+                    if (_isEditingNutritionalValues)
+                      Padding(
+                        padding: EdgeInsets.only(bottom: context.vw(2.6)),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'macros_per'.tr(lang).replaceAll('{q}', '100 $unit'),
+                            style: RyzeText.body(context, 3.1, color: RyzeColors.mute),
+                          ),
+                        ),
+                      ),
+                    _BarcodeMacro(
+                      label: 'calories'.tr(lang),
+                      controller: _caloriesPer100gController,
+                      editing: _isEditingNutritionalValues,
+                      value: _getCalculatedCalories(),
+                      suffix: 'kcal',
+                      onChanged: () => setState(() {}),
+                      hidden: !_isEditingNutritionalValues,
+                    ),
+                    _BarcodeMacro(
+                      label: 'proteins'.tr(lang),
+                      controller: _proteinsPer100gController,
+                      editing: _isEditingNutritionalValues,
+                      value: _getCalculatedProtein(),
+                      suffix: 'g',
+                      onChanged: () => setState(() {}),
+                    ),
+                    SizedBox(height: context.vw(2.6)),
+                    _BarcodeMacro(
+                      label: 'carbs'.tr(lang),
+                      controller: _carbsPer100gController,
+                      editing: _isEditingNutritionalValues,
+                      value: _getCalculatedCarbs(),
+                      suffix: 'g',
+                      onChanged: () => setState(() {}),
+                    ),
+                    SizedBox(height: context.vw(2.6)),
+                    _BarcodeMacro(
+                      label: 'fats'.tr(lang),
+                      controller: _fatsPer100gController,
+                      editing: _isEditingNutritionalValues,
+                      value: _getCalculatedFat(),
+                      suffix: 'g',
+                      onChanged: () => setState(() {}),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: context.vw(3.1)),
+
+              // D'où viennent ces chiffres. Une ligne discrète, pas un panneau
+              // d'avertissement jaune : l'information est utile, pas alarmante.
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(LucideIcons.info, size: context.vw(3.6), color: RyzeColors.mute2),
+                  SizedBox(width: context.vw(2.1)),
+                  Expanded(
+                    child: Text(
+                      'openfoodfacts_disclaimer'.tr(lang),
+                      style: RyzeText.body(context, 2.9, color: RyzeColors.mute2, height: 1.4),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        _buildActionButtons(),
+      ],
     );
   }
-          
+
   Widget _buildActionButtons() {
+    final lang = LocalizationService.instance.currentLanguageCode;
     return Container(
-            padding: const EdgeInsets.all(16),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              border: Border(
-                top: BorderSide(color: Color(0xFFE5E7EB), width: 1),
+      padding: EdgeInsets.fromLTRB(context.vw(5.1), context.vw(3.1), context.vw(5.1), context.vw(4.6)),
+      decoration: const BoxDecoration(
+        color: RyzeColors.paper,
+        border: Border(top: BorderSide(color: RyzeColors.line)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Pressable(
+              onTap: _rescan,
+              child: Container(
+                height: context.vw(13.3),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: RyzeColors.surf,
+                  borderRadius: BorderRadius.circular(RyzeRadius.sm),
+                  border: Border.all(color: RyzeColors.line),
+                ),
+                child: Text('scan_another'.tr(lang), maxLines: 1, overflow: TextOverflow.ellipsis, style: RyzeText.body(context, 3.6, weight: FontWeight.w600)),
               ),
             ),
-            child: Column(
-              children: [
-          // Bouton principal : Ajouter au repas
-          SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-              onPressed: _errorMessage == null ? _handleAddToMeal : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0B132B),
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: Consumer<LocalizationService>(
-                      builder: (context, locService, child) {
-                        String label;
-                        if (locService.currentLanguageCode == 'fr') {
-                          label = 'Ajouter au repas';
-                        } else if (locService.currentLanguageCode == 'de') {
-                          label = 'Zur Mahlzeit hinzufügen';
-                        } else {
-                          label = 'Add to meal';
-                        }
-                        return Text(
-                          label,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white,
-                          ),
-                        );
-                      },
-                    ),
-                  ),
+          ),
+          SizedBox(width: context.vw(3.1)),
+          Expanded(
+            flex: 2,
+            child: Pressable(
+              onTap: _errorMessage == null ? _handleAddToMeal : null,
+              child: Container(
+                height: context.vw(13.3),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: RyzeColors.ink,
+                  borderRadius: BorderRadius.circular(RyzeRadius.sm),
+                  boxShadow: RyzeShadow.soft,
                 ),
-
-                const SizedBox(height: 12),
-          
-          // Bouton tertiaire : Scanner un autre produit
-          SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton(
-                    onPressed: () {
-                      setState(() {
-                        hasResult = false;
-                  _errorMessage = null;
-                  _scannedProduct = null;
-                      });
-                    },
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      side: const BorderSide(
-                        color: Color(0xFF0B132B),
-                        width: 1,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: Consumer<LocalizationService>(
-                      builder: (context, locService, child) {
-                        String label;
-                        if (locService.currentLanguageCode == 'fr') {
-                          label = 'Scanner un autre produit';
-                        } else if (locService.currentLanguageCode == 'de') {
-                          label = 'Anderes Produkt scannen';
-                        } else {
-                          label = 'Scan another product';
-                        }
-                        return Text(
-                          label,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF0B132B),
-                          ),
-                        );
-                      },
-                    ),
+                child: Text('add_to_meal'.tr(lang), style: RyzeText.body(context, 3.9, weight: FontWeight.w600, color: RyzeColors.surf)),
+              ),
             ),
           ),
         ],
       ),
     );
   }
+
+  Widget _buildImagePlaceholder() {
+    return ColoredBox(
+      color: RyzeColors.paper2,
+      child: Icon(LucideIcons.package, size: context.vw(7.7), color: RyzeColors.mute2),
+    );
+  }
+
 
   String _buildProductSubtitle() {
     final parts = <String>[];
@@ -1255,54 +639,6 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
     final quantity = double.tryParse(_quantityController.text) ?? 100.0;
     final fatsPer100g = double.tryParse(_fatsPer100gController.text) ?? 0.0;
     return (fatsPer100g * quantity / 100);
-  }
-
-  // Widget placeholder pour l'image du produit
-  Widget _buildImagePlaceholder() {
-    final lang = LocalizationService.instance.currentLanguageCode;
-
-    String imageTitle;
-    String noImageText;
-    if (lang == 'fr') {
-      imageTitle = 'Image du produit';
-      noImageText = 'Aucune image disponible';
-    } else if (lang == 'de') {
-      imageTitle = 'Produktbild';
-      noImageText = 'Kein Bild verfügbar';
-    } else {
-      imageTitle = 'Product image';
-      noImageText = 'No image available';
-    }
-
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(
-            LucideIcons.package,
-            size: 48,
-            color: Color(0xFF64748B),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            imageTitle,
-            style: const TextStyle(
-              fontSize: 16,
-              color: Color(0xFF64748B),
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            noImageText,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Color(0xFF94A3B8),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   // Redémarrer le scan
@@ -2188,3 +1524,203 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
     });
   }
 } 
+
+/// La quantité d'un produit scanné : le grand chiffre, deux pas, et les
+/// portions qu'on prend le plus souvent.
+class _BarcodeQuantity extends StatelessWidget {
+  const _BarcodeQuantity({
+    required this.controller,
+    required this.unit,
+    required this.lang,
+    required this.onChanged,
+  });
+
+  final TextEditingController controller;
+  final String unit;
+  final String lang;
+  final VoidCallback onChanged;
+
+  static const List<double> _presets = [30, 50, 100, 150, 200, 250];
+
+  void _step(int direction) {
+    final current = double.tryParse(controller.text.isEmpty ? '0' : controller.text) ?? 0;
+    _set((current + direction * 10).clamp(0, 5000).toDouble());
+  }
+
+  void _set(double value) {
+    RyzeFeedback.tap();
+    controller.text = value.truncateToDouble() == value ? value.toStringAsFixed(0) : value.toStringAsFixed(1);
+    onChanged();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final current = double.tryParse(controller.text) ?? -1;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('quantity'.tr(lang), style: RyzeText.body(context, 3.2, weight: FontWeight.w600, color: RyzeColors.mute)),
+        SizedBox(height: context.vw(2.3)),
+        Row(
+          children: [
+            _QtyStep(icon: LucideIcons.minus, onTap: () => _step(-1)),
+            Expanded(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  IntrinsicWidth(
+                    child: NumericTextField(
+                      controller: controller,
+                      textAlign: TextAlign.center,
+                      style: RyzeText.display(context, 9.2, weight: FontWeight.w600),
+                      onChanged: (_) => onChanged(),
+                      decoration: const InputDecoration(
+                        border: InputBorder.none,
+                        isDense: true,
+                        contentPadding: EdgeInsets.zero,
+                        hintText: '0',
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: context.vw(1.5)),
+                  Text(unit, style: RyzeText.body(context, 3.9, color: RyzeColors.mute)),
+                ],
+              ),
+            ),
+            _QtyStep(icon: LucideIcons.plus, onTap: () => _step(1)),
+          ],
+        ),
+        SizedBox(height: context.vw(3.1)),
+        SizedBox(
+          height: context.vw(9.2),
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: EdgeInsets.zero,
+            itemCount: _presets.length,
+            separatorBuilder: (_, __) => SizedBox(width: context.vw(2.1)),
+            itemBuilder: (_, i) {
+              final value = _presets[i];
+              final on = current == value;
+              return Pressable(
+                onTap: () => _set(value),
+                child: AnimatedContainer(
+                  duration: RyzeDurations.tap,
+                  curve: RyzeCurves.out,
+                  padding: EdgeInsets.symmetric(horizontal: context.vw(3.6)),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: on ? RyzeColors.ink : RyzeColors.surf,
+                    borderRadius: BorderRadius.circular(RyzeRadius.pill),
+                    border: Border.all(color: on ? RyzeColors.ink : RyzeColors.line),
+                  ),
+                  child: Text(
+                    '${value.toStringAsFixed(0)} $unit',
+                    style: RyzeText.body(context, 3.3, weight: FontWeight.w600, color: on ? RyzeColors.surf : RyzeColors.ink),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _QtyStep extends StatelessWidget {
+  const _QtyStep({required this.icon, required this.onTap});
+
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Pressable(
+      onTap: onTap,
+      child: Container(
+        width: context.vw(12.3),
+        height: context.vw(12.3),
+        decoration: BoxDecoration(
+          color: RyzeColors.surf,
+          shape: BoxShape.circle,
+          border: Border.all(color: RyzeColors.line),
+        ),
+        child: Icon(icon, size: context.vw(5.1), color: RyzeColors.ink),
+      ),
+    );
+  }
+}
+
+/// Une valeur du produit : ce qu'elle vaut pour la quantité prise, et le champ
+/// par 100 g quand on ouvre la correction.
+class _BarcodeMacro extends StatelessWidget {
+  const _BarcodeMacro({
+    required this.label,
+    required this.controller,
+    required this.editing,
+    required this.value,
+    required this.suffix,
+    required this.onChanged,
+    this.hidden = false,
+  });
+
+  final String label;
+  final TextEditingController controller;
+  final bool editing;
+  final double value;
+  final String suffix;
+  final VoidCallback onChanged;
+
+  /// Les calories sont déjà écrites en grand au-dessus : cette ligne n'existe
+  /// que pour les corriger.
+  final bool hidden;
+
+  @override
+  Widget build(BuildContext context) {
+    if (hidden) return const SizedBox.shrink();
+    return Padding(
+      padding: EdgeInsets.only(bottom: editing && suffix == 'kcal' ? context.vw(2.6) : 0),
+      child: Row(
+        children: [
+          Expanded(child: Text(label, style: RyzeText.body(context, 3.6, color: RyzeColors.mute))),
+          if (editing)
+            SizedBox(
+              width: context.vw(22),
+              height: context.vw(9.7),
+              child: NumericTextField(
+                controller: controller,
+                textAlign: TextAlign.right,
+                onChanged: (_) => onChanged(),
+                style: RyzeText.body(context, 3.6, weight: FontWeight.w600),
+                decoration: InputDecoration(
+                  isDense: true,
+                  suffixText: suffix,
+                  suffixStyle: RyzeText.body(context, 3.1, color: RyzeColors.mute),
+                  contentPadding: EdgeInsets.symmetric(horizontal: context.vw(2.1), vertical: context.vw(1.5)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(RyzeRadius.xs),
+                    borderSide: const BorderSide(color: RyzeColors.line),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(RyzeRadius.xs),
+                    borderSide: const BorderSide(color: RyzeColors.line),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(RyzeRadius.xs),
+                    borderSide: const BorderSide(color: RyzeColors.ink),
+                  ),
+                ),
+              ),
+            )
+          else
+            Text(
+              '${value.toStringAsFixed(value >= 100 ? 0 : 1)} $suffix',
+              style: RyzeText.body(context, 3.6, weight: FontWeight.w600),
+            ),
+        ],
+      ),
+    );
+  }
+}

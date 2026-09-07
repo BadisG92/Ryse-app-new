@@ -3,27 +3,12 @@ import 'package:flutter/foundation.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:camera/camera.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:provider/provider.dart';
+import '../design/design.dart';
 import '../services/localization_service.dart';
-import '../services/gemini_analysis_service_v2.dart';
-import '../models/ai_analysis_models.dart';
-import '../bottom_sheets/editable_food_details_bottom_sheet.dart';
-import '../bottom_sheets/meal_selection_bottom_sheet.dart';
-import '../bottom_sheets/new_meal_type_bottom_sheet.dart';
-import '../bottom_sheets/add_ingredient_bottom_sheet.dart';
-import '../models/nutrition_models.dart';
-import '../services/food_entries_service.dart';
-import '../services/auth_service.dart';
-import '../services/celebration_service.dart';
+import 'ai_analysis_screen.dart';
 import '../services/translations.dart';
-import '../services/subscription_service.dart';
 import '../services/paywall_service.dart';
-import '../services/feature_trial_service.dart';
-import '../components/nutrition_journal_hybrid.dart';
-import '../config/subscription_config.dart';
 import 'dart:io';
-import 'dart:typed_data';
-import 'dart:math';
 
 class AIScannerScreen extends StatefulWidget {
   final bool isFromDashboard;
@@ -48,6 +33,12 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
   String? _errorMessage;
   bool _isLoading = true;
   final ImagePicker _picker = ImagePicker();
+
+  /// La photo qu'on vient de prendre. Tant qu'elle est là, l'écran montre
+  /// l'image figée et demande son détail au lieu de pousser une page.
+  XFile? _shot;
+  final TextEditingController _note = TextEditingController();
+  static const int _maxNoteLength = 500;
 
   // Variables pour le zoom
   double _currentZoomLevel = 1.0;
@@ -133,13 +124,9 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
 
   @override
   void dispose() {
+    _note.dispose();
     _cameraController?.dispose();
     super.dispose();
-  }
-
-  String _getLocalizedHint(BuildContext context) {
-    final localizationService = Provider.of<LocalizationService>(context, listen: false);
-    return 'coach_detected_dish_name'.tr(localizationService.currentLanguageCode);
   }
 
   Future<void> _takePicture() async {
@@ -150,20 +137,9 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
 
     try {
       final image = await _cameraController?.takePicture();
-      if (image == null) return;
-      if (kDebugMode) debugPrint('🔥 [FLUX AI] ✅ Photo prise: ${image.path}');
-
-      // Aller au preview screen avec note
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => AIPreviewScreen(
-            imagePath: image.path,
-            isFromDashboard: widget.isFromDashboard,
-            mealName: widget.mealName,
-            mealId: widget.mealId,
-          ),
-        ),
-      );
+      if (image == null || !mounted) return;
+      RyzeFeedback.confirm();
+      setState(() => _shot = image);
     } catch (e) {
       if (kDebugMode) debugPrint('🔥 [FLUX AI] ❌ Erreur photo: $e');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -180,22 +156,41 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
         imageQuality: 85,
       );
 
-      if (image != null) {
-        if (kDebugMode) debugPrint('🔥 [FLUX AI] ✅ Image depuis galerie: ${image.path}');
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) => AIPreviewScreen(
-              imagePath: image.path,
-              isFromDashboard: widget.isFromDashboard,
-              mealName: widget.mealName,
-              mealId: widget.mealId,
-            ),
-          ),
-        );
+      if (image != null && mounted) {
+        RyzeFeedback.confirm();
+        setState(() => _shot = image);
       }
     } catch (e) {
       if (kDebugMode) debugPrint('🔥 [FLUX AI] ❌ Erreur galerie: $e');
     }
+  }
+
+  /// Reprendre : l'image figée s'en va, le viseur revient.
+  void _retake() {
+    RyzeFeedback.tap();
+    setState(() {
+      _shot = null;
+      _note.clear();
+    });
+  }
+
+  /// Envoyer la photo au coach. L'écran d'analyse est celui que le chat
+  /// utilise aussi : un seul endroit à corriger quand il évolue.
+  void _analyse() {
+    final shot = _shot;
+    if (shot == null) return;
+    RyzeFeedback.confirm();
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => AIAnalysisScreen(
+          imagePath: shot.path,
+          note: _note.text.trim().isEmpty ? null : _note.text.trim(),
+          isFromDashboard: widget.isFromDashboard,
+          mealName: widget.mealName,
+          mealId: widget.mealId,
+        ),
+      ),
+    );
   }
 
   void _toggleFlash() {
@@ -223,63 +218,22 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
   }
 
   Widget _buildLoadingScreen() {
+    final lang = LocalizationService.instance.currentLanguageCode;
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: RyzeColors.ink,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const CircularProgressIndicator(color: Colors.white),
-            const SizedBox(height: 20),
-            Consumer<LocalizationService>(
-              builder: (context, locService, child) => Text(
-                'camera_initializing'.tr(locService.currentLanguageCode),
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
+            const SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(color: RyzeColors.surf, strokeWidth: 2),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildErrorScreen() {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        leading: IconButton(
-          icon: const Icon(LucideIcons.arrowLeft, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(LucideIcons.cameraOff, color: Colors.white, size: 64),
-            const SizedBox(height: 20),
+            SizedBox(height: context.vw(4.6)),
             Text(
-              _errorMessage ?? '',
-              style: const TextStyle(color: Colors.white, fontSize: 16),
-              textAlign: TextAlign.center,
-            ),
-            // Si la caméra n'est pas disponible, proposer de sélectionner une image
-            const SizedBox(height: 40),
-            Consumer<LocalizationService>(
-              builder: (context, locService, child) => ElevatedButton.icon(
-                onPressed: _pickFromGallery,
-                icon: const Icon(LucideIcons.image),
-                label: Text('select_image_from_files'.tr(locService.currentLanguageCode)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF6366F1),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
+              'camera_initializing'.tr(lang),
+              style: RyzeText.body(context, 3.6, color: RyzeColors.surf.withValues(alpha: 0.8)),
             ),
           ],
         ),
@@ -287,677 +241,68 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
     );
   }
 
-  Widget _buildCameraScreen() {
+  /// Pas de caméra. Ce n'est pas une impasse : une photo de la galerie fait
+  /// exactement le même travail.
+  Widget _buildErrorScreen() {
+    final lang = LocalizationService.instance.currentLanguageCode;
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: RyzeColors.ink,
       body: SafeArea(
-        child: Stack(
-          children: [
-            // Caméra preview plein écran avec zoom
-            if (_isCameraInitialized && _cameraController != null)
-              Positioned.fill(
-                child: GestureDetector(
-                  onScaleStart: (ScaleStartDetails details) {
-                    _baseZoomLevel = _currentZoomLevel;
-                  },
-                  onScaleUpdate: (ScaleUpdateDetails details) {
-                    final double newZoom = (_baseZoomLevel * details.scale).clamp(_minZoomLevel, _maxZoomLevel);
-                    _cameraController?.setZoomLevel(newZoom);
-                    setState(() {
-                      _currentZoomLevel = newZoom;
-                    });
-                  },
-                  onScaleEnd: (ScaleEndDetails details) {
-                    debugPrint('🔥 [FLUX AI] 🔍 Zoom final: ${_currentZoomLevel.toStringAsFixed(1)}x');
-                  },
-                  child: CameraPreview(_cameraController!),
-                ),
-              ),
-
-            // Header avec bouton retour et flash (même design que barcode scanner)
-            Positioned(
-              top: 16,
-              left: 16,
-              right: 16,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  GestureDetector(
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: context.vw(8)),
+          child: Column(
+            children: [
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Padding(
+                  padding: EdgeInsets.only(top: context.vw(2.1)),
+                  child: Pressable(
                     onTap: () => Navigator.pop(context),
                     child: Container(
-                      padding: const EdgeInsets.all(12),
+                      width: context.vw(10.8),
+                      height: context.vw(10.8),
                       decoration: BoxDecoration(
-                        color: Colors.black54,
-                        borderRadius: BorderRadius.circular(25),
-                      ),
-                      child: const Icon(
-                        LucideIcons.chevronLeft,
-                        color: Colors.white,
-                        size: 24,
-                      ),
-                    ),
-                  ),
-                  // Bouton flash avec le même design
-                  GestureDetector(
-                    onTap: _toggleFlash,
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.black54,
-                        borderRadius: BorderRadius.circular(25),
-                      ),
-                      child: Icon(
-                        _isFlashOn ? LucideIcons.zap : LucideIcons.zapOff,
-                        color: Colors.white,
-                        size: 24,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-          // Interface style iPhone
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              padding: const EdgeInsets.only(bottom: 40, top: 30),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.transparent,
-                    Colors.black.withOpacity(0.3),
-                    Colors.black.withOpacity(0.6),
-                  ],
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  // Bouton galerie
-                  GestureDetector(
-                    onTap: _pickFromGallery,
-                    child: Container(
-                      width: 50,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.3),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(
-                        LucideIcons.image,
-                        color: Colors.white,
-                        size: 24,
-                      ),
-                    ),
-                  ),
-
-                  // Bouton capture principal (style iPhone)
-                  GestureDetector(
-                    onTap: _takePicture,
-                    child: Container(
-                      width: 72,
-                      height: 72,
-                      decoration: BoxDecoration(
+                        color: RyzeColors.surf.withValues(alpha: 0.14),
                         shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 4),
                       ),
-                      child: Container(
-                        margin: const EdgeInsets.all(3),
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  // Espace vide pour garder la symétrie (plus de 3ème bouton)
-                  const SizedBox(width: 50, height: 50),
-                ],
-              ),
-            ),
-          ),
-
-            // Indicateur de zoom
-            if (_currentZoomLevel > _minZoomLevel)
-              Positioned(
-                bottom: 140,
-                left: 0,
-                right: 0,
-                child: Center(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.6),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      '${_currentZoomLevel.toStringAsFixed(1)}x',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
+                      child: Icon(LucideIcons.x, size: context.vw(4.6), color: RyzeColors.surf),
                     ),
                   ),
                 ),
               ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// Écran de preview avec note
-class AIPreviewScreen extends StatefulWidget {
-  final String imagePath;
-  final bool isFromDashboard;
-  final String? mealName;
-  final String? mealId;
-
-  const AIPreviewScreen({
-    super.key,
-    required this.imagePath,
-    this.isFromDashboard = false,
-    this.mealName,
-    this.mealId,
-  });
-
-  @override
-  State<AIPreviewScreen> createState() => _AIPreviewScreenState();
-}
-
-class _AIPreviewScreenState extends State<AIPreviewScreen> {
-  final TextEditingController _noteController = TextEditingController();
-  static const int _maxNoteLength = 500;
-
-  void _retakePicture() {
-    Navigator.of(context).pop();
-  }
-
-  void _analyzePhoto() {
-    if (kDebugMode) debugPrint('🔥 [FLUX AI] 📝 Note: ${_noteController.text}');
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => AIAnalysisScreen(
-          imagePath: widget.imagePath,
-          note: _noteController.text.trim(),
-          isFromDashboard: widget.isFromDashboard,
-          mealName: widget.mealName,
-          mealId: widget.mealId,
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(LucideIcons.arrowLeft, color: Color(0xFF0B132B)),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Consumer<LocalizationService>(
-          builder: (context, locService, child) => Text(
-            'preview'.tr(locService.currentLanguageCode),
-            style: const TextStyle(color: Color(0xFF0B132B)),
-          ),
-        ),
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Image preview
-            Container(
-              height: 400,
-              width: double.infinity,
-              margin: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: Image.file(
-                  File(widget.imagePath),
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
-
-            // Note input
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Consumer<LocalizationService>(
-                    builder: (context, locService, child) => Text(
-                      'add_details_optional'.tr(locService.currentLanguageCode),
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF0B132B),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Consumer<LocalizationService>(
-                    builder: (context, locService, child) => Text(
-                      'add_ingredients_hint'.tr(locService.currentLanguageCode),
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: const Color(0xFF0B132B).withOpacity(0.6),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Consumer<LocalizationService>(
-                    builder: (context, locService, child) => TextField(
-                      controller: _noteController,
-                      maxLength: _maxNoteLength,
-                      maxLines: 3,
-                      decoration: InputDecoration(
-                        hintText: 'hint_text_example'.tr(locService.currentLanguageCode),
-                        hintStyle: TextStyle(
-                          color: const Color(0xFF0B132B).withOpacity(0.4),
-                        ),
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(
-                          color: const Color(0xFF0B132B).withOpacity(0.1),
-                        ),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(
-                          color: const Color(0xFF0B132B).withOpacity(0.1),
-                        ),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(
-                          color: Color(0xFF0B132B),
-                          width: 2,
-                        ),
-                      ),
-                      contentPadding: const EdgeInsets.all(16),
-                      ),
-                      style: const TextStyle(
-                        fontSize: 16,
-                        color: Color(0xFF0B132B),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 30),
-
-            // Boutons
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Row(
-                children: [
-                  // Bouton reprendre
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: _retakePicture,
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Color(0xFF0B132B)),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Consumer<LocalizationService>(
-                        builder: (context, locService, child) => Text(
-                          locService.currentLanguageCode == 'fr' ? 'Reprendre' : 'Retake',
-                          style: const TextStyle(
-                            color: Color(0xFF0B132B),
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(width: 15),
-
-                  // Bouton analyser
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: _analyzePhoto,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF0B132B),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Consumer<LocalizationService>(
-                        builder: (context, locService, child) => Text(
-                          locService.currentLanguageCode == 'fr' ? 'Analyser' : 'Analyze',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 20),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// Écran d'analyse avec l'UI ORIGINALE pour les résultats
-class AIAnalysisScreen extends StatefulWidget {
-  final String imagePath;
-  final String? note;
-  final bool isFromDashboard;
-  final String? mealName;
-  final String? mealId;
-
-  const AIAnalysisScreen({
-    super.key,
-    required this.imagePath,
-    this.note,
-    this.isFromDashboard = false,
-    this.mealName,
-    this.mealId,
-  });
-
-  @override
-  State<AIAnalysisScreen> createState() => _AIAnalysisScreenState();
-}
-
-class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
-  bool _isAnalyzing = true;
-  bool _hasResult = false;
-  AIAnalysisResult? _analysisResult;
-  String? _errorMessage;
-  File? _capturedImage;
-  Uint8List? _capturedImageBytes;
-
-  // Contrôleurs pour l'UI originale
-  final TextEditingController _mealNameController = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    if (kDebugMode) debugPrint('🔥 [FLUX AI] 🤖 Démarrage analyse IA pour: ${widget.imagePath}');
-    if (widget.note != null && (widget.note?.isNotEmpty ?? false)) {
-      if (kDebugMode) debugPrint('🔥 [FLUX AI] 📝 Note utilisateur: ${widget.note}');
-    }
-    _capturedImage = File(widget.imagePath);
-    _startAnalysis();
-  }
-
-  @override
-  void dispose() {
-    _mealNameController.dispose();
-    super.dispose();
-  }
-
-  String _getLocalizedHint(BuildContext context) {
-    final localizationService = Provider.of<LocalizationService>(context, listen: false);
-    return 'coach_detected_dish_name'.tr(localizationService.currentLanguageCode);
-  }
-
-  Future<void> _startAnalysis() async {
-    try {
-      // Vérifier la limite de scans IA (même pour Premium)
-      final canScan = await SubscriptionService.instance.canUseAiScan();
-      if (!canScan) {
-        final remaining = await SubscriptionService.instance.getRemainingAiScans();
-        final limit = SubscriptionService.instance.isPremium
-            ? SubscriptionConfig.premiumDailyAiScansLimit
-            : SubscriptionConfig.freeDailyAiScansLimit;
-
-        if (mounted) {
-          setState(() {
-            _isAnalyzing = false;
-            _hasResult = false;
-            _errorMessage = LocalizationService.instance.currentLanguageCode == 'fr'
-                ? 'Limite de $limit scans IA atteinte pour aujourd\'hui. Réessayez demain !'
-                : 'Daily limit of $limit AI scans reached. Try again tomorrow!';
-          });
-        }
-        return;
-      }
-
-      final file = File(widget.imagePath);
-
-      // Appeler le service Gemini avec la note utilisateur
-      final result = await GeminiAnalysisServiceV2.analyzeImageWithFallback(
-        file,
-        userNote: widget.note,
-      );
-
-      if (mounted) {
-        setState(() {
-          _analysisResult = result;
-          _isAnalyzing = false;
-
-          if (result.success && result.detectedFoods.isNotEmpty) {
-            _hasResult = true;
-            _errorMessage = null;
-            // Mettre à jour le nom du repas avec le nom généré par l'IA
-            _mealNameController.text = result.mealName ?? 'coach_detected_dish'.tr(LocalizationService.instance.currentLanguageCode);
-            if (kDebugMode) debugPrint('🔥 [FLUX AI] ✅ Analyse terminée avec succès');
-
-            // ✅ Incrémenter le compteur de scans IA (même pour Premium)
-            SubscriptionService.instance.incrementAiScanUsage();
-
-            // ✅ Marquer le trial comme utilisé UNIQUEMENT si l'analyse a réussi
-            if (!SubscriptionService.instance.isPremium) {
-              FeatureTrialService.instance.markFeatureAsUsed(
-                FeatureTrialService.keyScanner,
-              );
-              if (kDebugMode) debugPrint('✅ Scanner trial marked as used after successful analysis');
-            }
-          } else {
-            _hasResult = false;
-            _errorMessage = result.error ?? 'error_no_food_detected'.tr(LocalizationService.instance.currentLanguageCode);
-            if (kDebugMode) debugPrint('🔥 [FLUX AI] ❌ Erreur d\'analyse: ${result.error}');
-            // ⚠️ NE PAS incrémenter le compteur si l'analyse échoue
-          }
-        });
-      }
-    } catch (e) {
-      if (kDebugMode) debugPrint('🔥 [FLUX AI] ❌ Exception lors de l\'analyse: $e');
-      if (mounted) {
-        setState(() {
-          _isAnalyzing = false;
-          _hasResult = false;
-          _errorMessage = e.toString();
-        });
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_isAnalyzing) {
-      return _buildLoadingScreen();
-    }
-
-    if (_hasResult && _analysisResult != null) {
-      return _buildResultScreen();
-    }
-
-    return _buildErrorScreen();
-  }
-
-  Widget _buildLoadingScreen() {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(LucideIcons.arrowLeft, color: Color(0xFF0B132B)),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Consumer<LocalizationService>(
-          builder: (context, locService, child) => Text(
-            'coach_analysis'.tr(locService.currentLanguageCode),
-            style: const TextStyle(color: Color(0xFF0B132B)),
-          ),
-        ),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const CircularProgressIndicator(
-              color: Color(0xFF0B132B),
-            ),
-            const SizedBox(height: 24),
-            Consumer<LocalizationService>(
-              builder: (context, locService, child) => Text(
-                locService.currentLanguageCode == 'fr'
-                    ? 'Analyse en cours...'
-                    : 'Analyzing...',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF0B132B),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Consumer<LocalizationService>(
-              builder: (context, locService, child) => Text(
-                locService.currentLanguageCode == 'fr'
-                    ? 'Identification des aliments'
-                    : 'Identifying foods',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: const Color(0xFF0B132B).withOpacity(0.6),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildErrorScreen() {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(LucideIcons.arrowLeft, color: Color(0xFF0B132B)),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Consumer<LocalizationService>(
-          builder: (context, locService, child) => Text(
-            locService.currentLanguageCode == 'fr' ? 'Erreur' : 'Error',
-            style: const TextStyle(color: Color(0xFF0B132B)),
-          ),
-        ),
-      ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.red.withOpacity(0.1),
-                ),
-                child: const Icon(
-                  LucideIcons.x,
-                  size: 32,
-                  color: Colors.red,
-                ),
-              ),
-              const SizedBox(height: 24),
-              Consumer<LocalizationService>(
-                builder: (context, locService, child) => Text(
-                  locService.currentLanguageCode == 'fr'
-                      ? 'Erreur d\'analyse'
-                      : 'Analysis Error',
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF0B132B),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
+              const Spacer(),
+              Icon(LucideIcons.cameraOff, size: context.vw(12.3), color: RyzeColors.surf.withValues(alpha: 0.5)),
+              SizedBox(height: context.vw(4.6)),
               Text(
                 _errorMessage ?? '',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: const Color(0xFF0B132B).withOpacity(0.7),
-                ),
+                style: RyzeText.body(context, 3.9, color: RyzeColors.surf.withValues(alpha: 0.85)),
               ),
-              const SizedBox(height: 32),
-              ElevatedButton(
-                onPressed: () {
-                  setState(() {
-                    _isAnalyzing = true;
-                    _errorMessage = null;
-                  });
-                  _startAnalysis();
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0B132B),
-                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+              SizedBox(height: context.vw(7.7)),
+              Pressable(
+                onTap: _pickFromGallery,
+                child: Container(
+                  height: context.vw(13.3),
+                  padding: EdgeInsets.symmetric(horizontal: context.vw(6.2)),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: RyzeColors.paper,
+                    borderRadius: BorderRadius.circular(RyzeRadius.sm),
                   ),
-                ),
-                child: Consumer<LocalizationService>(
-                  builder: (context, locService, child) => Text(
-                    'retry'.tr(locService.currentLanguageCode),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(LucideIcons.image, size: context.vw(4.6), color: RyzeColors.ink),
+                      SizedBox(width: context.vw(2.6)),
+                      Text(
+                        'select_image_from_files'.tr(lang),
+                        style: RyzeText.body(context, 3.9, weight: FontWeight.w600),
+                      ),
+                    ],
                   ),
                 ),
               ),
+              const Spacer(flex: 2),
             ],
           ),
         ),
@@ -965,1015 +310,194 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
     );
   }
 
-  // UI ORIGINALE pour les résultats
-  Widget _buildResultScreen() {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
+
+  Widget _buildCameraScreen() {
+    final lang = LocalizationService.instance.currentLanguageCode;
+    final shot = _shot;
+
+    return RyzeCameraShell(
+      controller: _cameraController,
+      ready: _isCameraInitialized && _cameraController != null && shot == null,
+      title: 'scan_dish'.tr(lang),
+      hint: 'scan_dish_hint'.tr(lang),
+      onClose: () => Navigator.pop(context),
+      rightIcon: shot == null ? (_isFlashOn ? LucideIcons.zap : LucideIcons.zapOff) : null,
+      rightLabel: 'flash'.tr(lang),
+      rightAction: shot == null ? _toggleFlash : null,
+      shutter: shot == null ? _takePicture : null,
+      leftIcon: shot == null ? LucideIcons.image : null,
+      leftLabel: 'gallery'.tr(lang),
+      leftAction: shot == null ? _pickFromGallery : null,
+      overlay: shot == null
+          ? _ZoomHandle(
+              controller: _cameraController,
+              level: _currentZoomLevel,
+              min: _minZoomLevel,
+              max: _maxZoomLevel,
+              onStart: () => _baseZoomLevel = _currentZoomLevel,
+              onChange: (scale) {
+                final zoom = (_baseZoomLevel * scale).clamp(_minZoomLevel, _maxZoomLevel);
+                _cameraController?.setZoomLevel(zoom);
+                setState(() => _currentZoomLevel = zoom);
+              },
+            )
+          : Positioned.fill(child: Image.file(File(shot.path), fit: BoxFit.cover)),
+      footer: shot == null ? null : _NoteBar(controller: _note, maxLength: _maxNoteLength, lang: lang, onRetake: _retake, onSend: _analyse),
+    );
+  }
+}
+
+/// Le pincement pour zoomer, et le facteur affiché tant qu'il n'est pas à un.
+class _ZoomHandle extends StatelessWidget {
+  const _ZoomHandle({
+    required this.controller,
+    required this.level,
+    required this.min,
+    required this.max,
+    required this.onStart,
+    required this.onChange,
+  });
+
+  final CameraController? controller;
+  final double level;
+  final double min;
+  final double max;
+  final VoidCallback onStart;
+  final ValueChanged<double> onChange;
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned.fill(
+      child: GestureDetector(
+        onScaleStart: (_) => onStart(),
+        onScaleUpdate: (details) => onChange(details.scale),
+        child: level > min
+            ? Align(
+                alignment: const Alignment(0, 0.42),
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: context.vw(3.1), vertical: context.vw(1.5)),
+                  decoration: BoxDecoration(
+                    color: RyzeColors.ink.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(RyzeRadius.pill),
+                  ),
+                  child: Text(
+                    '${level.toStringAsFixed(1)}x',
+                    style: RyzeText.body(context, 3.1, weight: FontWeight.w600, color: RyzeColors.surf),
+                  ),
+                ),
+              )
+            : const SizedBox.expand(),
+      ),
+    );
+  }
+}
+
+/// Ce qui remplace l'écran de preview : une ligne pour préciser ce que la
+/// photo ne dit pas, et les deux suites possibles. La question est facultative,
+/// donc « Analyser » n'attend rien pour être pressé.
+class _NoteBar extends StatelessWidget {
+  const _NoteBar({
+    required this.controller,
+    required this.maxLength,
+    required this.lang,
+    required this.onRetake,
+    required this.onSend,
+  });
+
+  final TextEditingController controller;
+  final int maxLength;
+  final String lang;
+  final VoidCallback onRetake;
+  final VoidCallback onSend;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        context.vw(4.1),
+        0,
+        context.vw(4.1),
+        MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: Container(
+        padding: EdgeInsets.all(context.vw(4.1)),
+        decoration: BoxDecoration(
+          color: RyzeColors.paper,
+          borderRadius: BorderRadius.circular(RyzeRadius.lg),
+          boxShadow: RyzeShadow.lift,
+        ),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Header
+            Text(
+              'add_details_optional'.tr(lang),
+              style: RyzeText.body(context, 3.2, weight: FontWeight.w600, color: RyzeColors.mute),
+            ),
+            SizedBox(height: context.vw(2.1)),
             Container(
-            padding: const EdgeInsets.all(16),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              border: Border(
-                bottom: BorderSide(color: Color(0xFFE5E7EB), width: 1),
+              decoration: BoxDecoration(
+                color: RyzeColors.surf,
+                borderRadius: BorderRadius.circular(RyzeRadius.sm),
+                border: Border.all(color: RyzeColors.line),
+              ),
+              child: TextField(
+                controller: controller,
+                maxLength: maxLength,
+                maxLines: 2,
+                minLines: 1,
+                textCapitalization: TextCapitalization.sentences,
+                style: RyzeText.body(context, 3.6),
+                cursorColor: RyzeColors.ink,
+                decoration: InputDecoration(
+                  counterText: '',
+                  hintText: 'note_placeholder'.tr(lang),
+                  hintStyle: RyzeText.body(context, 3.6, color: RyzeColors.mute2),
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(horizontal: context.vw(3.6), vertical: context.vw(3.1)),
+                ),
               ),
             ),
-            child: Row(
+            SizedBox(height: context.vw(3.6)),
+            Row(
               children: [
-                GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      color: Colors.transparent,
-                    ),
-                    child: const Icon(
-                      LucideIcons.chevronLeft,
-                      size: 20,
-                      color: Color(0xFF0B132B),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
                 Expanded(
-                  child: Consumer<LocalizationService>(
-                    builder: (context, locService, child) => Text(
-                      'detected_foods'.tr(locService.currentLanguageCode),
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF1A1A1A),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Nom du plat modifiable (visible seulement quand on a un résultat)
-          if (_hasResult && _analysisResult != null && (_analysisResult?.success ?? false))
-            Container(
-              margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Consumer<LocalizationService>(
-                    builder: (context, locService, child) => Text(
-                      locService.currentLanguageCode == 'fr'
-                          ? 'Nom du plat'
-                          : locService.currentLanguageCode == 'de'
-                              ? 'Gerichtname'
-                              : 'Dish name',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: Color(0xFF374151),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _mealNameController,
-                    decoration: InputDecoration(
-                      hintText: _getLocalizedHint(context),
-                      filled: true,
-                      fillColor: const Color(0xFFF9FAFB),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFF0B132B), width: 2),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 12,
-                      ),
-                      suffixIcon: IconButton(
-                        icon: const Icon(LucideIcons.pencil, size: 16),
-                        onPressed: () {
-                          // Focus sur le champ pour édition
-                          FocusScope.of(context).requestFocus();
-                        },
-                      ),
-                    ),
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF1F2937),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-          // Photo analysée
-          Container(
-            width: double.infinity,
-            height: 200,
-            margin: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFE5E7EB)),
-            ),
-            child: _capturedImage != null || _capturedImageBytes != null
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: kIsWeb && _capturedImageBytes != null
-                        ? Image.memory(
-                            _capturedImageBytes!,
-                            fit: BoxFit.cover,
-                          )
-                        : (_capturedImage != null
-                            ? Image.file(
-                                _capturedImage!,
-                                fit: BoxFit.cover,
-                              )
-                            : const SizedBox()),
-                  )
-                : Consumer<LocalizationService>(
-                    builder: (context, locService, child) => Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(
-                            LucideIcons.image,
-                            size: 48,
-                            color: Color(0xFF64748B),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'analyzed_photo'.tr(locService.currentLanguageCode),
-                            style: const TextStyle(
-                              fontSize: 16,
-                              color: Color(0xFF64748B),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-          ),
-
-          // Résultats de l'analyse
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              children: [
-                // Bilan nutritionnel
-                if (_analysisResult != null && (_analysisResult?.success ?? false))
-                  _buildNutritionalSummary(),
-
-                const SizedBox(height: 24),
-
-                Consumer<LocalizationService>(
-                  builder: (context, locService, child) => Text(
-                    'detected_foods_colon'.tr(locService.currentLanguageCode),
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF1A1A1A),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Aliments détectés via IA
-                if (_analysisResult != null && (_analysisResult?.success ?? false))
-                  ...(_analysisResult!.detectedFoods.asMap().entries.map((entry) {
-                    final index = entry.key;
-                    final food = entry.value;
-                    return Column(
-                      children: [
-                        if (index > 0) const SizedBox(height: 12),
-                        _buildDetectedFood(
-                          name: food.name,
-                          confidence: (food.confidence * 100).round(),
-                          calories: food.calories,
-                          quantity: '${food.estimatedQuantity.round()}g',
-                          food: food,
-                        ),
-                      ],
-                    );
-                  }).toList())
-                else
-                  Center(
-                    child: Consumer<LocalizationService>(
-                      builder: (context, locService, child) => Text(
-                        'error_no_food_detected'.tr(locService.currentLanguageCode),
-                        style: const TextStyle(
-                          fontSize: 16,
-                          color: Color(0xFF64748B),
-                        ),
-                      ),
-                    ),
-                  ),
-
-                // Bouton ajouter un ingrédient
-                if (_analysisResult != null && (_analysisResult?.success ?? false))
-                  Padding(
-                    padding: const EdgeInsets.only(top: 16),
-                    child: GestureDetector(
-                      onTap: _showAddIngredientBottomSheet,
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: const Color(0xFFE5E7EB),
-                            width: 1,
-                            style: BorderStyle.solid,
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(
-                              LucideIcons.plus,
-                              size: 20,
-                              color: Color(0xFF0B132B),
-                            ),
-                            const SizedBox(width: 8),
-                            Consumer<LocalizationService>(
-                              builder: (context, locService, child) => Text(
-                                'add_ingredient'.tr(locService.currentLanguageCode),
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                  color: Color(0xFF0B132B),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-
-          // Boutons d'action
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              border: Border(
-                top: BorderSide(color: Color(0xFFE5E7EB), width: 1),
-              ),
-            ),
-            child: Column(
-              children: [
-                Container(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () async {
-                      if (_analysisResult == null || !(_analysisResult?.success ?? false) || (_analysisResult?.detectedFoods.isEmpty ?? true)) {
-                        return;
-                      }
-
-                      // Si un repas nous a été passé (même sans ID), prioriser l'ajout direct
-                      if (widget.mealName != null) {
-                        if (kDebugMode) {
-                          debugPrint('🥐 [WidgetFlow] Ajout direct demandé pour ${widget.mealName} (mealId=${widget.mealId ?? "null"})');
-                        }
-                        String? targetMealId = widget.mealId;
-
-                        // Générer un meal_id s'il n'existe pas encore (cas d'un nouveau repas venant du widget/dashboard)
-                        if (targetMealId == null) {
-                          final user = AuthService().currentUser;
-                          if (user != null) {
-                            targetMealId = await FoodEntriesService.generateMealId(
-                              userId: user.id,
-                              mealName: widget.mealName!,
-                              forDate: DateTime.now(),
-                            );
-                            if (kDebugMode) {
-                              debugPrint('🆔 [WidgetFlow] meal_id généré: ${targetMealId ?? "null"}');
-                            }
-                          }
-                        }
-
-                        if (targetMealId != null) {
-                          if (kDebugMode) {
-                            debugPrint('🚀 [WidgetFlow] Ajout IA direct au repas ${widget.mealName} (meal_id=$targetMealId)');
-                          }
-                          await _addFoodsToSpecificMeal(widget.mealName!, targetMealId);
-                          return;
-                        } else {
-                          if (kDebugMode) {
-                            debugPrint('⚠️ [WidgetFlow] Impossible de générer un meal_id, fallback sélection de repas');
-                          }
-                        }
-                      }
-
-                      if (widget.isFromDashboard) {
-                        // Flux depuis le dashboard - demander la sélection du repas
-                        await _addFoodsToJournalWithSelection();
-                      } else {
-                        // Flux normal du scanner - demander la sélection du repas
-                        await _addFoodsToJournalWithSelection();
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0B132B),
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: Consumer<LocalizationService>(
-                      builder: (context, locService, child) => Text(
-                        locService.currentLanguageCode == 'fr'
-                            ? 'Enregistrer le repas'
-                            : locService.currentLanguageCode == 'de'
-                                ? 'Mahlzeit speichern'
-                                : 'Save meal',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  width: double.infinity,
-                  child: OutlinedButton(
-                    onPressed: () {
-                      // Retourner à la caméra en fermant les 2 écrans (AIAnalysisScreen → AIPreviewScreen)
-                      Navigator.of(context).pop(); // Ferme AIAnalysisScreen
-                      Navigator.of(context).pop(); // Ferme AIPreviewScreen
-                      // Maintenant on est sur AIScannerScreen (caméra)
-                    },
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      side: const BorderSide(
-                        color: Color(0xFF0B132B),
-                        width: 1,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: Consumer<LocalizationService>(
-                      builder: (context, locService, child) => Text(
-                        locService.currentLanguageCode == 'fr'
-                            ? 'Reprendre une photo'
-                            : locService.currentLanguageCode == 'de'
-                                ? 'Neues Foto aufnehmen'
-                                : 'Take another photo',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                          color: Color(0xFF0B132B),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-      ),
-    );
-  }
-
-  Widget _buildNutritionalSummary() {
-    if (_analysisResult == null || !_analysisResult!.success) {
-      return const SizedBox.shrink();
-    }
-
-    final locService = LocalizationService.instance;
-
-    // Calculer les totaux
-    int totalCalories = 0;
-    int totalProteins = 0;
-    int totalCarbs = 0;
-    int totalFats = 0;
-
-    for (final food in _analysisResult!.detectedFoods) {
-      totalCalories += food.calories;
-      totalProteins += food.nutrition.proteins.round();
-      totalCarbs += food.nutrition.carbs.round();
-      totalFats += food.nutrition.fats.round();
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF0B132B).withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(
-                LucideIcons.trendingUp,
-                size: 16,
-                color: Color(0xFF0B132B),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'nutritional_summary'.tr(locService.currentLanguageCode),
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF1A1A1A),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Cercle avec gradient pour les calories
-          Center(
-            child: Container(
-              width: 100,
-              height: 100,
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF0B132B), Color(0xFF1C2951)],
-                ),
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      '$totalCalories',
-                      style: const TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const Text(
-                      'kcal',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.white70,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 20),
-
-          // 3 valeurs de macros sans cercle
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildMacroValue(
-                name: 'proteins'.tr(locService.currentLanguageCode),
-                value: totalProteins,
-                unit: 'g',
-              ),
-              _buildMacroValue(
-                name: 'carbohydrates'.tr(locService.currentLanguageCode),
-                value: totalCarbs,
-                unit: 'g',
-              ),
-              _buildMacroValue(
-                name: 'fats'.tr(locService.currentLanguageCode),
-                value: totalFats,
-                unit: 'g',
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMacroValue({
-    required String name,
-    required int value,
-    required String unit,
-  }) {
-    return Column(
-      children: [
-        Text(
-          '$value$unit',
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF0B132B),
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          name,
-          style: const TextStyle(
-            fontSize: 12,
-            color: Color(0xFF64748B),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDetectedFood({
-    required String name,
-    required int confidence,
-    required int calories,
-    required String quantity,
-    required DetectedFood food,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        name,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF1A1A1A),
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
+                  child: Pressable(
+                    onTap: onRetake,
+                    child: Container(
+                      height: context.vw(13.3),
+                      alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        color: confidence >= 90
-                            ? const Color(0xFFDCFCE7)
-                            : const Color(0xFFFEF3C7),
-                        borderRadius: BorderRadius.circular(4),
+                        color: RyzeColors.surf,
+                        borderRadius: BorderRadius.circular(RyzeRadius.sm),
+                        border: Border.all(color: RyzeColors.line),
                       ),
-                      child: Text(
-                        '$confidence%',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w500,
-                          color: confidence >= 90
-                              ? const Color(0xFF16A34A)
-                              : const Color(0xFFCA8A04),
-                        ),
-                      ),
+                      child: Text('retake'.tr(lang), maxLines: 1, overflow: TextOverflow.ellipsis, style: RyzeText.body(context, 3.6, weight: FontWeight.w600)),
                     ),
-                  ],
+                  ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  '$calories kcal • $quantity',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: Color(0xFF64748B),
+                SizedBox(width: context.vw(3.1)),
+                Expanded(
+                  flex: 2,
+                  child: Pressable(
+                    onTap: onSend,
+                    child: Container(
+                      height: context.vw(13.3),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: RyzeColors.ink,
+                        borderRadius: BorderRadius.circular(RyzeRadius.sm),
+                        boxShadow: RyzeShadow.soft,
+                      ),
+                      child: Text('analyze'.tr(lang), style: RyzeText.body(context, 3.9, weight: FontWeight.w600, color: RyzeColors.surf)),
+                    ),
                   ),
                 ),
               ],
             ),
-          ),
-          PopupMenuButton<String>(
-            icon: const Icon(
-              LucideIcons.ellipsisVertical,
-              size: 18,
-              color: Color(0xFF64748B),
-            ),
-            padding: EdgeInsets.zero,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            onSelected: (value) {
-              if (value == 'edit') {
-                _editDetectedFood(name, calories, quantity, food);
-              } else if (value == 'delete') {
-                _deleteDetectedFood(food);
-              }
-            },
-            itemBuilder: (context) => [
-              PopupMenuItem<String>(
-                value: 'edit',
-                child: Consumer<LocalizationService>(
-                  builder: (context, locService, child) => Row(
-                    children: [
-                      const Icon(
-                        LucideIcons.pencil,
-                        size: 16,
-                        color: Color(0xFF64748B),
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        'edit'.tr(locService.currentLanguageCode),
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF1A1A1A),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              PopupMenuItem<String>(
-                value: 'delete',
-                child: Consumer<LocalizationService>(
-                  builder: (context, locService, child) => Row(
-                    children: [
-                      const Icon(
-                        LucideIcons.trash2,
-                        size: 16,
-                        color: Color(0xFFDC2626),
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        'delete'.tr(locService.currentLanguageCode),
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFFDC2626),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _editDetectedFood(String name, int calories, String currentQuantity, DetectedFood food) {
-    final quantity = double.tryParse(currentQuantity.replaceAll('g', '')) ?? 100;
-
-    EditableFoodDetailsBottomSheet.show(
-      context,
-      name: name,
-      calories: calories,
-      proteins: food.nutrition.proteins,
-      glucides: food.nutrition.carbs,
-      lipides: food.nutrition.fats,
-      quantity: quantity,
-      isModified: false,
-      onFoodSaved: (foodItem) {
-        // Mettre à jour l'aliment dans la liste des aliments détectés
-        setState(() {
-          final index = _analysisResult?.detectedFoods.indexOf(food) ?? -1;
-          if (index != -1 && _analysisResult != null) {
-            // Extraire la quantité du portion string (ex: "150 g" -> 150.0)
-            final portionGrams = double.tryParse(
-              foodItem.portion.replaceAll(RegExp(r'[^0-9.]'), '')
-            ) ?? 100.0;
-
-            final updatedFood = DetectedFood.fromAIResponse(
-              name: foodItem.name,
-              confidence: food.confidence,
-              portionGrams: portionGrams,
-              proteins: foodItem.proteins,
-              carbs: foodItem.carbs,
-              fats: foodItem.fats,
-              isLiquid: food.isLiquid,
-            );
-            _analysisResult!.detectedFoods[index] = updatedFood;
-          }
-        });
-        if (kDebugMode) debugPrint('Aliment ${foodItem.name} mis à jour avec modifications');
-      },
-    );
-  }
-
-  void _showAddIngredientBottomSheet() {
-    AddIngredientBottomSheet.show(
-      context,
-      onIngredientAdded: (DetectedFood newFood) {
-        setState(() {
-          _analysisResult?.detectedFoods.add(newFood);
-        });
-        if (kDebugMode) debugPrint('Nouvel ingrédient ajouté: ${newFood.name}');
-      },
-    );
-  }
-
-  void _deleteDetectedFood(DetectedFood food) {
-    final locService = LocalizationService.instance;
-
-    setState(() {
-      _analysisResult?.detectedFoods.remove(food);
-    });
-
-    // Afficher un snackbar de confirmation
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          locService.currentLanguageCode == 'fr'
-              ? '${food.name} supprimé'
-              : '${food.name} deleted',
+          ],
         ),
-        backgroundColor: const Color(0xFF0B132B),
-        duration: const Duration(seconds: 2),
       ),
     );
-
-    if (kDebugMode) debugPrint('Ingrédient supprimé: ${food.name}');
-  }
-
-  Future<void> _addFoodsToSpecificMeal(String mealName, String mealId) async {
-    if (_analysisResult == null || !(_analysisResult?.success ?? false) || (_analysisResult?.detectedFoods.isEmpty ?? true)) {
-      return;
-    }
-
-    try {
-      final authService = AuthService();
-      final user = authService.currentUser;
-      if (user == null) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('error_user_not_authenticated'.tr(LocalizationService.instance.currentLanguageCode)),
-              backgroundColor: const Color(0xFFDC2626),
-            ),
-          );
-        }
-        return;
-      }
-
-      final success = await FoodEntriesService.addAIFoodEntry(
-        userId: user.id,
-        mealName: mealName,
-        detectedFoods: _analysisResult?.detectedFoods ?? [],
-        aiMealName: _mealNameController.text.isNotEmpty ? _mealNameController.text : 'coach_detected_dish'.tr(LocalizationService.instance.currentLanguageCode),
-        mealId: mealId, // Utiliser le meal_id du repas existant
-        consumedAt: DateTime.now(),
-      );
-
-      if (mounted) {
-        // Retourner à la page principale (accueil)
-        Navigator.of(context).popUntil((route) => route.isFirst);
-
-        if (success) {
-          final foodName = _analysisResult?.mealName ?? 'meal_dish'.tr(LocalizationService.instance.currentLanguageCode);
-          // Show celebration popup
-          CelebrationService().celebrateFoodEntry(
-            context,
-            foodName: foodName,
-            mealName: mealName,
-          );
-
-          final message = 'food_added_to_meal'.tr(LocalizationService.instance.currentLanguageCode)
-              .replaceAll('{foodName}', foodName)
-              .replaceAll('{mealName}', mealName);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(message),
-              backgroundColor: const Color(0xFF0B132B),
-              action: SnackBarAction(
-                label: 'Voir',
-                textColor: Colors.white,
-                onPressed: () {
-                  // L'utilisateur peut naviguer manuellement vers le Journal
-                },
-              ),
-              duration: const Duration(seconds: 4),
-            ),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('error_database_add_failed'.tr(LocalizationService.instance.currentLanguageCode)),
-              backgroundColor: const Color(0xFFDC2626),
-            ),
-          );
-        }
-      }
-
-    } catch (e) {
-      if (kDebugMode) debugPrint('Erreur lors de l\'ajout au repas spécifique: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur lors de l\'ajout au repas'),
-            backgroundColor: const Color(0xFFDC2626),
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _addFoodsToJournalWithSelection() async {
-    if (_analysisResult == null || !(_analysisResult?.success ?? false) || (_analysisResult?.detectedFoods.isEmpty ?? true)) {
-      return;
-    }
-
-    try {
-      final authService = AuthService();
-      final user = authService.currentUser;
-      if (user == null) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('error_user_not_authenticated'.tr(LocalizationService.instance.currentLanguageCode)),
-              backgroundColor: const Color(0xFFDC2626),
-            ),
-          );
-        }
-        return;
-      }
-
-      final allMeals = await FoodEntriesService.getFoodEntriesForDate(user.id, DateTime.now());
-      final existingMeals = allMeals.where((meal) => meal.items.isNotEmpty).toList();
-
-      MealSelectionBottomSheet.show(
-        context,
-        titleKey: 'add_photo_meal_title',
-        subtitleKey: 'add_photo_meal_subtitle',
-        existingMeals: existingMeals,
-        onExistingMealSelected: (Meal selectedMeal) async {
-          await _addAIFoodToExistingMeal(selectedMeal, user.id);
-        },
-        onCreateNewMeal: () {
-          NewMealTypeBottomSheet.show(
-            context,
-            onMealTypeSelected: (String mealType, String time) async {
-              await _addAIFoodToNewMeal(mealType, user.id);
-            },
-          );
-        },
-      );
-
-    } catch (e) {
-      if (kDebugMode) debugPrint('Erreur lors de l\'affichage de la sélection de repas: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('error_meal_selection_display'.tr(LocalizationService.instance.currentLanguageCode)),
-            backgroundColor: const Color(0xFFDC2626),
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _addAIFoodToExistingMeal(Meal selectedMeal, String userId) async {
-    try {
-      final success = await FoodEntriesService.addAIFoodEntry(
-        userId: userId,
-        mealName: selectedMeal.name,
-        detectedFoods: _analysisResult?.detectedFoods ?? [],
-        aiMealName: _mealNameController.text.isNotEmpty ? _mealNameController.text : 'coach_detected_dish'.tr(LocalizationService.instance.currentLanguageCode),
-        mealId: selectedMeal.id, // Utiliser le meal_id du repas existant
-        consumedAt: DateTime.now(),
-      );
-
-      if (mounted) {
-        // Retourner à la page principale (accueil)
-        Navigator.of(context).popUntil((route) => route.isFirst);
-
-        if (success) {
-          // Afficher un message de succès avec action vers le Journal
-          final foodName = _analysisResult?.mealName ?? 'meal_dish'.tr(LocalizationService.instance.currentLanguageCode);
-          // Show celebration popup
-          CelebrationService().celebrateFoodEntry(
-            context,
-            foodName: foodName,
-            mealName: selectedMeal.name,
-          );
-
-          final message = 'food_added_to_meal'.tr(LocalizationService.instance.currentLanguageCode)
-              .replaceAll('{foodName}', foodName)
-              .replaceAll('{mealName}', selectedMeal.name);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(message),
-              backgroundColor: const Color(0xFF0B132B),
-              action: SnackBarAction(
-                label: 'Voir',
-                textColor: Colors.white,
-                onPressed: () {
-                  // L'utilisateur peut naviguer manuellement vers le Journal
-                  // ou on pourrait implémenter une navigation automatique ici
-                },
-              ),
-              duration: const Duration(seconds: 4),
-            ),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('error_database_add_failed'.tr(LocalizationService.instance.currentLanguageCode)),
-              backgroundColor: const Color(0xFFDC2626),
-            ),
-          );
-        }
-      }
-
-    } catch (e) {
-      if (kDebugMode) debugPrint('Erreur lors de l\'ajout au repas existant: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur lors de l\'ajout au repas'),
-            backgroundColor: const Color(0xFFDC2626),
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _addAIFoodToNewMeal(String mealType, String userId) async {
-    try {
-      final success = await FoodEntriesService.addAIFoodEntry(
-        userId: userId,
-        mealName: mealType,
-        detectedFoods: _analysisResult?.detectedFoods ?? [],
-        aiMealName: _mealNameController.text.isNotEmpty ? _mealNameController.text : 'coach_detected_dish'.tr(LocalizationService.instance.currentLanguageCode),
-        consumedAt: DateTime.now(),
-      );
-
-      if (mounted) {
-        // Retourner à la page principale (accueil)
-        Navigator.of(context).popUntil((route) => route.isFirst);
-
-        if (success) {
-          final foodName = _analysisResult?.mealName ?? 'meal_dish'.tr(LocalizationService.instance.currentLanguageCode);
-          // Show celebration popup
-          CelebrationService().celebrateFoodEntry(
-            context,
-            foodName: foodName,
-            mealName: mealType,
-          );
-
-          final message = 'food_added_to_new_meal'.tr(LocalizationService.instance.currentLanguageCode)
-              .replaceAll('{foodName}', foodName)
-              .replaceAll('{mealType}', mealType);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(message),
-              backgroundColor: const Color(0xFF0B132B),
-              action: SnackBarAction(
-                label: 'Voir',
-                textColor: Colors.white,
-                onPressed: () {
-                  // L'utilisateur peut naviguer manuellement vers le Journal
-                },
-              ),
-              duration: const Duration(seconds: 4),
-            ),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('error_database_add_failed'.tr(LocalizationService.instance.currentLanguageCode)),
-              backgroundColor: const Color(0xFFDC2626),
-            ),
-          );
-        }
-      }
-
-    } catch (e) {
-      if (kDebugMode) debugPrint('Erreur lors de l\'ajout au nouveau repas: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur lors de l\'ajout au nouveau repas'),
-            backgroundColor: const Color(0xFFDC2626),
-          ),
-        );
-      }
-    }
   }
 }

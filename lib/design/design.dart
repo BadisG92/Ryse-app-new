@@ -36,6 +36,7 @@ export 'segmented.dart';
 export 'undo_bar.dart';
 export 'macro_rail.dart';
 export 'glass_row.dart';
+export 'camera_shell.dart';
 export 'day_instrument.dart';
 export 'meal_timeline.dart';
 

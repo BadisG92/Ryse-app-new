@@ -6932,9 +6932,9 @@ class AppTranslations {
     },
     // Note: retry already exists earlier at line 1185
     'detected_foods': {
-      'fr': 'Aliments détectés',
-      'en': 'Detected foods',
-      'de': 'Erkannte Lebensmittel',
+      'fr': 'Ce que Ryze a vu',
+      'en': 'What Ryze saw',
+      'de': 'Was Ryze gesehen hat',
     },
     'detected_foods_colon': {
       'fr': 'Aliments détectés :',
@@ -10201,6 +10201,76 @@ class AppTranslations {
       'fr': 'Corriger la quantité',
       'en': 'Fix the quantity',
       'de': 'Menge korrigieren',
+    },
+    'enter_barcode_manually': {
+      'fr': 'Saisir le code à la main',
+      'en': 'Enter the code by hand',
+      'de': 'Code von Hand eingeben',
+    },
+    'ai_reading_plate': {
+      'fr': 'Ryze regarde ton assiette',
+      'en': 'Ryze is looking at your plate',
+      'de': 'Ryze schaut sich deinen Teller an',
+    },
+    'ai_to_confirm': {
+      'fr': 'à confirmer',
+      'en': 'to confirm',
+      'de': 'zu bestätigen',
+    },
+    'ai_analysis_failed': {
+      'fr': "Ryze n'a pas reconnu le plat",
+      'en': 'Ryze did not recognise the dish',
+      'de': 'Ryze hat das Gericht nicht erkannt',
+    },
+    'ai_analysis_failed_hint': {
+      'fr': 'Reprends la photo de plus près, ou décris le plat au coach',
+      'en': 'Take the photo closer, or describe the dish to the coach',
+      'de': 'Fotografiere näher oder beschreibe das Gericht dem Coach',
+    },
+    'save_meal': {
+      'fr': 'Enregistrer le repas',
+      'en': 'Save the meal',
+      'de': 'Mahlzeit speichern',
+    },
+    'scan_dish_hint': {
+      'fr': 'Cadre ton assiette, entière et de dessus',
+      'en': 'Frame your plate, whole and from above',
+      'de': 'Rahme deinen Teller, ganz und von oben',
+    },
+    'flash': {
+      'fr': 'Lampe',
+      'en': 'Torch',
+      'de': 'Licht',
+    },
+    'gallery': {
+      'fr': 'Galerie',
+      'en': 'Gallery',
+      'de': 'Galerie',
+    },
+    'retake': {
+      'fr': 'Reprendre',
+      'en': 'Retake',
+      'de': 'Neu',
+    },
+    'analyze': {
+      'fr': 'Analyser',
+      'en': 'Analyse',
+      'de': 'Analysieren',
+    },
+    'note_placeholder': {
+      'fr': 'Sauce à part, portion moyenne…',
+      'en': 'Sauce on the side, medium portion…',
+      'de': 'Sauce separat, mittlere Portion…',
+    },
+    'scan_another': {
+      'fr': 'Scanner autre chose',
+      'en': 'Scan something else',
+      'de': 'Etwas anderes scannen',
+    },
+    'barcode_point_at_code': {
+      'fr': 'Vise le code-barres, il se lit tout seul',
+      'en': 'Point at the barcode, it reads itself',
+      'de': 'Auf den Barcode zielen, er liest sich selbst',
     },
     'undo_item_added': {
       'fr': '{name} ajouté',
