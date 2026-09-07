@@ -7,15 +7,15 @@ import '../models/hiit_models.dart';
 import '../models/sport_models.dart';
 import '../models/weekly_planner_models.dart';
 import '../screens/ai_workout_generator_screen.dart';
-import '../screens/cardio_tracking_screen.dart';
-import '../screens/hiit_config_screen.dart';
-import '../screens/hiit_session_screen.dart';
-import '../screens/manual_cardio_entry_screen.dart';
 import '../services/cardio_service.dart';
 import '../services/localization_service.dart';
 import '../services/paywall_service.dart';
 import '../services/translations.dart';
 import '../services/workout_session_store.dart';
+import 'cardio/cardio_live_screen.dart';
+import 'cardio/hiit_live_screen.dart';
+import 'cardio/hiit_setup_sheet.dart';
+import 'cardio/manual_cardio_sheet.dart';
 import 'session/session_screen.dart';
 import 'sport_programs_page.dart';
 
@@ -104,7 +104,7 @@ class SportStart {
       final total = ((c.workSeconds + c.restSeconds) * c.rounds / 60).ceil();
       return _push(
         context,
-        HiitSessionScreen(
+        HiitLiveScreen(
           workout: HiitWorkout(
             id: 'planned_${a.id}',
             title: data.activityName,
@@ -125,14 +125,19 @@ class SportStart {
     }
     final live = await _trackOrDeclare(context, trackable: true);
     if (live == null || !context.mounted) return;
-    final screen = live
-        ? CardioTrackingScreen(activityType: data.activityKey, activityTitle: data.activityName, formatTitle: data.activityName, objective: objective)
-        : ManualCardioEntryScreen(activityType: data.activityKey, activityTitle: data.activityName, formatTitle: data.activityName, objective: objective);
-    await _push(context, screen);
+    if (live) {
+      await _push(context, CardioLiveScreen(activityType: data.activityKey, activityTitle: data.activityName, formatTitle: data.activityName, objective: objective));
+    } else {
+      await ManualCardioSheet.show(context, lang: _lang, activityType: data.activityKey, activityTitle: data.activityName, formatTitle: data.activityName, objective: objective);
+    }
   }
 
-  /// HIIT : la configuration, puis la séance.
-  static Future<void> hiit(BuildContext context) => _push(context, const HiitConfigScreen());
+  /// HIIT : le réglage, puis la séance.
+  static Future<void> hiit(BuildContext context) async {
+    final workout = await HiitSetupSheet.show(context, lang: _lang);
+    if (workout == null || !context.mounted) return;
+    await _push(context, HiitLiveScreen(workout: workout));
+  }
 
   /// Cardio : activité → format → objectif → en direct ou déclaré.
   /// `declare` saute la question du direct : c'est « déclarer une séance ».
@@ -210,10 +215,11 @@ class SportStart {
       live = await _trackOrDeclare(context, trackable: format?.isTrackable ?? true);
       if (live == null || !context.mounted) return;
     }
-    final screen = live
-        ? CardioTrackingScreen(activityType: activity.activityKey, activityTitle: activity.name, formatTitle: formatTitle, objective: objective)
-        : ManualCardioEntryScreen(activityType: activity.activityKey, activityTitle: activity.name, formatTitle: formatTitle, objective: objective);
-    await _push(context, screen);
+    if (live) {
+      await _push(context, CardioLiveScreen(activityType: activity.activityKey, activityTitle: activity.name, formatTitle: formatTitle, objective: objective));
+    } else {
+      await ManualCardioSheet.show(context, lang: lang, activityType: activity.activityKey, activityTitle: activity.name, formatTitle: formatTitle, objective: objective);
+    }
   }
 
   /// L'objectif d'un format qui en prend un : quelques valeurs, dont celle

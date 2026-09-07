@@ -3,15 +3,12 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import '../../models/weekly_planner_models.dart';
 import '../../models/sport_models.dart';
-import '../../models/cardio_session_models.dart';
 import '../../services/weekly_planner_service.dart';
 import '../../services/localization_service.dart';
 import '../../services/translations.dart';
 import '../../services/meal_planner_sync_service.dart';
 import '../../sport/session/session_screen.dart';
-import '../../screens/cardio_tracking_screen.dart';
-import '../../screens/hiit_session_screen.dart';
-import '../../models/hiit_models.dart';
+import '../../sport/sport_start.dart';
 import 'planned_meal_detail_page.dart';
 import 'meal_validation_bottom_sheet.dart';
 import 'day_column_widget.dart' show ActivityFilter;
@@ -709,7 +706,7 @@ class _DayActivitiesPagerSheetState extends State<DayActivitiesPagerSheet> {
           Expanded(
             flex: 2,
             child: ElevatedButton.icon(
-              onPressed: () => _startCardio(context, cardioData),
+              onPressed: () => _startCardio(context, activity),
               icon: const Icon(LucideIcons.play, size: 18),
               label: Text('planner_start_cardio'.tr(langCode)),
               style: ElevatedButton.styleFrom(
@@ -1809,73 +1806,11 @@ class _DayActivitiesPagerSheetState extends State<DayActivitiesPagerSheet> {
     ).then((_) => widget.onActivityChanged());
   }
 
-  void _startCardio(BuildContext context, PlannedCardioData? cardioData) {
-    final activityKey = cardioData?.activityKey ?? 'running';
-    final activityName = cardioData?.activityName ?? 'Running';
-
-    // Si c'est un HIIT, lancer l'écran HIIT
-    if (cardioData != null && cardioData.isHiit && cardioData.hiitConfig != null) {
-      _startHiit(context, cardioData);
-      return;
-    }
-
-    CardioObjective? objective;
-    if (cardioData != null) {
-      if (cardioData.targetKm != null && cardioData.targetKm! > 0) {
-        objective = CardioObjective(
-          type: 'distance',
-          targetDistance: cardioData.targetKm,
-          activityType: activityKey,
-          formatTitle: '$activityName (${cardioData.targetKm} km)',
-        );
-      } else if (cardioData.targetMinutes != null && cardioData.targetMinutes! > 0) {
-        objective = CardioObjective(
-          type: 'duration',
-          targetDuration: Duration(minutes: cardioData.targetMinutes!),
-          activityType: activityKey,
-          formatTitle: '$activityName (${cardioData.targetMinutes} min)',
-        );
-      }
-    }
-
+  /// Le cardio prévu part par le même chemin que l'onglet Sport : HIIT ou
+  /// non, en direct ou déclaré. La feuille se ferme avant de pousser.
+  void _startCardio(BuildContext context, PlannedActivity activity) {
     Navigator.pop(context);
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => CardioTrackingScreen(
-          activityType: activityKey,
-          activityTitle: activityName,
-          formatTitle: activityName,
-          objective: objective,
-        ),
-      ),
-    ).then((_) => widget.onActivityChanged());
-  }
-
-  void _startHiit(BuildContext context, PlannedCardioData cardioData) {
-    final hiitConfig = cardioData.hiitConfig!;
-
-    // Créer le workout HIIT avec la config stockée
-    final hiitWorkout = HiitWorkout(
-      id: hiitConfig.type,
-      title: cardioData.activityName,
-      description: '${hiitConfig.totalMinutes} min - ${hiitConfig.workSeconds}s effort / ${hiitConfig.restSeconds}s repos',
-      workDuration: hiitConfig.workSeconds,
-      restDuration: hiitConfig.restSeconds,
-      totalDuration: hiitConfig.totalMinutes,
-      totalRounds: hiitConfig.rounds,
-    );
-
-    Navigator.pop(context);
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => HiitSessionScreen(
-          workout: hiitWorkout,
-          isFromCustomConfig: hiitConfig.type == 'custom',
-        ),
-      ),
-    ).then((_) => widget.onActivityChanged());
+    SportStart.plannedCardio(context, activity).then((_) => widget.onActivityChanged());
   }
 }
 

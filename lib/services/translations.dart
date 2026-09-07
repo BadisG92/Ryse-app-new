@@ -10342,6 +10342,142 @@ class AppTranslations {
       'en': 'No thanks',
       'de': 'Nein danke',
     },
+    // Sport, cardio and HIIT in the flesh
+    'cardio_no_gps': {
+      'fr': "Pas de GPS · le chrono continue",
+      'en': "No GPS · the timer keeps going",
+      'de': "Kein GPS · die Uhr läuft weiter",
+    },
+    'cardio_gps_searching': {
+      'fr': "Recherche du GPS…",
+      'en': "Looking for GPS…",
+      'de': "GPS wird gesucht…",
+    },
+    'cardio_gps_on': {
+      'fr': "GPS",
+      'en': "GPS",
+      'de': "GPS",
+    },
+    'cardio_steps_label': {
+      'fr': "pas",
+      'en': "steps",
+      'de': "Schritte",
+    },
+    'cardio_finish': {
+      'fr': "Terminer",
+      'en': "Finish",
+      'de': "Beenden",
+    },
+    'cardio_resume': {
+      'fr': "Reprendre",
+      'en': "Resume",
+      'de': "Fortsetzen",
+    },
+    'cardio_pause_label': {
+      'fr': "Pause",
+      'en': "Pause",
+      'de': "Pause",
+    },
+    'cardio_auto_paused': {
+      'fr': "En pause automatique",
+      'en': "Auto-paused",
+      'de': "Automatisch pausiert",
+    },
+    'cardio_target_reached': {
+      'fr': "Objectif atteint",
+      'en': "Target reached",
+      'de': "Ziel erreicht",
+    },
+    'cardio_leave_title': {
+      'fr': "Arrêter la séance ?",
+      'en': "Stop the session?",
+      'de': "Training beenden?",
+    },
+    'cardio_leave_discard': {
+      'fr': "Abandonner",
+      'en': "Discard",
+      'de': "Verwerfen",
+    },
+    'cardio_summary_title': {
+      'fr': "Séance terminée",
+      'en': "Session done",
+      'de': "Training beendet",
+    },
+    'cardio_saved_ack': {
+      'fr': "Séance enregistrée · {min} min · {kcal} kcal",
+      'en': "Session saved · {min} min · {kcal} kcal",
+      'de': "Training gespeichert · {min} Min. · {kcal} kcal",
+    },
+    'cardio_save_failed': {
+      'fr': "Pas enregistrée · réessaie quand tu as du réseau",
+      'en': "Not saved · try again when you have a connection",
+      'de': "Nicht gespeichert · versuche es mit Verbindung erneut",
+    },
+    'cardio_manual_title': {
+      'fr': "Déclarer une séance",
+      'en': "Log a session",
+      'de': "Einheit eintragen",
+    },
+    'cardio_manual_date': {
+      'fr': "Quand",
+      'en': "When",
+      'de': "Wann",
+    },
+    'cardio_manual_duration': {
+      'fr': "Durée",
+      'en': "Duration",
+      'de': "Dauer",
+    },
+    'cardio_manual_distance': {
+      'fr': "Distance",
+      'en': "Distance",
+      'de': "Distanz",
+    },
+    'cardio_manual_hours': {
+      'fr': "h",
+      'en': "h",
+      'de': "Std.",
+    },
+    'cardio_manual_minutes': {
+      'fr': "min",
+      'en': "min",
+      'de': "Min.",
+    },
+    'cardio_estimated': {
+      'fr': "Estimation",
+      'en': "Estimate",
+      'de': "Schätzung",
+    },
+    'hiit_round_of': {
+      'fr': "tour {n} / {total}",
+      'en': "round {n} / {total}",
+      'de': "Runde {n} / {total}",
+    },
+    'hiit_setup_title': {
+      'fr': "Régler le HIIT",
+      'en': "Set up the HIIT",
+      'de': "HIIT einstellen",
+    },
+    'hiit_leave_title': {
+      'fr': "Arrêter le HIIT ?",
+      'en': "Stop the HIIT?",
+      'de': "HIIT beenden?",
+    },
+    'hiit_rounds_done': {
+      'fr': "{n} tours sur {total}",
+      'en': "{n} of {total} rounds",
+      'de': "{n} von {total} Runden",
+    },
+    'hiit_start': {
+      'fr': "Commencer",
+      'en': "Start",
+      'de': "Starten",
+    },
+    'sport_yesterday_short': {
+      'fr': "Hier",
+      'en': "Yesterday",
+      'de': "Gestern",
+    },
     // Sport, the tab by day
     'sport_hiit_rounds': {
       'fr': "tours",
