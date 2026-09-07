@@ -10,6 +10,7 @@ import 'global_state_manager.dart';
 import 'unit_service.dart';
 import 'weekly_planner_service.dart';
 import 'notification_service.dart';
+import 'streak_service.dart';
 
 /// Service pour gérer les activités cardio depuis Supabase
 class CardioService {
@@ -231,6 +232,8 @@ class CardioService {
       unawaited(NotificationService().updateLastActivity());
       unawaited(NotificationService().cancelPlannedActivityReminder());
       unawaited(NotificationService().cancelActivityBasedReminders());
+      // Une séance terminée fait avancer la série.
+      unawaited(StreakService.notifyActivity());
 
       return sessionId;
     } catch (e) {

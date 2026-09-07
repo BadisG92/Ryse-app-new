@@ -5,6 +5,7 @@ import '../services/auth_service.dart';
 import '../services/database_service.dart';
 import '../services/localization_service.dart';
 import '../services/translations.dart';
+import '../design/design.dart';
 import '../models/nutrition_models.dart';
 import '../bottom_sheets/editable_food_details_bottom_sheet.dart';
 import '../components/ui/snackbar_utils.dart';
@@ -204,412 +205,285 @@ class _CreateCustomFoodBottomSheetState extends State<CreateCustomFoodBottomShee
 
   @override
   Widget build(BuildContext context) {
+    final lang = context.watch<LocalizationService>().currentLanguageCode;
+    final gutter = context.vw(5.1);
+    final calories = _getCalculatedCalories();
+
     return ConstrainedBox(
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.9,
-      ),
+      constraints: BoxConstraints(maxHeight: context.vh(92)),
       child: Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Handle bar
-          Container(
-            margin: const EdgeInsets.only(top: 12),
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: const Color(0xFFE5E5E5),
-              borderRadius: BorderRadius.circular(2),
+        decoration: const BoxDecoration(
+          color: RyzeColors.paper,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(RyzeRadius.lg)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(height: context.vw(2.6)),
+            Container(
+              width: 36,
+              height: 5,
+              decoration: BoxDecoration(color: RyzeColors.idle, borderRadius: BorderRadius.circular(RyzeRadius.pill)),
             ),
-          ),
-          
-          // Header
-          Container(
-            padding: const EdgeInsets.all(24),
-            child: Row(
-              children: [
-                GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      color: Colors.transparent,
-                    ),
-                    child: const Icon(
-                      LucideIcons.chevronLeft,
-                      size: 20,
-                      color: Color(0xFF0B132B),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Consumer<LocalizationService>(
-                    builder: (context, locService, child) => Text(
-                      'create_food'.tr(locService.currentLanguageCode),
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF1A1A1A),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+            SizedBox(height: context.vw(4.1)),
 
-          // Form content
-          Flexible(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: gutter),
+              child: Row(
                 children: [
-                  // Nom de l'aliment
-                  Consumer<LocalizationService>(
-                    builder: (context, locService, child) => Text(
-                      'food_name'.tr(locService.currentLanguageCode),
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: Color(0xFF1A1A1A),
-                      ),
+                  Expanded(
+                    child: Text('create_food'.tr(lang), style: RyzeText.body(context, 5.1, weight: FontWeight.w600)),
+                  ),
+                  Pressable(
+                    onTap: () => Navigator.pop(context),
+                    child: Container(
+                      width: context.vw(9.2),
+                      height: context.vw(9.2),
+                      decoration: const BoxDecoration(color: RyzeColors.surf, shape: BoxShape.circle),
+                      child: Icon(LucideIcons.x, size: context.vw(4.6), color: RyzeColors.mute),
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Consumer<LocalizationService>(
-                    builder: (context, locService, child) => TextField(
-                      controller: _nameController,
-                      textInputAction: TextInputAction.done,
-                      onSubmitted: (_) => FocusScope.of(context).unfocus(),
-                      decoration: InputDecoration(
-                        hintText: 'food_name_placeholder'.tr(locService.currentLanguageCode),
-                        border: const OutlineInputBorder(
-                          borderRadius: BorderRadius.all(Radius.circular(8)),
-                          borderSide: BorderSide(color: Color(0xFFE5E7EB)),
-                        ),
-                        focusedBorder: const OutlineInputBorder(
-                          borderRadius: BorderRadius.all(Radius.circular(8)),
-                          borderSide: BorderSide(color: Color(0xFF3B82F6)),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                      ),
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 32),
-                  
-                  // Quantité de référence
-                  Consumer<LocalizationService>(
-                    builder: (context, locService, child) => Text(
-                      locService.currentLanguageCode == 'fr' ? 'Quantité de référence' : 'Reference quantity',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: Color(0xFF1A1A1A),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  
-                  Row(
-                    children: [
-                      // Quantité (non modifiable)
-                      Expanded(
-                        flex: 2,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF8F9FA),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: const Color(0xFFE5E7EB)),
-                          ),
-                          child: Text(
-                            _referenceQuantity.toStringAsFixed(_referenceQuantity.truncateToDouble() == _referenceQuantity ? 0 : 1),
-                            style: const TextStyle(
-                              fontSize: 16,
-                              color: Color(0xFF64748B),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      // Unité
-                      Expanded(
-                        flex: 3,
-                        child: DropdownButtonFormField<String>(
-                          value: _selectedUnit,
-                          decoration: const InputDecoration(
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.all(Radius.circular(8)),
-                            ),
-                            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                          ),
-                          items: _unitDefaults.keys.map((String unit) {
-                            return DropdownMenuItem<String>(
-                              value: unit,
-                              child: Text(unit),
-                            );
-                          }).toList(),
-                          onChanged: _onUnitChanged,
-                        ),
-                      ),
-                    ],
-                  ),
-                  
-                  const SizedBox(height: 12),
-                  
-                  // Texte explicatif
-                  Consumer<LocalizationService>(
-                    builder: (context, locService, child) => Text(
-                      locService.currentLanguageCode == 'fr' 
-                        ? 'Les valeurs nutritionnelles ci-dessous doivent correspondre à cette quantité.' 
-                        : 'The nutritional values below must correspond to this quantity.',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Color(0xFF64748B),
-                      ),
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 24),
-                  
-                  // Informations nutritionnelles
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF8F9FA),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: const Color(0xFFE5E7EB),
-                        width: 1,
-                      ),
-                    ),
-                    child: Column(
-                      children: [
-                        // Calories
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Consumer<LocalizationService>(
-                              builder: (context, locService, child) => Text(
-                                'calories'.tr(locService.currentLanguageCode),
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
-                                  color: Color(0xFF1A1A1A),
-                                ),
-                              ),
-                            ),
-                                                          Text(
-                                '${_getCalculatedCalories()} kcal',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF0B132B),
-                                ),
-                              ),
-                          ],
-                        ),
-                        
-                        const SizedBox(height: 12),
-                        
-                        // Protéines
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Consumer<LocalizationService>(
-                              builder: (context, locService, child) => Text(
-                                'proteins'.tr(locService.currentLanguageCode),
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  color: Color(0xFF64748B),
-                                ),
-                              ),
-                            ),
-                            SizedBox(
-                              width: 60,
-                              height: 32,
-                              child: NumericTextField(
-                                controller: _proteinsController,
-                                textAlign: TextAlign.right,
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                  color: Color(0xFF1A1A1A),
-                                ),
-                                decoration: const InputDecoration(
-                                  border: OutlineInputBorder(),
-                                  contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                                  isDense: true,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        
-                        const SizedBox(height: 8),
-                        
-                        // Glucides
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Consumer<LocalizationService>(
-                              builder: (context, locService, child) => Text(
-                                'carbs'.tr(locService.currentLanguageCode),
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  color: Color(0xFF64748B),
-                                ),
-                              ),
-                            ),
-                            SizedBox(
-                              width: 60,
-                              height: 32,
-                              child: NumericTextField(
-                                controller: _carbsController,
-                                textAlign: TextAlign.right,
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                  color: Color(0xFF1A1A1A),
-                                ),
-                                decoration: const InputDecoration(
-                                  border: OutlineInputBorder(),
-                                  contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                                  isDense: true,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        
-                        const SizedBox(height: 8),
-                        
-                        // Lipides
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Consumer<LocalizationService>(
-                              builder: (context, locService, child) => Text(
-                                'fats'.tr(locService.currentLanguageCode),
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  color: Color(0xFF64748B),
-                                ),
-                              ),
-                            ),
-                            SizedBox(
-                              width: 60,
-                              height: 32,
-                              child: NumericTextField(
-                                controller: _fatsController,
-                                textAlign: TextAlign.right,
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                  color: Color(0xFF1A1A1A),
-                                ),
-                                decoration: const InputDecoration(
-                                  border: OutlineInputBorder(),
-                                  contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                                  isDense: true,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 32),
                 ],
               ),
             ),
-          ),
+            SizedBox(height: context.vw(4.6)),
 
-          // Boutons
-          Container(
-            padding: const EdgeInsets.all(24),
-            child: Row(
-              children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: _isLoading ? null : () => Navigator.pop(context),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                          color: const Color(0xFF0B132B),
-                          width: 1,
-                        ),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Consumer<LocalizationService>(
-                        builder: (context, locService, child) => Text(
-                          'cancel'.tr(locService.currentLanguageCode),
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF0B132B),
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
+            Flexible(
+              child: ListView(
+                shrinkWrap: true,
+                padding: EdgeInsets.symmetric(horizontal: gutter),
+                children: [
+                  _FieldLabel('food_name'.tr(lang)),
+                  SizedBox(height: context.vw(2.1)),
+                  _Field(
+                    child: TextField(
+                      controller: _nameController,
+                      autofocus: true,
+                      textCapitalization: TextCapitalization.sentences,
+                      style: RyzeText.body(context, 3.9),
+                      cursorColor: RyzeColors.ink,
+                      decoration: InputDecoration(
+                        hintText: 'food_name_placeholder'.tr(lang),
+                        hintStyle: RyzeText.body(context, 3.9, color: RyzeColors.mute2),
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.symmetric(horizontal: context.vw(4.1), vertical: context.vw(3.6)),
                       ),
                     ),
                   ),
-                ),
-                
-                const SizedBox(width: 12),
-                
-                Expanded(
-                  child: GestureDetector(
-                    onTap: _isLoading ? null : _createCustomFood,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF0B132B),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: _isLoading
-                          ? const Center(
-                              child: SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                ),
-                              ),
-                            )
-                          : Consumer<LocalizationService>(
-                              builder: (context, locService, child) => Text(
-                                locService.currentLanguageCode == 'fr' ? 'Créer' : 'Create',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.white,
-                                ),
-                                textAlign: TextAlign.center,
+                  SizedBox(height: context.vw(5.6)),
+
+                  // L'unité décide de la quantité de référence : on la choisit
+                  // d'un tap plutôt que dans un menu qui cache ses options.
+                  _FieldLabel('reference_quantity'.tr(lang)),
+                  SizedBox(height: context.vw(2.1)),
+                  Wrap(
+                    spacing: context.vw(2.1),
+                    runSpacing: context.vw(2.1),
+                    children: [
+                      for (final unit in _unitDefaults.keys)
+                        Pressable(
+                          onTap: () {
+                            RyzeFeedback.tap();
+                            _onUnitChanged(unit);
+                          },
+                          child: AnimatedContainer(
+                            duration: RyzeDurations.tap,
+                            curve: RyzeCurves.out,
+                            padding: EdgeInsets.symmetric(horizontal: context.vw(4.1), vertical: context.vw(2.6)),
+                            decoration: BoxDecoration(
+                              color: unit == _selectedUnit ? RyzeColors.ink : RyzeColors.surf,
+                              borderRadius: BorderRadius.circular(RyzeRadius.pill),
+                              border: Border.all(color: unit == _selectedUnit ? RyzeColors.ink : RyzeColors.line),
+                            ),
+                            child: Text(
+                              '${_unitDefaults[unit]!.toStringAsFixed(0)} $unit',
+                              style: RyzeText.body(
+                                context,
+                                3.4,
+                                weight: FontWeight.w600,
+                                color: unit == _selectedUnit ? RyzeColors.surf : RyzeColors.ink,
                               ),
                             ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  SizedBox(height: context.vw(5.6)),
+
+                  // Les trois macros écrivent les calories : le chiffre du haut
+                  // suit ce qu'on tape, il ne se saisit pas.
+                  _FieldLabel(
+                    'macros_per'.tr(lang).replaceAll(
+                          '{q}',
+                          '${_referenceQuantity.toStringAsFixed(_referenceQuantity.truncateToDouble() == _referenceQuantity ? 0 : 1)} $_selectedUnit',
+                        ),
+                  ),
+                  SizedBox(height: context.vw(2.1)),
+                  Container(
+                    padding: EdgeInsets.all(context.vw(4.1)),
+                    decoration: BoxDecoration(
+                      color: RyzeColors.surf,
+                      borderRadius: BorderRadius.circular(RyzeRadius.md),
+                      border: Border.all(color: RyzeColors.line),
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text('calories'.tr(lang), style: RyzeText.body(context, 3.9, weight: FontWeight.w600)),
+                            ),
+                            RollingNumber('$calories', style: RyzeText.display(context, 6.9, weight: FontWeight.w600)),
+                            SizedBox(width: context.vw(1.5)),
+                            Padding(
+                              padding: EdgeInsets.only(top: context.vw(1.5)),
+                              child: Text('kcal', style: RyzeText.body(context, 3.3, color: RyzeColors.mute)),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: context.vw(3.6)),
+                        const Divider(height: 1, color: RyzeColors.line),
+                        SizedBox(height: context.vw(3.1)),
+                        _MacroField(label: 'proteins'.tr(lang), controller: _proteinsController),
+                        SizedBox(height: context.vw(2.6)),
+                        _MacroField(label: 'carbs'.tr(lang), controller: _carbsController),
+                        SizedBox(height: context.vw(2.6)),
+                        _MacroField(label: 'fats'.tr(lang), controller: _fatsController),
+                      ],
                     ),
                   ),
-                ),
-              ],
+                  SizedBox(height: context.vw(6)),
+                ],
+              ),
+            ),
+
+            Padding(
+              padding: EdgeInsets.fromLTRB(gutter, 0, gutter, context.vw(4.1) + MediaQuery.of(context).viewInsets.bottom),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Pressable(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        height: context.vw(13.3),
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: RyzeColors.surf,
+                          borderRadius: BorderRadius.circular(RyzeRadius.sm),
+                          border: Border.all(color: RyzeColors.line),
+                        ),
+                        child: Text('cancel'.tr(lang), style: RyzeText.body(context, 3.9, weight: FontWeight.w600)),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: context.vw(3.1)),
+                  Expanded(
+                    flex: 2,
+                    child: Pressable(
+                      onTap: _isLoading ? null : _createCustomFood,
+                      child: Container(
+                        height: context.vw(13.3),
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: RyzeColors.ink,
+                          borderRadius: BorderRadius.circular(RyzeRadius.sm),
+                          boxShadow: RyzeShadow.soft,
+                        ),
+                        child: _isLoading
+                            ? SizedBox(
+                                width: context.vw(4.6),
+                                height: context.vw(4.6),
+                                child: const CircularProgressIndicator(strokeWidth: 2, color: RyzeColors.surf),
+                              )
+                            : Text(
+                                'create'.tr(lang),
+                                style: RyzeText.body(context, 3.9, weight: FontWeight.w600, color: RyzeColors.surf),
+                              ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Le nom d'un champ, au-dessus de lui.
+class _FieldLabel extends StatelessWidget {
+  const _FieldLabel(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(text, style: RyzeText.body(context, 3.2, weight: FontWeight.w600, color: RyzeColors.mute));
+  }
+}
+
+/// La surface blanche d'un champ de saisie.
+class _Field extends StatelessWidget {
+  const _Field({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: RyzeColors.surf,
+        borderRadius: BorderRadius.circular(RyzeRadius.sm),
+        border: Border.all(color: RyzeColors.line),
+      ),
+      child: child,
+    );
+  }
+}
+
+/// Une macro qu'on saisit : son nom à gauche, ses grammes à droite.
+class _MacroField extends StatelessWidget {
+  const _MacroField({required this.label, required this.controller});
+
+  final String label;
+  final TextEditingController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(child: Text(label, style: RyzeText.body(context, 3.6, color: RyzeColors.mute))),
+        SizedBox(
+          width: context.vw(22),
+          height: context.vw(10.2),
+          child: NumericTextField(
+            controller: controller,
+            textAlign: TextAlign.right,
+            style: RyzeText.body(context, 3.9, weight: FontWeight.w600),
+            decoration: InputDecoration(
+              hintText: '0',
+              suffixText: 'g',
+              suffixStyle: RyzeText.body(context, 3.3, color: RyzeColors.mute),
+              isDense: true,
+              contentPadding: EdgeInsets.symmetric(horizontal: context.vw(2.6), vertical: context.vw(2.1)),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(RyzeRadius.xs),
+                borderSide: const BorderSide(color: RyzeColors.line),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(RyzeRadius.xs),
+                borderSide: const BorderSide(color: RyzeColors.line),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(RyzeRadius.xs),
+                borderSide: const BorderSide(color: RyzeColors.ink),
+              ),
             ),
           ),
-        ],
-      ),
         ),
+      ],
     );
   }
 }

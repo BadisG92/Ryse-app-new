@@ -8,74 +8,44 @@ import 'global_state_manager.dart';
 class StreakService {
   static SupabaseClient get _supabase => SupabaseConfig.client;
   
-  /// Nombre de jours de tolérance avant reset de la streak
-  static const int _toleranceDays = 7;
+  /// Une série est faite de journées qui se suivent : une seule journée
+  /// d'écart la casse.
+  static const int _toleranceDays = 1;
   
-  /// Récupère ou calcule la streak actuelle de l'utilisateur
-  /// Système intelligent : 
-  /// - 1ère utilisation : streak = 1
-  /// - Utilisation dans la tolérance : streak + 1
-  /// - Utilisation hors tolérance : reset à 1
+  /// La série telle qu'elle est, sans la modifier.
+  ///
+  /// Lire une valeur ne doit pas la changer : c'est [notifyActivity] qui fait
+  /// avancer la série, quand l'utilisateur note quelque chose. Une série dont
+  /// la dernière journée est trop ancienne est déjà cassée, et vaut zéro tant
+  /// que rien de neuf n'est noté.
   static Future<int> getCurrentStreak() async {
     try {
       final user = _supabase.auth.currentUser;
-      if (user == null) {
-        debugPrint('❌ StreakService: Utilisateur non connecté');
-        return 0;
-      }
-      
-      final today = DateTime.now();
-      final todayString = _formatDate(today);
-      
-      debugPrint('🔥 StreakService: Calcul streak pour ${user.id} le $todayString');
-      
-      // Récupérer les données de streak actuelles
+      if (user == null) return 0;
+
       final response = await _supabase
           .from('users')
           .select('streak_count, streak_last_date')
           .eq('id', user.id)
           .maybeSingle();
-          
-      if (response == null) {
-        debugPrint('❌ StreakService: Utilisateur non trouvé');
+      if (response == null) return 0;
+
+      final count = response['streak_count'] as int? ?? 0;
+      final last = response['streak_last_date'] as String?;
+      if (count == 0 || last == null) return 0;
+
+      if (_daysBetween(DateTime.parse(last), DateTime.now()) > _toleranceDays) {
         return 0;
       }
-      
-      final currentStreakCount = response['streak_count'] as int? ?? 0;
-      final lastStreakDate = response['streak_last_date'] as String?;
-      
-      debugPrint('📊 État actuel - Streak: $currentStreakCount, Dernière date: $lastStreakDate');
-      
-      // Premier cas : Première utilisation ou pas de streak
-      if (currentStreakCount == 0 || lastStreakDate == null) {
-        debugPrint('🆕 Première utilisation - Initialisation de la streak');
-        return await _initializeStreak(user.id, todayString);
+
+      try {
+        GlobalStateManager.instance.updateStreak(count);
+      } catch (e) {
+        debugPrint('⚠️ GlobalStateManager streak update failed: $e');
       }
-      
-      // Convertir la date de la dernière streak
-      final lastDate = DateTime.parse(lastStreakDate);
-      final daysDifference = _daysBetween(lastDate, today);
-      
-      debugPrint('📅 Différence: $daysDifference jours depuis la dernière activité');
-      
-      // Cas 1: Même jour - pas de changement
-      if (daysDifference == 0) {
-        debugPrint('📅 Même jour - Streak inchangée: $currentStreakCount');
-        return currentStreakCount;
-      }
-      
-      // Cas 2: Dans la tolérance - incrémenter
-      if (daysDifference <= _toleranceDays) {
-        debugPrint('✅ Dans la tolérance - Incrémentation de la streak');
-        return await _incrementStreak(user.id, currentStreakCount, todayString);
-      }
-      
-      // Cas 3: Hors tolérance - reset
-      debugPrint('🔄 Hors tolérance - Reset de la streak');
-      return await _resetStreak(user.id, todayString);
-      
+      return count;
     } catch (e) {
-      debugPrint('❌ StreakService: Erreur lors du calcul de streak: $e');
+      debugPrint('❌ StreakService: lecture de la série: $e');
       return 0;
     }
   }
@@ -163,34 +133,40 @@ class StreakService {
     }
   }
   
-  /// Force la mise à jour de la streak (appelé après une activité)
-  /// Utile quand l'utilisateur fait une activité dans la journée
+  /// L'utilisateur vient de noter quelque chose : c'est ce qui fait vivre la
+  /// série. Même journée, rien ne bouge ; la journée d'après, elle avance ;
+  /// après une coupure, elle repart à un.
   static Future<void> notifyActivity() async {
     try {
       final user = _supabase.auth.currentUser;
       if (user == null) return;
-      
+
       final today = DateTime.now();
       final todayString = _formatDate(today);
-      
-      debugPrint('🎯 StreakService: Notification d\'activité pour $todayString');
-      
-      // Mettre à jour la dernière date d'activité si pas déjà fait aujourd'hui
+
       final response = await _supabase
           .from('users')
-          .select('streak_last_date')
+          .select('streak_count, streak_last_date')
           .eq('id', user.id)
           .maybeSingle();
-          
-      if (response != null) {
-        final lastDate = response['streak_last_date'] as String?;
-        if (lastDate != todayString) {
-          // Recalculer la streak avec l'activité d'aujourd'hui
-          await getCurrentStreak();
-        }
+      if (response == null) return;
+
+      final count = response['streak_count'] as int? ?? 0;
+      final last = response['streak_last_date'] as String?;
+
+      if (last == todayString) return;
+      if (count == 0 || last == null) {
+        await _initializeStreak(user.id, todayString);
+        return;
+      }
+
+      if (_daysBetween(DateTime.parse(last), today) <= _toleranceDays) {
+        await _incrementStreak(user.id, count, todayString);
+      } else {
+        await _resetStreak(user.id, todayString);
       }
     } catch (e) {
-      debugPrint('❌ StreakService: Erreur notification activité: $e');
+      debugPrint('❌ StreakService: notification d\'activité: $e');
     }
   }
   

@@ -5,6 +5,7 @@ import '../config/supabase_config.dart';
 import 'dashboard_service.dart';
 import 'optimistic_update_service.dart';
 import 'global_state_manager.dart';
+import 'streak_service.dart';
 import 'supabase_error_handler.dart';
 import 'meal_widget_data_provider.dart';
 import 'notification_service.dart';
@@ -57,6 +58,8 @@ class WaterService {
         // Annuler les rappels d'eau et les notifications "rien logué"
         unawaited(NotificationService().cancelWaterReminders());
         unawaited(NotificationService().cancelActivityBasedReminders());
+        // Boire fait partie des journées suivies.
+        unawaited(StreakService.notifyActivity());
       }).catchError((error) {
         debugPrint('❌ Erreur ajout eau: $error');
         // Rollback si erreur

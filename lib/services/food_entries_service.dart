@@ -7,6 +7,7 @@ import 'dashboard_service.dart';
 import 'localization_service.dart';
 import 'translations.dart';
 import 'global_state_manager.dart';
+import 'streak_service.dart';
 import 'meal_widget_data_provider.dart';
 import 'notification_service.dart';
 import 'weekly_planner_service.dart';
@@ -669,6 +670,10 @@ class FoodEntriesService {
           debugPrint('⚠️ Erreur sync Weekly Planner: $plannerError');
         }
       }
+
+      // La série vit des journées où l'utilisateur note quelque chose : c'est
+      // ici, pas à la lecture de la valeur, qu'elle avance.
+      unawaited(StreakService.notifyActivity());
 
       return true;
     } catch (e) {

@@ -10152,6 +10152,21 @@ class AppTranslations {
       'en': 'Try removing a filter',
       'de': 'Versuche, einen Filter zu entfernen',
     },
+    'reference_quantity': {
+      'fr': 'Quantité de référence',
+      'en': 'Reference quantity',
+      'de': 'Referenzmenge',
+    },
+    'macros_per': {
+      'fr': 'Pour {q}',
+      'en': 'Per {q}',
+      'de': 'Pro {q}',
+    },
+    'create': {
+      'fr': 'Créer',
+      'en': 'Create',
+      'de': 'Erstellen',
+    },
     'undo_item_added': {
       'fr': '{name} ajouté',
       'en': '{name} added',

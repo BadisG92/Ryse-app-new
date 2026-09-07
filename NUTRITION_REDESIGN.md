@@ -277,14 +277,52 @@ d'un aliment ouvert peut les montrer sur une seconde ligne.
 
 ## 8. Les bugs à corriger dans la même passe
 
-1. Écriture sur un jour passé (§ 4).
+1. ~~Écriture sur un jour passé (§ 4).~~ Fait : `FoodAddFlow` porte la date.
 2. Impossible de corriger une quantité : il n'existe aucune mise à jour de `food_entries`. Ajouter `FoodEntriesService.updateFoodEntryQuantity(id, quantity)` qui recalcule calories et macros au prorata, et une petite feuille avec un pas de quantité, ouverte par un tap sur un aliment dans la rangée dépliée.
 3. L'eau ne peut ni être retirée ni corrigée (§ 3.3).
 4. L'objectif d'eau n'est modifiable nulle part (§ 3.3).
-5. Le lien profond code-barres avec repas dit « ajouté » sans écrire (§ 5).
+5. ~~Le lien profond code-barres avec repas dit « ajouté » sans écrire (§ 5).~~ Fait : le code-barres rend son aliment à `FoodAddFlow`, qui l'écrit.
 6. Depuis le tableau de bord, « Rechercher » demandait le repas puis redemandait « Rechercher ». Disparaît avec les cinq icônes.
-7. Le bandeau affiche la série avec une flamme, alors que la série n'est jamais incrémentée par un enregistrement : `ActivityTracker` n'a aucun site d'appel. Brancher `ActivityTracker.notifyFoodAdded` et `notifyWaterAdded` dans les écritures de cet onglet, et passer `StreakService._toleranceDays` de 7 à 1.
-8. Aucun chemin pour remanger un plat : ni récents, ni favoris, ni répéter un repas. Couvert par le bloc « Récents » de la feuille d'ajout (§ 5).
+7. La série ne comptait pas des journées suivies mais des ouvertures de l'app : `getCurrentStreak()` **écrivait**, si bien que lire la valeur le lendemain l'incrémentait sans que rien n'ait été noté, et sept jours de tolérance la faisaient survivre à une semaine de silence. Corrigé : lire ne change plus rien, `notifyActivity()` est ce qui fait avancer la série, et il est appelé depuis l'écriture d'un aliment, d'un verre d'eau et d'une séance de cardio. La tolérance passe à 1. *Reste à faire : la même chose pour une séance de musculation, dans la passe Sport.*
+8. ~~Aucun chemin pour remanger un plat~~ Fait. Aucun chemin pour remanger un plat : ni récents, ni favoris, ni répéter un repas. Couvert par le bloc « Récents » de la feuille d'ajout (§ 5).
+
+## 8 bis. Les écrans d'ajout, une fois l'outil choisi
+
+La feuille d'ajout ne fait que poser la question. Ce qui vient après, c'est
+huit écrans écrits à des moments différents, qui ne se ressemblent pas : 476
+couleurs codées en dur, 159 tailles de police, 72 ternaires de langue. Un
+utilisateur qui ajoute un aliment traverse deux ou trois de ces écrans à la
+suite ; c'est là que l'app change de voix.
+
+### Le contrat commun
+
+Les cinq outils recevaient le repas de manières différentes, et trois d'entre
+eux ignoraient purement le `mealId` qu'on leur passait. `FoodAddFlow`
+(`lib/services/food_add_flow.dart`) remplace ce désordre : il porte le repas,
+son identifiant et **la date**, il ouvre l'outil, et il écrit lui-même ce que
+les outils lui rendent. Le scanner photo et le coach écrivent depuis leur
+propre écran, comme avant.
+
+Une conséquence directe : un repas oublié peut enfin être noté sur **sa**
+journée depuis l'historique, au lieu de tomber sur aujourd'hui.
+
+### Ce qui est redessiné
+
+| Écran | Ce qui n'allait pas | Ce qu'il devient |
+|---|---|---|
+| **La portion** (`editable_food_details_bottom_sheet.dart`) — dernier pas de quatre chemins sur cinq | La quantité, le geste le plus fréquent, était un petit champ en bas ; la correction des macros se cachait derrière un crayon de 14 pt | La quantité mène : un grand chiffre, deux pas de part et d'autre, six portions courantes sous la main. Les calories roulent au-dessus des trois macros. Le crayon reste, mais il a la taille d'un bouton |
+| **La recherche** (`manual_food_search_bottom_sheet.dart`) | « Créer un aliment » occupait la place des résultats, avant même qu'on ait tapé | Le champ s'ouvre tout seul et se vide d'un geste. Les fréquents portent un nom. La création se range après les résultats, et devient la proposition principale quand la recherche ne trouve rien |
+| **Les recettes** (`select_recipe_screen.dart`) | Deux phrases codées en dur en français et anglais, image de 64, calories perdues dans une ligne de texte | Le papier de l'app, image de 72, les calories à droite comme le chiffre qui décide, et les deux phrases au dictionnaire |
+| **Créer un aliment** (`create_custom_food_bottom_sheet.dart`) | L'unité dans un menu déroulant qui cache ses options ; les calories noyées parmi les champs | Les cinq unités en pastilles, chacune avec sa quantité de référence. Les calories roulent au-dessus des trois macros qui les écrivent |
+| **Chemin mort** | `EditableFoodDetailsBottomSheet.showCreateFood` et son `_CreateFoodContent` : 380 lignes que personne n'appelait | Supprimés |
+
+### Ce qui n'est pas redessiné
+
+Le scanner code-barres et le scanner photo restent tels quels pour l'instant :
+ce sont deux écrans de caméra de deux mille lignes chacun, où le dessin se
+limite à un viseur, et où une réécriture à l'aveugle coûterait plus cher
+qu'elle ne rapporterait. Leur branchement, lui, est corrigé : le code-barres
+rend son aliment à `FoodAddFlow`, qui l'écrit vraiment.
 
 ## 9. Les textes
 
@@ -325,15 +363,22 @@ Glas entfernt.
 7. Les bugs du § 8 qui ne sont pas encore couverts.
 8. La suppression du code mort du § 2, puis `flutter analyze` à la référence.
 
+9. Les écrans d'ajout (§ 8 bis).
+
 Chaque étape se termine par `flutter analyze --no-pub` à 2027 problèmes ou
 moins, aucun texte littéral, aucune couleur hors tokens. Ne pas lancer
 `flutter run`.
+
+**Où on en est.** Les points 1 à 6 sont faits, le 7 en partie, le 9 sur quatre
+écrans. L'analyse est à 2007 problèmes, soit vingt de moins que la référence.
+Rien n'est poussé : la refonte partira quand Sport et l'accueil seront prêts.
 
 ## 11. Ce qui reste ouvert
 
 - Les sons : activés par défaut, ou désactivés ? Le prototype les propose activés et coupés d'un bouton.
 - L'accueil doit-il adopter la jauge ambre de Nutrition ? `DESIGN.md` dit oui. À aligner quand on reviendra sur l'accueil.
 - Le nom de la troisième page une fois les récents en place : « Recettes » ou « Mes plats ».
+- La série passe à zéro dès qu'une journée est sautée. C'est ce que veut dire « série », mais les utilisateurs qui avaient une série tenue par la tolérance de sept jours la verront retomber. À confirmer avant de pousser.
 
 ## Prototype
 
