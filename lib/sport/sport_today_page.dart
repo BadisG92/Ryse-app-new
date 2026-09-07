@@ -50,7 +50,6 @@ class _SportTodayPageState extends State<SportTodayPage> with GlobalStateListene
   bool _loaded = false;
 
   final ScrollController _scroll = ScrollController();
-  bool _stuck = false;
 
   /// Lundi → dimanche de cette semaine.
   List<DateTime> get _days {
@@ -62,7 +61,6 @@ class _SportTodayPageState extends State<SportTodayPage> with GlobalStateListene
   @override
   void initState() {
     super.initState();
-    _scroll.addListener(_onScroll);
     _load();
   }
 
@@ -84,12 +82,6 @@ class _SportTodayPageState extends State<SportTodayPage> with GlobalStateListene
       default:
         break;
     }
-  }
-
-  void _onScroll() {
-    if (!_scroll.hasClients) return;
-    final past = _scroll.offset > context.vw(30);
-    if (past != _stuck) setState(() => _stuck = past);
   }
 
   Future<void> _load() async {
@@ -246,6 +238,12 @@ class _SportTodayPageState extends State<SportTodayPage> with GlobalStateListene
             PopIn(
               delay: const Duration(milliseconds: 60),
               dy: 8,
+              child: _todayBlock(context, lang),
+            ),
+            SizedBox(height: context.vw(7)),
+            PopIn(
+              delay: const Duration(milliseconds: 320),
+              dy: 8,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -261,34 +259,14 @@ class _SportTodayPageState extends State<SportTodayPage> with GlobalStateListene
                     loaded: _loaded,
                     onDay: _openDay,
                     onGoal: _goal,
+                    onPlan: _openPlanner,
                   ),
                   PendingSyncLine(lang: lang, compact: false),
                 ],
               ),
             ),
-            SizedBox(height: context.vw(7)),
-            PopIn(
-              delay: const Duration(milliseconds: 320),
-              dy: 8,
-              child: _todayBlock(context, lang),
-            ),
           ],
         ),
-        // Le compte revient dès que la semaine a quitté le haut — avec sa
-        // jauge seulement quand il y a un objectif à mesurer.
-        if (goal != null)
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: StickyTotal(
-              shown: _stuck,
-              lead: 'sport_this_week'.tr(lang),
-              value: 'sport_goal_progress'.tr(lang).replaceAll('{done}', '${w.sessions}').replaceAll('{goal}', '$goal'),
-              unit: 'sport_sessions_unit'.tr(lang),
-              fraction: goal > 0 ? w.sessions / goal : 0,
-            ),
-          ),
       ],
     );
   }
@@ -339,7 +317,7 @@ class _SportTodayPageState extends State<SportTodayPage> with GlobalStateListene
             children: [for (final row in _today) SessionRow(lang: lang, row: row, onTap: () => _open(row), showDate: false)],
           )
         else
-          _EmptyCard(lang: lang, onStart: _start, onPlan: _openPlanner),
+          _EmptyCard(lang: lang, onStart: _start),
       ],
     );
   }
@@ -416,11 +394,10 @@ class _PlannedCard extends StatelessWidget {
 
 /// Rien de prévu : démarrer, ou laisser Ryze planifier la semaine.
 class _EmptyCard extends StatelessWidget {
-  const _EmptyCard({required this.lang, required this.onStart, required this.onPlan});
+  const _EmptyCard({required this.lang, required this.onStart});
 
   final String lang;
   final VoidCallback onStart;
-  final VoidCallback onPlan;
 
   @override
   Widget build(BuildContext context) {
@@ -437,24 +414,6 @@ class _EmptyCard extends StatelessWidget {
           Text('sport_nothing_planned'.tr(lang), style: RyzeText.body(context, 3.9, weight: FontWeight.w600)),
           SizedBox(height: context.vw(3.6)),
           _InkButton(label: 'sport_start_session'.tr(lang), onTap: onStart),
-          SizedBox(height: context.vw(1)),
-          Pressable(
-            onTap: () {
-              RyzeFeedback.tap();
-              onPlan();
-            },
-            child: Padding(
-              padding: EdgeInsets.symmetric(vertical: context.vw(2.6)),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  RyzeMark(size: context.vw(4.4)),
-                  SizedBox(width: context.vw(1.5)),
-                  Text('sport_plan_week'.tr(lang), style: RyzeText.body(context, 3.4, weight: FontWeight.w600)),
-                ],
-              ),
-            ),
-          ),
         ],
       ),
     );

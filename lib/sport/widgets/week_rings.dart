@@ -30,6 +30,7 @@ class WeekBlock extends StatelessWidget {
     required this.loaded,
     required this.onDay,
     required this.onGoal,
+    required this.onPlan,
   });
 
   final String lang;
@@ -51,6 +52,11 @@ class WeekBlock extends StatelessWidget {
   /// Un jour qui a une séance se presse.
   final ValueChanged<DateTime> onDay;
   final VoidCallback onGoal;
+
+  /// Planifier la semaine. Le bouton vivait dans la carte « rien de
+  /// prevu » de la journee : le jour ou une seance etait prevue, il
+  /// n'existait plus. Planifier appartient a la semaine, pas au jour.
+  final VoidCallback onPlan;
 
   @override
   Widget build(BuildContext context) {
@@ -131,6 +137,24 @@ class WeekBlock extends StatelessWidget {
                   SizedBox(width: context.vw(2.1)),
                   Text('sport_goal_edit'.tr(lang), style: RyzeText.body(context, 3.1, color: RyzeColors.mute2)),
                 ],
+                SizedBox(width: context.vw(1)),
+                Icon(LucideIcons.chevronRight, size: context.vw(3.6), color: RyzeColors.mute2),
+              ],
+            ),
+          ),
+        ),
+        Pressable(
+          onTap: () {
+            RyzeFeedback.tap();
+            onPlan();
+          },
+          child: Padding(
+            padding: EdgeInsets.symmetric(vertical: context.vw(1)),
+            child: Row(
+              children: [
+                RyzeMark(size: context.vw(3.9)),
+                SizedBox(width: context.vw(1.5)),
+                Text('sport_plan_week'.tr(lang), style: RyzeText.body(context, 3.4, weight: FontWeight.w600)),
                 SizedBox(width: context.vw(1)),
                 Icon(LucideIcons.chevronRight, size: context.vw(3.6), color: RyzeColors.mute2),
               ],
