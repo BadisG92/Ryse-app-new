@@ -289,14 +289,13 @@ class _SportTodayPageState extends State<SportTodayPage> with GlobalStateListene
         onSecondary: _start,
       );
     }
+    // Le jour a déjà ses séances : elles sont la carte, et on peut en ajouter.
     if (_today.isNotEmpty) {
-      final r = _today.first;
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           for (final row in _today) SessionRow(lang: lang, row: row, onTap: () => _open(row), showDate: false),
           _GhostButton(label: 'sport_start_session'.tr(lang), onTap: _start),
-          if (r.kind == SportKind.strength) const SizedBox.shrink(),
         ],
       );
     }
