@@ -96,6 +96,39 @@ its gauge filling, the tiles, the coach typing, the button, the week's marks.
 Code lives in `lib/home/` on top of `lib/design/`; the data layer is the one
 the old dashboard used.
 
+## Sport
+
+Sport is a ring, food is a square. That one rule carries the whole tab: a
+strength session fills its ring in ink, a cardio session outlines it in amber,
+and nothing else has to say which family a row belongs to — no second tab, no
+coloured badge. The day's card, the twelve-week strip and the session rail all
+use it.
+
+The tab reads like Nutrition: a date, three positions, one instrument. The
+figure is the week's sessions against the goal the onboarding implied, and the
+amber gauge fills toward it; a line under it says the time and the calories of
+the week. Everything below is one card per state, never a stack of them.
+
+A live activity owns the screen on the ink, the language the camera
+viewfinder set: one number that leads, one status line, two controls under the
+thumb. A form is on the paper. HIIT swaps the whole ground between ink (work)
+and paper (rest), so the phase reads without looking.
+
+A session in progress is its own case. The keyboard never opens: the number
+pad is drawn in the screen, so nothing has to scroll out of the way. Each cell
+shows either what is recorded, in Archivo, or what would be taken — the
+previous set, then the same set last time, then the programme's range — as a
+ghost in mute. Repeating a set is one tap on its check. Rest counts on wall
+time, not on ticks, so a locked phone comes back to "rest over" rather than a
+frozen countdown.
+
+Honesty has a shape here too. A session kept on the phone is a mute line, not
+a red one: queued is not failed. Without GPS the screen says so and counts
+time; it never draws a distance it did not measure.
+
+Code lives in `lib/sport/` on top of `lib/design/`; `SPORT_REDESIGN.md` has
+the decisions behind it.
+
 ## Motion
 
 Three curves: `out` (fast start, soft landing) for almost everything; `spring`
