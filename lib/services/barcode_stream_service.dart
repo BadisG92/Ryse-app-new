@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:ui' show Size;
 
@@ -20,6 +21,19 @@ import 'mlkit_barcode_service.dart';
 /// keeps its shutter.
 class BarcodeStreamService {
   BarcodeStreamService(this._controller);
+
+  /// Désactivé tant que ce chemin n'a pas tourné sur un vrai appareil.
+  ///
+  /// Il faisait sortir l'application, et un crash natif ne se rattrape pas
+  /// depuis Dart : aucune précaution écrite ici ne peut garantir qu'il ne se
+  /// reproduira pas. Les deux causes probables sont corrigées — on n'arrête
+  /// plus la diffusion depuis sa propre trame, et le contrôleur n'est plus
+  /// détruit pendant qu'il diffuse — mais tant que personne ne l'a vu tenir
+  /// sur un iPhone, le déclencheur reste le chemin par défaut.
+  ///
+  /// Pour le rallumer : passer à true, lancer depuis un Mac, viser un code, et
+  /// regarder la console pour les lignes `[BARCODE STREAM]`.
+  static const bool enabled = false;
 
   final CameraController _controller;
 
@@ -57,8 +71,11 @@ class BarcodeStreamService {
             // A format we cannot describe to ML Kit: give up on streaming
             // rather than burn the battery on frames that will never read.
             _busy = false;
-            await stop();
-            onUnavailable();
+            _stopped = true;
+            scheduleMicrotask(() async {
+              await stop();
+              onUnavailable();
+            });
             return;
           }
           _converted = true;
@@ -68,8 +85,13 @@ class BarcodeStreamService {
               .firstWhere((value) => value != null && value.trim().length >= 8, orElse: () => null);
           if (code != null && !_stopped) {
             _stopped = true;
-            await stop();
-            onCode(code.trim());
+            // L'arrêt est repoussé hors de cette trame : couper la diffusion
+            // depuis l'image qu'on est en train de lire est l'autre crash
+            // connu de ce couple caméra + ML Kit.
+            scheduleMicrotask(() async {
+              await stop();
+              onCode(code.trim());
+            });
           } else {
             _misses++;
           }
@@ -77,9 +99,12 @@ class BarcodeStreamService {
           _misses++;
           if (kDebugMode) debugPrint('⚠️ [BARCODE STREAM] $e');
           // Repeated conversion failures mean this path will not work here.
-          if (!_converted && _misses > 8) {
-            await stop();
-            onUnavailable();
+          if (!_converted && _misses > 8 && !_stopped) {
+            _stopped = true;
+            scheduleMicrotask(() async {
+              await stop();
+              onUnavailable();
+            });
           }
         } finally {
           _busy = false;

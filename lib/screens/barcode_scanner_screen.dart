@@ -120,13 +120,17 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
         return;
       }
 
-      // La lecture en continu veut des images modestes : en haute résolution
-      // chaque trame coûte plus à convertir qu'à lire.
+      // Deux réglages pour deux façons de lire. La lecture en continu veut des
+      // trames modestes et un format que ML Kit sait décrire ; le déclencheur
+      // veut la meilleure image possible, parce qu'un code-barres photographié
+      // se décode d'autant mieux qu'il est net.
       _cameraController = CameraController(
         cameras.first,
-        ResolutionPreset.medium,
+        BarcodeStreamService.enabled ? ResolutionPreset.medium : ResolutionPreset.high,
         enableAudio: false,
-        imageFormatGroup: Platform.isIOS ? ImageFormatGroup.bgra8888 : ImageFormatGroup.nv21,
+        imageFormatGroup: !BarcodeStreamService.enabled
+            ? null
+            : (Platform.isIOS ? ImageFormatGroup.bgra8888 : ImageFormatGroup.nv21),
       );
 
       await _cameraController?.initialize();
@@ -147,6 +151,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
   /// un format que ML Kit accepte, on retombe simplement sur le déclencheur :
   /// l'utilisateur ne perd rien, il appuie comme avant.
   Future<void> _startLiveScan() async {
+    if (!BarcodeStreamService.enabled) return;
     final controller = _cameraController;
     if (controller == null || !controller.value.isInitialized) return;
     final live = BarcodeStreamService(controller);
@@ -179,13 +184,26 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
 
   @override
   void dispose() {
-    _live?.stop();
     _quantityController.dispose();
     _caloriesPer100gController.dispose();
     _proteinsPer100gController.dispose();
     _carbsPer100gController.dispose();
     _fatsPer100gController.dispose();
-    _cameraController?.dispose();
+
+    // La diffusion doit être arrêtée AVANT que le contrôleur soit détruit :
+    // détruire une caméra qui diffuse encore est un crash natif. dispose() ne
+    // peut pas attendre, alors on détache le contrôleur et on le laisse
+    // mourir à la fin de l'arrêt.
+    final controller = _cameraController;
+    final live = _live;
+    _cameraController = null;
+    _live = null;
+    if (live == null) {
+      controller?.dispose();
+    } else {
+      live.stop().whenComplete(() => controller?.dispose());
+    }
+
     super.dispose();
   }
 
