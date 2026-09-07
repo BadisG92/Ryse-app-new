@@ -7,6 +7,7 @@ import '../../models/sport_models.dart';
 import '../../services/auth_service.dart';
 import '../../services/calorie_burn_service.dart';
 import '../../services/localization_service.dart';
+import '../../services/notification_service.dart';
 import '../../services/translations.dart';
 import '../../services/workout_session_store.dart';
 import '../../widgets/exercise/exercise_detail_page.dart';
@@ -97,6 +98,15 @@ class _WorkoutSessionScreenState extends State<WorkoutSessionScreen> with Widget
     _voice = SessionVoice(onFilled: _onVoiceFilled);
     _c.addListener(_onChanged);
     _voice.addListener(_onChanged);
+    // Un rappel hors de l'app quand le repos tombe à zéro. Il double
+    // l'haptique du retour, il ne la remplace pas : s'il échoue, rien ne
+    // change pour l'utilisateur.
+    _c.rest.onSchedule = (endsAt) => NotificationService().scheduleRestEnd(
+          at: endsAt,
+          title: 'session_rest_done'.tr(_lang),
+          body: _c.session.name,
+        );
+    _c.rest.onCancelSchedule = NotificationService().cancelRestEnd;
   }
 
   @override

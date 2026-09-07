@@ -533,6 +533,41 @@ class NotificationService {
     );
   }
 
+  /// L'identifiant de la notification de fin de repos. Une seule à la fois :
+  /// la programmer écrase la précédente.
+  static const int restEndNotificationId = 90;
+
+  /// Prévient à la fin du repos, quand l'app n'est pas au premier plan.
+  ///
+  /// L'haptique au retour reste le vrai signal ; ceci est un supplément, et
+  /// un supplément qui échoue ne doit rien casser — d'où le try/catch et
+  /// l'absence de tout `await` côté appelant.
+  Future<void> scheduleRestEnd({required DateTime at, required String title, required String body}) async {
+    try {
+      final when = tz.TZDateTime.from(at, tz.local);
+      if (!when.isAfter(tz.TZDateTime.now(tz.local))) return;
+      await _notifications.zonedSchedule(
+        restEndNotificationId,
+        title,
+        body,
+        when,
+        _notificationDetails(),
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+        payload: 'rest_end',
+      );
+    } catch (e) {
+      if (kDebugMode) debugPrint('⚠️ rest-end notification: $e');
+    }
+  }
+
+  /// Annule la notification de fin de repos (repos passé, sauté ou rallongé).
+  Future<void> cancelRestEnd() async {
+    try {
+      await _notifications.cancel(restEndNotificationId);
+    } catch (_) {}
+  }
+
   /// Détails de notification (Android + iOS)
   NotificationDetails _notificationDetails() {
     return const NotificationDetails(

@@ -41,6 +41,12 @@ class RestTimer extends ValueNotifier<RestState> {
   /// l'exercice suivant, par exemple.
   VoidCallback? onEnd;
 
+  /// Prévenir hors de l'app à la fin du repos, et annuler ce rappel. Les deux
+  /// sont facultatifs : sans eux, l'haptique au retour reste le seul signal,
+  /// ce qui suffit — d'où l'absence de tout `await` sur ces appels.
+  void Function(DateTime endsAt)? onSchedule;
+  VoidCallback? onCancelSchedule;
+
   void start(Duration d) {
     _ended = false;
     _clear?.cancel();
@@ -48,6 +54,7 @@ class RestTimer extends ValueNotifier<RestState> {
     value = RestState(total: d, endsAt: endsAt, remaining: d);
     _tick?.cancel();
     _tick = Timer.periodic(const Duration(seconds: 1), (_) => _update());
+    onSchedule?.call(endsAt);
   }
 
   /// Un brouillon repris en plein repos : on reprend là où il en était.
@@ -61,6 +68,7 @@ class RestTimer extends ValueNotifier<RestState> {
     value = RestState(total: total ?? remaining, endsAt: endsAt, remaining: remaining);
     _tick?.cancel();
     _tick = Timer.periodic(const Duration(seconds: 1), (_) => _update());
+    onSchedule?.call(endsAt);
   }
 
   void skip() {
@@ -68,6 +76,7 @@ class RestTimer extends ValueNotifier<RestState> {
     _clear?.cancel();
     _ended = true;
     value = const RestState();
+    onCancelSchedule?.call();
   }
 
   void extend(Duration by) {
@@ -80,6 +89,7 @@ class RestTimer extends ValueNotifier<RestState> {
       return;
     }
     value = RestState(total: value.total + by, endsAt: next, remaining: next.difference(now));
+    onSchedule?.call(next);
   }
 
   /// Au retour de l'arrière-plan : recalculer, et signaler une fin manquée.
@@ -102,6 +112,7 @@ class RestTimer extends ValueNotifier<RestState> {
     // Deux secondes de « Repos terminé », puis la barre redevient neutre.
     value = RestState(total: value.total, endsAt: endsAt, remaining: Duration.zero);
     RyzeFeedback.alert();
+    onCancelSchedule?.call();
     onEnd?.call();
     _clear?.cancel();
     _clear = Timer(const Duration(seconds: 2), () {
@@ -113,6 +124,7 @@ class RestTimer extends ValueNotifier<RestState> {
   void dispose() {
     _tick?.cancel();
     _clear?.cancel();
+    onCancelSchedule?.call();
     super.dispose();
   }
 }
