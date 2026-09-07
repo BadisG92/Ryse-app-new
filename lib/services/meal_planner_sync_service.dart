@@ -520,6 +520,10 @@ class MealPlannerSyncService {
         'fats': fats,
         'estimated_quantity_g': quantity ?? 100.0,
         'linked_food_entry_id': foodEntryId,
+        // Cette activité n'est pas un plan : c'est le reflet d'un aliment noté.
+        // À la suppression de l'aliment, elle disparaît ; un vrai plan, lui,
+        // redevient simplement « à faire ».
+        'from_journal': true,
       };
 
       await _supabase.from('planned_activities').insert({
@@ -551,26 +555,32 @@ class MealPlannerSyncService {
       // la recherche dans les JSONB avec contains pour des valeurs string
       final activities = await _supabase
           .from('planned_activities')
-          .select('id, activity_data')
+          .select('id, activity_data, is_ai_generated')
           .eq('user_id', user.id);
 
       for (final activity in activities) {
         final activityData = activity['activity_data'] as Map<String, dynamic>?;
-        if (activityData != null) {
-          final linkedId = activityData['linked_food_entry_id'] as String?;
-          if (linkedId == foodEntryId) {
-            await _supabase
-                .from('planned_activities')
-                .delete()
-                .eq('id', activity['id']);
+        if (activityData == null) continue;
+        if ((activityData['linked_food_entry_id'] as String?) != foodEntryId) continue;
 
-            // Notifier le GlobalStateManager pour mettre à jour le planner
-            GlobalStateManager.instance.invalidateWeeklyData();
+        // Une activité née du journal disparaît avec son aliment. Un repas que
+        // l'utilisateur avait prévu, lui, redevient « à faire » : le supprimer
+        // effacerait son plan, et le laisser « terminé » laisserait le créneau
+        // coché sur une assiette vide.
+        final bornOfJournal = activityData['from_journal'] == true ||
+            (!activityData.containsKey('from_journal') && activity['is_ai_generated'] != true);
 
-            debugPrint('✅ Deleted planner activity linked to food_entry $foodEntryId');
-            return;
-          }
+        if (bornOfJournal) {
+          await _supabase.from('planned_activities').delete().eq('id', activity['id']);
+          debugPrint('✅ Activité du journal supprimée avec food_entry $foodEntryId');
+        } else {
+          await _removeActivityLink(activity['id'] as String);
+          debugPrint('✅ Repas prévu remis à faire après suppression de $foodEntryId');
         }
+
+        WeeklyPlannerService.invalidateCache();
+        GlobalStateManager.instance.invalidateWeeklyData();
+        return;
       }
     } catch (e) {
       debugPrint('❌ onFoodEntryDeleted error: $e');

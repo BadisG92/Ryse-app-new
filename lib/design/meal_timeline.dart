@@ -209,12 +209,15 @@ class _MealRow extends StatelessWidget {
                 duration: RyzeDurations.enter,
                 curve: RyzeCurves.out,
                 alignment: Alignment.topCenter,
-                child: !open || meal.logged == null
+                // Ouvert, la rangée montre ce qu'elle contient et propose
+                // toujours d'ajouter : même sans aucun aliment, elle ne doit
+                // pas être un cul-de-sac.
+                child: !open
                     ? const SizedBox(width: double.infinity)
                     : Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          for (final item in meal.logged!.items)
+                          for (final item in meal.logged?.items ?? const [])
                             _ItemRow(
                               item: item,
                               onRemove: () => onRemoveItem(item),

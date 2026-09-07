@@ -41,6 +41,10 @@ class _NutritionHistoryPageState extends State<NutritionHistoryPage> {
   bool _loading = true;
   final Set<WeekSlot> _open = {};
 
+  /// Le total revient en barre dès que l'instrument a quitté le haut.
+  final ScrollController _scroll = ScrollController();
+  bool _stuck = false;
+
   /// How close each day of the strip came to its calorie goal, so the strip
   /// says something rather than just listing numbers.
   final Map<String, double> _fill = {};
@@ -52,9 +56,22 @@ class _NutritionHistoryPageState extends State<NutritionHistoryPage> {
     super.initState();
     final now = DateTime.now();
     _selected = DateTime(now.year, now.month, now.day).subtract(const Duration(days: 1));
+    _scroll.addListener(_onScroll);
     _load();
     _loadPrefs();
     _loadStrip();
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scroll.hasClients) return;
+    final past = _scroll.offset > context.vw(30);
+    if (past != _stuck) setState(() => _stuck = past);
   }
 
   List<DateTime> get _days {
@@ -201,7 +218,10 @@ class _NutritionHistoryPageState extends State<NutritionHistoryPage> {
           ),
         ),
         Expanded(
-          child: ListView(
+          child: Stack(
+            children: [
+              ListView(
+            controller: _scroll,
             padding: EdgeInsets.fromLTRB(gutter, context.vw(4), gutter, 132),
             children: [
               Text(
@@ -255,6 +275,21 @@ class _NutritionHistoryPageState extends State<NutritionHistoryPage> {
                   onRemoveItem: _removeItem,
                 ),
               ],
+            ],
+          ),
+
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: StickyTotal(
+                  shown: _stuck && !_loading && day != null,
+                  lead: remaining < 0 ? 'nutri_over_that_day'.tr(lang) : 'nutri_left_that_day'.tr(lang),
+                  value: numbers.format(remaining.abs()),
+                  unit: 'nutri_kcal'.tr(lang),
+                  fraction: goal > 0 ? eaten / goal : 0,
+                ),
+              ),
             ],
           ),
         ),

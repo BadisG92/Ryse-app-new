@@ -40,12 +40,17 @@ class _NutritionTodayPageState extends State<NutritionTodayPage> with GlobalStat
   final Set<WeekSlot> _open = {};
   bool _shown = false;
 
+  /// Le total revient en barre dès que l'instrument a quitté le haut.
+  final ScrollController _scroll = ScrollController();
+  bool _stuck = false;
+
   DateTime get _date => widget.date ?? DateTime.now();
   String get _lang => LocalizationService.instance.currentLanguageCode;
 
   @override
   void initState() {
     super.initState();
+    _scroll.addListener(_onScroll);
     _load();
     _loadPrefs();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -75,6 +80,18 @@ class _NutritionTodayPageState extends State<NutritionTodayPage> with GlobalStat
   }
 
   /// The hours the user set for their reminders are the hours their day has.
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scroll.hasClients) return;
+    final past = _scroll.offset > context.vw(26);
+    if (past != _stuck) setState(() => _stuck = past);
+  }
+
   Future<void> _loadPrefs() async {
     try {
       final prefs = NotificationService().getPreferences();
@@ -336,76 +353,98 @@ class _NutritionTodayPageState extends State<NutritionTodayPage> with GlobalStat
     final remaining = goal - calories;
     final gutter = context.vw(5.1);
 
-    return ListView(
-      padding: EdgeInsets.fromLTRB(gutter, context.vw(2), gutter, 132),
+    return Stack(
       children: [
-        PopIn(
-          delay: const Duration(milliseconds: 60),
-          dy: 8,
-          child: DayInstrument(
-            lead: remaining < 0 ? 'nutri_over_goal'.tr(lang) : (remaining == 0 ? 'nutri_goal_met'.tr(lang) : 'nutri_left_today'.tr(lang)),
-            unit: 'nutri_kcal'.tr(lang),
-            eatenLabel: 'nutri_eaten'.tr(lang).replaceAll('{n}', numbers.format(calories)),
-            goalLabel: 'nutri_goal'.tr(lang).replaceAll('{n}', numbers.format(goal)),
-            calories: calories,
-            calorieGoal: goal,
-            shown: _shown,
-            macros: [
-              MacroRail(label: 'nutri_proteins'.tr(lang), value: gs.currentProteins, goal: gs.proteinGoal, shown: _shown),
-              MacroRail(label: 'nutri_carbs'.tr(lang), value: gs.currentCarbs, goal: gs.carbsGoal, shown: _shown),
-              MacroRail(label: 'nutri_fats'.tr(lang), value: gs.currentFats, goal: gs.fatGoal, shown: _shown),
-            ],
+        ListView(
+          controller: _scroll,
+        padding: EdgeInsets.fromLTRB(gutter, context.vw(2), gutter, 132),
+        children: [
+          PopIn(
+            delay: const Duration(milliseconds: 60),
+            dy: 8,
+            child: DayInstrument(
+              lead: remaining < 0 ? 'nutri_over_goal'.tr(lang) : (remaining == 0 ? 'nutri_goal_met'.tr(lang) : 'nutri_left_today'.tr(lang)),
+              unit: 'nutri_kcal'.tr(lang),
+              eatenLabel: 'nutri_eaten'.tr(lang).replaceAll('{n}', numbers.format(calories)),
+              goalLabel: 'nutri_goal'.tr(lang).replaceAll('{n}', numbers.format(goal)),
+              calories: calories,
+              calorieGoal: goal,
+              shown: _shown,
+              macros: [
+                MacroRail(label: 'nutri_proteins'.tr(lang), value: gs.currentProteins, goal: gs.proteinGoal, shown: _shown),
+                MacroRail(label: 'nutri_carbs'.tr(lang), value: gs.currentCarbs, goal: gs.carbsGoal, shown: _shown),
+                MacroRail(label: 'nutri_fats'.tr(lang), value: gs.currentFats, goal: gs.fatGoal, shown: _shown),
+              ],
+            ),
           ),
-        ),
-        SizedBox(height: context.vw(7)),
-        PopIn(
-          delay: const Duration(milliseconds: 320),
-          dy: 8,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _BlockHeader(
-                title: 'nutri_water'.tr(lang),
-                trailing: '${_litres(gs.currentWaterL, lang)} ${'nutri_water_of'.tr(lang).replaceAll('{n}', _litres(gs.waterGoalL, lang))}',
-              ),
-              SizedBox(height: context.vw(2.6)),
-              GlassRow(
-                litres: gs.currentWaterL,
-                goalLitres: gs.waterGoalL,
-                shown: _shown,
-                onSet: _setGlasses,
-                onOther: _otherAmount,
-              ),
-            ],
-          ),
-        ),
-        SizedBox(height: context.vw(7)),
-        PopIn(
-          delay: const Duration(milliseconds: 500),
-          dy: 8,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _BlockHeader(
-                title: 'nutri_meals'.tr(lang),
-                trailing: day == null ? '' : '${day.doneCount} / ${day.total}',
-              ),
-              SizedBox(height: context.vw(1)),
-              if (day != null)
-                MealTimeline(
-                  day: day,
-                  labelOf: (slot) => 'slot_${slot.name}'.tr(lang),
-                  hourOf: _hourOf,
-                  plannedPrefix: 'nutri_planned_prefix'.tr(lang),
-                  nothingLogged: 'nutri_nothing_logged'.tr(lang),
-                  addLabel: 'nutri_add_food'.tr(lang),
-                  open: _open,
-                  onToggle: (slot) => setState(() => _open.contains(slot) ? _open.remove(slot) : _open.add(slot)),
-                  onAdd: _add,
-                  onRemoveItem: _removeItem,
-                  onEditItem: _editItem,
+          SizedBox(height: context.vw(7)),
+          PopIn(
+            delay: const Duration(milliseconds: 320),
+            dy: 8,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _BlockHeader(
+                  title: 'nutri_water'.tr(lang),
+                  trailing: '${_litres(gs.currentWaterL, lang)} ${'nutri_water_of'.tr(lang).replaceAll('{n}', _litres(gs.waterGoalL, lang))}',
                 ),
-            ],
+                SizedBox(height: context.vw(2.6)),
+                GlassRow(
+                  litres: gs.currentWaterL,
+                  goalLitres: gs.waterGoalL,
+                  shown: _shown,
+                  onSet: _setGlasses,
+                  onOther: _otherAmount,
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: context.vw(7)),
+          PopIn(
+            delay: const Duration(milliseconds: 500),
+            dy: 8,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _BlockHeader(
+                  title: 'nutri_meals'.tr(lang),
+                  trailing: day == null ? '' : '${day.doneCount} / ${day.total}',
+                ),
+                SizedBox(height: context.vw(1)),
+                if (day != null)
+                  MealTimeline(
+                    day: day,
+                    labelOf: (slot) => 'slot_${slot.name}'.tr(lang),
+                    hourOf: _hourOf,
+                    plannedPrefix: 'nutri_planned_prefix'.tr(lang),
+                    nothingLogged: 'nutri_nothing_logged'.tr(lang),
+                    addLabel: 'nutri_add_food'.tr(lang),
+                    open: _open,
+                    onToggle: (slot) => setState(() => _open.contains(slot) ? _open.remove(slot) : _open.add(slot)),
+                    onAdd: _add,
+                    onRemoveItem: _removeItem,
+                    onEditItem: _editItem,
+                  ),
+              ],
+            ),
+          ),
+        ],
+        ),
+
+        // Le total revient dès que l'instrument a quitté le haut :
+        // on descend dans ses repas justement pour décider quoi manger.
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: StickyTotal(
+            shown: _stuck,
+            lead: remaining < 0
+                ? 'nutri_over_goal'.tr(lang)
+                : (remaining == 0 ? 'nutri_goal_met'.tr(lang) : 'nutri_left_today'.tr(lang)),
+            value: numbers.format(remaining.abs()),
+            unit: 'nutri_kcal'.tr(lang),
+            fraction: goal > 0 ? calories / goal : 0,
           ),
         ),
       ],

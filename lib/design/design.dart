@@ -38,6 +38,7 @@ export 'macro_rail.dart';
 export 'glass_row.dart';
 export 'camera_shell.dart';
 export 'day_instrument.dart';
+export 'sticky_total.dart';
 export 'meal_timeline.dart';
 
 export '../onboarding/widgets/onb_widgets.dart';

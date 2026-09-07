@@ -125,10 +125,17 @@ class DayMeals {
       final planned = plan?.meals.where((m) => m.activityType.value == type).toList() ?? const <PlannedActivity>[];
       final plannedDone = planned.any((m) => m.status == PlannedStatus.completed);
 
+      // Le journal fait foi. Un repas dont on a retiré le dernier aliment
+      // n'est plus fait, même si le plan le croit encore terminé : le statut
+      // du plan est posé à l'ajout et peut retarder d'un instant sur la
+      // suppression. Sans ça, le créneau restait coché et vide, sans aucun
+      // moyen d'y remettre quelque chose.
+      final hasFood = block != null && block.items.isNotEmpty;
+
       final SlotState state;
-      if (block != null || plannedDone) {
+      if (hasFood) {
         state = SlotState.done;
-      } else if (planned.isNotEmpty) {
+      } else if (planned.isNotEmpty || plannedDone) {
         state = SlotState.planned;
       } else {
         state = SlotState.empty;
@@ -137,9 +144,9 @@ class DayMeals {
       out[slot] = DayMeal(
         slot: slot,
         state: state,
-        at: block?.at,
+        at: hasFood ? block.at : null,
         plannedName: planned.isEmpty ? null : planned.first.mealData?.dishName,
-        logged: block,
+        logged: hasFood ? block : null,
       );
     }
     return DayMeals._(day, out);
