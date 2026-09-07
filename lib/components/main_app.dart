@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '../home/home_page.dart';
 import '../services/localization_service.dart';
 import '../nutrition/nutrition_page.dart';
-import 'sport_section.dart';
+import '../sport/sport_page.dart';
 import 'global_progress_hybrid.dart';
 import '../screens/coach_chat_screen.dart';
 import '../services/coach_chat_service.dart';
@@ -140,7 +140,7 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
       case 'nutrition':
         return const NutritionPage();
       case 'sport':
-        return const SportSection();
+        return const SportPage();
       case 'progress':
         return const GlobalProgress();
       default:

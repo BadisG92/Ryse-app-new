@@ -104,8 +104,12 @@ class OnbMetabolics {
   static int dailyCalories(OnbAnswers a) => MetabolicCalculations.calculateDailyGoal(a.toProfile());
   static Map<String, int> macros(OnbAnswers a) => MetabolicCalculations.calculateMacros(a.toProfile());
 
-  static int sessionsPerWeek(OnbAnswers a) {
-    switch (a.activity) {
+  static int sessionsPerWeek(OnbAnswers a) => sessionsPerWeekFor(a.activity);
+
+  /// The weekly session goal the activity level implies. The Sport tab reads
+  /// it from the saved `activity_level`, so the figure is the onboarding's.
+  static int sessionsPerWeekFor(String? activity) {
+    switch (activity) {
       case 'low':
         return 2;
       case 'moderate':

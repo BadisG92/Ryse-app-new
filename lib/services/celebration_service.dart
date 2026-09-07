@@ -259,6 +259,10 @@ class CelebrationService {
     String? workoutType,
     int? exerciseCount,
   }) {
+    // La célébration plein écran a disparu avec la refonte : la feuille de fin,
+    // l'haptique et la ligne d'accusé de la page suffisent. Même principe que la nourriture.
+    return;
+    // ignore: dead_code
     final langCode = LocalizationService.instance.currentLanguageCode;
     final messages = langCode == 'de' ? _workoutMessagesDe : (langCode == 'en' ? _workoutMessagesEn : _workoutMessagesFr);
     final subtitles = langCode == 'de' ? _workoutSubtitlesDe : (langCode == 'en' ? _workoutSubtitlesEn : _workoutSubtitlesFr);
@@ -408,6 +412,10 @@ class CelebrationService {
     Duration? duration,
     double? distanceKm,
   }) {
+    // La célébration plein écran a disparu avec la refonte : la feuille de fin,
+    // l'haptique et la ligne d'accusé de la page suffisent. Même principe que la nourriture.
+    return;
+    // ignore: dead_code
     final langCode = LocalizationService.instance.currentLanguageCode;
     final messages = langCode == 'de' ? _workoutMessagesDe : (langCode == 'en' ? _workoutMessagesEn : _workoutMessagesFr);
     final subtitles = langCode == 'de' ? _workoutSubtitlesDe : (langCode == 'en' ? _workoutSubtitlesEn : _workoutSubtitlesFr);
@@ -466,6 +474,10 @@ class CelebrationService {
 
   /// Show celebration popup after completing a HIIT session
   void celebrateHiitCompletion(BuildContext context, {String? customMessage}) {
+    // La célébration plein écran a disparu avec la refonte : la feuille de fin,
+    // l'haptique et la ligne d'accusé de la page suffisent. Même principe que la nourriture.
+    return;
+    // ignore: dead_code
     final langCode = LocalizationService.instance.currentLanguageCode;
     final messages = langCode == 'de' ? _workoutMessagesDe : (langCode == 'en' ? _workoutMessagesEn : _workoutMessagesFr);
     final subtitles = langCode == 'de' ? _workoutSubtitlesDe : (langCode == 'en' ? _workoutSubtitlesEn : _workoutSubtitlesFr);

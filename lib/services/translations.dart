@@ -10342,6 +10342,342 @@ class AppTranslations {
       'en': 'No thanks',
       'de': 'Nein danke',
     },
+    // Sport, the tab by day
+    'sport_page_today': {
+      'fr': "Aujourd'hui",
+      'en': "Today",
+      'de': "Heute",
+    },
+    'sport_page_history': {
+      'fr': "Historique",
+      'en': "History",
+      'de': "Verlauf",
+    },
+    'sport_page_programs': {
+      'fr': "Programmes",
+      'en': "Programmes",
+      'de': "Programme",
+    },
+    'sport_left_week': {
+      'fr': "Encore cette semaine",
+      'en': "Still to go this week",
+      'de': "Diese Woche noch",
+    },
+    'sport_over_week': {
+      'fr': "Au-delà de l'objectif",
+      'en': "Beyond the goal",
+      'de': "Über dem Ziel",
+    },
+    'sport_week_met': {
+      'fr': "Objectif de la semaine atteint",
+      'en': "Weekly goal reached",
+      'de': "Wochenziel erreicht",
+    },
+    'sport_sessions_unit': {
+      'fr': "séances",
+      'en': "sessions",
+      'de': "Einheiten",
+    },
+    'sport_done_n': {
+      'fr': "{n} faites",
+      'en': "{n} done",
+      'de': "{n} erledigt",
+    },
+    'sport_goal_n': {
+      'fr': "objectif {n}",
+      'en': "goal {n}",
+      'de': "Ziel {n}",
+    },
+    'sport_week_line': {
+      'fr': "{time} · {kcal} kcal cette semaine",
+      'en': "{time} · {kcal} kcal this week",
+      'de': "{time} · {kcal} kcal diese Woche",
+    },
+    'sport_today_block': {
+      'fr': "Aujourd'hui",
+      'en': "Today",
+      'de': "Heute",
+    },
+    'sport_planned_start': {
+      'fr': "Commencer",
+      'en': "Start",
+      'de': "Starten",
+    },
+    'sport_done_today': {
+      'fr': "Faite aujourd'hui",
+      'en': "Done today",
+      'de': "Heute erledigt",
+    },
+    'sport_nothing_planned': {
+      'fr': "Rien de prévu aujourd'hui",
+      'en': "Nothing planned today",
+      'de': "Heute nichts geplant",
+    },
+    'sport_start_session': {
+      'fr': "Démarrer une séance",
+      'en': "Start a session",
+      'de': "Training starten",
+    },
+    'sport_last_sessions': {
+      'fr': "Dernières séances",
+      'en': "Recent sessions",
+      'de': "Letzte Einheiten",
+    },
+    'sport_no_sessions_yet': {
+      'fr': "Aucune séance encore. La première commence ici.",
+      'en': "No session yet. The first one starts here.",
+      'de': "Noch keine Einheit. Die erste beginnt hier.",
+    },
+    'sport_redo': {
+      'fr': "Refaire",
+      'en': "Do again",
+      'de': "Wiederholen",
+    },
+    'sport_free_strength': {
+      'fr': "Musculation libre",
+      'en': "Free strength session",
+      'de': "Freies Krafttraining",
+    },
+    'sport_free_strength_hint': {
+      'fr': "Tu ajoutes les exercices en séance",
+      'en': "Add exercises as you go",
+      'de': "Übungen während des Trainings hinzufügen",
+    },
+    'sport_pick_program': {
+      'fr': "Un programme",
+      'en': "A programme",
+      'de': "Ein Programm",
+    },
+    'sport_pick_program_hint': {
+      'fr': "Les tiens et ceux de Ryze",
+      'en': "Yours and the ones from Ryze",
+      'de': "Deine und die von Ryze",
+    },
+    'sport_coach_ryze': {
+      'fr': "Coach Ryze",
+      'en': "Coach Ryze",
+      'de': "Coach Ryze",
+    },
+    'sport_coach_ryze_hint': {
+      'fr': "Une séance générée pour toi",
+      'en': "A session generated for you",
+      'de': "Eine für dich erstellte Einheit",
+    },
+    'sport_cardio_hint': {
+      'fr': "Course, marche, vélo…",
+      'en': "Running, walking, cycling…",
+      'de': "Laufen, Gehen, Radfahren…",
+    },
+    'sport_hiit_hint': {
+      'fr': "Effort, repos, en boucle",
+      'en': "Work, rest, repeat",
+      'de': "Belastung, Pause, wiederholen",
+    },
+    'sport_declare_past': {
+      'fr': "Déclarer une séance passée",
+      'en': "Log a past session",
+      'de': "Vergangene Einheit eintragen",
+    },
+    'sport_declare_past_hint': {
+      'fr': "Sans chrono ni GPS",
+      'en': "No timer, no GPS",
+      'de': "Ohne Timer und GPS",
+    },
+    'sport_your_exercises': {
+      'fr': "Tes exercices",
+      'en': "Your exercises",
+      'de': "Deine Übungen",
+    },
+    'sport_trend_up': {
+      'fr': "en hausse",
+      'en': "going up",
+      'de': "steigend",
+    },
+    'sport_trend_down': {
+      'fr': "en baisse",
+      'en': "going down",
+      'de': "fallend",
+    },
+    'sport_trend_flat': {
+      'fr': "stable",
+      'en': "steady",
+      'de': "stabil",
+    },
+    'sport_times_n': {
+      'fr': "{n} fois",
+      'en': "{n} times",
+      'de': "{n}-mal",
+    },
+    'sport_by_you': {
+      'fr': "Créé par toi",
+      'en': "Made by you",
+      'de': "Von dir erstellt",
+    },
+    'sport_by_ryze': {
+      'fr': "Coach Ryze",
+      'en': "Coach Ryze",
+      'de': "Coach Ryze",
+    },
+    'sport_program_exercises': {
+      'fr': "{n} exercices",
+      'en': "{n} exercises",
+      'de': "{n} Übungen",
+    },
+    'sport_program_minutes': {
+      'fr': "{n} min",
+      'en': "{n} min",
+      'de': "{n} Min.",
+    },
+    'sport_programs_yours': {
+      'fr': "Tes programmes",
+      'en': "Your programmes",
+      'de': "Deine Programme",
+    },
+    'sport_programs_ryze': {
+      'fr': "Programmes Ryze",
+      'en': "Ryze programmes",
+      'de': "Ryze-Programme",
+    },
+    'sport_no_programs': {
+      'fr': "Aucun programme pour l'instant. Termine une séance et garde-la, ou demande à Coach Ryze.",
+      'en': "No programme yet. Finish a session and keep it, or ask Coach Ryze.",
+      'de': "Noch kein Programm. Beende eine Einheit und behalte sie, oder frag Coach Ryze.",
+    },
+    'sport_sets_reps': {
+      'fr': "{sets} × {min}–{max}",
+      'en': "{sets} × {min}–{max}",
+      'de': "{sets} × {min}–{max}",
+    },
+    'sport_sets_only': {
+      'fr': "{sets} séries",
+      'en': "{sets} sets",
+      'de': "{sets} Sätze",
+    },
+    'sport_edit': {
+      'fr': "Modifier",
+      'en': "Edit",
+      'de': "Bearbeiten",
+    },
+    'sport_delete': {
+      'fr': "Supprimer",
+      'en': "Delete",
+      'de': "Löschen",
+    },
+    'sport_session_deleted': {
+      'fr': "Séance supprimée",
+      'en': "Session deleted",
+      'de': "Einheit gelöscht",
+    },
+    'sport_delete_failed': {
+      'fr': "Impossible de supprimer pour l'instant",
+      'en': "Could not delete right now",
+      'de': "Löschen gerade nicht möglich",
+    },
+    'sport_kind_strength': {
+      'fr': "Musculation",
+      'en': "Strength",
+      'de': "Kraft",
+    },
+    'sport_kind_cardio': {
+      'fr': "Cardio",
+      'en': "Cardio",
+      'de': "Cardio",
+    },
+    'sport_no_session_day': {
+      'fr': "Pas de séance ce jour-là",
+      'en': "No session that day",
+      'de': "Keine Einheit an diesem Tag",
+    },
+    'sport_day_sessions': {
+      'fr': "Séances du jour",
+      'en': "Sessions of the day",
+      'de': "Einheiten des Tages",
+    },
+    'sport_objective_km': {
+      'fr': "{n} km",
+      'en': "{n} km",
+      'de': "{n} km",
+    },
+    'sport_objective_min': {
+      'fr': "{n} min",
+      'en': "{n} min",
+      'de': "{n} Min.",
+    },
+    'sport_objective_free': {
+      'fr': "Sans objectif",
+      'en': "No target",
+      'de': "Ohne Ziel",
+    },
+    'sport_week_streak': {
+      'fr': "{n} semaines d'affilée",
+      'en': "{n} weeks in a row",
+      'de': "{n} Wochen in Folge",
+    },
+    'sport_in_progress': {
+      'fr': "En cours",
+      'en': "In progress",
+      'de': "Läuft",
+    },
+    'sport_exercises_n_min': {
+      'fr': "{n} exercices · {min} min",
+      'en': "{n} exercises · {min} min",
+      'de': "{n} Übungen · {min} Min.",
+    },
+    'sport_dist_km': {
+      'fr': "{n} km",
+      'en': "{n} km",
+      'de': "{n} km",
+    },
+    'sport_min_kcal': {
+      'fr': "{min} min · {kcal} kcal",
+      'en': "{min} min · {kcal} kcal",
+      'de': "{min} Min. · {kcal} kcal",
+    },
+    'sport_yesterday': {
+      'fr': "Hier",
+      'en': "Yesterday",
+      'de': "Gestern",
+    },
+    'sport_today': {
+      'fr': "Aujourd'hui",
+      'en': "Today",
+      'de': "Heute",
+    },
+    'sport_offline_programs': {
+      'fr': "Programmes du téléphone (hors ligne)",
+      'en': "Programmes on this phone (offline)",
+      'de': "Programme auf dem Telefon (offline)",
+    },
+    'sport_track_or_declare': {
+      'fr': "Enregistrer comment ?",
+      'en': "How do you want to record it?",
+      'de': "Wie aufzeichnen?",
+    },
+    'sport_track_hint': {
+      'fr': "Chrono et GPS en direct",
+      'en': "Live timer and GPS",
+      'de': "Timer und GPS live",
+    },
+    'sport_declare_hint': {
+      'fr': "Tu renseignes durée et distance",
+      'en': "You enter time and distance",
+      'de': "Du trägst Zeit und Distanz ein",
+    },
+    'sport_no_formats': {
+      'fr': "Aucun format disponible",
+      'en': "No format available",
+      'de': "Kein Format verfügbar",
+    },
+    'sport_recap_exercises': {
+      'fr': "Exercices",
+      'en': "Exercises",
+      'de': "Übungen",
+    },
+    'sport_recap_no_detail': {
+      'fr': "Pas de détail pour cette séance",
+      'en': "No detail for this session",
+      'de': "Keine Details zu dieser Einheit",
+    },
     // Sport, the day as a session
     'session_sets_progress': {
       'fr': '{done} / {total} séries',
