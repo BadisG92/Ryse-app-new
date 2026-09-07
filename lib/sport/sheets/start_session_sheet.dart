@@ -68,8 +68,16 @@ class StartSessionSheet {
           ],
           RyzeSheetGroup(
             children: [
+              // Coach Ryze d'abord : c'est la façon que l'app est seule à
+              // savoir faire. Composer sa séance soi-même vient après.
               RyzeSheetRow(
                 first: true,
+                icon: LucideIcons.sparkles,
+                label: 'sport_coach_ryze'.tr(lang),
+                hint: 'sport_coach_ryze_hint'.tr(lang),
+                onTap: () => Navigator.pop(sheet, const StartChoice(StartKind.coach)),
+              ),
+              RyzeSheetRow(
                 icon: LucideIcons.dumbbell,
                 label: 'sport_free_strength'.tr(lang),
                 hint: 'sport_free_strength_hint'.tr(lang),
@@ -80,12 +88,6 @@ class StartSessionSheet {
                 label: 'sport_pick_program'.tr(lang),
                 hint: 'sport_pick_program_hint'.tr(lang),
                 onTap: () => Navigator.pop(sheet, const StartChoice(StartKind.program)),
-              ),
-              RyzeSheetRow(
-                icon: LucideIcons.sparkles,
-                label: 'sport_coach_ryze'.tr(lang),
-                hint: 'sport_coach_ryze_hint'.tr(lang),
-                onTap: () => Navigator.pop(sheet, const StartChoice(StartKind.coach)),
               ),
               RyzeSheetRow(
                 icon: LucideIcons.footprints,

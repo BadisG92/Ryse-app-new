@@ -101,12 +101,16 @@ class AddFoodSheet {
     );
   }
 
+  /// Les deux façons où Ryze fait le travail viennent d'abord — la photo,
+  /// puis la phrase. C'est ce que l'app sait faire que personne d'autre ne
+  /// fait ; chercher un aliment dans une liste, tout le monde sait. Le reste
+  /// suit dans l'ordre de l'effort demandé à l'utilisateur.
   static const List<_Way> _ways = [
-    _Way(FoodTool.search, LucideIcons.search, 'way_search', 'way_search_hint'),
     _Way(FoodTool.photo, LucideIcons.camera, 'way_photo', 'way_photo_hint'),
-    _Way(FoodTool.barcode, LucideIcons.scanLine, 'way_barcode', 'way_barcode_hint'),
-    _Way(FoodTool.recipe, LucideIcons.chefHat, 'way_recipe', 'way_recipe_hint'),
     _Way(FoodTool.coach, LucideIcons.messageCircle, 'way_coach', 'way_coach_hint'),
+    _Way(FoodTool.barcode, LucideIcons.scanLine, 'way_barcode', 'way_barcode_hint'),
+    _Way(FoodTool.search, LucideIcons.search, 'way_search', 'way_search_hint'),
+    _Way(FoodTool.recipe, LucideIcons.chefHat, 'way_recipe', 'way_recipe_hint'),
   ];
 }
 
