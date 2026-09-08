@@ -1,5 +1,10 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 
+import '../../models/ai_analysis_models.dart';
+import '../../screens/ai_analysis_screen.dart';
+import '../../services/app_navigator.dart';
+import '../../services/gemini_analysis_service_v2.dart';
 import '../../services/global_state_manager.dart';
 import '../../services/localization_service.dart';
 import '../../services/translations.dart';
@@ -114,5 +119,85 @@ class JournalTools {
     }
   }
 
-  static List<RyzeTool> get all => [water, weight];
+  /// Noter un repas décrit à voix haute.
+  ///
+  /// C'était le trou le plus gênant pour un coach nutrition : « j'ai mangé une
+  /// omelette » ne se notait pas. Le prompt lui apprenait à répondre « prends
+  /// ton plat en photo avec le scanner » — c'est-à-dire à demander à
+  /// l'utilisateur de refaire lui-même ce qu'il venait de dire.
+  ///
+  /// L'analyse rend des aliments et des macros, que l'écran de revue affiche
+  /// pour correction avant d'écrire. Cet écran **est** la validation : une
+  /// carte de plus demanderait deux fois la même chose.
+  static final food = RyzeTool(
+    name: 'journal.log_food_text',
+    declaration: toolSchema(
+      name: 'journal.log_food_text',
+      description:
+          'Log a meal the user describes in words, by reading its foods and macros from '
+          'their description. Use it when they say what they ate, only for food already '
+          'eaten. Pass their words as they said them, in their language. For a meal '
+          'that was planned and eaten as planned, use plan.mark_meal_eaten instead.',
+      properties: {
+        'description': {
+          'type': 'string',
+          'description':
+              'What they ate, in their own words and language, with quantities when '
+              'they gave any: "two eggs, a banana and a black coffee".',
+        },
+        'meal_type': {
+          'type': 'string',
+          'description': 'Which meal it was, when they said or it is obvious.',
+          'enum': ['breakfast', 'lunch', 'dinner', 'snack'],
+        },
+      },
+      required: ['description'],
+    ),
+    execute: (args) async {
+      final description = '${args['description'] ?? ''}'.trim();
+      if (description.isEmpty) {
+        return RyzeToolResult.failed('ryze_action_failed'.tr(_lang));
+      }
+
+      final AIAnalysisResult result;
+      try {
+        result = await GeminiAnalysisServiceV2.analyzeTextDescription(description);
+      } catch (e) {
+        if (kDebugMode) debugPrint('❌ journal.log_food_text : $e');
+        return RyzeToolResult.failed('ryze_action_failed'.tr(_lang));
+      }
+
+      if (!result.success || result.detectedFoods.isEmpty) {
+        // Ne rien reconnaître n'est pas une panne : Ryze doit pouvoir le dire
+        // et demander une description plus précise.
+        return RyzeToolResult(
+          ok: false,
+          summary: 'ryze_food_not_recognised'.tr(_lang),
+          data: {'recognised': false},
+        );
+      }
+
+      final navigator = AppNavigator().navigatorState;
+      if (navigator == null) return RyzeToolResult.failed('ryze_action_failed'.tr(_lang));
+
+      await navigator.push(MaterialPageRoute(
+        builder: (_) => AIAnalysisScreen(
+          note: description,
+          isFromTextInput: true,
+          isFromDashboard: true,
+          analysisResult: result,
+          mealName: args['meal_type'] as String?,
+        ),
+      ));
+
+      final noms = result.detectedFoods.map((f) => f.name).take(3).join(', ');
+      return RyzeToolResult(
+        ok: true,
+        summary: 'ryze_food_to_review'.tr(_lang).replaceAll('{foods}', noms),
+        data: {'recognised': true, 'foods': result.detectedFoods.length, 'awaiting_review': true},
+      );
+    },
+  );
+
+  static List<RyzeTool> get all => [water, weight, food];
 }

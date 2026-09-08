@@ -8535,6 +8535,36 @@ class AppTranslations {
       'en': 'Remove the session on {day}?',
       'de': 'Die Einheit am {day} entfernen?',
     },
+    'ryze_confirm_delete_cardio': {
+      'fr': 'Retirer le cardio de {day} ?',
+      'en': 'Remove the cardio on {day}?',
+      'de': 'Das Cardio am {day} entfernen?',
+    },
+    'ryze_confirm_replace_meal': {
+      'fr': 'Remplacer par {name} ?',
+      'en': 'Replace with {name}?',
+      'de': 'Durch {name} ersetzen?',
+    },
+    'ryze_confirm_delete_sessions': {
+      'fr': 'Retirer ces séances ?',
+      'en': 'Remove those sessions?',
+      'de': 'Diese Einheiten entfernen?',
+    },
+    'ryze_confirm_delete_all_meals': {
+      'fr': 'Retirer tous les repas de la semaine ?',
+      'en': 'Remove every meal this week?',
+      'de': 'Alle Mahlzeiten dieser Woche entfernen?',
+    },
+    'ryze_food_not_recognised': {
+      'fr': "Je n'ai pas reconnu ce plat. Décris-le-moi autrement ?",
+      'en': "I didn't catch that dish. Describe it another way?",
+      'de': 'Das Gericht habe ich nicht erkannt. Beschreib es anders?',
+    },
+    'ryze_food_to_review': {
+      'fr': '{foods} — à vérifier',
+      'en': '{foods} — to review',
+      'de': '{foods} — zu prüfen',
+    },
     'ryze_memory_too_long': {
       'fr': "C'est trop long pour être retenu tel quel.",
       'en': "That's too long to remember as is.",

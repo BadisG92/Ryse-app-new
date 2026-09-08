@@ -224,6 +224,120 @@ class PlanTools {
     execute: (args) => _run('modify_workout', args),
   );
 
+  static final createHiit = RyzeTool(
+    name: 'plan.create_hiit',
+    declaration: toolSchema(
+      name: 'plan.create_hiit',
+      description:
+          'Add an interval session to the weekly plan. Use it when the user asks for '
+          'HIIT, tabata or intervals, rather than plan.create_cardio which is for '
+          'steady effort.',
+      properties: {
+        'day': {'type': 'string', 'description': 'Day of the session.', 'enum': _days},
+        'hiit_type': {
+          'type': 'string',
+          'description': 'Which format: beginner, classic, tabata, advanced.',
+        },
+        'work_seconds': {'type': 'integer', 'description': 'Seconds of effort per round.'},
+        'rest_seconds': {'type': 'integer', 'description': 'Seconds of rest per round.'},
+        'rounds': {'type': 'integer', 'description': 'Number of rounds.'},
+      },
+      required: ['day'],
+    ),
+    execute: (args) => _run('create_hiit', args),
+  );
+
+  static final moveCardio = RyzeTool(
+    name: 'plan.move_cardio',
+    declaration: toolSchema(
+      name: 'plan.move_cardio',
+      description:
+          'Move a planned cardio session from one day to another. Use it only for a '
+          'change of day; to change the activity or its length use plan.modify_cardio.',
+      properties: {
+        'from_day': {'type': 'string', 'description': 'Where it is now.', 'enum': _days},
+        'to_day': {'type': 'string', 'description': 'Where it goes.', 'enum': _days},
+      },
+      required: ['from_day', 'to_day'],
+    ),
+    needsConfirmation: (_) => true,
+    preview: (args) => _confirm(
+      'move_cardio',
+      args,
+      'ryze_confirm_move'.tr(_lang).replaceAll('{from}', '${args['from_day']}').replaceAll('{to}', '${args['to_day']}'),
+    ),
+    execute: (args) => _run('move_cardio', args),
+  );
+
+  static final modifyCardio = RyzeTool(
+    name: 'plan.modify_cardio',
+    declaration: toolSchema(
+      name: 'plan.modify_cardio',
+      description:
+          'Change a planned cardio session: its activity, its length, its distance. Use '
+          'it when the session stays and only its content changes. Always pass the new '
+          'distance when the user gives one.',
+      properties: {
+        'current_day': {'type': 'string', 'description': 'Day of the session.', 'enum': _days},
+        'new_activity': {
+          'type': 'string',
+          'description': 'New activity.',
+          'enum': ['running', 'bike', 'walking'],
+        },
+        'new_duration_minutes': {'type': 'integer', 'description': 'New length in minutes.'},
+        'new_target_km': {'type': 'number', 'description': 'New distance in kilometres.'},
+      },
+      required: ['current_day'],
+    ),
+    needsConfirmation: (_) => true,
+    preview: (args) => _confirm(
+      'modify_cardio',
+      args,
+      'ryze_confirm_modify'.tr(_lang).replaceAll('{day}', '${args['current_day']}'),
+    ),
+    execute: (args) => _run('modify_cardio', args),
+  );
+
+  static final modifyMeal = RyzeTool(
+    name: 'plan.modify_meal',
+    declaration: toolSchema(
+      name: 'plan.modify_meal',
+      description:
+          'Replace a planned meal with another one. Use it only when the user says to '
+          'change or swap what is planned; to add a second dish to the same meal use '
+          'plan.create_meal instead.',
+      properties: {
+        'day': {'type': 'string', 'description': 'Day of the meal.', 'enum': _days},
+        'meal_type': {
+          'type': 'string',
+          'description': 'Which meal.',
+          'enum': ['breakfast', 'lunch', 'dinner', 'snack'],
+        },
+        'current_dish_name': {
+          'type': 'string',
+          'description':
+              'Name of the dish being replaced. Needed when that day holds several '
+              'entries of the same meal type.',
+        },
+        'dish_name': {'type': 'string', 'description': 'New dish name.'},
+        'dish_description': {'type': 'string', 'description': 'New description, same format as create.'},
+        'calories': {'type': 'integer', 'description': 'Estimated calories.'},
+        'proteins': {'type': 'number', 'description': 'Proteins in grams.'},
+        'carbs': {'type': 'number', 'description': 'Carbs in grams.'},
+        'fats': {'type': 'number', 'description': 'Fats in grams.'},
+        'quantity_g': {'type': 'number', 'description': 'Portion size in grams.'},
+      },
+      required: ['day', 'meal_type', 'dish_name', 'calories', 'proteins', 'carbs', 'fats', 'quantity_g'],
+    ),
+    needsConfirmation: (_) => true,
+    preview: (args) => _confirm(
+      'modify_meal',
+      args,
+      'ryze_confirm_replace_meal'.tr(_lang).replaceAll('{name}', '${args['dish_name']}'),
+    ),
+    execute: (args) => _run('modify_meal', args),
+  );
+
   // ------------------------------------------------------------ retirer
 
   static final deleteMeal = RyzeTool(
@@ -273,6 +387,104 @@ class PlanTools {
     execute: (args) => _run('delete_workout', args),
   );
 
+  static final deleteCardio = RyzeTool(
+    name: 'plan.delete_cardio',
+    declaration: toolSchema(
+      name: 'plan.delete_cardio',
+      description:
+          'Remove a planned cardio session. Use it only when the user wants it gone '
+          'with nothing in its place; to change it use plan.modify_cardio.',
+      properties: {
+        'day': {'type': 'string', 'description': 'Day of the session.', 'enum': _days},
+        'activity_name': {
+          'type': 'string',
+          'description': 'Which activity, when the day holds several.',
+        },
+      },
+      required: ['day'],
+    ),
+    needsConfirmation: (_) => true,
+    preview: (args) => _confirm(
+      'delete_cardio',
+      args,
+      'ryze_confirm_delete_cardio'.tr(_lang).replaceAll('{day}', '${args['day']}'),
+    ),
+    execute: (args) => _run('delete_cardio', args),
+  );
+
+  /// La suppression en masse, en un seul outil plutôt que six.
+  ///
+  /// Le planificateur en a six — tout, les séances, le cardio, un jour, une
+  /// sélection, les repas — parce que son prompt lui apprend lequel choisir.
+  /// Un seul outil souple demande moins au modèle, et un modèle léger choisit
+  /// d'autant mieux qu'on lui présente moins de portes voisines.
+  static final deleteSessions = RyzeTool(
+    name: 'plan.delete_sessions',
+    declaration: toolSchema(
+      name: 'plan.delete_sessions',
+      description:
+          'Remove several planned training sessions at once. Use it when the request is '
+          'broader than a single session: a whole day, every workout, all cardio, '
+          'everything except one day. With no argument it clears the whole week. Only '
+          'for training — for meals use plan.delete_all_meals.',
+      properties: {
+        'days': {
+          'type': 'array',
+          'items': {'type': 'string', 'enum': _days},
+          'description': 'Days to clear. Empty means every day of the week.',
+        },
+        'exclude_days': {
+          'type': 'array',
+          'items': {'type': 'string', 'enum': _days},
+          'description': 'Days to spare, for "everything except...".',
+        },
+        'session_types': {
+          'type': 'array',
+          'items': {'type': 'string', 'enum': ['workout', 'cardio']},
+          'description': 'Which kinds to remove. Empty means both.',
+        },
+      },
+    ),
+    needsConfirmation: (_) => true,
+    preview: (args) => _confirm(
+      'delete_sessions',
+      args,
+      'ryze_confirm_delete_sessions'.tr(_lang),
+    ),
+    execute: (args) => _run('delete_sessions', args),
+  );
+
+  static final deleteAllMeals = RyzeTool(
+    name: 'plan.delete_all_meals',
+    declaration: toolSchema(
+      name: 'plan.delete_all_meals',
+      description:
+          'Remove every planned meal of the week. Use it only when the user clearly '
+          'wants the whole meal plan cleared; for one meal use plan.delete_meal.',
+    ),
+    needsConfirmation: (_) => true,
+    preview: (args) => _confirm(
+      'delete_all_meals',
+      args,
+      'ryze_confirm_delete_all_meals'.tr(_lang),
+    ),
+    execute: (args) => _run('delete_all_meals', args),
+  );
+
+  /// Défaire la dernière suppression.
+  ///
+  /// Sans confirmation : c'est déjà le geste qui répare.
+  static final undo = RyzeTool(
+    name: 'plan.undo',
+    declaration: toolSchema(
+      name: 'plan.undo',
+      description:
+          'Undo the last removal from the plan. Use it when the user regrets what was '
+          'just deleted and says so, only for the most recent one.',
+    ),
+    execute: (args) => _run('undo_last_action', args),
+  );
+
   /// Les outils d'écriture du plan, pour la conversation.
   ///
   /// Ils gagneront `RyzeSurface.planner` quand l'écran rejoindra le registre.
@@ -280,10 +492,18 @@ class PlanTools {
         createMeal,
         createWorkout,
         createCardio,
+        createHiit,
         moveWorkout,
+        moveCardio,
         modifyWorkout,
+        modifyCardio,
+        modifyMeal,
         deleteMeal,
         deleteWorkout,
+        deleteCardio,
+        deleteSessions,
+        deleteAllMeals,
+        undo,
       ];
 
   /// Les surfaces sur lesquelles ces outils vivent aujourd'hui.
