@@ -198,21 +198,22 @@ class _NutritionHistoryPageState extends State<NutritionHistoryPage> {
     return Column(
       children: [
         SizedBox(
-          height: context.vw(17),
+          height: DayChip.stripHeight(context),
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             reverse: true,
             padding: EdgeInsets.symmetric(horizontal: gutter),
             itemCount: _days.length,
-            separatorBuilder: (_, __) => SizedBox(width: context.vw(2.1)),
+            separatorBuilder: (_, __) => SizedBox(width: DayChip.gap(context)),
             itemBuilder: (_, i) {
               final d = _days[_days.length - 1 - i];
-              return _DayChip(
+              final selected = _key(d) == _key(_selected);
+              return DayChip(
                 day: d,
                 lang: lang,
-                fill: _fill[_key(d)],
-                selected: _key(d) == _key(_selected),
+                selected: selected,
                 onTap: () => _select(d),
+                marker: _Gauge(fill: _fill[_key(d)], selected: selected),
               );
             },
           ),
@@ -298,51 +299,6 @@ class _NutritionHistoryPageState extends State<NutritionHistoryPage> {
   }
 
   String _litres(double l, String lang) => NumberFormat.decimalPattern(lang).format(double.parse(l.toStringAsFixed(2)));
-}
-
-/// One day of the strip: its letter, its number, and how full it was.
-class _DayChip extends StatelessWidget {
-  const _DayChip({required this.day, required this.lang, required this.fill, required this.selected, required this.onTap});
-
-  final DateTime day;
-  final String lang;
-  final double? fill;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final letter = RyzeDates.short(day, lang);
-    final fg = selected ? RyzeColors.surf : RyzeColors.ink;
-
-    return Pressable(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: RyzeDurations.tap,
-        curve: RyzeCurves.out,
-        width: context.vw(13),
-        padding: EdgeInsets.symmetric(vertical: context.vw(2.1)),
-        decoration: BoxDecoration(
-          color: selected ? RyzeColors.ink : RyzeColors.surf,
-          borderRadius: BorderRadius.circular(RyzeRadius.md),
-          border: Border.all(color: selected ? RyzeColors.ink : RyzeColors.line),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              letter,
-              style: RyzeText.body(context, 2.6, weight: FontWeight.w600, color: selected ? RyzeColors.surf.withValues(alpha: 0.7) : RyzeColors.mute2),
-            ),
-            SizedBox(height: context.vw(0.8)),
-            Text('${day.day}', style: RyzeText.body(context, 3.9, weight: FontWeight.w600, color: fg)),
-            SizedBox(height: context.vw(1.5)),
-            _Gauge(fill: fill, selected: selected),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 /// A 3 pt bar under the number: how much of the goal that day held. Nothing is

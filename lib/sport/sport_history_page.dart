@@ -137,7 +137,7 @@ class _SportHistoryPageState extends State<SportHistoryPage> with GlobalStateLis
       padding: EdgeInsets.fromLTRB(0, context.vw(2), 0, 132),
       children: [
         SizedBox(
-          height: context.vw(17),
+          height: DayChip.stripHeight(context),
           child: ListView.builder(
             controller: _strip,
             scrollDirection: Axis.horizontal,
@@ -235,64 +235,67 @@ class _DayChip extends StatelessWidget {
   final DateTime date;
   final bool selected;
   final Set<SportKind> kinds;
+
+  /// Un lundi ouvre une semaine : il prend un peu d'air a sa gauche. Sur
+  /// douze semaines, c'est ce qui rend la bande lisible.
   final bool monday;
+
   final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final gap = DayChip.gap(context) / 2;
+    return Padding(
+      padding: EdgeInsets.only(left: monday ? gap * 3 : gap, right: gap),
+      child: DayChip(
+        day: date,
+        lang: lang,
+        selected: selected,
+        onTap: onTap,
+        marker: _Marks(kinds: kinds, selected: selected),
+      ),
+    );
+  }
+}
+
+/// Ce que le jour a porte : la muscu remplit, le cardio cercle — la meme
+/// forme que sur le rail de la semaine. Un point gris quand il n'y a rien.
+class _Marks extends StatelessWidget {
+  const _Marks({required this.kinds, required this.selected});
+
+  final Set<SportKind> kinds;
+  final bool selected;
 
   @override
   Widget build(BuildContext context) {
     final strength = kinds.contains(SportKind.strength);
     final cardio = kinds.contains(SportKind.cardio);
-    return Padding(
-      padding: EdgeInsets.only(left: monday ? context.vw(2.6) : context.vw(0.8), right: context.vw(0.8)),
-      child: Pressable(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: RyzeDurations.tap,
-          curve: RyzeCurves.out,
-          width: context.vw(11.3),
-          padding: EdgeInsets.symmetric(vertical: context.vw(1.5)),
-          decoration: BoxDecoration(
-            color: selected ? RyzeColors.ink : Colors.transparent,
-            borderRadius: BorderRadius.circular(RyzeRadius.sm),
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        if (strength)
+          Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(color: selected ? RyzeColors.surf : RyzeColors.ink, shape: BoxShape.circle),
           ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(RyzeDates.short(date, lang), style: RyzeText.body(context, 2.6, weight: FontWeight.w600, color: selected ? RyzeColors.surf.withValues(alpha: 0.7) : RyzeColors.mute2)),
-              SizedBox(height: context.vw(0.5)),
-              Text('${date.day}', style: RyzeText.body(context, 3.6, weight: FontWeight.w600, color: selected ? RyzeColors.surf : RyzeColors.ink).copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
-              SizedBox(height: context.vw(1.3)),
-              SizedBox(
-                height: 12,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (strength)
-                      Container(
-                        width: 10,
-                        height: 10,
-                        decoration: BoxDecoration(color: selected ? RyzeColors.surf : RyzeColors.ink, shape: BoxShape.circle),
-                      ),
-                    if (strength && cardio) const SizedBox(width: 3),
-                    if (cardio)
-                      Container(
-                        width: 10,
-                        height: 10,
-                        decoration: BoxDecoration(color: Colors.transparent, shape: BoxShape.circle, border: Border.all(color: RyzeColors.acc, width: 2)),
-                      ),
-                    if (!strength && !cardio)
-                      Container(
-                        width: 6,
-                        height: 6,
-                        decoration: BoxDecoration(color: selected ? RyzeColors.surf.withValues(alpha: 0.35) : RyzeColors.idle, shape: BoxShape.circle),
-                      ),
-                  ],
-                ),
-              ),
-            ],
+        if (strength && cardio) const SizedBox(width: 3),
+        if (cardio)
+          Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: selected ? RyzeColors.surf : RyzeColors.acc, width: 2),
+            ),
           ),
-        ),
-      ),
+        if (!strength && !cardio)
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(color: selected ? RyzeColors.surf.withValues(alpha: 0.35) : RyzeColors.idle, shape: BoxShape.circle),
+          ),
+      ],
     );
   }
 }
