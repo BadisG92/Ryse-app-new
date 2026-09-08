@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
-import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../config/gemini_config.dart';
+import '../ai/ryze_agent.dart';
+import '../ai/ryze_context.dart';
+import '../ai/ryze_context_source.dart';
+import '../ai/ryze_memory.dart';
+import '../ai/ryze_persona.dart';
 import '../models/coach_chat_models.dart';
-import 'coach_context_builder.dart';
-import 'coach_preference_extractor.dart';
 import 'coach_personality_service.dart';
 import 'global_state_manager.dart';
 import 'localization_service.dart';
@@ -21,9 +21,9 @@ class CoachChatService {
 
   CoachChatService._internal();
 
-  // Gemini model for chat
-  GenerativeModel? _model;
-  ChatSession? _currentChatSession;
+
+  /// Le moteur : il porte l'historique, l'instruction système et le flux.
+  RyzeAgent? _agent;
 
   // Supabase client
   final _supabase = Supabase.instance.client;
@@ -46,24 +46,11 @@ class CoachChatService {
   Future<void> initialize() async {
     if (kDebugMode) debugPrint('🤖 CoachChatService: Initializing...');
 
-    // Initialize Gemini model for chat
-    _model = GenerativeModel(
-      model: GeminiConfig.modelName,
-      apiKey: GeminiConfig.geminiApiKey,
-      safetySettings: GeminiConfig.sdkSafetySettings,
-      generationConfig: GenerationConfig(
-        temperature: 0.8, // More creative for conversational tone
-        topK: 40,
-        topP: 0.95,
-        // Le prompt demande une recette complète — nom, macros, ingrédients,
-        // étapes — et la consigne de longueur tient le coach court. 400 tokens
-        // coupaient cette recette au milieu, surtout en français et en
-        // allemand, qui tokenisent plus lourd que l'anglais.
-        maxOutputTokens: 1024,
-      ),
-    );
+    // Le contexte se met à jour tout seul à partir d'ici : boire un verre ou
+    // finir une séance rafraîchit le bloc concerné, sans reconstruire la
+    // conversation.
+    RyzeContext.instance.listen();
 
-    // Load user preferences
     await _loadUserPreferences();
 
     if (kDebugMode) debugPrint('✅ CoachChatService: Initialized');
@@ -210,133 +197,57 @@ class CoachChatService {
   // MESSAGE HANDLING
   // ==========================================
 
-  /// Start a Gemini chat session with system prompt and history
+  /// Prépare l'agent avec l'historique de la conversation.
+  ///
+  /// L'instruction système n'est plus injectée en faux premier tour utilisateur
+  /// suivi d'un « Compris ! » français : c'est un vrai champ de la requête,
+  /// relu à chaque envoi. Changer de ton ou sauver une préférence ne coûte donc
+  /// plus la reconstruction de la conversation.
   Future<void> _startChatSession() async {
-    if (_model == null) {
-      await initialize();
-    }
+    _agent ??= RyzeAgent(config: RyzeGenerationConfig.coach)
+      ..systemInstructionBuilder = _buildSystemInstruction;
 
-    // Build system prompt with user context
-    final systemPrompt = await CoachContextBuilder.instance.buildSystemPrompt(
-      preferences: _userPreferences,
-    );
-
-    if (kDebugMode) {
-      debugPrint('🤖 CoachChatService: System prompt built (${systemPrompt.length} chars)');
-      // Log first 500 chars of personality section
-      final personalityIndex = systemPrompt.indexOf('ADOPTE CE TON');
-      if (personalityIndex > 0) {
-        debugPrint('🎭 Personality section: ${systemPrompt.substring(personalityIndex, (personalityIndex + 200).clamp(0, systemPrompt.length))}...');
-      }
-    }
-
-    // Convert existing messages to Gemini format
-    final history = <Content>[];
-
-    // Add system prompt as first user message (workaround for system instructions)
-    history.add(Content.text('[SYSTEM INSTRUCTIONS]\n$systemPrompt'));
-    history.add(Content.model([TextPart('Compris ! Je suis Coach Ryze, prêt à t\'accompagner. Comment puis-je t\'aider aujourd\'hui ?')]));
-
-    // Add conversation history (limited to last 30 messages for AI context)
-    // Note: _currentMessages contains ALL messages for display, but AI only sees the last 30
+    // Les trente derniers messages seulement : l'écran en garde deux cents
+    // pour l'affichage, le modèle n'a pas besoin de tout relire.
     final messagesToSend = _currentMessages.length > maxMessagesContext
         ? _currentMessages.sublist(_currentMessages.length - maxMessagesContext)
         : _currentMessages;
 
-    // Build history with day markers to give AI temporal context
-    final historyWithDays = _buildHistoryWithDayMarkers(messagesToSend);
-    history.addAll(historyWithDays);
+    _agent!.seed(messagesToSend.map((m) => (fromUser: m.isUser, text: m.content)));
 
-    _currentChatSession = _model!.startChat(history: history);
+    if (kDebugMode) {
+      debugPrint('🤖 CoachChatService: agent prêt, ${_agent!.historyLength} tours');
+    }
   }
 
-  /// Build chat history with day markers inserted between messages from different days
-  /// This helps the AI understand temporal context (e.g., "yesterday's conversation was about X, today is a new day")
-  List<Content> _buildHistoryWithDayMarkers(List<CoachMessage> messages) {
-    final history = <Content>[];
-    if (messages.isEmpty) return history;
-
+  /// L'instruction système, reconstruite à chaque envoi.
+  Future<String> _buildSystemInstruction() async {
     final lang = LocalizationService.instance.currentLanguageCode;
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
+    final strings = RyzePersona.of(lang);
 
-    DateTime? lastMessageDay;
-    bool isFirstDayMarker = true;
+    final profile = await RyzeContextSource.instance.build(strings);
+    final prefs = await RyzeMemory.instance.load();
 
-    for (var msg in messages) {
-      final msgDay = DateTime(msg.createdAt.year, msg.createdAt.month, msg.createdAt.day);
-
-      // Check if we need to insert a day marker
-      if (lastMessageDay == null || msgDay != lastMessageDay) {
-        // Insert day marker as a system note
-        final dayMarker = _buildDayMarker(msgDay, today, lang, isFirstDayMarker);
-
-        // Add day marker as user message (context note) and AI acknowledgment
-        history.add(Content.text('[CONTEXTE TEMPOREL] $dayMarker'));
-        history.add(Content.model([TextPart('Noté.')]));
-
-        lastMessageDay = msgDay;
-        isFirstDayMarker = false;
+    return RyzePersona.build(
+      lang: lang,
+      surface: RyzeSurface.coach,
+      userName: GlobalStateManager.instance.userName,
+      gender: _userGender,
+      age: _userAge,
+      context: profile,
+    ).then((prompt) {
+      if (kDebugMode) {
+        debugPrint('🤖 Instruction système : ${prompt.length} caractères, '
+            'mémoire ${RyzeMemory.itemsOf(prefs).length} éléments');
       }
-
-      // Add the actual message
-      if (msg.role == MessageRole.user) {
-        history.add(Content.text(msg.content));
-      } else {
-        history.add(Content.model([TextPart(msg.content)]));
-      }
-    }
-
-    return history;
+      return prompt;
+    });
   }
 
-  /// Build a day marker string for the AI context
-  String _buildDayMarker(DateTime msgDay, DateTime today, String lang, bool isFirstMarker) {
-    final difference = today.difference(msgDay).inDays;
-    final dateFormatter = DateFormat('EEEE d MMMM yyyy', lang == 'fr' ? 'fr_FR' : lang == 'de' ? 'de_DE' : 'en_US');
-    final formattedDate = dateFormatter.format(msgDay);
+  /// Le sexe et l'âge, relus avec le profil et gardés pour l'adaptation du ton.
+  String? _userGender;
+  int? _userAge;
 
-    if (difference == 0) {
-      // Today
-      if (lang == 'fr') {
-        return "Nous sommes AUJOURD'HUI ($formattedDate). Les données nutritionnelles et sportives dans le contexte sont celles d'aujourd'hui. Réponds en fonction des données du jour actuel.";
-      } else if (lang == 'de') {
-        return "Wir sind HEUTE ($formattedDate). Die Ernährungs- und Sportdaten im Kontext sind die von heute.";
-      } else {
-        return "We are TODAY ($formattedDate). The nutrition and sport data in context are today's data. Answer based on today's data.";
-      }
-    } else if (difference == 1) {
-      // Yesterday
-      if (lang == 'fr') {
-        return isFirstMarker
-            ? "Les messages suivants datent d'HIER ($formattedDate). C'est de l'historique passé."
-            : "--- HIER ($formattedDate) ---";
-      } else if (lang == 'de') {
-        return isFirstMarker
-            ? "Die folgenden Nachrichten sind von GESTERN ($formattedDate). Das ist vergangene Geschichte."
-            : "--- GESTERN ($formattedDate) ---";
-      } else {
-        return isFirstMarker
-            ? "The following messages are from YESTERDAY ($formattedDate). This is past history."
-            : "--- YESTERDAY ($formattedDate) ---";
-      }
-    } else {
-      // Older
-      if (lang == 'fr') {
-        return isFirstMarker
-            ? "Les messages suivants datent du $formattedDate (il y a $difference jours). C'est de l'historique passé."
-            : "--- $formattedDate (il y a $difference jours) ---";
-      } else if (lang == 'de') {
-        return isFirstMarker
-            ? "Die folgenden Nachrichten sind vom $formattedDate (vor $difference Tagen). Das ist vergangene Geschichte."
-            : "--- $formattedDate (vor $difference Tagen) ---";
-      } else {
-        return isFirstMarker
-            ? "The following messages are from $formattedDate ($difference days ago). This is past history."
-            : "--- $formattedDate ($difference days ago) ---";
-      }
-    }
-  }
 
   /// Send a message with streaming response
   ///
@@ -350,7 +261,7 @@ class CoachChatService {
       await getOrCreateConversation();
     }
 
-    if (_currentConversation == null || _currentChatSession == null) {
+    if (_currentConversation == null || _agent == null) {
       yield 'coach_error_start'.tr(lang);
       return;
     }
@@ -386,17 +297,15 @@ class CoachChatService {
     }
 
     try {
-      // Stream response from Gemini
-      final responseStream = _currentChatSession!.sendMessageStream(
-        Content.text(userMessage),
-      );
-
       final buffer = StringBuffer();
 
-      await for (final response in responseStream) {
-        if (response.text != null) {
-          buffer.write(response.text);
-          yield response.text!;
+      await for (final event in _agent!.send(userMessage)) {
+        if (event is RyzeTextDelta) {
+          buffer.write(event.text);
+          yield event.text;
+        } else if (event is RyzeError) {
+          yield event.messageKey.tr(lang);
+          return;
         }
       }
 
@@ -419,35 +328,14 @@ class CoachChatService {
 
         final assistantMsgModel = CoachMessage.fromJson(assistantMsgResponse);
         _currentMessages.add(assistantMsgModel);
-
-        // Extract preferences in background after 4+ messages
-        if (_currentMessages.length >= 4) {
-          _extractPreferencesInBackground();
-        }
       }
     } catch (e) {
+      // Le transport a déjà ses reprises et ses délais ; ce qui remonte ici
+      // est une écriture en base qui a échoué, pas une panne du modèle. La
+      // reprise qui vivait à cet endroit rattrapait un bug du SDK, disparu
+      // avec lui.
       if (kDebugMode) debugPrint('❌ CoachChatService: Error streaming message: $e');
-
-      // Handle known SDK bug with empty responses - silent retry
-      if (e.toString().contains('Unhandled format for Content') && retryCount < 2) {
-        if (kDebugMode) debugPrint('🔄 CoachChatService: Retrying after SDK error (attempt ${retryCount + 1})');
-
-        // La session est reconstruite, pas seulement mise à nul : `initialize()`
-        // ne fabrique que le modèle, si bien que la tentative suivante retombait
-        // sur le garde-fou plus haut et rendait une erreur au lieu de réessayer.
-        _currentChatSession = null;
-        await _startChatSession();
-
-        // Small delay before retry
-        await Future.delayed(const Duration(milliseconds: 500));
-
-        // Retry silently
-        await for (final chunk in streamMessage(userMessage, retryCount: retryCount + 1)) {
-          yield chunk;
-        }
-      } else {
-        yield 'coach_error_generic'.tr(lang);
-      }
+      yield 'coach_error_generic'.tr(lang);
     }
   }
 
@@ -458,7 +346,7 @@ class CoachChatService {
       await getOrCreateConversation();
     }
 
-    if (_currentConversation == null || _currentChatSession == null) {
+    if (_currentConversation == null || _agent == null) {
       yield 'coach_error_start'.tr(lang);
       return;
     }
@@ -521,17 +409,17 @@ IMPORTANT:
 - Sois concis mais complet (max 150 mots)
 ''';
 
-      // Send to Gemini (no user message saved)
-      final responseStream = _currentChatSession!.sendMessageStream(
-        Content.text(bilanPrompt),
-      );
-
+      // Le bilan passe ses consignes en message caché : l'utilisateur voit sa
+      // phrase courte, le modèle reçoit le tout.
       final buffer = StringBuffer();
 
-      await for (final response in responseStream) {
-        if (response.text != null) {
-          buffer.write(response.text);
-          yield response.text!;
+      await for (final event in _agent!.send(userMessageText, hidden: bilanPrompt)) {
+        if (event is RyzeTextDelta) {
+          buffer.write(event.text);
+          yield event.text;
+        } else if (event is RyzeError) {
+          yield event.messageKey.tr(lang);
+          return;
         }
       }
 
@@ -565,27 +453,6 @@ IMPORTANT:
     }
   }
 
-  /// Extract user preferences from conversation in background
-  void _extractPreferencesInBackground() {
-    // Run async without awaiting to not block UI
-    Future(() async {
-      try {
-        if (_currentConversation == null) return;
-
-        final newPrefs = await CoachPreferenceExtractor.instance.extractFromMessages(
-          _currentMessages,
-          _userPreferences,
-        );
-
-        if (newPrefs != null && !newPrefs.isEmpty) {
-          await updatePreferences(newPrefs);
-          if (kDebugMode) debugPrint('✅ Preferences extracted and saved');
-        }
-      } catch (e) {
-        if (kDebugMode) debugPrint('⚠️ Background preference extraction failed: $e');
-      }
-    });
-  }
 
   // ==========================================
   // PREFERENCES
@@ -624,12 +491,29 @@ IMPORTANT:
 
       _userPreferences = preferences;
 
-      // Restart chat session with updated preferences
-      if (_currentChatSession != null) {
-        await _startChatSession();
-      }
+      // La conversation n'est plus reconstruite ici. L'instruction système est
+      // relue au prochain envoi, ce qui suffit pour que Ryze tienne compte de
+      // ce qu'il vient d'apprendre — et le fil de la discussion survit.
+      RyzeMemory.instance.clearCache();
+      RyzeContext.instance.invalidate({RyzeBlock.memory});
     } catch (e) {
       if (kDebugMode) debugPrint('❌ CoachChatService: Error updating preferences: $e');
+    }
+  }
+
+  /// L'extraction de ce que Ryze retient, quand elle est due.
+  ///
+  /// Appelée en quittant l'écran, et non après chaque réponse. Elle ne touche
+  /// pas la conversation : le bloc mémoire sera relu au prochain envoi.
+  Future<void> extractMemoryIfDue() async {
+    try {
+      final change = await RyzeMemory.instance.extractIfDue(_currentMessages);
+      if (change) {
+        await _loadUserPreferences();
+        RyzeContext.instance.invalidate({RyzeBlock.memory});
+      }
+    } catch (e) {
+      if (kDebugMode) debugPrint('⚠️ CoachChatService: extraction mémoire : $e');
     }
   }
 
@@ -641,14 +525,17 @@ IMPORTANT:
   void clearCurrentConversation() {
     _currentConversation = null;
     _currentMessages = [];
-    _currentChatSession = null;
+    _agent?.clear();
   }
 
   /// Reset the service (for logout)
   void reset() {
     _currentConversation = null;
     _currentMessages = [];
-    _currentChatSession = null;
+    _agent?.dispose();
+    _agent = null;
     _userPreferences = null;
+    RyzeMemory.instance.clearCache();
+    RyzeContextSource.instance.invalidate();
   }
 }

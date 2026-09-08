@@ -89,6 +89,11 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
     _scrollController.dispose();
     _focusNode.dispose();
     _speech.stop();
+
+    // Ce que Ryze retient se relit en quittant la conversation, pas après
+    // chaque réponse. Sans attendre : l'écran se ferme, l'extraction suit.
+    unawaited(CoachChatService.instance.extractMemoryIfDue());
+
     super.dispose();
   }
 
