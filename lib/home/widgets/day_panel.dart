@@ -144,21 +144,11 @@ class _SlotRow extends StatelessWidget {
                   for (final line in lines)
                     Padding(
                       padding: EdgeInsets.only(top: context.vw(0.5)),
-                      child: Pressable(
-                        onTap: () => onLineTap(line),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                line.detail.isEmpty ? line.title : '${line.title} · ${line.detail}',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: RyzeText.body(context, 3.1, color: RyzeColors.mute),
-                              ),
-                            ),
-                            Icon(LucideIcons.chevronRight, size: context.vw(3.9), color: RyzeColors.mute2),
-                          ],
-                        ),
+                      // Un repas note au journal n'a pas de feuille a ouvrir : pas
+                      // de chevron, pas de tap qui ne fait rien.
+                      child: _LineText(
+                        line: line,
+                        onTap: line.workout == null && line.activity == null ? null : () => onLineTap(line),
                       ),
                     ),
               ],
@@ -214,5 +204,32 @@ class _Dot extends StatelessWidget {
       ),
       child: done ? Icon(LucideIcons.check, size: 9, color: RyzeColors.surf) : null,
     );
+  }
+}
+
+/// Une ligne du jour : ce qu'elle contient, et le chevron seulement quand il
+/// y a quelque chose derriere.
+class _LineText extends StatelessWidget {
+  const _LineText({required this.line, required this.onTap});
+
+  final PlannedLine line;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final row = Row(
+      children: [
+        Expanded(
+          child: Text(
+            line.detail.isEmpty ? line.title : '${line.title} · ${line.detail}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: RyzeText.body(context, 3.1, color: RyzeColors.mute),
+          ),
+        ),
+        if (onTap != null) Icon(LucideIcons.chevronRight, size: context.vw(3.9), color: RyzeColors.mute2),
+      ],
+    );
+    return onTap == null ? row : Pressable(onTap: onTap, child: row);
   }
 }

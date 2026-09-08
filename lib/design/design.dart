@@ -39,6 +39,7 @@ export 'undo_bar.dart';
 export 'macro_rail.dart';
 export 'glass_row.dart';
 export 'camera_shell.dart';
+export 'busy.dart';
 export 'day_chip.dart';
 export 'day_instrument.dart';
 export 'sticky_total.dart';

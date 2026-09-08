@@ -150,7 +150,7 @@ class DayAnalysis {
   /// Ryze réfléchit se traite comme le viseur ou la séance en direct — plein
   /// cadre sur l'encre, une seule chose au centre, et elle respire.
   static OverlayEntry _showBusy(BuildContext context, String lang) {
-    final entry = OverlayEntry(builder: (_) => _Busy(lang: lang));
+    final entry = OverlayEntry(builder: (_) => RyzeBusy(message: 'day_analysis_running'.tr(lang)));
     Overlay.of(context, rootOverlay: true).insert(entry);
     return entry;
   }
@@ -166,88 +166,6 @@ class DayAnalysis {
       title: 'day_analysis_title'.tr(lang),
       subtitle: 'day_analysis_by'.tr(lang),
       builder: (sheet) => _Body(lang: lang, analysis: analysis),
-    );
-  }
-}
-
-/// Ryze en train de lire la journée : l'encre plein cadre, la marque en
-/// ambre au centre, et une onde qui part d'elle toutes les deux secondes.
-///
-/// L'onde est la seule chose qui bouge. Elle ne prétend pas mesurer une
-/// progression — l'appel dure ce qu'il dure, et une barre qui avance sans
-/// rien savoir serait un mensonge de plus.
-class _Busy extends StatefulWidget {
-  const _Busy({required this.lang});
-
-  final String lang;
-
-  @override
-  State<_Busy> createState() => _BusyState();
-}
-
-class _BusyState extends State<_Busy> with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 2200))..repeat();
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final still = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
-    final ring = context.vw(34);
-
-    return ColoredBox(
-      color: RyzeColors.ink,
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              width: ring,
-              height: ring,
-              child: AnimatedBuilder(
-                animation: _c,
-                builder: (context, child) {
-                  return Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      if (!still)
-                        for (final offset in const [0.0, 0.5])
-                          Builder(
-                            builder: (context) {
-                              final t = (_c.value + offset) % 1;
-                              return Opacity(
-                                opacity: (1 - t) * 0.30,
-                                child: Container(
-                                  width: ring * (0.34 + t * 0.66),
-                                  height: ring * (0.34 + t * 0.66),
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    border: Border.all(color: RyzeColors.acc, width: 1.2),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                      child!,
-                    ],
-                  );
-                },
-                child: RyzeMark(size: context.vw(11), color: RyzeColors.acc),
-              ),
-            ),
-            SizedBox(height: context.vw(4.6)),
-            Text(
-              'day_analysis_running'.tr(widget.lang),
-              textAlign: TextAlign.center,
-              style: RyzeText.body(context, 3.9, color: RyzeColors.surf.withValues(alpha: 0.78)),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

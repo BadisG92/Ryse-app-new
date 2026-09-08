@@ -348,6 +348,53 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
     final lang = context.watch<LocalizationService>().currentLanguageCode;
     final gutter = context.vw(5.1);
 
+    // L'attente prend tout l'ecran, comme celle de l'analyse de la journee et
+    // comme le viseur : la photo, la marque qui respire, une ligne. Elle etait
+    // une roulette de vingt pixels au milieu d'un ecran clair et vide, et elle
+    // se lisait comme une page grise le temps que Ryze reponde.
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: RyzeColors.ink,
+        body: Stack(
+          children: [
+            Positioned.fill(
+              child: RyzeBusy(
+                message: 'ai_reading_plate'.tr(lang),
+                subject: widget.imagePath == null
+                    ? null
+                    : ClipRRect(
+                        borderRadius: BorderRadius.circular(RyzeRadius.md),
+                        child: Image.file(
+                          File(widget.imagePath!),
+                          width: context.vw(46),
+                          height: context.vw(46),
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+              ),
+            ),
+            SafeArea(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(gutter, context.vw(2.1), gutter, 0),
+                child: Pressable(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    width: context.vw(9.7),
+                    height: context.vw(9.7),
+                    decoration: BoxDecoration(
+                      color: RyzeColors.surf.withValues(alpha: 0.14),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(LucideIcons.chevronLeft, size: context.vw(4.6), color: RyzeColors.surf),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: RyzeColors.paper,
       body: SafeArea(
@@ -384,11 +431,9 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
               ),
             ),
             Expanded(
-              child: _isLoading
-                  ? _buildThinking(lang)
-                  : !_analysisResult.success
-                      ? _buildErrorView()
-                      : ListView(
+              child: !_analysisResult.success
+                  ? _buildErrorView()
+                  : ListView(
                           padding: EdgeInsets.fromLTRB(gutter, context.vw(2.1), gutter, context.vw(6)),
                           children: [
                             if (widget.imagePath != null) ...[
@@ -439,36 +484,6 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
               ),
           ],
         ),
-      ),
-    );
-  }
-
-  /// L'attente. Elle dure quelques secondes et c'est la seule chose que
-  /// l'utilisateur voit, donc elle dit ce qui se passe plutôt que de tourner.
-  Widget _buildThinking(String lang) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          if (widget.imagePath != null)
-            ClipRRect(
-              borderRadius: BorderRadius.circular(RyzeRadius.md),
-              child: Image.file(
-                File(widget.imagePath!),
-                width: context.vw(46),
-                height: context.vw(46),
-                fit: BoxFit.cover,
-              ),
-            ),
-          SizedBox(height: context.vw(6.2)),
-          SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(color: RyzeColors.ink, strokeWidth: 2),
-          ),
-          SizedBox(height: context.vw(3.6)),
-          Text('ai_reading_plate'.tr(lang), style: RyzeText.body(context, 3.6, color: RyzeColors.mute)),
-        ],
       ),
     );
   }

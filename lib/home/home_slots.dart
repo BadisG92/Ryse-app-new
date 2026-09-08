@@ -106,6 +106,30 @@ class HomeSlots {
       }
     }
 
+    // Ce qui a ete mange hors plan. La bande le savait deja — un carre plein
+    // sur le jour — mais le jour deplie, lui, ne lisait que le planifie : on
+    // notait un repas, la marque se remplissait, et le detail restait vide.
+    final linked = <String>{
+      for (final m in day.meals)
+        if (m.mealData?.linkedFoodEntryId != null) m.mealData!.linkedFoodEntryId!,
+    };
+    for (final slot in kFoodSlots) {
+      final eaten = [
+        for (final e in day.journalEntries)
+          if (!linked.contains(e.id) && normalizeMealType(e.mealType) == slot.name) e,
+      ];
+      if (eaten.isEmpty) continue;
+      final energy = eaten.fold<int>(0, (n, e) => n + e.calories);
+      lines.add((
+        slot: slot,
+        state: SlotState.done,
+        title: eaten.map((e) => e.name).where((n) => n.isNotEmpty).join(', '),
+        detail: energy <= 0 ? '' : '$energy $kcal',
+        workout: null,
+        activity: null,
+      ));
+    }
+
     for (final w in day.workouts) {
       lines.add((
         slot: WeekSlot.sport,
