@@ -199,7 +199,7 @@ class RyzeAgent {
       try {
         final payload = await _payload();
 
-        await for (final chunk in _transport.stream(payload, model: model, surface: surface)) {
+        await for (final chunk in _transport.stream(payload, model: model, surface: surface.name)) {
           if (chunk.usage != null) _sessionUsage = _sessionUsage + chunk.usage!;
           if (chunk.finishReason == 'MAX_TOKENS') truncated = true;
 

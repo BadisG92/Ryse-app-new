@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
-import 'dart:convert';
 import 'dart:io';
 import 'package:image/image.dart' as img;
-import 'package:google_generative_ai/google_generative_ai.dart';
+import '../ai/ryze_oneshot.dart';
+import '../ai/ryze_transport.dart';
 import '../config/gemini_config.dart';
 import '../models/ai_analysis_models.dart';
 import 'location_service.dart';
@@ -348,41 +348,20 @@ ${_responseShape(responseLanguage)}''';
 
   /// Envoie la requête et rend le JSON de la réponse.
   ///
-  /// Le mode JSON est demandé au modèle, donc la réponse est du JSON et non
-  /// du texte qui en contient. Les deux chemins passaient auparavant par des
-  /// clients différents, dont un qui posait la clé dans l'adresse.
+  /// Les deux chemins passaient par des clients différents, dont un qui posait
+  /// la clé dans l'adresse. Ils passent maintenant par le transport commun,
+  /// donc par la fonction serveur dès que le drapeau l'ordonne.
   static Future<Map<String, dynamic>?> _makeGeminiRequest(
     String prompt, {
     Uint8List? imageBytes,
-  }) async {
-    try {
-      final model = GenerativeModel(
-        model: GeminiConfig.modelName,
-        apiKey: GeminiConfig.geminiApiKey,
-        generationConfig: GenerationConfig(
-          temperature: GeminiConfig.temperature,
-          topK: GeminiConfig.topK,
-          topP: GeminiConfig.topP,
-          maxOutputTokens: GeminiConfig.maxOutputTokens,
-          responseMimeType: 'application/json',
-        ),
-        safetySettings: GeminiConfig.sdkSafetySettings,
+  }) =>
+      RyzeOneShot.jsonObject(
+        prompt: prompt,
+        surface: RyzeUsageLabel.scan,
+        imageJpeg: imageBytes,
+        // Une photo demande plus de patience qu'une phrase : elle voyage.
+        timeout: Duration(seconds: imageBytes == null ? 45 : 60),
       );
-
-      final parts = <Part>[TextPart(prompt)];
-      if (imageBytes != null) parts.add(DataPart('image/jpeg', imageBytes));
-
-      final response = await model.generateContent([Content.multi(parts)]);
-      final text = response.text;
-      if (text == null || text.trim().isEmpty) return null;
-
-      final decoded = json.decode(text);
-      return decoded is Map<String, dynamic> ? decoded : null;
-    } catch (e) {
-      if (kDebugMode) debugPrint('❌ _makeGeminiRequest: $e');
-      return null;
-    }
-  }
 
   /// Ce que la lecture d'une réponse a donné.
   @visibleForTesting

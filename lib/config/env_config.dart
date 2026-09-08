@@ -31,11 +31,6 @@ class EnvConfig {
     defaultValue: '',
   );
 
-  static const String googleVisionApiKey = String.fromEnvironment(
-    'GOOGLE_VISION_API_KEY',
-    defaultValue: '',
-  );
-
   // ===================================
   // OAUTH
   // ===================================
@@ -95,10 +90,9 @@ class EnvConfig {
   static bool get isConfigured {
     final hasSupabase = supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty;
     final hasGemini = geminiApiKey.isNotEmpty;
-    final hasVision = googleVisionApiKey.isNotEmpty;
     // RevenueCat n'est pas obligatoire (peut être en mode test)
 
-    return hasSupabase && hasGemini && hasVision;
+    return hasSupabase && hasGemini;
   }
 
   /// Vérifie si on est en production
@@ -125,7 +119,6 @@ class EnvConfig {
     debugPrint('  Supabase URL: ${_maskSecret(supabaseUrl)}');
     debugPrint('  Supabase Key: ${_maskSecret(supabaseAnonKey)}');
     debugPrint('  Gemini Key: ${_maskSecret(geminiApiKey)}');
-    debugPrint('  Vision Key: ${_maskSecret(googleVisionApiKey)}');
     debugPrint('  Google OAuth: ${_maskSecret(googleClientId)}');
     debugPrint('  RevenueCat Apple: ${_maskSecret(revenueCatAppleApiKey)}');
     debugPrint('  RevenueCat Google: ${_maskSecret(revenueCatGoogleApiKey)}');
@@ -147,7 +140,6 @@ class EnvConfig {
       if (supabaseUrl.isEmpty) errors.add('SUPABASE_URL');
       if (supabaseAnonKey.isEmpty) errors.add('SUPABASE_ANON_KEY');
       if (geminiApiKey.isEmpty) errors.add('GEMINI_API_KEY');
-      if (googleVisionApiKey.isEmpty) errors.add('GOOGLE_VISION_API_KEY');
 
       throw ConfigurationException(
         'Missing required environment variables: ${errors.join(", ")}\n'

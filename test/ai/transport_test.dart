@@ -194,7 +194,7 @@ void main() {
         RyzeTransportMode.direct,
         payload,
         model: 'gemini-3.1-flash-lite',
-        surface: RyzeSurface.coach,
+        surface: RyzeUsageLabel.coach,
       );
       expect(body, same(payload));
       expect(body.containsKey('model'), isFalse);
@@ -207,18 +207,36 @@ void main() {
         RyzeTransportMode.edge,
         payload,
         model: 'gemini-3.1-flash-lite',
-        surface: RyzeSurface.planner,
+        surface: RyzeUsageLabel.planner,
       );
       expect(body['model'], 'gemini-3.1-flash-lite');
       expect(body['surface'], 'planner');
+      expect(body['stream'], isTrue);
       expect(body['payload'], same(payload));
     });
 
-    test("la surface se nomme comme la fonction l'attend", () {
-      // La fonction n'accepte que ces deux-là ; un nom qui change ici ferait
-      // une erreur 400 à chaque message.
-      expect(RyzeSurface.coach.name, 'coach');
-      expect(RyzeSurface.planner.name, 'planner');
+    test('une analyse ponctuelle demande une réponse d\'un seul tenant', () {
+      // La photo d'un repas n'a rien à streamer : elle attend un objet entier.
+      final body = RyzeTransport.bodyFor(
+        RyzeTransportMode.edge,
+        payload,
+        model: 'gemini-3.1-flash-lite',
+        surface: RyzeUsageLabel.scan,
+        stream: false,
+      );
+      expect(body['stream'], isFalse);
+      expect(body['surface'], 'scan');
+    });
+
+    test("les étiquettes sont celles que la fonction accepte", () {
+      // Un nom qui change ici fait une erreur 400 à chaque message, et une
+      // surface qui manque là-bas fait la même.
+      expect(RyzeSurface.coach.name, RyzeUsageLabel.coach);
+      expect(RyzeSurface.planner.name, RyzeUsageLabel.planner);
+
+      expect(RyzeUsageLabel.all, {
+        'coach', 'planner', 'scan', 'workout', 'nutrition', 'exercise', 'memory',
+      });
     });
   });
 

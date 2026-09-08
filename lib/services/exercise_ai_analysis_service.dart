@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
-import '../config/gemini_config.dart';
+import '../ai/ryze_oneshot.dart';
+import '../ai/ryze_transport.dart';
 import 'unit_service.dart';
 import 'coach_personality_service.dart';
 
@@ -12,22 +12,14 @@ class ExerciseAiAnalysisService {
   static const int _minimumSessions = 3;
   static const int _maxSessionsForAnalysis = 10;
 
-  static late GenerativeModel _model;
+  /// Plus chaud que le reste : deux séances identiques ne méritent pas deux
+  /// fois la même phrase.
+  static const double _temperature = 0.8;
+  static const int _maxOutputTokens = 1000;
 
-  /// Initialise le modèle Gemini
-  static void initialize() {
-    _model = GenerativeModel(
-      model: GeminiConfig.modelName,
-      apiKey: GeminiConfig.geminiApiKey,
-      safetySettings: GeminiConfig.sdkSafetySettings,
-      generationConfig: GenerationConfig(
-        temperature: 0.8, // Plus créatif pour des analyses variées
-        topK: 40,
-        topP: 0.95,
-        maxOutputTokens: 1000,
-      ),
-    );
-  }
+  /// Le modèle n'a plus à être monté d'avance : le transport s'en charge.
+  /// Gardé parce que `main.dart` l'appelle encore au démarrage.
+  static void initialize() {}
 
   /// Vérifie si une analyse est disponible en cache
   static Future<CachedAnalysis?> getCachedAnalysis({
@@ -131,26 +123,15 @@ class ExerciseAiAnalysisService {
     debugPrint('─' * 50);
     debugPrint('');
 
-    // Appeler Gemini
-    final content = [Content.text(prompt)];
-
     debugPrint('⏳ Envoi de la requête à Gemini...');
-    final response = await _model.generateContent(content);
+    final jsonData = await RyzeOneShot.jsonObject(
+      prompt: prompt,
+      surface: RyzeUsageLabel.exercise,
+      temperature: _temperature,
+      maxOutputTokens: _maxOutputTokens,
+    );
 
-    // LOG: Afficher la réponse
-    debugPrint('');
-    debugPrint('✅ ========== GEMINI RESPONSE ==========');
-    if (response.text != null && response.text!.isNotEmpty) {
-      debugPrint('📝 Réponse reçue (${response.text!.length} caractères):');
-      debugPrint('─' * 50);
-      debugPrint(response.text);
-      debugPrint('─' * 50);
-    } else {
-      debugPrint('❌ Aucune réponse reçue de Gemini');
-    }
-    debugPrint('');
-
-    if (response.text == null || response.text!.isEmpty) {
+    if (jsonData == null) {
       throw Exception(
         languageCode == 'fr'
             ? 'Impossible de générer l\'analyse'
@@ -158,24 +139,8 @@ class ExerciseAiAnalysisService {
       );
     }
 
-    // Parser le JSON
+    // Lire ce que le modèle a rendu.
     try {
-      // Nettoyer la réponse (enlever les backticks markdown si présents)
-      String cleanedResponse = response.text!.trim();
-      if (cleanedResponse.startsWith('```json')) {
-        cleanedResponse = cleanedResponse.substring(7);
-      }
-      if (cleanedResponse.startsWith('```')) {
-        cleanedResponse = cleanedResponse.substring(3);
-      }
-      if (cleanedResponse.endsWith('```')) {
-        cleanedResponse = cleanedResponse.substring(0, cleanedResponse.length - 3);
-      }
-      cleanedResponse = cleanedResponse.trim();
-
-      final jsonData = json.decode(cleanedResponse) as Map<String, dynamic>;
-
-      // Extraire l'analyse
       final analysisText = jsonData['analysis'] as String? ?? '';
 
       // Extraire les recommandations
@@ -203,11 +168,11 @@ class ExerciseAiAnalysisService {
         recommendations: recommendations,
       );
     } catch (e) {
-      debugPrint('⚠️ Erreur de parsing JSON, fallback sur texte brut: $e');
-      // Fallback: retourner le texte brut comme analyse
+      debugPrint('⚠️ Réponse mal formée : $e');
+      // L'analyse seule vaut mieux que rien ; les recommandations sautent.
       return ExerciseAnalysis(
-        analysis: response.text!,
-        recommendations: [],
+        analysis: '${jsonData['analysis'] ?? ''}',
+        recommendations: const [],
       );
     }
   }

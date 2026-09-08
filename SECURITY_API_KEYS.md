@@ -2,22 +2,39 @@
 
 ## 🛡️ Ryze passe par le serveur
 
-La conversation et le planificateur peuvent appeler Gemini **sans clé dans
-l'application**. La fonction `supabase/functions/ryze-ai` la détient, vérifie
-le jeton de la session et l'abonnement, relaie le flux, et note les jetons
-consommés dans `ryze_ai_usage`.
+**Tout ce qui parle à Gemini passe par un seul chemin.** La fonction
+`supabase/functions/ryze-ai` détient la clé, vérifie le jeton de la session et
+l'abonnement, relaie la réponse, et note les jetons consommés dans
+`ryze_ai_usage`.
 
 - **Interrupteur** : `FeatureFlags.RYZE_VIA_EDGE` dans
   `lib/core/config/feature_flags.dart`. À `false`, l'application appelle Google
   directement avec la clé compilée — ce qui marche, mais expose la clé à qui
-  sait ouvrir un binaire.
+  sait ouvrir un binaire, et donc le quota facturé avec.
+- **Un seul endroit lit la clé** : `lib/ai/ryze_transport.dart`, dans son mode
+  direct. Aucun autre fichier de `lib/` ne la touche. Drapeau à `true`, elle ne
+  sert plus à rien côté application.
+- **Les sept usages comptés** : `coach`, `planner`, `scan`, `workout`,
+  `nutrition`, `exercise`, `memory`. La fonction refuse tout autre nom.
+- **Deux modes** : le flux pour la conversation et le planificateur,
+  l'aller-retour (`stream: false`) pour les analyses ponctuelles.
 - **Secret serveur** : `GEMINI_API_KEY` dans les secrets du projet Supabase
   (déjà posé pour `generate-ai-notifications`).
 - **Codes de retour** : 401 sans session valide, 402 sans abonnement, 400 sur
   un modèle ou une surface inconnus.
-- **Reste à faire** : les services ponctuels (analyse de photo, code-barres,
-  génération d'exercices) appellent encore Google en direct. Tant qu'un seul
-  d'entre eux le fait, `EnvConfig.geminiApiKey` reste dans le binaire.
+
+### Google Vision : plus de clé du tout
+
+Le code-barres se lit **sur l'appareil** avec ML Kit, gratuitement et hors
+ligne, et le produit se cherche chez OpenFoodFacts, qui est public. La branche
+Google Cloud Vision existait encore mais son aiguillage était sur ML Kit depuis
+le début : elle ne servait qu'à garder une seconde clé vivante dans le binaire.
+Elle est supprimée, avec `GOOGLE_VISION_API_KEY`.
+
+### Avant de livrer
+
+1. Passer `RYZE_VIA_EDGE` à `true` et vérifier sur appareil.
+2. Alors seulement, `GEMINI_API_KEY` peut quitter `.env.production`.
 
 ---
 

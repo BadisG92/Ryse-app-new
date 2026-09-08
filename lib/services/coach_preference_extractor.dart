@@ -1,8 +1,7 @@
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../config/gemini_config.dart';
+import '../ai/ryze_oneshot.dart';
+import '../ai/ryze_transport.dart';
 import '../models/coach_chat_models.dart';
 
 /// Service to extract user preferences from coach conversations
@@ -13,33 +12,20 @@ class CoachPreferenceExtractor {
 
   CoachPreferenceExtractor._internal();
 
-  GenerativeModel? _model;
   final _supabase = Supabase.instance.client;
 
-  /// Initialize the extractor
-  void initialize() {
-    _model = GenerativeModel(
-      model: GeminiConfig.modelName,
-      apiKey: GeminiConfig.geminiApiKey,
-      safetySettings: GeminiConfig.sdkSafetySettings,
-      generationConfig: GenerationConfig(
-        temperature: 0.3, // Low temperature for accurate extraction
-        topK: 40,
-        topP: 0.95,
-        maxOutputTokens: 1000,
-      ),
-    );
-  }
+  /// Froid : on relève ce qui a été dit, on ne l'interprète pas.
+  static const double _temperature = 0.3;
+  static const int _maxOutputTokens = 1000;
+
+  /// Le modèle n'a plus à être monté d'avance ; gardé pour les appelants.
+  void initialize() {}
 
   /// Extract preferences from a list of messages
   Future<UserCoachPreferences?> extractFromMessages(
     List<CoachMessage> messages,
     UserCoachPreferences? existingPreferences,
   ) async {
-    if (_model == null) {
-      initialize();
-    }
-
     if (messages.isEmpty) return existingPreferences;
 
     try {
@@ -57,17 +43,19 @@ class CoachPreferenceExtractor {
         debugPrint('📊 Messages to analyze: ${messages.length}');
       }
 
-      // Call Gemini
-      final content = [Content.text(prompt)];
-      final response = await _model!.generateContent(content);
+      final answer = await RyzeOneShot.jsonObject(
+        prompt: prompt,
+        surface: RyzeUsageLabel.memory,
+        temperature: _temperature,
+        maxOutputTokens: _maxOutputTokens,
+      );
 
-      if (response.text == null || response.text!.isEmpty) {
+      if (answer == null) {
         if (kDebugMode) debugPrint('❌ Empty response from Gemini');
         return existingPreferences;
       }
 
-      // Parse the JSON response
-      final extractedPrefs = _parseExtractionResponse(response.text!);
+      final extractedPrefs = _parseExtractionResponse(answer);
 
       if (extractedPrefs == null) {
         return existingPreferences;
@@ -140,25 +128,8 @@ IMPORTANT:
   }
 
   /// Parse the extraction response
-  Map<String, List<String>>? _parseExtractionResponse(String response) {
+  Map<String, List<String>>? _parseExtractionResponse(Map<String, dynamic> json) {
     try {
-      // Clean up the response
-      var cleaned = response.trim();
-
-      // Remove markdown code blocks if present
-      if (cleaned.startsWith('```json')) {
-        cleaned = cleaned.substring(7);
-      }
-      if (cleaned.startsWith('```')) {
-        cleaned = cleaned.substring(3);
-      }
-      if (cleaned.endsWith('```')) {
-        cleaned = cleaned.substring(0, cleaned.length - 3);
-      }
-      cleaned = cleaned.trim();
-
-      final json = jsonDecode(cleaned) as Map<String, dynamic>;
-
       return {
         'allergies': List<String>.from(json['allergies'] ?? []),
         'dietary_restrictions': List<String>.from(json['dietary_restrictions'] ?? []),

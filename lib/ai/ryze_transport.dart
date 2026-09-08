@@ -8,7 +8,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/gemini_config.dart';
 import '../config/supabase_config.dart';
 import '../core/config/feature_flags.dart';
-import 'ryze_persona.dart';
 
 /// Ce qu'un tour de génération a coûté.
 class RyzeUsage {
@@ -60,6 +59,36 @@ class RyzeTransportException implements Exception {
 
   @override
   String toString() => 'RyzeTransportException($statusCode): $message';
+}
+
+/// D'où vient une requête, pour la comptabilité côté serveur.
+///
+/// Ce n'est pas la même chose qu'une surface : la conversation et le
+/// planificateur ont une personnalité et des outils, le scanner de photos non.
+/// Ces étiquettes ne servent qu'à ranger les jetons consommés par usage, et
+/// la fonction serveur n'accepte que celles-ci.
+class RyzeUsageLabel {
+  RyzeUsageLabel._();
+
+  static const String coach = 'coach';
+  static const String planner = 'planner';
+
+  /// La photo d'un repas, et le repas décrit en toutes lettres.
+  static const String scan = 'scan';
+
+  /// La séance générée à partir du catalogue.
+  static const String workout = 'workout';
+
+  /// Le commentaire de la journée nutritionnelle.
+  static const String nutrition = 'nutrition';
+
+  /// La progression sur un exercice.
+  static const String exercise = 'exercise';
+
+  /// Ce que Ryze retient d'une conversation.
+  static const String memory = 'memory';
+
+  static const Set<String> all = {coach, planner, scan, workout, nutrition, exercise, memory};
 }
 
 /// Par où passent les requêtes.
@@ -118,7 +147,7 @@ class RyzeTransport {
   Stream<RyzeChunk> stream(
     Map<String, dynamic> payload, {
     String? model,
-    RyzeSurface surface = RyzeSurface.coach,
+    String surface = RyzeUsageLabel.coach,
   }) async* {
     var attempt = 0;
 
@@ -140,7 +169,7 @@ class RyzeTransport {
   Stream<RyzeChunk> _once(
     Map<String, dynamic> payload, {
     String? model,
-    required RyzeSurface surface,
+    required String surface,
   }) async* {
     final name = model ?? GeminiConfig.modelName;
 
@@ -183,6 +212,72 @@ class RyzeTransport {
     }
   }
 
+  /// Un aller-retour, sans flux.
+  ///
+  /// Les analyses ponctuelles n'ont rien à streamer : la photo d'un repas,
+  /// une séance à composer, un bilan à écrire. Elles attendent un JSON entier
+  /// et le lisent d'un coup. Elles passaient chacune par leur propre client,
+  /// dont deux qui posaient la clé dans l'adresse.
+  ///
+  /// Rend la réponse Gemini complète ; chaque service en tire son texte avec
+  /// [textOf].
+  Future<Map<String, dynamic>> generate(
+    Map<String, dynamic> payload, {
+    String? model,
+    required String surface,
+    Duration timeout = const Duration(seconds: 45),
+  }) async {
+    final name = model ?? GeminiConfig.modelName;
+    final body = jsonEncode(bodyFor(mode, payload, model: name, surface: surface, stream: false));
+
+    final http.Response response;
+    try {
+      response = await _client
+          .post(_uri(name, stream: false), headers: _headers(), body: body)
+          .timeout(timeout);
+    } on TimeoutException {
+      throw const RyzeTransportException('pas de réponse dans le délai');
+    } catch (e) {
+      throw RyzeTransportException('$e');
+    }
+
+    if (response.statusCode != 200) {
+      final detail = response.body;
+      throw RyzeTransportException(
+        detail.length > 300 ? detail.substring(0, 300) : detail,
+        statusCode: response.statusCode,
+      );
+    }
+
+    final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+    if (decoded is! Map<String, dynamic>) {
+      throw const RyzeTransportException('réponse illisible');
+    }
+    return decoded;
+  }
+
+  /// Le texte d'une réponse, recollé depuis ses morceaux.
+  static String? textOf(Map<String, dynamic> response) {
+    final candidates = response['candidates'];
+    if (candidates is! List || candidates.isEmpty) return null;
+
+    final content = (candidates.first as Map<String, dynamic>)['content'];
+    if (content is! Map<String, dynamic>) return null;
+
+    final parts = content['parts'];
+    if (parts is! List) return null;
+
+    final buffer = StringBuffer();
+    for (final part in parts) {
+      if (part is Map && part['text'] is String) buffer.write(part['text']);
+    }
+    final text = buffer.toString().trim();
+    return text.isEmpty ? null : text;
+  }
+
+  /// Ce qu'un aller-retour a coûté.
+  static RyzeUsage? usageOf(Map<String, dynamic> response) => _usageOf(response['usageMetadata']);
+
   /// Ce qui part dans la requête.
   ///
   /// Vers Google, c'est le corps Gemini tel quel. Vers la fonction serveur,
@@ -194,19 +289,20 @@ class RyzeTransport {
     RyzeTransportMode mode,
     Map<String, dynamic> payload, {
     required String model,
-    required RyzeSurface surface,
+    required String surface,
+    bool stream = true,
   }) =>
       mode == RyzeTransportMode.edge
-          ? {'model': model, 'surface': surface.name, 'payload': payload}
+          ? {'model': model, 'surface': surface, 'stream': stream, 'payload': payload}
           : payload;
 
-  Uri _uri(String name) {
+  Uri _uri(String name, {bool stream = true}) {
     if (mode == RyzeTransportMode.edge) {
       return Uri.parse('${SupabaseConfig.supabaseUrl}/functions/v1/ryze-ai');
     }
     return Uri.parse(
-      'https://generativelanguage.googleapis.com/v1beta/models/'
-      '$name:streamGenerateContent?alt=sse',
+      'https://generativelanguage.googleapis.com/v1beta/models/$name'
+      '${stream ? ':streamGenerateContent?alt=sse' : ':generateContent'}',
     );
   }
 

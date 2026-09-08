@@ -1,10 +1,9 @@
 import 'package:flutter/foundation.dart';
-import 'dart:convert';
-import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
-import '../config/gemini_config.dart';
+import '../ai/ryze_oneshot.dart';
+import '../ai/ryze_transport.dart';
 import '../models/nutrition_analysis.dart';
 import '../models/nutrition_models.dart';
 import 'package:intl/intl.dart';
@@ -12,24 +11,16 @@ import 'coach_personality_service.dart';
 
 /// Service pour l'analyse nutritionnelle IA avec Coach Ryze et Gemini 2.0 Flash
 class CoachRyzeNutritionService {
-  static late GenerativeModel _model;
   static final _supabase = Supabase.instance.client;
   static const _uuid = Uuid();
 
-  /// Initialise le modèle Gemini
-  static void initialize() {
-    _model = GenerativeModel(
-      model: GeminiConfig.modelName,
-      apiKey: GeminiConfig.geminiApiKey,
-      safetySettings: GeminiConfig.sdkSafetySettings,
-      generationConfig: GenerationConfig(
-        temperature: 0.8,
-        topK: 40,
-        topP: 0.95,
-        maxOutputTokens: 1200,
-      ),
-    );
-  }
+  /// Le commentaire d'une journée se veut vivant : deux journées semblables
+  /// ne méritent pas la même phrase.
+  static const double _temperature = 0.8;
+  static const int _maxOutputTokens = 1200;
+
+  /// Le modèle n'a plus à être monté d'avance ; gardé pour `main.dart`.
+  static void initialize() {}
 
   /// Détecte le contexte intelligent pour l'analyse
   static Future<String> detectContext({
@@ -156,25 +147,15 @@ class CoachRyzeNutritionService {
     debugPrint('─' * 50);
     debugPrint('');
 
-    // Appeler Gemini
-    final content = [Content.text(prompt)];
     debugPrint('⏳ Envoi de la requête à Gemini...');
-    final response = await _model.generateContent(content);
+    final jsonData = await RyzeOneShot.jsonObject(
+      prompt: prompt,
+      surface: RyzeUsageLabel.nutrition,
+      temperature: _temperature,
+      maxOutputTokens: _maxOutputTokens,
+    );
 
-    // LOG: Afficher la réponse
-    debugPrint('');
-    debugPrint('✅ ========== GEMINI NUTRITION RESPONSE ==========');
-    if (response.text != null && response.text!.isNotEmpty) {
-      debugPrint('📝 Réponse reçue (${response.text!.length} caractères):');
-      debugPrint('─' * 50);
-      debugPrint(response.text);
-      debugPrint('─' * 50);
-    } else {
-      debugPrint('❌ Aucune réponse reçue de Gemini');
-    }
-    debugPrint('');
-
-    if (response.text == null || response.text!.isEmpty) {
+    if (jsonData == null) {
       throw Exception(
         languageCode == 'fr'
             ? 'Impossible de générer l\'analyse'
@@ -188,23 +169,6 @@ class CoachRyzeNutritionService {
     List<String> recommendations = [];
 
     try {
-      // Nettoyer la réponse (enlever les backticks markdown si présents)
-      String cleanedResponse = response.text!.trim();
-      if (cleanedResponse.startsWith('```json')) {
-        cleanedResponse = cleanedResponse.substring(7);
-      }
-      if (cleanedResponse.startsWith('```')) {
-        cleanedResponse = cleanedResponse.substring(3);
-      }
-      if (cleanedResponse.endsWith('```')) {
-        cleanedResponse = cleanedResponse.substring(0, cleanedResponse.length - 3);
-      }
-      cleanedResponse = cleanedResponse.trim();
-
-      debugPrint('🔍 Parsing JSON response...');
-      final jsonData = json.decode(cleanedResponse) as Map<String, dynamic>;
-
-      // Extraire l'analyse
       analysisText = jsonData['analysis'] as String? ?? '';
       debugPrint('✅ Analysis extracted: ${analysisText.length} characters');
 
@@ -233,12 +197,11 @@ class CoachRyzeNutritionService {
           .toList();
 
     } catch (e) {
-      debugPrint('❌ Erreur parsing JSON: $e');
-      debugPrint('📝 Réponse brute: ${response.text}');
-      // Fallback: utiliser l'ancien système de parsing
-      analysisText = response.text!;
-      insights = _extractInsights(response.text!);
-      recommendations = _extractRecommendations(response.text!);
+      debugPrint('❌ Réponse mal formée : $e');
+      // Le texte de l'analyse seul, plutôt que rien.
+      analysisText = '${jsonData['analysis'] ?? ''}';
+      insights = _extractInsights(analysisText);
+      recommendations = _extractRecommendations(analysisText);
     }
 
     // Créer l'analyse

@@ -1,8 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../ai/ryze_oneshot.dart';
+import '../ai/ryze_transport.dart';
 import '../config/gemini_config.dart';
 import '../models/sport_models.dart';
 import 'database_service.dart';
@@ -536,8 +537,11 @@ Generate the workout now as valid JSON:
 ''';
   }
 
-  /// Appeler l'API Gemini avec retry et backoff exponentiel
-  /// Essaie jusqu'à 3 fois avec délais croissants (1s, 2s, 4s)
+  /// Appeler le modèle, avec reprise et délai croissant.
+  ///
+  /// Trois essais : composer une séance est long, et une coupure réseau au
+  /// milieu ne doit pas rendre l'écran bredouille. Le transport commun
+  /// remplace le client qui posait la clé dans l'adresse.
   static Future<Map<String, dynamic>?> _callGeminiAPI(String prompt) async {
     const int maxRetries = 3;
     const Duration initialTimeout = Duration(seconds: 20);
@@ -546,83 +550,39 @@ Generate the workout now as valid JSON:
       try {
         debugPrint('🤖 Gemini API call attempt $attempt/$maxRetries');
 
-        final Map<String, dynamic> requestBody = {
-          'contents': [
-            {
-              'parts': [
-                {'text': prompt}
-              ]
-            }
-          ],
-          'generationConfig': {
-            ...GeminiConfig.generationConfig,
-            'temperature': 0.5, // Réduit pour plus de précision sur les noms
-            'maxOutputTokens': 3072, // Augmenté pour accueillir plus d'exercices et poids
-          },
-          'safetySettings': GeminiConfig.safetySettingsList,
-        };
-
-        // Timeout augmente avec chaque retry
+        // Le délai s'allonge à chaque essai : un modèle lent finit souvent
+        // par répondre si on lui laisse le temps.
         final timeout = Duration(seconds: initialTimeout.inSeconds + (attempt - 1) * 5);
 
-        final response = await http.post(
-          Uri.parse(GeminiConfig.fullApiUrl),
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
-          body: json.encode(requestBody),
-        ).timeout(
-          timeout,
-          onTimeout: () {
-            throw TimeoutException('Gemini API request timeout after ${timeout.inSeconds} seconds');
-          },
+        final text = await RyzeOneShot.text(
+          prompt: prompt,
+          surface: RyzeUsageLabel.workout,
+          temperature: 0.5, // précis sur les noms d'exercices
+          maxOutputTokens: 3072, // une séance entière avec ses charges
+          timeout: timeout,
         );
 
-        if (response.statusCode == 200) {
-          final jsonResponse = json.decode(response.body);
-          final candidates = jsonResponse['candidates'] as List?;
-
-          if (candidates == null || candidates.isEmpty) {
-            debugPrint('⚠️ No candidates in response (attempt $attempt/$maxRetries)');
-            if (attempt < maxRetries) {
-              await Future.delayed(Duration(seconds: attempt)); // Backoff: 1s, 2s
-              continue;
-            }
-            return null;
-          }
-
-          final textResponse = candidates[0]['content']['parts'][0]['text'] as String;
-          final parsed = _parseGeminiResponse(textResponse);
-
-          if (parsed == null && attempt < maxRetries) {
-            debugPrint('⚠️ Failed to parse response (attempt $attempt/$maxRetries)');
+        if (text == null) {
+          debugPrint('⚠️ Aucune réponse (essai $attempt/$maxRetries)');
+          if (attempt < maxRetries) {
             await Future.delayed(Duration(seconds: attempt));
             continue;
           }
-
-          debugPrint('✅ Gemini API success on attempt $attempt');
-          return parsed;
+          return null;
         }
 
-        // Gestion des codes d'erreur HTTP
-        debugPrint('❌ Gemini API error ${response.statusCode} (attempt $attempt/$maxRetries)');
-
-        // Rate limit ou server error - retry with backoff
-        if ((response.statusCode == 429 || response.statusCode >= 500) && attempt < maxRetries) {
-          final delay = Duration(seconds: attempt * 2); // 2s, 4s pour rate limit
-          debugPrint('⏳ Rate limited or server error, waiting ${delay.inSeconds}s before retry...');
-          await Future.delayed(delay);
-          continue;
+        final parsed = _parseGeminiResponse(text);
+        if (parsed == null) {
+          debugPrint('⚠️ Réponse illisible (essai $attempt/$maxRetries)');
+          if (attempt < maxRetries) {
+            await Future.delayed(Duration(seconds: attempt));
+            continue;
+          }
+          return null;
         }
 
-        // Autres erreurs - retry avec backoff standard
-        if (attempt < maxRetries) {
-          await Future.delayed(Duration(seconds: attempt));
-          continue;
-        }
-
-        return null;
+        debugPrint('✅ Gemini API success on attempt $attempt');
+        return parsed;
       } catch (e) {
         debugPrint('❌ Gemini API error (attempt $attempt/$maxRetries): $e');
 
@@ -632,7 +592,6 @@ Generate the workout now as valid JSON:
           await Future.delayed(delay);
           continue;
         }
-
         return null;
       }
     }

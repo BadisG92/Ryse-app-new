@@ -26,7 +26,37 @@ const ALLOWED_MODELS = new Set([
   'gemini-2.0-flash',
 ])
 
-const ALLOWED_SURFACES = new Set(['coach', 'planner'])
+/// D'où vient la demande. Sert à ranger les jetons consommés, rien d'autre.
+const ALLOWED_SURFACES = new Set([
+  'coach',
+  'planner',
+  'scan',
+  'workout',
+  'nutrition',
+  'exercise',
+  'memory',
+])
+
+/// Écrit ce qu'un tour a coûté. Zéro des deux côtés veut dire que le modèle
+/// n'a rien dit, et on n'invente pas une ligne.
+async function meter(
+  admin: ReturnType<typeof createClient>,
+  userId: string,
+  surface: string,
+  model: string,
+  prompt: number,
+  output: number,
+) {
+  if (prompt === 0 && output === 0) return
+  const { error } = await admin.from('ryze_ai_usage').insert({
+    user_id: userId,
+    surface,
+    model,
+    prompt_tokens: prompt,
+    output_tokens: output,
+  })
+  if (error) console.error('ryze-ai usage insert:', error.message)
+}
 
 function json(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
@@ -90,6 +120,10 @@ serve(async (req) => {
   const payload = body.payload
   if (!payload || typeof payload !== 'object') return json({ error: 'missing payload' }, 400)
 
+  // Le flux pour la conversation, l'aller-retour pour tout le reste. Une
+  // analyse de photo n'a rien à streamer : elle attend un JSON entier.
+  const wantsStream = body.stream !== false
+
   // La clé n'est lue qu'ici : l'état du serveur ne se raconte pas à un
   // appelant qui n'a pas encore prouvé qui il est.
   const apiKey = Deno.env.get('GEMINI_API_KEY')
@@ -100,8 +134,12 @@ serve(async (req) => {
   }
 
   // Le relais.
+  const endpoint = wantsStream
+    ? `${model}:streamGenerateContent?alt=sse`
+    : `${model}:generateContent`
+
   const upstream = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${endpoint}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
@@ -115,12 +153,23 @@ serve(async (req) => {
     return json({ error: detail.slice(0, 300) }, upstream.status)
   }
 
+  // L'aller-retour : la réponse tient en un objet, les jetons sont dedans.
+  if (!wantsStream) {
+    const answer = await upstream.json()
+    const usage = answer?.usageMetadata ?? {}
+    const write = meter(admin, user.id, surface, model,
+      usage.promptTokenCount ?? 0, usage.candidatesTokenCount ?? 0)
+    // @ts-ignore EdgeRuntime est fourni par l'exécution Supabase.
+    if (typeof EdgeRuntime !== 'undefined') EdgeRuntime.waitUntil(write)
+    return json(answer, 200)
+  }
+
   // Le flux part vers l'application sans attendre, et une copie est lue au
   // passage pour retenir le dernier `usageMetadata` du tour. C'est le seul
   // endroit où l'on connaît le coût réel, plutôt qu'une estimation.
   const [toClient, toMeter] = upstream.body.tee()
 
-  const meter = (async () => {
+  const metering = (async () => {
     let prompt = 0
     let output = 0
     try {
@@ -156,21 +205,13 @@ serve(async (req) => {
       console.error('ryze-ai meter:', e)
     }
 
-    if (prompt === 0 && output === 0) return
-    const { error } = await admin.from('ryze_ai_usage').insert({
-      user_id: user.id,
-      surface,
-      model,
-      prompt_tokens: prompt,
-      output_tokens: output,
-    })
-    if (error) console.error('ryze-ai usage insert:', error.message)
+    await meter(admin, user.id, surface, model, prompt, output)
   })()
 
   // Le comptage survit à la réponse : sans cela, la fonction s'arrête dès que
   // l'application a tout reçu et la ligne n'est jamais écrite.
   // @ts-ignore EdgeRuntime est fourni par l'exécution Supabase.
-  if (typeof EdgeRuntime !== 'undefined') EdgeRuntime.waitUntil(meter)
+  if (typeof EdgeRuntime !== 'undefined') EdgeRuntime.waitUntil(metering)
 
   return new Response(toClient, {
     headers: {

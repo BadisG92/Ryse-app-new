@@ -1,4 +1,3 @@
-import 'package:google_generative_ai/google_generative_ai.dart';
 import 'env_config.dart';
 
 class GeminiConfig {
@@ -9,18 +8,8 @@ class GeminiConfig {
   // Google Gemini API Configuration (from environment)
   static String get geminiApiKey => EnvConfig.geminiApiKey;
 
-  // Gemini API endpoints par usage
-  // - gemini-3.1-flash-lite : rapide, non-thinking, pour tous les usages
-
-  /// URL par défaut (scan food, analyses simples)
-  static const String geminiApiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent';
-
-  /// URL pour le planner (function calling, raisonnement complexe)
-  static const String plannerApiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent';
-
-  // Model configuration
+  // Le modèle : rapide, non-thinking, pour tous les usages.
   static const String modelName = 'gemini-3.1-flash-lite';
-  static const String plannerModelName = 'gemini-3.1-flash-lite';
 
   // Generation parameters
   static const double temperature = 0.3; // Lower for more consistent results
@@ -44,9 +33,6 @@ class GeminiConfig {
     return geminiApiKey != 'YOUR_GEMINI_API_KEY' && geminiApiKey.isNotEmpty;
   }
 
-  /// Get full API URL with key
-  static String get fullApiUrl => '$geminiApiUrl?key=$geminiApiKey';
-
   /// Get generation config
   static Map<String, dynamic> get generationConfig => {
     'temperature': temperature,
@@ -62,15 +48,4 @@ class GeminiConfig {
       'threshold': entry.value,
     }).toList();
 
-  /// Les mêmes réglages, pour les services qui passent par le SDK.
-  ///
-  /// [safetySettings] existait depuis le début et n'était transmis à aucun
-  /// modèle : ni au chat, ni aux analyses, ni au corps de requête du
-  /// planificateur. Tout partait donc avec les seuils par défaut de l'API.
-  static List<SafetySetting> get sdkSafetySettings => [
-    SafetySetting(HarmCategory.hateSpeech, HarmBlockThreshold.high),
-    SafetySetting(HarmCategory.dangerousContent, HarmBlockThreshold.high),
-    SafetySetting(HarmCategory.sexuallyExplicit, HarmBlockThreshold.high),
-    SafetySetting(HarmCategory.harassment, HarmBlockThreshold.high),
-  ];
 }
