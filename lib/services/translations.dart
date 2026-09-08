@@ -11663,6 +11663,16 @@ class AppTranslations {
       'en': "{n} km",
       'de': "{n} km",
     },
+    'preset_cut': {
+      'fr': 'Sèche',
+      'en': 'Cutting',
+      'de': 'Definitionsphase',
+    },
+    'preset_cut_hint': {
+      'fr': "Protéines calées sur ton poids : {g} g par kilo, pour garder le muscle pendant la perte.",
+      'en': 'Protein set on your bodyweight: {g} g per kilo, to hold on to muscle while you lose fat.',
+      'de': 'Protein nach deinem Körpergewicht: {g} g pro Kilo, um beim Abnehmen Muskeln zu halten.',
+    },
     'sport_minutes': {
       'fr': "{min} min prévues",
       'en': "{min} min planned",

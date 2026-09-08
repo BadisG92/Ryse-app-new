@@ -340,6 +340,56 @@ class MetabolicCalculations {
     }
   }
 
+  /// La sèche : garder le muscle en perdant du gras.
+  ///
+  /// La répartition ordinaire exprime la protéine en part des calories, or
+  /// c'est le poids du corps qui la commande. Plus le déficit est franc, moins
+  /// cette part suit — exactement quand la protéine protège le muscle. Pour
+  /// quatre-vingts kilos, trente-cinq pour cent valent 2,2 g par kilo à
+  /// 2000 kcal, mais seulement 1,6 à 1500.
+  ///
+  /// Ici la protéine est posée d'abord, en grammes par kilo, le gras garde de
+  /// quoi tenir les fonctions hormonales, et les glucides prennent ce qui
+  /// reste. La somme retombe donc juste par construction.
+  static const double cutProteinPerKg = 2.0;
+  static const double cutMinFatPerKg = 0.7;
+
+  static Map<String, int> cutMacros(UserProfile profile) {
+    final calories = calculateDailyGoal(profile);
+    final weight = double.tryParse(profile.weight) ?? 0;
+    if (calories == 0 || weight <= 0) return calculateMacros(profile);
+    return cutMacrosFor(calories: calories, weightKg: weight);
+  }
+
+  /// La même règle, sur un budget choisi à la main.
+  ///
+  /// L'écran des réglages laisse ajuster les calories au pas de cinquante :
+  /// la répartition doit suivre ce nombre-là, pas celui de la formule.
+  static Map<String, int> cutMacrosFor({required int calories, required double weightKg}) {
+    if (calories <= 0 || weightKg <= 0) return {'protein': 0, 'carbs': 0, 'fat': 0};
+
+    // La protéine, plafonnée à 40 % des calories : au-delà il ne resterait
+    // plus de quoi manger autre chose.
+    var protein = weightKg * cutProteinPerKg;
+    final proteinCap = calories * 0.40 / 4;
+    if (protein > proteinCap) protein = proteinCap;
+
+    // Le gras : un quart des calories, jamais sous le minimum vital.
+    var fat = calories * 0.25 / 9;
+    final fatFloor = weightKg * cutMinFatPerKg;
+    if (fat < fatFloor) fat = fatFloor;
+
+    // Les glucides prennent le reste, et jamais moins que rien.
+    final remaining = calories - (protein * 4) - (fat * 9);
+    final carbs = remaining <= 0 ? 0.0 : remaining / 4;
+
+    return {
+      'protein': protein.round(),
+      'carbs': carbs.round(),
+      'fat': fat.round(),
+    };
+  }
+
   static Map<String, int> calculateMacros(UserProfile profile) {
     final calories = calculateDailyGoal(profile);
     if (calories == 0) {

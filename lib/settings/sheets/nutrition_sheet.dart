@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../components/ui/onboarding_models.dart';
 import '../../design/design.dart';
 import '../../services/translations.dart';
 import '../settings_data.dart';
@@ -101,6 +102,32 @@ class _BodyState extends State<_Body> {
   int get _carbs => (_kcal * _cPct / 4).round();
   int get _fat => (_kcal * _fPct / 9).round();
 
+  /// La sèche : la protéine se pose sur le poids du corps, pas sur une part
+  /// des calories. C'est la seule répartition qui dépend de qui la mange, donc
+  /// elle se calcule au lieu d'être une constante comme les trois autres.
+  Map<String, int> get _cut => MetabolicCalculations.cutMacrosFor(
+        calories: _kcal,
+        weightKg: widget.p.weightKg,
+      );
+
+  bool get _isCut {
+    if (widget.p.weightKg <= 0 || _kcal <= 0) return false;
+    final c = _cut;
+    return (c['protein']! - _protein).abs() <= 2 && (c['fat']! - _fat).abs() <= 2;
+  }
+
+  void _applyCut() {
+    final c = _cut;
+    if (c['protein'] == 0) return;
+    setState(() {
+      _pPct = c['protein']! * 4 / _kcal;
+      _fPct = c['fat']! * 9 / _kcal;
+      _cPct = (1 - _pPct - _fPct).clamp(0.0, 1.0);
+      _custom = true;
+    });
+    RyzeFeedback.tap();
+  }
+
   void _recompute() {
     final c = widget.p.computed();
     final total = c.calories <= 0 ? 1 : c.calories;
@@ -143,7 +170,9 @@ class _BodyState extends State<_Body> {
             for (var i = 0; i < NutritionSheet.presets.length; i++)
               OnbChip(
                 label: NutritionSheet.presets[i].label.tr(lang),
-                selected: (_pPct - NutritionSheet.presets[i].p).abs() < 0.02 && (_cPct - NutritionSheet.presets[i].c).abs() < 0.02,
+                selected: !_isCut &&
+                    (_pPct - NutritionSheet.presets[i].p).abs() < 0.02 &&
+                    (_cPct - NutritionSheet.presets[i].c).abs() < 0.02,
                 index: i,
                 onTap: () => setState(() {
                   _pPct = NutritionSheet.presets[i].p;
@@ -152,8 +181,25 @@ class _BodyState extends State<_Body> {
                   _custom = true;
                 }),
               ),
+            if (widget.p.weightKg > 0)
+              OnbChip(
+                label: 'preset_cut'.tr(lang),
+                selected: _isCut,
+                index: NutritionSheet.presets.length,
+                onTap: _applyCut,
+              ),
           ],
         ),
+        if (_isCut) ...[
+          SizedBox(height: context.vw(2.1)),
+          Text(
+            'preset_cut_hint'.tr(lang).replaceAll(
+                  '{g}',
+                  (_protein / widget.p.weightKg).toStringAsFixed(1),
+                ),
+            style: RyzeText.body(context, 3.1, color: RyzeColors.mute),
+          ),
+        ],
         SizedBox(height: context.vw(3.6)),
         Pressable(
           onTap: _recompute,
