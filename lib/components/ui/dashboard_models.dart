@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../../design/tokens.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'dart:math';
 import '../../services/translations.dart';
@@ -220,13 +222,13 @@ class DailyGoal {
   // Couleur de la barre de progression
   List<Color> get progressColors {
     if (completed) {
-      return [const Color(0xFF0B132B), const Color(0xFF1C2951)];
+      return [RyzeColors.ink, RyzeColors.ink2];
     } else if (isPremium) {
-      return [const Color(0xFFE2E8F0), const Color(0xFFCBD5E1)];
+      return [RyzeColors.line, RyzeColors.idle];
     } else {
       return [
-        const Color(0xFF0B132B).withOpacity(0.8), 
-        const Color(0xFF1C2951).withOpacity(0.8)
+        RyzeColors.ink.withOpacity(0.8), 
+        RyzeColors.ink2.withOpacity(0.8)
       ];
     }
   }
@@ -312,17 +314,17 @@ class QuickAction {
   // Couleurs selon l'état
   List<Color> get colors {
     if (isDisabled || isPremiumRequired) {
-      return [const Color(0xFFE2E8F0), const Color(0xFFCBD5E1)];
+      return [RyzeColors.line, RyzeColors.idle];
     }
-    return [const Color(0xFF0B132B), const Color(0xFF1C2951)];
+    return [RyzeColors.ink, RyzeColors.ink2];
   }
 
   // Couleur du texte
   Color get textColor {
     if (isDisabled || isPremiumRequired) {
-      return const Color(0xFF94A3B8);
+      return RyzeColors.mute2;
     }
-    return Colors.white;
+    return RyzeColors.surf;
   }
 }
 
@@ -615,7 +617,7 @@ class DashboardData {
           'calories'.tr(languageCode): '0 kcal',
           'water'.tr(languageCode): '0L',
         },
-        gradientColors: const [Color(0xFF0B132B), Color(0xFF1C2951)],
+        gradientColors: [RyzeColors.ink, RyzeColors.ink2],
       ),
       ModulePreview(
         title: 'sport'.tr(languageCode),
@@ -624,13 +626,13 @@ class DashboardData {
           'calories'.tr(languageCode): '0 kcal',
           'sessions'.tr(languageCode): '0 / 0',
         },
-        gradientColors: const [Color(0xFF0B132B), Color(0xFF1C2951)],
+        gradientColors: [RyzeColors.ink, RyzeColors.ink2],
       ),
     ];
   }
   
   // Legacy constant for compatibility (will be removed)
-  static const List<ModulePreview> modulePreviews = [
+  static final List<ModulePreview> modulePreviews = [
     ModulePreview(
       title: 'Nutrition',
       icon: LucideIcons.apple,
@@ -638,7 +640,7 @@ class DashboardData {
         'Calories': '0 kcal',
         'Eau': '0L',
       },
-      gradientColors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+      gradientColors: [RyzeColors.ink, RyzeColors.ink2],
     ),
     ModulePreview(
       title: 'Sport',
@@ -647,7 +649,7 @@ class DashboardData {
         'Calories': '0 kcal',
         'Séances': '0 / 0',
       },
-      gradientColors: [Color(0xFF0B132B), Color(0xFF1C2951)],
+      gradientColors: [RyzeColors.ink, RyzeColors.ink2],
     ),
   ];
 

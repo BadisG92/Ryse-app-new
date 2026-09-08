@@ -410,7 +410,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
             if (_analysisResult.success && !_isLoading)
               Container(
                 padding: EdgeInsets.fromLTRB(gutter, context.vw(3.1), gutter, context.vw(4.6)),
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   color: RyzeColors.paper,
                   border: Border(top: BorderSide(color: RyzeColors.line)),
                 ),
@@ -461,7 +461,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
               ),
             ),
           SizedBox(height: context.vw(6.2)),
-          const SizedBox(
+          SizedBox(
             width: 20,
             height: 20,
             child: CircularProgressIndicator(color: RyzeColors.ink, strokeWidth: 2),

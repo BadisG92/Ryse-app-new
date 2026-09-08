@@ -27,7 +27,7 @@ class NumberPad extends StatelessWidget {
 
     return Container(
       padding: EdgeInsets.fromLTRB(gutter, context.vw(2.6), gutter, context.vw(2.1)),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: RyzeColors.paper,
         border: Border(top: BorderSide(color: RyzeColors.line)),
       ),

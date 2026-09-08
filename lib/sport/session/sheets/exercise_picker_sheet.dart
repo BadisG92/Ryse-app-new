@@ -192,7 +192,7 @@ class _PickerState extends State<_Picker> {
         if (_loading)
           Padding(
             padding: EdgeInsets.symmetric(vertical: context.vw(8)),
-            child: const Center(child: CircularProgressIndicator(color: RyzeColors.ink, strokeWidth: 2)),
+            child: Center(child: CircularProgressIndicator(color: RyzeColors.ink, strokeWidth: 2)),
           )
         else
           RyzeSheetGroup(

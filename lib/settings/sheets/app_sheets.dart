@@ -82,7 +82,7 @@ class _CoachBodyState extends State<_CoachBody> {
     if (_loading) {
       return Padding(
         padding: EdgeInsets.symmetric(vertical: context.vw(10)),
-        child: const Center(child: CircularProgressIndicator(color: RyzeColors.ink, strokeWidth: 2)),
+        child: Center(child: CircularProgressIndicator(color: RyzeColors.ink, strokeWidth: 2)),
       );
     }
     const types = CoachPersonalityType.values;
@@ -221,7 +221,7 @@ class _NotificationsBodyState extends State<_NotificationsBody> {
               : Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Divider(color: RyzeColors.line, height: 1),
+                    Divider(color: RyzeColors.line, height: 1),
                     SettingToggle(
                       label: 'settings_notif_meals'.tr(lang),
                       value: _p.mealRemindersEnabled,
@@ -254,7 +254,7 @@ class _NotificationsBodyState extends State<_NotificationsBody> {
                         onMore: _p.dinnerTime < 23 ? () { _p.dinnerTime++; _save(); } : null,
                       ),
                     ],
-                    const Divider(color: RyzeColors.line, height: 1),
+                    Divider(color: RyzeColors.line, height: 1),
                     SettingToggle(
                       label: 'settings_notif_water'.tr(lang),
                       hint: 'settings_water_per_day'.tr(lang).replaceAll('{n}', '${_p.waterReminderFrequency}'),
@@ -275,7 +275,7 @@ class _NotificationsBodyState extends State<_NotificationsBody> {
                           _save();
                         },
                       ),
-                    const Divider(color: RyzeColors.line, height: 1),
+                    Divider(color: RyzeColors.line, height: 1),
                     SettingToggle(
                       label: 'settings_notif_sessions'.tr(lang),
                       value: _p.plannedActivityReminderEnabled,
@@ -367,7 +367,7 @@ class _PreferencesBodyState extends State<_PreferencesBody> {
           },
         ),
         SizedBox(height: context.vw(2.1)),
-        const Divider(color: RyzeColors.line, height: 1),
+        Divider(color: RyzeColors.line, height: 1),
         SettingToggle(
           label: 'haptic_feedback'.tr(lang),
           hint: 'haptic_feedback_subtitle'.tr(lang),

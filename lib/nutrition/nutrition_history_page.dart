@@ -230,7 +230,7 @@ class _NutritionHistoryPageState extends State<NutritionHistoryPage> {
               ),
               SizedBox(height: context.vw(4)),
               if (_loading || day == null)
-                SizedBox(height: context.vw(40), child: const Center(child: CircularProgressIndicator(color: RyzeColors.ink, strokeWidth: 2)))
+                SizedBox(height: context.vw(40), child: Center(child: CircularProgressIndicator(color: RyzeColors.ink, strokeWidth: 2)))
               else ...[
                 DayInstrument(
                   lead: remaining < 0 ? 'nutri_over_that_day'.tr(lang) : 'nutri_left_that_day'.tr(lang),

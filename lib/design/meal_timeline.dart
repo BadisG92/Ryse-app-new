@@ -295,7 +295,7 @@ class _ItemRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: EdgeInsets.symmetric(vertical: context.vw(2.3)),
-      decoration: const BoxDecoration(border: Border(top: BorderSide(color: RyzeColors.line))),
+      decoration: BoxDecoration(border: Border(top: BorderSide(color: RyzeColors.line))),
       child: Row(
         children: [
           Expanded(

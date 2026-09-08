@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'palette.dart';
+
 /// Ryze design system, layer one: the tokens.
 ///
 /// Born in the v2 onboarding and now the reference for the whole app. The rule
@@ -13,31 +15,49 @@ import 'package:flutter/material.dart';
 class RyzeColors {
   RyzeColors._();
 
+  /// La palette en vigueur. Lui affecter une autre valeur repeint toute
+  /// l'application au prochain rendu : c'est le seul point de bascule, et
+  /// c'est pour cela que les 1 100 usages de ces jetons n'ont pas eu a
+  /// bouger d'une ligne.
+  static RyzePalette _palette = RyzePalettes.nuit;
+
+  static RyzePalette get palette => _palette;
+  static set palette(RyzePalette value) => _palette = value;
+
+  // ------------------------------------------------- ce qui ne bouge jamais
+
   static const Color paper = Color(0xFFF5F6F8);
   static const Color paper2 = Color(0xFFEEF0F4);
   static const Color surf = Color(0xFFFFFFFF);
-  static const Color ink = Color(0xFF0B132B);
-  static const Color ink2 = Color(0xFF1B2A5B);
+
+  // ---------------------------------------------------- ce qui suit le theme
+
+  /// Le primaire : ce que l'utilisateur choisit et presse.
+  static Color get ink => _palette.ink;
+  static Color get ink2 => _palette.ink2;
 
   /// 5.2:1 on paper, above AA for the small print it carries.
   static const Color mute = Color(0xFF5F6779);
 
   /// Decorative only (dashes, borders): too light for text.
   static const Color mute2 = Color(0xFF9AA1B2);
-  static const Color line = Color(0x1A0B132B);
-  static const Color line2 = Color(0x0F0B132B);
+  /// Les traits derivent du primaire : ils sont son encre a 10 % et a 6 %.
+  /// Ecrits en dur, ils resteraient bleus derriere une interface rose.
+  static Color get line => _palette.ink.withValues(alpha: 0.10);
+  static Color get line2 => _palette.ink.withValues(alpha: 0.06);
 
   /// The idle fill of a free slot and of a dashed placeholder.
   static const Color idle = Color(0xFFD5DAE1);
 
-  static const Color acc = Color(0xFFF2A93B);
-  static const Color accDeep = Color(0xFFD98A16);
-  static const Color accLight = Color(0xFFFFC766);
-  static const Color accTint = Color(0xFFFDF1DC);
+  /// Le secondaire : ce que Ryze rend.
+  static Color get acc => _palette.acc;
+  static Color get accDeep => _palette.accDeep;
+  static Color get accLight => _palette.accLight;
+  static Color get accTint => _palette.accTint;
 
-  /// Amber dark enough to carry text on paper (4.8:1).
-  static const Color accInk = Color(0xFF9A5F0C);
-  static const Color onAcc = ink;
+  /// Le secondaire assombri jusqu'a porter du petit texte sur le papier.
+  static Color get accInk => _palette.accInk;
+  static Color get onAcc => _palette.ink;
 
   /// Errors on a field. Dark enough to read on paper; never used for state.
   static const Color danger = Color(0xFFA62F1C);
@@ -58,8 +78,8 @@ class RyzeColors {
   /// a gauche. Elles sont de la palette et non du decor - un theme qui change
   /// la couleur de l'application doit changer le fond avec, sans quoi l'ambre
   /// resterait seul derriere une interface devenue rose.
-  static const Color glowWarm = Color(0xFFFFC478);
-  static const Color glowCool = ink2;
+  static Color get glowWarm => _palette.glowWarm;
+  static Color get glowCool => _palette.ink2;
 
   /// Warm light of the gym scene, top right of every screen.
   static const LinearGradient ground = LinearGradient(

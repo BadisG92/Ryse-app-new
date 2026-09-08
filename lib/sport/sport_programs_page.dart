@@ -148,7 +148,7 @@ class _SportProgramsPageState extends State<SportProgramsPage> {
     }
 
     if (_loading) {
-      return const Center(child: CircularProgressIndicator(color: RyzeColors.ink, strokeWidth: 2));
+      return Center(child: CircularProgressIndicator(color: RyzeColors.ink, strokeWidth: 2));
     }
 
     return ListView(

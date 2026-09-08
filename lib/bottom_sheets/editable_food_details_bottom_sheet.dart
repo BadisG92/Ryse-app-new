@@ -461,7 +461,7 @@ class _EditableFoodDetailsContentState extends State<_EditableFoodDetailsContent
                       ],
                     ),
                     SizedBox(height: context.vw(3.6)),
-                    const Divider(height: 1, color: RyzeColors.line),
+                    Divider(height: 1, color: RyzeColors.line),
                     SizedBox(height: context.vw(3.1)),
                     _MacroLine(label: 'proteins'.tr(lang), controller: _proteinsController, editing: _isEditing),
                     SizedBox(height: context.vw(2.6)),
@@ -739,15 +739,15 @@ class _MacroLine extends StatelessWidget {
                 contentPadding: EdgeInsets.symmetric(horizontal: context.vw(2.1), vertical: context.vw(1.5)),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(RyzeRadius.xs),
-                  borderSide: const BorderSide(color: RyzeColors.line),
+                  borderSide: BorderSide(color: RyzeColors.line),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(RyzeRadius.xs),
-                  borderSide: const BorderSide(color: RyzeColors.line),
+                  borderSide: BorderSide(color: RyzeColors.line),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(RyzeRadius.xs),
-                  borderSide: const BorderSide(color: RyzeColors.ink),
+                  borderSide: BorderSide(color: RyzeColors.ink),
                 ),
               ),
             ),

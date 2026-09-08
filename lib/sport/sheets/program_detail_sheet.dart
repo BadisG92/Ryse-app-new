@@ -70,7 +70,7 @@ class _ExerciseLine extends StatelessWidget {
     }
     return Container(
       padding: EdgeInsets.symmetric(horizontal: context.vw(4.1), vertical: context.vw(3.1)),
-      decoration: BoxDecoration(border: first ? null : const Border(top: BorderSide(color: RyzeColors.line))),
+      decoration: BoxDecoration(border: first ? null : Border(top: BorderSide(color: RyzeColors.line))),
       child: Row(
         children: [
           Icon(LucideIcons.dumbbell, size: context.vw(4.1), color: RyzeColors.mute),

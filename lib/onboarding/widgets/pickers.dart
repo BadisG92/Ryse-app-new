@@ -555,7 +555,7 @@ class _RulerTrackState extends State<_RulerTrack> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Container(width: context.vw(2.6), height: context.vw(2.6), decoration: const BoxDecoration(color: OnbColors.acc, shape: BoxShape.circle)),
+                        Container(width: context.vw(2.6), height: context.vw(2.6), decoration: BoxDecoration(color: OnbColors.acc, shape: BoxShape.circle)),
                         Container(
                           width: 2.4,
                           height: context.vw(9.4),

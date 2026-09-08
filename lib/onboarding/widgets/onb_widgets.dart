@@ -148,7 +148,7 @@ class _OnbButtonState extends State<OnbButton> with SingleTickerProviderStateMix
       padding: EdgeInsets.symmetric(horizontal: context.vw(6), vertical: context.vw(3.6)),
       decoration: BoxDecoration(
         gradient: widget.gold
-            ? const LinearGradient(
+            ? LinearGradient(
                 begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [OnbColors.accLight, OnbColors.acc, OnbColors.accDeep], stops: [0, 0.6, 1])
             : null,
         color: widget.gold ? null : bg,

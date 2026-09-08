@@ -173,7 +173,7 @@ class _SportHistoryPageState extends State<SportHistoryPage> with GlobalStateLis
               if (_loadingDay)
                 Padding(
                   padding: EdgeInsets.symmetric(vertical: context.vw(6)),
-                  child: const Center(child: CircularProgressIndicator(color: RyzeColors.ink, strokeWidth: 2)),
+                  child: Center(child: CircularProgressIndicator(color: RyzeColors.ink, strokeWidth: 2)),
                 )
               else if (_rows.isEmpty)
                 Padding(
@@ -312,7 +312,7 @@ class _ExerciseLine extends StatelessWidget {
       onTap: onTap,
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: context.vw(4.1), vertical: context.vw(3.1)),
-        decoration: BoxDecoration(border: first ? null : const Border(top: BorderSide(color: RyzeColors.line))),
+        decoration: BoxDecoration(border: first ? null : Border(top: BorderSide(color: RyzeColors.line))),
         child: Row(
           children: [
             Expanded(

@@ -312,7 +312,7 @@ class _Reco extends StatelessWidget {
             width: 8,
             height: 8,
             margin: EdgeInsets.only(top: context.vw(1.5), right: context.vw(2.6)),
-            decoration: const BoxDecoration(color: RyzeColors.acc, shape: BoxShape.circle),
+            decoration: BoxDecoration(color: RyzeColors.acc, shape: BoxShape.circle),
           ),
           Expanded(
             child: Column(
@@ -377,7 +377,7 @@ class DayAnalysisRow extends StatelessWidget {
             Container(
               width: context.vw(9.7),
               height: context.vw(9.7),
-              decoration: const BoxDecoration(color: RyzeColors.acc, shape: BoxShape.circle),
+              decoration: BoxDecoration(color: RyzeColors.acc, shape: BoxShape.circle),
               child: Center(child: RyzeMark(size: context.vw(5.4), color: RyzeColors.surf)),
             ),
             SizedBox(width: context.vw(3.1)),

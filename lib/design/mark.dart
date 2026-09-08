@@ -17,11 +17,13 @@ import 'tokens.dart';
 /// lockup box is scaled and shifted so the mark's own bounds land exactly on
 /// this widget.
 class RyzeMark extends StatelessWidget {
-  const RyzeMark({super.key, this.size = 20, this.color = RyzeColors.ink});
+  const RyzeMark({super.key, this.size = 20, this.color});
 
   /// Height of the mark itself.
   final double size;
-  final Color color;
+  /// Nul pour l'encre du theme en vigueur : une valeur par defaut ne peut
+  /// plus etre une constante depuis que la palette se choisit.
+  final Color? color;
 
   /// The mark is taller than it is wide; the width follows.
   static double widthFor(double size) => size * RyzeLogo.markBounds.width / RyzeLogo.markBounds.height;
@@ -30,7 +32,7 @@ class RyzeMark extends StatelessWidget {
   Widget build(BuildContext context) {
     return CustomPaint(
       size: Size(widthFor(size), size),
-      painter: _MarkPainter(color),
+      painter: _MarkPainter(color ?? RyzeColors.ink),
       isComplex: false,
     );
   }

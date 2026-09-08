@@ -326,7 +326,7 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
                   child: GestureDetector(
                     onTap: () => _focusNode.unfocus(),
                     child: _isLoading
-                        ? const Center(child: CircularProgressIndicator(color: RyzeColors.ink))
+                        ? Center(child: CircularProgressIndicator(color: RyzeColors.ink))
                         : _buildMessagesList(),
                   ),
                 ),

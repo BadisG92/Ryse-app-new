@@ -9,6 +9,15 @@ class AppNavigator {
 
   GlobalKey<NavigatorState>? _navigatorKey;
 
+  /// L'onglet qu'une source extérieure à la barre — un widget, un lien —
+  /// demande à voir. La barre l'écoute et le remet à null une fois passé ;
+  /// s'il est demandé avant qu'elle existe, elle le lit en arrivant.
+  final ValueNotifier<String?> requestedTab = ValueNotifier<String?>(null);
+
+  void requestTab(String tab) {
+    requestedTab.value = tab;
+  }
+
   /// Initialiser avec le navigatorKey de l'app
   void initialize(GlobalKey<NavigatorState> key) {
     _navigatorKey = key;

@@ -70,7 +70,7 @@ class RyzeNavBar extends StatelessWidget {
                 padding: EdgeInsets.only(top: 8, bottom: bottom),
                 decoration: BoxDecoration(
                   color: RyzeColors.surf.withValues(alpha: 0.86),
-                  border: const Border(top: BorderSide(color: RyzeColors.line)),
+                  border: Border(top: BorderSide(color: RyzeColors.line)),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,

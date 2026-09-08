@@ -10,15 +10,15 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 /// day and a short summary, rows with a tinted icon tile, actions at the
 /// bottom of the same card.
 
-const Color _ink = RyzeColors.ink;
-const Color _mute = RyzeColors.mute;
-const Color _mute2 = RyzeColors.mute2;
-const Color _line = RyzeColors.line;
-const Color _tile = RyzeColors.paper2;
-const Color _green = RyzeColors.confirm;
-const Color _protein = RyzeColors.protein;
-const Color _carbs = RyzeColors.carbs;
-const Color _fat = RyzeColors.danger;
+final Color _ink = RyzeColors.ink;
+final Color _mute = RyzeColors.mute;
+final Color _mute2 = RyzeColors.mute2;
+final Color _line = RyzeColors.line;
+final Color _tile = RyzeColors.paper2;
+final Color _green = RyzeColors.confirm;
+final Color _protein = RyzeColors.protein;
+final Color _carbs = RyzeColors.carbs;
+final Color _fat = RyzeColors.danger;
 
 class ProposalCard extends StatelessWidget {
   const ProposalCard({super.key, required this.body, required this.footer, this.margin = const EdgeInsets.fromLTRB(0, 4, 0, 8)});
@@ -96,10 +96,10 @@ class ProposalHeader extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _ink, height: 1.15)),
+                Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _ink, height: 1.15)),
                 if (subtitle != null && subtitle!.isNotEmpty) ...[
                   const SizedBox(height: 2),
-                  Text(subtitle!, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: _mute, height: 1.2)),
+                  Text(subtitle!, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, color: _mute, height: 1.2)),
                 ],
               ],
             ),
@@ -190,13 +190,13 @@ class ProposalMealRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(typeLabel.toUpperCase(), style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: _mute2, letterSpacing: 0.6, height: 1.2)),
+                  Text(typeLabel.toUpperCase(), style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: _mute2, letterSpacing: 0.6, height: 1.2)),
                   const SizedBox(height: 2),
-                  Text(dishName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _ink, height: 1.2)),
+                  Text(dishName, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _ink, height: 1.2)),
                   const SizedBox(height: 3),
                   Row(
                     children: [
-                      Text('$calories kcal', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _ink, height: 1.2, fontFeatures: [FontFeature.tabularFigures()])),
+                      Text('$calories kcal', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _ink, height: 1.2, fontFeatures: [FontFeature.tabularFigures()])),
                       const SizedBox(width: 8),
                       _MacroDot(color: _protein, value: proteins, letter: macroLetters[0]),
                       const SizedBox(width: 8),
@@ -209,7 +209,7 @@ class ProposalMealRow extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 6),
-            const Icon(LucideIcons.chevronRight, size: 16, color: _mute2),
+            Icon(LucideIcons.chevronRight, size: 16, color: _mute2),
           ],
         ),
       ),
@@ -230,7 +230,7 @@ class _MacroDot extends StatelessWidget {
       children: [
         Container(width: 6, height: 6, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
         const SizedBox(width: 3),
-        Text('$value$letter', style: const TextStyle(fontSize: 11.5, color: _mute, height: 1.2, fontFeatures: [FontFeature.tabularFigures()])),
+        Text('$value$letter', style: TextStyle(fontSize: 11.5, color: _mute, height: 1.2, fontFeatures: [FontFeature.tabularFigures()])),
       ],
     );
   }
@@ -269,8 +269,8 @@ class ProposalDayTotals extends StatelessWidget {
               Flexible(
                 child: Text.rich(
                   TextSpan(children: [
-                    TextSpan(text: '${v}g ', style: const TextStyle(fontWeight: FontWeight.w700, color: _ink)),
-                    TextSpan(text: label, style: const TextStyle(color: _mute)),
+                    TextSpan(text: '${v}g ', style: TextStyle(fontWeight: FontWeight.w700, color: _ink)),
+                    TextSpan(text: label, style: TextStyle(color: _mute)),
                   ]),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -289,12 +289,12 @@ class ProposalDayTotals extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(totalLabel.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: _mute2, letterSpacing: 0.6, height: 1.2)),
+              Text(totalLabel.toUpperCase(), style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: _mute2, letterSpacing: 0.6, height: 1.2)),
               const SizedBox(height: 2),
               Text.rich(
                 TextSpan(children: [
-                  TextSpan(text: '$calories', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: _ink)),
-                  const TextSpan(text: ' kcal', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: _mute)),
+                  TextSpan(text: '$calories', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: _ink)),
+                  TextSpan(text: ' kcal', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: _mute)),
                 ]),
                 style: const TextStyle(height: 1.1, fontFeatures: [FontFeature.tabularFigures()]),
               ),
@@ -344,14 +344,14 @@ class ProposalWorkoutRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _ink, height: 1.2)),
+                  Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _ink, height: 1.2)),
                   const SizedBox(height: 3),
-                  Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: _mute, height: 1.2)),
+                  Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, color: _mute, height: 1.2)),
                 ],
               ),
             ),
             const SizedBox(width: 6),
-            const Icon(LucideIcons.chevronRight, size: 16, color: _mute2),
+            Icon(LucideIcons.chevronRight, size: 16, color: _mute2),
           ],
         ),
       ),
@@ -391,7 +391,7 @@ class ProposalActions extends StatelessWidget {
     final shape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(12));
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-      decoration: const BoxDecoration(color: RyzeColors.paper, border: Border(top: BorderSide(color: _line))),
+      decoration: BoxDecoration(color: RyzeColors.paper, border: Border(top: BorderSide(color: _line))),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -403,7 +403,7 @@ class ProposalActions extends StatelessWidget {
                   height: 48,
                   child: OutlinedButton(
                     onPressed: busy ? null : onCancel,
-                    style: OutlinedButton.styleFrom(foregroundColor: _mute, backgroundColor: RyzeColors.surf, side: const BorderSide(color: _line), shape: shape, textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                    style: OutlinedButton.styleFrom(foregroundColor: _mute, backgroundColor: RyzeColors.surf, side: BorderSide(color: _line), shape: shape, textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                     child: Text(cancelLabel, maxLines: 1, overflow: TextOverflow.ellipsis, softWrap: false),
                   ),
                 ),

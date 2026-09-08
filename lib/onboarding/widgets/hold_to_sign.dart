@@ -85,7 +85,7 @@ class _HoldToSignState extends State<HoldToSign> with SingleTickerProviderStateM
                     child: FractionallySizedBox(
                       widthFactor: _done ? 1 : t.clamp(0.0, 1.0),
                       heightFactor: 1,
-                      child: const ColoredBox(color: OnbColors.acc),
+                      child: ColoredBox(color: OnbColors.acc),
                     ),
                   ),
                 ),

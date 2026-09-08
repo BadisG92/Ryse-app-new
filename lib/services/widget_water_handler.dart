@@ -1,145 +1,110 @@
-import 'dart:async';
 import 'dart:io';
+
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
+import 'meal_widget_data_provider.dart';
 import 'water_service.dart';
 
-/// Service pour gérer les actions d'eau déclenchées depuis le widget iOS (App Intents)
-/// Vérifie périodiquement si des actions d'eau en attente doivent être traitées
-class WidgetWaterHandler {
-  static const MethodChannel _channel = MethodChannel('com.ryze.widget/data');
-  static Timer? _checkTimer;
+/// Water added from the iOS widget while the app was closed.
+///
+/// The widget's buttons run an App Intent in the widget's own process: it
+/// redraws the glasses at once and leaves the amount in the App Group for
+/// the app. That amount can only have been left while the app was not in
+/// front, so it is read exactly when the app comes back to the front, and
+/// once at launch. Polling the native side twice a second for the whole life
+/// of the app, which is what this did before, bought nothing.
+class WidgetWaterHandler with WidgetsBindingObserver {
+  WidgetWaterHandler._();
 
-  /// Démarrer la vérification périodique des actions d'eau en attente
+  static final WidgetWaterHandler instance = WidgetWaterHandler._();
+  static const MethodChannel _channel = MealWidgetDataProvider.channel;
+
+  bool _busy = false;
+
+  /// Reads once now, then on every return to the foreground.
   static void startChecking() {
     if (!Platform.isIOS) return;
-
-    // Vérifier immédiatement au démarrage
-    _checkPendingWaterActions();
-
-    // Vérifier plus fréquemment pour réduire la latence (toutes les 500ms)
-    _checkTimer?.cancel();
-    _checkTimer = Timer.periodic(const Duration(milliseconds: 500), (_) {
-      _checkPendingWaterActions();
-    });
+    WidgetsBinding.instance.addObserver(instance);
+    instance._process();
   }
 
-  /// Arrêter la vérification
   static void stopChecking() {
-    _checkTimer?.cancel();
-    _checkTimer = null;
+    WidgetsBinding.instance.removeObserver(instance);
   }
 
-  /// Vérifier et traiter les actions d'eau en attente
-  static Future<void> _checkPendingWaterActions() async {
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _process();
+  }
+
+  Future<void> _process() async {
+    if (_busy) return;
+    _busy = true;
     try {
-      if (!Platform.isIOS) return;
+      final pending = await _channel.invokeMethod<bool>('getBool', {'key': MealWidgetDataProvider.pendingFlagKey});
+      if (pending != true) return;
 
-      // Vérifier si une action d'eau est en attente (bool dans UserDefaults)
-      final pendingAdd = await _channel.invokeMethod<bool>('getBool', {
-        'key': 'widget_pending_water_add',
-      });
+      final amount = await _channel.invokeMethod<int>('getInt', {'key': MealWidgetDataProvider.pendingAmountKey}) ?? 0;
+      final stamp = await _channel.invokeMethod<double>('getDouble', {'key': MealWidgetDataProvider.pendingStampKey});
 
-      if (pendingAdd == null || pendingAdd == false) {
-        return; // Pas d'action en attente
-      }
+      // taken off the shelf before the write, so a second pass cannot add it twice
+      await _clear();
 
-      // Récupérer la quantité (sauvegardée comme Int dans iOS)
-      final amount = await _channel.invokeMethod<int>('getInt', {
-        'key': 'widget_pending_water_amount',
-      });
-
-      // Récupérer le timestamp (sauvegardé comme Double dans iOS)
-      final timestamp = await _channel.invokeMethod<double>('getDouble', {
-        'key': 'widget_pending_water_timestamp',
-      });
-
-      if (amount == null) {
-        if (kDebugMode) {
-          debugPrint('⚠️ widget_pending_water_add est true mais widget_pending_water_amount est null');
-        }
-        return;
-      }
-      if (amount <= 0) {
-        if (kDebugMode) {
-          debugPrint('⚠️ Quantité d\'eau invalide: $amount');
-        }
-        // Nettoyer les clés invalides
-        await _clearPendingWaterAction();
-        return;
-      }
-
-      // Vérifier que l'action n'est pas trop ancienne (max 1 heure)
-      if (timestamp != null) {
-        final actionDate = DateTime.fromMillisecondsSinceEpoch((timestamp * 1000).toInt());
-        final now = DateTime.now();
-        if (now.difference(actionDate).inHours > 1) {
-          if (kDebugMode) {
-            debugPrint('⚠️ Action d\'eau trop ancienne, ignorée');
-          }
-          await _clearPendingWaterAction();
+      if (amount <= 0) return;
+      if (stamp != null) {
+        final left = DateTime.fromMillisecondsSinceEpoch((stamp * 1000).round());
+        // a glass tapped yesterday belongs to yesterday, which the widget
+        // has already reset; writing it today would be a lie
+        if (!_sameDay(left, DateTime.now())) {
+          if (kDebugMode) debugPrint('💧 Widget: $amount ml left on another day, dropped');
+          await MealWidgetDataProvider.updateWidgetData();
           return;
         }
       }
 
-      // IMPORTANT: Nettoyer les clés IMMÉDIATEMENT pour éviter les doublons
-      // On fait ça AVANT d'ajouter l'eau pour empêcher le traitement multiple
-      await _clearPendingWaterAction();
-
-      if (kDebugMode) {
-        debugPrint('💧 Traitement de l\'action d\'eau depuis le widget: ${amount}ml');
-      }
-
-      // Ajouter l'eau via WaterService
-      final success = await WaterService.addWaterEntry(
+      if (kDebugMode) debugPrint('💧 Widget: writing $amount ml added from the widget');
+      final ok = await WaterService.addWaterEntry(
         amount: amount,
-        sourceType: _getSourceTypeFromAmount(amount),
+        sourceType: amount == 250 ? 'glass' : 'manual',
       );
-
-      if (success) {
-        if (kDebugMode) {
-          debugPrint('✅ Eau ajoutée avec succès depuis le widget: ${amount}ml');
-        }
-      } else {
-        if (kDebugMode) {
-          debugPrint('❌ Échec de l\'ajout d\'eau depuis le widget');
-        }
+      if (!ok) {
+        // offline, most likely: back on the shelf for the next return
+        await _restore(amount);
       }
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Erreur lors de la vérification des actions d\'eau: $e');
-      }
+      if (kDebugMode) debugPrint('⚠️ Widget: pending water failed: $e');
+    } finally {
+      _busy = false;
     }
   }
 
-  /// Nettoyer les clés d'action en attente
-  static Future<void> _clearPendingWaterAction() async {
+  static bool _sameDay(DateTime a, DateTime b) => a.year == b.year && a.month == b.month && a.day == b.day;
+
+  static Future<void> _clear() async {
+    for (final key in [
+      MealWidgetDataProvider.pendingFlagKey,
+      MealWidgetDataProvider.pendingAmountKey,
+      MealWidgetDataProvider.pendingStampKey,
+    ]) {
+      await _channel.invokeMethod('remove', {'key': key});
+    }
+  }
+
+  static Future<void> _restore(int amount) async {
     try {
-      await _channel.invokeMethod('remove', {'key': 'widget_pending_water_add'});
-      await _channel.invokeMethod('remove', {'key': 'widget_pending_water_amount'});
-      await _channel.invokeMethod('remove', {'key': 'widget_pending_water_timestamp'});
+      final already = await _channel.invokeMethod<bool>('getBool', {'key': MealWidgetDataProvider.pendingFlagKey}) == true
+          ? (await _channel.invokeMethod<int>('getInt', {'key': MealWidgetDataProvider.pendingAmountKey}) ?? 0)
+          : 0;
+      await _channel.invokeMethod('setBool', {'key': MealWidgetDataProvider.pendingFlagKey, 'value': true});
+      await _channel.invokeMethod('setInt', {'key': MealWidgetDataProvider.pendingAmountKey, 'value': already + amount});
+      await _channel.invokeMethod('setDouble', {
+        'key': MealWidgetDataProvider.pendingStampKey,
+        'value': DateTime.now().millisecondsSinceEpoch / 1000,
+      });
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('⚠️ Erreur lors du nettoyage des clés: $e');
-      }
-    }
-  }
-
-  /// Déterminer le type de source selon la quantité
-  static String _getSourceTypeFromAmount(int milliliters) {
-    switch (milliliters) {
-      case 250:
-        return 'glass';
-      case 500:
-        return 'bottle';
-      case 750:
-        return 'sports_bottle';
-      case 200:
-        return 'cup';
-      case 1000:
-        return 'bottle';
-      default:
-        return 'manual';
+      if (kDebugMode) debugPrint('⚠️ Widget: could not keep $amount ml for later: $e');
     }
   }
 }

@@ -446,10 +446,10 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
             child: isExpanded
                 ? Column(
                     children: [
-                      const Divider(height: 1, color: RyzeColors.line),
+                      Divider(height: 1, color: RyzeColors.line),
                       Padding(padding: EdgeInsets.all(context.vw(4.1)), child: content),
                       if (actions != null) ...[
-                        const Divider(height: 1, color: RyzeColors.line),
+                        Divider(height: 1, color: RyzeColors.line),
                         Padding(padding: EdgeInsets.all(context.vw(4.1)), child: actions),
                       ],
                     ],
@@ -469,7 +469,7 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
     if (isLoadingIngredients) {
       return Padding(
         padding: EdgeInsets.symmetric(vertical: context.vw(5.1)),
-        child: const Center(child: CircularProgressIndicator(color: RyzeColors.ink, strokeWidth: 2)),
+        child: Center(child: CircularProgressIndicator(color: RyzeColors.ink, strokeWidth: 2)),
       );
     }
 
@@ -610,7 +610,7 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
     final lang = LocalizationService.instance.currentLanguageCode;
     return Container(
       padding: EdgeInsets.fromLTRB(context.vw(5.1), context.vw(3.1), context.vw(5.1), context.vw(3.1)),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: RyzeColors.paper,
         border: Border(top: BorderSide(color: RyzeColors.line)),
       ),
@@ -923,7 +923,7 @@ class _EditIngredientsScreenState extends State<EditIngredientsScreen> {
             ),
             Container(
               padding: EdgeInsets.fromLTRB(gutter, context.vw(3.1), gutter, context.vw(4.1)),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: RyzeColors.paper,
                 border: Border(top: BorderSide(color: RyzeColors.line)),
               ),

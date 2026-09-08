@@ -7,6 +7,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'config/env_config.dart';
 import 'services/auth_service.dart';
 import 'services/localization_service.dart';
+import 'services/theme_service.dart';
 import 'services/analytics_service.dart';
 import 'services/app_navigator.dart';
 import 'pages/ryze_app.dart';
@@ -23,6 +24,7 @@ import 'services/notification_service.dart';
 import 'package:app_links/app_links.dart';
 import 'services/widget_deep_link_handler.dart';
 import 'services/widget_water_handler.dart';
+import 'services/widget_sync_service.dart';
 import 'services/meal_widget_data_provider.dart';
 import 'services/haptic_service.dart';
 import 'design/tokens.dart';
@@ -116,6 +118,10 @@ void main() async {
   await initializeDateFormatting('en');
   await initializeDateFormatting('de');
 
+  // La palette choisie par l'utilisateur, avant le premier rendu : sans quoi
+  // l'application s'ouvrirait en Nuit puis changerait de couleur sous les yeux.
+  await ThemeService.instance.load();
+
   // Initialiser le service de retour haptique
   await HapticService.instance.initialize();
   await RyzeFeedback.initialize();
@@ -166,8 +172,11 @@ void main() async {
   // Lancer l'app immédiatement après les services critiques
   runApp(MyApp(navigatorKey: navigatorKey));
   
-  // Démarrer la vérification des actions d'eau depuis le widget (iOS 17+ App Intents)
+  // Les widgets : l'eau ajoutée depuis le widget iOS pendant que l'app était
+  // fermée, lue au retour au premier plan ; et les changements de plan, de
+  // séance ou de jour, qui redessinent les widgets sans passer par un repas.
   WidgetWaterHandler.startChecking();
+  WidgetSyncService.start();
 }
 
 class MyApp extends StatelessWidget {
@@ -181,8 +190,14 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthService()),
         ChangeNotifierProvider.value(value: LocalizationService.instance),
+        ChangeNotifierProvider.value(value: ThemeService.instance),
       ],
-      child: MaterialApp(
+      // Les jetons de couleur sont lus a chaque `build` : il suffit donc de
+      // reconstruire depuis la racine pour que le choix d'une palette repeigne
+      // l'application entiere, sans redemarrage et sans qu'aucun ecran ait a
+      // savoir qu'un theme existe.
+      child: Consumer<ThemeService>(
+        builder: (context, theme, _) => MaterialApp(
         navigatorKey: navigatorKey, // NOUVEAU: Pour les deep links
         title: 'Ryze',
         debugShowCheckedModeBanner: false,
@@ -218,6 +233,7 @@ class MyApp extends StatelessWidget {
           '/settings': (context) => const SettingsPage(),
           '/pricing': (context) => const PricingScreen(),
         },
+        ),
       ),
     );
   }
@@ -352,7 +368,7 @@ class _AppInitializerState extends State<AppInitializer> with TickerProviderStat
   Widget _buildSplashGround(Widget child) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,

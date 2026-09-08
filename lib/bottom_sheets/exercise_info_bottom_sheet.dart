@@ -113,7 +113,7 @@ class _ContentState extends State<_Content> {
     if (_loading) {
       return Padding(
         padding: EdgeInsets.symmetric(vertical: context.vw(10)),
-        child: const Center(child: CircularProgressIndicator(color: RyzeColors.ink, strokeWidth: 2)),
+        child: Center(child: CircularProgressIndicator(color: RyzeColors.ink, strokeWidth: 2)),
       );
     }
     if (_failed || _data == null) {
@@ -222,7 +222,7 @@ class _Step extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: context.vw(4.1), vertical: context.vw(3.1)),
-      decoration: BoxDecoration(border: first ? null : const Border(top: BorderSide(color: RyzeColors.line))),
+      decoration: BoxDecoration(border: first ? null : Border(top: BorderSide(color: RyzeColors.line))),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -230,7 +230,7 @@ class _Step extends StatelessWidget {
             width: context.vw(6.7),
             height: context.vw(6.7),
             alignment: Alignment.center,
-            decoration: const BoxDecoration(color: RyzeColors.ink, shape: BoxShape.circle),
+            decoration: BoxDecoration(color: RyzeColors.ink, shape: BoxShape.circle),
             child: Text('$number', style: RyzeText.body(context, 2.9, weight: FontWeight.w600, color: RyzeColors.surf)),
           ),
           SizedBox(width: context.vw(3.1)),

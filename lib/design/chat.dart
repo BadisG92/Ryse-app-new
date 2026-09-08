@@ -52,7 +52,7 @@ class RyzeChatHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: EdgeInsets.fromLTRB(context.vw(4.1), context.vw(2.1), context.vw(4.1), context.vw(2.6)),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: RyzeColors.surf,
         border: Border(bottom: BorderSide(color: RyzeColors.line)),
       ),
@@ -267,12 +267,12 @@ class RyzeChatDay extends StatelessWidget {
       padding: EdgeInsets.symmetric(vertical: context.vw(3.1)),
       child: Row(
         children: [
-          const Expanded(child: Divider(color: RyzeColors.line, height: 1)),
+          Expanded(child: Divider(color: RyzeColors.line, height: 1)),
           Padding(
             padding: EdgeInsets.symmetric(horizontal: context.vw(3.1)),
             child: Text(label, style: RyzeText.body(context, 2.9, weight: FontWeight.w600, color: RyzeColors.mute2)),
           ),
-          const Expanded(child: Divider(color: RyzeColors.line, height: 1)),
+          Expanded(child: Divider(color: RyzeColors.line, height: 1)),
         ],
       ),
     );
@@ -360,7 +360,7 @@ class RyzeChatInput extends StatelessWidget {
         context.vw(4.1),
         inset > 0 ? context.vw(2.6) : safe + context.vw(2.6),
       ),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: RyzeColors.surf,
         border: Border(top: BorderSide(color: RyzeColors.line)),
       ),

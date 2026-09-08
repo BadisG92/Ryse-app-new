@@ -89,7 +89,7 @@ class _OnbOptionCardState extends State<OnbOptionCard> with SingleTickerProvider
                       child: FractionallySizedBox(
                         widthFactor: t.clamp(0.0, 1.0),
                         heightFactor: 1,
-                        child: const ColoredBox(color: OnbColors.ink),
+                        child: ColoredBox(color: OnbColors.ink),
                       ),
                     ),
                   ),

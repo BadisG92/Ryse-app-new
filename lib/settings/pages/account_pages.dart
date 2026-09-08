@@ -332,7 +332,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
               for (var i = 0; i < _dataKeys.length; i++)
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: context.vw(4.1), vertical: context.vw(2.6)),
-                  decoration: BoxDecoration(border: i == 0 ? null : const Border(top: BorderSide(color: RyzeColors.line))),
+                  decoration: BoxDecoration(border: i == 0 ? null : Border(top: BorderSide(color: RyzeColors.line))),
                   child: Row(
                     children: [
                       Icon(LucideIcons.minus, size: context.vw(3.6), color: RyzeColors.mute2),

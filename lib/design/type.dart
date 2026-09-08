@@ -19,7 +19,7 @@ class RyzeText {
     BuildContext context,
     double sizeVw, {
     FontWeight weight = FontWeight.w800,
-    Color color = RyzeColors.ink,
+    Color? color,
     double height = 1.04,
     double letterSpacingEm = -0.028,
   }) {
@@ -29,7 +29,7 @@ class RyzeText {
       fontSize: size,
       fontWeight: weight,
       fontVariations: [FontVariation('wght', _wght(weight)), const FontVariation('wdth', 100)],
-      color: color,
+      color: color ?? RyzeColors.ink,
       height: height,
       letterSpacing: size * letterSpacingEm,
     );
@@ -39,7 +39,7 @@ class RyzeText {
     BuildContext context,
     double sizeVw, {
     FontWeight weight = FontWeight.w400,
-    Color color = RyzeColors.ink,
+    Color? color,
     double height = 1.4,
   }) {
     return TextStyle(
@@ -47,7 +47,7 @@ class RyzeText {
       fontSize: context.vw(sizeVw),
       fontWeight: weight,
       fontVariations: [FontVariation('wght', _wght(weight)), const FontVariation('wdth', 100)],
-      color: color,
+      color: color ?? RyzeColors.ink,
       height: height,
     );
   }

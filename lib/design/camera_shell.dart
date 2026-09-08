@@ -84,7 +84,7 @@ class RyzeCameraShell extends StatelessWidget {
           if (ready && controller != null)
             _Preview(controller: controller!)
           else
-            const ColoredBox(color: RyzeColors.ink),
+            ColoredBox(color: RyzeColors.ink),
 
           if (frame != null) Center(child: frame),
           if (overlay != null) overlay!,

@@ -414,7 +414,7 @@ class _Day extends StatelessWidget {
         SizedBox(
           height: 6,
           child: sport
-              ? Container(width: 6, height: 6, decoration: const BoxDecoration(color: RyzeColors.acc, shape: BoxShape.circle))
+              ? Container(width: 6, height: 6, decoration: BoxDecoration(color: RyzeColors.acc, shape: BoxShape.circle))
               : null,
         ),
         SizedBox(height: context.vw(1)),
@@ -440,7 +440,7 @@ class _Legend extends StatelessWidget {
       runSpacing: context.vw(1.5),
       children: [
         _LegendItem(
-          mark: Container(width: 10, height: 10, decoration: const BoxDecoration(color: RyzeColors.ink, shape: BoxShape.circle)),
+          mark: Container(width: 10, height: 10, decoration: BoxDecoration(color: RyzeColors.ink, shape: BoxShape.circle)),
           label: 'progress_legend_hit'.tr(lang),
         ),
         _LegendItem(
@@ -452,7 +452,7 @@ class _Legend extends StatelessWidget {
           label: 'progress_legend_partial'.tr(lang),
         ),
         _LegendItem(
-          mark: Container(width: 8, height: 8, decoration: const BoxDecoration(color: RyzeColors.acc, shape: BoxShape.circle)),
+          mark: Container(width: 8, height: 8, decoration: BoxDecoration(color: RyzeColors.acc, shape: BoxShape.circle)),
           label: 'progress_legend_sport'.tr(lang),
         ),
       ],
@@ -494,7 +494,7 @@ class _StreakPill extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(LucideIcons.flame, size: 14, color: RyzeColors.accInk),
+          Icon(LucideIcons.flame, size: 14, color: RyzeColors.accInk),
           SizedBox(width: context.vw(1.2)),
           Text(
             '$streak $unit',
@@ -520,7 +520,7 @@ class _Empty extends StatelessWidget {
     if (!loaded) {
       return Padding(
         padding: EdgeInsets.symmetric(vertical: context.vw(12)),
-        child: const Center(child: CircularProgressIndicator(color: RyzeColors.ink, strokeWidth: 2)),
+        child: Center(child: CircularProgressIndicator(color: RyzeColors.ink, strokeWidth: 2)),
       );
     }
     return Container(

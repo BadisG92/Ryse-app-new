@@ -493,7 +493,7 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> {
                           Container(
                             width: context.vw(7.7),
                             height: context.vw(7.7),
-                            decoration: const BoxDecoration(color: RyzeColors.acc, shape: BoxShape.circle),
+                            decoration: BoxDecoration(color: RyzeColors.acc, shape: BoxShape.circle),
                             child: Center(child: RyzeMark(size: context.vw(4.4), color: RyzeColors.surf)),
                           ),
                           SizedBox(width: context.vw(2.6)),

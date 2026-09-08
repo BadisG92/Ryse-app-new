@@ -104,7 +104,7 @@ class _HomeWeekState extends State<HomeWeek> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text('home_plan'.tr(lang), style: RyzeText.body(context, 3.4, weight: FontWeight.w600)),
-                      const Icon(LucideIcons.chevronRight, size: 14, color: RyzeColors.ink),
+                      Icon(LucideIcons.chevronRight, size: 14, color: RyzeColors.ink),
                     ],
                   ),
                 ),
@@ -179,7 +179,7 @@ class _DayPanel extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: EdgeInsets.fromLTRB(context.vw(3.6), context.vw(1), context.vw(3.6), context.vw(2.6)),
-      decoration: const BoxDecoration(border: Border(top: BorderSide(color: RyzeColors.line))),
+      decoration: BoxDecoration(border: Border(top: BorderSide(color: RyzeColors.line))),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,

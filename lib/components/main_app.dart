@@ -12,6 +12,7 @@ import '../design/design.dart';
 import '../services/ryze_dates.dart';
 import '../services/translations.dart';
 import '../services/workout_session_store.dart';
+import '../services/app_navigator.dart';
 import '../sport/session/session_models.dart';
 import '../sport/session/session_screen.dart';
 
@@ -36,14 +37,30 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    AppNavigator().requestedTab.addListener(_onRequestedTab);
     _checkBilanAvailability();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _offerResume());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _offerResume();
+      // a widget may have asked for a tab before the bar existed
+      _onRequestedTab();
+    });
   }
 
   @override
   void dispose() {
+    AppNavigator().requestedTab.removeListener(_onRequestedTab);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  /// Un widget ou un lien demande un onglet : la barre y va et efface la
+  /// demande, pour qu'elle ne rejoue pas à la prochaine reconstruction.
+  void _onRequestedTab() {
+    final tab = AppNavigator().requestedTab.value;
+    if (tab == null) return;
+    AppNavigator().requestedTab.value = null;
+    if (!mounted || tab == _activeTab) return;
+    setState(() => _activeTab = tab);
   }
 
   @override

@@ -648,7 +648,7 @@ class _TopBar extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(LucideIcons.flame, size: 14, color: RyzeColors.accInk),
+                Icon(LucideIcons.flame, size: 14, color: RyzeColors.accInk),
                 SizedBox(width: context.vw(1.2)),
                 Text(
                   '$streak $unit',

@@ -22,11 +22,11 @@ import 'tokens.dart';
 /// With reduce-motion on, the logo is there from the first frame and
 /// [onComplete] fires at once.
 class RyzeLogoDraw extends StatefulWidget {
-  const RyzeLogoDraw({
+  RyzeLogoDraw({
     super.key,
     this.height = 220,
     this.color = Colors.white,
-    this.glow = RyzeColors.acc,
+    this.glow,
     this.onComplete,
   });
 
@@ -38,7 +38,8 @@ class RyzeLogoDraw extends StatefulWidget {
 
   /// The warm light behind the mark, the one accent of the screen. Pass
   /// `Colors.transparent` to drop it.
-  final Color glow;
+  /// Nulle pour le secondaire du theme.
+  final Color? glow;
 
   /// Fired once the name has landed.
   final VoidCallback? onComplete;
@@ -104,7 +105,7 @@ class _RyzeLogoDrawState extends State<RyzeLogoDraw> with SingleTickerProviderSt
     return RepaintBoundary(
       child: CustomPaint(
         size: Size(widget.height * RyzeLogo.lockup.width / RyzeLogo.lockup.height, widget.height),
-        painter: _PenPainter(repaint: _c, progress: _c, color: widget.color, glow: widget.glow),
+        painter: _PenPainter(repaint: _c, progress: _c, color: widget.color, glow: widget.glow ?? RyzeColors.acc),
       ),
     );
   }

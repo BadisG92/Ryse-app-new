@@ -38,7 +38,7 @@ class HelloContent extends StatelessWidget {
           child: Text.rich(
             TextSpan(children: [
               TextSpan(text: '${s.t('hello_punch1')}\n'),
-              TextSpan(text: s.t('hello_punch2'), style: const TextStyle(color: OnbColors.accInk)),
+              TextSpan(text: s.t('hello_punch2'), style: TextStyle(color: OnbColors.accInk)),
             ]),
             style: OnbText.display(context, 5.2, height: 1.15, letterSpacingEm: -0.02),
           ),

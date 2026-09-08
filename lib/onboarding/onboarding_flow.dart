@@ -1003,9 +1003,9 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                     fillColor: OnbColors.surf,
                     contentPadding: EdgeInsets.symmetric(horizontal: context.vw(4.2), vertical: context.vw(3.6)),
                     enabledBorder:
-                        OutlineInputBorder(borderRadius: BorderRadius.circular(context.vw(4.2)), borderSide: const BorderSide(color: OnbColors.line)),
+                        OutlineInputBorder(borderRadius: BorderRadius.circular(context.vw(4.2)), borderSide: BorderSide(color: OnbColors.line)),
                     focusedBorder:
-                        OutlineInputBorder(borderRadius: BorderRadius.circular(context.vw(4.2)), borderSide: const BorderSide(color: OnbColors.ink, width: 2)),
+                        OutlineInputBorder(borderRadius: BorderRadius.circular(context.vw(4.2)), borderSide: BorderSide(color: OnbColors.ink, width: 2)),
                   ),
                 ),
               ),

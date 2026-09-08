@@ -148,7 +148,7 @@ class RyzeSheetRow extends StatelessWidget {
         height: context.vw(14.9),
         padding: EdgeInsets.only(left: context.vw(2.6), right: context.vw(3.1)),
         decoration: BoxDecoration(
-          border: first ? null : const Border(top: BorderSide(color: RyzeColors.line)),
+          border: first ? null : Border(top: BorderSide(color: RyzeColors.line)),
         ),
         child: Row(
           children: [

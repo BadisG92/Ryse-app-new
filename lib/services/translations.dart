@@ -8322,6 +8322,22 @@ class AppTranslations {
       'en': 'Plan all my meals for the entire week (breakfast, lunch and dinner for each day)',
       'de': 'Plane alle meine Mahlzeiten für die ganze Woche (Frühstück, Mittagessen und Abendessen für jeden Tag)',
     },
+    // Les cinq habits de l'application.
+    'settings_theme': {
+      'fr': 'Couleurs',
+      'en': 'Colours',
+      'de': 'Farben',
+    },
+    'settings_theme_hint': {
+      'fr': 'Cinq accords, vérifiés pour rester lisibles',
+      'en': 'Five pairings, checked to stay legible',
+      'de': 'Fünf Kombinationen, auf Lesbarkeit geprüft',
+    },
+    'theme_nuit': {'fr': 'Nuit', 'en': 'Night', 'de': 'Nacht'},
+    'theme_rose': {'fr': 'Rose', 'en': 'Rose', 'de': 'Rose'},
+    'theme_foret': {'fr': 'Forêt', 'en': 'Forest', 'de': 'Wald'},
+    'theme_ardoise': {'fr': 'Ardoise', 'en': 'Slate', 'de': 'Schiefer'},
+    'theme_prune': {'fr': 'Prune', 'en': 'Plum', 'de': 'Pflaume'},
     'chat_copied': {
       'fr': 'Message copié',
       'en': 'Message copied',

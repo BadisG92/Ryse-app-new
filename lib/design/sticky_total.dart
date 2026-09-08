@@ -46,7 +46,7 @@ class StickyTotal extends StatelessWidget {
             padding: EdgeInsets.fromLTRB(context.vw(5.1), context.vw(2.3), context.vw(5.1), context.vw(2.3)),
             decoration: BoxDecoration(
               color: RyzeColors.paper,
-              border: const Border(bottom: BorderSide(color: RyzeColors.line)),
+              border: Border(bottom: BorderSide(color: RyzeColors.line)),
               boxShadow: [
                 BoxShadow(
                   color: RyzeColors.ink.withValues(alpha: 0.05),

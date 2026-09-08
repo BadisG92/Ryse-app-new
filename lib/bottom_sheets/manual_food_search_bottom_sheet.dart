@@ -476,7 +476,7 @@ class _ManualFoodSearchBottomSheetState extends State<ManualFoodSearchBottomShee
 
             Expanded(
               child: _isLoading
-                  ? const Center(child: CircularProgressIndicator(color: RyzeColors.ink, strokeWidth: 2))
+                  ? Center(child: CircularProgressIndicator(color: RyzeColors.ink, strokeWidth: 2))
                   : foods.isEmpty
                       ? _emptyState(lang)
                       : ListView.separated(

@@ -42,7 +42,7 @@ class ResumeSessionCard extends StatelessWidget {
             Container(
               width: context.vw(10.8),
               height: context.vw(10.8),
-              decoration: const BoxDecoration(color: RyzeColors.ink, shape: BoxShape.circle),
+              decoration: BoxDecoration(color: RyzeColors.ink, shape: BoxShape.circle),
               child: Icon(LucideIcons.play, size: context.vw(4.6), color: RyzeColors.surf),
             ),
             SizedBox(width: context.vw(3.6)),

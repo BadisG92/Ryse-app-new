@@ -66,7 +66,7 @@ class _Actions extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: EdgeInsets.fromLTRB(context.vw(5.1), context.vw(2.6), context.vw(5.1), context.vw(2.6)),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: RyzeColors.paper,
         border: Border(top: BorderSide(color: RyzeColors.line)),
       ),
@@ -139,7 +139,7 @@ class RestBar extends StatelessWidget {
     final text = ended ? 'session_rest_done'.tr(lang) : '${s ~/ 60}:${(s % 60).toString().padLeft(2, '0')}';
 
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: RyzeColors.paper,
         border: Border(top: BorderSide(color: RyzeColors.line)),
       ),

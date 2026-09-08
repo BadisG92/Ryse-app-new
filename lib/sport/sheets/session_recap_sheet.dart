@@ -190,7 +190,7 @@ class _BodyState extends State<_Body> {
     if (_loading) {
       return Padding(
         padding: EdgeInsets.symmetric(vertical: context.vw(8)),
-        child: const Center(child: CircularProgressIndicator(color: RyzeColors.ink, strokeWidth: 2)),
+        child: Center(child: CircularProgressIndicator(color: RyzeColors.ink, strokeWidth: 2)),
       );
     }
     final groups = (_detail?['exercises'] as Map?)?.cast<String, dynamic>() ?? const {};
@@ -233,7 +233,7 @@ class _BodyState extends State<_Body> {
               for (final (i, entry) in groups.entries.indexed)
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: context.vw(4.1), vertical: context.vw(3.1)),
-                  decoration: BoxDecoration(border: i == 0 ? null : const Border(top: BorderSide(color: RyzeColors.line))),
+                  decoration: BoxDecoration(border: i == 0 ? null : Border(top: BorderSide(color: RyzeColors.line))),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [

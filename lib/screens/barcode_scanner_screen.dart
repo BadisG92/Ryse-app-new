@@ -476,7 +476,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                       ],
                     ),
                     SizedBox(height: context.vw(3.6)),
-                    const Divider(height: 1, color: RyzeColors.line),
+                    Divider(height: 1, color: RyzeColors.line),
                     SizedBox(height: context.vw(3.1)),
                     if (_isEditingNutritionalValues)
                       Padding(
@@ -556,7 +556,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
     final lang = LocalizationService.instance.currentLanguageCode;
     return Container(
       padding: EdgeInsets.fromLTRB(context.vw(5.1), context.vw(3.1), context.vw(5.1), context.vw(4.6)),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: RyzeColors.paper,
         border: Border(top: BorderSide(color: RyzeColors.line)),
       ),
@@ -1510,15 +1510,15 @@ class _BarcodeMacro extends StatelessWidget {
                   contentPadding: EdgeInsets.symmetric(horizontal: context.vw(2.1), vertical: context.vw(1.5)),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(RyzeRadius.xs),
-                    borderSide: const BorderSide(color: RyzeColors.line),
+                    borderSide: BorderSide(color: RyzeColors.line),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(RyzeRadius.xs),
-                    borderSide: const BorderSide(color: RyzeColors.line),
+                    borderSide: BorderSide(color: RyzeColors.line),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(RyzeRadius.xs),
-                    borderSide: const BorderSide(color: RyzeColors.ink),
+                    borderSide: BorderSide(color: RyzeColors.ink),
                   ),
                 ),
               ),

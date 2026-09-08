@@ -331,7 +331,7 @@ class _OnboardingPaywallScreenState extends State<OnboardingPaywallScreen> {
                               alignment: Alignment.center,
                               decoration: BoxDecoration(color: OnbColors.acc, borderRadius: BorderRadius.circular(999)),
                               child: SizedBox(
-                                  width: context.vw(5), height: context.vw(5), child: const CircularProgressIndicator(strokeWidth: 2.5, color: OnbColors.ink)),
+                                  width: context.vw(5), height: context.vw(5), child: CircularProgressIndicator(strokeWidth: 2.5, color: OnbColors.ink)),
                             )
                           : OnbButton(label: cta, gold: true, onPressed: _purchase),
                     ),
@@ -588,7 +588,7 @@ class _PlanRow extends StatelessWidget {
                   child: selected
                       ? Center(
                           child: Container(
-                              width: context.vw(2.6), height: context.vw(2.6), decoration: const BoxDecoration(color: OnbColors.ink, shape: BoxShape.circle)))
+                              width: context.vw(2.6), height: context.vw(2.6), decoration: BoxDecoration(color: OnbColors.ink, shape: BoxShape.circle)))
                       : null,
                 ),
                 SizedBox(width: context.vw(3)),

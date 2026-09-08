@@ -853,7 +853,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
 
           // La semaine, fixe sous l'en-tete.
           _buildCalendarSection(langCode),
-          const Divider(height: 1, color: RyzeColors.line),
+          Divider(height: 1, color: RyzeColors.line),
 
           // Chat (prend tout l'espace restant)
           Expanded(
@@ -1458,7 +1458,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
                       color: RyzeColors.ink.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       LucideIcons.dumbbell,
                       size: 24,
                       color: RyzeColors.ink,
@@ -1471,7 +1471,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
                       children: [
                         Text(
                           workout.workoutType,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                             color: RyzeColors.ink,
@@ -1559,7 +1559,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
                           child: Center(
                             child: Text(
                               '${index + 1}',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
                                 color: RyzeColors.ink,
@@ -1574,7 +1574,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
                             children: [
                               Text(
                                 exercise.exercise.name,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
                                   color: RyzeColors.ink,
@@ -1713,9 +1713,9 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
               child: Row(
                 children: [
                   const SizedBox(width: 52),
-                  Text(moreDays.replaceAll('{n}', '${_mealsDays.length}'), style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: RyzeColors.ink)),
+                  Text(moreDays.replaceAll('{n}', '${_mealsDays.length}'), style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: RyzeColors.ink)),
                   const SizedBox(width: 4),
-                  const Icon(LucideIcons.chevronRight, size: 14, color: RyzeColors.ink),
+                  Icon(LucideIcons.chevronRight, size: 14, color: RyzeColors.ink),
                 ],
               ),
             ),
@@ -2088,7 +2088,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
       duration: const Duration(milliseconds: 450),
       child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: RyzeColors.surf,
         border: Border(top: BorderSide(color: RyzeColors.line)),
       ),
@@ -2137,7 +2137,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
   Widget _buildDemoLimitReached(String langCode) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: RyzeColors.surf,
         border: Border(top: BorderSide(color: RyzeColors.line)),
       ),
@@ -2171,7 +2171,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
 
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         border: Border(top: BorderSide(color: RyzeColors.line)),
       ),
       child: Column(
@@ -2303,7 +2303,7 @@ class _MealDetailPage extends StatelessWidget {
                     children: [
                       Text(
                         meal.dishName,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
                           color: RyzeColors.ink,
@@ -2379,7 +2379,7 @@ class _MealDetailPage extends StatelessWidget {
                 ),
                 child: Text(
                   sections['ingredients']!,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     color: RyzeColors.ink,
                     height: 1.6,
@@ -2407,7 +2407,7 @@ class _MealDetailPage extends StatelessWidget {
                 ),
                 child: Text(
                   sections['recipe']!,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     color: RyzeColors.ink,
                     height: 1.6,
@@ -2441,7 +2441,7 @@ class _MealDetailPage extends StatelessWidget {
                     Expanded(
                       child: Text(
                         sections['tip']!,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           color: RyzeColors.ink,
                           height: 1.5,
@@ -2550,7 +2550,7 @@ class _MealDetailPage extends StatelessWidget {
         const SizedBox(width: 12),
         Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
             color: RyzeColors.ink,

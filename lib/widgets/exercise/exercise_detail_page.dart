@@ -150,7 +150,7 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
                 ),
                 Expanded(
                   child: _loading
-                      ? const Center(child: CircularProgressIndicator(color: RyzeColors.ink, strokeWidth: 2))
+                      ? Center(child: CircularProgressIndicator(color: RyzeColors.ink, strokeWidth: 2))
                       : ListView(
                           padding: EdgeInsets.fromLTRB(gutter, 0, gutter, 132),
                           children: [
@@ -334,7 +334,7 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
                 for (var i = 0; i < sessions.length && i < 20; i++)
                   Container(
                     padding: EdgeInsets.symmetric(horizontal: context.vw(4.1), vertical: context.vw(3.1)),
-                    decoration: BoxDecoration(border: i == 0 ? null : const Border(top: BorderSide(color: RyzeColors.line))),
+                    decoration: BoxDecoration(border: i == 0 ? null : Border(top: BorderSide(color: RyzeColors.line))),
                     child: Row(
                       children: [
                         Expanded(

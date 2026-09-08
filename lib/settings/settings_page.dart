@@ -15,6 +15,7 @@ import 'settings_data.dart';
 import 'pages/account_pages.dart';
 import 'pages/info_pages.dart';
 import 'sheets/app_sheets.dart';
+import 'sheets/theme_sheet.dart';
 import 'sheets/nutrition_sheet.dart';
 import 'sheets/profile_sheets.dart';
 
@@ -191,7 +192,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                   Expanded(
                     child: p == null
-                        ? const Center(child: CircularProgressIndicator(color: RyzeColors.ink, strokeWidth: 2))
+                        ? Center(child: CircularProgressIndicator(color: RyzeColors.ink, strokeWidth: 2))
                         : ListView(
                             padding: EdgeInsets.fromLTRB(gutter, 0, gutter, context.vw(12)),
                             children: [
@@ -245,6 +246,10 @@ class _SettingsPageState extends State<SettingsPage> {
                                   rows: [
                                     (null, 'settings_coach'.tr(lang), null, () => CoachSheet.show(context, lang: lang)),
                                     (LucideIcons.bell, 'settings_notifications'.tr(lang), null, () => NotificationsSheet.show(context, lang: lang)),
+                                    (LucideIcons.palette, 'settings_theme'.tr(lang), RyzeColors.palette.key.tr(lang), () async {
+                                      await ThemeSheet.show(context, lang: lang);
+                                      if (mounted) setState(() {});
+                                    }),
                                     (LucideIcons.settings2, 'settings_preferences'.tr(lang), _preferencesSummary(lang), () async {
                                       await PreferencesSheet.show(context, lang: lang);
                                       if (mounted) setState(() {});
@@ -312,7 +317,7 @@ class _Identity extends StatelessWidget {
           width: context.vw(13.3),
           height: context.vw(13.3),
           alignment: Alignment.center,
-          decoration: const BoxDecoration(color: RyzeColors.ink, shape: BoxShape.circle),
+          decoration: BoxDecoration(color: RyzeColors.ink, shape: BoxShape.circle),
           child: Text(initial, style: RyzeText.display(context, 5.6, weight: FontWeight.w600, color: RyzeColors.surf)),
         ),
         SizedBox(width: context.vw(3.6)),

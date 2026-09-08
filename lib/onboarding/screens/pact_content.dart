@@ -67,7 +67,7 @@ class _PactContentState extends State<PactContent> {
                       TextSpan(children: [
                         TextSpan(text: s.t('pact_p2_pre')),
                         TextSpan(
-                            text: s.t('pact_p2_bold', {'day': widget.dayName}), style: const TextStyle(color: OnbColors.accInk, fontWeight: FontWeight.w600)),
+                            text: s.t('pact_p2_bold', {'day': widget.dayName}), style: TextStyle(color: OnbColors.accInk, fontWeight: FontWeight.w600)),
                         TextSpan(text: s.t('pact_p2_post')),
                       ]),
                       style: OnbText.body(context, 3.8, color: OnbColors.mute, height: 1.5),

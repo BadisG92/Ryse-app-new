@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../../design/tokens.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../services/translations.dart';
@@ -39,8 +41,8 @@ class WeightProgress {
   }
 
   // Couleur selon le changement (vert = perte, rouge = gain)
-  Color get changeColor => weightChange < 0 ? Colors.green.shade700 : Colors.red.shade700;
-  Color get changeBackgroundColor => weightChange < 0 ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1);
+  Color get changeColor => weightChange < 0 ? RyzeColors.green : RyzeColors.danger;
+  Color get changeBackgroundColor => weightChange < 0 ? RyzeColors.green.withValues(alpha: 0.1) : RyzeColors.danger.withValues(alpha: 0.1);
 
   // Données pour le graphique
   List<FlSpot> get chartSpots {
@@ -120,9 +122,9 @@ class WeeklyBalance {
 
   // Couleur selon le score
   Color get scoreColor {
-    if (globalScore >= 0.9) return const Color(0xFF22C55E);
-    if (globalScore >= 0.7) return const Color(0xFF0B132B);
-    return const Color(0xFF1C2951);
+    if (globalScore >= 0.9) return RyzeColors.green;
+    if (globalScore >= 0.7) return RyzeColors.ink;
+    return RyzeColors.ink2;
   }
 }
 
@@ -156,9 +158,9 @@ class BalanceItem {
 
   // Couleur selon la progression
   Color get statusColor {
-    if (progress >= 0.9) return const Color(0xFF22C55E);
-    if (progress >= 0.7) return const Color(0xFF0B132B);
-    return const Color(0xFF64748B);
+    if (progress >= 0.9) return RyzeColors.green;
+    if (progress >= 0.7) return RyzeColors.ink;
+    return RyzeColors.mute;
   }
 
   // Indique si l'objectif est atteint
@@ -184,9 +186,9 @@ class TrackingDay {
 
   // Couleur principale pour l'affichage
   Color get primaryColor {
-    if (nutritionScore == TrackingScore.achieved) return const Color(0xFF0B132B);
-    if (nutritionScore == TrackingScore.partial) return const Color(0xFF64748B);
-    return const Color(0xFFF1F5F9);
+    if (nutritionScore == TrackingScore.achieved) return RyzeColors.ink;
+    if (nutritionScore == TrackingScore.partial) return RyzeColors.mute;
+    return RyzeColors.paper2;
   }
 
   // Compatibilité avec l'ancien système SportActivity pour ne pas casser le code existant
@@ -221,11 +223,11 @@ extension TrackingScoreExtension on TrackingScore {
   Color get color {
     switch (this) {
       case TrackingScore.achieved:
-        return const Color(0xFF0B132B);
+        return RyzeColors.ink;
       case TrackingScore.partial:
-        return const Color(0xFF64748B);
+        return RyzeColors.mute;
       case TrackingScore.missed:
-        return const Color(0xFFF1F5F9);
+        return RyzeColors.paper2;
     }
   }
 
@@ -236,16 +238,16 @@ extension TrackingScoreExtension on TrackingScore {
       case TrackingScore.partial:
         return Colors.transparent;
       case TrackingScore.missed:
-        return const Color(0xFFF1F5F9);
+        return RyzeColors.paper2;
     }
   }
 
   List<Color>? get gradient {
     switch (this) {
       case TrackingScore.achieved:
-        return [const Color(0xFF0B132B), const Color(0xFF1C2951)];
+        return [RyzeColors.ink, RyzeColors.ink2];
       case TrackingScore.partial:
-        return [const Color(0xFF64748B), const Color(0xFF64748B)];
+        return [RyzeColors.mute, RyzeColors.mute];
       case TrackingScore.missed:
         return null;
     }
@@ -278,22 +280,22 @@ extension SportActivityExtension on SportActivity {
   Color get color {
     switch (this) {
       case SportActivity.musculation:
-        return const Color(0xFF0B132B);
+        return RyzeColors.ink;
       case SportActivity.cardio:
-        return const Color(0xFF1C2951);
+        return RyzeColors.ink2;
       case SportActivity.none:
-        return const Color(0xFFF1F5F9);
+        return RyzeColors.paper2;
     }
   }
 
   List<Color> get gradient {
     switch (this) {
       case SportActivity.musculation:
-        return [const Color(0xFF0B132B), const Color(0xFF1C2951)];
+        return [RyzeColors.ink, RyzeColors.ink2];
       case SportActivity.cardio:
-        return [const Color(0xFF0B132B), const Color(0xFF1C2951)];
+        return [RyzeColors.ink, RyzeColors.ink2];
       case SportActivity.none:
-        return [const Color(0xFFF1F5F9), const Color(0xFFF1F5F9)];
+        return [RyzeColors.paper2, RyzeColors.paper2];
     }
   }
 
@@ -356,13 +358,13 @@ class AIRecommendation {
   Color get color {
     switch (type) {
       case RecommendationType.nutrition:
-        return const Color(0xFF22C55E);
+        return RyzeColors.green;
       case RecommendationType.sport:
-        return const Color(0xFF0B132B);
+        return RyzeColors.ink;
       case RecommendationType.recovery:
-        return const Color(0xFF8B5CF6);
+        return RyzeColors.protein;
       case RecommendationType.general:
-        return const Color(0xFF1C2951);
+        return RyzeColors.ink2;
     }
   }
 
@@ -563,36 +565,36 @@ class GlobalProgressData {
   // Légendes pour le tracking
   static List<TrackingLegend> get nutritionLegends => [
     TrackingLegend(
-      color: const Color(0xFF0B132B),
+      color: RyzeColors.ink,
       label: 'achieved'.tr(LocalizationService.instance.currentLanguageCode),
     ),
     TrackingLegend(
-      color: const Color(0xFF64748B),
+      color: RyzeColors.mute,
       label: 'partial'.tr(LocalizationService.instance.currentLanguageCode),
     ),
     TrackingLegend(
-      color: const Color(0xFFE5E7EB),
+      color: RyzeColors.line,
       label: 'missed'.tr(LocalizationService.instance.currentLanguageCode),
     ),
   ];
 
   static List<TrackingLegend> get sportLegends => [
     TrackingLegend(
-      color: const Color(0xFF0B132B),
+      color: RyzeColors.ink,
       icon: LucideIcons.dumbbell,
       label: 'weightlifting'.tr(LocalizationService.instance.currentLanguageCode),
     ),
     TrackingLegend(
-      color: const Color(0xFF1C2951), // Couleur cardio du dashboard sport
+      color: RyzeColors.ink2, // Couleur cardio du dashboard sport
       gradientColors: [
-        const Color(0xFF0B132B).withOpacity(0.7),
-        const Color(0xFF1C2951).withOpacity(0.7),
+        RyzeColors.ink.withOpacity(0.7),
+        RyzeColors.ink2.withOpacity(0.7),
       ],
       icon: LucideIcons.activity,
       label: 'cardio'.tr(LocalizationService.instance.currentLanguageCode),
     ),
     TrackingLegend(
-      color: const Color(0xFFE5E7EB),
+      color: RyzeColors.line,
       label: 'rest'.tr(LocalizationService.instance.currentLanguageCode),
     ),
   ];

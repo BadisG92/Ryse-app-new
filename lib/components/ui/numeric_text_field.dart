@@ -183,7 +183,7 @@ class _DoneButtonToolbar extends StatelessWidget {
     // système, en anglais, quelle que soit la langue de l'app.
     return Container(
       height: 44,
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: RyzeColors.paper2,
         border: Border(top: BorderSide(color: RyzeColors.line)),
       ),

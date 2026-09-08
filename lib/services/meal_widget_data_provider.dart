@@ -1,495 +1,314 @@
-import 'dart:io';
 import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:home_widget/home_widget.dart';
+import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../components/weekly_planner/week_strip.dart';
 import '../config/supabase_config.dart';
-import '../models/nutrition_models.dart';
-import '../services/food_entries_service.dart';
-import '../services/global_state_manager.dart';
-import '../services/localization_service.dart';
-import '../services/translations.dart';
-import '../services/coach_message_service.dart';
+import '../design/glass_row.dart';
+import '../home/home_slots.dart';
+import '../home/home_suggestion.dart';
+import 'global_state_manager.dart';
+import 'localization_service.dart';
+import 'translations.dart';
+import 'weekly_planner_service.dart';
 
-/// Provider de données pour les widgets iOS repas
-/// Synchronise les données entre Flutter et les widgets iOS via UserDefaults partagé
+/// What the widgets show, written by the app and read by iOS and Android.
+///
+/// One JSON under `widget_meal_data`: in the App Group on iOS, in
+/// home_widget's preferences on Android. The app decides everything that
+/// needs a rule or a language — which slot is done, what the coach says at
+/// each hour, every word — and the native side only lays values out.
+///
+/// Contract, version 2:
+/// ```
+/// v, day (yyyy-MM-dd, local), lang
+/// kcal    { eaten, goal }
+/// water   { ml, goalMl, glassMl }
+/// slots   [{ slot, state, label, word, kind? }]   state: free | planned | done
+/// lines   [{ from, text }]        the coach's line from that hour on
+/// strings { … }                   every word, in the app's language
+/// ```
+/// Numbers travel raw and the widget formats them for `lang`, so a glass
+/// added from the widget itself can be redrawn without waking the app. The
+/// day travels as a string and is compared as one: the widget never parses a
+/// date. Slots come from [HomeSlots] and the lines from [HomeSuggestion], the
+/// same two readings the home makes, so the widget and the home cannot
+/// disagree about the same day.
 class MealWidgetDataProvider {
-  /// App Group ID pour partager les données avec les widgets iOS
-  /// À configurer dans Xcode : Capabilities → App Groups
+  MealWidgetDataProvider._();
+
   static const String appGroupId = 'group.com.ryze.app';
-  static const MethodChannel _widgetChannel =
-      MethodChannel('com.ryze.widget/data');
+  static const String dataKey = 'widget_meal_data';
+  static const int contractVersion = 2;
 
-  /// Mettre à jour les données du widget après chaque changement de repas
-  /// Appelé automatiquement après ajout/suppression d'aliment
-  static Future<void> updateWidgetData() async {
+  /// Keys the iOS water intent leaves for the app (see AddWaterIntent.swift).
+  static const String pendingFlagKey = 'widget_pending_water_add';
+  static const String pendingAmountKey = 'widget_pending_water_amount';
+  static const String pendingStampKey = 'widget_pending_water_timestamp';
+
+  static const MethodChannel channel = MethodChannel('com.ryze.widget/data');
+
+  static const List<String> _androidWidgets = ['RyseMealWidget', 'RyseWaterWidget'];
+
+  /// The hours at which the coach's frame changes, as in [HomeSuggestion].
+  static const List<int> _bands = [0, 5, 11, 14, 18, 22];
+
+  static Future<void>? _inFlight;
+  static bool _queued = false;
+
+  /// Rebuilds and writes the widgets' data.
+  ///
+  /// Calls that arrive while a write is running collapse into one more write
+  /// after it, so a burst of entries costs two syncs rather than ten, and the
+  /// last one always sees the final state.
+  static Future<void> updateWidgetData() {
+    final running = _inFlight;
+    if (running != null) {
+      _queued = true;
+      return running;
+    }
+    final run = _sync().whenComplete(() {
+      _inFlight = null;
+      if (_queued) {
+        _queued = false;
+        updateWidgetData();
+      }
+    });
+    _inFlight = run;
+    return run;
+  }
+
+  /// After a sign-in or at launch: make sure the goals are loaded first.
+  static Future<void> forceWidgetUpdate() async {
     try {
+      await GlobalStateManager.instance.initialize();
+    } catch (e) {
+      if (kDebugMode) debugPrint('⚠️ Widget: state not ready before sync: $e');
+    }
+    await updateWidgetData();
+  }
+
+  static Future<void> _sync() async {
+    try {
+      final payload = await buildPayload();
+      if (payload == null) return;
+      await _write(jsonEncode(payload));
       if (kDebugMode) {
-        debugPrint('📱 Mise à jour des données widget...');
-      }
-
-      final prefs = await SharedPreferences.getInstance();
-      final user = SupabaseConfig.client.auth.currentUser;
-
-      if (user == null) {
-        if (kDebugMode) {
-          debugPrint('⚠️ Pas d\'utilisateur connecté, pas de mise à jour widget');
-        }
-        return;
-      }
-
-      // Récupérer les repas du jour
-      final meals = await FoodEntriesService.getFoodEntriesForDate(
-        user.id,
-        DateTime.now(),
-      );
-
-      // Préparer la langue actuelle de l'app
-      final localizationService = LocalizationService.instance;
-      if (!localizationService.isInitialized) {
-        await localizationService.initialize();
-      }
-      final languageCode = localizationService.currentLanguageCode;
-
-      // Déterminer le repas contextuel selon l'heure
-      final contextualMeal = _getContextualMealType();
-      final contextualMealNames = _getStoredMealNames(contextualMeal);
-      Meal? contextualMealData;
-      try {
-        contextualMealData = meals.firstWhere(
-          (m) => contextualMealNames.contains(m.name.toLowerCase()),
-        );
-      } catch (e) {
-        contextualMealData = null; // Aucun repas trouvé
-      }
-
-      // Calculer le total des calories du repas contextuel
-      final contextualMealCalories = contextualMealData?.items.fold<int>(
-        0,
-        (sum, item) => sum + item.calories,
-      ) ?? 0;
-
-      // Récupérer les totaux depuis GlobalStateManager
-      final globalState = GlobalStateManager.instance;
-
-      // S'assurer que GlobalStateManager est initialisé avec les vraies valeurs
-      if (globalState.calorieGoal == 0 || globalState.waterGoalL == 0) {
-        if (kDebugMode) {
-          debugPrint('⚠️ Les objectifs ne sont pas encore chargés, initialisation...');
-        }
-        await globalState.initialize();
-      }
-
-      // Préparer les données pour tous les repas (incluant snack)
-      final allMealsData = <Map<String, dynamic>>[];
-      for (final mealType in ['petit-dejeuner', 'dejeuner', 'diner', 'snack']) {
-        final mealNames = _getStoredMealNames(mealType);
-        Meal? mealData;
-        try {
-          mealData = meals.firstWhere(
-            (m) => mealNames.contains(m.name.toLowerCase()),
-          );
-        } catch (e) {
-          mealData = null; // Aucun repas trouvé pour ce type
-        }
-
-        // Calculer le total des calories à partir des items
-        final totalCalories = mealData?.items.fold<int>(
-          0,
-          (sum, item) => sum + item.calories,
-        ) ?? 0;
-
-        allMealsData.add({
-          'type': mealType,
-          'name': _getLocalizedMealDisplayName(mealType, languageCode),
-          'emoji': _getMealEmoji(mealType),
-          'calories': totalCalories,
-          'hasItems': mealData != null && mealData.items.isNotEmpty,
-          'itemCount': mealData?.items.length ?? 0,
-        });
-      }
-
-      // Récupérer les données d'eau depuis GlobalStateManager
-      final currentWaterMl = (globalState.currentWaterL * 1000).toInt();
-      final waterGoalMl = (globalState.waterGoalL * 1000).toInt();
-      final waterPercentage = waterGoalMl > 0
-          ? ((currentWaterMl / waterGoalMl) * 100).round().clamp(0, 100)
-          : 0;
-
-      // Générer le message du coach personnalisé
-      final coachMessage = CoachMessageService.generateCoachMessage(languageCode);
-
-      // Créer la structure de données pour le widget avec les VRAIES données utilisateur
-      final widgetData = {
-        'languageCode': languageCode,
-        'translations': _buildWidgetTranslations(languageCode),
-        'contextualMeal': {
-          'type': contextualMeal,
-          'name': _getLocalizedMealDisplayName(contextualMeal, languageCode),
-          'emoji': _getMealEmoji(contextualMeal),
-          'calories': contextualMealCalories,
-          'hasItems': contextualMealData != null &&
-              contextualMealData.items.isNotEmpty,
-          'itemCount': contextualMealData?.items.length ?? 0,
-        },
-        'allMeals': allMealsData,
-        'totals': {
-          'current': globalState.currentCalories.toInt(),
-          'goal': globalState.calorieGoal.toInt(), // VRAIE valeur depuis GlobalStateManager
-          'percentage': globalState.calorieGoal > 0
-              ? (globalState.currentCalories / globalState.calorieGoal * 100)
-                  .round()
-              : 0,
-        },
-        'macros': {
-          'protein': globalState.currentProteins.toInt(),
-          'carbs': globalState.currentCarbs.toInt(),
-          'fats': globalState.currentFats.toInt(),
-        },
-        'water': {
-          'current': currentWaterMl, // VRAIE valeur depuis GlobalStateManager
-          'goal': waterGoalMl, // VRAIE valeur depuis GlobalStateManager
-          'percentage': waterPercentage,
-          'currentL': globalState.currentWaterL,
-          'goalL': globalState.waterGoalL,
-        },
-        'coach': {
-          'message': coachMessage,
-          'streak': globalState.currentStreak,
-        },
-        'lastUpdate': DateTime.now().toUtc().toIso8601String(), // UTC avec 'Z' pour parsing iOS
-      };
-
-      // Encoder une seule fois pour l'utiliser où nécessaire
-      final encodedData = jsonEncode(widgetData);
-
-      // Sauvegarder localement (toujours utile côté Flutter/debug)
-      await prefs.setString('widget_meal_data', encodedData);
-
-      // Écrire également dans l'App Group pour iOS afin que le widget lise les vraies données
-      if (Platform.isIOS) {
-        try {
-          await _widgetChannel.invokeMethod('setString', {
-            'key': 'widget_meal_data',
-            'value': encodedData,
-          });
-
-          // Déclencher un refresh immédiat du widget
-          await _widgetChannel.invokeMethod('reloadWidgetTimelines');
-        } catch (e) {
-          if (kDebugMode) {
-            debugPrint('⚠️ Impossible de synchroniser les données widget côté iOS: $e');
-          }
-        }
-      }
-
-      // Sync data for Android widgets using home_widget
-      if (Platform.isAndroid) {
-        try {
-          await HomeWidget.saveWidgetData<String>('widget_meal_data', encodedData);
-
-          // Update both widgets
-          await HomeWidget.updateWidget(
-            name: 'RyseMealWidget',
-            androidName: 'RyseMealWidget',
-            qualifiedAndroidName: 'com.ryze.app.widget.RyseMealWidget',
-          );
-          await HomeWidget.updateWidget(
-            name: 'RyseWaterWidget',
-            androidName: 'RyseWaterWidget',
-            qualifiedAndroidName: 'com.ryze.app.widget.RyseWaterWidget',
-          );
-
-          if (kDebugMode) {
-            debugPrint('📱 Android widget data synced via home_widget');
-          }
-        } catch (e) {
-          if (kDebugMode) {
-            debugPrint('⚠️ Unable to sync Android widget data: $e');
-          }
-        }
-      }
-
-      if (kDebugMode) {
-        debugPrint('✅ Données widget mises à jour:');
-        final contextualMeal = widgetData['contextualMeal'] as Map<String, dynamic>;
-        final totals = widgetData['totals'] as Map<String, dynamic>;
-        final water = widgetData['water'] as Map<String, dynamic>;
-        debugPrint('   - Repas contextuel: ${contextualMeal['name']} (${contextualMeal['calories']} kcal)');
-        debugPrint('   - Total calories: ${totals['current']}/${totals['goal']} kcal (objectif réel: ${globalState.calorieGoal.toInt()})');
-        debugPrint('   - Eau: ${water['current']}ml/${water['goal']}ml (objectif réel: ${globalState.waterGoalL.toStringAsFixed(1)}L)');
-        debugPrint('   - Nombre de repas: ${allMealsData.length}');
-      }
-
-      // Notifier iOS que les données ont changé (si disponible)
-      if (Platform.isIOS) {
-        try {
-          // TODO: Ajouter l'appel WidgetKit.reloadAllTimelines()
-          // via platform channel quand le plugin sera ajouté
-          if (kDebugMode) {
-            debugPrint('📱 Notification iOS: reload widget timelines');
-          }
-        } catch (e) {
-          if (kDebugMode) {
-            debugPrint('⚠️ Impossible de notifier iOS: $e');
-          }
-        }
+        final kcal = payload['kcal'] as Map<String, dynamic>;
+        final water = payload['water'] as Map<String, dynamic>;
+        debugPrint('📱 Widget: ${kcal['eaten']}/${kcal['goal']} kcal · ${water['ml']}/${water['goalMl']} ml · ${(payload['slots'] as List).length} slots');
       }
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Erreur mise à jour données widget: $e');
-      }
+      if (kDebugMode) debugPrint('❌ Widget sync failed: $e');
     }
   }
 
-  /// Obtenir le type de repas contextuel selon l'heure actuelle
-  static String _getContextualMealType() {
-    final hour = DateTime.now().hour;
+  /// The contract, as a map. Null when there is nothing honest to write: no
+  /// user, or the demo mode that invents figures for screenshots.
+  static Future<Map<String, dynamic>?> buildPayload({DateTime? now}) async {
+    final user = SupabaseConfig.client.auth.currentUser;
+    if (user == null) return null;
+    if (WeeklyPlannerService.isDemoMode) return null;
 
-    if (hour >= 6 && hour < 10) {
-      return 'petit-dejeuner';
-    } else if (hour >= 11 && hour < 14) {
-      return 'dejeuner';
-    } else if (hour >= 18 && hour < 21) {
-      return 'diner';
-    } else {
-      return 'snack';
-    }
-  }
+    final date = now ?? DateTime.now();
+    final localization = LocalizationService.instance;
+    if (!localization.isInitialized) await localization.initialize();
+    final lang = localization.currentLanguageCode;
 
-  /// Obtenir le nom canonique (FR) du repas à partir du type
-  static String _getCanonicalMealName(String mealType) {
-    final mappings = {
-      'petit-dejeuner': 'Petit-déjeuner',
-      'breakfast': 'Petit-déjeuner',
-      'dejeuner': 'Déjeuner',
-      'lunch': 'Déjeuner',
-      'diner': 'Dîner',
-      'dinner': 'Dîner',
-      'snack': 'Collation',
-      'collation': 'Collation',
-    };
-    return mappings[mealType.toLowerCase()] ?? 'Repas';
-  }
+    final state = GlobalStateManager.instance;
+    if (state.calorieGoal == 0 || state.waterGoalL == 0) await state.initialize();
 
-  /// Obtenir le nom localisé du repas pour l'affichage
-  static String _getLocalizedMealDisplayName(
-    String mealType,
-    String languageCode,
-  ) {
-    final translationKey = _getMealTranslationKey(mealType);
-    return AppTranslations.get(translationKey, languageCode);
-  }
+    final week = await WeeklyPlannerService.getWeekData(forceRefresh: true);
+    final day = week.getDayPlan(date);
+    final today = HomeSlots.ofDay(day);
+    final session = HomeSlots.session(day);
 
-  /// Obtenir toutes les variantes possibles du nom du repas (FR/EN) pour matcher les données stockées
-  static Set<String> _getStoredMealNames(String mealType) {
-    final names = <String>{
-      _getCanonicalMealName(mealType),
-      _getLocalizedMealDisplayName(mealType, 'fr'),
-      _getLocalizedMealDisplayName(mealType, 'en'),
-    };
-    return names.map((name) => name.toLowerCase()).toSet();
-  }
+    final eaten = state.currentCalories.round();
+    final goal = state.calorieGoal.round();
+    final goalMl = (state.waterGoalL * 1000).round();
+    // a glass tapped on the widget while the app was closed is already on
+    // the widget; it must not vanish until the app has written it
+    final waterMl = (state.currentWaterL * 1000).round() + await _pendingWaterMl();
 
-  static String _getMealTranslationKey(String mealType) {
-    final lower = mealType.toLowerCase();
-    if (lower == 'petit-dejeuner' || lower == 'breakfast') {
-      return 'breakfast';
-    } else if (lower == 'dejeuner' || lower == 'lunch') {
-      return 'lunch';
-    } else if (lower == 'diner' || lower == 'dinner') {
-      return 'dinner';
-    } else if (lower == 'snack' || lower == 'collation') {
-      return 'snack';
-    }
-    return 'widget_placeholder_meal';
-  }
+    final slots = <Map<String, dynamic>>[
+      for (final slot in WeekSlot.values)
+        {
+          'slot': slot.name,
+          'state': _stateName(today.state(slot)),
+          'label': 'slot_${slot.name}'.tr(lang),
+          'word': _wordKey(today.state(slot)).tr(lang),
+          if (slot == WeekSlot.sport && session != null) 'kind': session.workout != null ? 'strength' : 'cardio',
+        },
+    ];
 
-  /// Obtenir l'emoji du repas
-  static String _getMealEmoji(String mealType) {
-    switch (mealType.toLowerCase()) {
-      case 'petit-dejeuner':
-        return '🌅';
-      case 'dejeuner':
-        return '🌤️';
-      case 'diner':
-        return '🌙';
-      case 'snack':
-        return '🍎';
-      default:
-        return '🍽️';
-    }
-  }
-
-  static Map<String, dynamic> _buildWidgetTranslations(String languageCode) {
-    final shortBreakfast =
-        AppTranslations.get('widget_short_breakfast', languageCode);
-    final shortLunch = AppTranslations.get('widget_short_lunch', languageCode);
-    final shortDinner =
-        AppTranslations.get('widget_short_dinner', languageCode);
-    final shortSnack = AppTranslations.get('widget_short_snack', languageCode);
-    final shortDefault =
-        AppTranslations.get('widget_short_default', languageCode);
+    final lines = <Map<String, dynamic>>[
+      for (final hour in _bands)
+        {
+          'from': hour,
+          'text': HomeSuggestion.build(
+            lang: lang,
+            name: '',
+            today: today,
+            waterL: waterMl / 1000,
+            waterGoalL: goalMl / 1000,
+            calories: eaten,
+            calorieGoal: goal,
+            now: DateTime(date.year, date.month, date.day, hour),
+          ).line,
+        },
+    ];
 
     return {
-      'languageCode': languageCode,
-      'texts': {
-        'widgetTitle': AppTranslations.get('widget_meals_title', languageCode),
-        'widgetDescription':
-            AppTranslations.get('widget_meals_description', languageCode),
-        'placeholderMeal':
-            AppTranslations.get('widget_placeholder_meal', languageCode),
-        'addWaterTitle':
-            AppTranslations.get('widget_add_water_title', languageCode),
-        'addWaterDescription':
-            AppTranslations.get('widget_add_water_description', languageCode),
-        'addWaterPresetFormat':
-            AppTranslations.get('widget_add_water_preset_format', languageCode),
-        'coachWidgetTitle':
-            AppTranslations.get('widget_coach_title', languageCode),
-        'coachWidgetDescription':
-            AppTranslations.get('widget_coach_description', languageCode),
-      },
-      'mealShortNames': {
-        'petit-dejeuner': shortBreakfast,
-        'breakfast': shortBreakfast,
-        'dejeuner': shortLunch,
-        'lunch': shortLunch,
-        'diner': shortDinner,
-        'dinner': shortDinner,
-        'snack': shortSnack,
-        'collation': shortSnack,
-        'default': shortDefault,
-      },
+      'v': contractVersion,
+      'day': DateFormat('yyyy-MM-dd').format(date),
+      'lang': lang,
+      'kcal': {'eaten': eaten, 'goal': goal},
+      'water': {'ml': waterMl, 'goalMl': goalMl, 'glassMl': (GlassRow.glassLitres * 1000).round()},
+      'slots': slots,
+      'lines': lines,
+      'strings': strings(lang),
+      // for a human reading the JSON; nothing parses it
+      'updatedAt': date.toIso8601String(),
     };
   }
 
-  /// Récupérer les données du widget (pour debug ou affichage)
+  /// Every word the widgets show. The keys are the widget's, the values the
+  /// app's, from the same dictionary as every screen.
+  static Map<String, String> strings(String lang) => {
+        'title_water': 'widget_water_title'.tr(lang),
+        'desc_water': 'widget_water_description'.tr(lang),
+        'title_meals': 'widget_meals_title'.tr(lang),
+        'desc_meals': 'widget_meals_description'.tr(lang),
+        'title_today': 'widget_today_title'.tr(lang),
+        'desc_today': 'widget_today_description'.tr(lang),
+        'lead_remaining': 'home_remaining'.tr(lang),
+        'lead_over': 'home_over_by'.tr(lang),
+        'lead_reached': 'home_goal_reached'.tr(lang),
+        'lead_loading': 'home_loading'.tr(lang),
+        'unit': 'home_remaining_unit'.tr(lang),
+        'eaten_tpl': 'home_eaten'.tr(lang),
+        'goal_tpl': 'home_goal'.tr(lang),
+        'left_short': 'widget_left_short'.tr(lang),
+        'over_short': 'widget_over_short'.tr(lang),
+        'reached_short': 'widget_reached_short'.tr(lang),
+        'water': 'nutri_water'.tr(lang),
+        'water_goal_tpl': 'widget_water_goal'.tr(lang),
+        'glasses_of_tpl': 'widget_glasses_of'.tr(lang),
+        'glass_one': 'widget_glass_one'.tr(lang),
+        'glass_two': 'widget_glass_two'.tr(lang),
+        'open_app': 'widget_open_app'.tr(lang),
+        // the word of a free slot, for the widget to reset a stale day itself
+        'free_word': 'slot_free'.tr(lang),
+      };
+
+  static String _stateName(SlotState s) => switch (s) {
+        SlotState.done => 'done',
+        SlotState.planned || SlotState.incoming => 'planned',
+        SlotState.empty => 'free',
+      };
+
+  static String _wordKey(SlotState s) => switch (s) {
+        SlotState.done => 'slot_done',
+        SlotState.planned || SlotState.incoming => 'slot_planned',
+        SlotState.empty => 'slot_free',
+      };
+
+  /// Water the iOS widget added while the app was closed, not yet written.
+  static Future<int> _pendingWaterMl() async {
+    if (!Platform.isIOS) return 0;
+    try {
+      final pending = await channel.invokeMethod<bool>('getBool', {'key': pendingFlagKey});
+      if (pending != true) return 0;
+      final amount = await channel.invokeMethod<int>('getInt', {'key': pendingAmountKey});
+      return (amount ?? 0).clamp(0, 10000);
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  static Future<void> _write(String encoded) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(dataKey, encoded);
+
+    if (Platform.isIOS) {
+      try {
+        await channel.invokeMethod('setString', {'key': dataKey, 'value': encoded});
+        await channel.invokeMethod('reloadWidgetTimelines');
+      } catch (e) {
+        if (kDebugMode) debugPrint('⚠️ Widget: App Group write failed: $e');
+      }
+    }
+
+    if (Platform.isAndroid) {
+      try {
+        await HomeWidget.saveWidgetData<String>(dataKey, encoded);
+        await _updateAndroidWidgets();
+      } catch (e) {
+        if (kDebugMode) debugPrint('⚠️ Widget: Android write failed: $e');
+      }
+    }
+  }
+
+  static Future<void> _updateAndroidWidgets() async {
+    for (final name in _androidWidgets) {
+      await HomeWidget.updateWidget(
+        name: name,
+        androidName: name,
+        qualifiedAndroidName: 'com.ryze.app.widget.$name',
+      );
+    }
+  }
+
+  /// The data as the widgets see it, for a debug screen.
   static Future<Map<String, dynamic>?> getWidgetData() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-
-      String? jsonString;
+      String? encoded;
       if (Platform.isIOS) {
         try {
-          jsonString = await _widgetChannel.invokeMethod<String>('getString', {
-            'key': 'widget_meal_data',
-          });
-        } catch (e) {
-          if (kDebugMode) {
-            debugPrint('⚠️ Impossible de récupérer les données via App Group: $e');
-          }
-        }
+          encoded = await channel.invokeMethod<String>('getString', {'key': dataKey});
+        } catch (_) {}
       }
-
-      jsonString ??= prefs.getString('widget_meal_data');
-
-      if (jsonString == null) {
-        return null;
-      }
-
-      return jsonDecode(jsonString) as Map<String, dynamic>;
+      encoded ??= (await SharedPreferences.getInstance()).getString(dataKey);
+      if (encoded == null) return null;
+      return jsonDecode(encoded) as Map<String, dynamic>;
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Erreur récupération données widget: $e');
-      }
+      if (kDebugMode) debugPrint('❌ Widget: read failed: $e');
       return null;
     }
   }
 
-  /// Forcer une mise à jour immédiate du widget avec les vraies données utilisateur
-  /// Appelé après connexion ou au démarrage de l'app
-  static Future<void> forceWidgetUpdate() async {
-    try {
-      if (kDebugMode) {
-        debugPrint('🔄 Force mise à jour widget avec vraies données utilisateur...');
-      }
-
-      // S'assurer que GlobalStateManager est bien initialisé
-      final globalState = GlobalStateManager.instance;
-      await globalState.initialize();
-
-      // Attendre un court instant pour s'assurer que les données sont bien chargées
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      // Mettre à jour les données du widget
-      await updateWidgetData();
-
-      if (kDebugMode) {
-        debugPrint('✅ Widget forcé à se mettre à jour avec les vraies données');
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Erreur lors de la mise à jour forcée du widget: $e');
-      }
-    }
-  }
-
-  /// Effacer les données du widget (logout)
+  /// On sign-out: the widgets go back to their empty state.
   static Future<void> clearWidgetData() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('widget_meal_data');
+      await prefs.remove(dataKey);
 
       if (Platform.isIOS) {
         try {
-          await _widgetChannel.invokeMethod('remove', {
-            'key': 'widget_meal_data',
-          });
-          await _widgetChannel.invokeMethod('reloadWidgetTimelines');
-        } catch (e) {
-          if (kDebugMode) {
-            debugPrint('⚠️ Impossible d\'effacer les données App Group: $e');
+          for (final key in [dataKey, pendingFlagKey, pendingAmountKey, pendingStampKey]) {
+            await channel.invokeMethod('remove', {'key': key});
           }
+          await channel.invokeMethod('reloadWidgetTimelines');
+        } catch (e) {
+          if (kDebugMode) debugPrint('⚠️ Widget: App Group clear failed: $e');
         }
       }
 
-      // Clear Android widget data
       if (Platform.isAndroid) {
         try {
-          await HomeWidget.saveWidgetData<String?>('widget_meal_data', null);
-          await HomeWidget.updateWidget(
-            name: 'RyseMealWidget',
-            androidName: 'RyseMealWidget',
-            qualifiedAndroidName: 'com.ryze.app.widget.RyseMealWidget',
-          );
-          await HomeWidget.updateWidget(
-            name: 'RyseWaterWidget',
-            androidName: 'RyseWaterWidget',
-            qualifiedAndroidName: 'com.ryze.app.widget.RyseWaterWidget',
-          );
-          if (kDebugMode) {
-            debugPrint('📱 Android widget data cleared');
-          }
+          await HomeWidget.saveWidgetData<String?>(dataKey, null);
+          await _updateAndroidWidgets();
         } catch (e) {
-          if (kDebugMode) {
-            debugPrint('⚠️ Unable to clear Android widget data: $e');
-          }
-        }
-      }
-
-      if (kDebugMode) {
-        debugPrint('🗑️ Données widget effacées');
-      }
-
-      // Notifier iOS
-      if (Platform.isIOS) {
-        try {
-          // TODO: Ajouter l'appel WidgetKit.reloadAllTimelines()
-          if (kDebugMode) {
-            debugPrint('📱 Notification iOS: reload widget timelines après clear');
-          }
-        } catch (e) {
-          if (kDebugMode) {
-            debugPrint('⚠️ Impossible de notifier iOS: $e');
-          }
+          if (kDebugMode) debugPrint('⚠️ Widget: Android clear failed: $e');
         }
       }
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('❌ Erreur effacement données widget: $e');
-      }
+      if (kDebugMode) debugPrint('❌ Widget: clear failed: $e');
     }
   }
 }
