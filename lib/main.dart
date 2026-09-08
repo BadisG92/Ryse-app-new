@@ -216,13 +216,13 @@ class MyApp extends StatelessWidget {
         theme: ThemeData(
           textTheme: GoogleFonts.interTextTheme(),
           colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFF0B132B),
+            seedColor: RyzeColors.ink,
             brightness: Brightness.light,
           ),
           useMaterial3: true,
           snackBarTheme: SnackBarThemeData(
             behavior: SnackBarBehavior.floating,
-            backgroundColor: const Color(0xFF0B132B),
+            backgroundColor: RyzeColors.ink,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10),
             ),

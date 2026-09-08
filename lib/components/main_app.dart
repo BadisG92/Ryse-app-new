@@ -180,8 +180,8 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Color(0xFFF8FAFC),
-                  Color(0xFFF1F5F9),
+                  RyzeColors.paper0,
+                  RyzeColors.paper2,
                 ],
               ),
             ),

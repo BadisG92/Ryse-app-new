@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../design/tokens.dart';
 import '../../design/type.dart';
 
 /// The week above the conversation, in two states.
@@ -44,11 +45,7 @@ class DaySlots {
   bool get hasAny => states.values.any((s) => s != SlotState.empty);
 }
 
-const Color _ink = Color(0xFF0B132B);
-const Color _mute = Color(0xFF5F6779);
-const Color _mute2 = Color(0xFF9AA1B2);
-const Color _idle = Color(0xFFD5DAE1);
-const Color _line = Color(0xFFE2E8F0);
+// Les jetons du systeme, pas une copie : la bande suit le theme.
 
 class WeekStrip extends StatelessWidget {
   const WeekStrip({
@@ -174,7 +171,7 @@ class WeekStrip extends StatelessWidget {
                   duration: const Duration(milliseconds: 250),
                   width: expanded ? 22 : 32,
                   height: 4,
-                  decoration: BoxDecoration(color: _idle, borderRadius: BorderRadius.circular(2)),
+                  decoration: BoxDecoration(color: RyzeColors.idle, borderRadius: BorderRadius.circular(2)),
                 ),
               ),
             ),
@@ -221,17 +218,17 @@ class _DayChip extends StatelessWidget {
         // un liseré d'encre, le jour ouvert un fond. Le jour ouvert n'est pas
         // forcément aujourd'hui, et aujourd'hui reste reconnaissable même
         // quand on lit un autre jour.
-        color: open ? _line.withValues(alpha: 0.55) : null,
+        color: open ? RyzeColors.line.withValues(alpha: 0.55) : null,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: today ? _ink : Colors.transparent, width: 2),
+        border: Border.all(color: today ? RyzeColors.ink : Colors.transparent, width: 2),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(letter, style: RyzeText.body(context, 2.8, weight: FontWeight.w600, color: dim ? _mute2 : _mute, height: 1)),
+          Text(letter, style: RyzeText.body(context, 2.8, weight: FontWeight.w600, color: dim ? RyzeColors.mute2 : RyzeColors.mute, height: 1)),
           const SizedBox(height: 2),
           Text('$number',
-              style: RyzeText.body(context, 3.8, weight: FontWeight.w700, color: dim ? _mute : _ink, height: 1.1)
+              style: RyzeText.body(context, 3.8, weight: FontWeight.w700, color: dim ? RyzeColors.mute : RyzeColors.ink, height: 1.1)
                   .copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
           const SizedBox(height: 6),
           SizedBox(
@@ -292,10 +289,10 @@ class _Mark extends StatelessWidget {
         // a free meal is a filled light square, a free session an empty ring:
         // shape tells the two apart, the fill tells free from planned from done
         // free is a light fill for both shapes, planned an outline, done a full navy
-        color: done ? _ink : (drawn ? Colors.white : _idle),
+        color: done ? RyzeColors.ink : (drawn ? Colors.white : RyzeColors.idle),
         shape: round ? BoxShape.circle : BoxShape.rectangle,
         borderRadius: round ? null : BorderRadius.circular(1.5),
-        border: drawn && !done ? Border.all(color: _ink, width: 1.4) : null,
+        border: drawn && !done ? Border.all(color: RyzeColors.ink, width: 1.4) : null,
       ),
       ),
     );
@@ -357,7 +354,7 @@ class _EmptyDot extends StatelessWidget {
   Widget build(BuildContext context) {
     return const CustomPaint(
       painter: _DashedBorder(radius: 12),
-      child: SizedBox(width: 24, height: 24, child: Icon(LucideIcons.plus, size: 12, color: _idle)),
+      child: SizedBox(width: 24, height: 24, child: Icon(LucideIcons.plus, size: 12, color: RyzeColors.idle)),
     );
   }
 }
@@ -371,7 +368,7 @@ class _DashedBorder extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = _idle
+      ..color = RyzeColors.idle
       ..strokeWidth = 1.4
       ..style = PaintingStyle.stroke;
     final path = Path()..addRRect(RRect.fromRectAndRadius(Offset.zero & size, Radius.circular(radius)));
@@ -415,9 +412,9 @@ class _Tile extends StatelessWidget {
         height: 40,
         padding: const EdgeInsets.symmetric(horizontal: 2),
         decoration: BoxDecoration(
-          color: done ? _ink : Colors.white,
+          color: done ? RyzeColors.ink : Colors.white,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: done || slot == WeekSlot.sport ? _ink : _line, width: slot == WeekSlot.sport && !done ? 1.5 : 1),
+          border: Border.all(color: done || slot == WeekSlot.sport ? RyzeColors.ink : RyzeColors.line, width: slot == WeekSlot.sport && !done ? 1.5 : 1),
         ),
         // the icon alone: a dish name under it crowded a 40 pt tile for no gain
         child: Stack(
@@ -425,7 +422,7 @@ class _Tile extends StatelessWidget {
           children: [
             // the icon keeps its original size: without a label the tile is
             // meant to read as a quiet mark, not as a button
-            Center(child: Icon(iconForSlot(slot), size: 14, color: done ? Colors.white : _ink)),
+            Center(child: Icon(iconForSlot(slot), size: 14, color: done ? Colors.white : RyzeColors.ink)),
             if (done)
               Positioned(
                 top: -4,
@@ -433,8 +430,8 @@ class _Tile extends StatelessWidget {
                 child: Container(
                   width: 14,
                   height: 14,
-                  decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, border: Border.all(color: _ink, width: 1.5)),
-                  child: const Icon(LucideIcons.check, size: 8, color: _ink),
+                  decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, border: Border.all(color: RyzeColors.ink, width: 1.5)),
+                  child: Icon(LucideIcons.check, size: 8, color: RyzeColors.ink),
                 ),
               ),
           ],
