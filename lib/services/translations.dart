@@ -8420,6 +8420,105 @@ class AppTranslations {
       'en': 'Start',
       'de': 'Starten',
     },
+    // Ce que Ryze dit quand il agit. Ces phrases apparaissent dans la
+    // transcription, sur les cartes de validation et dans les barres
+    // d'annulation : elles se lisent donc comme lui.
+    'ryze_validate': {
+      'fr': 'Valider',
+      'en': 'Confirm',
+      'de': 'Bestätigen',
+    },
+    'ryze_cancel': {
+      'fr': 'Annuler',
+      'en': 'Cancel',
+      'de': 'Abbrechen',
+    },
+    'ryze_cancelled': {
+      'fr': 'Annulé',
+      'en': 'Cancelled',
+      'de': 'Abgebrochen',
+    },
+    'ryze_action_failed': {
+      'fr': "Ça n'a pas marché. Réessaie dans un instant.",
+      'en': "That didn't go through. Try again in a moment.",
+      'de': 'Das hat nicht geklappt. Versuch es gleich noch einmal.',
+    },
+    'ryze_logged_water': {
+      'fr': '{n} L notés',
+      'en': '{n} L logged',
+      'de': '{n} L eingetragen',
+    },
+    'ryze_water_amount_invalid': {
+      'fr': 'Cette quantité ne me paraît pas juste.',
+      'en': "That amount doesn't look right.",
+      'de': 'Diese Menge scheint nicht zu stimmen.',
+    },
+    'ryze_confirm_weight': {
+      'fr': 'Noter {n} kg ?',
+      'en': 'Record {n} kg?',
+      'de': '{n} kg eintragen?',
+    },
+    'ryze_logged_weight': {
+      'fr': '{n} kg notés',
+      'en': '{n} kg recorded',
+      'de': '{n} kg eingetragen',
+    },
+    'ryze_weight_invalid': {
+      'fr': 'Ce poids ne me paraît pas juste.',
+      'en': "That weight doesn't look right.",
+      'de': 'Dieses Gewicht scheint nicht zu stimmen.',
+    },
+    'ryze_confirm_meal_eaten': {
+      'fr': 'Noter {name} comme mangé ?',
+      'en': 'Log {name} as eaten?',
+      'de': '{name} als gegessen eintragen?',
+    },
+    'ryze_meal_marked_eaten': {
+      'fr': '{name} noté',
+      'en': '{name} logged',
+      'de': '{name} eingetragen',
+    },
+    'ryze_no_planned_meal': {
+      'fr': "Rien n'est prévu à ce repas-là.",
+      'en': 'Nothing is planned for that meal.',
+      'de': 'Für diese Mahlzeit ist nichts geplant.',
+    },
+    'ryze_no_planned_workout': {
+      'fr': "Aucune séance n'est prévue ce jour-là.",
+      'en': 'No session is planned that day.',
+      'de': 'An diesem Tag ist keine Einheit geplant.',
+    },
+    'ryze_workout_started': {
+      'fr': '{name} lancée',
+      'en': '{name} started',
+      'de': '{name} gestartet',
+    },
+    'ryze_opened_scanner': {
+      'fr': 'Scanner ouvert',
+      'en': 'Scanner opened',
+      'de': 'Scanner geöffnet',
+    },
+    'ryze_opened_planner': {
+      'fr': 'Planificateur ouvert',
+      'en': 'Planner opened',
+      'de': 'Planer geöffnet',
+    },
+    'ryze_remembered': {
+      'fr': 'Retenu : {fact}',
+      'en': 'Remembered: {fact}',
+      'de': 'Gemerkt: {fact}',
+    },
+    'ryze_already_known': {
+      'fr': 'Je le savais déjà',
+      'en': 'I already knew that',
+      'de': 'Das wusste ich schon',
+    },
+    'ryze_memory_too_long': {
+      'fr': "C'est trop long pour être retenu tel quel.",
+      'en': "That's too long to remember as is.",
+      'de': 'Das ist zu lang, um es so zu merken.',
+    },
+
     // Les erreurs du chat s'affichent dans la bulle, à la place de la réponse
     // de Ryze : elles se lisent donc dans la langue de l'utilisateur.
     'coach_error_start': {
@@ -8431,6 +8530,11 @@ class AppTranslations {
       'fr': "Ton message n'est pas parti. Vérifie ta connexion et réessaie.",
       'en': "Your message didn't go through. Check your connection and try again.",
       'de': 'Deine Nachricht wurde nicht gesendet. Prüf deine Verbindung und versuch es erneut.',
+    },
+    'coach_error_busy': {
+      'fr': 'Je suis très sollicité là. Redemande-moi dans un instant.',
+      'en': "I'm getting a lot of requests right now. Ask me again in a moment.",
+      'de': 'Gerade ist viel los. Frag mich gleich noch einmal.',
     },
     'coach_error_generic': {
       'fr': 'Une erreur est survenue. Réessaie dans quelques instants.',

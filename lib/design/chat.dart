@@ -316,6 +316,147 @@ class RyzeThinking extends StatelessWidget {
   }
 }
 
+/// Ce que Ryze vient de faire, dit en une ligne.
+///
+/// Une action réussie n'est pas une phrase de conversation : elle se constate.
+/// La ligne se lit d'un coup d'œil et ne prend pas la place d'une bulle.
+class RyzeToolLine extends StatelessWidget {
+  const RyzeToolLine({
+    super.key,
+    required this.label,
+    this.icon = LucideIcons.check,
+    this.failed = false,
+  });
+
+  final String label;
+  final IconData icon;
+
+  /// L'action n'a pas abouti : la ligne le dit sans dramatiser.
+  final bool failed;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = failed ? RyzeColors.mute : RyzeColors.accInk;
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: context.vw(1.3), horizontal: context.vw(1.0)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(failed ? LucideIcons.x : icon, size: context.vw(3.6), color: color),
+          SizedBox(width: context.vw(1.8)),
+          Flexible(
+            child: Text(
+              label,
+              style: RyzeText.body(context, 3.3, color: color, height: 1.3),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Une action que Ryze propose, et que l'utilisateur valide ou refuse.
+///
+/// Elle n'est pas encore faite quand la carte s'affiche : c'est tout l'objet
+/// de la carte. Ryze ne dit « c'est noté » qu'après le oui, jamais avant.
+///
+/// Réservée à ce qui se défait mal — un poids qui entre dans une courbe, un
+/// repas qui s'ajoute au journal. Ce qui se défait d'un geste passe sans
+/// carte, avec une barre d'annulation.
+class RyzeActionCard extends StatelessWidget {
+  const RyzeActionCard({
+    super.key,
+    required this.title,
+    required this.confirmLabel,
+    required this.cancelLabel,
+    this.detail,
+    this.onConfirm,
+    this.onCancel,
+    this.state = RyzeActionState.pending,
+    this.doneLabel,
+  });
+
+  final String title;
+
+  /// Une seconde ligne, plus discrète : des calories, une date.
+  final String? detail;
+
+  final String confirmLabel;
+  final String cancelLabel;
+
+  final VoidCallback? onConfirm;
+  final VoidCallback? onCancel;
+
+  final RyzeActionState state;
+
+  /// Ce qui remplace les boutons une fois la carte tranchée.
+  final String? doneLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final settled = state != RyzeActionState.pending;
+
+    return Container(
+      margin: EdgeInsets.only(top: context.vw(2.1)),
+      padding: EdgeInsets.all(context.vw(3.1)),
+      decoration: BoxDecoration(
+        color: settled ? RyzeColors.paper2 : RyzeColors.surf,
+        borderRadius: BorderRadius.circular(RyzeRadius.sm),
+        border: Border.all(
+          color: state == RyzeActionState.pending ? RyzeColors.acc : RyzeColors.line,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            title,
+            style: RyzeText.body(
+              context,
+              3.7,
+              height: 1.35,
+              color: settled ? RyzeColors.mute : RyzeColors.ink,
+            ),
+          ),
+          if (detail != null && detail!.isNotEmpty) ...[
+            SizedBox(height: context.vw(1.0)),
+            Text(detail!, style: RyzeText.body(context, 3.2, color: RyzeColors.mute)),
+          ],
+          SizedBox(height: context.vw(2.6)),
+          if (settled)
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  state == RyzeActionState.done ? LucideIcons.check : LucideIcons.x,
+                  size: context.vw(3.6),
+                  color: RyzeColors.mute,
+                ),
+                SizedBox(width: context.vw(1.8)),
+                Text(
+                  doneLabel ?? '',
+                  style: RyzeText.body(context, 3.3, color: RyzeColors.mute),
+                ),
+              ],
+            )
+          else
+            Row(
+              children: [
+                Expanded(child: OnbButton(label: confirmLabel, onPressed: onConfirm)),
+                SizedBox(width: context.vw(2.1)),
+                Expanded(child: OnbButton(label: cancelLabel, ghost: true, onPressed: onCancel)),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Où en est une action proposée.
+enum RyzeActionState { pending, done, cancelled }
+
 /// La coupure entre deux jours : un trait, une date, un trait.
 class RyzeChatDay extends StatelessWidget {
   const RyzeChatDay({super.key, required this.label});

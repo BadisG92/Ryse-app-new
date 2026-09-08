@@ -25,6 +25,12 @@ class PlannerChatScreen extends StatefulWidget {
   final String initialMode; // 'meals' ou 'workouts'
   final WeeklyPlannerData weekData;
 
+  /// La demande à envoyer dès l'ouverture.
+  ///
+  /// Quand Ryze passe le relais depuis la conversation, l'utilisateur ne doit
+  /// pas avoir à réécrire ce qu'il vient de dire.
+  final String? initialMessage;
+
   // Demo mode (onboarding)
   final bool demoMode;
   final int? maxMessages;
@@ -34,6 +40,7 @@ class PlannerChatScreen extends StatefulWidget {
     super.key,
     required this.initialMode,
     required this.weekData,
+    this.initialMessage,
     this.demoMode = false,
     this.maxMessages,
     this.onDemoDataCollected,
@@ -118,6 +125,14 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
     // Scroll vers aujourd'hui après le build
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollCalendarToToday();
+
+      // La demande passée par Ryze part toute seule : l'utilisateur vient de
+      // l'écrire dans la conversation, il n'a pas à la retaper ici.
+      final relayee = widget.initialMessage?.trim() ?? '';
+      if (relayee.isNotEmpty) {
+        _textController.text = relayee;
+        _handleSend();
+      }
     });
   }
 

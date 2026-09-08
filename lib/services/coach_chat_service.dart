@@ -4,8 +4,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../ai/ryze_agent.dart';
 import '../ai/ryze_context.dart';
 import '../ai/ryze_context_source.dart';
+import '../ai/ryze_events.dart';
 import '../ai/ryze_memory.dart';
 import '../ai/ryze_persona.dart';
+import '../ai/ryze_tools/ryze_tools.dart';
 import '../models/coach_chat_models.dart';
 import 'coach_personality_service.dart';
 import 'global_state_manager.dart';
@@ -197,6 +199,11 @@ class CoachChatService {
   // MESSAGE HANDLING
   // ==========================================
 
+  /// Ce que l'écran reçoit pendant que Ryze répond.
+  ///
+  /// La conversation ne rend plus seulement du texte : elle rend aussi ce que
+  /// Ryze vient de faire, et ce qu'il demande la permission de faire.
+
   /// Prépare l'agent avec l'historique de la conversation.
   ///
   /// L'instruction système n'est plus injectée en faux premier tour utilisateur
@@ -205,7 +212,8 @@ class CoachChatService {
   /// plus la reconstruction de la conversation.
   Future<void> _startChatSession() async {
     _agent ??= RyzeAgent(config: RyzeGenerationConfig.coach)
-      ..systemInstructionBuilder = _buildSystemInstruction;
+      ..systemInstructionBuilder = _buildSystemInstruction
+      ..tools = ryzeTools.declarationsFor(RyzeSurface.coach);
 
     // Les trente derniers messages seulement : l'écran en garde deux cents
     // pour l'affichage, le modèle n'a pas besoin de tout relire.
@@ -254,7 +262,7 @@ class CoachChatService {
   /// Les messages d'erreur passent par le dictionnaire : ils s'affichent dans
   /// la bulle comme une réponse du coach, et huit phrases françaises en dur y
   /// arrivaient jusqu'ici quelle que soit la langue.
-  Stream<String> streamMessage(String userMessage, {int retryCount = 0}) async* {
+  Stream<CoachEvent> streamMessage(String userMessage) async* {
     final lang = LocalizationService.instance.currentLanguageCode;
 
     if (_currentConversation == null) {
@@ -262,81 +270,154 @@ class CoachChatService {
     }
 
     if (_currentConversation == null || _agent == null) {
-      yield 'coach_error_start'.tr(lang);
+      yield CoachFailure('coach_error_start'.tr(lang));
       return;
     }
 
     final user = _supabase.auth.currentUser;
     if (user == null) {
-      yield 'error_user_not_authenticated'.tr(lang);
+      yield CoachFailure('error_user_not_authenticated'.tr(lang));
       return;
     }
 
-    // Only save user message on first attempt (not on retry)
-    CoachMessage? userMsgModel;
-    if (retryCount == 0) {
-      try {
-        final userMsgResponse = await _supabase
-            .from('coach_messages')
-            .insert({
-              'conversation_id': _currentConversation!.id,
-              'user_id': user.id,
-              'role': 'user',
-              'content': userMessage,
-            })
-            .select()
-            .single();
-
-        userMsgModel = CoachMessage.fromJson(userMsgResponse);
-        _currentMessages.add(userMsgModel);
-      } catch (e) {
-        if (kDebugMode) debugPrint('❌ CoachChatService: Error saving user message: $e');
-        yield 'coach_error_send'.tr(lang);
-        return;
-      }
+    try {
+      await _saveMessage(role: 'user', content: userMessage);
+    } catch (e) {
+      if (kDebugMode) debugPrint('❌ CoachChatService: Error saving user message: $e');
+      yield CoachFailure('coach_error_send'.tr(lang));
+      return;
     }
 
     try {
       final buffer = StringBuffer();
 
       await for (final event in _agent!.send(userMessage)) {
-        if (event is RyzeTextDelta) {
-          buffer.write(event.text);
-          yield event.text;
-        } else if (event is RyzeError) {
-          yield event.messageKey.tr(lang);
-          return;
+        switch (event) {
+          case RyzeTextDelta(:final text):
+            buffer.write(text);
+            yield CoachText(text);
+
+          case RyzeToolCall():
+            // Le texte accumulé jusqu'ici devient une bulle à lui, avant que
+            // l'action ne s'intercale : sinon les phrases d'avant et d'après
+            // se recollent autour d'une ligne qui n'était pas là.
+            await _flush(buffer);
+            yield* _runTool(event, lang);
+
+          case RyzeError(:final messageKey):
+            await _flush(buffer);
+            yield CoachFailure(messageKey.tr(lang));
+            return;
+
+          case RyzeDone():
+            break;
         }
       }
 
-      // Save complete response
-      final fullResponse = buffer.toString();
-      if (fullResponse.isNotEmpty) {
-        final tokensUsed = (userMessage.length + fullResponse.length) ~/ 4;
-
-        final assistantMsgResponse = await _supabase
-            .from('coach_messages')
-            .insert({
-              'conversation_id': _currentConversation!.id,
-              'user_id': user.id,
-              'role': 'assistant',
-              'content': fullResponse,
-              'tokens_used': tokensUsed,
-            })
-            .select()
-            .single();
-
-        final assistantMsgModel = CoachMessage.fromJson(assistantMsgResponse);
-        _currentMessages.add(assistantMsgModel);
-      }
+      await _flush(buffer);
     } catch (e) {
       // Le transport a déjà ses reprises et ses délais ; ce qui remonte ici
-      // est une écriture en base qui a échoué, pas une panne du modèle. La
-      // reprise qui vivait à cet endroit rattrapait un bug du SDK, disparu
-      // avec lui.
+      // est une écriture en base qui a échoué, pas une panne du modèle.
       if (kDebugMode) debugPrint('❌ CoachChatService: Error streaming message: $e');
-      yield 'coach_error_generic'.tr(lang);
+      yield CoachFailure('coach_error_generic'.tr(lang));
     }
+  }
+
+  /// Exécute l'outil demandé, ou demande d'abord la permission.
+  Stream<CoachEvent> _runTool(RyzeToolCall call, String lang) async* {
+    final tool = ryzeTools.byName(call.name);
+
+    if (tool == null) {
+      // Le modèle a inventé un outil. On le lui dit, plutôt que de le laisser
+      // croire que c'est passé.
+      _agent!.addToolResults([
+        (name: call.name, response: {'ok': false, 'error': 'unknown tool'})
+      ]);
+      return;
+    }
+
+    if (tool.needsConfirmation(call.args) && tool.preview != null) {
+      final pending = await tool.preview!(call.args);
+      _pending[pending.id] = pending;
+
+      // « en attente » et non « fait » : c'est ce qui empêche Ryze d'annoncer
+      // une action que l'utilisateur n'a pas encore validée.
+      _agent!.addToolResults([
+        (name: call.name, response: {'ok': false, 'status': 'awaiting_user_validation'})
+      ]);
+
+      yield CoachAsk(pending);
+      return;
+    }
+
+    final result = await tool.execute(call.args);
+    _agent!.addToolResults([(name: call.name, response: result.toResponse())]);
+    await _saveAction(call.name, result);
+    yield CoachAction(result.summary, ok: result.ok, toolName: call.name);
+  }
+
+  /// Les actions proposées et pas encore tranchées.
+  final Map<String, RyzePending> _pending = {};
+
+  /// L'utilisateur a validé une carte.
+  Future<CoachAction> confirmPending(String id) async {
+    final lang = LocalizationService.instance.currentLanguageCode;
+    final pending = _pending.remove(id);
+    if (pending == null) return CoachAction('ryze_action_failed'.tr(lang), ok: false);
+
+    final result = await pending.commit();
+    _agent?.note(result.summary);
+    await _saveAction(pending.toolName, result);
+    return CoachAction(result.summary, ok: result.ok, toolName: pending.toolName);
+  }
+
+  /// L'utilisateur a refusé une carte.
+  void cancelPending(String id) {
+    final pending = _pending.remove(id);
+    if (pending != null) _agent?.note('refusé : ${pending.title}');
+  }
+
+  /// Écrit la bulle de texte accumulée, s'il y en a une.
+  Future<void> _flush(StringBuffer buffer) async {
+    final text = buffer.toString().trim();
+    buffer.clear();
+    if (text.isEmpty) return;
+    await _saveMessage(role: 'assistant', content: text);
+  }
+
+  /// Écrit une action dans la transcription.
+  Future<void> _saveAction(String toolName, RyzeToolResult result) => _saveMessage(
+        role: 'assistant',
+        content: result.summary,
+        metadata: {
+          'kind': 'tool',
+          'name': toolName,
+          'status': result.ok ? 'done' : 'failed',
+        },
+      );
+
+  Future<void> _saveMessage({
+    required String role,
+    required String content,
+    Map<String, dynamic> metadata = const {},
+  }) async {
+    final user = _supabase.auth.currentUser;
+    if (user == null || _currentConversation == null) return;
+
+    final row = await _supabase
+        .from('coach_messages')
+        .insert({
+          'conversation_id': _currentConversation!.id,
+          'user_id': user.id,
+          'role': role,
+          'content': content,
+          'tokens_used': content.length ~/ 4,
+          if (metadata.isNotEmpty) 'metadata': metadata,
+        })
+        .select()
+        .single();
+
+    _currentMessages.add(CoachMessage.fromJson(row));
   }
 
   /// Stream weekly bilan response from Coach Ryze

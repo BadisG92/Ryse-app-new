@@ -141,6 +141,13 @@ class CoachMessage {
   final int tokensUsed;
   final DateTime createdAt;
 
+  /// Ce que la ligne porte en plus du texte.
+  ///
+  /// Une réponse de Ryze n'est plus seulement des phrases : elle peut contenir
+  /// une action, faite ou proposée. Sans ça, rouvrir la conversation effacerait
+  /// ce qu'il a fait et n'en garderait que le récit.
+  final Map<String, dynamic> metadata;
+
   CoachMessage({
     required this.id,
     required this.conversationId,
@@ -149,7 +156,17 @@ class CoachMessage {
     required this.content,
     this.tokensUsed = 0,
     required this.createdAt,
+    this.metadata = const {},
   });
+
+  /// Cette ligne est-elle une action plutôt qu'une phrase ?
+  bool get isAction => metadata['kind'] == 'tool';
+
+  /// Le nom de l'outil, pour une ligne d'action.
+  String? get toolName => isAction ? metadata['name'] as String? : null;
+
+  /// Où en est l'action : `done`, `cancelled`, ou `pending`.
+  String get actionStatus => '${metadata['status'] ?? 'done'}';
 
   /// Check if this is a user message
   bool get isUser => role == MessageRole.user;
@@ -175,6 +192,7 @@ class CoachMessage {
       content: json['content'] as String,
       tokensUsed: json['tokens_used'] as int? ?? 0,
       createdAt: DateTime.parse(json['created_at'] as String),
+      metadata: (json['metadata'] as Map?)?.cast<String, dynamic>() ?? const {},
     );
   }
 
@@ -211,6 +229,7 @@ class CoachMessage {
     String? content,
     int? tokensUsed,
     DateTime? createdAt,
+    Map<String, dynamic>? metadata,
   }) {
     return CoachMessage(
       id: id ?? this.id,
@@ -220,6 +239,7 @@ class CoachMessage {
       content: content ?? this.content,
       tokensUsed: tokensUsed ?? this.tokensUsed,
       createdAt: createdAt ?? this.createdAt,
+      metadata: metadata ?? this.metadata,
     );
   }
 

@@ -5,6 +5,8 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
+import '../ai/ryze_events.dart';
+import '../ai/ryze_tools/ryze_tool.dart';
 import '../models/coach_chat_models.dart';
 import '../services/coach_chat_service.dart';
 import '../design/design.dart';
@@ -35,6 +37,12 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
   bool _isLoading = false;
   bool _isSending = false;
   bool _showBilanBanner = false;
+
+  /// Les actions que Ryze propose et qui attendent un oui.
+  ///
+  /// Elles vivent hors de la liste des messages : tant qu'elles ne sont pas
+  /// tranchées, elles ne sont rien qui se soit passé.
+  final List<RyzePending> _pendingCards = [];
 
   // Speech to text
   final stt.SpeechToText _speech = stt.SpeechToText();
@@ -185,49 +193,96 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
     _scrollToBottom();
 
     try {
-      // Use streaming for better UX
-      final stream = CoachChatService.instance.streamMessage(text);
-
-      // Add streaming placeholder
-      final streamingMessage = CoachMessage.streaming(
-        conversationId: widget.conversation.id,
-        userId: '',
-      );
-      setState(() {
-        _messages.add(streamingMessage);
-      });
-
-      // Buffer to accumulate chunks and display with typing effect
+      // La réponse n'est plus seulement du texte : Ryze peut agir au milieu
+      // d'une phrase. Chaque nature d'événement a sa place à l'écran.
       String fullResponse = '';
       String displayedText = '';
+      bool typing = false;
 
-      await for (final chunk in stream) {
-        if (mounted) {
-          fullResponse += chunk;
+      /// Ouvre une bulle de frappe si aucune n'attend le texte.
+      void openBubble() {
+        if (typing) return;
+        typing = true;
+        fullResponse = '';
+        displayedText = '';
+        setState(() {
+          _messages.add(CoachMessage.streaming(
+            conversationId: widget.conversation.id,
+            userId: '',
+          ));
+        });
+      }
 
-          // Typing effect: display characters progressively
-          while (displayedText.length < fullResponse.length && mounted) {
-            // Add characters in small batches for smoother effect
-            final charsToAdd = (fullResponse.length - displayedText.length).clamp(1, 3);
-            displayedText = fullResponse.substring(0, displayedText.length + charsToAdd);
-
-            setState(() {
-              if (_messages.isNotEmpty) {
-                final lastIndex = _messages.length - 1;
-                _messages[lastIndex] = _messages[lastIndex].copyWith(
-                  content: displayedText,
-                );
-              }
-            });
-
-            // Small delay for typing effect (15ms per batch of chars)
-            await Future.delayed(const Duration(milliseconds: 15));
-          }
-
-          _scrollToBottom();
+      /// Ferme la bulle en cours : ce qui suit est d'une autre nature.
+      void closeBubble() {
+        typing = false;
+        if (_messages.isNotEmpty && _messages.last.content.trim().isEmpty) {
+          setState(() => _messages.removeLast());
         }
       }
 
+      await for (final event in CoachChatService.instance.streamMessage(text)) {
+        if (!mounted) break;
+
+        switch (event) {
+          case CoachText(:final text):
+            openBubble();
+            fullResponse += text;
+
+            // L'effet de frappe : quelques caractères à la fois.
+            while (displayedText.length < fullResponse.length && mounted) {
+              final charsToAdd = (fullResponse.length - displayedText.length).clamp(1, 3);
+              displayedText = fullResponse.substring(0, displayedText.length + charsToAdd);
+
+              setState(() {
+                if (_messages.isNotEmpty) {
+                  final last = _messages.length - 1;
+                  _messages[last] = _messages[last].copyWith(content: displayedText);
+                }
+              });
+              await Future.delayed(const Duration(milliseconds: 15));
+            }
+            _scrollToBottom();
+
+          case CoachAction(:final summary, :final ok, :final toolName):
+            closeBubble();
+            RyzeFeedback.confirm();
+            setState(() {
+              _messages.add(CoachMessage.temporary(
+                conversationId: widget.conversation.id,
+                userId: '',
+                content: summary,
+              ).copyWith(
+                role: MessageRole.assistant,
+                metadata: {
+                  'kind': 'tool',
+                  'name': toolName,
+                  'status': ok ? 'done' : 'failed',
+                },
+              ));
+            });
+            _scrollToBottom();
+
+          case CoachAsk(:final pending):
+            closeBubble();
+            RyzeFeedback.tap();
+            setState(() => _pendingCards.add(pending));
+            _scrollToBottom();
+
+          case CoachFailure(:final message):
+            closeBubble();
+            setState(() {
+              _messages.add(CoachMessage.temporary(
+                conversationId: widget.conversation.id,
+                userId: '',
+                content: message,
+              ).copyWith(role: MessageRole.assistant));
+            });
+            _scrollToBottom();
+        }
+      }
+
+      closeBubble();
     } catch (e) {
       if (mounted) {
         RyzeUndo.failed(context, message: 'error_generic'.tr(LocalizationService.instance.currentLanguageCode));
@@ -482,15 +537,39 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
     final lang = LocalizationService.instance.currentLanguageCode;
     if (_messages.isEmpty) return _buildWelcomeMessage();
 
+    // Les cartes en attente vivent au bas de la liste, après les messages :
+    // elles ne sont pas encore de l'histoire.
+    final total = _messages.length + _pendingCards.length;
+
     return ListView.builder(
       controller: _scrollController,
       padding: EdgeInsets.all(context.vw(4.1)),
       reverse: true,
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-      itemCount: _messages.length,
+      itemCount: total,
       itemBuilder: (context, index) {
-        final at = _messages.length - 1 - index;
+        final at = total - 1 - index;
+
+        if (at >= _messages.length) {
+          return _buildPendingCard(_pendingCards[at - _messages.length], lang);
+        }
+
         final message = _messages[at];
+
+        // Une action faite se lit d'un coup d'œil : elle n'a pas besoin d'une
+        // bulle, qui la ferait passer pour une phrase.
+        if (message.isAction) {
+          return Column(
+            children: [
+              if (_needsDaySeparator(at)) _buildDaySeparator(message.createdAt, lang),
+              RyzeToolLine(
+                label: message.content,
+                failed: message.actionStatus == 'failed',
+              ),
+            ],
+          );
+        }
+
         // La date annonce le jour, donc elle passe avant sa première bulle.
         // Posée après, elle s'intercalait entre ce message et le suivant : la
         // liste est inversée, mais chaque élément se lit toujours de haut en bas.
@@ -508,6 +587,47 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
         );
       },
     );
+  }
+
+  /// Une action que Ryze propose, à valider ou à refuser.
+  Widget _buildPendingCard(RyzePending pending, String lang) => RyzeActionCard(
+        key: ValueKey(pending.id),
+        title: pending.title,
+        detail: pending.detail,
+        confirmLabel: 'ryze_validate'.tr(lang),
+        cancelLabel: 'ryze_cancel'.tr(lang),
+        onConfirm: () => _resolveCard(pending, accept: true),
+        onCancel: () => _resolveCard(pending, accept: false),
+      );
+
+  Future<void> _resolveCard(RyzePending pending, {required bool accept}) async {
+    setState(() => _pendingCards.removeWhere((p) => p.id == pending.id));
+
+    if (!accept) {
+      CoachChatService.instance.cancelPending(pending.id);
+      RyzeFeedback.removed();
+      return;
+    }
+
+    RyzeFeedback.confirm();
+    final done = await CoachChatService.instance.confirmPending(pending.id);
+    if (!mounted) return;
+
+    setState(() {
+      _messages.add(CoachMessage.temporary(
+        conversationId: widget.conversation.id,
+        userId: '',
+        content: done.summary,
+      ).copyWith(
+        role: MessageRole.assistant,
+        metadata: {
+          'kind': 'tool',
+          'name': done.toolName,
+          'status': done.ok ? 'done' : 'failed',
+        },
+      ));
+    });
+    _scrollToBottom();
   }
 
   /// La conversation vide : le buste, une question, quatre amorces. Le coach
