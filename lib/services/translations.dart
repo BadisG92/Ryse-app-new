@@ -8565,6 +8565,79 @@ class AppTranslations {
       'en': '{foods} — to review',
       'de': '{foods} — zu prüfen',
     },
+
+    // Ce que Ryze retient, vu et effaçable. La mémoire se remplissait toute
+    // seule sans que personne puisse la lire ni la corriger.
+    'coach_memory_title': {
+      'fr': 'Ce que Ryze retient',
+      'en': 'What Ryze remembers',
+      'de': 'Was Ryze sich merkt',
+    },
+    'coach_memory_subtitle': {
+      'fr': 'Il en tient compte à chaque réponse. Touche une ligne pour la retirer.',
+      'en': 'He uses this in every answer. Tap a line to remove it.',
+      'de': 'Er nutzt das in jeder Antwort. Tippe eine Zeile an, um sie zu entfernen.',
+    },
+    'coach_memory_row_hint': {
+      'fr': 'Voir et effacer',
+      'en': 'View and clear',
+      'de': 'Ansehen und löschen',
+    },
+    'coach_memory_empty': {
+      'fr': "Ryze n'a encore rien retenu. Dis-lui une allergie, une blessure ou un goût, et il s'en souviendra.",
+      'en': "Ryze hasn't remembered anything yet. Tell him an allergy, an injury or a preference, and he'll keep it.",
+      'de': 'Ryze hat sich noch nichts gemerkt. Nenn ihm eine Allergie, eine Verletzung oder eine Vorliebe.',
+    },
+    'coach_memory_forget': {
+      'fr': 'Oublier',
+      'en': 'Forget',
+      'de': 'Vergessen',
+    },
+    'coach_memory_deleted': {
+      'fr': 'Oublié : {fact}',
+      'en': 'Forgotten: {fact}',
+      'de': 'Vergessen: {fact}',
+    },
+    'coach_memory_cat_allergies': {
+      'fr': 'Allergies',
+      'en': 'Allergies',
+      'de': 'Allergien',
+    },
+    'coach_memory_cat_fitness': {
+      'fr': 'Contraintes physiques',
+      'en': 'Physical constraints',
+      'de': 'Körperliche Einschränkungen',
+    },
+    'coach_memory_cat_dietary': {
+      'fr': 'Régime',
+      'en': 'Diet',
+      'de': 'Ernährungsweise',
+    },
+    'coach_memory_cat_food': {
+      'fr': 'Goûts',
+      'en': 'Preferences',
+      'de': 'Vorlieben',
+    },
+    'coach_memory_cat_times': {
+      'fr': 'Horaires',
+      'en': 'Training times',
+      'de': 'Trainingszeiten',
+    },
+    'coach_memory_cat_notes': {
+      'fr': 'Notes',
+      'en': 'Notes',
+      'de': 'Notizen',
+    },
+    'coach_memory_cat_onboarding': {
+      'fr': 'Ce que tu as dit au départ',
+      'en': 'What you said at the start',
+      'de': 'Was du am Anfang gesagt hast',
+    },
+    'coach_memory_onboarding_hint': {
+      'fr': 'Ça vient de ton inscription et se change dans ton profil.',
+      'en': 'This comes from sign-up and changes in your profile.',
+      'de': 'Das stammt aus der Anmeldung und ändert sich im Profil.',
+    },
     'ryze_memory_too_long': {
       'fr': "C'est trop long pour être retenu tel quel.",
       'en': "That's too long to remember as is.",

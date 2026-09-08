@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../design/design.dart';
 import '../../models/notification_models.dart';
@@ -10,6 +11,7 @@ import '../../services/translations.dart';
 import '../../services/unit_service.dart';
 import '../../services/weekly_bilan_service.dart';
 import '../widgets/controls.dart';
+import 'coach_memory_sheet.dart';
 
 /// Coach Ryze : le ton qu'il prend, et le bilan qu'il envoie.
 class CoachSheet {
@@ -91,6 +93,21 @@ class _CoachBodyState extends State<_CoachBody> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
+        // Ce que Ryze retient se remplissait tout seul, sans que personne
+        // puisse le voir ni le retirer. La porte s'ouvre avant le ton : ce
+        // qu'il sait de vous compte plus que la façon dont il le dit.
+        RyzeSheetGroup(
+          children: [
+            RyzeSheetRow(
+              first: true,
+              icon: LucideIcons.brain,
+              label: 'coach_memory_title'.tr(lang),
+              hint: 'coach_memory_row_hint'.tr(lang),
+              onTap: () => CoachMemorySheet.show(context, lang: lang),
+            ),
+          ],
+        ),
+        SizedBox(height: context.vw(4.1)),
         Wrap(
           spacing: context.vw(2.1),
           runSpacing: context.vw(2.1),
