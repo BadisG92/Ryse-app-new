@@ -583,7 +583,11 @@ class _GridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = OnbColors.ink.withValues(alpha: 0.045)
+      // La grille est une separation, pas une identite : elle se trace dans le
+      // texte de l'edition, comme les traits. Sur un sol sombre elle devient
+      // d'elle-meme une grille claire sur noir ; tracee dans la marque, elle
+      // aurait ete volt.
+      ..color = RyzeColors.text.withValues(alpha: 0.045)
       ..strokeWidth = 1;
     for (var x = 0.0; x <= size.width; x += spacing) {
       canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
