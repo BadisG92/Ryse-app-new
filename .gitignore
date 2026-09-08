@@ -129,3 +129,6 @@ lib/config/env_config_temp.dart
 
 # Claude Code worktrees (a full checkout each, never versioned)
 .claude/worktrees/
+
+# Jeton Supabase personnel : ne doit jamais partir dans le dépôt.
+.mcp.json
