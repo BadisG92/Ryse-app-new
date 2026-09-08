@@ -247,17 +247,20 @@ class _Dot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: RyzeDurations.fill,
-      curve: RyzeCurves.out,
-      width: 16,
-      height: 16,
-      decoration: BoxDecoration(
-        color: done ? RyzeColors.ink : (planned ? RyzeColors.surf : RyzeColors.paper),
-        shape: BoxShape.circle,
-        border: Border.all(color: done || planned ? RyzeColors.ink : RyzeColors.idle, width: 2),
+    return RyzeLanding(
+      on: done,
+      child: AnimatedContainer(
+        duration: RyzeDurations.fill,
+        curve: RyzeCurves.spring,
+        width: 16,
+        height: 16,
+        decoration: BoxDecoration(
+          color: done ? RyzeColors.ink : (planned ? RyzeColors.surf : RyzeColors.paper),
+          shape: BoxShape.circle,
+          border: Border.all(color: done || planned ? RyzeColors.ink : RyzeColors.idle, width: 2),
+        ),
+        child: done ? Icon(LucideIcons.check, size: 9, color: RyzeColors.surf) : null,
       ),
-      child: done ? Icon(LucideIcons.check, size: 9, color: RyzeColors.surf) : null,
     );
   }
 }

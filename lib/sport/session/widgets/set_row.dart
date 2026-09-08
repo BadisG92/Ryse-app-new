@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../design/design.dart';
+import '../../../services/localization_service.dart';
+import '../../../services/translations.dart';
 import '../../../services/unit_service.dart';
 import '../session_controller.dart';
 import '../session_models.dart';
@@ -44,6 +46,7 @@ class SetRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final units = UnitService.instance;
     final done = set.done;
+    final record = done && set.record;
     final fg = done ? RyzeColors.surf : RyzeColors.ink;
 
     String weightText;
@@ -88,7 +91,9 @@ class SetRow extends StatelessWidget {
         decoration: BoxDecoration(
           color: done ? RyzeColors.ink : RyzeColors.surf,
           borderRadius: BorderRadius.circular(RyzeRadius.sm),
-          border: Border.all(color: done ? RyzeColors.ink : RyzeColors.line),
+          // Un record garde le fond de l'encre et prend le trait de l'ambre :
+          // c'est Ryze qui rend quelque chose, pas l'utilisateur qui choisit.
+          border: Border.all(color: record ? RyzeColors.acc : (done ? RyzeColors.ink : RyzeColors.line), width: record ? 1.4 : 1),
         ),
         child: Row(
           children: [
@@ -125,20 +130,31 @@ class SetRow extends StatelessWidget {
                 onTap: done ? null : onTapReps,
               ),
             ),
+            if (record) ...[
+              SizedBox(width: context.vw(1.5)),
+              Text(
+                'session_record'.tr(LocalizationService.instance.currentLanguageCode),
+                style: RyzeText.body(context, 2.6, weight: FontWeight.w700, color: RyzeColors.acc),
+              ),
+            ],
             SizedBox(width: context.vw(2.1)),
             Semantics(
               button: true,
               child: Pressable(
                 onTap: onCheck,
-                child: Container(
-                  width: context.vw(9.2),
-                  height: context.vw(9.2),
-                  decoration: BoxDecoration(
-                    color: done ? RyzeColors.surf : RyzeColors.paper,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: done ? RyzeColors.surf : RyzeColors.ink, width: 1.4),
+                child: RyzeLanding(
+                  on: done,
+                  amount: 0.18,
+                    child: Container(
+                    width: context.vw(9.2),
+                    height: context.vw(9.2),
+                    decoration: BoxDecoration(
+                      color: done ? RyzeColors.surf : RyzeColors.paper,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: done ? RyzeColors.surf : RyzeColors.ink, width: 1.4),
+                    ),
+                    child: Icon(LucideIcons.check, size: context.vw(4.1), color: record ? RyzeColors.accInk : RyzeColors.ink),
                   ),
-                  child: Icon(LucideIcons.check, size: context.vw(4.1), color: done ? RyzeColors.ink : RyzeColors.ink),
                 ),
               ),
             ),

@@ -236,6 +236,15 @@ class SessionController extends ChangeNotifier {
       return;
     }
     s.done = true;
+
+    // Un record, c'est plus lourd que tout ce qu'on a de la dernière fois sur
+    // cet exercice. Sans dernière fois, il n'y a rien à battre : la première
+    // séance ne s'auto-félicite pas.
+    final previous = ghosts[_key(e.exercise)];
+    final best = previous == null || previous.isEmpty
+        ? 0.0
+        : previous.map((p) => p.weightKg).reduce((a, b) => a > b ? a : b);
+    s.record = best > 0 && s.weightKg > best;
     if (setIndex + 1 < e.sets.length) {
       final n = e.sets[setIndex + 1];
       if (!n.done && n.isEmpty) {
@@ -246,7 +255,11 @@ class SessionController extends ChangeNotifier {
       _advanceAfterRest = session.exercises.skip(_current + 1).any((x) => !x.allDone);
     }
     _closePad();
-    RyzeFeedback.success();
+    if (s.record) {
+      RyzeFeedback.alert();
+    } else {
+      RyzeFeedback.success();
+    }
     rest.start(Duration(seconds: session.restSeconds));
     _touch();
   }

@@ -8,20 +8,25 @@ import '../../models/sport_models.dart';
 /// vers l'ancien modèle est [LiveSession.toWorkoutSession] : le chemin
 /// d'écriture ne change pas de signature.
 class LiveSet {
-  LiveSet({this.weightKg = 0, this.reps = 0, this.done = false});
+  LiveSet({this.weightKg = 0, this.reps = 0, this.done = false, this.record = false});
 
   double weightKg;
   int reps;
   bool done;
 
+  /// Cette série a battu la dernière fois. Rare par nature : c'est la seule
+  /// chose de la séance qui a le droit de se faire remarquer.
+  bool record;
+
   bool get isEmpty => weightKg <= 0 && reps <= 0;
 
-  Map<String, dynamic> toJson() => {'w': weightKg, 'r': reps, 'd': done};
+  Map<String, dynamic> toJson() => {'w': weightKg, 'r': reps, 'd': done, if (record) 'pb': true};
 
   factory LiveSet.fromJson(Map<String, dynamic> m) => LiveSet(
         weightKg: (m['w'] as num?)?.toDouble() ?? 0,
         reps: (m['r'] as num?)?.toInt() ?? 0,
         done: m['d'] as bool? ?? false,
+        record: m['pb'] as bool? ?? false,
       );
 }
 

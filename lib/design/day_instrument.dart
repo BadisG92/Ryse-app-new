@@ -98,7 +98,7 @@ class DayInstrument extends StatelessWidget {
                 heightFactor: 1,
                 child: AnimatedContainer(
                   duration: RyzeDurations.fill,
-                  curve: RyzeCurves.out,
+                  curve: RyzeCurves.spring,
                   decoration: BoxDecoration(color: RyzeColors.acc, borderRadius: BorderRadius.circular(RyzeRadius.pill)),
                 ),
               ),

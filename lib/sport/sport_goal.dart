@@ -27,6 +27,23 @@ class SportGoal {
     return '${_key}_$uid';
   }
 
+  /// Le palier de la semaine se fête une fois, et une seule.
+  ///
+  /// Vrai au premier retour où l'objectif est atteint ; faux ensuite, pour
+  /// cette semaine-là. Sans ce verrou, l'onde repartirait à chaque ouverture
+  /// de l'onglet jusqu'à dimanche, et une fête qui se répète n'en est plus une.
+  static Future<bool> claimWeeklyHit(DateTime monday) async {
+    final key = '${_keyFor()}_hit_${monday.year}-${monday.month}-${monday.day}';
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getBool(key) ?? false) return false;
+      await prefs.setBool(key, true);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// L'objectif fixé, ou nul.
   static Future<int?> load() async {
     try {

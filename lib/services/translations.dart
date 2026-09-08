@@ -11533,6 +11533,11 @@ class AppTranslations {
       'en': "steady",
       'de': "stabil",
     },
+    'session_record': {
+      'fr': "RECORD",
+      'en': "BEST",
+      'de': "REKORD",
+    },
     'sport_times_one': {
       'fr': "1 fois",
       'en': "Once",

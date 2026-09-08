@@ -55,6 +55,9 @@ class _SportTodayPageState extends State<SportTodayPage> with GlobalStateListene
   /// ou ceux du reseau. Faux, la semaine s'ecrit d'un tiret.
   bool _known = false;
 
+  /// L'onde du palier, le temps qu'elle passe.
+  bool _celebrate = false;
+
   final ScrollController _scroll = ScrollController();
 
   /// Lundi → dimanche de cette semaine.
@@ -131,6 +134,16 @@ class _SportTodayPageState extends State<SportTodayPage> with GlobalStateListene
       _known = true;
     });
     unawaited(SportData.remember(week, kinds));
+
+    // Le palier de la semaine : une onde et deux battements, une seule fois.
+    final goal = week.goal;
+    if (goal != null && week.sessions >= goal && await SportGoal.claimWeeklyHit(SportData.monday())) {
+      if (!mounted) return;
+      RyzeFeedback.alert();
+      setState(() => _celebrate = true);
+      await Future<void>.delayed(const Duration(milliseconds: 1400));
+      if (mounted) setState(() => _celebrate = false);
+    }
   }
 
   /// Les programmes de l'utilisateur, pour « Refaire ». Sans eux la feuille
@@ -305,6 +318,7 @@ class _SportTodayPageState extends State<SportTodayPage> with GlobalStateListene
                     streak: w.streak,
                     goal: goal,
                     loaded: _known,
+                    celebrate: _celebrate,
                     onDay: _openDay,
                     onGoal: _goal,
                     onPlan: _openPlanner,

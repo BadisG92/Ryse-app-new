@@ -28,6 +28,7 @@ class WeekBlock extends StatelessWidget {
     required this.streak,
     required this.goal,
     required this.loaded,
+    this.celebrate = false,
     required this.onDay,
     required this.onGoal,
     required this.onPlan,
@@ -48,6 +49,10 @@ class WeekBlock extends StatelessWidget {
 
   /// Faux avant la première lecture : le compte roule depuis zéro.
   final bool loaded;
+
+  /// Vrai à l'instant où l'objectif de la semaine vient d'être atteint, et
+  /// seulement à cet instant-là.
+  final bool celebrate;
 
   /// Un jour qui a une séance se presse.
   final ValueChanged<DateTime> onDay;
@@ -78,7 +83,10 @@ class WeekBlock extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            RollingNumber(shown, style: RyzeText.display(context, 13, weight: FontWeight.w600).copyWith(height: 1)),
+            RyzeWave(
+              play: celebrate,
+              child: RollingNumber(shown, style: RyzeText.display(context, 13, weight: FontWeight.w600).copyWith(height: 1)),
+            ),
             SizedBox(width: context.vw(2.1)),
             Padding(
               padding: EdgeInsets.only(bottom: context.vw(1.5)),
