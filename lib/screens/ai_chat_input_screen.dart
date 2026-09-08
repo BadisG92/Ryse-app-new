@@ -188,25 +188,13 @@ class _AIChatInputScreenState extends State<AIChatInputScreen> {
           ),
         );
       } else {
-        // Utiliser les messages d'erreur conviviaux depuis les traductions
-        String errorKey = result.error ?? 'gemini_analysis_failed';
-
-        // Si l'erreur est un message technique, chercher la clé de traduction
-        final Map<String, String> errorKeyMap = {
-          'gemini_not_configured': 'gemini_not_configured',
-          'gemini_no_response': 'gemini_no_response',
-          'gemini_no_foods_detected': 'gemini_no_foods_detected',
-          'gemini_analysis_failed': 'gemini_analysis_failed',
-        };
-
-        // Si l'erreur correspond à une clé, utiliser la traduction
-        String finalError = errorKey;
-        if (errorKeyMap.containsKey(errorKey)) {
-          finalError = errorKey.tr(LocalizationService.instance.currentLanguageCode);
-        }
+        // Le service ne rend que des clés ; une clé inconnue se rend
+        // elle-même, donc la traduction est toujours sûre.
+        final message = (result.error ?? 'gemini_analysis_failed')
+            .tr(LocalizationService.instance.currentLanguageCode);
 
         setState(() {
-          _errorMessage = finalError;
+          _errorMessage = message;
         });
       }
     } catch (e) {

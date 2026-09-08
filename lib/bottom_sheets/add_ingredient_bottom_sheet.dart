@@ -173,7 +173,7 @@ class _AddIngredientBottomSheetState extends State<AddIngredientBottomSheet> {
         );
       } else {
         setState(() {
-          _generalError = result.error ?? 'ingredient_not_recognized'.tr(languageCode);
+          _generalError = (result.error ?? 'ingredient_not_recognized').tr(languageCode);
         });
       }
     } catch (e) {

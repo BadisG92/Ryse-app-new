@@ -1,8 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
-import 'package:http/http.dart' as http;
 import 'package:image/image.dart' as img;
 import 'package:google_generative_ai/google_generative_ai.dart';
 import '../config/gemini_config.dart';
@@ -11,472 +9,120 @@ import 'location_service.dart';
 import 'localization_service.dart';
 import 'translations.dart';
 
+/// Lire une assiette, ou une phrase, et en tirer des macros.
+///
+/// Deux chemins arrivent ici : la photo prise au scanner, avec la note tapée
+/// avant le déclenchement, et la description écrite à la main ou dictée à
+/// Ryze. Les deux posent la même question au modèle et reçoivent la même
+/// forme de réponse ; seul ce qu'ils lui donnent à regarder change.
+///
+/// La règle qui commande tout le reste : **une quantité annoncée par
+/// l'utilisateur est un fait, pas un indice**. « 150 g de purée » doit être
+/// chiffré sur 150 g de purée, sans arrondi et sans correction. Le modèle le
+/// dit lui-même, par le champ `portion_from`, et c'est ce champ qui décide si
+/// la compensation ci-dessous s'applique.
 class GeminiAnalysisServiceV2 {
-
-  // Corrections pour compenser la sous-estimation de Gemini
+  /// Ce que le modèle sous-estime, et de combien.
+  ///
+  /// Ces facteurs ne s'appliquent qu'aux portions que le modèle a **devinées**
+  /// à l'œil, où il se trompe de façon connue et dans le même sens : l'huile
+  /// de cuisson, la sauce et le beurre lui échappent. Ils ne s'appliquent
+  /// jamais à une quantité donnée par l'utilisateur.
+  ///
+  /// Il y avait ici une quatrième entrée, `calories: 1.25`, que rien n'a
+  /// jamais lue : les calories ne sont pas rendues par le modèle, elles sont
+  /// recalculées depuis les macros (4/4/9). L'inflation réelle d'un plat
+  /// ordinaire est donc d'environ 17 %, et non de 25.
   static const Map<String, double> geminiCorrections = {
-    'calories': 1.25,     // +25% (50% des cas dévient de +20%)
-    'proteines': 1.15,    // +15% (tendance sous-estimation)
-    'glucides': 1.20,     // +20% (sous-estimation fréquente)
-    'lipides': 1.10,      // +10% (moins problématique)
+    'proteines': 1.15,
+    'glucides': 1.20,
+    'lipides': 1.10,
   };
+
+  /// En dessous, l'aliment est trop incertain pour valoir une ligne.
+  ///
+  /// Le même seuil des deux côtés. La photo exigeait 0,6 et ne gardait que
+  /// cinq aliments : un plat vu mais mal identifié disparaissait sans un mot,
+  /// et le total devenait faux sans que rien ne le dise. L'écran de revue est
+  /// là pour ça — mieux vaut une ligne à retirer qu'une ligne manquante.
+  static const double _minConfidence = 0.3;
+
+  /// Au-delà, la liste devient impossible à relire.
+  static const int _maxFoods = 8;
 
   /// Resize image to optimize for Gemini API (max 1024x1024)
   static Future<Uint8List> _resizeImage(Uint8List imageBytes) async {
     try {
-      // Decode image
-      final image = img.decodeImage(imageBytes);
-      if (image == null) {
-        throw Exception('Unable to decode image');
-      }
+      final img.Image? image = img.decodeImage(imageBytes);
+      if (image == null) return imageBytes;
 
-      // Calculate new dimensions (max 1024x1024, maintain aspect ratio)
-      const maxDimension = 1024;
-      int newWidth = image.width;
-      int newHeight = image.height;
+      if (image.width <= 1024 && image.height <= 1024) return imageBytes;
 
-      if (newWidth > maxDimension || newHeight > maxDimension) {
-        if (newWidth > newHeight) {
-          newHeight = (newHeight * maxDimension / newWidth).round();
-          newWidth = maxDimension;
-        } else {
-          newWidth = (newWidth * maxDimension / newHeight).round();
-          newHeight = maxDimension;
-        }
-      }
+      final img.Image resized = img.copyResize(
+        image,
+        width: image.width > image.height ? 1024 : null,
+        height: image.height >= image.width ? 1024 : null,
+        interpolation: img.Interpolation.linear,
+      );
 
-      // Resize image if needed
-      if (newWidth != image.width || newHeight != image.height) {
-        final resizedImage = img.copyResize(
-          image,
-          width: newWidth,
-          height: newHeight,
-          interpolation: img.Interpolation.linear,
-        );
-        // Encode as JPEG with 85% quality to reduce size further
-        return Uint8List.fromList(img.encodeJpg(resizedImage, quality: 85));
-      }
-
-      return imageBytes;
+      return Uint8List.fromList(img.encodeJpg(resized, quality: 85));
     } catch (e) {
       if (kDebugMode) debugPrint('Error resizing image: $e');
-      return imageBytes; // Return original if resize fails
+      return imageBytes;
     }
   }
 
-  /// Analyze an image from bytes for food detection using Gemini 1.5 Flash (Web compatible)
-  static Future<AIAnalysisResult> analyzeImageFromBytes(Uint8List imageBytes, {String? userNote}) async {
-    final stopwatch = Stopwatch()..start();
-    
-    try {
-      // Check if Gemini is configured
-      if (!GeminiConfig.isConfigured) {
-        return AIAnalysisResult.error(
-          error: 'Gemini API not configured. Please set your API key.',
-          processingTime: stopwatch.elapsedMilliseconds / 1000.0,
-        );
-      }
+  // ═══════════════════════════════════════════════════════════════════
+  // LA PHOTO
+  // ═══════════════════════════════════════════════════════════════════
 
-      // Resize image
-      final Uint8List resizedBytes = await _resizeImage(imageBytes);
-      final String base64Image = base64Encode(resizedBytes);
-
-      // Get user's country for cultural context
-      final cultureContext = await LocationService.getFoodCultureContext();
-      final countryName = await LocationService.getUserCountryName();
-
-      // Get user's preferred language from LocalizationService
-      final languageCode = LocalizationService.instance.currentLanguageCode;
-      final isFrench = languageCode == 'fr';
-      final isGerman = languageCode == 'de';
-      final responseLanguage = isFrench ? 'French' : isGerman ? 'German' : 'English';
-
-      // Create detailed prompt for food analysis with user note integration
-      final hasUserNote = userNote != null && userNote.trim().isNotEmpty;
-      final userNoteContext = hasUserNote
-        ? "\n\n**CRITICAL USER INPUT: \"$userNote\"**\nThe user has provided specific information that MUST be respected:\n- If they mention quantities (e.g., \"100g chicken\"), use EXACTLY those values for portion_grams\n- If they mention calories (e.g., \"500 kcal\", \"300 calories\"), adjust portions so the TOTAL calories match EXACTLY what they specified\n- User-specified values are ABSOLUTE and override any visual estimation"
-        : "";
-
-      final prompt = '''
-Analyze this food image taken in $countryName ($cultureContext region).$userNoteContext
-
-IMPORTANT: You MUST respond entirely in $responseLanguage. All food names, meal names, and descriptions must be in $responseLanguage.
-
-Please provide a detailed JSON response with the following structure:
-
-{
-  "meal_name": "Creative name for this meal/dish in $responseLanguage (e.g., ${isFrench ? "'Salade méditerranéenne', 'Plat du jour'" : isGerman ? "'Mediterraner Salat', 'Tagesgericht'" : "'Mediterranean salad', 'Daily special'"})",
-  "foods": [
-    {
-      "name": "Food name in $responseLanguage",
-      "confidence": 85,
-      "portion_grams": 120,
-      "nutrition": {
-        "proteins_g": 15.2,
-        "carbs_g": 25.8,
-        "fats_g": 8.1
-      },
-      "description": "Brief description in $responseLanguage"
-    }
-  ]
-}
-
-Requirements:
-1. Generate a creative, appetizing name for the overall meal/dish in $responseLanguage in the "meal_name" field
-2. ${hasUserNote ? "**MANDATORY**: If the user specified quantities (e.g., \"100g chicken\"), use EXACTLY those values. If the user specified total calories (e.g., \"500 kcal\"), adjust all portion sizes proportionally so the meal totals EXACTLY that calorie amount. Only estimate for values NOT specified by the user." : "Estimate portion sizes based on visual cues in the image (plate size, food volume, typical serving sizes you can observe)"}
-3. Provide nutritional values in grams for the estimated portion size
-4. Use confidence scores from 0-100 based on how clearly you can identify each item
-5. Recognize local dishes common in $cultureContext if present
-6. Focus only on food items that are clearly visible and identifiable
-7. If you see multiple similar items, combine them into one entry with total weight
-8. ALL text output MUST be in $responseLanguage
-
-Be precise with your estimations and only include foods you can confidently identify.
-''';
-
-      // Prepare the Gemini API request
-      final Map<String, dynamic> requestBody = {
-        'contents': [
-          {
-            'parts': [
-              {
-                'text': prompt,
-              },
-              {
-                'inline_data': {
-                  'mime_type': 'image/jpeg',
-                  'data': base64Image,
-                }
-              }
-            ]
-          }
-        ],
-        'generationConfig': GeminiConfig.generationConfig,
-        'safetySettings': GeminiConfig.safetySettingsList,
-      };
-
-      // Make the API call
-      final response = await http.post(
-        Uri.parse(GeminiConfig.fullApiUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: json.encode(requestBody),
-      );
-
-      stopwatch.stop();
-
-      if (response.statusCode == 200) {
-        return _processGeminiResponse(
-          response.body, 
-          stopwatch.elapsedMilliseconds / 1000.0,
-        );
-      } else {
-        return AIAnalysisResult.error(
-          error: 'API request failed: ${response.statusCode} - ${response.body}',
-          processingTime: stopwatch.elapsedMilliseconds / 1000.0,
-        );
-      }
-
-    } catch (e) {
-      stopwatch.stop();
-      return AIAnalysisResult.error(
-        error: 'Analysis failed: $e',
-        processingTime: stopwatch.elapsedMilliseconds / 1000.0,
-      );
-    }
-  }
-
-  /// Analyze an image file for food detection using Gemini 1.5 Flash
+  /// Analyse une photo de repas, avec la note tapée avant le déclenchement.
   static Future<AIAnalysisResult> analyzeImage(File imageFile, {String? userNote}) async {
     final stopwatch = Stopwatch()..start();
-    
-    try {
-      // Check if Gemini is configured
-      if (!GeminiConfig.isConfigured) {
-        return AIAnalysisResult.error(
-          error: 'Gemini API not configured. Please set your API key.',
-          processingTime: stopwatch.elapsedMilliseconds / 1000.0,
-        );
-      }
-
-      // Convert and resize image to base64
-      final Uint8List originalBytes = await imageFile.readAsBytes();
-      final Uint8List resizedBytes = await _resizeImage(originalBytes);
-      final String base64Image = base64Encode(resizedBytes);
-
-      // Get user's country for cultural context
-      final cultureContext = await LocationService.getFoodCultureContext();
-      final countryName = await LocationService.getUserCountryName();
-
-      // Get user's preferred language from LocalizationService
-      final languageCode = LocalizationService.instance.currentLanguageCode;
-      final isFrench = languageCode == 'fr';
-      final isGerman = languageCode == 'de';
-      final responseLanguage = isFrench ? 'French' : isGerman ? 'German' : 'English';
-
-      // Create detailed prompt for food analysis with user note integration
-      final hasUserNote = userNote != null && userNote.trim().isNotEmpty;
-      final userNoteContext = hasUserNote
-        ? "\n\n**CRITICAL USER INPUT: \"$userNote\"**\nThe user has provided specific information that MUST be respected:\n- If they mention quantities (e.g., \"100g chicken\"), use EXACTLY those values for portion_grams\n- If they mention calories (e.g., \"500 kcal\", \"300 calories\"), adjust portions so the TOTAL calories match EXACTLY what they specified\n- User-specified values are ABSOLUTE and override any visual estimation"
-        : "";
-
-      final prompt = '''
-Analyze this food image taken in $countryName ($cultureContext region).$userNoteContext
-
-IMPORTANT: You MUST respond entirely in $responseLanguage. All food names, meal names, and descriptions must be in $responseLanguage.
-
-Please provide a detailed JSON response with the following structure:
-
-{
-  "meal_name": "Creative name for this meal/dish in $responseLanguage (e.g., ${isFrench ? "'Salade méditerranéenne', 'Plat du jour'" : isGerman ? "'Mediterraner Salat', 'Tagesgericht'" : "'Mediterranean salad', 'Daily special'"})",
-  "foods": [
-    {
-      "name": "Food name in $responseLanguage",
-      "confidence": 85,
-      "portion_grams": 120,
-      "nutrition": {
-        "proteins_g": 15.2,
-        "carbs_g": 25.8,
-        "fats_g": 8.1
-      },
-      "description": "Brief description in $responseLanguage"
-    }
-  ]
-}
-
-Requirements:
-1. Generate a creative, appetizing name for the overall meal/dish in $responseLanguage in the "meal_name" field
-2. ${hasUserNote ? "**MANDATORY**: If the user specified quantities (e.g., \"100g chicken\"), use EXACTLY those values. If the user specified total calories (e.g., \"500 kcal\"), adjust all portion sizes proportionally so the meal totals EXACTLY that calorie amount. Only estimate for values NOT specified by the user." : "Estimate portion sizes based on visual cues in the image (plate size, food volume, typical serving sizes you can observe)"}
-3. Provide nutritional values in grams for the estimated portion size
-4. Use confidence scores from 0-100 based on how clearly you can identify each item
-5. Recognize local dishes common in $cultureContext if present
-6. Focus only on food items that are clearly visible and identifiable
-7. If you see multiple similar items, combine them into one entry with total weight
-8. ALL text output MUST be in $responseLanguage
-
-Be precise with your estimations and only include foods you can confidently identify.
-''';
-
-      // Prepare the Gemini API request
-      final Map<String, dynamic> requestBody = {
-        'contents': [
-          {
-            'parts': [
-              {
-                'text': prompt,
-              },
-              {
-                'inline_data': {
-                  'mime_type': 'image/jpeg',
-                  'data': base64Image,
-                }
-              }
-            ]
-          }
-        ],
-        'generationConfig': GeminiConfig.generationConfig,
-        'safetySettings': GeminiConfig.safetySettingsList,
-      };
-
-      // Make the API call
-      final response = await http.post(
-        Uri.parse(GeminiConfig.fullApiUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: json.encode(requestBody),
-      );
-
-      stopwatch.stop();
-
-      if (response.statusCode == 200) {
-        return _processGeminiResponse(
-          response.body, 
-          stopwatch.elapsedMilliseconds / 1000.0,
-        );
-      } else {
-        return AIAnalysisResult.error(
-          error: 'API request failed: ${response.statusCode} - ${response.body}',
-          processingTime: stopwatch.elapsedMilliseconds / 1000.0,
-        );
-      }
-
-    } catch (e) {
-      stopwatch.stop();
-      return AIAnalysisResult.error(
-        error: 'Analysis failed: $e',
-        processingTime: stopwatch.elapsedMilliseconds / 1000.0,
-      );
-    }
-  }
-
-  /// Process the Gemini API response
-  static AIAnalysisResult _processGeminiResponse(String responseBody, double processingTime) {
-    try {
-      final Map<String, dynamic> jsonResponse = json.decode(responseBody);
-      
-      // Check for API errors
-      if (jsonResponse.containsKey('error')) {
-        return AIAnalysisResult.error(
-          error: 'Gemini API Error: ${jsonResponse['error']['message']}',
-          processingTime: processingTime,
-        );
-      }
-
-      final List<dynamic> candidates = jsonResponse['candidates'] ?? [];
-      if (candidates.isEmpty) {
-        return AIAnalysisResult.error(
-          error: 'No response from Gemini API',
-          processingTime: processingTime,
-        );
-      }
-
-      final String textResponse = candidates[0]['content']['parts'][0]['text'] ?? '';
-      
-      // Parse the JSON response from Gemini
-      final parseResult = _parseGeminiTextResponse(textResponse);
-
-      return AIAnalysisResult.success(
-        detectedFoods: parseResult['foods'],
-        mealName: parseResult['mealName'],
-        processingTime: processingTime,
-      );
-
-    } catch (e) {
-      return AIAnalysisResult.error(
-        error: 'Failed to process API response: $e',
-        processingTime: processingTime,
-      );
-    }
-  }
-
-  /// Parse Gemini's text response to extract food data and meal name
-  static Map<String, dynamic> _parseGeminiTextResponse(String textResponse) {
-    final List<DetectedFood> detectedFoods = [];
-    String? mealName;
-    
-    try {
-      // Look for JSON in the response (Gemini sometimes adds extra text)
-      final jsonStartIndex = textResponse.indexOf('{');
-      final jsonEndIndex = textResponse.lastIndexOf('}') + 1;
-      
-      if (jsonStartIndex >= 0 && jsonEndIndex > jsonStartIndex) {
-        final jsonString = textResponse.substring(jsonStartIndex, jsonEndIndex);
-        final Map<String, dynamic> parsedJson = json.decode(jsonString);
-        
-        // Extract meal name
-        mealName = parsedJson['meal_name'] ?? 'coach_detected_dish'.tr(LocalizationService.instance.currentLanguageCode);
-        
-        final List<dynamic> foods = parsedJson['foods'] ?? [];
-        
-        for (final foodData in foods) {
-          try {
-            // Récupérer les valeurs brutes de Gemini
-            final rawProteins = (foodData['nutrition']['proteins_g'] ?? 0).toDouble();
-            final rawCarbs = (foodData['nutrition']['carbs_g'] ?? 0).toDouble();
-            final rawFats = (foodData['nutrition']['fats_g'] ?? 0).toDouble();
-
-            // Appliquer les corrections pour compenser la sous-estimation de Gemini
-            final correctedProteins = rawProteins * geminiCorrections['proteines']!;
-            final correctedCarbs = rawCarbs * geminiCorrections['glucides']!;
-            final correctedFats = rawFats * geminiCorrections['lipides']!;
-
-            final detectedFood = DetectedFood.fromAIResponse(
-              name: foodData['name'] ?? 'Unknown food',
-              confidence: (foodData['confidence'] ?? 50).toDouble() / 100.0,
-              portionGrams: (foodData['portion_grams'] ?? 100).toDouble(),
-              proteins: correctedProteins,
-              carbs: correctedCarbs,
-              fats: correctedFats,
-            );
-
-            // Only include foods with reasonable confidence
-            if (detectedFood.confidence >= GeminiConfig.confidenceThreshold) {
-              detectedFoods.add(detectedFood);
-            }
-          } catch (e) {
-            if (kDebugMode) debugPrint('Error parsing food item: $e');
-            continue;
-          }
-        }
-      }
-    } catch (e) {
-      if (kDebugMode) debugPrint('Error parsing Gemini response: $e');
-      // Fallback: try to extract food names from text response
-      final fallbackFoods = _extractFoodsFromText(textResponse);
-      return {
-        'foods': fallbackFoods,
-        'mealName': 'coach_detected_dish'.tr(LocalizationService.instance.currentLanguageCode),
-      };
-    }
-    
-    return {
-      'foods': detectedFoods.take(5).toList(), // Limit to 5 items
-      'mealName': mealName ?? 'coach_detected_dish'.tr(LocalizationService.instance.currentLanguageCode),
-    };
-  }
-
-  /// Analyze text description of food without image
-  static Future<AIAnalysisResult> analyzeTextDescription(
-    String textDescription, {
-    String? userNote,
-  }) async {
-    final stopwatch = Stopwatch()..start();
 
     try {
-      // Check if Gemini is configured
       if (!GeminiConfig.isConfigured) {
         return AIAnalysisResult.error(
           error: 'gemini_not_configured',
-          processingTime: 0,
+          processingTime: stopwatch.elapsedMilliseconds / 1000.0,
         );
       }
 
-      // Get user's language for better localization
+      final cultureContext = await LocationService.getFoodCultureContext();
+      final countryName = await LocationService.getUserCountryName();
       final languageCode = LocalizationService.instance.currentLanguageCode;
-      final countryName = languageCode == 'fr' ? 'France' : 'United States';
 
-      final prompt = _buildTextAnalysisPrompt(
-        textDescription: textDescription,
+      // L'image part redimensionnée : au-delà de 1024 px le modèle ne voit
+      // rien de plus, et la requête double de poids.
+      final Uint8List resized = await _resizeImage(await imageFile.readAsBytes());
+
+      final prompt = _buildImagePrompt(
         userNote: userNote,
         countryName: countryName,
+        cultureContext: cultureContext,
         languageCode: languageCode,
       );
 
-      if (kDebugMode) debugPrint('🔍 DEBUG: Sending text analysis request to Gemini...');
-      final response = await _makeGeminiRequest(prompt, null);
-      if (kDebugMode) debugPrint('🔍 DEBUG: Got response: ${response != null ? "YES" : "NULL"}');
-
+      final response = await _makeGeminiRequest(prompt, imageBytes: resized);
       stopwatch.stop();
       final processingTime = stopwatch.elapsedMilliseconds / 1000.0;
 
       if (response == null) {
-        if (kDebugMode) debugPrint('❌ DEBUG: Response is null');
         return AIAnalysisResult.error(
           error: 'gemini_no_response',
           processingTime: processingTime,
         );
       }
 
-      if (kDebugMode) debugPrint('🔍 DEBUG: Response content: ${response.toString()}');
+      final parsed = parseFoods(response);
 
-      // Parse the response directly - _makeGeminiRequest already returns parsed JSON
-      final parseResult = _parseTextResponseFromJson(response);
-
-      // Check for non-food input error
-      if (parseResult.containsKey('error') && parseResult['error'] == 'non_food_input') {
-        if (kDebugMode) debugPrint('❌ DEBUG: Non-food input detected');
+      if (parsed.error != null) {
         return AIAnalysisResult.error(
-          error: parseResult['suggestion'] ?? 'Please describe food items with quantities. Examples: "250ml orange juice", "2 eggs with 50g cheese", "1 apple and 200ml milk"',
+          error: parsed.error!,
           processingTime: processingTime,
         );
       }
-
-      if (parseResult['foods'].isEmpty) {
-        if (kDebugMode) debugPrint('❌ DEBUG: No foods detected in response');
+      if (parsed.foods.isEmpty) {
         return AIAnalysisResult.error(
           error: 'gemini_no_foods_detected',
           processingTime: processingTime,
@@ -484,15 +130,13 @@ Be precise with your estimations and only include foods you can confidently iden
       }
 
       return AIAnalysisResult.success(
-        detectedFoods: parseResult['foods'],
-        mealName: parseResult['mealName'],
+        detectedFoods: parsed.foods,
+        mealName: parsed.mealName,
         processingTime: processingTime,
       );
-
-    } catch (e, stackTrace) {
+    } catch (e) {
       stopwatch.stop();
-      if (kDebugMode) debugPrint('❌ DEBUG: Error analyzing text: $e');
-      if (kDebugMode) debugPrint('❌ DEBUG: Stack trace: $stackTrace');
+      if (kDebugMode) debugPrint('❌ analyzeImage: $e');
       return AIAnalysisResult.error(
         error: 'gemini_analysis_failed',
         processingTime: stopwatch.elapsedMilliseconds / 1000.0,
@@ -500,298 +144,363 @@ Be precise with your estimations and only include foods you can confidently iden
     }
   }
 
-  /// Parse JSON response from _makeGeminiRequest
-  static Map<String, dynamic> _parseTextResponseFromJson(Map<String, dynamic> jsonResponse) {
-    final List<DetectedFood> detectedFoods = [];
-    String? mealName;
+  /// Analyse une photo, avec un repas d'exemple si la clé manque.
+  ///
+  /// Le repas d'exemple ne sort **qu'en développement**. En production, une
+  /// blanquette inventée présentée comme une analyse serait un mensonge, et
+  /// le jour où la clé passera côté serveur `isConfigured` deviendra faux
+  /// pour tout le monde.
+  static Future<AIAnalysisResult> analyzeImageWithFallback(File imageFile, {String? userNote}) async {
+    final result = await analyzeImage(imageFile, userNote: userNote);
 
-    try {
-      // Check for validation error (non-food input)
-      if (jsonResponse.containsKey('error') && jsonResponse['error'] == 'non_food_input') {
-        return {
-          'error': 'non_food_input',
-          'suggestion': jsonResponse['suggestion'] ?? 'Please describe food items with quantities.',
-          'foods': [],
-          'mealName': null,
-        };
-      }
-
-      // Extract meal name
-      mealName = jsonResponse['meal_name'] ?? 'Plat détecté';
-
-      final List<dynamic> foods = jsonResponse['foods'] ?? [];
-
-      for (final foodData in foods) {
-        try {
-          // Check if it's a liquid (use portion_ml) or solid (use portion_grams)
-          final isLiquid = foodData['is_liquid'] ?? false;
-          final portionGrams = isLiquid
-            ? (foodData['portion_ml'] ?? 100).toDouble()  // ml for liquids
-            : (foodData['portion_grams'] ?? 100).toDouble(); // grams for solids
-
-          // Récupérer les valeurs brutes de Gemini
-          final rawProteins = (foodData['nutrition']['proteins_g'] ?? 0).toDouble();
-          final rawCarbs = (foodData['nutrition']['carbs_g'] ?? 0).toDouble();
-          final rawFats = (foodData['nutrition']['fats_g'] ?? 0).toDouble();
-
-          // Appliquer les corrections pour compenser la sous-estimation de Gemini
-          final correctedProteins = rawProteins * geminiCorrections['proteines']!;
-          final correctedCarbs = rawCarbs * geminiCorrections['glucides']!;
-          final correctedFats = rawFats * geminiCorrections['lipides']!;
-
-          final detectedFood = DetectedFood.fromAIResponse(
-            name: foodData['name'] ?? 'Unknown food',
-            confidence: (foodData['confidence'] ?? 50).toDouble() / 100.0,
-            portionGrams: portionGrams,
-            proteins: correctedProteins,
-            carbs: correctedCarbs,
-            fats: correctedFats,
-            isLiquid: isLiquid, // Pass the isLiquid flag
-          );
-
-          // Include all foods with some confidence
-          if (detectedFood.confidence >= 0.3) {
-            detectedFoods.add(detectedFood);
-          }
-        } catch (e) {
-          if (kDebugMode) debugPrint('Error parsing food item: $e');
-          continue;
-        }
-      }
-    } catch (e) {
-      if (kDebugMode) debugPrint('Error parsing JSON response: $e');
+    if (!result.success && !GeminiConfig.isConfigured && kDebugMode) {
+      return createMockAnalysisResult(userNote: userNote);
     }
-
-    return {
-      'foods': detectedFoods.take(8).toList(), // Limit to 8 items
-      'mealName': mealName ?? 'Plat détecté',
-    };
+    return result;
   }
 
-  /// Build prompt for text-based food analysis
-  static String _buildTextAnalysisPrompt({
+  // ═══════════════════════════════════════════════════════════════════
+  // LA DESCRIPTION
+  // ═══════════════════════════════════════════════════════════════════
+
+  /// Analyse un repas décrit en toutes lettres, sans photo.
+  static Future<AIAnalysisResult> analyzeTextDescription(
+    String textDescription, {
+    String? userNote,
+  }) async {
+    final stopwatch = Stopwatch()..start();
+
+    try {
+      if (!GeminiConfig.isConfigured) {
+        return AIAnalysisResult.error(error: 'gemini_not_configured', processingTime: 0);
+      }
+
+      final languageCode = LocalizationService.instance.currentLanguageCode;
+      final countryName = await LocationService.getUserCountryName();
+
+      final prompt = _buildTextPrompt(
+        textDescription: textDescription,
+        userNote: userNote,
+        countryName: countryName,
+        languageCode: languageCode,
+      );
+
+      final response = await _makeGeminiRequest(prompt);
+      stopwatch.stop();
+      final processingTime = stopwatch.elapsedMilliseconds / 1000.0;
+
+      if (response == null) {
+        return AIAnalysisResult.error(
+          error: 'gemini_no_response',
+          processingTime: processingTime,
+        );
+      }
+
+      final parsed = parseFoods(response);
+
+      if (parsed.error != null) {
+        return AIAnalysisResult.error(error: parsed.error!, processingTime: processingTime);
+      }
+      if (parsed.foods.isEmpty) {
+        return AIAnalysisResult.error(
+          error: 'gemini_no_foods_detected',
+          processingTime: processingTime,
+        );
+      }
+
+      return AIAnalysisResult.success(
+        detectedFoods: parsed.foods,
+        mealName: parsed.mealName,
+        processingTime: processingTime,
+      );
+    } catch (e) {
+      stopwatch.stop();
+      if (kDebugMode) debugPrint('❌ analyzeTextDescription: $e');
+      return AIAnalysisResult.error(
+        error: 'gemini_analysis_failed',
+        processingTime: stopwatch.elapsedMilliseconds / 1000.0,
+      );
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // CE QU'ON DEMANDE AU MODÈLE
+  // ═══════════════════════════════════════════════════════════════════
+
+  static String _languageName(String code) =>
+      code == 'fr' ? 'French' : code == 'de' ? 'German' : 'English';
+
+  /// La forme de la réponse, la même pour les deux chemins.
+  ///
+  /// Elle était écrite deux fois pour la photo — dont une copie que plus rien
+  /// n'appelait — et une troisième fois pour la description, avec des champs
+  /// différents. Les liquides, par exemple, n'existaient que du côté du
+  /// texte : un verre de jus photographié était pesé en grammes.
+  static String _responseShape(String responseLanguage) => '''
+Respond with JSON only, in this exact shape:
+
+{
+  "meal_name": "a short, appetising name for the whole dish, in $responseLanguage",
+  "foods": [
+    {
+      "name": "the food, named the way someone would say it, in $responseLanguage",
+      "confidence": 85,
+      "is_liquid": false,
+      "portion_grams": 150,
+      "portion_ml": null,
+      "portion_from": "estimate",
+      "nutrition": { "proteins_g": 3.0, "carbs_g": 22.0, "fats_g": 5.0 }
+    }
+  ]
+}
+
+Rules for these fields:
+- "is_liquid": true for anything drunk. Liquids carry "portion_ml" and leave "portion_grams" null; solids do the opposite.
+- "nutrition": the values for THIS portion, not for 100 g. If the portion is 150 g, give what 150 g contains.
+- "confidence": 0 to 100, how sure you are of the identification.
+- Group what is eaten together into one line (coffee with milk and sugar is one item). At most $_maxFoods lines.
+- Every word you write goes in $responseLanguage.''';
+
+  /// La règle qui commande tout le reste.
+  ///
+  /// Le prompt jurait déjà « pas un kcal d'écart » quand l'utilisateur donnait
+  /// un chiffre, mais le code multipliait ensuite les macros par les facteurs
+  /// de compensation : 150 g de purée annoncés s'affichaient avec les
+  /// calories de 175 g. Le modèle dit maintenant d'où vient chaque quantité,
+  /// et la compensation épargne celles qui viennent de l'utilisateur.
+  static const String _portionSourceRule = '''
+"portion_from" is the most important field in your answer. It says where the amount comes from:
+
+- "user" — the person stated the amount for this item themselves: in grams or millilitres ("150 g of mash"), as a count ("2 eggs"), as a household measure ("a tablespoon of olive oil"), or as a calorie figure ("a 500 kcal cake"). Copy their number exactly into the portion field. Do not round it, do not adjust it, do not second-guess it against what you see. Work out the nutrition for exactly that amount. If they gave calories instead of a weight, choose macros that add up to exactly that figure using 4 kcal per gram of protein and of carbohydrate, 9 per gram of fat.
+- "estimate" — you judged the amount yourself.
+
+Never write "user" for an item whose amount the person did not give. Never write "estimate" for one they did. When they name an amount for one item only, that item is "user" and the others stay "estimate".''';
+
+  /// Ce qui fait qu'une estimation est trop basse, dit au modèle plutôt que
+  /// rattrapé après coup par un facteur.
+  static const String _estimationGuidance = '''
+When you estimate, count what people forget:
+- the fat used to cook, the butter in the purée, the oil in the pan and on the salad;
+- sauces, dressings, gravy, syrup, and what soaked into the food;
+- weigh food as it is served, cooked, not as raw ingredients.''';
+
+  static String _buildImagePrompt({
+    required String? userNote,
+    required String countryName,
+    required String cultureContext,
+    required String languageCode,
+  }) {
+    final responseLanguage = _languageName(languageCode);
+    final note = userNote?.trim() ?? '';
+    final hasNote = note.isNotEmpty;
+
+    return '''
+You read a photo of a meal and work out what it holds.
+
+The photo was taken in $countryName, where the cooking is $cultureContext. Recognise local dishes when you see them.
+${hasNote ? '\nThe person wrote this alongside the photo: "$note"\nIt is not a caption, it is information about the meal. Where it names an amount, that amount wins over anything you think you see.\n' : ''}
+To judge the portions, use what the photo gives you for scale: the diameter of the plate, a fork or a spoon beside it, the height of the glass, a hand. Say what is on the plate, not what a recipe would call for.
+
+$_estimationGuidance
+
+$_portionSourceRule
+
+Only list food you can actually identify. If several pieces of the same thing are on the plate, make them one line with the total weight.
+
+${_responseShape(responseLanguage)}''';
+  }
+
+  static String _buildTextPrompt({
     required String textDescription,
     String? userNote,
     required String countryName,
     required String languageCode,
   }) {
-    final isFrench = languageCode == 'fr';
-    final isGerman = languageCode == 'de';
-    final responseLanguage = isFrench ? 'French' : isGerman ? 'German' : 'English';
-    final errorSuggestion = isFrench
-      ? "Veuillez décrire un repas ou des aliments avec leurs quantités. Bonnes pratiques :\n• Listez les aliments du repas avec leurs portions (ex: '250ml jus d'orange', '2 œufs avec 50g de fromage')\n• Précisez les quantités en ml pour les liquides, en g pour les solides\n• Ajoutez des détails importants (mode de cuisson, accompagnements, etc.)\n\nExemples : '250ml de jus de carotte', '150g de poulet grillé avec 100g de riz', '1 pomme et 200ml de lait'"
-      : isGerman
-      ? "Bitte beschreiben Sie eine Mahlzeit oder Lebensmittel mit Mengenangaben. Beste Vorgehensweise:\n• Listen Sie die Mahlzeiten mit Portionen auf (z.B. '250ml Orangensaft', '2 Eier mit 50g Käse')\n• Geben Sie Mengen in ml für Flüssigkeiten, in g für Feststoffe an\n• Fügen Sie wichtige Details hinzu (Zubereitungsart, Beilagen, etc.)\n\nBeispiele: '250ml Karottensaft', '150g gegrilltes Hähnchen mit 100g Reis', '1 Apfel und 200ml Milch'"
-      : "Please describe a meal or food items with quantities. Best practices:\n• List meal items with portions (e.g., '250ml orange juice', '2 eggs with 50g cheese')\n• Specify quantities in ml for liquids, in g for solids\n• Add important details (cooking method, sides, etc.)\n\nExamples: '250ml carrot juice', '150g grilled chicken with 100g rice', '1 apple and 200ml milk'";
+    final responseLanguage = _languageName(languageCode);
+    final note = userNote?.trim() ?? '';
+
+    // La phrase d'aide est la seule chose que l'utilisateur lira telle quelle :
+    // elle est écrite dans sa langue, pas traduite par le modèle.
+    final suggestion = 'ai_describe_meal_hint'.tr(languageCode);
 
     return '''
-You are a nutrition expert AI. Analyze this text description of food and provide detailed nutritional information in $responseLanguage.
+You read a meal written in plain words and work out what it holds.
 
-Text description: "$textDescription"
+What the person wrote: "$textDescription"
+${note.isEmpty ? '' : '\nExtra context: "$note"\n'}
+They are in $countryName. Use the portions and preparations usual there.
 
-${userNote != null ? 'Additional context: "$userNote"' : ''}
+FIRST, check there is food in it. If the text names no food at all, answer with this and nothing else:
+{ "error": "non_food_input", "suggestion": "$suggestion" }
 
-The user is in $countryName. Consider local food portions and preparations typical for this region.
+Then, for a real meal:
+- Where no amount is given, use an ordinary portion for one person, not a family dish. A glass of juice is 250 ml, a steak is 150 g.
+- $_estimationGuidance
 
-VALIDATION FIRST:
-1. Check if the description contains actual FOOD items
-2. If the description contains NO food items (e.g., random objects, activities, nonsense), return:
-{
-  "error": "non_food_input",
-  "suggestion": "$errorSuggestion"
-}
+$_portionSourceRule
 
-For valid food descriptions:
-1. Identify each food item mentioned in the description
-2. Estimate reasonable INDIVIDUAL portions (not family portions)
-3. For LIQUIDS: use milliliters (ml) in "portion_ml" field
-4. For SOLIDS: use grams (g) in "portion_grams" field
-5. If quantities are not specified, use standard INDIVIDUAL portions
-6. Group related items logically (e.g., "coffee with milk and sugar" as one item)
-
-Provide your response in the following JSON format:
-{
-  "meal_name": "A creative, appetizing name for the overall meal in the user's language",
-  "foods": [
-    {
-      "name": "Food item name (be specific)",
-      "confidence": 85,
-      "portion_grams": 150,  // For solid foods
-      "portion_ml": 250,     // For liquid foods (optional, use this OR portion_grams)
-      "is_liquid": false,    // true for drinks, false for solid foods
-      "nutrition": {
-        "proteins_g": 25.5,
-        "carbs_g": 30.2,
-        "fats_g": 12.8
-      }
-    }
-  ]
-}
-
-CRITICAL - EXACT CALORIE MATCHING:
-🚨 If the user specifies EXACT calories or quantities for a food item (e.g., "gâteau de 500kcal", "500 calories cake", "200g de poulet"), you MUST respect these values EXACTLY.
-- Calculate macros (proteins, carbs, fats) to match EXACTLY the specified calories
-- DO NOT add or subtract even 1 kcal (e.g., if user says "500kcal", return exactly 500kcal, NOT 540, NOT 523, NOT 498)
-- Use realistic macro distribution for that food type to reach the exact calorie target
-- Example: "gâteau de 500kcal" → nutrition values must total EXACTLY 500kcal
-- Example: "200g chicken" → use exactly 200g in portion_grams, then calculate accurate nutrition
-
-IMPORTANT:
-- Use realistic INDIVIDUAL portions (not family/restaurant portions)
-- For liquids: prefer "portion_ml" and set "is_liquid": true
-- For solids: use "portion_grams" and set "is_liquid": false
-- If user says "jus de carotte" without quantity, assume 250ml (individual glass)
-- If user says "steak" without quantity, assume 150g (individual portion)
-- Provide accurate nutritional values
-- Confidence should reflect how clear the description is
-- Name foods in a user-friendly way
-- Maximum 8 food items
-''';
+${_responseShape(responseLanguage)}''';
   }
 
-  /// Make request to Gemini API
-  static Future<Map<String, dynamic>?> _makeGeminiRequest(
-    String prompt,
-    File? imageFile,
-  ) async {
-    try {
-      if (kDebugMode) debugPrint('🔍 DEBUG: Creating Gemini model with key: ${GeminiConfig.geminiApiKey.substring(0, 10)}...');
+  // ═══════════════════════════════════════════════════════════════════
+  // CE QU'ON EN FAIT
+  // ═══════════════════════════════════════════════════════════════════
 
+  /// Envoie la requête et rend le JSON de la réponse.
+  ///
+  /// Le mode JSON est demandé au modèle, donc la réponse est du JSON et non
+  /// du texte qui en contient. Les deux chemins passaient auparavant par des
+  /// clients différents, dont un qui posait la clé dans l'adresse.
+  static Future<Map<String, dynamic>?> _makeGeminiRequest(
+    String prompt, {
+    Uint8List? imageBytes,
+  }) async {
+    try {
       final model = GenerativeModel(
-        model: GeminiConfig.modelName, // Utilise gemini-2.0-flash comme le coach
+        model: GeminiConfig.modelName,
         apiKey: GeminiConfig.geminiApiKey,
         generationConfig: GenerationConfig(
           temperature: GeminiConfig.temperature,
           topK: GeminiConfig.topK,
           topP: GeminiConfig.topP,
           maxOutputTokens: GeminiConfig.maxOutputTokens,
-          responseMimeType: 'application/json', // IMPORTANT: Force JSON response
+          responseMimeType: 'application/json',
         ),
+        safetySettings: GeminiConfig.sdkSafetySettings,
       );
 
-      if (kDebugMode) debugPrint('🔍 DEBUG: Preparing content for Gemini...');
-      final List<Part> parts = [
-        TextPart(prompt),
-      ];
+      final parts = <Part>[TextPart(prompt)];
+      if (imageBytes != null) parts.add(DataPart('image/jpeg', imageBytes));
 
-      if (imageFile != null) {
-        if (kDebugMode) debugPrint('🔍 DEBUG: Adding image to request...');
-        final imageBytes = await imageFile.readAsBytes();
-        parts.add(DataPart('image/jpeg', imageBytes));
-      }
+      final response = await model.generateContent([Content.multi(parts)]);
+      final text = response.text;
+      if (text == null || text.trim().isEmpty) return null;
 
-      final content = [Content.multi(parts)];
-
-      if (kDebugMode) debugPrint('🔍 DEBUG: Sending request to Gemini API...');
-      final response = await model.generateContent(content);
-
-      if (kDebugMode) debugPrint('🔍 DEBUG: Response received: ${response.text?.substring(0, 100) ?? "NULL"}...');
-
-      if (response.text == null || response.text!.isEmpty) {
-        if (kDebugMode) debugPrint('❌ DEBUG: Response text is null or empty');
-        return null;
-      }
-
-      // Parse JSON from response text
-      final jsonStartIndex = response.text!.indexOf('{');
-      final jsonEndIndex = response.text!.lastIndexOf('}') + 1;
-
-      if (jsonStartIndex >= 0 && jsonEndIndex > jsonStartIndex) {
-        final jsonString = response.text!.substring(jsonStartIndex, jsonEndIndex);
-        if (kDebugMode) debugPrint('🔍 DEBUG: Extracted JSON: ${jsonString.substring(0, 100)}...');
-        return json.decode(jsonString);
-      }
-
-      if (kDebugMode) debugPrint('❌ DEBUG: Could not find JSON in response');
-      return null;
-    } catch (e, stackTrace) {
-      if (kDebugMode) debugPrint('❌ DEBUG: Error making Gemini request: $e');
-      if (kDebugMode) debugPrint('❌ DEBUG: Stack trace: $stackTrace');
+      final decoded = json.decode(text);
+      return decoded is Map<String, dynamic> ? decoded : null;
+    } catch (e) {
+      if (kDebugMode) debugPrint('❌ _makeGeminiRequest: $e');
       return null;
     }
   }
 
-  /// Fallback method to extract foods from plain text response
-  static List<DetectedFood> _extractFoodsFromText(String textResponse) {
-    final List<DetectedFood> foods = [];
+  /// Ce que la lecture d'une réponse a donné.
+  @visibleForTesting
+  static ({List<DetectedFood> foods, String? mealName, String? error}) parseFoods(
+    Map<String, dynamic> response,
+  ) {
+    final lang = LocalizationService.instance.currentLanguageCode;
 
-    // Simple keyword matching as fallback
-    final commonFoods = [
-      'rice', 'pasta', 'bread', 'chicken', 'beef', 'fish', 'salmon',
-      'vegetables', 'salad', 'tomato', 'broccoli', 'carrot', 'potato',
-      'apple', 'banana', 'orange', 'cheese', 'egg', 'milk'
-    ];
-
-    for (final food in commonFoods) {
-      if (textResponse.toLowerCase().contains(food)) {
-        foods.add(DetectedFood.fromVisionLabel(
-          label: food,
-          confidence: 0.7,
-          cultureContext: 'International cuisine and standard portion sizes',
-        ));
-      }
-      if (foods.length >= 3) break; // Limit fallback results
+    // Le modèle a jugé qu'il n'y avait pas de nourriture là-dedans.
+    if (response['error'] == 'non_food_input') {
+      final suggestion = response['suggestion'] as String?;
+      return (
+        foods: const <DetectedFood>[],
+        mealName: null,
+        error: suggestion?.trim().isNotEmpty == true
+            ? suggestion
+            : 'ai_describe_meal_hint'.tr(lang),
+      );
     }
 
-    return foods;
+    final foods = <DetectedFood>[];
+    final rawFoods = response['foods'];
+
+    if (rawFoods is List) {
+      for (final entry in rawFoods) {
+        if (entry is! Map) continue;
+        try {
+          final nutrition = entry['nutrition'];
+          if (nutrition is! Map) continue;
+
+          final isLiquid = entry['is_liquid'] == true;
+          final portion = isLiquid
+              ? _toDouble(entry['portion_ml']) ?? _toDouble(entry['portion_grams'])
+              : _toDouble(entry['portion_grams']) ?? _toDouble(entry['portion_ml']);
+
+          // Ce que l'utilisateur a annoncé est pris tel quel. Le reste porte
+          // la compensation d'une estimation visuelle trop basse.
+          final fromUser = '${entry['portion_from']}'.toLowerCase() == 'user';
+          final k = fromUser ? _noCorrection : geminiCorrections;
+
+          final food = DetectedFood.fromAIResponse(
+            name: '${entry['name'] ?? ''}'.trim().isEmpty
+                ? 'coach_detected_dish'.tr(lang)
+                : '${entry['name']}'.trim(),
+            confidence: (_toDouble(entry['confidence']) ?? 50) / 100.0,
+            portionGrams: portion ?? 100,
+            proteins: (_toDouble(nutrition['proteins_g']) ?? 0) * k['proteines']!,
+            carbs: (_toDouble(nutrition['carbs_g']) ?? 0) * k['glucides']!,
+            fats: (_toDouble(nutrition['fats_g']) ?? 0) * k['lipides']!,
+            isLiquid: isLiquid,
+          );
+
+          if (food.confidence >= _minConfidence) foods.add(food);
+        } catch (e) {
+          if (kDebugMode) debugPrint('⚠️ aliment illisible : $e');
+          continue;
+        }
+      }
+    }
+
+    final name = '${response['meal_name'] ?? ''}'.trim();
+
+    return (
+      foods: foods.take(_maxFoods).toList(),
+      mealName: name.isEmpty ? 'coach_detected_dish'.tr(lang) : name,
+      error: null,
+    );
   }
 
-  /// Create mock analysis result for development/testing with user note
+  /// Une quantité donnée par l'utilisateur ne se corrige pas.
+  static const Map<String, double> _noCorrection = {
+    'proteines': 1.0,
+    'glucides': 1.0,
+    'lipides': 1.0,
+  };
+
+  static double? _toDouble(dynamic value) {
+    if (value == null) return null;
+    if (value is num) return value.toDouble();
+    return double.tryParse('$value');
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // DÉVELOPPEMENT
+  // ═══════════════════════════════════════════════════════════════════
+
+  /// Un repas d'exemple, pour travailler sans clé. Jamais en production.
   static AIAnalysisResult createMockAnalysisResult({String? userNote}) {
-    final List<DetectedFood> mockFoods = [
-      DetectedFood.fromAIResponse(
-        name: userNote?.contains('riz') == true ? 'Riz basmati (${userNote?.replaceAll(RegExp(r'[^\d]'), '') ?? '200'}g)' : 'Blanquette de veau',
-        confidence: 0.93,
-        portionGrams: userNote?.contains('g') == true 
-          ? double.tryParse(userNote!.replaceAll(RegExp(r'[^\d]'), '')) ?? 200.0 
-          : 200.0,
-        proteins: 28.5,
-        carbs: 8.2,
-        fats: 15.8,
-      ),
-      DetectedFood.fromAIResponse(
-        name: 'Riz blanc',
-        confidence: 0.89,
-        portionGrams: 120.0,
-        proteins: 3.2,
-        carbs: 28.4,
-        fats: 0.4,
-      ),
-      DetectedFood.fromAIResponse(
-        name: 'Légumes sautés',
-        confidence: 0.85,
-        portionGrams: 80.0,
-        proteins: 2.1,
-        carbs: 6.5,
-        fats: 1.2,
-      ),
-    ];
-
-    final String mealName = userNote?.isNotEmpty == true 
-      ? 'Plat personnalisé (avec note utilisateur)' 
-      : 'coach_detected_dish'.tr(LocalizationService.instance.currentLanguageCode);
+    final lang = LocalizationService.instance.currentLanguageCode;
 
     return AIAnalysisResult.success(
-      detectedFoods: mockFoods,
-      mealName: mealName,
+      detectedFoods: [
+        DetectedFood.fromAIResponse(
+          name: 'Blanquette de veau',
+          confidence: 0.93,
+          portionGrams: 200,
+          proteins: 28.5,
+          carbs: 8.2,
+          fats: 15.8,
+        ),
+        DetectedFood.fromAIResponse(
+          name: 'Riz blanc',
+          confidence: 0.89,
+          portionGrams: 120,
+          proteins: 3.2,
+          carbs: 28.4,
+          fats: 0.4,
+        ),
+      ],
+      mealName: 'coach_detected_dish'.tr(lang),
       processingTime: 2.5,
     );
   }
 
-  /// Analyze image with fallback to mock data for development
-  static Future<AIAnalysisResult> analyzeImageWithFallback(File imageFile, {String? userNote}) async {
-    // Try real API first
-    final result = await analyzeImage(imageFile, userNote: userNote);
-    
-    // If API is not configured or fails, use mock data with user note
-    if (!result.success && !GeminiConfig.isConfigured) {
-      return createMockAnalysisResult(userNote: userNote);
-    }
-    
-    return result;
-  }
+  // ═══════════════════════════════════════════════════════════════════
+  // VALIDATION DU FICHIER
+  // ═══════════════════════════════════════════════════════════════════
 
-  /// Validate image file before analysis
   static bool isValidImageFile(File imageFile) {
     final String extension = imageFile.path.toLowerCase().split('.').last;
     const List<String> supportedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'];
@@ -801,7 +510,6 @@ IMPORTANT:
   /// Get maximum file size allowed (20MB for Gemini)
   static const int maxFileSizeBytes = 20 * 1024 * 1024;
 
-  /// Check if image file size is within limits
   static Future<bool> isValidFileSize(File imageFile) async {
     try {
       final int fileSize = await imageFile.length();
@@ -811,23 +519,11 @@ IMPORTANT:
     }
   }
 
-  /// Validate image file completely
+  /// Validate image file completely. Rend une clé de traduction, ou null.
   static Future<String?> validateImageFile(File imageFile) async {
-    // Check if file exists
-    if (!await imageFile.exists()) {
-      return 'Image file does not exist';
-    }
-
-    // Check file extension
-    if (!isValidImageFile(imageFile)) {
-      return 'Unsupported image format. Please use JPG, PNG, GIF, BMP, or WebP.';
-    }
-
-    // Check file size
-    if (!await isValidFileSize(imageFile)) {
-      return 'Image file too large. Maximum size is ${maxFileSizeBytes ~/ (1024 * 1024)}MB.';
-    }
-
-    return null; // Valid
+    if (!await imageFile.exists()) return 'ai_image_missing';
+    if (!isValidImageFile(imageFile)) return 'ai_image_format_unsupported';
+    if (!await isValidFileSize(imageFile)) return 'ai_image_too_large';
+    return null;
   }
 }

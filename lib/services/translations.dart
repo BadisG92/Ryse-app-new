@@ -4178,6 +4178,29 @@ class AppTranslations {
       'de': 'Einheit beenden',
     },
     // Gemini Error Messages (friendly and playful)
+    'ai_describe_meal_hint': {
+      'fr':
+          "Décris un repas avec ses quantités. Par exemple : « 250 ml de jus de carotte », « 150 g de poulet grillé avec 100 g de riz », « 1 pomme et 200 ml de lait ».",
+      'en':
+          'Describe a meal with its amounts. For example: "250 ml of carrot juice", "150 g of grilled chicken with 100 g of rice", "1 apple and 200 ml of milk".',
+      'de':
+          'Beschreibe eine Mahlzeit mit Mengenangaben. Zum Beispiel: „250 ml Karottensaft“, „150 g gegrilltes Hähnchen mit 100 g Reis“, „1 Apfel und 200 ml Milch“.',
+    },
+    'ai_image_missing': {
+      'fr': "La photo est introuvable. Reprends-la.",
+      'en': 'The photo could not be found. Take it again.',
+      'de': 'Das Foto wurde nicht gefunden. Nimm es erneut auf.',
+    },
+    'ai_image_format_unsupported': {
+      'fr': "Ce format d'image n'est pas lisible. Utilise du JPG ou du PNG.",
+      'en': 'That image format cannot be read. Use JPG or PNG.',
+      'de': 'Dieses Bildformat kann nicht gelesen werden. Nutze JPG oder PNG.',
+    },
+    'ai_image_too_large': {
+      'fr': "La photo est trop lourde. Prends-en une plus petite.",
+      'en': 'The photo is too heavy. Take a smaller one.',
+      'de': 'Das Foto ist zu groß. Nimm ein kleineres auf.',
+    },
     'gemini_not_configured': {
       'fr':
           '🤖 Oups ! Le coach a besoin de sa clé API pour analyser vos repas. Configurez Gemini dans les paramètres.',

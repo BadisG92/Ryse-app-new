@@ -836,7 +836,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
             ),
             SizedBox(height: context.vw(1.5)),
             Text(
-              _analysisResult.error ?? 'ai_analysis_failed_hint'.tr(lang),
+              (_analysisResult.error ?? 'ai_analysis_failed_hint').tr(lang),
               textAlign: TextAlign.center,
               style: RyzeText.body(context, 3.4, color: RyzeColors.mute2),
             ),
