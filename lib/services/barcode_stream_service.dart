@@ -22,18 +22,15 @@ import 'mlkit_barcode_service.dart';
 class BarcodeStreamService {
   BarcodeStreamService(this._controller);
 
-  /// Désactivé tant que ce chemin n'a pas tourné sur un vrai appareil.
+  /// Allumé, et à l'essai.
   ///
-  /// Il faisait sortir l'application, et un crash natif ne se rattrape pas
-  /// depuis Dart : aucune précaution écrite ici ne peut garantir qu'il ne se
-  /// reproduira pas. Les deux causes probables sont corrigées — on n'arrête
-  /// plus la diffusion depuis sa propre trame, et le contrôleur n'est plus
-  /// détruit pendant qu'il diffuse — mais tant que personne ne l'a vu tenir
-  /// sur un iPhone, le déclencheur reste le chemin par défaut.
-  ///
-  /// Pour le rallumer : passer à true, lancer depuis un Mac, viser un code, et
-  /// regarder la console pour les lignes `[BARCODE STREAM]`.
-  static const bool enabled = false;
+  /// Ce chemin avait fait sortir l'application, et un crash natif ne se
+  /// rattrape pas depuis Dart. Les trois causes connues sont fermées : on
+  /// n'arrête plus la diffusion depuis sa propre trame, le contrôleur n'est
+  /// plus détruit pendant qu'il diffuse, et on ne photographie plus pendant
+  /// qu'il diffuse. Si l'application quitte en visant un code, c'est ici
+  /// qu'on repasse à false — le déclencheur reprend seul.
+  static const bool enabled = true;
 
   final CameraController _controller;
 

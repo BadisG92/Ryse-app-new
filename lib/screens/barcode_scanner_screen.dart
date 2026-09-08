@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'dart:io';
@@ -66,6 +68,12 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
   /// Vrai tant que le flux lit : le déclencheur reste caché.
   bool _liveOn = false;
 
+  /// Le déclencheur revient quand la lecture en continu n'a rien trouvé au
+  /// bout de quelques secondes. Viser sans jamais rien presser est le but ;
+  /// un viseur qui ne lit pas et qui n'a aucun bouton est un cul-de-sac.
+  bool _liveStuck = false;
+  Timer? _liveWatch;
+
   /// Le code vient d'être reconnu : le cadre se referme avant que l'écran
   /// change, pour qu'on voie ce qui s'est passé.
   bool _caught = false;
@@ -124,7 +132,10 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
         // Le declencheur veut le plus de pixels possible : un code-barres lu sur
         // une photo de 720 lignes ne fait que quelques pixels par barre des que
         // le paquet n'occupe pas tout le cadre, et ML Kit ne peut rien en tirer.
-        BarcodeStreamService.enabled ? ResolutionPreset.medium : ResolutionPreset.veryHigh,
+        // 720 lignes pour la lecture en continu : a 480, une barre d'EAN-13 ne
+        // fait qu'un pixel des que le paquet n'occupe pas tout le cadre, et ML
+        // Kit n'a rien a lire, trame apres trame.
+        BarcodeStreamService.enabled ? ResolutionPreset.high : ResolutionPreset.veryHigh,
         enableAudio: false,
         imageFormatGroup: !BarcodeStreamService.enabled
             ? null
@@ -154,11 +165,19 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
     if (controller == null || !controller.value.isInitialized) return;
     final live = BarcodeStreamService(controller);
     _live = live;
-    setState(() => _liveOn = true);
+    setState(() {
+      _liveOn = true;
+      _liveStuck = false;
+    });
+    _liveWatch?.cancel();
+    _liveWatch = Timer(const Duration(seconds: 5), () {
+      if (mounted && !hasResult && !isProcessing) setState(() => _liveStuck = true);
+    });
     await live.start(
       onCode: (code) async {
         if (!mounted || hasResult || isLoadingProduct) return;
         RyzeFeedback.success();
+        _liveWatch?.cancel();
         setState(() {
           _caught = true;
           _liveOn = false;
@@ -192,6 +211,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
     // détruire une caméra qui diffuse encore est un crash natif. dispose() ne
     // peut pas attendre, alors on détache le contrôleur et on le laisse
     // mourir à la fin de l'arrêt.
+    _liveWatch?.cancel();
     final controller = _cameraController;
     final live = _live;
     _cameraController = null;
@@ -224,12 +244,12 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
       title: 'scan_barcode'.tr(lang),
       hint: isLoadingProduct
           ? 'searching_database'.tr(lang)
-          : (_liveOn ? 'barcode_point_at_code'.tr(lang) : 'place_barcode_in_zone'.tr(lang)),
+          : (_liveOn && !_liveStuck ? 'barcode_point_at_code'.tr(lang) : 'place_barcode_in_zone'.tr(lang)),
       onClose: () => Navigator.pop(context),
       frame: BarcodeFrame(found: _caught),
       busy: isProcessing,
       // Quand le flux lit, il n'y a rien à appuyer : c'est tout l'intérêt.
-      shutter: _liveOn ? null : (isProcessing ? () {} : _scanBarcodeWithCamera),
+      shutter: _liveOn && !_liveStuck ? null : (isProcessing ? () {} : _scanBarcodeWithCamera),
       leftIcon: LucideIcons.type,
       leftLabel: 'enter_barcode_manually'.tr(lang),
       leftAction: _showManualBarcodeInput,
@@ -666,6 +686,18 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
       isProcessing = true;
       isLoadingProduct = true;
     });
+
+    // On ne photographie pas pendant que la caméra diffuse : sur iOS, les deux
+    // en même temps font sortir l'application. La lecture en continu s'arrête
+    // donc pour de bon dès qu'on appuie.
+    final live = _live;
+    if (live != null) {
+      _live = null;
+      _liveWatch?.cancel();
+      await live.stop();
+      if (!mounted) return;
+      setState(() => _liveOn = false);
+    }
 
     try {
       // Capturer une image haute résolution
