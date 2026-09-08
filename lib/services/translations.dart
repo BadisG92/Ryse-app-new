@@ -1540,6 +1540,11 @@ class AppTranslations {
       'en': '{count} sessions',
       'de': '{count} Einheiten',
     },
+    'one_session_no_curve': {
+      'fr': "Une seule séance : la courbe commence à la deuxième",
+      'en': "One session so far: the curve starts at the second",
+      'de': "Erst eine Einheit: die Kurve beginnt ab der zweiten",
+    },
     'no_sessions_in_period': {
       'fr': 'Pas de séances sur la période',
       'en': 'No sessions in period',
@@ -11260,6 +11265,11 @@ class AppTranslations {
       'fr': "stable",
       'en': "steady",
       'de': "stabil",
+    },
+    'sport_times_one': {
+      'fr': "1 fois",
+      'en': "Once",
+      'de': "Einmal",
     },
     'sport_times_n': {
       'fr': "{n} fois",

@@ -198,7 +198,7 @@ class _SportHistoryPageState extends State<SportHistoryPage> with GlobalStateLis
                         _ExerciseLine(
                           first: i == 0,
                           name: '${_top[i]['name'] ?? ''}',
-                          times: 'sport_times_n'.tr(lang).replaceAll('{n}', '${_top[i]['sessions'] ?? 0}'),
+                          times: _times(lang, (_top[i]['sessions'] as num?)?.toInt() ?? 0),
                           best: _best(_top[i], units),
                           onTap: () {
                             RyzeFeedback.tap();
@@ -215,6 +215,10 @@ class _SportHistoryPageState extends State<SportHistoryPage> with GlobalStateLis
       ],
     );
   }
+
+  /// « 1 fois » a sa forme, comme partout ailleurs.
+  static String _times(String lang, int n) =>
+      n == 1 ? 'sport_times_one'.tr(lang) : 'sport_times_n'.tr(lang).replaceAll('{n}', '$n');
 
   static String? _best(dynamic e, UnitService units) {
     final w = (e['maxWeight'] as num?)?.toDouble() ?? 0;

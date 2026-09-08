@@ -212,15 +212,24 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
 
   Widget _chart(BuildContext context, String lang, List<({DateTime date, double best})> points) {
     if (points.length < 2) {
+      // Une courbe demande deux points. Mais annoncer « pas de seances sur
+      // la periode » quand il y en a une, que le compteur au-dessus l'affiche
+      // et que la liste du dessous la nomme, c'est se contredire dans le meme
+      // ecran.
       return Container(
         height: context.vw(38),
         alignment: Alignment.center,
+        padding: EdgeInsets.symmetric(horizontal: context.vw(8)),
         decoration: BoxDecoration(
           color: RyzeColors.surf,
           borderRadius: BorderRadius.circular(RyzeRadius.md),
           border: Border.all(color: RyzeColors.line),
         ),
-        child: Text('no_sessions_in_period'.tr(lang), style: RyzeText.body(context, 3.4, color: RyzeColors.mute)),
+        child: Text(
+          points.isEmpty ? 'no_sessions_in_period'.tr(lang) : 'one_session_no_curve'.tr(lang),
+          textAlign: TextAlign.center,
+          style: RyzeText.body(context, 3.4, color: RyzeColors.mute),
+        ),
       );
     }
     final units = UnitService.instance;
