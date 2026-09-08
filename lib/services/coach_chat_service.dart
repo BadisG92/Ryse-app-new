@@ -360,7 +360,7 @@ class CoachChatService {
     final result = await tool.execute(call.args);
     _agent!.addToolResults([(name: call.name, response: result.toResponse())]);
     await _saveAction(call.name, result);
-    yield CoachAction(result.summary, ok: result.ok, toolName: call.name);
+    yield CoachAction(result.summary, ok: result.ok, toolName: call.name, undo: result.undo);
   }
 
   /// Les actions proposées et pas encore tranchées.
@@ -375,7 +375,7 @@ class CoachChatService {
     final result = await pending.commit();
     _agent?.note(result.summary);
     await _saveAction(pending.toolName, result);
-    return CoachAction(result.summary, ok: result.ok, toolName: pending.toolName);
+    return CoachAction(result.summary, ok: result.ok, toolName: pending.toolName, undo: result.undo);
   }
 
   /// L'utilisateur a refusé une carte.

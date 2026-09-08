@@ -18,11 +18,18 @@ class CoachText extends CoachEvent {
 
 /// Une action déjà faite, à afficher en une ligne.
 class CoachAction extends CoachEvent {
-  const CoachAction(this.summary, {this.ok = true, this.toolName});
+  const CoachAction(this.summary, {this.ok = true, this.toolName, this.undo});
 
   final String summary;
   final bool ok;
   final String? toolName;
+
+  /// De quoi la défaire, quand elle se défait proprement.
+  ///
+  /// C'est ce qui remplace la carte à valider pour ce qui se retire d'un
+  /// geste : un verre d'eau se note tout de suite et se reprend par une barre
+  /// d'annulation, plus rapide qu'un oui à donner avant.
+  final Future<void> Function()? undo;
 }
 
 /// Une action qui attend un oui.

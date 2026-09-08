@@ -244,7 +244,7 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
             }
             _scrollToBottom();
 
-          case CoachAction(:final summary, :final ok, :final toolName):
+          case CoachAction(:final summary, :final ok, :final toolName, :final undo):
             closeBubble();
             RyzeFeedback.confirm();
             setState(() {
@@ -262,6 +262,20 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
               ));
             });
             _scrollToBottom();
+
+            // Ce qui s'est fait sans demander se reprend d'un geste : la barre
+            // remplace la carte à valider pour un verre d'eau.
+            if (ok && undo != null && mounted) {
+              RyzeUndo.show(
+                context,
+                message: summary,
+                undoLabel: 'undo'.tr(LocalizationService.instance.currentLanguageCode),
+                onUndo: () async {
+                  await undo();
+                  if (mounted) setState(() {});
+                },
+              );
+            }
 
           case CoachAsk(:final pending):
             closeBubble();

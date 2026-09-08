@@ -61,6 +61,18 @@ class JournalTools {
           'total_today_l': GlobalStateManager.instance.currentWaterL,
           'goal_l': GlobalStateManager.instance.waterGoalL,
         },
+        // Le verre se retire : c'est ce qui remplace la carte à valider. La
+        // ligne est retrouvée par sa quantité et sa provenance, parce que
+        // l'écriture est volontairement non bloquante et ne rend pas d'identifiant.
+        undo: () async {
+          final entries = await WaterService.getTodayWaterEntries();
+          for (final e in entries) {
+            if (e.sourceType == 'coach' && e.amount == ml) {
+              await WaterService.deleteWaterEntry(e.id, amountToRemove: e.amount);
+              return;
+            }
+          }
+        },
       );
     },
   );
