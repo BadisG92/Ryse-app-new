@@ -5,16 +5,19 @@ import 'package:flutter/material.dart';
 
 import '../../components/ui/global_progress_models.dart';
 import '../../design/design.dart';
+import '../../services/localization_service.dart';
+import '../../services/translations.dart';
 import '../../services/unit_service.dart';
 
-/// La courbe du poids : les pesées réelles, la tendance par-dessus, la cible.
+/// La courbe du poids : les pesees en encre, la cible en ambre, la tendance
+/// en gris.
 ///
-/// L'ancienne carte ne traçait qu'une moyenne glissante sur sept points. Elle
-/// calmait le bruit — c'est bien — mais le chiffre affiché au-dessus ne se
-/// trouvait alors nulle part sur la courbe. Ici les deux coexistent : les
-/// pesées en points clairs, la tendance en encre, et le grand chiffre est
-/// bien le dernier point. La cible est une ligne ambre en pointillés : c'est
-/// ce que Ryze rend, pas ce que l'utilisateur a fait.
+/// L'encre est ce que l'utilisateur a fait : ses pesees, telles quelles,
+/// reliees en droites. La cible est une ligne ambre en pointilles, ce que
+/// Ryze rend. La tendance (moyenne glissante sur cinq points) est en gris
+/// clair et n'apparait qu'avec assez de pesees pour dire autre chose que la
+/// moyenne : sur trois points elle n'etait qu'un trait plat, lu comme un
+/// second objectif.
 class WeightChart extends StatelessWidget {
   const WeightChart({super.key, required this.progress, required this.animate});
 
@@ -24,18 +27,19 @@ class WeightChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final units = UnitService.instance;
+    final lang = LocalizationService.instance.currentLanguageCode;
     final entries = [...progress.entries]..sort((a, b) => a.date.compareTo(b.date));
     if (entries.length < 2) return const SizedBox.shrink();
 
     final values = [for (final e in entries) units.displayWeight(e.weight)];
     final target = units.displayWeight(progress.targetWeight);
-    final trend = _trend(values);
+    final trend = values.length >= _trendMin ? _trend(values) : null;
 
     final lo = math.min(values.reduce(math.min), target);
     final hi = math.max(values.reduce(math.max), target);
     final pad = math.max((hi - lo) * 0.18, 0.6);
 
-    return SizedBox(
+    final chart = SizedBox(
       height: context.vw(38),
       child: LineChart(
         LineChartData(
@@ -93,26 +97,26 @@ class WeightChart extends StatelessWidget {
             ],
           ),
           lineBarsData: [
-            // les pesées telles quelles, discrètes
+            // la tendance dessous, en gris : ce que Ryze lit
+            if (trend != null)
+              LineChartBarData(
+                spots: [for (var i = 0; i < trend.length; i++) FlSpot(i.toDouble(), trend[i])],
+                isCurved: true,
+                curveSmoothness: 0.25,
+                color: RyzeColors.mute2,
+                barWidth: 1.5,
+                dotData: const FlDotData(show: false),
+              ),
+            // les pesees en encre : ce que l'utilisateur a fait
             LineChartBarData(
               spots: [for (var i = 0; i < values.length; i++) FlSpot(i.toDouble(), values[i])],
               isCurved: false,
-              color: RyzeColors.idle,
-              barWidth: 1,
+              color: RyzeColors.ink,
+              barWidth: 2,
               dotData: FlDotData(
                 show: entries.length <= 40,
-                getDotPainter: (spot, _, __, ___) => FlDotCirclePainter(radius: 2, color: RyzeColors.line, strokeWidth: 0),
+                getDotPainter: (spot, _, __, ___) => FlDotCirclePainter(radius: 2.5, color: RyzeColors.ink, strokeWidth: 0),
               ),
-            ),
-            // la tendance, qui est ce qu'on lit
-            LineChartBarData(
-              spots: [for (var i = 0; i < trend.length; i++) FlSpot(i.toDouble(), trend[i])],
-              isCurved: true,
-              curveSmoothness: 0.25,
-              color: RyzeColors.ink,
-              barWidth: 2.5,
-              dotData: const FlDotData(show: false),
-              belowBarData: BarAreaData(show: true, color: RyzeColors.ink.withValues(alpha: 0.06)),
             ),
           ],
         ),
@@ -120,7 +124,18 @@ class WeightChart extends StatelessWidget {
         curve: RyzeCurves.out,
       ),
     );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        chart,
+        SizedBox(height: context.vw(2)),
+        _ChartLegend(lang: lang, trend: trend != null),
+      ],
+    );
   }
+
+  /// En dessous, la moyenne glissante ne dit que la moyenne.
+  static const int _trendMin = 6;
 
   /// Moyenne glissante centrée sur cinq points : assez pour calmer une pesée
   /// du matin après un repas salé, pas assez pour effacer une vraie inflexion.
@@ -138,5 +153,34 @@ class WeightChart extends StatelessWidget {
           return sum / (to - from);
         }(),
     ];
+  }
+}
+
+/// Ce que chaque trait veut dire.
+class _ChartLegend extends StatelessWidget {
+  const _ChartLegend({required this.lang, required this.trend});
+
+  final String lang;
+  final bool trend;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget bar(Color color, double h, [double w = 14]) =>
+        Container(width: w, height: h, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(h)));
+    final style = RyzeText.body(context, 2.9, color: RyzeColors.mute2);
+    Widget item(Widget mark, String label) =>
+        Row(mainAxisSize: MainAxisSize.min, children: [mark, SizedBox(width: context.vw(1.5)), Text(label, style: style)]);
+    return Wrap(
+      spacing: context.vw(4.1),
+      runSpacing: context.vw(1.5),
+      children: [
+        item(bar(RyzeColors.ink, 2.5), 'progress_legend_weight'.tr(lang)),
+        item(
+          Row(mainAxisSize: MainAxisSize.min, children: [bar(RyzeColors.acc, 1.5, 6), const SizedBox(width: 3), bar(RyzeColors.acc, 1.5, 6)]),
+          'progress_legend_goal'.tr(lang),
+        ),
+        if (trend) item(bar(RyzeColors.mute2, 1.5), 'progress_legend_trend'.tr(lang)),
+      ],
+    );
   }
 }

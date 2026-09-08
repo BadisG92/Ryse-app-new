@@ -10919,6 +10919,21 @@ class AppTranslations {
       'en': "session",
       'de': "Einheit",
     },
+    'progress_legend_weight': {
+      'fr': "poids",
+      'en': "weight",
+      'de': "Gewicht",
+    },
+    'progress_legend_goal': {
+      'fr': "objectif",
+      'en': "goal",
+      'de': "Ziel",
+    },
+    'progress_legend_trend': {
+      'fr': "tendance",
+      'en': "trend",
+      'de': "Trend",
+    },
     'progress_no_weight': {
       'fr': "Pas encore de pesée",
       'en': "No weigh-in yet",
