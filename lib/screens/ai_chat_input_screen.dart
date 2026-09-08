@@ -383,7 +383,7 @@ class _AIChatInputScreenState extends State<AIChatInputScreen> {
                           ? SizedBox(
                               width: context.vw(4.6),
                               height: context.vw(4.6),
-                              child: const CircularProgressIndicator(strokeWidth: 2, color: RyzeColors.surf),
+                              child: CircularProgressIndicator(strokeWidth: 2, color: RyzeColors.surf),
                             )
                           : Row(
                               mainAxisSize: MainAxisSize.min,
@@ -392,7 +392,7 @@ class _AIChatInputScreenState extends State<AIChatInputScreen> {
                                   'assets/images/logo_solo.svg',
                                   width: context.vw(4.6),
                                   height: context.vw(4.6),
-                                  colorFilter: const ColorFilter.mode(RyzeColors.surf, BlendMode.srcIn),
+                                  colorFilter: ColorFilter.mode(RyzeColors.surf, BlendMode.srcIn),
                                 ),
                                 SizedBox(width: context.vw(2.6)),
                                 Text(

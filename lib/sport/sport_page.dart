@@ -53,7 +53,7 @@ class _SportPageState extends State<SportPage> {
     final date = RyzeDates.full(DateTime.now(), lang);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.dark,
+      value: RyzeColors.isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
       child: Stack(
         children: [
           const OnbBackground(scene: false),

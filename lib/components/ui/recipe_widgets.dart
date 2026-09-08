@@ -108,7 +108,7 @@ class RecipeSearchSection extends StatelessWidget {
 
           return Container(
             height: sheet.vh(78),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: RyzeColors.paper,
               borderRadius: BorderRadius.vertical(top: Radius.circular(RyzeRadius.lg)),
             ),

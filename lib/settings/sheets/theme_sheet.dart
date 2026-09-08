@@ -81,7 +81,9 @@ class _Row extends StatelessWidget {
         curve: RyzeCurves.out,
         padding: EdgeInsets.symmetric(horizontal: context.vw(4.1), vertical: context.vw(3.6)),
         decoration: BoxDecoration(
-          color: RyzeColors.surf,
+          // La rangee est posee sur SON sol : on voit l'edition, pas seulement
+          // ses deux couleurs.
+          color: palette.paper,
           borderRadius: BorderRadius.circular(RyzeRadius.md),
           // Le liseré de la ligne choisie est celui de *sa* palette, pas de
           // celle en vigueur : les deux sont la même à cet instant, mais la
@@ -114,7 +116,7 @@ class _Row extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: palette.acc,
                         shape: BoxShape.circle,
-                        border: Border.all(color: RyzeColors.surf, width: 2),
+                        border: Border.all(color: palette.paper, width: 2),
                       ),
                     ),
                   ),
@@ -123,7 +125,7 @@ class _Row extends StatelessWidget {
             ),
             SizedBox(width: context.vw(3.1)),
             Expanded(
-              child: Text(label, style: RyzeText.body(context, 3.9, weight: FontWeight.w600)),
+              child: Text(label, style: RyzeText.body(context, 3.9, weight: FontWeight.w600, color: palette.text)),
             ),
             AnimatedScale(
               duration: RyzeDurations.enter,
@@ -133,7 +135,7 @@ class _Row extends StatelessWidget {
                 width: context.vw(6.2),
                 height: context.vw(6.2),
                 decoration: BoxDecoration(color: palette.ink, shape: BoxShape.circle),
-                child: Icon(LucideIcons.check, size: context.vw(3.6), color: RyzeColors.surf),
+                child: Icon(LucideIcons.check, size: context.vw(3.6), color: palette.surf),
               ),
             ),
           ],

@@ -528,7 +528,7 @@ class _HomePageState extends State<HomePage> with GlobalStateListener {
 
     final gutter = context.vw(5.1);
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.dark,
+      value: RyzeColors.isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
       child: Stack(
         children: [
           const OnbBackground(scene: false),

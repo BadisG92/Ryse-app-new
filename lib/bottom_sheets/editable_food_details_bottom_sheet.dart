@@ -349,7 +349,7 @@ class _EditableFoodDetailsContentState extends State<_EditableFoodDetailsContent
     final gutter = context.vw(5.1);
 
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: RyzeColors.paper,
         borderRadius: BorderRadius.vertical(top: Radius.circular(RyzeRadius.lg)),
       ),
@@ -388,7 +388,7 @@ class _EditableFoodDetailsContentState extends State<_EditableFoodDetailsContent
                   if (_isModified || widget.isModified)
                     Padding(
                       padding: EdgeInsets.only(left: context.vw(2.1), top: context.vw(1)),
-                      child: const Icon(LucideIcons.pencil, size: 14, color: RyzeColors.mute2),
+                      child: Icon(LucideIcons.pencil, size: 14, color: RyzeColors.mute2),
                     ),
                 ],
               ),

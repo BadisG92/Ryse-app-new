@@ -101,7 +101,7 @@ class WeekStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: Colors.white,
+      color: RyzeColors.surf,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -289,7 +289,7 @@ class _Mark extends StatelessWidget {
         // a free meal is a filled light square, a free session an empty ring:
         // shape tells the two apart, the fill tells free from planned from done
         // free is a light fill for both shapes, planned an outline, done a full navy
-        color: done ? RyzeColors.ink : (drawn ? Colors.white : RyzeColors.idle),
+        color: done ? RyzeColors.ink : (drawn ? RyzeColors.surf : RyzeColors.idle),
         shape: round ? BoxShape.circle : BoxShape.rectangle,
         borderRadius: round ? null : BorderRadius.circular(1.5),
         border: drawn && !done ? Border.all(color: RyzeColors.ink, width: 1.4) : null,
@@ -352,7 +352,7 @@ class _EmptyDot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const CustomPaint(
+    return CustomPaint(
       painter: _DashedBorder(radius: 12),
       child: SizedBox(width: 24, height: 24, child: Icon(LucideIcons.plus, size: 12, color: RyzeColors.idle)),
     );
@@ -412,7 +412,7 @@ class _Tile extends StatelessWidget {
         height: 40,
         padding: const EdgeInsets.symmetric(horizontal: 2),
         decoration: BoxDecoration(
-          color: done ? RyzeColors.ink : Colors.white,
+          color: done ? RyzeColors.ink : RyzeColors.surf,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: done || slot == WeekSlot.sport ? RyzeColors.ink : RyzeColors.line, width: slot == WeekSlot.sport && !done ? 1.5 : 1),
         ),
@@ -422,7 +422,7 @@ class _Tile extends StatelessWidget {
           children: [
             // the icon keeps its original size: without a label the tile is
             // meant to read as a quiet mark, not as a button
-            Center(child: Icon(iconForSlot(slot), size: 14, color: done ? Colors.white : RyzeColors.ink)),
+            Center(child: Icon(iconForSlot(slot), size: 14, color: done ? RyzeColors.surf : RyzeColors.ink)),
             if (done)
               Positioned(
                 top: -4,
@@ -430,7 +430,7 @@ class _Tile extends StatelessWidget {
                 child: Container(
                   width: 14,
                   height: 14,
-                  decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, border: Border.all(color: RyzeColors.ink, width: 1.5)),
+                  decoration: BoxDecoration(color: RyzeColors.surf, shape: BoxShape.circle, border: Border.all(color: RyzeColors.ink, width: 1.5)),
                   child: Icon(LucideIcons.check, size: 8, color: RyzeColors.ink),
                 ),
               ),

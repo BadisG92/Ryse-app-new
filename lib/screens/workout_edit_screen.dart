@@ -308,7 +308,7 @@ class _WorkoutEditScreenState extends State<WorkoutEditScreen> {
                             ? SizedBox(
                                 width: context.vw(4.6),
                                 height: context.vw(4.6),
-                                child: const CircularProgressIndicator(color: RyzeColors.mute, strokeWidth: 2),
+                                child: CircularProgressIndicator(color: RyzeColors.mute, strokeWidth: 2),
                               )
                             : Text('save'.tr(lang), style: RyzeText.body(context, 3.9, weight: FontWeight.w600, color: RyzeColors.surf)),
                       ),

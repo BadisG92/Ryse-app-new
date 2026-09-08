@@ -204,7 +204,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
               ? 'Tous les aliments ont été supprimés'
               : 'All foods have been removed'
           ),
-          backgroundColor: const Color(0xFF888888),
+          backgroundColor: RyzeColors.mute2,
         ),
       );
     } else {
@@ -292,7 +292,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('error_generic'.tr(LocalizationService.instance.currentLanguageCode)),
-            backgroundColor: Colors.red,
+            backgroundColor: RyzeColors.danger,
           ),
         );
       }
@@ -428,7 +428,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
                         ? SizedBox(
                             width: context.vw(4.6),
                             height: context.vw(4.6),
-                            child: const CircularProgressIndicator(strokeWidth: 2, color: RyzeColors.surf),
+                            child: CircularProgressIndicator(strokeWidth: 2, color: RyzeColors.surf),
                           )
                         : Text(
                             'save_meal'.tr(lang),
@@ -670,7 +670,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> with SingleTickerPr
                 ),
               ),
               SizedBox(width: context.vw(1.5)),
-              const Icon(Icons.chevron_right_rounded, size: 20, color: RyzeColors.mute2),
+              Icon(Icons.chevron_right_rounded, size: 20, color: RyzeColors.mute2),
             ],
           ),
         ),

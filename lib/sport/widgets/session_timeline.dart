@@ -30,7 +30,7 @@ class SessionTimeline extends StatelessWidget {
           top: context.vw(4.1),
           bottom: context.vw(5.6),
           width: 2,
-          child: const ColoredBox(color: RyzeColors.idle),
+          child: ColoredBox(color: RyzeColors.idle),
         ),
         Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,

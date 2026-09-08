@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../design/design.dart';
+import '../../design/palette.dart';
 import '../../services/haptic_service.dart';
 
 /// The opening of the app: the mark is written by hand, floods white, the name
@@ -294,7 +295,9 @@ class _IntroPainter extends CustomPainter {
         ..shader = ui.Gradient.linear(
           Offset.zero,
           size.bottomRight(Offset.zero),
-          <Color>[RyzeColors.ink, RyzeColors.ink2],
+          // Le logo qui s'ecrit est la marque, pas l'habit de l'utilisateur :
+          // il reste navy quelle que soit l'edition choisie.
+          <Color>[RyzePalettes.nuit.ink, RyzePalettes.nuit.ink2],
         ),
     );
 

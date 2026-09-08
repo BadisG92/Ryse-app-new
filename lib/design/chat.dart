@@ -67,7 +67,7 @@ class RyzeChatHeader extends StatelessWidget {
                 child: Container(
                   width: context.vw(9.7),
                   height: context.vw(9.7),
-                  decoration: const BoxDecoration(color: RyzeColors.paper2, shape: BoxShape.circle),
+                  decoration: BoxDecoration(color: RyzeColors.paper2, shape: BoxShape.circle),
                   child: Icon(LucideIcons.arrowLeft, size: context.vw(4.6), color: RyzeColors.ink),
                 ),
               ),
@@ -500,7 +500,7 @@ class RyzeChatInput extends StatelessWidget {
                         child: SizedBox(
                           width: context.vw(4.4),
                           height: context.vw(4.4),
-                          child: const CircularProgressIndicator(strokeWidth: 2, color: RyzeColors.surf),
+                          child: CircularProgressIndicator(strokeWidth: 2, color: RyzeColors.surf),
                         ),
                       )
                     : Icon(LucideIcons.arrowUp, size: context.vw(4.9), color: RyzeColors.surf),

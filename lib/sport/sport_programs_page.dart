@@ -28,7 +28,7 @@ class SportProgramsPage extends StatefulWidget {
   static Future<WorkoutProgram?> pick(BuildContext context) {
     return Navigator.of(context).push<WorkoutProgram>(
       MaterialPageRoute(
-        builder: (_) => const Scaffold(
+        builder: (_) => Scaffold(
           backgroundColor: RyzeColors.paper,
           body: Stack(
             children: [

@@ -56,7 +56,7 @@ class _RyzeSheet extends StatelessWidget {
     final gutter = context.vw(5.1);
     return Container(
       constraints: BoxConstraints(maxHeight: context.vh(88)),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: RyzeColors.paper,
         borderRadius: BorderRadius.vertical(top: Radius.circular(RyzeRadius.lg)),
       ),
@@ -174,7 +174,7 @@ class RyzeSheetRow extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right_rounded, size: 20, color: RyzeColors.mute2),
+            Icon(Icons.chevron_right_rounded, size: 20, color: RyzeColors.mute2),
           ],
         ),
       ),

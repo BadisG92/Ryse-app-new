@@ -105,7 +105,7 @@ class _CoachLineState extends State<CoachLine> {
                   child: Align(
                     alignment: Alignment.topLeft,
                     child: _typing
-                        ? Padding(padding: EdgeInsets.only(top: context.vw(1.6)), child: const TypingDots(color: RyzeColors.mute2))
+                        ? Padding(padding: EdgeInsets.only(top: context.vw(1.6)), child: TypingDots(color: RyzeColors.mute2))
                         : WipeText(widget.text, key: ValueKey(widget.text), style: RyzeText.body(context, 4.1, height: 1.35)),
                   ),
                 ),

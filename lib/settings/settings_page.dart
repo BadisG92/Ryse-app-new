@@ -162,7 +162,7 @@ class _SettingsPageState extends State<SettingsPage> {
     final user = AuthService().currentUser;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.dark,
+      value: RyzeColors.isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
       child: Scaffold(
         backgroundColor: RyzeColors.paper,
         body: Stack(
@@ -191,7 +191,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           SizedBox(
                             width: context.vw(4.6),
                             height: context.vw(4.6),
-                            child: const CircularProgressIndicator(color: RyzeColors.mute, strokeWidth: 2),
+                            child: CircularProgressIndicator(color: RyzeColors.mute, strokeWidth: 2),
                           ),
                       ],
                     ),

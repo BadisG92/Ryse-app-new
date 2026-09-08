@@ -204,7 +204,7 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
               Transform.translate(
                 offset: const Offset(0, -RyzeRadius.lg),
                 child: Container(
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     color: RyzeColors.paper,
                     borderRadius: BorderRadius.vertical(top: Radius.circular(RyzeRadius.lg)),
                   ),
@@ -513,7 +513,7 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                               width: 4,
                               height: 4,
                               margin: EdgeInsets.symmetric(horizontal: context.vw(0.6)),
-                              decoration: const BoxDecoration(color: RyzeColors.mute2, shape: BoxShape.circle),
+                              decoration: BoxDecoration(color: RyzeColors.mute2, shape: BoxShape.circle),
                             ),
                     ),
                     SizedBox(width: context.vw(2.6)),
@@ -1013,7 +1013,7 @@ class _EditIngredientsScreenState extends State<EditIngredientsScreen> {
               ),
             ),
             SizedBox(width: context.vw(1.5)),
-            const Icon(Icons.chevron_right_rounded, size: 20, color: RyzeColors.mute2),
+            Icon(Icons.chevron_right_rounded, size: 20, color: RyzeColors.mute2),
           ],
         ),
       ),

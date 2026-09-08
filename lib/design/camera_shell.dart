@@ -310,7 +310,7 @@ class _Shutter extends StatelessWidget {
                 curve: RyzeCurves.out,
                 width: size - (busy ? 26 : 14),
                 height: size - (busy ? 26 : 14),
-                decoration: const BoxDecoration(color: RyzeColors.paper, shape: BoxShape.circle),
+                decoration: BoxDecoration(color: RyzeColors.paper, shape: BoxShape.circle),
                 child: busy
                     ? Padding(
                         padding: const EdgeInsets.all(10),

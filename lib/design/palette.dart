@@ -1,44 +1,48 @@
 import 'package:flutter/material.dart';
 
-/// Les cinq univers de Ryze.
+/// Les quatre éditions de Ryze.
 ///
-/// Une palette change trois choses :
+/// Une édition possède son **sol** — le papier, la carte, les gris — et non
+/// seulement sa marque. C'est ce qui la fait lire comme une autre application
+/// et non comme une option de couleur : Headspace est orange partout, Whoop est
+/// noir. Neuf palettes posées sur le même gris avaient été essayées ; elles
+/// faisaient neuf manteaux sur le même corps.
 ///
-/// * **le texte** — un quasi-noir teinté de la palette. Il porte le texte
-///   courant, donc il ne peut pas être coloré : la lisibilité le veut sombre.
-/// * **la marque** — la couleur saturée des surfaces pleines et des bordures :
-///   un bouton, une tuile validée, une bulle, l'anneau d'un jour. C'est elle
-///   qu'on voit de loin, et c'est elle qui fait l'univers.
-/// * **le secondaire** — ce que Ryze rend : la jauge, ses conseils, sa voix.
+/// Chaque édition définit :
 ///
-/// Le papier, les gris, l'erreur et les trois macronutriments ne bougent pas.
+/// * **le sol** — `paper0` `paper` `paper2` `surf` : le fond et ses cartes
+/// * **le texte et les gris** — `text` `mute` `mute2` `idle`
+/// * **la marque** — `ink` `ink2` : les surfaces pleines et les bordures
+/// * **le retour** — `acc` `accDeep` `accLight` `accTint` `accInk` : ce que
+///   Ryze rend, la jauge, ses conseils, sa voix
+/// * `danger` et `shadow`, qui doivent suivre le sol pour rester lisibles
 ///
-/// **Pourquoi la marque est séparée du texte.** Les deux étaient un seul jeton.
-/// Le texte doit tenir 7:1 sur le papier, ce qui force le quasi-noir ; les
-/// surfaces héritaient de cette contrainte, et les cinq palettes s'effondraient
-/// vers le même noir — leur contraste deux à deux tombait entre 1,01 et 1,20,
-/// c'est-à-dire la même couleur. Choisir « Rose » donnait une application noire
-/// avec des jauges roses. Séparées, la marque peut être franche : un bouton
-/// rose est rose.
+/// **Sur une édition sombre, la marque porte du sombre.** Volt écrit son
+/// libellé de bouton en noir sur du volt, pas en blanc. C'est `surf` qui le
+/// porte : la carte suit le sol, donc « `surf` sur `ink` » est juste dans les
+/// deux sens sans qu'un seul appelant ait à le savoir. Une ombre n'existe pas
+/// sur du noir : `shadow` y est du noir pur, et l'élévation se dit par
+/// l'échelle des surfaces.
 ///
-/// **Ce qui est vérifié**, pour chacune des cinq :
-///
-/// | | Nuit | Rose | Prune | Océan | Forêt | seuil |
-/// |---|---|---|---|---|---|---|
-/// | texte sur papier | 17,0 | 15,2 | 16,4 | 14,0 | 14,2 | ≥ 7 |
-/// | blanc sur la marque | 14,3 | 4,6 | 7,1 | 6,2 | 8,0 | ≥ 4,5 |
-/// | marque sur papier | 13,3 | 4,2 | 6,6 | 5,7 | 7,4 | ≥ 3 |
-/// | secondaire foncé sur papier | 4,8 | 5,6 | 4,6 | 5,9 | 6,1 | ≥ 4,5 |
-/// | secondaire sur la marque | 7,2 | 3,2 | 5,3 | 3,3 | 3,1 | ≥ 3 |
-///
-/// Et les cinq marques sont à **36° de teinte** au minimum les unes des autres :
-/// c'est ce qui les rend reconnaissables, la clarté ne suffisant pas à
-/// distinguer un magenta d'un turquoise.
+/// **Ce qui est vérifié** sur le sol de chaque édition : texte ≥ 7 sur le
+/// papier et sur la carte, gris ≥ 4,5, carte sur marque ≥ 4,5 (le libellé d'un
+/// bouton), marque sur papier ≥ 3, retour foncé ≥ 4,5 sur le papier et sur son
+/// voile, erreur ≥ 4,5. Le retour lui-même est *discret par conception* : il
+/// vit sur sa piste et contre la marque, jamais en texte — l'ambre d'origine
+/// fait 1,4 sur sa piste, et c'est la référence.
 @immutable
 class RyzePalette {
   const RyzePalette({
     required this.key,
+    required this.dark,
+    required this.paper0,
+    required this.paper,
+    required this.paper2,
+    required this.surf,
     required this.text,
+    required this.mute,
+    required this.mute2,
+    required this.idle,
     required this.ink,
     required this.ink2,
     required this.acc,
@@ -46,45 +50,60 @@ class RyzePalette {
     required this.accLight,
     required this.accTint,
     required this.accInk,
+    required this.danger,
+    required this.shadow,
   });
 
   /// La clé du dictionnaire qui la nomme.
   final String key;
 
-  /// Le quasi-noir du texte courant, teinté de la palette.
+  /// Vrai quand le sol est sombre : la barre d'état passe en clair.
+  final bool dark;
+
+  // ---------------------------------------------------------------- le sol
+  final Color paper0;
+  final Color paper;
+  final Color paper2;
+  final Color surf;
+
+  // ------------------------------------------------------ le texte, les gris
   final Color text;
+  final Color mute;
+  final Color mute2;
+  final Color idle;
 
-  /// La marque : les surfaces pleines et les bordures.
+  // ------------------------------------------------------------- la marque
   final Color ink;
-
-  /// Sa variante claire, pour les dégradés et l'auréole froide du fond.
   final Color ink2;
 
-  /// Le secondaire : ce que Ryze rend.
+  // -------------------------------------------------------------- le retour
   final Color acc;
   final Color accDeep;
   final Color accLight;
-
-  /// Le voile du secondaire, sur lequel `accInk` doit rester lisible.
   final Color accTint;
-
-  /// Le secondaire assombri jusqu'à porter du petit texte sur le papier.
   final Color accInk;
 
-  /// L'auréole chaude en haut à droite de chaque écran n'est pas un champ :
-  /// c'est le secondaire éclairci. Elle était déclarée à la main, et sur une
-  /// palette elle avait pris la teinte de la marque au lieu de celle du
-  /// retour — une incohérence qu'une dérivation rend impossible.
+  // ------------------------------------------------ ce qui doit suivre le sol
+  final Color danger;
+  final Color shadow;
 }
 
-/// Les cinq, et rien d'autre.
+/// Les quatre, et rien d'autre.
 class RyzePalettes {
   RyzePalettes._();
 
-  /// Navy et ambre : l'habit d'origine, celui de la nuit.
+  /// Navy et ambre sur papier gris : l'identité, le défaut.
   static const RyzePalette nuit = RyzePalette(
     key: 'theme_nuit',
+    dark: false,
+    paper0: Color(0xFFF8F9FB),
+    paper: Color(0xFFF5F6F8),
+    paper2: Color(0xFFEEF0F4),
+    surf: Color(0xFFFFFFFF),
     text: Color(0xFF0B132B),
+    mute: Color(0xFF5F6779),
+    mute2: Color(0xFF9AA1B2),
+    idle: Color(0xFFD5DAE1),
     ink: Color(0xFF16265C),
     ink2: Color(0xFF2A3F86),
     acc: Color(0xFFF2A93B),
@@ -92,62 +111,83 @@ class RyzePalettes {
     accLight: Color(0xFFFFC766),
     accTint: Color(0xFFFDF1DC),
     accInk: Color(0xFF9A5F0C),
+    danger: Color(0xFFA62F1C),
+    shadow: Color(0xFF0B132B),
   );
 
-  /// Magenta et turquoise. Le rose franc est sur les surfaces, pas seulement
-  /// sur la jauge : c'est ce qui fait qu'on le voit.
-  static const RyzePalette rose = RyzePalette(
-    key: 'theme_rose',
-    text: Color(0xFF3A0F26),
-    ink: Color(0xFFD6317B),
-    ink2: Color(0xFFE85C9B),
-    acc: Color(0xFF7FEBE1),
-    accDeep: Color(0xFF3FD9CB),
-    accLight: Color(0xFFA8F2EB),
-    accTint: Color(0xFFE0FAF7),
-    accInk: Color(0xFF0F6E67),
+  /// Cerise saturée et or sur crème : la vague *cherry cola*. Pas la cerise
+  /// sourde d'un coloriste — une vraie, qui se partage.
+  static const RyzePalette cerise = RyzePalette(
+    key: 'theme_cerise',
+    dark: false,
+    paper0: Color(0xFFFFFBF2),
+    paper: Color(0xFFFFF7E8),
+    paper2: Color(0xFFFBEFD8),
+    surf: Color(0xFFFFFCF5),
+    text: Color(0xFF1F0A10),
+    mute: Color(0xFF6B4A52),
+    mute2: Color(0xFFA8929A),
+    idle: Color(0xFFE6D3B3),
+    ink: Color(0xFFD8123F),
+    ink2: Color(0xFFE8456A),
+    acc: Color(0xFFE5AC00),
+    accDeep: Color(0xFFC99500),
+    accLight: Color(0xFFF2C94C),
+    accTint: Color(0xFFFDF3CF),
+    accInk: Color(0xFF7A5A08),
+    danger: Color(0xFFA62F1C),
+    shadow: Color(0xFF1F0A10),
   );
 
-  /// Violet et citron vert.
-  static const RyzePalette prune = RyzePalette(
-    key: 'theme_prune',
-    text: Color(0xFF22102E),
-    ink: Color(0xFF7B2CBF),
-    ink2: Color(0xFF9D5AD6),
-    acc: Color(0xFFC3EF4A),
-    accDeep: Color(0xFFA5D428),
-    accLight: Color(0xFFD9F585),
-    accTint: Color(0xFFF2FBDD),
-    accInk: Color(0xFF5A7A0C),
+  /// Volt et orange de sécurité sur noir : le look dur de la salle. La seule
+  /// édition sombre, et la seule où la marque porte du sombre.
+  static const RyzePalette volt = RyzePalette(
+    key: 'theme_volt',
+    dark: true,
+    paper0: Color(0xFF101115),
+    paper: Color(0xFF0C0D10),
+    paper2: Color(0xFF131418),
+    surf: Color(0xFF17181D),
+    text: Color(0xFFF3F3F1),
+    mute: Color(0xFFA6A8A3),
+    mute2: Color(0xFF62645F),
+    idle: Color(0xFF2A2C31),
+    ink: Color(0xFFC8FF3D),
+    ink2: Color(0xFFA8DD1F),
+    acc: Color(0xFFFF6A2B),
+    accDeep: Color(0xFFE5541A),
+    accLight: Color(0xFFFF9A6B),
+    accTint: Color(0xFF2E1A14),
+    accInk: Color(0xFFFFB08A),
+    danger: Color(0xFFFF6B57),
+    shadow: Color(0xFF000000),
   );
 
-  /// Turquoise profond et corail.
-  static const RyzePalette ocean = RyzePalette(
-    key: 'theme_ocean',
-    text: Color(0xFF0A2A2E),
-    ink: Color(0xFF0E6B78),
-    ink2: Color(0xFF1A93A4),
-    acc: Color(0xFFFFA98E),
-    accDeep: Color(0xFFFF7A59),
-    accLight: Color(0xFFFFC7B5),
-    accTint: Color(0xFFFFEDE7),
-    accInk: Color(0xFFA83A1C),
+  /// Espresso et olive sur os : le registre calme d'Oura et d'Aesop. Ne penche
+  /// ni fille ni garçon.
+  static const RyzePalette sable = RyzePalette(
+    key: 'theme_sable',
+    dark: false,
+    paper0: Color(0xFFF6F0E4),
+    paper: Color(0xFFF2EADB),
+    paper2: Color(0xFFE9DFCC),
+    surf: Color(0xFFFAF5EB),
+    text: Color(0xFF1C1611),
+    mute: Color(0xFF6A5F52),
+    mute2: Color(0xFFA69A8C),
+    idle: Color(0xFFD9CFBE),
+    ink: Color(0xFF3D2B1F),
+    ink2: Color(0xFF5A4334),
+    acc: Color(0xFF8A9A5B),
+    accDeep: Color(0xFF6F7E44),
+    accLight: Color(0xFFA9B67C),
+    accTint: Color(0xFFE6EAD6),
+    accInk: Color(0xFF4E5A2E),
+    danger: Color(0xFFA62F1C),
+    shadow: Color(0xFF1C1611),
   );
 
-  /// Vert forêt et rose vif.
-  static const RyzePalette foret = RyzePalette(
-    key: 'theme_foret',
-    text: Color(0xFF0E2A20),
-    ink: Color(0xFF1E5B3E),
-    ink2: Color(0xFF2E8259),
-    acc: Color(0xFFFF6FA8),
-    accDeep: Color(0xFFE84C8C),
-    accLight: Color(0xFFFF9DC4),
-    accTint: Color(0xFFFFE8F0),
-    accInk: Color(0xFFA82C5B),
-  );
-
-  static const List<RyzePalette> all = [nuit, rose, prune, ocean, foret];
+  static const List<RyzePalette> all = [nuit, cerise, volt, sable];
 
   /// Celle qui porte cette clé, ou celle d'origine. Une clé inconnue — un
   /// réglage écrit par une version plus récente, ou une palette retirée — ne

@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../components/main_app.dart';
 import '../design/design.dart';
+import '../design/palette.dart';
 import '../components/ui/ryze_intro.dart';
 import '../onboarding/onboarding_flow.dart';
 import '../onboarding/onboarding_repository.dart';
@@ -197,7 +198,7 @@ class _RyzeAppState extends State<RyzeApp> {
   @override
   Widget build(BuildContext context) {
     final screen = _isLoading ? null : (_targetScreen ?? const LoginScreen());
-    if (_introDone) return screen ?? ColoredBox(color: RyzeColors.ink, child: const SizedBox.expand());
+    if (_introDone) return screen ?? ColoredBox(color: RyzePalettes.nuit.ink, child: const SizedBox.expand());
     // The intro is the loading screen: it writes the logo while the routing
     // resolves, and only opens onto the screen once there is one.
     return Stack(

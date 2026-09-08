@@ -1435,7 +1435,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
         height: MediaQuery.of(context).size.height * 0.6,
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: RyzeColors.surf,
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
@@ -1485,7 +1485,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
                         ),
                         Text(
                           '$dayName • ${workout.durationMinutes} min',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 14,
                             color: RyzeColors.mute,
                           ),
@@ -1495,7 +1495,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
                   ),
                   IconButton(
                     onPressed: () => Navigator.pop(context),
-                    icon: const Icon(LucideIcons.x, color: RyzeColors.mute),
+                    icon: Icon(LucideIcons.x, color: RyzeColors.mute),
                   ),
                 ],
               ),
@@ -1588,7 +1588,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
                               ),
                               Text(
                                 '${exercise.sets.length} $seriesLabel • ${exercise.suggestedRepsMin ?? 8}-${exercise.suggestedRepsMax ?? 12} reps${weightText.isNotEmpty ? ' • $weightText' : ''}',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 12,
                                   color: RyzeColors.mute,
                                 ),
@@ -2107,7 +2107,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
               onPressed: _collectDemoData,
               child: Text(
                 'onboarding_demo_skip'.tr(langCode),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   color: RyzeColors.mute2,
                 ),
@@ -2184,7 +2184,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
         children: [
           Text(
             subtitleText,
-            style: const TextStyle(fontSize: 13, color: RyzeColors.mute),
+            style: TextStyle(fontSize: 13, color: RyzeColors.mute),
           ),
           const SizedBox(height: 12),
           SizedBox(
@@ -2318,7 +2318,7 @@ class _MealDetailPage extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         '~${meal.estimatedQuantityG.toInt()}g',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           color: RyzeColors.mute,
                         ),
@@ -2358,7 +2358,7 @@ class _MealDetailPage extends StatelessWidget {
             if (sections['description']?.isNotEmpty == true) ...[
               Text(
                 sections['description']!,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 15,
                   color: RyzeColors.mute,
                   height: 1.5,
@@ -2521,7 +2521,7 @@ class _MealDetailPage extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11,
             color: RyzeColors.mute,
           ),
@@ -2576,7 +2576,7 @@ class _MealDetailPage extends StatelessWidget {
 Widget _sheetFrame(BuildContext context, {required Widget child}) {
   return Container(
     height: MediaQuery.of(context).size.height * 0.88,
-    decoration: const BoxDecoration(color: RyzeColors.surf, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+    decoration: BoxDecoration(color: RyzeColors.surf, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
     clipBehavior: Clip.antiAlias,
     child: SafeArea(
       top: false,

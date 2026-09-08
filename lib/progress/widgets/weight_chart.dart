@@ -45,7 +45,7 @@ class WeightChart extends StatelessWidget {
             show: true,
             drawVerticalLine: false,
             horizontalInterval: math.max((hi + pad - lo + pad) / 3, 0.5),
-            getDrawingHorizontalLine: (_) => const FlLine(color: RyzeColors.idle, strokeWidth: 1),
+            getDrawingHorizontalLine: (_) => FlLine(color: RyzeColors.idle, strokeWidth: 1),
           ),
           borderData: FlBorderData(show: false),
           titlesData: FlTitlesData(

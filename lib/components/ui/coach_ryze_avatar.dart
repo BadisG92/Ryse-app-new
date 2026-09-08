@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../design/tokens.dart';
 
 /// Types d'avatar Coach Ryze
 enum CoachRyzeAvatarType {
@@ -91,7 +92,7 @@ class CoachRyzeAvatar extends StatelessWidget {
       errorBuilder: (context, error, stackTrace) {
         return Icon(
           Icons.account_circle,
-          color: const Color(0xFF64748B),
+          color: RyzeColors.mute,
           size: _size,
         );
       },

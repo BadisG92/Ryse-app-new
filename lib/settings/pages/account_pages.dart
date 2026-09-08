@@ -183,7 +183,7 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
                   ? SizedBox(
                       width: context.vw(4.6),
                       height: context.vw(4.6),
-                      child: const CircularProgressIndicator(color: RyzeColors.mute, strokeWidth: 2),
+                      child: CircularProgressIndicator(color: RyzeColors.mute, strokeWidth: 2),
                     )
                   : Text('send_reset_link'.tr(lang), style: RyzeText.body(context, 3.6, weight: FontWeight.w600)),
             ),
@@ -378,7 +378,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                 ? SizedBox(
                     width: context.vw(4.6),
                     height: context.vw(4.6),
-                    child: const CircularProgressIndicator(color: RyzeColors.surf, strokeWidth: 2),
+                    child: CircularProgressIndicator(color: RyzeColors.surf, strokeWidth: 2),
                   )
                 : Text(
                     'delete_my_account'.tr(lang),

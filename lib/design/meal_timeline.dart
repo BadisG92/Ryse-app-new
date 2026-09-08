@@ -197,7 +197,7 @@ class _MealRow extends StatelessWidget {
                           turns: open ? 0.25 : 0,
                           duration: RyzeDurations.tap,
                           curve: RyzeCurves.out,
-                          child: const Icon(LucideIcons.chevronRight, size: 16, color: RyzeColors.mute2),
+                          child: Icon(LucideIcons.chevronRight, size: 16, color: RyzeColors.mute2),
                         ),
                       ] else
                         _AddButton(onTap: onAdd),
@@ -278,7 +278,7 @@ class _AddButton extends StatelessWidget {
           shape: BoxShape.circle,
           border: Border.all(color: RyzeColors.mute2, width: 1.4),
         ),
-        child: const Icon(LucideIcons.plus, size: 17, color: RyzeColors.mute),
+        child: Icon(LucideIcons.plus, size: 17, color: RyzeColors.mute),
       ),
     );
   }
@@ -322,7 +322,7 @@ class _ItemRow extends StatelessWidget {
           ),
           Pressable(
             onTap: onRemove,
-            child: const SizedBox(
+            child: SizedBox(
               width: 34,
               height: 34,
               child: Icon(LucideIcons.x, size: 15, color: RyzeColors.mute2),

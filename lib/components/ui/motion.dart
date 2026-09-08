@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import '../../design/tokens.dart';
 
 /// Shared motion primitives, used by the onboarding and the planner chat.
 
@@ -75,8 +76,9 @@ class _PopInState extends State<PopIn> with SingleTickerProviderStateMixin {
 
 /// Three dots rising one after the other: "the coach is typing".
 class TypingDots extends StatefulWidget {
-  const TypingDots({super.key, this.color = const Color(0xFF0B132B), this.size = 6, this.gap = 4});
-  final Color color;
+  const TypingDots({super.key, this.color, this.size = 6, this.gap = 4});
+  /// Nul pour le texte de l'edition en vigueur.
+  final Color? color;
   final double size;
   final double gap;
 
@@ -110,7 +112,7 @@ class _TypingDotsState extends State<TypingDots> with SingleTickerProviderStateM
                   offset: Offset(0, -lift),
                   child: Opacity(
                     opacity: 0.45 + 0.55 * math.sin(phase * math.pi),
-                    child: Container(width: widget.size, height: widget.size, decoration: BoxDecoration(color: widget.color, shape: BoxShape.circle)),
+                    child: Container(width: widget.size, height: widget.size, decoration: BoxDecoration(color: widget.color ?? RyzeColors.text, shape: BoxShape.circle)),
                   ),
                 );
               }),

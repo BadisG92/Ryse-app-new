@@ -222,7 +222,7 @@ class _AIScannerScreenState extends State<AIScannerScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const SizedBox(
+            SizedBox(
               width: 22,
               height: 22,
               child: CircularProgressIndicator(color: RyzeColors.surf, strokeWidth: 2),

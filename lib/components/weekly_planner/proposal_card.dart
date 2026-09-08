@@ -329,7 +329,7 @@ class ProposalWorkoutRow extends StatelessWidget {
       child: Container(
         color: selected ? RyzeColors.paper : null,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(border: last ? null : const Border(bottom: BorderSide(color: RyzeColors.paper2))),
+        decoration: BoxDecoration(border: last ? null : Border(bottom: BorderSide(color: RyzeColors.paper2))),
         child: Row(
           children: [
             Container(
@@ -416,7 +416,7 @@ class ProposalActions extends StatelessWidget {
                   child: ElevatedButton.icon(
                     onPressed: busy ? null : onConfirm,
                     icon: busy
-                        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: RyzeColors.surf))
+                        ? SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: RyzeColors.surf))
                         : const Icon(LucideIcons.check, size: 18),
                     label: Text(confirmLabel, maxLines: 1, overflow: TextOverflow.ellipsis),
                     style: ElevatedButton.styleFrom(backgroundColor: _green, foregroundColor: RyzeColors.surf, elevation: 0, shape: shape, textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),

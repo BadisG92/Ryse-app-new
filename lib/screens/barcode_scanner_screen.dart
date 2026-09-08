@@ -234,7 +234,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
           ? Positioned.fill(
               child: ColoredBox(
                 color: RyzeColors.ink.withValues(alpha: 0.45),
-                child: const Center(child: CircularProgressIndicator(color: RyzeColors.surf, strokeWidth: 2)),
+                child: Center(child: CircularProgressIndicator(color: RyzeColors.surf, strokeWidth: 2)),
               ),
             )
           : null,
@@ -281,7 +281,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
               Expanded(
                 child: Container(
                   width: double.infinity,
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     color: RyzeColors.paper,
                     borderRadius: BorderRadius.vertical(top: Radius.circular(RyzeRadius.lg)),
                   ),

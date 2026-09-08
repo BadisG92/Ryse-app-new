@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../design/tokens.dart';
 
 // Modèles pour les sessions cardio en temps réel
 class CardioSessionData {
@@ -138,9 +139,9 @@ class CardioSessionData {
       case 'running':
       case 'bike':
       case 'walking':
-        return const Color(0xFF1C2951); // Bleu secondaire pour toutes les activités
+        return RyzeColors.ink2; // Bleu secondaire pour toutes les activités
       default:
-        return const Color(0xFF64748B); // Gris du thème
+        return RyzeColors.mute; // Gris du thème
     }
   }
 }

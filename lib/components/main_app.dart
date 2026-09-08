@@ -175,7 +175,7 @@ class _MainAppState extends State<MainApp> with WidgetsBindingObserver {
       body: Stack(
         children: [
           Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,

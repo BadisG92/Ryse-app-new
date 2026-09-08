@@ -399,7 +399,7 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> {
                           SizedBox(
                             width: context.vw(4.1),
                             height: context.vw(4.1),
-                            child: const CircularProgressIndicator(color: RyzeColors.mute, strokeWidth: 2),
+                            child: CircularProgressIndicator(color: RyzeColors.mute, strokeWidth: 2),
                           ),
                           SizedBox(width: context.vw(2.6)),
                           Flexible(

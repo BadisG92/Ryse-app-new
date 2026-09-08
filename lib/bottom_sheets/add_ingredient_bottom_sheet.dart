@@ -205,7 +205,7 @@ class _AddIngredientBottomSheetState extends State<AddIngredientBottomSheet> {
     return ConstrainedBox(
       constraints: BoxConstraints(maxHeight: context.vh(90)),
       child: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: RyzeColors.paper,
           borderRadius: BorderRadius.vertical(top: Radius.circular(RyzeRadius.lg)),
         ),
@@ -235,7 +235,7 @@ class _AddIngredientBottomSheetState extends State<AddIngredientBottomSheet> {
                     child: Container(
                       width: context.vw(9.2),
                       height: context.vw(9.2),
-                      decoration: const BoxDecoration(color: RyzeColors.surf, shape: BoxShape.circle),
+                      decoration: BoxDecoration(color: RyzeColors.surf, shape: BoxShape.circle),
                       child: Icon(LucideIcons.x, size: context.vw(4.6), color: RyzeColors.mute),
                     ),
                   ),
@@ -412,7 +412,7 @@ class _AddIngredientBottomSheetState extends State<AddIngredientBottomSheet> {
                             ? SizedBox(
                                 width: context.vw(4.6),
                                 height: context.vw(4.6),
-                                child: const CircularProgressIndicator(strokeWidth: 2, color: RyzeColors.surf),
+                                child: CircularProgressIndicator(strokeWidth: 2, color: RyzeColors.surf),
                               )
                             : Text(
                                 'add'.tr(lang),

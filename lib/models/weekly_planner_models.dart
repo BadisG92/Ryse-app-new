@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../design/tokens.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'sport_models.dart';
 
@@ -65,7 +66,7 @@ extension PlannedActivityTypeExtension on PlannedActivityType {
   /// Note: La couleur finale dépend du statut (vert=validé, gris=planifié, rouge=manqué)
   Color get color {
     // Couleur bleue uniforme pour tous les types
-    return const Color(0xFF0B132B);
+    return RyzeColors.ink;
   }
 
   /// Vérifier si c'est un repas
@@ -432,7 +433,7 @@ class PlannedWorkout {
   int get totalExercises => exercises.length;
 
   /// Couleur du workout
-  Color get color => const Color(0xFF0B132B); // Navy
+  Color get color => RyzeColors.ink; // Navy
 
   /// Icône du workout
   IconData get icon => Icons.fitness_center;

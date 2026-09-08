@@ -45,7 +45,7 @@ class _NutritionPageState extends State<NutritionPage> {
     final date = RyzeDates.full(DateTime.now(), lang);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.dark,
+      value: RyzeColors.isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
       child: Stack(
         children: [
           const OnbBackground(scene: false),

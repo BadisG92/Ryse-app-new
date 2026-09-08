@@ -245,7 +245,7 @@ class _ExerciseDetailPageState extends State<ExerciseDetailPage> {
             show: true,
             drawVerticalLine: false,
             horizontalInterval: math.max((maxY + pad - math.max(0, minY - pad)) / 3, 1),
-            getDrawingHorizontalLine: (_) => const FlLine(color: RyzeColors.idle, strokeWidth: 1),
+            getDrawingHorizontalLine: (_) => FlLine(color: RyzeColors.idle, strokeWidth: 1),
           ),
           borderData: FlBorderData(show: false),
           titlesData: FlTitlesData(

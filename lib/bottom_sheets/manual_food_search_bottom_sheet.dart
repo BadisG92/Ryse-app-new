@@ -385,7 +385,7 @@ class _ManualFoodSearchBottomSheetState extends State<ManualFoodSearchBottomShee
     return ConstrainedBox(
       constraints: BoxConstraints(maxHeight: context.vh(92)),
       child: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: RyzeColors.paper,
           borderRadius: BorderRadius.vertical(top: Radius.circular(RyzeRadius.lg)),
         ),
@@ -414,7 +414,7 @@ class _ManualFoodSearchBottomSheetState extends State<ManualFoodSearchBottomShee
                     child: Container(
                       width: context.vw(9.2),
                       height: context.vw(9.2),
-                      decoration: const BoxDecoration(color: RyzeColors.surf, shape: BoxShape.circle),
+                      decoration: BoxDecoration(color: RyzeColors.surf, shape: BoxShape.circle),
                       child: Icon(LucideIcons.x, size: context.vw(4.6), color: RyzeColors.mute),
                     ),
                   ),
@@ -679,7 +679,7 @@ class _CreateRow extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right_rounded, size: 20, color: RyzeColors.mute2),
+            Icon(Icons.chevron_right_rounded, size: 20, color: RyzeColors.mute2),
           ],
         ),
       ),

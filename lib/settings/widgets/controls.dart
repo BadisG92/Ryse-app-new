@@ -102,7 +102,7 @@ class SettingToggle extends StatelessWidget {
               child: Container(
                 width: context.vw(6.2),
                 height: context.vw(6.2),
-                decoration: const BoxDecoration(color: RyzeColors.surf, shape: BoxShape.circle),
+                decoration: BoxDecoration(color: RyzeColors.surf, shape: BoxShape.circle),
               ),
             ),
           ],

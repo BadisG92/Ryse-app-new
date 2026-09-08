@@ -413,10 +413,10 @@ class PastExchange extends StatelessWidget {
 
 /// Small white card used across the flow.
 class OnbCard extends StatelessWidget {
-  const OnbCard({super.key, required this.child, this.padding, this.color = OnbColors.surf, this.radiusVw = 4.6});
+  OnbCard({super.key, required this.child, this.padding, this.color, this.radiusVw = 4.6});
   final Widget child;
   final EdgeInsets? padding;
-  final Color color;
+  final Color? color;
   final double radiusVw;
 
   @override
@@ -424,7 +424,7 @@ class OnbCard extends StatelessWidget {
     return Container(
       padding: padding ?? EdgeInsets.all(context.vw(4.4)),
       decoration: BoxDecoration(
-        color: color,
+        color: color ?? RyzeColors.surf,
         borderRadius: BorderRadius.circular(context.vw(radiusVw)),
         border: Border.all(color: OnbColors.line),
         boxShadow: [BoxShadow(color: OnbColors.ink.withValues(alpha: 0.06), blurRadius: context.vw(4), offset: Offset(0, context.vw(1.4)))],
@@ -511,7 +511,7 @@ class OnbBackground extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            const DecoratedBox(decoration: BoxDecoration(gradient: OnbColors.ground)),
+            DecoratedBox(decoration: BoxDecoration(gradient: OnbColors.ground)),
             Positioned(
               right: -w * 0.35,
               top: -w * 0.45,

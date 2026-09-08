@@ -18,7 +18,7 @@ import '../../services/translations.dart';
 
 /// Error red. The onboarding palette has no failure state; this is the one
 /// place that needs one, and it is used for nothing else.
-const Color kAuthDanger = RyzeColors.danger;
+final Color kAuthDanger = RyzeColors.danger;
 
 /// Permissive on purpose: a local part, an @, a domain with a dot, and no
 /// spaces. The old `[\w-]{2,4}$` rejected `.fitness`, `.coach`, `.online` and

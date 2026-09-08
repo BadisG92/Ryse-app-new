@@ -863,7 +863,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                           SizedBox(width: context.vw(1.4)),
                           Text(s.t('legend_with'), style: OnbText.body(context, 3.1, weight: FontWeight.w500, color: OnbColors.mute)),
                           SizedBox(width: context.vw(4)),
-                          Container(width: context.vw(5), height: 2.5, decoration: const BoxDecoration(color: OnbColors.mute2)),
+                          Container(width: context.vw(5), height: 2.5, decoration: BoxDecoration(color: OnbColors.mute2)),
                           SizedBox(width: context.vw(1.4)),
                           Text(s.t('legend_without'), style: OnbText.body(context, 3.1, weight: FontWeight.w500, color: OnbColors.mute)),
                         ],

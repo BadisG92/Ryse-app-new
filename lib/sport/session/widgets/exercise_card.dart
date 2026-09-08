@@ -201,7 +201,7 @@ class _Ring extends StatelessWidget {
         shape: BoxShape.circle,
         border: Border.all(color: done || current ? RyzeColors.ink : RyzeColors.idle, width: current && !done ? 2 : 1),
       ),
-      child: done ? const Icon(LucideIcons.check, size: 10, color: RyzeColors.surf) : null,
+      child: done ? Icon(LucideIcons.check, size: 10, color: RyzeColors.surf) : null,
     );
   }
 }
