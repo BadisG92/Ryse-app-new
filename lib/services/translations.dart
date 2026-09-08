@@ -8335,9 +8335,9 @@ class AppTranslations {
     },
     'theme_nuit': {'fr': 'Nuit', 'en': 'Night', 'de': 'Nacht'},
     'theme_rose': {'fr': 'Rose', 'en': 'Rose', 'de': 'Rose'},
-    'theme_foret': {'fr': 'Forêt', 'en': 'Forest', 'de': 'Wald'},
-    'theme_ardoise': {'fr': 'Ardoise', 'en': 'Slate', 'de': 'Schiefer'},
     'theme_prune': {'fr': 'Prune', 'en': 'Plum', 'de': 'Pflaume'},
+    'theme_ocean': {'fr': 'Océan', 'en': 'Ocean', 'de': 'Ozean'},
+    'theme_foret': {'fr': 'Forêt', 'en': 'Forest', 'de': 'Wald'},
     'chat_copied': {
       'fr': 'Message copié',
       'en': 'Message copied',

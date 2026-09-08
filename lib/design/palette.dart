@@ -1,30 +1,44 @@
 import 'package:flutter/material.dart';
 
-/// Les cinq habits de Ryze.
+/// Les cinq univers de Ryze.
 ///
-/// Une palette ne change que deux choses : **le primaire**, la couleur de ce
-/// que l'utilisateur choisit et presse, et **le secondaire**, celle de ce que
-/// Ryze rend. Le papier, les gris, l'erreur et les trois macronutriments ne
-/// bougent pas — ils portent un sens qui ne dépend pas du goût.
+/// Une palette change trois choses :
 ///
-/// Les cinq duos ne sont pas choisis à l'œil. Chacun tient quatre seuils,
-/// mesurés :
+/// * **le texte** — un quasi-noir teinté de la palette. Il porte le texte
+///   courant, donc il ne peut pas être coloré : la lisibilité le veut sombre.
+/// * **la marque** — la couleur saturée des surfaces pleines et des bordures :
+///   un bouton, une tuile validée, une bulle, l'anneau d'un jour. C'est elle
+///   qu'on voit de loin, et c'est elle qui fait l'univers.
+/// * **le secondaire** — ce que Ryze rend : la jauge, ses conseils, sa voix.
 ///
-/// | | Nuit | Rose | Forêt | Ardoise | Prune | seuil |
+/// Le papier, les gris, l'erreur et les trois macronutriments ne bougent pas.
+///
+/// **Pourquoi la marque est séparée du texte.** Les deux étaient un seul jeton.
+/// Le texte doit tenir 7:1 sur le papier, ce qui force le quasi-noir ; les
+/// surfaces héritaient de cette contrainte, et les cinq palettes s'effondraient
+/// vers le même noir — leur contraste deux à deux tombait entre 1,01 et 1,20,
+/// c'est-à-dire la même couleur. Choisir « Rose » donnait une application noire
+/// avec des jauges roses. Séparées, la marque peut être franche : un bouton
+/// rose est rose.
+///
+/// **Ce qui est vérifié**, pour chacune des cinq :
+///
+/// | | Nuit | Rose | Prune | Océan | Forêt | seuil |
 /// |---|---|---|---|---|---|---|
-/// | encre sur papier | 17,0 | 15,1 | 14,2 | 15,6 | 15,8 | ≥ 7 |
-/// | blanc sur encre | 18,4 | 16,3 | 15,3 | 16,9 | 17,1 | ≥ 7 |
-/// | ambre foncée sur papier | 4,8 | 6,1 | 5,4 | 6,4 | 8,4 | ≥ 4,5 |
-/// | secondaire sur primaire | 9,2 | 6,0 | 6,9 | 6,5 | 6,4 | ≥ 3 |
+/// | texte sur papier | 17,0 | 15,2 | 16,4 | 14,0 | 14,2 | ≥ 7 |
+/// | blanc sur la marque | 14,3 | 4,6 | 7,1 | 6,2 | 8,0 | ≥ 4,5 |
+/// | marque sur papier | 13,3 | 4,2 | 6,6 | 5,7 | 7,4 | ≥ 3 |
+/// | secondaire foncé sur papier | 4,8 | 5,6 | 4,6 | 5,9 | 6,1 | ≥ 4,5 |
+/// | secondaire sur la marque | 7,2 | 3,2 | 5,3 | 3,3 | 3,1 | ≥ 3 |
 ///
-/// C'est la raison pour laquelle il y a cinq duos plutôt qu'un choix libre :
-/// cinq combinaisons vérifiées valent mieux que vingt-cinq dont aucune ne
-/// l'est. Un ambre sur du rose, ou un vert sur du violet, se casse tout de
-/// suite — pas en théorie, en contraste mesurable.
+/// Et les cinq marques sont à **36° de teinte** au minimum les unes des autres :
+/// c'est ce qui les rend reconnaissables, la clarté ne suffisant pas à
+/// distinguer un magenta d'un turquoise.
 @immutable
 class RyzePalette {
   const RyzePalette({
     required this.key,
+    required this.text,
     required this.ink,
     required this.ink2,
     required this.acc,
@@ -38,13 +52,16 @@ class RyzePalette {
   /// La clé du dictionnaire qui la nomme.
   final String key;
 
-  /// Le primaire : ce que l'utilisateur choisit, presse, valide.
+  /// Le quasi-noir du texte courant, teinté de la palette.
+  final Color text;
+
+  /// La marque : les surfaces pleines et les bordures.
   final Color ink;
 
   /// Sa variante claire, pour les dégradés et l'auréole froide du fond.
   final Color ink2;
 
-  /// Le secondaire : ce que Ryze rend — la progression, ses conseils, sa voix.
+  /// Le secondaire : ce que Ryze rend.
   final Color acc;
   final Color accDeep;
   final Color accLight;
@@ -63,11 +80,12 @@ class RyzePalette {
 class RyzePalettes {
   RyzePalettes._();
 
-  /// Le navy et l'ambre d'origine.
+  /// Navy et ambre : l'habit d'origine, celui de la nuit.
   static const RyzePalette nuit = RyzePalette(
     key: 'theme_nuit',
-    ink: Color(0xFF0B132B),
-    ink2: Color(0xFF1B2A5B),
+    text: Color(0xFF0B132B),
+    ink: Color(0xFF16265C),
+    ink2: Color(0xFF2A3F86),
     acc: Color(0xFFF2A93B),
     accDeep: Color(0xFFD98A16),
     accLight: Color(0xFFFFC766),
@@ -76,59 +94,68 @@ class RyzePalettes {
     glowWarm: Color(0xFFFFC478),
   );
 
+  /// Magenta et turquoise. Le rose franc est sur les surfaces, pas seulement
+  /// sur la jauge : c'est ce qui fait qu'on le voit.
   static const RyzePalette rose = RyzePalette(
     key: 'theme_rose',
-    ink: Color(0xFF3B1028),
-    ink2: Color(0xFF6B2049),
-    acc: Color(0xFFF2739D),
-    accDeep: Color(0xFFD94E7E),
-    accLight: Color(0xFFFFA3C0),
-    accTint: Color(0xFFFDE7EF),
-    accInk: Color(0xFFA82C5B),
-    glowWarm: Color(0xFFFFB3CC),
+    text: Color(0xFF3A0F26),
+    ink: Color(0xFFD6317B),
+    ink2: Color(0xFFE85C9B),
+    acc: Color(0xFF7FEBE1),
+    accDeep: Color(0xFF3FD9CB),
+    accLight: Color(0xFFA8F2EB),
+    accTint: Color(0xFFE0FAF7),
+    accInk: Color(0xFF0F6E67),
+    glowWarm: Color(0xFFFFB3D9),
   );
 
-  static const RyzePalette foret = RyzePalette(
-    key: 'theme_foret',
-    ink: Color(0xFF0E2A20),
-    ink2: Color(0xFF1D5240),
-    acc: Color(0xFFE0A23C),
-    accDeep: Color(0xFFC08418),
-    accLight: Color(0xFFF5C777),
-    accTint: Color(0xFFFBF0DC),
-    accInk: Color(0xFF8C5A0E),
-    glowWarm: Color(0xFFF2CE8A),
-  );
-
-  static const RyzePalette ardoise = RyzePalette(
-    key: 'theme_ardoise',
-    ink: Color(0xFF1A1D24),
-    ink2: Color(0xFF39404F),
-    acc: Color(0xFF5FA8D3),
-    accDeep: Color(0xFF3D86B0),
-    accLight: Color(0xFF96C9E8),
-    accTint: Color(0xFFE7F1F8),
-    accInk: Color(0xFF1F5F86),
-    glowWarm: Color(0xFFA9D4EC),
-  );
-
+  /// Violet et citron vert.
   static const RyzePalette prune = RyzePalette(
     key: 'theme_prune',
-    ink: Color(0xFF2A1038),
-    ink2: Color(0xFF4E2069),
-    acc: Color(0xFFC77DFF),
-    accDeep: Color(0xFFA44BE0),
-    accLight: Color(0xFFDDA9FF),
-    accTint: Color(0xFFF3E8FD),
-    accInk: Color(0xFF6A2299),
+    text: Color(0xFF22102E),
+    ink: Color(0xFF7B2CBF),
+    ink2: Color(0xFF9D5AD6),
+    acc: Color(0xFFC3EF4A),
+    accDeep: Color(0xFFA5D428),
+    accLight: Color(0xFFD9F585),
+    accTint: Color(0xFFF2FBDD),
+    accInk: Color(0xFF5A7A0C),
     glowWarm: Color(0xFFD5A8F5),
   );
 
-  static const List<RyzePalette> all = [nuit, rose, foret, ardoise, prune];
+  /// Turquoise profond et corail.
+  static const RyzePalette ocean = RyzePalette(
+    key: 'theme_ocean',
+    text: Color(0xFF0A2A2E),
+    ink: Color(0xFF0E6B78),
+    ink2: Color(0xFF1A93A4),
+    acc: Color(0xFFFFA98E),
+    accDeep: Color(0xFFFF7A59),
+    accLight: Color(0xFFFFC7B5),
+    accTint: Color(0xFFFFEDE7),
+    accInk: Color(0xFFA83A1C),
+    glowWarm: Color(0xFF8FE0EA),
+  );
+
+  /// Vert forêt et rose vif.
+  static const RyzePalette foret = RyzePalette(
+    key: 'theme_foret',
+    text: Color(0xFF0E2A20),
+    ink: Color(0xFF1E5B3E),
+    ink2: Color(0xFF2E8259),
+    acc: Color(0xFFFF6FA8),
+    accDeep: Color(0xFFE84C8C),
+    accLight: Color(0xFFFF9DC4),
+    accTint: Color(0xFFFFE8F0),
+    accInk: Color(0xFFA82C5B),
+    glowWarm: Color(0xFFA8E5C4),
+  );
+
+  static const List<RyzePalette> all = [nuit, rose, prune, ocean, foret];
 
   /// Celle qui porte cette clé, ou celle d'origine. Une clé inconnue — un
-  /// réglage d'une version future, lu par une version ancienne — ne doit
-  /// jamais laisser l'application sans couleurs.
+  /// réglage écrit par une version plus récente, ou une palette retirée — ne
+  /// doit jamais laisser l'application sans couleurs.
   static RyzePalette byKey(String? key) {
     for (final p in all) {
       if (p.key == key) return p;

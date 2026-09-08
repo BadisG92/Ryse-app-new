@@ -32,7 +32,14 @@ class RyzeColors {
 
   // ---------------------------------------------------- ce qui suit le theme
 
-  /// Le primaire : ce que l'utilisateur choisit et presse.
+  /// Le quasi-noir du texte courant. Il etait confondu avec la marque, ce qui
+  /// obligeait les cinq palettes au meme noir : le texte doit tenir 7:1 sur le
+  /// papier, et les surfaces heritaient de cette contrainte.
+  static Color get text => _palette.text;
+
+  /// La marque : les surfaces pleines et les bordures. C'est elle qu'on voit
+  /// de loin, et elle peut etre franche puisqu'elle ne porte pas de texte —
+  /// elle porte du blanc, ce qui demande 4,5:1 et non 7:1.
   static Color get ink => _palette.ink;
   static Color get ink2 => _palette.ink2;
 
@@ -41,10 +48,11 @@ class RyzeColors {
 
   /// Decorative only (dashes, borders): too light for text.
   static const Color mute2 = Color(0xFF9AA1B2);
-  /// Les traits derivent du primaire : ils sont son encre a 10 % et a 6 %.
-  /// Ecrits en dur, ils resteraient bleus derriere une interface rose.
-  static Color get line => _palette.ink.withValues(alpha: 0.10);
-  static Color get line2 => _palette.ink.withValues(alpha: 0.06);
+  /// Les traits derivent du texte et non de la marque : un trait est une
+  /// separation, pas une couleur d'identite, et il doit rester discret meme
+  /// quand la marque est vive.
+  static Color get line => _palette.text.withValues(alpha: 0.11);
+  static Color get line2 => _palette.text.withValues(alpha: 0.06);
 
   /// The idle fill of a free slot and of a dashed placeholder.
   static const Color idle = Color(0xFFD5DAE1);

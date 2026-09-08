@@ -29,7 +29,7 @@ class RyzeText {
       fontSize: size,
       fontWeight: weight,
       fontVariations: [FontVariation('wght', _wght(weight)), const FontVariation('wdth', 100)],
-      color: color ?? RyzeColors.ink,
+      color: color ?? RyzeColors.text,
       height: height,
       letterSpacing: size * letterSpacingEm,
     );
@@ -47,7 +47,7 @@ class RyzeText {
       fontSize: context.vw(sizeVw),
       fontWeight: weight,
       fontVariations: [FontVariation('wght', _wght(weight)), const FontVariation('wdth', 100)],
-      color: color ?? RyzeColors.ink,
+      color: color ?? RyzeColors.text,
       height: height,
     );
   }
