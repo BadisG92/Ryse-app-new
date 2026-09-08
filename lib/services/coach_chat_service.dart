@@ -9,6 +9,8 @@ import '../ai/ryze_memory.dart';
 import '../ai/ryze_persona.dart';
 import '../ai/ryze_tools/ryze_tools.dart';
 import '../models/coach_chat_models.dart';
+import '../models/weekly_planner_models.dart';
+import 'planner_ai_service.dart';
 import 'coach_personality_service.dart';
 import 'global_state_manager.dart';
 import 'localization_service.dart';
@@ -211,6 +213,11 @@ class CoachChatService {
   /// relu à chaque envoi. Changer de ton ou sauver une préférence ne coûte donc
   /// plus la reconstruction de la conversation.
   Future<void> _startChatSession() async {
+    // Les outils du plan travaillent dans une fenêtre : sans elle, « jeudi »
+    // désigne le jeudi d'une semaine que personne n'a choisie. La conversation
+    // parle de la semaine en cours, comme l'accueil.
+    PlannerAIService.setPlanningWindow(getCurrentWeekStart());
+
     _agent ??= RyzeAgent(config: RyzeGenerationConfig.coach)
       ..systemInstructionBuilder = _buildSystemInstruction
       ..tools = ryzeTools.declarationsFor(RyzeSurface.coach);

@@ -61,6 +61,65 @@ void main() {
     test('retenir un fait durable', () {
       expect(noms, contains('memory.remember'));
     });
+
+    test('écrire dans la semaine, sans changer d\'écran', () {
+      // Demander une recette ouvrait le planificateur ; le coach la pose
+      // maintenant lui-même.
+      expect(noms, contains('plan.create_meal'));
+      expect(noms, contains('plan.create_workout'));
+      expect(noms, contains('plan.create_cardio'));
+      expect(noms, contains('plan.move_workout'));
+      expect(noms, contains('plan.modify_workout'));
+      expect(noms, contains('plan.delete_meal'));
+      expect(noms, contains('plan.delete_workout'));
+    });
+  });
+
+  group('Ce qui touche à la semaine', () {
+    test('déplacer, modifier et retirer demandent avant', () {
+      // Ces trois-là écrivent tout de suite dans le plan : une carte protège
+      // la semaine d'une IA trop sûre d'elle.
+      for (final nom in [
+        'plan.move_workout',
+        'plan.modify_workout',
+        'plan.delete_meal',
+        'plan.delete_workout',
+      ]) {
+        expect(registry.byName(nom)!.needsConfirmation(const {}), isTrue, reason: nom);
+        expect(registry.byName(nom)!.preview, isNotNull, reason: nom);
+      }
+    });
+
+    test('créer ne demande pas : la validation est déjà dans l\'exécuteur', () {
+      // Une création rend un objet en attente que le planificateur fait
+      // valider ; une seconde carte demanderait deux fois la même chose.
+      for (final nom in ['plan.create_meal', 'plan.create_workout', 'plan.create_cardio']) {
+        expect(registry.byName(nom)!.needsConfirmation(const {}), isFalse, reason: nom);
+      }
+    });
+
+    test('un repas planifié porte ses macros, jamais devinées à l\'écran', () {
+      final requis = List<String>.from(
+          (registry.byName('plan.create_meal')!.declaration['parameters'] as Map)['required'] as List);
+      for (final champ in ['day', 'meal_type', 'dish_name', 'proteins', 'carbs', 'fats']) {
+        expect(requis, contains(champ));
+      }
+    });
+
+    test('le cardio reste sur les trois activités supportées', () {
+      final props = ((registry.byName('plan.create_cardio')!.declaration['parameters'] as Map)
+          ['properties'] as Map).cast<String, dynamic>();
+      final activites = List<String>.from(props['activity']['enum'] as List);
+      expect(activites, ['running', 'bike', 'walking']);
+      expect(activites, isNot(contains('swimming')));
+    });
+
+    test('une séance demande son groupe et sa durée', () {
+      final requis = List<String>.from(
+          (registry.byName('plan.create_workout')!.declaration['parameters'] as Map)['required'] as List);
+      expect(requis, contains('workout_type'));
+      expect(requis, contains('duration_minutes'));
+    });
   });
 
   group('Ce qui demande une validation', () {

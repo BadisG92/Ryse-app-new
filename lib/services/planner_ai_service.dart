@@ -2252,7 +2252,7 @@ USER REQUEST: "$userMessage"
 
         debugPrint('🔧 Executing tool: $functionName with args: $args');
 
-        final toolResult = await _executeToolCall(functionName, args, langCode);
+        final toolResult = await executeToolCall(functionName, args, langCode);
 
         // Ajouter le message seulement s'il existe (les pending_meal/pending_workout/pending_cardio n'en ont pas)
         if (toolResult['message'] != null) {
@@ -2513,8 +2513,10 @@ USER REQUEST: "$userMessage"
     return null;
   }
 
+  /// Public : le registre partagé s'y branche, et le lot de la fusion s'en
+  /// servira tel quel. Les exécuteurs ne changent pas — ils sont bons.
   /// Exécuter un appel de fonction
-  static Future<Map<String, dynamic>> _executeToolCall(
+  static Future<Map<String, dynamic>> executeToolCall(
     String functionName,
     Map<String, dynamic> args,
     String langCode,
@@ -3106,7 +3108,7 @@ USER REQUEST: "$userMessage"
             await WeeklyPlannerService.deletePlannedWorkout(existingWorkout.id);
             // Rediriger vers create_hiit qui demandera les paramètres
             final dayStr = _getDayString(currentDay);
-            return await _executeToolCall('create_hiit', {'day': dayStr}, langCode);
+            return await executeToolCall('create_hiit', {'day': dayStr}, langCode);
           }
 
           // Conversion vers cardio (détection large)
@@ -3141,7 +3143,7 @@ USER REQUEST: "$userMessage"
             }
 
             // La création d'abord, la suppression seulement si elle a réussi.
-            final created = await _executeToolCall('create_cardio', {
+            final created = await executeToolCall('create_cardio', {
               'day': dayStr,
               'activity': activityKey,
             }, langCode);
@@ -3231,14 +3233,14 @@ USER REQUEST: "$userMessage"
 
           // Si on a le type HIIT, le passer à create_hiit
           if (hiitType != null && hiitType.isNotEmpty) {
-            return await _executeToolCall('create_hiit', {
+            return await executeToolCall('create_hiit', {
               'day': args['current_day'],
               'hiit_type': hiitType,
             }, langCode);
           }
 
           // Sinon, rediriger vers create_hiit qui va demander les paramètres
-          return await _executeToolCall('create_hiit', {'day': args['current_day']}, langCode);
+          return await executeToolCall('create_hiit', {'day': args['current_day']}, langCode);
         }
 
         // Stocker pour undo
@@ -3365,7 +3367,7 @@ USER REQUEST: "$userMessage"
 
         // Utiliser le service partagé pour détecter et rediriger HIIT
         if (PlannedCardioService.isHiitType(activityKey)) {
-          return await _executeToolCall('create_hiit', {'day': dayStr}, langCode);
+          return await executeToolCall('create_hiit', {'day': dayStr}, langCode);
         }
 
         // Valider le type de cardio via le service partagé
@@ -4015,7 +4017,7 @@ USER REQUEST: "$userMessage"
 
     _pendingAction = null; // Clear pending action
 
-    final result = await _executeToolCall(actionType, actionArgs, langCode);
+    final result = await executeToolCall(actionType, actionArgs, langCode);
     final List<String> allMessages = [result['message'] as String];
 
     // Si l'action confirmée est une suppression, exécuter aussi les follow-ups de suppression
@@ -4050,7 +4052,7 @@ USER REQUEST: "$userMessage"
           // exécuter directement sans redemander
           if (isDeleteAction && realActionType.startsWith('delete_')) {
             debugPrint('✅ Auto-executing follow-up delete action: $realActionType');
-            final followResult = await _executeToolCall(realActionType, realActionArgs, langCode);
+            final followResult = await executeToolCall(realActionType, realActionArgs, langCode);
             allMessages.add(followResult['message'] as String);
             continue; // Continuer avec les suivantes
           }
@@ -4083,7 +4085,7 @@ USER REQUEST: "$userMessage"
       // Si c'est une suppression et qu'on vient d'exécuter une suppression, exécuter directement
       if (isDeleteAction && nextName.startsWith('delete_')) {
         debugPrint('✅ Auto-executing follow-up delete action: $nextName');
-        final nextResult = await _executeToolCall(nextName, nextArgs, langCode);
+        final nextResult = await executeToolCall(nextName, nextArgs, langCode);
         allMessages.add(nextResult['message'] as String);
         continue; // Continuer avec les suivantes
       }
@@ -4112,7 +4114,7 @@ USER REQUEST: "$userMessage"
         );
       } else {
         // Exécuter directement et continuer avec les suivantes
-        final nextResult = await _executeToolCall(nextName, nextArgs, langCode);
+        final nextResult = await executeToolCall(nextName, nextArgs, langCode);
         allMessages.add(nextResult['message'] as String);
         // Continuer la boucle while pour traiter les suivantes
       }
@@ -4283,7 +4285,7 @@ USER REQUEST: "$userMessage"
   /// Annuler la dernière action (undo)
   static Future<PlannerActionResult> undoLastAction() async {
     final langCode = LocalizationService.instance.currentLanguageCode;
-    final result = await _executeToolCall('undo_last_action', {}, langCode);
+    final result = await executeToolCall('undo_last_action', {}, langCode);
 
     if (result['success'] == true) {
       return PlannerActionResult.success(result['message'] as String);

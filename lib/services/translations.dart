@@ -8513,6 +8513,28 @@ class AppTranslations {
       'en': 'I already knew that',
       'de': 'Das wusste ich schon',
     },
+    // Ce que Ryze demande avant de toucher à la semaine. Le jour arrive en
+    // anglais du modèle : il est traduit à l'affichage par `RyzeDates`.
+    'ryze_confirm_move': {
+      'fr': 'Déplacer la séance de {from} à {to} ?',
+      'en': 'Move the session from {from} to {to}?',
+      'de': 'Die Einheit von {from} auf {to} verschieben?',
+    },
+    'ryze_confirm_modify': {
+      'fr': 'Modifier la séance de {day} ?',
+      'en': 'Change the session on {day}?',
+      'de': 'Die Einheit am {day} ändern?',
+    },
+    'ryze_confirm_delete_meal': {
+      'fr': 'Retirer ce repas de {day} ?',
+      'en': 'Remove that meal on {day}?',
+      'de': 'Diese Mahlzeit am {day} entfernen?',
+    },
+    'ryze_confirm_delete_workout': {
+      'fr': 'Retirer la séance de {day} ?',
+      'en': 'Remove the session on {day}?',
+      'de': 'Die Einheit am {day} entfernen?',
+    },
     'ryze_memory_too_long': {
       'fr': "C'est trop long pour être retenu tel quel.",
       'en': "That's too long to remember as is.",

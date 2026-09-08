@@ -1,12 +1,14 @@
 import 'journal_tools.dart';
 import 'memory_tools.dart';
 import 'nav_tools.dart';
+import 'plan_tools.dart';
 import 'ryze_tool.dart';
 import 'sport_tools.dart';
 
 export 'journal_tools.dart';
 export 'memory_tools.dart';
 export 'nav_tools.dart';
+export 'plan_tools.dart';
 export 'ryze_tool.dart';
 export 'sport_tools.dart';
 
@@ -23,6 +25,7 @@ RyzeToolRegistry buildRyzeToolRegistry() => RyzeToolRegistry([
       ...JournalTools.all,
       ...SportTools.all,
       ...NavTools.all,
+      ...PlanTools.all,
       ...MemoryTools.all,
     ]);
 
