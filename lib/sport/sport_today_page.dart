@@ -237,7 +237,17 @@ class _SportTodayPageState extends State<SportTodayPage> with GlobalStateListene
     final picked = await showRyzeSheet<SportSessionRow>(
       context,
       title: RyzeDates.full(day, lang),
-      subtitle: 'sport_sessions_n'.tr(lang).replaceAll('{n}', '${rows.length}'),
+      // Le compte dit ce qui a eu lieu sur ce qui était au programme : la
+      // feuille annonçait « 8 séances » sans dire que huit étaient faites.
+      subtitle: () {
+        final faites = rows.where((r) => r.done).length;
+        return faites == rows.length
+            ? 'sport_sessions_n'.tr(lang).replaceAll('{n}', '${rows.length}')
+            : 'sport_sessions_done_of'
+                .tr(lang)
+                .replaceAll('{done}', '$faites')
+                .replaceAll('{n}', '${rows.length}');
+      }(),
       builder: (sheet) => Column(
         mainAxisSize: MainAxisSize.min,
         children: [for (final r in rows) SessionRow(lang: lang, row: r, onTap: () => Navigator.pop(sheet, r), showDate: false)],
@@ -404,7 +414,7 @@ class _PlannedCard extends StatelessWidget {
               padding: EdgeInsets.fromLTRB(context.vw(4.1), context.vw(3.6), context.vw(2.6), context.vw(1)),
               child: Row(
                 children: [
-                  SessionRing(kind: kind, size: 16),
+                  SessionRing(kind: kind, size: 16, done: false),
                   SizedBox(width: context.vw(3.1)),
                   Expanded(
                     child: Column(

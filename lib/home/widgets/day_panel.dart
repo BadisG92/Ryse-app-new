@@ -116,8 +116,15 @@ class _SlotRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final done = lines.isNotEmpty && lines.every((l) => l.state == SlotState.done);
-    final planned = lines.isNotEmpty && !done;
+    // Un jour où huit séances sur neuf sont faites n'est pas un jour vide.
+    //
+    // Le créneau exigeait que tout soit fait pour se remplir : une seule
+    // séance restée prévue suffisait à laisser le rond creux, et la journée
+    // se lisait comme si rien n'avait eu lieu.
+    final faites = lines.where((l) => l.state == SlotState.done).length;
+    final done = lines.isNotEmpty && faites == lines.length;
+    final partial = faites > 0 && !done;
+    final planned = lines.isNotEmpty && faites == 0;
     final empty = lines.isEmpty;
 
     return Padding(
@@ -127,7 +134,7 @@ class _SlotRow extends StatelessWidget {
         children: [
           Padding(
             padding: EdgeInsets.only(top: context.vw(0.8)),
-            child: _Dot(done: done, planned: planned, sport: slot == WeekSlot.sport),
+            child: _Dot(done: done, partial: partial, planned: planned, sport: slot == WeekSlot.sport),
           ),
           SizedBox(width: context.vw(3.1)),
           Expanded(
@@ -183,26 +190,41 @@ class _SlotRow extends StatelessWidget {
 /// Le rond du créneau. La nourriture est un carré arrondi, le sport un
 /// anneau — la règle de forme du reste de l'application, tenue jusqu'ici.
 class _Dot extends StatelessWidget {
-  const _Dot({required this.done, required this.planned, required this.sport});
+  const _Dot({
+    required this.done,
+    required this.planned,
+    required this.sport,
+    this.partial = false,
+  });
 
   final bool done;
+
+  /// Une partie seulement est faite : la coche apparaît, le plein attend.
+  final bool partial;
+
   final bool planned;
   final bool sport;
 
   @override
   Widget build(BuildContext context) {
+    final marque = done || partial || planned;
+
     return AnimatedContainer(
       duration: RyzeDurations.fill,
       curve: RyzeCurves.out,
       width: 16,
       height: 16,
       decoration: BoxDecoration(
-        color: done ? RyzeColors.ink : (planned ? RyzeColors.surf : RyzeColors.paper),
+        color: done ? RyzeColors.ink : (marque ? RyzeColors.surf : RyzeColors.paper),
         shape: sport ? BoxShape.circle : BoxShape.rectangle,
         borderRadius: sport ? null : BorderRadius.circular(4),
-        border: Border.all(color: done || planned ? RyzeColors.ink : RyzeColors.idle, width: 2),
+        border: Border.all(color: marque ? RyzeColors.ink : RyzeColors.idle, width: 2),
       ),
-      child: done ? Icon(LucideIcons.check, size: 9, color: RyzeColors.surf) : null,
+      child: done
+          ? Icon(LucideIcons.check, size: 9, color: RyzeColors.surf)
+          : partial
+              ? Icon(LucideIcons.check, size: 9, color: RyzeColors.ink)
+              : null,
     );
   }
 }
@@ -217,14 +239,25 @@ class _LineText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Chaque ligne dit son propre état. Elle n'en disait aucun : une séance
+    // faite et une séance à faire s'écrivaient exactement pareil, et le jour
+    // entier paraissait en attente.
+    final done = line.state == SlotState.done;
+
     final row = Row(
       children: [
+        SizedBox(
+          width: context.vw(4.4),
+          child: done
+              ? Icon(LucideIcons.check, size: context.vw(3.4), color: RyzeColors.accInk)
+              : null,
+        ),
         Expanded(
           child: Text(
             line.detail.isEmpty ? line.title : '${line.title} · ${line.detail}',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: RyzeText.body(context, 3.1, color: RyzeColors.mute),
+            style: RyzeText.body(context, 3.1, color: done ? RyzeColors.ink : RyzeColors.mute),
           ),
         ),
         if (onTap != null) Icon(LucideIcons.chevronRight, size: context.vw(3.9), color: RyzeColors.mute2),

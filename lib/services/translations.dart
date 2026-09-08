@@ -11019,6 +11019,11 @@ class AppTranslations {
       'en': "1 session",
       'de': "1 Einheit",
     },
+    'sport_sessions_done_of': {
+      'fr': "{done} faites sur {n}",
+      'en': "{done} done of {n}",
+      'de': "{done} von {n} erledigt",
+    },
     'sport_sessions_n': {
       'fr': "{n} séances",
       'en': "{n} sessions",
@@ -11657,6 +11662,11 @@ class AppTranslations {
       'fr': "{n} km",
       'en': "{n} km",
       'de': "{n} km",
+    },
+    'sport_minutes': {
+      'fr': "{min} min prévues",
+      'en': "{min} min planned",
+      'de': "{min} Min. geplant",
     },
     'sport_min_kcal': {
       'fr': "{min} min · {kcal} kcal",

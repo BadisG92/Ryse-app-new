@@ -62,7 +62,7 @@ class SessionRow extends StatelessWidget {
           Positioned(
             left: -context.vw(8.2),
             top: context.vw(4.6),
-            child: SessionRing(kind: row.kind),
+            child: SessionRing(kind: row.kind, done: row.done),
           ),
           Pressable(
             onTap: onTap,
@@ -75,11 +75,24 @@ class SessionRow extends StatelessWidget {
               ),
               child: Row(
                 children: [
+                  Icon(
+                    iconForKind(row.kind),
+                    size: context.vw(4.4),
+                    color: row.done ? RyzeColors.mute : RyzeColors.mute2,
+                  ),
+                  SizedBox(width: context.vw(2.6)),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(row.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: RyzeText.body(context, 3.9, weight: FontWeight.w600)),
+                        Text(
+                          row.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: RyzeText.body(context, 3.9,
+                              weight: FontWeight.w600,
+                              color: row.done ? RyzeColors.ink : RyzeColors.mute),
+                        ),
                         SizedBox(height: context.vw(0.5)),
                         Text(
                           meta(context, lang, row, showDate: showDate),
@@ -109,7 +122,13 @@ class SessionRow extends StatelessWidget {
       final d = units.displayDistance(row.distanceKm!);
       parts.add('${NumberFormat('0.#', lang).format(d)} ${units.distanceUnit}');
     }
-    parts.add('sport_min_kcal'.tr(lang).replaceAll('{min}', '${row.minutes}').replaceAll('{kcal}', NumberFormat.decimalPattern(lang).format(row.kcal)));
+    // Une séance qui n'a pas eu lieu n'a brûlé aucune calorie : elle annonce
+    // sa durée prévue, et rien d'autre.
+    if (row.done) {
+      parts.add('sport_min_kcal'.tr(lang).replaceAll('{min}', '${row.minutes}').replaceAll('{kcal}', NumberFormat.decimalPattern(lang).format(row.kcal)));
+    } else if (row.minutes > 0) {
+      parts.add('sport_minutes'.tr(lang).replaceAll('{min}', '${row.minutes}'));
+    }
     return parts.join(' · ');
   }
 
@@ -123,25 +142,39 @@ class SessionRow extends StatelessWidget {
   }
 }
 
-/// L'anneau d'une séance faite : navy plein pour la musculation, ambre au
-/// bord pour le cardio.
+/// L'anneau d'une séance : plein quand elle a eu lieu, creux quand elle
+/// attend.
+///
+/// Il disait la famille — navy pour la musculation, ambre pour le cardio —
+/// alors que la même forme dit l'état partout ailleurs dans l'application.
+/// Deux écrans montraient le même mardi, l'un avec des ronds pleins et
+/// creux qui parlaient de muscu et de cardio, l'autre de fait et de prévu.
+/// La famille est passée dans l'icône, à côté du nom.
 class SessionRing extends StatelessWidget {
-  const SessionRing({super.key, required this.kind, this.size = 16});
+  const SessionRing({super.key, required this.kind, this.size = 16, this.done = true});
 
   final SportKind kind;
   final double size;
 
+  /// La séance a-t-elle eu lieu ?
+  final bool done;
+
   @override
   Widget build(BuildContext context) {
-    final strength = kind == SportKind.strength;
     return Container(
       width: size,
       height: size,
+      alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: strength ? RyzeColors.ink : RyzeColors.surf,
+        color: done ? RyzeColors.ink : RyzeColors.surf,
         shape: BoxShape.circle,
-        border: Border.all(color: strength ? RyzeColors.ink : RyzeColors.acc, width: strength ? 1 : 2.5),
+        border: Border.all(color: done ? RyzeColors.ink : RyzeColors.idle, width: 2),
       ),
+      child: done ? Icon(LucideIcons.check, size: size * 0.56, color: RyzeColors.surf) : null,
     );
   }
 }
+
+/// L'icône de la famille : haltère pour la musculation, course pour le reste.
+IconData iconForKind(SportKind kind) =>
+    kind == SportKind.strength ? LucideIcons.dumbbell : LucideIcons.footprints;

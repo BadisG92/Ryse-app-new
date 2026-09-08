@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/cardio_service.dart';
 import '../services/global_state_manager.dart';
 import '../services/sport_dashboard_service.dart';
+import '../models/weekly_planner_models.dart';
 import '../services/weekly_planner_service.dart';
 import 'sport_goal.dart';
 
@@ -25,6 +26,7 @@ class SportSessionRow {
     this.distanceKm,
     this.activityType,
     this.intensity,
+    this.done = true,
   });
 
   final String id;
@@ -36,6 +38,14 @@ class SportSessionRow {
   final double? distanceKm;
   final String? activityType;
   final String? intensity;
+
+  /// La séance a-t-elle eu lieu ?
+  ///
+  /// Ce qui vient de l'historique l'a eu par construction. Ce qui vient du
+  /// plan et qui n'est pas encore fait apparaît ici aussi : la journée du
+  /// Sport ne montrait que le réalisé, l'accueil que le prévu, et les deux
+  /// écrans annonçaient un nombre différent pour le même mardi.
+  final bool done;
 
   String get dayKey => SportData.dayKey(date);
 }
@@ -187,17 +197,64 @@ class SportData {
     }
   }
 
-  /// Les séances d'un jour.
+  /// Les séances d'un jour : celles qui ont eu lieu, et celles qui attendent.
   static Future<List<SportSessionRow>> onDay(DateTime day) async {
     try {
       final d = await SportDashboardService.getDaySessionDetails(dayKey(day));
       final rows = [
         for (final r in (d['musculation'] as List? ?? const [])) _strength(r as Map<String, dynamic>),
         for (final r in (d['cardio'] as List? ?? const [])) _cardio(r as Map<String, dynamic>),
-      ]..sort((a, b) => b.date.compareTo(a.date));
+      ];
+
+      rows.addAll(await _stillPlanned(day));
+      rows.sort((a, b) {
+        // Ce qui reste à faire descend en bas de la journée.
+        if (a.done != b.done) return a.done ? -1 : 1;
+        return b.date.compareTo(a.date);
+      });
       return rows;
     } catch (e) {
       debugPrint('SportData.onDay: $e');
+      return const [];
+    }
+  }
+
+  /// Ce que le plan porte ce jour-là et qui n'a pas encore eu lieu.
+  static Future<List<SportSessionRow>> _stillPlanned(DateTime day) async {
+    try {
+      final week = await WeeklyPlannerService.getWeekData();
+      final plan = week.getDayPlan(day);
+      if (plan == null) return const [];
+
+      final midi = DateTime(day.year, day.month, day.day, 12);
+
+      return [
+        for (final w in plan.workouts)
+          if (w.status != PlannedStatus.completed)
+            SportSessionRow(
+              id: w.id,
+              kind: SportKind.strength,
+              name: w.workoutName,
+              date: midi,
+              minutes: w.durationMinutes ?? 0,
+              kcal: 0,
+              done: false,
+            ),
+        for (final c in plan.cardios)
+          if (c.status != PlannedStatus.completed)
+            SportSessionRow(
+              id: c.id,
+              kind: SportKind.cardio,
+              name: c.cardioData?.activityName ?? '',
+              date: midi,
+              minutes: c.cardioData?.targetMinutes ?? 0,
+              kcal: 0,
+              activityType: c.cardioData?.activityKey,
+              done: false,
+            ),
+      ];
+    } catch (e) {
+      debugPrint('SportData._stillPlanned: $e');
       return const [];
     }
   }
