@@ -1457,9 +1457,18 @@ class DatabaseService {
           }
         }
       } else {
-        // Exercice générique
+        // Exercice générique. Quand l'identifiant ne se résout pas — un nom
+        // qui ne correspond à aucune ligne, une insertion refusée — on écrit
+        // quand même les séries, avec le seul nom.
+        //
+        // Cette ligne faisait `continue` : les séries de cet exercice
+        // partaient à la poubelle, en silence. La séance apparaissait bien
+        // dans l'historique, mais le détail de l'exercice ne trouvait rien et
+        // annonçait « aucune séance sur la période » alors qu'il venait d'y en
+        // avoir une. La lecture sait déjà retrouver un exercice par son nom
+        // seul ; perdre l'identifiant coûte une recherche plus faible, perdre
+        // la ligne coûte tout l'historique.
         exerciseId = await _ensureExerciseExistsAndGetId(we.exercise);
-        if (exerciseId == null) continue;
       }
       for (final set in we.sets.where((s) => s.reps > 0)) {
         rows.add({

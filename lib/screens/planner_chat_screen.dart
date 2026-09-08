@@ -896,6 +896,11 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
 
   /// L'en-tete de la conversation. C'etait une `AppBar` Material ; c'est
   /// maintenant celle du systeme, la meme que le chat du coach.
+  /// Le coach de ce mode : la conversation est soit des repas, soit des
+  /// seances, donc on sait toujours lequel des deux parle.
+  String get _coachFace =>
+      widget.initialMode == 'meals' ? RyzeAssets.nutriAvatar : RyzeAssets.sportAvatar;
+
   Widget _buildHeader(String langCode) {
     final title = widget.demoMode
         ? (widget.initialMode == 'meals'
@@ -912,7 +917,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
     return RyzeChatHeader(
       title: title,
       subtitle: subtitle,
-      avatar: widget.initialMode == 'meals' ? RyzeAssets.nutriAvatar : RyzeAssets.sportAvatar,
+      avatars: [_coachFace],
       onBack: widget.demoMode ? null : () => Navigator.pop(context),
     );
   }
@@ -1239,6 +1244,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
               text: message.text,
               mine: message.isUser,
               copyLabel: 'chat_copied'.tr(lang),
+              avatar: message.isUser ? null : _coachFace,
               footer: message.actions == null || message.actions!.isEmpty
                   ? null
                   : Wrap(
@@ -1305,7 +1311,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const RyzeThinking(),
+          RyzeThinking(avatar: _coachFace),
           Padding(
             padding: EdgeInsets.only(left: context.vw(7.7), bottom: context.vw(3.1)),
             child: Text(loadingText, style: RyzeText.body(context, 2.9, color: RyzeColors.mute2)),
@@ -2271,7 +2277,7 @@ class _MealDetailPage extends StatelessWidget {
             child: RyzeChatHeader(
               title: meal.dishName.isEmpty ? mealTypeName : meal.dishName,
               subtitle: mealTypeName,
-              avatar: RyzeAssets.nutriAvatar,
+              avatars: const [RyzeAssets.nutriAvatar],
               onBack: () => Navigator.pop(context),
             ),
           ),

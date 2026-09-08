@@ -490,12 +490,7 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> {
                     children: [
                       Row(
                         children: [
-                          Container(
-                            width: context.vw(7.7),
-                            height: context.vw(7.7),
-                            decoration: BoxDecoration(color: RyzeColors.acc, shape: BoxShape.circle),
-                            child: Center(child: RyzeMark(size: context.vw(4.4), color: RyzeColors.surf)),
-                          ),
+                          const CoachAvatar(RyzeAssets.sportAvatar, sizeVw: 7.7),
                           SizedBox(width: context.vw(2.6)),
                           Text('ai_workout_suggestions'.tr(lang), style: RyzeText.body(context, 3.4, weight: FontWeight.w600)),
                         ],

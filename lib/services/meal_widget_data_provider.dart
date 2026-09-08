@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../components/weekly_planner/week_strip.dart';
 import '../config/supabase_config.dart';
 import '../design/glass_row.dart';
+import '../design/tokens.dart';
 import '../home/home_slots.dart';
 import '../home/home_suggestion.dart';
 import 'global_state_manager.dart';
@@ -32,6 +33,7 @@ import 'weekly_planner_service.dart';
 /// slots   [{ slot, state, label, word, kind? }]   state: free | planned | done
 /// lines   [{ from, text }]        the coach's line from that hour on
 /// strings { … }                   every word, in the app's language
+/// theme   { key, ink, ink2, acc, accInk }   the palette the user chose
 /// ```
 /// Numbers travel raw and the widget formats them for `lang`, so a glass
 /// added from the widget itself can be redrawn without waking the app. The
@@ -172,10 +174,27 @@ class MealWidgetDataProvider {
       'slots': slots,
       'lines': lines,
       'strings': strings(lang),
+      'theme': theme(),
       // for a human reading the JSON; nothing parses it
       'updatedAt': date.toIso8601String(),
     };
   }
+
+  /// The palette in force, so a widget wears what the user chose in the
+  /// settings: the ink and its accent, as the tokens give them. Paper, the
+  /// greys and the idle fill do not move, in the app or on the widget.
+  static Map<String, String> theme() {
+    final p = RyzeColors.palette;
+    return {
+      'key': p.key,
+      'ink': _hex(p.ink),
+      'ink2': _hex(p.ink2),
+      'acc': _hex(p.acc),
+      'accInk': _hex(p.accInk),
+    };
+  }
+
+  static String _hex(Color c) => '#${(c.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0').toUpperCase()}';
 
   /// Every word the widgets show. The keys are the widget's, the values the
   /// app's, from the same dictionary as every screen.

@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../design/design.dart';
-import '../../services/ryze_dates.dart';
 import '../../services/translations.dart';
 import '../home_slots.dart';
+import 'day_panel.dart';
 
 /// La semaine du planificateur sur l'accueil : les sept jours et leurs
 /// marques, et « Planifier » à droite.
@@ -139,7 +139,7 @@ class _HomeWeekState extends State<HomeWeek> {
                 alignment: Alignment.topCenter,
                 child: open == null
                     ? const SizedBox(width: double.infinity)
-                    : _DayPanel(
+                    : DayPanel(
                         key: ValueKey(open),
                         lang: lang,
                         day: widget.days[open],
@@ -156,143 +156,3 @@ class _HomeWeekState extends State<HomeWeek> {
   }
 }
 
-/// Le jour ouvert : sa date en petit, puis une ligne par élément prévu, et une
-/// dernière rangée pour en ajouter un.
-class _DayPanel extends StatelessWidget {
-  const _DayPanel({
-    super.key,
-    required this.lang,
-    required this.day,
-    required this.lines,
-    required this.onLineTap,
-    required this.onPlan,
-  });
-
-  final String lang;
-  final DateTime day;
-  final List<PlannedLine> lines;
-  final ValueChanged<PlannedLine> onLineTap;
-  final VoidCallback onPlan;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.fromLTRB(context.vw(3.6), context.vw(1), context.vw(3.6), context.vw(2.6)),
-      decoration: BoxDecoration(border: Border(top: BorderSide(color: RyzeColors.line))),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(height: context.vw(2.6)),
-          Text(
-            RyzeDates.full(day, lang),
-            style: RyzeText.body(context, 3.1, weight: FontWeight.w600, color: RyzeColors.mute),
-          ),
-          SizedBox(height: context.vw(2.1)),
-          for (final line in lines) _Line(lang: lang, line: line, onTap: () => onLineTap(line)),
-          _Add(lang: lang, empty: lines.isEmpty, onTap: onPlan),
-        ],
-      ),
-    );
-  }
-}
-
-/// Une chose prévue : sa marque, son nom, son chiffre. Le sport porte un
-/// anneau, la nourriture un carré — la règle du reste de l'application.
-class _Line extends StatelessWidget {
-  const _Line({required this.lang, required this.line, required this.onTap});
-
-  final String lang;
-  final PlannedLine line;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final done = line.state == SlotState.done;
-    final sport = line.slot == WeekSlot.sport;
-    final size = context.vw(6.7);
-
-    return Pressable(
-      onTap: onTap,
-      child: Padding(
-        padding: EdgeInsets.symmetric(vertical: context.vw(1.8)),
-        child: Row(
-          children: [
-            Container(
-              width: size,
-              height: size,
-              decoration: BoxDecoration(
-                color: done ? RyzeColors.ink : RyzeColors.surf,
-                shape: sport ? BoxShape.circle : BoxShape.rectangle,
-                borderRadius: sport ? null : BorderRadius.circular(RyzeRadius.xs),
-                border: Border.all(color: RyzeColors.ink, width: 1.4),
-              ),
-              child: Icon(
-                done ? LucideIcons.check : iconForSlot(line.slot),
-                size: context.vw(3.6),
-                color: done ? RyzeColors.surf : RyzeColors.ink,
-              ),
-            ),
-            SizedBox(width: context.vw(2.6)),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    line.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: RyzeText.body(context, 3.4, weight: FontWeight.w600),
-                  ),
-                  Text(
-                    line.detail.isEmpty ? 'slot_${line.slot.name}'.tr(lang) : '${'slot_${line.slot.name}'.tr(lang)} · ${line.detail}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: RyzeText.body(context, 2.9, color: RyzeColors.mute),
-                  ),
-                ],
-              ),
-            ),
-            Icon(LucideIcons.chevronRight, size: context.vw(4.1), color: RyzeColors.mute2),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// La dernière rangée : planifier ce jour. Sur un jour vide c'est la seule, et
-/// elle dit alors qu'il n'y a rien plutôt que de laisser un blanc.
-class _Add extends StatelessWidget {
-  const _Add({required this.lang, required this.empty, required this.onTap});
-
-  final String lang;
-  final bool empty;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Pressable(
-      onTap: onTap,
-      child: Padding(
-        padding: EdgeInsets.symmetric(vertical: context.vw(2.1)),
-        child: Row(
-          children: [
-            SizedBox(
-              width: context.vw(6.7),
-              child: Icon(LucideIcons.plus, size: context.vw(4.1), color: RyzeColors.mute),
-            ),
-            SizedBox(width: context.vw(2.6)),
-            Expanded(
-              child: Text(
-                empty ? 'home_day_empty'.tr(lang) : 'home_plan'.tr(lang),
-                style: RyzeText.body(context, 3.2, weight: FontWeight.w600, color: RyzeColors.mute),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

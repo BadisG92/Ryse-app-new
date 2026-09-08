@@ -9889,6 +9889,11 @@ class AppTranslations {
       'en': 'Analyse yesterday',
       'de': 'Gestern analysieren',
     },
+    'home_slot_free': {
+      'fr': 'Rien de prévu',
+      'en': 'Nothing planned',
+      'de': 'Nichts geplant',
+    },
     'home_day_empty': {
       'fr': 'Rien de prévu — planifier ce jour',
       'en': 'Nothing planned — plan this day',

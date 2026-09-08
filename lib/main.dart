@@ -247,17 +247,6 @@ class AppInitializer extends StatefulWidget {
 }
 
 class _AppInitializerState extends State<AppInitializer> with TickerProviderStateMixin {
-  /// The finished logo holds for a beat before the screen gives way.
-  static const Duration _hold = Duration(milliseconds: 280);
-  static const Duration _exitDuration = Duration(milliseconds: 380);
-
-  /// The draw is never cut short — the app waits for it even when the session
-  /// is already restored. This is only a guard against a draw that never
-  /// reports back, so a launch can never hang on the logo.
-  static const Duration _drawGuard = Duration(seconds: 5);
-
-  late final AnimationController _exit;
-  final Completer<void> _drawn = Completer<void>();
   bool _showSplash = true;
 
   @override
@@ -267,7 +256,6 @@ class _AppInitializerState extends State<AppInitializer> with TickerProviderStat
     // Précharger la police Inter avant de démarrer les animations
     _preloadFont();
 
-    _exit = AnimationController(vsync: this, duration: _exitDuration);
     _initializeApp();
   }
 
@@ -289,34 +277,13 @@ class _AppInitializerState extends State<AppInitializer> with TickerProviderStat
     }
   }
 
-  @override
-  void dispose() {
-    _exit.dispose();
-    super.dispose();
-  }
-
   Future<void> _initializeApp() async {
-    // Initialiser l'auth en parallèle du dessin du logo
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final authFuture = _performAuthInitialization(authService);
-
-    // Le logo se dessine en entier, quoi qu'il arrive : l'auth n'écourte pas
-    // l'animation, et l'animation ne retarde pas l'auth.
-    await Future.wait([
-      authFuture,
-      _drawn.future.timeout(RyzeLogoDraw.duration + _drawGuard, onTimeout: () {}),
-    ]);
-
+    // The launch screen is only the navy ground: the logo is written by the
+    // app's own opening, over the screen the routing has already resolved.
+    // Drawing it here as well is what played two openings in a row.
+    await _performAuthInitialization(Provider.of<AuthService>(context, listen: false));
     if (!mounted) return;
-    await Future<void>.delayed(_hold);
-    if (!mounted) return;
-
-    await _exit.forward();
-    if (!mounted) return;
-
-    setState(() {
-      _showSplash = false;
-    });
+    setState(() => _showSplash = false);
   }
 
   Future<void> _performAuthInitialization(AuthService authService) async {
@@ -341,26 +308,16 @@ class _AppInitializerState extends State<AppInitializer> with TickerProviderStat
 
   @override
   Widget build(BuildContext context) {
-    if (_showSplash) {
-      return _buildAnimatedSplash();
-    }
+    // Navy while the auth wakes up, then the app — whose own opening writes
+    // the logo. Same ground on both sides, so nothing shows at the handover.
+    if (_showSplash) return _buildSplashGround(const SizedBox.shrink());
 
-    // Après le splash, afficher le contenu
     return Consumer<AuthService>(
       builder: (context, authService, child) {
-        if (authService.isLoading) {
-          // Le logo reste posé, sans rejouer le tracé.
-          return _buildSplashGround(RyzeLogoStill(height: _logoHeight(context)));
-        }
-
+        if (authService.isLoading) return _buildSplashGround(const SizedBox.shrink());
         return const RyzeApp();
       },
     );
-  }
-
-  double _logoHeight(BuildContext context) {
-    final size = MediaQuery.sizeOf(context);
-    return math.min(size.width * 0.54, size.height * 0.30);
   }
 
   /// Le sol du lancement : le navy de l'icône, donc aucune coupure entre
@@ -376,30 +333,6 @@ class _AppInitializerState extends State<AppInitializer> with TickerProviderStat
           ),
         ),
         child: Center(child: child),
-      ),
-    );
-  }
-
-  /// Le logo s'écrit : le point se pose, la courbe monte, puis le nom s'écrit
-  /// de gauche à droite dans les lettres de la marque. L'écran ne s'efface
-  /// qu'une fois le dessin terminé.
-  Widget _buildAnimatedSplash() {
-    return AnimatedBuilder(
-      animation: _exit,
-      builder: (context, child) {
-        final t = Curves.easeIn.transform(_exit.value);
-        return Opacity(
-          opacity: 1 - t,
-          child: Transform.scale(scale: 1 + 0.08 * t, child: child),
-        );
-      },
-      child: _buildSplashGround(
-        RyzeLogoDraw(
-          height: _logoHeight(context),
-          onComplete: () {
-            if (!_drawn.isCompleted) _drawn.complete();
-          },
-        ),
       ),
     );
   }

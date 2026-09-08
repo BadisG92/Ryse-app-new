@@ -94,6 +94,7 @@ class WidgetDeepLinkHandler {
       }
     }
 
+    if (!context.mounted) return;
     if (tool != null) {
       await FoodAddFlow.open(context, tool, mealName: mealName, onWritten: logged);
     } else {
@@ -110,7 +111,7 @@ class WidgetDeepLinkHandler {
       return;
     }
     final context = await _context();
-    if (context == null) return;
+    if (context == null || !context.mounted) return;
     final lang = _lang;
     if (!_signedIn) {
       RyzeUndo.failed(context, message: 'must_be_connected'.tr(lang));

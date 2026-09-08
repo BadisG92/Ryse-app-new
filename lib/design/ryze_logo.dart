@@ -37,6 +37,23 @@ class RyzeLogo {
   static const Rect markBounds = Rect.fromLTRB(95.6, 20.4, 232.5, 218.3);
   static const Rect wordBounds = Rect.fromLTRB(18, 236, 306.3, 355.3);
 
+  /// The thickest point of the rise, and the radius of the largest disc that
+  /// fits inside the shape there. Found by searching the outline for the point
+  /// furthest from any edge.
+  ///
+  /// It is the point to grow the mark from when it has to become the whole
+  /// screen: the centre of the mark's bounding box falls in the hollow between
+  /// the dot and the rise, so a mark blown up from there opens onto a gap. From
+  /// the arm, every point of a screen is inside the shape once the scale passes
+  /// `distance / armRadius`.
+  static const Offset _armAnchor = Offset(143.1, 136.7);
+  static const double _armRadius = 29.3;
+
+  static Offset armAnchor(Rect box) =>
+      Offset(box.left + _armAnchor.dx * box.width / 312, box.top + _armAnchor.dy * box.height / 367);
+
+  static double armRadius(Rect box) => _armRadius * box.width / 312;
+
   /// The dot, then the rise: a pen sets the dot down before sweeping the curve.
   static List<RyzeLogoPart> markParts(Rect box) {
     final double s = box.height / 367;

@@ -4,8 +4,10 @@ import 'dart:ui' show PathMetric;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../design/design.dart';
+import '../../services/haptic_service.dart';
 import 'ryze_logo_paths.dart';
 
 /// The opening of the app: the lockup is written stroke by stroke, floods
@@ -30,7 +32,7 @@ class RyzeIntro extends StatefulWidget {
 
 class _RyzeIntroState extends State<RyzeIntro> with SingleTickerProviderStateMixin {
   // The storyboard, in milliseconds.
-  static const int _total = 2040;
+  static const int _total = 2180;
   // The pen draws the mark and nothing else: it is the shape that becomes the
   // screen, and it used to get a third of the writing while the word — thrown
   // away three seconds later — took the rest.
@@ -41,26 +43,59 @@ class _RyzeIntroState extends State<RyzeIntro> with SingleTickerProviderStateMix
   // front so it reads as ink being laid down and not as a loading bar.
   static const _ink = (from: 1080, to: 1420);
   static const _hold = 1740; // the logo stands still, and waits for the app
-  static const _rush = (from: _hold, to: _total); // 300 ms, and we are inside
+  // 440 ms rather than the 300 measured on the reference: their mark is a
+  // checkmark opening on a light screen, ours is a long arm sweeping across a
+  // navy one, and at 300 it lands like a slap.
+  static const _rush = (from: _hold, to: _total);
+
+  /// Where the opening starts when the logo has already been written once on
+  /// this device: straight to the finished mark, no pen.
+  static final double _writtenAt = _flood.to / _total;
 
   late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: _total));
 
   bool _light = false; // the reveal owns the screen: status bar icons flip
   bool _done = false;
+  bool _tapped = false; // the punch is felt once
 
   @override
   void initState() {
     super.initState();
     _c.addListener(_tick);
+    _boot();
+  }
+
+  /// The logo is written the first time the app is opened on this device, and
+  /// only then: an opening you watch every morning stops being an opening. The
+  /// preference resolves in a few milliseconds, and the ground behind is the
+  /// same navy as the launch screen, so the wait shows nothing.
+  Future<void> _boot() async {
+    var written = false;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      written = prefs.getBool(_writtenKey) ?? false;
+      if (!written) await prefs.setBool(_writtenKey, true);
+    } catch (_) {
+      // no preferences, no shortcut: draw it
+    }
+    if (!mounted) return;
+    if (written) _c.value = _writtenAt;
     _c.forward();
   }
+
+  static const String _writtenKey = 'intro_logo_written';
 
   void _tick() {
     final ms = _c.value * _total;
     // the mark holds until the app knows where it is going
     if (ms >= _hold && !widget.ready && _c.isAnimating) _c.stop();
 
-    final light = ms >= _rush.from + 120;
+    if (!_tapped && ms >= _rush.from) {
+      _tapped = true;
+      HapticService.instance.lightImpact();
+    }
+
+    final light = ms >= _rush.from + 200;
     if (light != _light && mounted) setState(() => _light = light);
 
     if (!_done && _c.value >= 1) {
@@ -242,7 +277,15 @@ class _IntroPainter extends CustomPainter {
     // underneath, which is already built and waiting.
     final ground = Path()..addRect(Offset.zero & size);
     final opaque = window == null ? ground : Path.combine(PathOperation.difference, ground, window);
-    canvas.drawPath(opaque, Paint()..color = RyzeColors.ink);
+    canvas.drawPath(
+      opaque,
+      Paint()
+        ..shader = ui.Gradient.linear(
+          Offset.zero,
+          size.bottomRight(Offset.zero),
+          <Color>[RyzeColors.ink, RyzeColors.ink2],
+        ),
+    );
 
     // Inside the window, a white veil thins out as the mark grows: the screen
     // arrives through the white rather than after it.

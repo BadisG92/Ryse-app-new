@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import 'feedback.dart';
-import 'mark.dart';
 import 'motion.dart';
 import 'tokens.dart';
 import 'type.dart';
@@ -31,7 +30,7 @@ class RyzeChatHeader extends StatelessWidget {
     super.key,
     required this.title,
     this.subtitle,
-    required this.avatar,
+    required this.avatars,
     this.onBack,
     this.trailing,
   });
@@ -41,8 +40,9 @@ class RyzeChatHeader extends StatelessWidget {
   /// Une ligne muette sous le nom : « écrit… », un compte, une date.
   final String? subtitle;
 
-  /// Le buste du coach qui parle, `RyzeAssets.sportAvatar` ou `nutriAvatar`.
-  final String avatar;
+  /// Les bustes de qui parle. Deux quand la conversation couvre les deux
+  /// domaines — ils se chevauchent, comme sur la pilule de la barre du bas.
+  final List<String> avatars;
 
   /// Nul pour fermer par le geste système seulement.
   final VoidCallback? onBack;
@@ -74,7 +74,7 @@ class RyzeChatHeader extends StatelessWidget {
             ),
             SizedBox(width: context.vw(3.1)),
           ],
-          CoachAvatar(avatar, sizeVw: 9.2),
+          _Busts(avatars: avatars),
           SizedBox(width: context.vw(2.6)),
           Expanded(
             child: Column(
@@ -104,6 +104,35 @@ class RyzeChatHeader extends StatelessWidget {
   }
 }
 
+/// Un ou deux bustes. À deux, ils se chevauchent d'un tiers et le second
+/// passe devant — le même geste que la pilule de la barre du bas, pour que
+/// « les coachs » se reconnaisse d'un écran à l'autre.
+class _Busts extends StatelessWidget {
+  const _Busts({required this.avatars});
+
+  final List<String> avatars;
+
+  @override
+  Widget build(BuildContext context) {
+    if (avatars.isEmpty) return const SizedBox.shrink();
+    if (avatars.length == 1) return CoachAvatar(avatars.first, sizeVw: 9.2);
+    final overlap = context.vw(3.1);
+    return SizedBox(
+      width: context.vw(9.2) * avatars.length - overlap * (avatars.length - 1),
+      height: context.vw(9.2),
+      child: Stack(
+        children: [
+          for (var i = 0; i < avatars.length; i++)
+            Positioned(
+              left: i * (context.vw(9.2) - overlap),
+              child: CoachAvatar(avatars[i], sizeVw: 9.2),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 /// Un message. L'encre à droite pour l'utilisateur, le papier à gauche pour
 /// Ryze, avec sa marque au-dessus.
 ///
@@ -117,6 +146,7 @@ class RyzeBubble extends StatelessWidget {
     this.streaming = false,
     this.copyLabel,
     this.footer,
+    this.avatar,
   });
 
   final String text;
@@ -132,6 +162,15 @@ class RyzeBubble extends StatelessWidget {
 
   /// Ce qui se glisse sous le texte, dans la bulle : des boutons, une carte.
   final Widget? footer;
+
+  /// Le buste de qui parle, a gauche de la bulle. Nul quand on ne le sait
+  /// pas : le message ne porte pas son domaine, et un visage choisi au
+  /// hasard vaudrait moins que pas de visage du tout. L'alignement dit deja
+  /// qui parle, et l'en-tete montre les deux coachs.
+  ///
+  /// C'etait la marque de Ryze — un logo colle contre chaque bulle, ce qui
+  /// fait signature d'entreprise et non conversation.
+  final String? avatar;
 
   void _copy(BuildContext context) {
     if (copyLabel == null || text.trim().isEmpty) return;
@@ -199,10 +238,10 @@ class RyzeBubble extends StatelessWidget {
         mainAxisAlignment: mine ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (!mine) ...[
+          if (!mine && avatar != null) ...[
             Padding(
-              padding: EdgeInsets.only(top: context.vw(2.6), right: context.vw(2.1)),
-              child: RyzeMark(size: context.vw(4.4), color: RyzeColors.accInk),
+              padding: EdgeInsets.only(top: context.vw(1.5), right: context.vw(2.1)),
+              child: CoachAvatar(avatar!, sizeVw: 7.2),
             ),
           ],
           Flexible(
@@ -222,7 +261,10 @@ class RyzeBubble extends StatelessWidget {
 
 /// Ryze réfléchit : sa marque, puis les trois points, dans une bulle vide.
 class RyzeThinking extends StatelessWidget {
-  const RyzeThinking({super.key});
+  const RyzeThinking({super.key, this.avatar});
+
+  /// Le meme buste que les bulles de cette conversation, ou rien.
+  final String? avatar;
 
   @override
   Widget build(BuildContext context) {
@@ -231,10 +273,11 @@ class RyzeThinking extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: EdgeInsets.only(top: context.vw(2.6), right: context.vw(2.1)),
-            child: RyzeMark(size: context.vw(4.4), color: RyzeColors.accInk),
-          ),
+          if (avatar != null)
+            Padding(
+              padding: EdgeInsets.only(top: context.vw(1.5), right: context.vw(2.1)),
+              child: CoachAvatar(avatar!, sizeVw: 7.2),
+            ),
           Container(
             padding: EdgeInsets.symmetric(horizontal: context.vw(4.6), vertical: context.vw(3.6)),
             decoration: BoxDecoration(

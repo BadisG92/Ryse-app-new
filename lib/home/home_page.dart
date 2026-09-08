@@ -14,6 +14,7 @@ import '../screens/planner_chat_screen.dart';
 import '../services/global_state_manager.dart';
 import '../services/localization_service.dart';
 import '../services/translations.dart';
+import '../services/ryze_dates.dart';
 import '../services/water_service.dart';
 import '../services/weekly_planner_service.dart';
 import '../sport/sport_start.dart';
@@ -618,13 +619,11 @@ class _TopBar extends StatelessWidget {
   final int streak;
   final DateTime date;
 
-  static const _weekdays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-
   @override
   Widget build(BuildContext context) {
-    final weekday = _weekdays[date.weekday - 1].tr(lang);
-    final cap = '${weekday[0].toUpperCase()}${weekday.substring(1)}';
-    final day = 'home_date'.tr(lang).replaceAll('{d}', cap).replaceAll('{n}', '${date.day}');
+    // « Mardi 8 » ne dit pas grand-chose : Nutrition ecrit « Mardi 8 septembre »
+    // et l'accueil doit dire la meme date de la meme facon.
+    final day = RyzeDates.full(date, lang);
     final unit = (streak == 1 ? 'day' : 'days').tr(lang);
     return Row(
       children: [

@@ -318,7 +318,10 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
                 RyzeChatHeader(
                   title: 'coach_ryze'.tr(lang),
                   subtitle: _isSending ? 'coach_chat_typing'.tr(lang) : null,
-                  avatar: RyzeAssets.nutriAvatar,
+                  // Cette conversation couvre la nourriture et le sport :
+                  // les deux coachs sont dessus, comme sur la pilule de la
+                  // barre du bas.
+                  avatars: const [RyzeAssets.sportAvatar, RyzeAssets.nutriAvatar],
                   onBack: () => Navigator.pop(context),
                 ),
                 if (_showBilanBanner) _buildBilanBanner(),

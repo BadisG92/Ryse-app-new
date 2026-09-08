@@ -374,12 +374,7 @@ class DayAnalysisRow extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Container(
-              width: context.vw(9.7),
-              height: context.vw(9.7),
-              decoration: BoxDecoration(color: RyzeColors.acc, shape: BoxShape.circle),
-              child: Center(child: RyzeMark(size: context.vw(5.4), color: RyzeColors.surf)),
-            ),
+            const CoachAvatar(RyzeAssets.nutriAvatar, sizeVw: 9.7),
             SizedBox(width: context.vw(3.1)),
             Expanded(
               child: Column(
