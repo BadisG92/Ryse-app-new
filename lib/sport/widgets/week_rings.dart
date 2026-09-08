@@ -64,7 +64,11 @@ class WeekBlock extends StatelessWidget {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final time = minutes >= 60 ? '${minutes ~/ 60} h ${(minutes % 60).toString().padLeft(2, '0')}' : '$minutes min';
-    final count = sessions == 1 ? 'sport_session_one'.tr(lang) : 'sport_sessions_n'.tr(lang).replaceAll('{n}', '${loaded ? sessions : 0}');
+    // Tant que rien n'est connu, le compte est un tiret : un 0 se lirait comme
+    // une semaine vide, et ce serait faux avant meme d'avoir regarde.
+    final shown = loaded ? '$sessions' : '—';
+    final one = loaded && sessions == 1;
+    final count = one ? 'sport_session_one'.tr(lang) : 'sport_sessions_n'.tr(lang).replaceAll('{n}', shown);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -74,18 +78,18 @@ class WeekBlock extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            RollingNumber('${loaded ? sessions : 0}', style: RyzeText.display(context, 13, weight: FontWeight.w600).copyWith(height: 1)),
+            RollingNumber(shown, style: RyzeText.display(context, 13, weight: FontWeight.w600).copyWith(height: 1)),
             SizedBox(width: context.vw(2.1)),
             Padding(
               padding: EdgeInsets.only(bottom: context.vw(1.5)),
               child: Text(
-                sessions == 1 ? count : count.replaceFirst('${loaded ? sessions : 0} ', ''),
+                one ? count : count.replaceFirst('$shown ', ''),
                 style: RyzeText.body(context, 3.9, color: RyzeColors.mute),
               ),
             ),
           ],
         ),
-        if (sessions > 0) ...[
+        if (loaded && sessions > 0) ...[
           SizedBox(height: context.vw(0.5)),
           Text(
             [
@@ -127,13 +131,17 @@ class WeekBlock extends StatelessWidget {
                   Text('sport_set_goal'.tr(lang), style: RyzeText.body(context, 3.4, weight: FontWeight.w600, color: RyzeColors.ink)),
                 ] else ...[
                   Text(
-                    'sport_goal_progress'.tr(lang).replaceAll('{done}', '$sessions').replaceAll('{goal}', '$goal'),
+                    'sport_goal_progress'.tr(lang).replaceAll('{done}', shown).replaceAll('{goal}', '$goal'),
                     style: RyzeText.body(context, 3.4, weight: FontWeight.w600).copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
                   ),
-                  Text(
-                    ' · ${sessions >= goal! ? 'sport_goal_met_short'.tr(lang) : 'sport_goal_left'.tr(lang).replaceAll('{n}', '${goal! - sessions}')}',
-                    style: RyzeText.body(context, 3.4, color: sessions >= goal! ? RyzeColors.accInk : RyzeColors.mute),
-                  ),
+                  // Ce qu'il reste a faire ne se dit qu'une fois le compte connu :
+                  // sinon la semaine annoncerait son objectif entier a chaque
+                  // ouverture.
+                  if (loaded)
+                    Text(
+                      ' · ${sessions >= goal! ? 'sport_goal_met_short'.tr(lang) : 'sport_goal_left'.tr(lang).replaceAll('{n}', '${goal! - sessions}')}',
+                      style: RyzeText.body(context, 3.4, color: sessions >= goal! ? RyzeColors.accInk : RyzeColors.mute),
+                    ),
                   SizedBox(width: context.vw(2.1)),
                   Text('sport_goal_edit'.tr(lang), style: RyzeText.body(context, 3.1, color: RyzeColors.mute2)),
                 ],

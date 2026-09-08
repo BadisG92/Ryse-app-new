@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
@@ -49,6 +51,10 @@ class _SportTodayPageState extends State<SportTodayPage> with GlobalStateListene
   List<WorkoutProgram> _redo = const [];
   bool _loaded = false;
 
+  /// Vrai des qu'il y a des chiffres a montrer : ceux gardes sur le telephone
+  /// ou ceux du reseau. Faux, la semaine s'ecrit d'un tiret.
+  bool _known = false;
+
   final ScrollController _scroll = ScrollController();
 
   /// Lundi → dimanche de cette semaine.
@@ -61,7 +67,21 @@ class _SportTodayPageState extends State<SportTodayPage> with GlobalStateListene
   @override
   void initState() {
     super.initState();
+    _restore();
     _load();
+  }
+
+  /// Ce que le telephone sait deja, sans reseau : la semaine de la derniere
+  /// lecture et le brouillon de seance. La page s'ouvre pleine, puis se
+  /// corrige quand le reseau repond.
+  Future<void> _restore() async {
+    final snap = await SportData.lastKnown();
+    if (!mounted || snap == null || _loaded) return;
+    setState(() {
+      _week = snap.week;
+      _kinds = snap.kinds;
+      _known = true;
+    });
   }
 
   @override
@@ -84,30 +104,48 @@ class _SportTodayPageState extends State<SportTodayPage> with GlobalStateListene
     }
   }
 
+  /// Ce qui dessine la page. Les programmes en sont sortis : ils ne servent
+  /// qu'aux puces « Refaire » de la feuille de depart, et leurs six secondes
+  /// d'attente etaient dans le chemin de la premiere image.
   Future<void> _load() async {
     final now = DateTime.now();
     final days = _days;
+    unawaited(_loadRedo());
     final results = await Future.wait<Object?>([
       SportData.week(),
       SportData.kinds(from: days.first, to: days.last),
       SportData.onDay(now),
       WorkoutSessionStore.instance.loadDraft(),
       WeeklyPlannerService.getWeekData().then<WeeklyPlannerData?>((w) => w).catchError((_) => null),
-      DatabaseService.getWorkoutTemplates(language: LocalizationService.instance.currentLanguageCode, includePublic: false)
-          .timeout(const Duration(seconds: 6))
-          .then<List<WorkoutProgram>>((l) => l)
-          .catchError((_) => <WorkoutProgram>[]),
     ]);
     if (!mounted) return;
+    final week = results[0] as SportWeek;
+    final kinds = results[1] as Map<String, Set<SportKind>>;
     setState(() {
-      _week = results[0] as SportWeek;
-      _kinds = results[1] as Map<String, Set<SportKind>>;
+      _week = week;
+      _kinds = kinds;
       _today = results[2] as List<SportSessionRow>;
       _draft = results[3] as SessionDraft?;
       _plan = results[4] as WeeklyPlannerData?;
-      _redo = (results[5] as List<WorkoutProgram>).where((p) => p.isCustom).take(3).toList();
       _loaded = true;
+      _known = true;
     });
+    unawaited(SportData.remember(week, kinds));
+  }
+
+  /// Les programmes de l'utilisateur, pour « Refaire ». Sans eux la feuille
+  /// de depart s'ouvre quand meme, avec les facons de commencer.
+  Future<void> _loadRedo() async {
+    try {
+      final all = await DatabaseService.getWorkoutTemplates(
+        language: LocalizationService.instance.currentLanguageCode,
+        includePublic: false,
+      ).timeout(const Duration(seconds: 6));
+      if (!mounted) return;
+      setState(() => _redo = all.where((p) => p.isCustom).take(3).toList());
+    } catch (e) {
+      debugPrint('SportTodayPage._loadRedo: $e');
+    }
   }
 
   String get _lang => LocalizationService.instance.currentLanguageCode;
@@ -256,7 +294,7 @@ class _SportTodayPageState extends State<SportTodayPage> with GlobalStateListene
                     kcal: w.kcal,
                     streak: w.streak,
                     goal: goal,
-                    loaded: _loaded,
+                    loaded: _known,
                     onDay: _openDay,
                     onGoal: _goal,
                     onPlan: _openPlanner,

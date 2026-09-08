@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../services/cardio_service.dart';
@@ -51,6 +54,15 @@ class SportWeek {
   static const empty = SportWeek(sessions: 0, minutes: 0, kcal: 0, streak: 0, goal: null);
 }
 
+/// Ce que l'onglet savait la derniere fois : de quoi dessiner la semaine
+/// avant le premier aller-retour.
+class SportSnapshot {
+  const SportSnapshot({required this.week, required this.kinds});
+
+  final SportWeek week;
+  final Map<String, Set<SportKind>> kinds;
+}
+
 /// Les lectures de l'onglet Sport, sur les deux tables vivantes :
 /// `workout_session_summaries` pour la musculation, `cardio_sessions` pour
 /// tout le reste (le HIIT y compris). Rien n'est calculé ici qui ne vienne
@@ -61,7 +73,75 @@ class SportData {
 
   static SupabaseClient get _client => Supabase.instance.client;
 
+  /// Le lundi de la semaine en cours.
+  static DateTime monday() {
+    final n = DateTime.now();
+    return DateTime(n.year, n.month, n.day - (n.weekday - 1));
+  }
+
   static String dayKey(DateTime d) => '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  // ------------------------------------------------------ ce qu'on sait deja
+
+  static const String _weekKey = 'sport_week_v1';
+
+  /// La semaine et les sept anneaux, gardes sur le telephone.
+  ///
+  /// Le tableau de bord ne vit qu'en memoire : apres un lancement, la premiere
+  /// ouverture de l'onglet attendait le reseau et montrait des zeros en
+  /// attendant, la ou Nutrition ouvre sur l'etat du jour deja restaure. Ce qui
+  /// a ete lu une fois est ecrit ici et relu avant la premiere image. Date du
+  /// lundi : une semaine finie ne se montre pas a la place de celle qui
+  /// commence.
+  static Future<void> remember(SportWeek w, Map<String, Set<SportKind>> kinds) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+        _weekKey,
+        jsonEncode({
+          'monday': dayKey(monday()),
+          'sessions': w.sessions,
+          'minutes': w.minutes,
+          'kcal': w.kcal,
+          'streak': w.streak,
+          'kinds': {for (final e in kinds.entries) e.key: [for (final k in e.value) k.name]},
+        }),
+      );
+    } catch (e) {
+      debugPrint('SportData.remember: $e');
+    }
+  }
+
+  /// Ce qui a ete garde, si c'est bien de cette semaine. Nul sinon.
+  static Future<SportSnapshot?> lastKnown() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_weekKey);
+      if (raw == null) return null;
+      final m = jsonDecode(raw) as Map<String, dynamic>;
+      if (m['monday'] != dayKey(monday())) return null;
+      final goal = await SportGoal.load();
+      return SportSnapshot(
+        week: SportWeek(
+          sessions: m['sessions'] as int? ?? 0,
+          minutes: m['minutes'] as int? ?? 0,
+          kcal: m['kcal'] as int? ?? 0,
+          streak: m['streak'] as int? ?? 0,
+          goal: goal,
+        ),
+        kinds: {
+          for (final e in (m['kinds'] as Map<String, dynamic>? ?? const {}).entries)
+            e.key: {
+              for (final k in (e.value as List? ?? const []))
+                SportKind.values.firstWhere((v) => v.name == k, orElse: () => SportKind.strength),
+            },
+        },
+      );
+    } catch (e) {
+      debugPrint('SportData.lastKnown: $e');
+      return null;
+    }
+  }
 
   static Future<SportWeek> week() async {
     final goal = await SportGoal.load();
