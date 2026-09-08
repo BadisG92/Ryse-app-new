@@ -1,5 +1,27 @@
 # 🔒 Guide de Sécurité - Clés API
 
+## 🛡️ Ryze passe par le serveur
+
+La conversation et le planificateur peuvent appeler Gemini **sans clé dans
+l'application**. La fonction `supabase/functions/ryze-ai` la détient, vérifie
+le jeton de la session et l'abonnement, relaie le flux, et note les jetons
+consommés dans `ryze_ai_usage`.
+
+- **Interrupteur** : `FeatureFlags.RYZE_VIA_EDGE` dans
+  `lib/core/config/feature_flags.dart`. À `false`, l'application appelle Google
+  directement avec la clé compilée — ce qui marche, mais expose la clé à qui
+  sait ouvrir un binaire.
+- **Secret serveur** : `GEMINI_API_KEY` dans les secrets du projet Supabase
+  (déjà posé pour `generate-ai-notifications`).
+- **Codes de retour** : 401 sans session valide, 402 sans abonnement, 400 sur
+  un modèle ou une surface inconnus.
+- **Reste à faire** : les services ponctuels (analyse de photo, code-barres,
+  génération d'exercices) appellent encore Google en direct. Tant qu'un seul
+  d'entre eux le fait, `EnvConfig.geminiApiKey` reste dans le binaire.
+
+---
+
+
 ## ⚠️ PROBLÈME : Clé API Gemini Leakée
 
 **Erreur reçue** :

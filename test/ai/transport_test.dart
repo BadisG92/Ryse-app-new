@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:ryze_app/ai/ryze_persona.dart';
 import 'package:ryze_app/ai/ryze_transport.dart';
 
 /// La lecture du flux.
@@ -178,6 +179,46 @@ void main() {
       const b = RyzeUsage(promptTokens: 300, outputTokens: 50);
       expect((a + b).promptTokens, 400);
       expect((a + b).outputTokens, 70);
+    });
+  });
+
+  group('Ce qui part dans la requête', () {
+    final payload = {
+      'contents': [
+        {'role': 'user', 'parts': [{'text': 'salut'}]}
+      ],
+    };
+
+    test('vers Google, le corps Gemini tel quel', () {
+      final body = RyzeTransport.bodyFor(
+        RyzeTransportMode.direct,
+        payload,
+        model: 'gemini-3.1-flash-lite',
+        surface: RyzeSurface.coach,
+      );
+      expect(body, same(payload));
+      expect(body.containsKey('model'), isFalse);
+    });
+
+    test('vers la fonction serveur, enveloppé avec le modèle et la surface', () {
+      // La fonction choisit l'adresse avec le modèle et range la
+      // consommation par surface ; le corps du modèle n'est pas touché.
+      final body = RyzeTransport.bodyFor(
+        RyzeTransportMode.edge,
+        payload,
+        model: 'gemini-3.1-flash-lite',
+        surface: RyzeSurface.planner,
+      );
+      expect(body['model'], 'gemini-3.1-flash-lite');
+      expect(body['surface'], 'planner');
+      expect(body['payload'], same(payload));
+    });
+
+    test("la surface se nomme comme la fonction l'attend", () {
+      // La fonction n'accepte que ces deux-là ; un nom qui change ici ferait
+      // une erreur 400 à chaque message.
+      expect(RyzeSurface.coach.name, 'coach');
+      expect(RyzeSurface.planner.name, 'planner');
     });
   });
 

@@ -218,7 +218,7 @@ class CoachChatService {
     // parle de la semaine en cours, comme l'accueil.
     PlannerAIService.setPlanningWindow(getCurrentWeekStart());
 
-    _agent ??= RyzeAgent(config: RyzeGenerationConfig.coach)
+    _agent ??= RyzeAgent(config: RyzeGenerationConfig.coach, surface: RyzeSurface.coach)
       ..systemInstructionBuilder = _buildSystemInstruction
       ..tools = ryzeTools.declarationsFor(RyzeSurface.coach);
 

@@ -3,8 +3,12 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/gemini_config.dart';
+import '../config/supabase_config.dart';
+import '../core/config/feature_flags.dart';
+import 'ryze_persona.dart';
 
 /// Ce qu'un tour de génération a coûté.
 class RyzeUsage {
@@ -63,7 +67,7 @@ enum RyzeTransportMode {
   /// Directement vers Google, avec la clé compilée dans l'application.
   direct,
 
-  /// Par la fonction serveur, qui détient la clé. Réservé au dernier lot.
+  /// Par la fonction serveur, qui détient la clé.
   edge,
 }
 
@@ -85,10 +89,16 @@ enum RyzeTransportMode {
 class RyzeTransport {
   RyzeTransport({
     http.Client? client,
-    this.mode = RyzeTransportMode.direct,
-  }) : _client = client ?? http.Client();
+    RyzeTransportMode? mode,
+  })  : _client = client ?? http.Client(),
+        mode = mode ??
+            (FeatureFlags.RYZE_VIA_EDGE
+                ? RyzeTransportMode.edge
+                : RyzeTransportMode.direct);
 
   final http.Client _client;
+
+  /// Par où sort cette instance. Par défaut, ce que dit le drapeau.
   final RyzeTransportMode mode;
 
   /// Sans premier octet passé ce délai, la requête est perdue.
@@ -105,12 +115,16 @@ class RyzeTransport {
   ///
   /// [payload] est le corps Gemini complet : `contents`, `systemInstruction`,
   /// `tools`, `generationConfig`, `safetySettings`.
-  Stream<RyzeChunk> stream(Map<String, dynamic> payload, {String? model}) async* {
+  Stream<RyzeChunk> stream(
+    Map<String, dynamic> payload, {
+    String? model,
+    RyzeSurface surface = RyzeSurface.coach,
+  }) async* {
     var attempt = 0;
 
     while (true) {
       try {
-        yield* _once(payload, model: model);
+        yield* _once(payload, model: model, surface: surface);
         return;
       } on RyzeTransportException catch (e) {
         attempt++;
@@ -123,10 +137,16 @@ class RyzeTransport {
     }
   }
 
-  Stream<RyzeChunk> _once(Map<String, dynamic> payload, {String? model}) async* {
-    final request = http.Request('POST', _uri(model))
+  Stream<RyzeChunk> _once(
+    Map<String, dynamic> payload, {
+    String? model,
+    required RyzeSurface surface,
+  }) async* {
+    final name = model ?? GeminiConfig.modelName;
+
+    final request = http.Request('POST', _uri(name))
       ..headers.addAll(_headers())
-      ..body = jsonEncode(payload);
+      ..body = jsonEncode(bodyFor(mode, payload, model: name, surface: surface));
 
     final http.StreamedResponse response;
     try {
@@ -163,21 +183,53 @@ class RyzeTransport {
     }
   }
 
-  Uri _uri(String? model) {
-    final name = model ?? GeminiConfig.modelName;
+  /// Ce qui part dans la requête.
+  ///
+  /// Vers Google, c'est le corps Gemini tel quel. Vers la fonction serveur,
+  /// il est enveloppé : elle a besoin du modèle pour choisir l'adresse et de
+  /// la surface pour ranger la consommation. Le corps lui-même n'est pas
+  /// touché — ce qui parle au modèle reste écrit dans l'application.
+  @visibleForTesting
+  static Map<String, dynamic> bodyFor(
+    RyzeTransportMode mode,
+    Map<String, dynamic> payload, {
+    required String model,
+    required RyzeSurface surface,
+  }) =>
+      mode == RyzeTransportMode.edge
+          ? {'model': model, 'surface': surface.name, 'payload': payload}
+          : payload;
+
+  Uri _uri(String name) {
+    if (mode == RyzeTransportMode.edge) {
+      return Uri.parse('${SupabaseConfig.supabaseUrl}/functions/v1/ryze-ai');
+    }
     return Uri.parse(
       'https://generativelanguage.googleapis.com/v1beta/models/'
       '$name:streamGenerateContent?alt=sse',
     );
   }
 
-  Map<String, String> _headers() => {
+  Map<String, String> _headers() {
+    if (mode == RyzeTransportMode.edge) {
+      // Plus de clé Gemini ici : la fonction serveur la détient, et c'est le
+      // jeton de la session qui dit qui appelle.
+      final token = Supabase.instance.client.auth.currentSession?.accessToken;
+      return {
         'Content-Type': 'application/json',
-        // La clé voyage dans un en-tête plutôt que dans l'adresse : une URL
-        // se retrouve dans les journaux, les rapports de plantage et les
-        // traces réseau, un en-tête beaucoup moins.
-        'x-goog-api-key': GeminiConfig.geminiApiKey,
+        'apikey': SupabaseConfig.supabaseAnonKey,
+        if (token != null) 'Authorization': 'Bearer $token',
       };
+    }
+
+    return {
+      'Content-Type': 'application/json',
+      // La clé voyage dans un en-tête plutôt que dans l'adresse : une URL
+      // se retrouve dans les journaux, les rapports de plantage et les
+      // traces réseau, un en-tête beaucoup moins.
+      'x-goog-api-key': GeminiConfig.geminiApiKey,
+    };
+  }
 
   /// Lit un morceau de flux.
   ///

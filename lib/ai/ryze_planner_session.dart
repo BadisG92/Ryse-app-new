@@ -27,7 +27,7 @@ import 'ryze_tools/ryze_tools.dart';
 class RyzePlannerSession {
   RyzePlannerSession({required this.mode, required this.weekStart}) {
     PlannerAIService.setPlanningWindow(weekStart);
-    _agent = RyzeAgent(config: RyzeGenerationConfig.planner)
+    _agent = RyzeAgent(config: RyzeGenerationConfig.planner, surface: RyzeSurface.planner)
       ..systemInstructionBuilder = _buildSystemInstruction
       ..tools = ryzeTools.declarationsFor(RyzeSurface.planner);
   }

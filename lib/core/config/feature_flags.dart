@@ -35,6 +35,13 @@ class FeatureFlags {
   static const bool SIMULATE_NETWORK_DELAY = false;
   static const int NETWORK_DELAY_MS = 2000;
 
+  // 🔐 CLÉ GEMINI CÔTÉ SERVEUR
+  // Les requêtes de Ryze passent par la fonction `ryze-ai`, qui détient la
+  // clé, vérifie l'abonnement et compte les jetons. Quand c'est faux,
+  // l'application appelle Google directement avec la clé compilée — ce qui
+  // marche, mais expose la clé à qui sait ouvrir un binaire.
+  static const bool RYZE_VIA_EDGE = false;
+
   // 📊 MIGRATION FLAGS
   // Utiliser les anciens services en fallback si les nouveaux échouent
   static const bool USE_LEGACY_FALLBACK = true;
@@ -65,6 +72,8 @@ class FeatureFlags {
         return USE_LEGACY_FALLBACK;
       case 'pending_indicators':
         return SHOW_PENDING_INDICATORS;
+      case 'ryze_via_edge':
+        return RYZE_VIA_EDGE;
       default:
         return false;
     }
@@ -100,5 +109,6 @@ class FeatureFlags {
     debugPrint('   ⏱️ Network delay: $SIMULATE_NETWORK_DELAY (${NETWORK_DELAY_MS}ms)');
     debugPrint('   🔄 Legacy fallback: $USE_LEGACY_FALLBACK');
     debugPrint('   ⏳ Pending indicators: $SHOW_PENDING_INDICATORS');
+    debugPrint('   🔐 Ryze par la fonction serveur: $RYZE_VIA_EDGE');
   }
 }

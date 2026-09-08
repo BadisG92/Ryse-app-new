@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../config/gemini_config.dart';
+import 'ryze_persona.dart';
 import 'ryze_transport.dart';
 
 /// Ce qui sort de l'agent pendant qu'il répond.
@@ -93,11 +94,16 @@ class RyzeAgent {
     required this.config,
     RyzeTransport? transport,
     this.model,
+    this.surface = RyzeSurface.coach,
   }) : _transport = transport ?? RyzeTransport();
 
   final RyzeGenerationConfig config;
   final RyzeTransport _transport;
   final String? model;
+
+  /// D'où vient la demande. Le transport le dit à la fonction serveur, qui
+  /// range la consommation par surface.
+  final RyzeSurface surface;
 
   /// L'historique, au format Gemini.
   final List<Map<String, dynamic>> _history = [];
@@ -193,7 +199,7 @@ class RyzeAgent {
       try {
         final payload = await _payload();
 
-        await for (final chunk in _transport.stream(payload, model: model)) {
+        await for (final chunk in _transport.stream(payload, model: model, surface: surface)) {
           if (chunk.usage != null) _sessionUsage = _sessionUsage + chunk.usage!;
           if (chunk.finishReason == 'MAX_TOKENS') truncated = true;
 
