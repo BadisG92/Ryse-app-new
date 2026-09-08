@@ -31,6 +31,35 @@ class MLKitBarcodeService {
 
   /// Détecter un code-barres dans une image (path)
   /// Retourne le code-barres (String) ou null si aucun trouvé
+  /// Le code retenu quand l'image en contient plusieurs.
+  ///
+  /// Un cadre contient souvent plus d'un code : celui du produit, celui d'un
+  /// colis derriere, une carte de fidelite. On garde celui dont le centre est le
+  /// plus pres du milieu du cadre — c'est la que l'utilisateur vise — et on
+  /// ecarte ceux dont la somme de controle ne tombe pas juste : ce sont des
+  /// lectures partielles, qui n'auraient rien donne en base.
+  static String? pick(List<Barcode> codes, {double? width, double? height}) {
+    String? best;
+    var bestDistance = double.infinity;
+    for (final barcode in codes) {
+      final value = barcode.rawValue?.trim();
+      if (value == null || value.length < 8) continue;
+      if (!isValid(value, barcode.format)) continue;
+      var distance = 0.0;
+      if (width != null && height != null && width > 0 && height > 0) {
+        final box = barcode.boundingBox;
+        final dx = box.center.dx - width / 2;
+        final dy = box.center.dy - height / 2;
+        distance = dx * dx + dy * dy;
+      }
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        best = value;
+      }
+    }
+    return best;
+  }
+
   static Future<String?> detectBarcode(String imagePath) async {
     try {
       if (kDebugMode) debugPrint('🔍 [ML KIT] Début détection code-barres...');
@@ -46,27 +75,15 @@ class MLKitBarcodeService {
         return null;
       }
 
-      // Prendre le premier code-barres trouvé
-      final barcode = barcodes.first;
-      final String? code = barcode.rawValue;
-
-      if (code != null) {
-        if (kDebugMode) {
-          debugPrint('✅ [ML KIT] Code-barres trouvé: $code (type: ${barcode.format.name})');
-        }
-
-        // Validation optionnelle du checksum
-        if (_isValidBarcode(code, barcode.format)) {
-          if (kDebugMode) debugPrint('✓ Checksum valide');
-        } else {
-          if (kDebugMode) debugPrint('⚠️ Checksum invalide (retourné quand même)');
-          // Retourner quand même, OpenFoodFacts validera
-        }
-
-        return code;
+      // Le plus central des codes valides, jamais simplement le premier : une
+      // photo de rayon en attrape volontiers deux.
+      final String? code = pick(barcodes);
+      if (code == null) {
+        if (kDebugMode) debugPrint('⚠️ [ML KIT] ${barcodes.length} code(s), aucun valide');
+        return null;
       }
-
-      return null;
+      if (kDebugMode) debugPrint('✅ [ML KIT] Code-barres trouvé : $code');
+      return code;
 
     } catch (e) {
       if (kDebugMode) debugPrint('❌ [ML KIT] Erreur détection: $e');
@@ -75,7 +92,7 @@ class MLKitBarcodeService {
   }
 
   /// Valider le checksum d'un code-barres
-  static bool _isValidBarcode(String code, BarcodeFormat format) {
+  static bool isValid(String code, BarcodeFormat format) {
     switch (format) {
       case BarcodeFormat.ean13:
         return _validateEAN13Checksum(code);

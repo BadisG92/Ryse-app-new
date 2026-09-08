@@ -77,9 +77,13 @@ class BarcodeStreamService {
           }
           _converted = true;
           final codes = await MLKitBarcodeService.scanner.processImage(input);
-          final code = codes
-              .map((b) => b.rawValue)
-              .firstWhere((value) => value != null && value.trim().length >= 8, orElse: () => null);
+          // Le plus central, et seulement si sa somme de controle tombe juste :
+          // une trame attrape parfois un code voisin, ou une moitie de code.
+          final code = MLKitBarcodeService.pick(
+            codes,
+            width: image.width.toDouble(),
+            height: image.height.toDouble(),
+          );
           if (code != null && !_stopped) {
             _stopped = true;
             // L'arrêt est repoussé hors de cette trame : couper la diffusion
@@ -87,7 +91,7 @@ class BarcodeStreamService {
             // connu de ce couple caméra + ML Kit.
             scheduleMicrotask(() async {
               await stop();
-              onCode(code.trim());
+              onCode(code);
             });
           } else {
             _misses++;
