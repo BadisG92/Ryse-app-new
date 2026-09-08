@@ -381,7 +381,7 @@ class CoachChatService {
   /// L'utilisateur a refusé une carte.
   void cancelPending(String id) {
     final pending = _pending.remove(id);
-    if (pending != null) _agent?.note('refusé : ${pending.title}');
+    if (pending != null) _agent?.note('cancelled by the user: ${pending.title}');
   }
 
   /// Écrit la bulle de texte accumulée, s'il y en a une.

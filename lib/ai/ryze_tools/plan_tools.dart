@@ -17,9 +17,9 @@ import 'ryze_tool.dart';
 /// Rien n'est réécrit ici. Les exécuteurs du planificateur sont bons et
 /// éprouvés — les calories y sont recalculées depuis les macros, les exercices
 /// ancrés sur la base, les jours vérifiés — et ce fichier ne fait que les
-/// brancher sur le registre partagé. C'est aussi la première moitié de la
-/// fusion : au lot suivant, l'écran du planificateur lira ses déclarations
-/// ici, et ces outils gagneront simplement `RyzeSurface.planner`.
+/// brancher sur le registre partagé. Les déclarations qui vivaient en double,
+/// une copie par moteur, n'existent plus qu'ici : les deux surfaces lisent la
+/// même liste.
 class PlanTools {
   PlanTools._();
 
@@ -30,48 +30,89 @@ class PlanTools {
   ];
 
   /// Appelle un outil du planificateur et traduit sa réponse.
+  ///
+  /// Une création **n'écrit pas** : l'exécuteur bâtit un objet en attente, avec
+  /// ses macros ou ses exercices, et il repart en `payload`. La surface décide
+  /// ensuite comment le montrer, et rien n'entre dans la semaine avant un oui.
+  /// C'est ce qui protège la semaine d'une IA trop sûre d'elle.
   static Future<RyzeToolResult> _run(String name, Map<String, dynamic> args) async {
     try {
       final out = await PlannerAIService.executeToolCall(name, args, _lang);
 
-      // Les créations ne écrivent pas : elles rendent un objet en attente que
-      // l'utilisateur valide. C'est ce qui protège sa semaine d'une IA trop
-      // sûre d'elle, et ça se garde tel quel.
       final pendingMeal = out['pending_meal'] as PendingMeal?;
       final pendingWorkout = out['pending_workout'] as PendingWorkout?;
       final pendingCardio = out['pending_cardio'] as PendingCardio?;
 
       if (pendingMeal != null) {
-        final result = await PlannerAIService.confirmMeals([pendingMeal]);
         return RyzeToolResult(
-          ok: result.success,
-          summary: result.message,
-          data: {'created': result.success, 'kind': 'meal'},
+          ok: true,
+          summary: pendingMeal.dishName,
+          data: {'proposed': 'meal', 'dish': pendingMeal.dishName, 'calories': pendingMeal.calories},
+          payload: pendingMeal,
         );
       }
       if (pendingWorkout != null || pendingCardio != null) {
         final session = pendingWorkout != null
             ? PendingSession.fromWorkout(pendingWorkout)
             : PendingSession.fromCardio(pendingCardio!);
-        final result = await PlannerAIService.confirmSingleSession(session);
         return RyzeToolResult(
-          ok: result.success,
-          summary: result.message,
-          data: {'created': result.success, 'kind': 'session'},
+          ok: true,
+          summary: session.displayTitle,
+          data: {'proposed': 'session', 'name': session.displayTitle},
+          payload: session,
         );
       }
 
       final ok = out['success'] == true;
       final message = '${out['message'] ?? ''}'.trim();
+
+      // Retirer ou déplacer se défait : l'exécuteur a gardé de quoi remettre
+      // en place, et la bulle porte un « annuler » tant que rien d'autre n'a
+      // eu lieu. Une création n'en a pas besoin, elle n'a encore rien écrit.
+      final undoable = ok && name != 'undo_last_action' && PlannerAIService.hasUndo;
+
       return RyzeToolResult(
         ok: ok,
         summary: message.isEmpty ? 'ryze_action_failed'.tr(_lang) : message,
         data: {'success': ok},
+        undo: undoable ? () => PlannerAIService.undoLastAction() : null,
       );
     } catch (e) {
       if (kDebugMode) debugPrint('❌ $name : $e');
       return RyzeToolResult.failed('ryze_action_failed'.tr(_lang));
     }
+  }
+
+  /// Écrit pour de bon ce qu'une création a proposé.
+  ///
+  /// Appelé par la surface au moment du oui, jamais par l'outil.
+  static Future<RyzeToolResult> commit(Object? payload) async {
+    try {
+      if (payload is PendingMeal) {
+        final r = await PlannerAIService.confirmMeals([payload]);
+        return RyzeToolResult(ok: r.success, summary: r.message, data: {'created': r.success});
+      }
+      if (payload is PendingSession) {
+        final r = await PlannerAIService.confirmSingleSession(payload);
+        return RyzeToolResult(ok: r.success, summary: r.message, data: {'created': r.success});
+      }
+      return RyzeToolResult.failed('ryze_action_failed'.tr(_lang));
+    } catch (e) {
+      if (kDebugMode) debugPrint('❌ commit : $e');
+      return RyzeToolResult.failed('ryze_action_failed'.tr(_lang));
+    }
+  }
+
+  /// La carte d'une création : ce qui est proposé, avant que ça existe.
+  static Future<RyzePending> _proposal(String toolName, Map<String, dynamic> args) async {
+    final built = await _run(toolName, args);
+    return RyzePending(
+      id: '$toolName-${DateTime.now().microsecondsSinceEpoch}',
+      toolName: toolName,
+      title: built.ok ? built.summary : 'ryze_action_failed'.tr(_lang),
+      detail: built.data['calories'] != null ? '${built.data['calories']} kcal' : null,
+      commit: () => built.ok ? commit(built.payload) : Future.value(built),
+    );
   }
 
   /// Une carte de validation, pour ce qui se défait mal.
@@ -91,6 +132,7 @@ class PlanTools {
 
   static final createMeal = RyzeTool(
     name: 'plan.create_meal',
+    surfaces: surfaces,
     declaration: toolSchema(
       name: 'plan.create_meal',
       description:
@@ -120,11 +162,14 @@ class PlanTools {
       },
       required: ['day', 'meal_type', 'dish_name', 'calories', 'proteins', 'carbs', 'fats', 'quantity_g'],
     ),
+    needsConfirmation: (_) => true,
+    preview: (args) => _proposal('create_meal', args),
     execute: (args) => _run('create_meal', args),
   );
 
   static final createWorkout = RyzeTool(
     name: 'plan.create_workout',
+    surfaces: surfaces,
     declaration: toolSchema(
       name: 'plan.create_workout',
       description:
@@ -144,11 +189,14 @@ class PlanTools {
       },
       required: ['day', 'workout_type', 'duration_minutes'],
     ),
+    needsConfirmation: (_) => true,
+    preview: (args) => _proposal('create_workout', args),
     execute: (args) => _run('create_workout', args),
   );
 
   static final createCardio = RyzeTool(
     name: 'plan.create_cardio',
+    surfaces: surfaces,
     declaration: toolSchema(
       name: 'plan.create_cardio',
       description:
@@ -167,6 +215,8 @@ class PlanTools {
       },
       required: ['day', 'activity'],
     ),
+    needsConfirmation: (_) => true,
+    preview: (args) => _proposal('create_cardio', args),
     execute: (args) => _run('create_cardio', args),
   );
 
@@ -174,6 +224,7 @@ class PlanTools {
 
   static final moveWorkout = RyzeTool(
     name: 'plan.move_workout',
+    surfaces: surfaces,
     declaration: toolSchema(
       name: 'plan.move_workout',
       description:
@@ -197,6 +248,7 @@ class PlanTools {
 
   static final modifyWorkout = RyzeTool(
     name: 'plan.modify_workout',
+    surfaces: surfaces,
     declaration: toolSchema(
       name: 'plan.modify_workout',
       description:
@@ -226,6 +278,7 @@ class PlanTools {
 
   static final createHiit = RyzeTool(
     name: 'plan.create_hiit',
+    surfaces: surfaces,
     declaration: toolSchema(
       name: 'plan.create_hiit',
       description:
@@ -244,11 +297,14 @@ class PlanTools {
       },
       required: ['day'],
     ),
+    needsConfirmation: (_) => true,
+    preview: (args) => _proposal('create_hiit', args),
     execute: (args) => _run('create_hiit', args),
   );
 
   static final moveCardio = RyzeTool(
     name: 'plan.move_cardio',
+    surfaces: surfaces,
     declaration: toolSchema(
       name: 'plan.move_cardio',
       description:
@@ -271,6 +327,7 @@ class PlanTools {
 
   static final modifyCardio = RyzeTool(
     name: 'plan.modify_cardio',
+    surfaces: surfaces,
     declaration: toolSchema(
       name: 'plan.modify_cardio',
       description:
@@ -300,6 +357,7 @@ class PlanTools {
 
   static final modifyMeal = RyzeTool(
     name: 'plan.modify_meal',
+    surfaces: surfaces,
     declaration: toolSchema(
       name: 'plan.modify_meal',
       description:
@@ -342,6 +400,7 @@ class PlanTools {
 
   static final deleteMeal = RyzeTool(
     name: 'plan.delete_meal',
+    surfaces: surfaces,
     declaration: toolSchema(
       name: 'plan.delete_meal',
       description:
@@ -368,6 +427,7 @@ class PlanTools {
 
   static final deleteWorkout = RyzeTool(
     name: 'plan.delete_workout',
+    surfaces: surfaces,
     declaration: toolSchema(
       name: 'plan.delete_workout',
       description:
@@ -389,6 +449,7 @@ class PlanTools {
 
   static final deleteCardio = RyzeTool(
     name: 'plan.delete_cardio',
+    surfaces: surfaces,
     declaration: toolSchema(
       name: 'plan.delete_cardio',
       description:
@@ -420,6 +481,7 @@ class PlanTools {
   /// d'autant mieux qu'on lui présente moins de portes voisines.
   static final deleteSessions = RyzeTool(
     name: 'plan.delete_sessions',
+    surfaces: surfaces,
     declaration: toolSchema(
       name: 'plan.delete_sessions',
       description:
@@ -456,6 +518,7 @@ class PlanTools {
 
   static final deleteAllMeals = RyzeTool(
     name: 'plan.delete_all_meals',
+    surfaces: surfaces,
     declaration: toolSchema(
       name: 'plan.delete_all_meals',
       description:
@@ -476,6 +539,7 @@ class PlanTools {
   /// Sans confirmation : c'est déjà le geste qui répare.
   static final undo = RyzeTool(
     name: 'plan.undo',
+    surfaces: surfaces,
     declaration: toolSchema(
       name: 'plan.undo',
       description:
@@ -485,9 +549,7 @@ class PlanTools {
     execute: (args) => _run('undo_last_action', args),
   );
 
-  /// Les outils d'écriture du plan, pour la conversation.
-  ///
-  /// Ils gagneront `RyzeSurface.planner` quand l'écran rejoindra le registre.
+  /// Les outils d'écriture du plan, pour les deux surfaces.
   static List<RyzeTool> get all => [
         createMeal,
         createWorkout,
@@ -506,6 +568,10 @@ class PlanTools {
         undo,
       ];
 
-  /// Les surfaces sur lesquelles ces outils vivent aujourd'hui.
-  static const Set<RyzeSurface> surfaces = {RyzeSurface.coach};
+  /// Les deux surfaces : la conversation et l'écran du planificateur.
+  ///
+  /// C'est ici que la frontière disparaît. Les deux parlent au même moteur,
+  /// avec les mêmes outils ; ce qui les distingue est ce qu'elles montrent,
+  /// pas ce qu'elles savent faire.
+  static const Set<RyzeSurface> surfaces = {RyzeSurface.coach, RyzeSurface.planner};
 }

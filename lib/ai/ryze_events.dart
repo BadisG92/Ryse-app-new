@@ -1,3 +1,4 @@
+import '../models/weekly_planner_models.dart';
 import 'ryze_tools/ryze_tool.dart';
 
 /// Ce que l'écran reçoit pendant que Ryze répond.
@@ -31,6 +32,20 @@ class CoachAction extends CoachEvent {
 class CoachAsk extends CoachEvent {
   const CoachAsk(this.pending);
   final RyzePending pending;
+}
+
+/// Tout ce que Ryze propose d'ajouter à la semaine, d'un seul tour.
+///
+/// Une demande peut en produire beaucoup — « planifie ma semaine » en fait une
+/// douzaine — et l'écran du planificateur les feuillette par jour. Elles
+/// arrivent donc groupées, à la fin, plutôt qu'une par une.
+class CoachProposals extends CoachEvent {
+  const CoachProposals({this.meals = const [], this.sessions = const []});
+
+  final List<PendingMeal> meals;
+  final List<PendingSession> sessions;
+
+  bool get isEmpty => meals.isEmpty && sessions.isEmpty;
 }
 
 /// La réponse s'est arrêtée là.

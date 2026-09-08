@@ -269,6 +269,12 @@ class _CoachChatScreenState extends State<CoachChatScreen> {
             setState(() => _pendingCards.add(pending));
             _scrollToBottom();
 
+          case CoachProposals():
+            // Une fournée de propositions se feuillette par jour : c'est la
+            // mise en scène de l'écran du planificateur. Ici, chaque création
+            // arrive déjà en carte, une par une, par `CoachAsk`.
+            break;
+
           case CoachFailure(:final message):
             closeBubble();
             setState(() {

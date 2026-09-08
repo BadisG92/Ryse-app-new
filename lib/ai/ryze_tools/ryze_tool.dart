@@ -9,6 +9,7 @@ class RyzeToolResult {
     required this.summary,
     this.data = const {},
     this.undo,
+    this.payload,
   });
 
   /// L'action a-t-elle abouti ?
@@ -23,6 +24,15 @@ class RyzeToolResult {
 
   /// De quoi défaire, quand l'action se défait proprement.
   final Future<void> Function()? undo;
+
+  /// Un objet pour la surface, que le modèle ne voit jamais.
+  ///
+  /// Une création ne rend pas un fait accompli mais une proposition — un repas
+  /// avec ses macros, une séance avec ses exercices. Chaque surface la montre à
+  /// sa façon : la conversation en fait une carte, l'écran du planificateur en
+  /// remplit ses pages par jour. C'est ce qui permet aux deux de partager le
+  /// même outil sans partager leur mise en scène.
+  final Object? payload;
 
   factory RyzeToolResult.failed(String summary) =>
       RyzeToolResult(ok: false, summary: summary, data: {'error': summary});

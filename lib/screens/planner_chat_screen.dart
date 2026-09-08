@@ -13,6 +13,10 @@ import '../services/weekly_planner_service.dart';
 import '../design/design.dart';
 import '../services/localization_service.dart';
 import '../services/translations.dart';
+import '../ai/ryze_access.dart';
+import '../ai/ryze_events.dart';
+import '../ai/ryze_planner_session.dart';
+import '../ai/ryze_tools/ryze_tool.dart';
 import '../services/planner_ai_service.dart';
 import '../services/paywall_service.dart';
 import '../services/unified_subscription_service.dart';
@@ -77,7 +81,6 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
   bool _showPaywallButton = false;
 
   // Preview mode
-  List<PendingWorkout>? _pendingWorkouts;
   List<PendingMeal>? _pendingMeals;
   bool _isConfirming = false;
 
@@ -94,6 +97,12 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
   // Confirmation mode (pour actions destructrices)
   Map<String, dynamic>? _pendingConfirmation;
 
+  /// L'action que Ryze propose et qui attend un oui.
+  RyzePending? _pendingCard;
+
+  /// Le moteur, partagé avec la conversation.
+  late final RyzePlannerSession _session;
+
   // Undo tracking
   int _undoableMessageIndex = -1;
 
@@ -102,7 +111,6 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
   final Set<_ChatMessage> _shownMessages = {}; // bulles déjà animées (pas de rejeu au scroll)
   final ValueNotifier<int> _proposalVersion = ValueNotifier<int>(0); // bumped on every setState: the detail sheets rebuild with the screen
   final List<PendingMeal> _demoConfirmedMeals = [];
-  final List<PendingWorkout> _demoConfirmedWorkouts = [];
   final List<PendingSession> _demoConfirmedSessions = [];
   bool _demoMealsGuided = false;
   bool _demoSportGuided = false;
@@ -111,15 +119,17 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
   void initState() {
     super.initState();
     _weekData = widget.weekData;
-    PlannerAIService.setPlanningWindow(_weekData.weekStart);
     if (widget.demoMode) {
       // In demo mode, bypass premium checks
       _isPremium = true;
       PlannerAIService.setDemoMode(true);
+      RyzeAccess.setDemoMode(true);
     } else {
-      _loadFreeUsageStatus();
+      _refreshAccess();
     }
-    PlannerAIService.clearHistory();
+
+    // Le moteur pose lui-même la fenêtre de planification sur cette semaine.
+    _session = RyzePlannerSession(mode: widget.initialMode, weekStart: _weekData.weekStart);
     _addBotMessage(_getWelcomeMessage());
 
     // Scroll vers aujourd'hui après le build
@@ -136,15 +146,19 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
     });
   }
 
-  Future<void> _loadFreeUsageStatus() async {
-    _isPremium = PlannerAIService.isPremium;
-    _isTestMode = UnifiedSubscriptionService().testMode;
-    if (!_isPremium && !_isTestMode) {
-      if (mounted) {
-        setState(() {
-        });
-      }
-    }
+  /// Relit l'accès. Le paywall est dur : abonné, mode test, ou rien.
+  ///
+  /// Il restait de l'ancien compteur une méthode qui comptait des
+  /// planifications gratuites ; elles n'existent plus.
+  void _refreshAccess() {
+    final premium = PlannerAIService.isPremium;
+    final test = UnifiedSubscriptionService().testMode;
+    if (premium == _isPremium && test == _isTestMode) return;
+    if (!mounted) return;
+    setState(() {
+      _isPremium = premium;
+      _isTestMode = test;
+    });
   }
 
   /// Demo confirmations are written like real ones, so the coach's modify,
@@ -255,11 +269,12 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
 
   @override
   void dispose() {
-    PlannerAIService.setPlanningWindow(null);
+    _session.dispose();
     _weekFoldTimer?.cancel();
     _proposalVersion.dispose();
     if (widget.demoMode) {
       PlannerAIService.setDemoMode(false);
+      RyzeAccess.setDemoMode(false);
     }
     _textController.dispose();
     _focusNode.dispose();
@@ -416,72 +431,57 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
 
     setState(() {
       _isProcessing = true;
-      _pendingWorkouts = null;
     });
     _scrollChatToBottom();
 
     try {
-      // Le modèle pose ses questions en texte, comme le reste de la
-      // conversation. Le flux de questions structuré qui vivait ici était une
-      // boucle fermée depuis que son point d'entrée avait disparu : rien ne
-      // pouvait plus l'amorcer.
-      final result = await PlannerAIService.processRequestWithTools(
-        text,
-        mode: widget.initialMode,
-      );
-
-      if (result.isSessionPreview && result.pendingSessions != null) {
-        // NOUVEAU: Preview de sessions paginé
-        debugPrint('✅ Got ${result.pendingSessions!.length} pending sessions for preview');
-        _addBotMessage(result.message);
-        PlannerAIService.addToHistory('assistant', result.message);
-        setState(() {
-          _pendingSessions = result.pendingSessions;
-          _currentSessionIndex = 0;
-          _sessionsPageController?.dispose();
-          _sessionsPageController = PageController(initialPage: 0);
-        });
-      } else if (result.isPaywallRequired) {
-        _addBotMessage(result.message);
-        PlannerAIService.addToHistory('assistant', result.message);
+      if (!RyzeAccess.canUse) {
+        _addBotMessage(PlannerAIService.paywallMessage(LocalizationService.instance.currentLanguageCode));
         setState(() => _showPaywallButton = true);
-      } else if (result.requiresConfirmation && result.pendingWorkouts != null) {
-        debugPrint('✅ Got ${result.pendingWorkouts!.length} pending workouts for preview');
-        _addBotMessage(result.message);
-        PlannerAIService.addToHistory('assistant', result.message);
-        setState(() {
-          _pendingWorkouts = result.pendingWorkouts;
-        });
-      } else if (result.requiresConfirmation && result.pendingMeals != null) {
-        debugPrint('✅ Got ${result.pendingMeals!.length} pending meals for preview');
-        _addBotMessage(result.message);
-        PlannerAIService.addToHistory('assistant', result.message);
-
-        // Extraire les jours uniques et trier
-        final daysSet = <DateTime>{};
-        for (final meal in result.pendingMeals!) {
-          daysSet.add(DateTime(meal.plannedDate.year, meal.plannedDate.month, meal.plannedDate.day));
-        }
-        final sortedDays = daysSet.toList()..sort();
-
-        setState(() {
-          _pendingMeals = result.pendingMeals;
-          _mealsDays = sortedDays;
-          _currentMealsDayIndex = 0;
-          _mealsPageController?.dispose();
-          _mealsPageController = PageController(initialPage: 0);
-        });
-      } else if (result.requiresConfirmation && result.pendingWorkouts == null && result.pendingMeals == null) {
-        _addConfirmationMessage(result.message);
-      } else if (result.success) {
-        _addBotMessage(result.message);
-        PlannerAIService.addToHistory('assistant', result.message);
-        await _refreshWeekData();
-        await _loadFreeUsageStatus();
-      } else {
-        _addBotMessage(result.message);
-        PlannerAIService.addToHistory('assistant', result.message);
+        return;
       }
+
+      // Le même moteur que la conversation. L'écran garde sa mise en scène —
+      // la bande des jours, les cartes feuilletées — et ne s'occupe plus que
+      // de montrer ce qui arrive.
+      // Le texte du tour devient une bulle une fois complet : cet écran ne
+      // fait pas défiler les caractères, il pose la réponse. Elle est posée
+      // avant toute carte, pour que ce qu'il y a à valider reste en bas.
+      final buffer = StringBuffer();
+      void flush() {
+        final said = buffer.toString().trim();
+        buffer.clear();
+        if (said.isNotEmpty) _addBotMessage(said);
+      }
+
+      await for (final event in _session.send(text)) {
+        if (!mounted) break;
+
+        switch (event) {
+          case CoachText(:final text):
+            buffer.write(text);
+
+          case CoachProposals(:final meals, :final sessions):
+            flush();
+            _showProposals(meals, sessions);
+
+          case CoachAsk(:final pending):
+            flush();
+            _addPendingCard(pending);
+
+          case CoachAction(:final summary):
+            flush();
+            _addBotMessage(summary);
+            await _refreshWeekData();
+
+          case CoachFailure(:final message):
+            flush();
+            _addBotMessage(message);
+            return;
+        }
+      }
+
+      flush();
     } catch (e) {
       debugPrint('Error processing AI request: $e');
       // a failed call must not eat one of the demo messages
@@ -494,56 +494,70 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
     }
   }
 
-  Future<void> _confirmWorkouts() async {
-    if (_pendingWorkouts == null || _isConfirming) return;
-
-    setState(() => _isConfirming = true);
-
-    try {
-      if (widget.demoMode) {
-        // Demo mode: store in memory, don't save to DB
-        _demoConfirmedWorkouts.addAll(_pendingWorkouts!);
-        _addWorkoutsToWeekDataLocally(_pendingWorkouts!);
-        final confirmed = List<PendingWorkout>.from(_pendingWorkouts!);
-        unawaited(_persistDemo(() => PlannerAIService.confirmWorkouts(confirmed)));
-        final langCode = LocalizationService.instance.currentLanguageCode;
-        final successMsg = 'planner_all_sessions_planned'.tr(langCode);
-        _addBotMessage(successMsg);
-        PlannerAIService.addToHistory('assistant', successMsg);
-        PlannerAIService.clearHistory();
-
-        setState(() {
-          _pendingWorkouts = null;
-        });
-
-        // Send demo guidance message
-        _sendDemoSportGuidance();
-        return;
-      }
-
-      unawaited(_landInWeek([for (final (i, w) in _pendingWorkouts!.indexed) (date: w.plannedDate, slot: WeekSlot.sport, row: 'w-$i')]));
-      final result = await PlannerAIService.confirmWorkouts(_pendingWorkouts!);
-
-      _addBotMessage(result.message);
-      PlannerAIService.addToHistory('assistant', result.message);
-
-      if (result.success) {
-        PlannerAIService.clearHistory();
-        await _refreshWeekData();
-        await _loadFreeUsageStatus();
-      }
+  /// Ce que Ryze propose d'ajouter, posé dans les pages de l'écran.
+  ///
+  /// Les repas se feuillettent par jour, les séances une par une : une semaine
+  /// entière fait une douzaine de propositions, et les montrer d'un bloc
+  /// reviendrait à demander de tout accepter sans rien lire.
+  void _showProposals(List<PendingMeal> meals, List<PendingSession> sessions) {
+    if (meals.isNotEmpty) {
+      final days = <DateTime>{
+        for (final m in meals) DateTime(m.plannedDate.year, m.plannedDate.month, m.plannedDate.day),
+      }.toList()
+        ..sort();
 
       setState(() {
-        _pendingWorkouts = null;
+        _pendingMeals = meals;
+        _mealsDays = days;
+        _currentMealsDayIndex = 0;
+        _mealsPageController?.dispose();
+        _mealsPageController = PageController(initialPage: 0);
       });
-    } catch (e) {
-      debugPrint('Error confirming workouts: $e');
-      _addBotMessage(_getErrorMessage());
-    } finally {
-      if (mounted) {
-        setState(() => _isConfirming = false);
-      }
     }
+
+    if (sessions.isNotEmpty) {
+      setState(() {
+        _pendingSessions = sessions;
+        _currentSessionIndex = 0;
+        _sessionsPageController?.dispose();
+        _sessionsPageController = PageController(initialPage: 0);
+      });
+    }
+    _scrollChatToBottom();
+  }
+
+  /// Une action qui touche à la semaine déjà posée : elle demande avant.
+  void _addPendingCard(RyzePending pending) {
+    _pendingCard = pending;
+    _addConfirmationMessage(pending.title);
+  }
+
+  /// L'utilisateur a répondu à la carte.
+  Future<void> _resolveCard({required bool accept}) async {
+    final pending = _pendingCard;
+    _pendingCard = null;
+    if (pending == null) return;
+
+    if (!accept) {
+      _session.note('cancelled by the user: ${pending.title}');
+      RyzeFeedback.removed();
+      return;
+    }
+
+    RyzeFeedback.confirm();
+    final result = await pending.commit();
+    if (!mounted) return;
+
+    _session.note(result.summary);
+
+    // Ce qui vient d'être retiré ou déplacé peut revenir : la bulle garde son
+    // « annuler » jusqu'au message suivant.
+    if (result.undo != null) {
+      _addUndoableBotMessage(result.summary);
+    } else {
+      _addBotMessage(result.summary);
+    }
+    await _refreshWeekData();
   }
 
   Future<void> _confirmMeals() async {
@@ -584,8 +598,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
           final langCode = LocalizationService.instance.currentLanguageCode;
           final successMsg = 'planner_all_meals_planned'.tr(langCode);
           _addBotMessage(successMsg);
-          PlannerAIService.addToHistory('assistant', successMsg);
-          PlannerAIService.clearHistory();
+          _session.note(successMsg);
           setState(() {
             _pendingMeals = null;
             _mealsDays = [];
@@ -614,7 +627,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
 
       if (result.success) {
         await _refreshWeekData();
-        await _loadFreeUsageStatus();
+        _refreshAccess();
 
         // Retirer les repas confirmés de la liste
         final remainingMeals = _pendingMeals!.where((meal) {
@@ -626,8 +639,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
         if (remainingMeals.isEmpty) {
           // Tous les jours ont été confirmés
           _addBotMessage(result.message);
-          PlannerAIService.addToHistory('assistant', result.message);
-          PlannerAIService.clearHistory();
+          _session.note(result.message);
           setState(() {
             _pendingMeals = null;
             _mealsDays = [];
@@ -669,7 +681,6 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
     };
 
     setState(() {
-      _pendingWorkouts = null;
       _pendingMeals = null;
       _mealsDays = [];
       _currentMealsDayIndex = 0;
@@ -681,13 +692,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
   }
 
   void _cancelConfirmation() {
-    PlannerAIService.cancelPendingAction();
     final langCode = LocalizationService.instance.currentLanguageCode;
-    final cancelledText = {
-      'fr': '❌ Action annulée',
-      'en': '❌ Action cancelled',
-      'de': '❌ Aktion abgebrochen',
-    };
 
     setState(() {
       if (_messages.isNotEmpty && _messages.last.actions != null) {
@@ -695,7 +700,9 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
       }
       _pendingConfirmation = null;
     });
-    _addBotMessage(cancelledText[langCode] ?? cancelledText['en']!);
+
+    _resolveCard(accept: false);
+    _addBotMessage('ryze_cancelled'.tr(langCode));
   }
 
   Future<void> _executeConfirmation() async {
@@ -707,36 +714,16 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
         if (_messages.isNotEmpty && _messages.last.actions != null) {
           _messages.removeLast();
         }
+        _pendingConfirmation = null;
       });
 
-      final result = await PlannerAIService.executePendingAction();
-
-      if (result.canUndo && result.success) {
-        _addUndoableBotMessage(result.message);
-      } else {
-        _addBotMessage(result.message);
-      }
-      PlannerAIService.addToHistory('assistant', result.message);
-
-      if (result.success) {
-        await _refreshWeekData();
-      }
-
-      if (result.hasMoreActions && result.requiresConfirmation && result.nextActionDescription != null) {
-        _addConfirmationMessage(result.nextActionDescription!);
-      } else if (result.hasMoreActions && result.nextActionDescription != null) {
-        _addBotMessage(result.nextActionDescription!);
-      } else {
-        setState(() {
-          _pendingConfirmation = null;
-        });
-      }
+      // L'action attendue vit maintenant dans la carte de l'agent. Elle porte
+      // ce qu'il faut faire, il n'y a plus d'état d'attente à retrouver
+      // ailleurs dans le service.
+      await _resolveCard(accept: true);
     } catch (e) {
       debugPrint('Error executing confirmation: $e');
       _addBotMessage(_getErrorMessage());
-      setState(() {
-        _pendingConfirmation = null;
-      });
     } finally {
       if (mounted) {
         setState(() => _isConfirming = false);
@@ -756,7 +743,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
       });
 
       _addBotMessage(result.message);
-      PlannerAIService.addToHistory('assistant', result.message);
+      _session.note(result.message);
 
       if (result.success) {
         await _refreshWeekData();
@@ -811,9 +798,11 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
 
   /// Demo mode: collect all data and call callback
   void _collectDemoData() {
+    // Plus de liste de séances à part : une séance validée est une
+    // `PendingSession`, qui porte sa musculation ou son cardio.
     widget.onDemoDataCollected?.call(
       _demoConfirmedMeals,
-      _demoConfirmedWorkouts,
+      const [],
       _demoConfirmedSessions,
     );
   }
@@ -868,7 +857,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
             _buildInputZone(langCode),
 
           // Demo mode: action buttons (switch to sport / finish)
-          if (widget.demoMode && _pendingWorkouts == null && _pendingMeals == null && _pendingSessions == null)
+          if (widget.demoMode && _pendingMeals == null && _pendingSessions == null)
             _buildDemoActionBar(langCode),
         ],
       ),
@@ -1130,7 +1119,6 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
   }
 
   bool get _hasPendingPreview =>
-      (_pendingWorkouts != null && _pendingWorkouts!.isNotEmpty) ||
       (_pendingMeals != null && _pendingMeals!.isNotEmpty) ||
       (_pendingSessions != null && _pendingSessions!.isNotEmpty);
 
@@ -1184,11 +1172,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
     Widget? card;
     Widget? buttons;
     var key = 'none';
-    if (_pendingWorkouts != null && _pendingWorkouts!.isNotEmpty) {
-      card = _buildWorkoutPreview(langCode);
-      buttons = _buildPreviewButtons(langCode);
-      key = 'workouts';
-    } else if (_pendingMeals != null && _pendingMeals!.isNotEmpty) {
+    if (_pendingMeals != null && _pendingMeals!.isNotEmpty) {
       card = _buildMealsPreview(langCode);
       buttons = _buildMealsPreviewButtons(langCode);
       key = 'meals';
@@ -1381,242 +1365,8 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
     return prompts[suggestion] ?? suggestion;
   }
 
-  Widget _buildWorkoutPreview(String langCode) {
-    if (_pendingWorkouts == null || _pendingWorkouts!.isEmpty) {
-      return const SizedBox.shrink();
-    }
-    final title = 'planner_proposed_program'.tr(langCode);
-    final sessionsWord = 'planner_sessions_word'.tr(langCode);
-    final totalMin = _pendingWorkouts!.fold<int>(0, (sum, w) => sum + w.durationMinutes);
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        ProposalHeader(icon: LucideIcons.dumbbell, title: title, subtitle: '${_pendingWorkouts!.length} $sessionsWord · $totalMin min'),
-        for (final (i, w) in _pendingWorkouts!.indexed)
-          PopIn(
-            key: ValueKey('pw-${w.plannedDate.toIso8601String()}-${w.workoutType}'),
-            delay: Duration(milliseconds: 80 + i * 50),
-            dy: 10,
-            duration: const Duration(milliseconds: 420),
-            child: KeyedSubtree(
-              key: _rowKey('w-$i'),
-              child: _buildWorkoutPreviewItem(w, langCode, last: i == _pendingWorkouts!.length - 1),
-            ),
-          ),
-        const SizedBox(height: 6),
-      ],
-    );
-  }
-
-  Widget _buildWorkoutPreviewItem(PendingWorkout workout, String langCode, {bool last = false}) {
-    final exerciseCount = workout.exercises?.length ?? 0;
-    final exercisesLabel = 'planner_exercises_count'.tr(langCode);
-    return ProposalWorkoutRow(
-      dayShort: _formatDayNameShort(workout.plannedDate, langCode),
-      title: workout.workoutType,
-      subtitle: '${workout.durationMinutes} min · $exerciseCount $exercisesLabel',
-      onTap: () => _showWorkoutDetails(workout, langCode),
-      last: last,
-    );
-  }
-
-  void _showWorkoutDetails(PendingWorkout workout, String langCode) {
-    final dayName = _formatDayName(workout.plannedDate, langCode);
-    final personalizedText = 'planner_personalized_weights'.tr(langCode);
-    final seriesLabel = 'planner_sets_label'.tr(langCode);
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.6,
-        decoration: BoxDecoration(
-          color: RyzeColors.surf,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: Column(
-          children: [
-            // Handle
-            Center(
-              child: Container(
-                margin: const EdgeInsets.only(top: 12),
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: RyzeColors.line,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            // Header
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: RyzeColors.ink.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      LucideIcons.dumbbell,
-                      size: 24,
-                      color: RyzeColors.ink,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          workout.workoutType,
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: RyzeColors.ink,
-                          ),
-                        ),
-                        Text(
-                          '$dayName • ${workout.durationMinutes} min',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: RyzeColors.mute,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: Icon(LucideIcons.x, color: RyzeColors.mute),
-                  ),
-                ],
-              ),
-            ),
-            // Badge poids personnalisés
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: RyzeColors.confirm.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    LucideIcons.sparkles,
-                    size: 14,
-                    color: RyzeColors.confirm,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      personalizedText,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: RyzeColors.confirm,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Divider(height: 1),
-            // Exercices
-            Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: workout.exercises?.length ?? 0,
-                itemBuilder: (context, index) {
-                  final exercise = workout.exercises![index];
-                  final suggestedWeight = exercise.sets.isNotEmpty
-                      ? exercise.sets.first.weight
-                      : 0.0;
-                  final weightText = suggestedWeight > 0
-                      ? '${suggestedWeight.toStringAsFixed(suggestedWeight.truncateToDouble() == suggestedWeight ? 0 : 1)}kg'
-                      : '';
-
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: RyzeColors.paper,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: RyzeColors.line),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 28,
-                          height: 28,
-                          decoration: BoxDecoration(
-                            color: RyzeColors.ink.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Center(
-                            child: Text(
-                              '${index + 1}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: RyzeColors.ink,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                exercise.exercise.name,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: RyzeColors.ink,
-                                ),
-                              ),
-                              Text(
-                                '${exercise.sets.length} $seriesLabel • ${exercise.suggestedRepsMin ?? 8}-${exercise.suggestedRepsMax ?? 12} reps${weightText.isNotEmpty ? ' • $weightText' : ''}',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: RyzeColors.mute,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   String _formatDayName(DateTime date, String langCode) {
     return 'day_${date.weekday}'.tr(langCode);
-  }
-
-  Widget _buildPreviewButtons(String langCode) {
-    return ProposalActions(
-      cancelLabel: 'planner_modify'.tr(langCode),
-      confirmLabel: 'planner_confirm_program'.tr(langCode),
-      onCancel: _cancelPreview,
-      onConfirm: _confirmWorkouts,
-      busy: _isConfirming,
-    );
   }
 
   List<PendingMeal> _mealsForDay(DateTime day) {
@@ -1829,12 +1579,11 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
       final result = await PlannerAIService.confirmMeals(_pendingMeals!);
 
       _addBotMessage(result.message);
-      PlannerAIService.addToHistory('assistant', result.message);
+      _session.note(result.message);
 
       if (result.success) {
-        PlannerAIService.clearHistory();
         await _refreshWeekData();
-        await _loadFreeUsageStatus();
+        _refreshAccess();
       }
 
       setState(() {
@@ -1996,8 +1745,7 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
           final langCode = LocalizationService.instance.currentLanguageCode;
           final successMessage = 'planner_all_sessions_planned'.tr(langCode);
           _addBotMessage(successMessage);
-          PlannerAIService.addToHistory('assistant', successMessage);
-          PlannerAIService.clearHistory();
+          _session.note(successMessage);
 
           setState(() {
             _pendingSessions = null;
@@ -2043,12 +1791,10 @@ class _PlannerChatScreenState extends State<PlannerChatScreen> {
           final langCode = LocalizationService.instance.currentLanguageCode;
           final successMessage = 'planner_all_sessions_planned'.tr(langCode);
           _addBotMessage(successMessage);
-          PlannerAIService.addToHistory('assistant', successMessage);
-          PlannerAIService.clearHistory();
+          _session.note(successMessage);
 
-          // Note: le compteur est géré automatiquement par _incrementUsageOncePerSession dans confirmWorkouts/confirmMeals
           await _refreshWeekData();
-          await _loadFreeUsageStatus();
+          _refreshAccess();
 
           setState(() {
             _pendingSessions = null;

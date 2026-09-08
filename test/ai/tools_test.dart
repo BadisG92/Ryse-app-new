@@ -75,6 +75,60 @@ void main() {
     });
   });
 
+  group('Ce que le planificateur sait faire', () {
+    // L'écran avait ses propres déclarations, une liste par mode, recopiées à
+    // côté de celles du coach. Les deux surfaces lisent maintenant la même.
+    final planner = registry.declarationsFor(RyzeSurface.planner).map((d) => d['name']).toList();
+    final coach = registry.declarationsFor(RyzeSurface.coach).map((d) => d['name']).toList();
+
+    test('les quatre gestes existent pour la musculation et pour le cardio', () {
+      for (final nom in [
+        'plan.create_workout', 'plan.delete_workout', 'plan.move_workout', 'plan.modify_workout',
+        'plan.create_cardio', 'plan.delete_cardio', 'plan.move_cardio', 'plan.modify_cardio',
+      ]) {
+        expect(planner, contains(nom), reason: nom);
+      }
+    });
+
+    test('la suppression en masse passe par un seul outil', () {
+      // Il y en avait trois — tout, les séances, les cardios — que le modèle
+      // confondait. Un filtre les remplace.
+      expect(planner, contains('plan.delete_sessions'));
+      expect(planner, contains('plan.delete_all_meals'));
+    });
+
+    test('écrire dans la semaine se fait pareil des deux côtés', () {
+      // Une seule exception : cocher un repas déjà prévu note le passé, et
+      // l'écran du planificateur sert à remplir les jours à venir.
+      final plannerPlan = planner.whereType<String>().where((n) => n.startsWith('plan.')).toSet();
+      final coachPlan = coach.whereType<String>().where((n) => n.startsWith('plan.')).toSet();
+
+      expect(coachPlan.difference(plannerPlan), {'plan.mark_meal_eaten'});
+      expect(plannerPlan.difference(coachPlan), isEmpty);
+      expect(plannerPlan, isNotEmpty);
+    });
+
+    test('modifier un cardio ne propose pas la natation', () {
+      // La conversion vers une activité non supportée supprimait la séance
+      // avant d'échouer.
+      final props = ((registry.byName('plan.modify_cardio')!.declaration['parameters'] as Map)
+          ['properties'] as Map).cast<String, dynamic>();
+      final valeurs = List<String>.from(props['new_activity']['enum'] as List);
+      expect(valeurs, isNot(contains('swimming')));
+      for (final a in ['running', 'bike', 'walking']) {
+        expect(valeurs, contains(a));
+      }
+    });
+
+    test('modifier un repas sait lequel remplacer', () {
+      // Sans cet argument, un jour portant deux collations faisait lever une
+      // exception à la requête, rendue en anglais brut.
+      final props = ((registry.byName('plan.modify_meal')!.declaration['parameters'] as Map)
+          ['properties'] as Map).cast<String, dynamic>();
+      expect(props.containsKey('current_dish_name'), isTrue);
+    });
+  });
+
   group('Ce qui touche à la semaine', () {
     test('déplacer, modifier et retirer demandent avant', () {
       // Ces trois-là écrivent tout de suite dans le plan : une carte protège
@@ -90,11 +144,28 @@ void main() {
       }
     });
 
-    test('créer ne demande pas : la validation est déjà dans l\'exécuteur', () {
-      // Une création rend un objet en attente que le planificateur fait
-      // valider ; une seconde carte demanderait deux fois la même chose.
-      for (final nom in ['plan.create_meal', 'plan.create_workout', 'plan.create_cardio']) {
-        expect(registry.byName(nom)!.needsConfirmation(const {}), isFalse, reason: nom);
+    test('créer demande aussi, et montre ce qui est proposé', () {
+      // Une création n'écrit rien : l'exécuteur bâtit le repas avec ses macros
+      // ou la séance avec ses exercices, et la carte les montre avant qu'ils
+      // entrent dans la semaine. C'est la surface qui écrit, au moment du oui.
+      for (final nom in [
+        'plan.create_meal',
+        'plan.create_workout',
+        'plan.create_cardio',
+        'plan.create_hiit',
+      ]) {
+        expect(registry.byName(nom)!.needsConfirmation(const {}), isTrue, reason: nom);
+        expect(registry.byName(nom)!.preview, isNotNull, reason: nom);
+      }
+    });
+
+    test('tout ce qui touche à la semaine passe par une carte', () {
+      // La règle, sans exception : rien n'entre ni ne sort du plan sans un oui.
+      for (final t in registry.all.where((t) => t.name.startsWith('plan.'))) {
+        // Sauf cocher un repas déjà prévu, qui a sa propre carte, et défaire,
+        // qui est déjà le geste qui répare.
+        if (t.name == 'plan.undo') continue;
+        expect(t.needsConfirmation(const {}), isTrue, reason: t.name);
       }
     });
 
