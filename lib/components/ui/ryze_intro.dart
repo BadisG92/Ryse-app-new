@@ -95,9 +95,14 @@ class _RyzeIntroState extends State<RyzeIntro> with SingleTickerProviderStateMix
   void _tick() {
     final ms = _c.value * _total;
     // the mark holds until the app knows where it is going
-    if (ms >= _hold && !widget.ready && _c.isAnimating) _c.stop();
+    final holding = ms >= _hold && !widget.ready;
+    if (holding && _c.isAnimating) _c.stop();
 
-    if (!_tapped && ms >= _rush.from) {
+    // Le coup part avec le mouvement, jamais avant. Il etait donne des l'entree
+    // dans la fenetre du bond — c'est-a-dire a la seconde ou l'ouverture se fige
+    // pour attendre le routage : on sentait le coup dans un logo immobile, puis
+    // le bond arrivait plus tard, sans rien.
+    if (!_tapped && !holding && ms >= _rush.from) {
       _tapped = true;
       HapticService.instance.lightImpact();
     }
